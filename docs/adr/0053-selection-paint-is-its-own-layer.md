@@ -40,6 +40,40 @@ invalidation". Moving the cursor became one when ADR-0024 made the thread an alp
 - Prior art (`docs/research/big-repo-scroll.md`, gitui#2823): a value that changes every tick must not be in a cache
   key. The selection is that value here.
 
+## Amendment 2026-10-10 (m8-polish-and-ship 05 Part 2): emphasis in per-column pieces
+
+**Decision 3 now reads:** per strip, the emphasis is split into **pieces, one per drawn lane column**. A piece holds
+exactly the elements whose ADR-0024 alpha is decided in that column, drawn alone at `(a − b) / (1 − b)` and cropped to
+the whole cells it touches. Ownership: an edge (straight or arc) belongs to the column it is drawn in; a row's node,
+lane stubs and tail to the row's own lane; the rail to the marker column. **Piece key** = hash(strip backdrop key,
+column, (row, element, alpha) of each owned element), nothing else. On Kitty a piece is rasterised only when
+`KittyImages::holds` says the terminal lacks its key; it is sent, its pixels dropped, and placed by id from then on.
+Unplaced uploads stay in the terminal up to 64 MiB of decoded bytes, least recently placed freed first ("the quota in
+kitty is 320MB per buffer", sw.kovidgoyal.net/kitty/graphics-protocol, "Image persistence and storage quotas"). iTerm2
+keeps one composited band per strip (Decision 5), from the whole-strip emphasis.
+
+**Why:** one emphasis image per strip was keyed on the whole strip's paint, so any lit change anywhere in 32 rows × full
+width made a new picture, and his trace showed it: 82 % of the run's bytes were emphasis
+(`docs/perf/m8-trace-followup.txt`, before). Re-placing by id could not help while each `j` made new pixels; the key
+was the fix. Gate before wiring: on the 50-key walk at 222×70 on MONOREPO the changed pieces' area was 18 % of today's
+emphasis area (`piece_gate::pieces_localise_on_his_walk`).
+
+**"One emphasis image per row" stays rejected**, and pieces differ from it: a row image was re-made whenever its
+row's thread changed, which a move onto another lane does to most rows; a piece is keyed by content, so one the cursor
+leaves and comes back to is placed again, never re-sent. A frame places more images (one per lit column per strip),
+but a placement is a few dozen bytes.
+
+**Overlaps (finding, replaces the `b × 255` bound below for Kitty):** the whole pass draws a row's node, stubs and tail
+above every column's edges; pieces stack by column. Where two pieces paint one pixel the alpha matches the whole pass
+(within 2: premultiplied "over" is order-free in alpha), but which lit colour is on top may differ. On the test's
+branchy window 53 of 6 030 overlapped pixels differ by more than `b × 255` in a colour channel
+(`raster_pieces::pieces_composite_equals_single_emphasis`, which counts them). Colour is **unverified** (CLAUDE.md
+rule 5): the user judges `docs/shots/m8-05-emphasis-pieces.png`.
+
+**Consequences changed:** `KittyImages` is budgeted in decoded bytes of unplaced images, not a count of images; a
+frame places one strip plus its pieces per strip. Emphasis on Kitty is not cached Graft-side (no `RasterPool` buffer,
+no LRU entry); the strip cache's emphasis entries serve iTerm2 only.
+
 ## Consequences
 
 - Two placements per strip on Kitty; `KittyImages` capacity counts both layers.

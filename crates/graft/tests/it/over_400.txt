@@ -31,7 +31,7 @@
 1429 crates/graft-graph/src/layout/stream/tests.rs
 701 crates/graft-graph/src/layout/tests.rs
 610 crates/graft-graph/src/layout/tests/properties.rs
-500 crates/graft-graph/src/raster/emphasis.rs
+438 crates/graft-graph/src/raster/emphasis.rs
 455 crates/graft-graph/tests/it/corpus.rs
 587 crates/graft-graph/tests/it/emphasis_layer.rs
 1003 crates/graft-graph/tests/it/raster.rs
@@ -129,14 +129,13 @@
 550 crates/graft/src/config/tests.rs
 535 crates/graft/src/crash.rs
 1012 crates/graft/src/empty_state/tests.rs
-443 crates/graft/src/event_loop/graphics.rs
 625 crates/graft/src/event_loop/outside.rs
 520 crates/graft/src/event_loop/outside/tests.rs
 656 crates/graft/src/event_loop/places/tests.rs
 481 crates/graft/src/event_loop/running/turn.rs
 1644 crates/graft/src/event_loop/tests.rs
 545 crates/graft/src/event_loop/tests/pace.rs
-655 crates/graft/src/event_loop/tests/pixel_scroll.rs
+651 crates/graft/src/event_loop/tests/pixel_scroll.rs
 706 crates/graft/src/event_loop/tests/settle.rs
 1427 crates/graft/src/history/tests.rs
 406 crates/graft/src/jobs/conflict.rs
@@ -241,7 +240,7 @@
 406 crates/graft/tests/it/frames/run.rs
 1298 crates/graft/tests/it/gallery.rs
 640 crates/graft/tests/it/heavy.rs
-777 crates/graft/tests/it/held_key.rs
+774 crates/graft/tests/it/held_key.rs
 972 crates/graft/tests/it/hint_bar.rs
 502 crates/graft/tests/it/journal_put_back.rs
 758 crates/graft/tests/it/journal_screen.rs

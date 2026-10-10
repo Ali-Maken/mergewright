@@ -1,6 +1,30 @@
 //! Parsing the terminal's APC graphics replies back out of the input stream.
 
-use super::GraphicsReply;
+/// One APC graphics reply: `ESC _ G i=…,p=…;message ESC \`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GraphicsReply {
+    /// The image id the reply is about, if it named one.
+    pub image: Option<u32>,
+    /// The placement id, if it named one.
+    pub placement: Option<u32>,
+    /// `OK`, or an error such as `ENOENT:image not found`. Control
+    /// characters are already replaced with U+FFFD.
+    pub message: String,
+}
+
+impl GraphicsReply {
+    /// True unless the terminal said `OK`.
+    #[must_use]
+    pub fn is_error(&self) -> bool {
+        self.message != "OK"
+    }
+
+    /// True for `ENOENT`: the terminal no longer has the image.
+    #[must_use]
+    pub fn is_missing_image(&self) -> bool {
+        self.message.starts_with("ENOENT")
+    }
+}
 
 /// Every Kitty graphics reply in `bytes`; anything else is skipped.
 #[must_use]

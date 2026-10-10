@@ -381,7 +381,8 @@ tier.
   viewport re-hit existing strips instead of missing on every new offset.
 - **Where it lives:** inside `graph`'s pixel renderer, as renderer-private
   state (§8.4 — an internal seam, invisible to callers). Three LRUs
-  (backdrops, emphasis images, iTerm2 composites) under one **byte budget**
+  (backdrops, and for iTerm2 emphasis images and composites; Kitty's
+  emphasis pieces are not cached in Graft, see the key below) under one **byte budget**
   (`ByteBudget`, 96 MiB, `event_loop/graphics.rs` `STRIP_BUDGET`), evicting
   the least recently used entry of any layer until the cache weighs no more
   than it (m8 04). Counted strips were not a bound: a strip weighs lanes ×
@@ -413,9 +414,17 @@ tier.
   joins the key: every strip in a frame is drawn at the lowest alpha any of
   its rows needs, so a cursor move that keeps it leaves every strip as it
   was. The selection's paint (lit thread, dimmed lanes, cursor) is not in
-  the strip: it is a second image placed above it, keyed on the strip plus
-  the selection (ADR-0053), so a `j` re-sends a small emphasis image, not
-  the strip. On a graph wider than the lane cap the fold follows the
+  the strip: it goes above it as **emphasis pieces**, one image per drawn
+  lane column, each keyed on the strip's key, its column and the alpha of
+  every element it owns (ADR-0053, amendment 2026-10-10). A `j` that leaves
+  a column's alphas alone leaves its key, so the terminal already holds
+  that piece and Graft places it by id; only pieces whose key it lacks are
+  rasterised and sent, and their pixels are dropped once sent. Pieces the
+  frame no longer places stay in the terminal up to 64 MiB of decoded
+  pixels (`KittyImages`, least recently placed freed first), so moving back
+  sends nothing. iTerm2 cannot stack images: it still gets one composited
+  band per strip, its emphasis cached on the strip key plus the selection's
+  paint (the only emphasis LRU left). On a graph wider than the lane cap the fold follows the
   selection (ADR-0025), so a `j` that moves the thread can still re-send
   every strip on screen: that is a layout change, not paint. Kitty uploads
   go deflated (`o=z`) when the terminal answers the probe for it; without

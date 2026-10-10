@@ -9,19 +9,28 @@ use super::geometry::{
     arc_in, arc_out, count, goes_down, line, paint, pixels, pixels_len, stroke, stroke_with, whole,
 };
 use super::{
-    Band, BranchIdentity, CELLS_PER_LANE, Ink, Inked, Look, Marker, Pen, RefCell, Rgb, Row,
+    Band, BranchIdentity, CELLS_PER_LANE, Ink, Inked, Look, Marker, Part, Pen, RefCell, Rgb, Row,
     Scanline, Toward, node, stroke_width,
 };
 
 impl<'a> Pen<'a> {
-    pub(super) fn new(look: &'a Look<'a>, rows: &'a [Inked<'a>], lift: Option<f32>) -> Self {
+    pub(super) fn new(
+        look: &'a Look<'a>,
+        rows: &'a [Inked<'a>],
+        lift: Option<f32>,
+        part: Option<Part>,
+    ) -> Self {
         let cell_width = pixels(look.cell_width);
+        let origin = part.map_or(0.0, |part| pixels(part.first_cell) * cell_width);
         let cell_height = pixels(look.cell_height);
         let stroke = stroke_width(look.cell_width);
         Pen {
             look,
             rows,
             lift,
+            only: part.map(|part| part.column),
+            origin,
+            shift: Transform::from_translate(-origin, 0.0),
             cell_width,
             cell_height,
             stroke,
@@ -30,9 +39,14 @@ impl<'a> Pen<'a> {
         }
     }
 
-    /// The x of a lane column's centre line.
+    /// The x of a lane column's centre line, in strip pixels.
     fn x(&self, column: usize) -> f32 {
         (count(column) * pixels(CELLS_PER_LANE) + 0.5) * self.cell_width
+    }
+
+    /// Whether this pass draws the elements lane column `column` owns.
+    fn owns(&self, column: usize) -> bool {
+        self.only.is_none_or(|only| only == column)
     }
 
     /// `alpha` is 0.0–1.0; the stroke width never varies with emphasis
@@ -124,10 +138,20 @@ impl<'a> Pen<'a> {
             let node = self.x(row.lane);
             if incoming {
                 flush(pixmap, run.take());
-                stroke(pixmap, arc_in((x, band.top), (node, band.mid)), ink);
+                stroke(
+                    pixmap,
+                    arc_in((x, band.top), (node, band.mid)),
+                    ink,
+                    self.shift,
+                );
             } else if outgoing {
                 flush(pixmap, run.take());
-                stroke(pixmap, arc_out((node, band.mid), (x, band.bottom)), ink);
+                stroke(
+                    pixmap,
+                    arc_out((node, band.mid), (x, band.bottom)),
+                    ink,
+                    self.shift,
+                );
             } else {
                 run = match run {
                     Some((top, _, run_ink)) if run_ink == ink => Some((top, band.bottom, ink)),
@@ -153,15 +177,22 @@ impl<'a> Pen<'a> {
         let band = self.band(index);
         let row = inked.row;
         let lane_ink = self
-            .tone(inked.lit.alpha_at(row.lane))
+            .owns(row.lane)
+            .then(|| self.tone(inked.lit.alpha_at(row.lane)))
+            .flatten()
             .map(|alpha| self.ink(row.lanes.get(row.lane).copied().flatten(), alpha));
         let x = self.x(row.lane);
         if let Some(lane_ink) = lane_ink {
             if above.is_some_and(|above| goes_down(above, row.lane)) {
-                stroke(pixmap, line(x, band.top, x, band.mid), lane_ink);
+                stroke(pixmap, line(x, band.top, x, band.mid), lane_ink, self.shift);
             }
             if row.outgoing.iter().any(|&(column, _)| column == row.lane) {
-                stroke(pixmap, line(x, band.mid, x, band.bottom), lane_ink);
+                stroke(
+                    pixmap,
+                    line(x, band.mid, x, band.bottom),
+                    lane_ink,
+                    self.shift,
+                );
             }
         }
         self.tail(pixmap, inked, band);
@@ -170,7 +201,14 @@ impl<'a> Pen<'a> {
         }
         // The disc is punched whether or not this pass draws the node: a
         // lit edge under an unlit node is cleared in the single pass too.
-        node::draw(pixmap, inked.ring, (x, band.mid), self.node, lane_ink);
+        node::draw(
+            pixmap,
+            inked.ring,
+            (x, band.mid),
+            self.node,
+            lane_ink,
+            self.shift,
+        );
     }
 
     /// A straight run down `x` from `top` to `bottom`, both whole pixels.
@@ -182,8 +220,10 @@ impl<'a> Pen<'a> {
     /// as before, so blending stays tiny-skia's. Byte-identical either way
     /// (`tests/it/raster_pixels.rs`).
     fn straight(&self, pixmap: &mut Pixmap, x: f32, top: f32, bottom: f32, ink: Ink) {
-        let Some(index) = self.scanline(pixmap.width(), x, ink) else {
-            stroke(pixmap, line(x, top, x, bottom), ink);
+        // The scanline is sampled at the pixmap's x: whole pixels apart
+        // from the strip's, so the same fraction and the same bytes.
+        let Some(index) = self.scanline(pixmap.width(), x - self.origin, ink) else {
+            stroke(pixmap, line(x, top, x, bottom), ink, self.shift);
             return;
         };
         let scanlines = self.scanlines.borrow();
@@ -198,14 +238,19 @@ impl<'a> Pen<'a> {
             if under.iter().all(|&byte| byte == 0) {
                 under.copy_from_slice(&scanline.pixels);
                 if let Some(from) = dirty.take() {
-                    stroke(pixmap, line(x, count(from), x, count(y)), ink);
+                    stroke(pixmap, line(x, count(from), x, count(y)), ink, self.shift);
                 }
             } else if dirty.is_none() {
                 dirty = Some(y);
             }
         }
         if let Some(from) = dirty {
-            stroke(pixmap, line(x, count(from), x, count(last)), ink);
+            stroke(
+                pixmap,
+                line(x, count(from), x, count(last)),
+                ink,
+                self.shift,
+            );
         }
     }
 
@@ -231,7 +276,12 @@ impl<'a> Pen<'a> {
         let mut sample = Pixmap::new(span, 3)?;
         // `left` is a whole pixel, so the fraction of `x` is kept exactly.
         let local = x - count(left);
-        stroke(&mut sample, line(local, 0.0, local, 3.0), ink);
+        stroke(
+            &mut sample,
+            line(local, 0.0, local, 3.0),
+            ink,
+            Transform::identity(),
+        );
         let stride = pixels_len(span);
         let pixels = sample.data()[stride..2 * stride].to_vec();
         scanlines.push(Scanline {
@@ -254,6 +304,9 @@ impl<'a> Pen<'a> {
             return;
         };
         let row = inked.row;
+        if !self.owns(row.lane) {
+            return;
+        }
         let Some(alpha) = self.tone(inked.lit.alpha_at(row.lane)) else {
             return;
         };
@@ -287,7 +340,13 @@ impl<'a> Pen<'a> {
             anti_alias: true,
             ..Paint::default()
         };
-        stroke_with(pixmap, arc_out(from, (to_x, to_y)), &paint, ink.width);
+        stroke_with(
+            pixmap,
+            arc_out(from, (to_x, to_y)),
+            &paint,
+            ink.width,
+            self.shift,
+        );
     }
 
     /// The rail on one band: a 1 px dotted vertical on the marker column's
@@ -296,12 +355,17 @@ impl<'a> Pen<'a> {
     /// top, so every band draws the same three dashes and the pattern never
     /// jumps at a row or strip edge.
     fn rail(&self, pixmap: &mut Pixmap, inked: &Inked<'_>, marker: Marker, band: Band) {
+        if !self.owns(marker.column) {
+            return;
+        }
         let Some(alpha) = self.tone(inked.lit.rail_alpha()) else {
             return;
         };
         let paint = paint(self.ink(None, alpha));
         // A whole pixel column, so the rail is crisp, not two half-lit ones.
-        let left = (self.x(marker.column) - 0.5).round();
+        // Moved to the pixmap by hand: `fill_rect` under a transform is a
+        // path fill, which anti-aliases differently.
+        let left = (self.x(marker.column) - 0.5).round() + self.shift.tx;
         let dash = self.cell_height / 6.0;
         for index in 0..3 {
             let top = band.top + count(index) * 2.0 * dash;

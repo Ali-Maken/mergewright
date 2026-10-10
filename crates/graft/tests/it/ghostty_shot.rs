@@ -133,7 +133,7 @@ fn shot() -> Result<Shot, String> {
 
 /// Pumps job events into `state` until history has laid out (`LaidOut`) and
 /// then none has come for [`QUIET`]; `first` bounds the first wait.
-fn answered(
+pub(crate) fn answered(
     jobs: &JobRunner<Post>,
     mut state: AppState,
     events: &Receiver<Posted>,
@@ -171,7 +171,7 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
             "the cursor is on row {cursor}, not {want}: the hold did not land"
         ));
     }
-    // `view::max_lanes` is crate-private; with the detail pane closed it is
+    // As `view::max_lanes` reads it: with the detail pane closed it is
     // `max_lanes_for(screen columns, configured)` (`view/rows.rs`,
     // `view/frame/layout.rs::graph_columns`).
     if state.detail.shown {
@@ -283,7 +283,7 @@ fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
 
 /// Premultiplied RGBA over a stand-in dark background (as
 /// `graft-graph/tests/it/emphasis_layer.rs::on_dark`), as a PNG.
-fn on_dark(pixels: Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, String> {
+pub(crate) fn on_dark(pixels: Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, String> {
     use tiny_skia::{Color, IntSize, Pixmap, PixmapPaint, Transform};
     let size = IntSize::from_wh(width, height).ok_or("an empty crop has no PNG")?;
     let strip = Pixmap::from_vec(pixels, size).ok_or("the pixel buffer does not match its size")?;

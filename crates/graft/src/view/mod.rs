@@ -51,8 +51,7 @@ pub(crate) use hit::badge_index_at;
 pub use journal::journal_view;
 pub use map::map_view;
 pub use name_prompt::name_prompt_view;
-pub use rows::graph_view;
-pub(crate) use rows::max_lanes;
+pub use rows::{graph_view, max_lanes};
 pub use status::status_view;
 pub use strip::strip_marks;
 

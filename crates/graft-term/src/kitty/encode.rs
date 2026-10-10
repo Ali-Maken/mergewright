@@ -137,11 +137,35 @@ fn deflate_into(compressor: &mut CompressorOxide, input: &[u8], output: &mut Vec
     }
 }
 
+/// What a placement reads of an uploaded image: its width and the height of
+/// one of its rows, in pixels.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Shape {
+    width: u32,
+    cell_height: u32,
+}
+
+impl Shape {
+    pub(super) fn of(frame: &RasterFrame) -> Shape {
+        Shape {
+            width: frame.width,
+            cell_height: u32::try_from(frame.height as usize / frame.rows.max(1)).unwrap_or(0),
+        }
+    }
+}
+
 /// `a=p`: move to the cell, place the crop into the cell rectangle,
-/// replacing placement `p=1`, and leave the cursor where it was.
-pub(super) fn put_placement(transport: Transport, id: u32, place: &Place<'_>, out: &mut Vec<u8>) {
-    let frame = place.frame;
-    let cell_height = u32::try_from(frame.height as usize / frame.rows.max(1)).unwrap_or(0);
+/// replacing placement `p=1`, and leave the cursor where it was. Each image
+/// has one placement, so `p=1` is unique per place: an emphasis piece is an
+/// image of its own.
+pub(super) fn put_placement(
+    transport: Transport,
+    id: u32,
+    shape: Shape,
+    place: &Place<'_>,
+    out: &mut Vec<u8>,
+) {
+    let Shape { width, cell_height } = shape;
     let start = u32::try_from(place.rows.start).unwrap_or(u32::MAX);
     let count = u32::try_from(place.rows.len()).unwrap_or(u32::MAX);
     let rows = if place.cells.rows == 0 {
@@ -170,7 +194,7 @@ pub(super) fn put_placement(transport: Transport, id: u32, place: &Place<'_>, ou
         format_args!(
             "a=p,i={id},p=1,x=0,y={},w={},h={},c={columns},r={rows},C=1,{z}q=1",
             start.saturating_mul(cell_height),
-            frame.width,
+            width,
             count.saturating_mul(cell_height),
             // Strips send no `z` at all (protocol default 0), so their bytes
             // are what they were before layers existed.

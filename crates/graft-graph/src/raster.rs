@@ -45,8 +45,8 @@ use crate::identity::BranchIdentity;
 use crate::row::Row;
 
 pub use emphasis::{
-    Backdrop, Emphasised, Lit, PlainRow, PlainStrip, Selection, composite, rasterise_backdrop,
-    rasterise_emphasis,
+    Backdrop, Emphasised, Lit, Piece, PlainRow, PlainStrip, Selection, composite, emphasis_pieces,
+    rasterise_backdrop, rasterise_emphasis, rasterise_piece,
 };
 pub use node::Ring;
 pub use pool::RasterPool;
@@ -179,6 +179,32 @@ fn paint(
     lift: Option<f32>,
     pool: &mut RasterPool,
 ) -> Result<RasterFrame, RasterError> {
+    paint_part(look, rows, lift, None, pool)
+}
+
+/// One emphasis piece's pass (ADR-0053 amendment 2026-10-10): only the
+/// elements lane column `column` owns, into a pixmap covering strip cells
+/// `first_cell..first_cell + cells` alone.
+#[derive(Clone, Copy, Debug)]
+struct Part {
+    column: usize,
+    first_cell: u32,
+    cells: u32,
+}
+
+/// [`paint`], or with `part` one piece of it: the same pen, the same order,
+/// with every element another column owns left out (node discs are still
+/// punched, as the whole pass punches them), drawn into a pixmap that
+/// starts at `part.first_cell`. A whole number of cells to the left, so
+/// every stroke's sub-pixel position, and so its anti-aliasing, is the
+/// whole pass's.
+fn paint_part(
+    look: &Look<'_>,
+    rows: &[Inked<'_>],
+    lift: Option<f32>,
+    part: Option<Part>,
+    pool: &mut RasterPool,
+) -> Result<RasterFrame, RasterError> {
     if look.palette.is_empty() {
         return Err(RasterError::EmptyPalette);
     }
@@ -188,10 +214,13 @@ fn paint(
         cell_width: look.cell_width,
         cell_height: look.cell_height,
     };
-    let columns = u32::try_from(look.lane_columns)
-        .ok()
-        .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
-        .ok_or_else(too_large)?;
+    let columns = match part {
+        Some(part) => part.cells,
+        None => u32::try_from(look.lane_columns)
+            .ok()
+            .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
+            .ok_or_else(too_large)?,
+    };
     let width = columns.checked_mul(look.cell_width).ok_or_else(too_large)?;
     let height = u32::try_from(rows.len())
         .ok()
@@ -211,7 +240,7 @@ fn paint(
     let bytes =
         usize::try_from(u64::from(width) * u64::from(height) * 4).map_err(|_| too_large())?;
     let mut pixmap = Pixmap::from_vec(pool.take(bytes), size).ok_or_else(too_large)?;
-    let pen = Pen::new(look, rows, lift);
+    let pen = Pen::new(look, rows, lift, part);
     // Edges column by column down the whole strip, so a lane passing
     // straight through many rows is one stroke, not one per row. Within any
     // one band the order is unchanged (columns left to right), and edges
@@ -221,8 +250,14 @@ fn paint(
         .map(|inked| inked.row.lanes.len())
         .max()
         .unwrap_or(0);
-    for column in 0..widest {
-        pen.column(&mut pixmap, column);
+    match part {
+        Some(part) if part.column < widest => pen.column(&mut pixmap, part.column),
+        Some(_) => {}
+        None => {
+            for column in 0..widest {
+                pen.column(&mut pixmap, column);
+            }
+        }
     }
     // Then what sits on each row's node: its lane's own stubs, a folded
     // edge's tail, the rail, the node disc punched over the edges.
@@ -259,6 +294,19 @@ struct Pen<'a> {
     /// The backdrop's alpha under an emphasis layer; `None` for a whole
     /// strip (see [`paint`]).
     lift: Option<f32>,
+    /// The one lane column whose elements this pass draws (an emphasis
+    /// piece); `None` draws every column's.
+    only: Option<usize>,
+    /// The pixmap's left edge in strip pixels: a piece's pixmap starts
+    /// where the piece does. Whole pixels.
+    origin: f32,
+    /// Strip pixels to pixmap pixels: `-origin` across. Every element is
+    /// built in strip pixels, exactly as the whole pass builds it, and
+    /// moved after: tiny-skia strokes a path before it transforms the
+    /// outline, so a piece's strokes are the whole pass's shifted by whole
+    /// pixels, anti-aliasing included. Building them at the shifted x
+    /// instead rounds differently (seen: alpha 191 vs 175 on an arc).
+    shift: tiny_skia::Transform,
     cell_width: f32,
     cell_height: f32,
     stroke: f32,
