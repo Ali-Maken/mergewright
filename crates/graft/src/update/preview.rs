@@ -81,11 +81,6 @@ pub use rect::{preview_box_rect, preview_rows_taken};
 use take::take_title_of;
 pub(crate) use take::{is_take_key, take_key};
 
-/// The shortest a box can be drawn and still be a box: two borders, one
-/// line, one choices row. Mirrors `graft_ui::preview_box`'s own constant,
-/// which is crate-private there.
-const MIN_BOX_ROWS: u16 = 4;
-
 /// Where the preview box goes on screen, in plain screen coordinates —
 /// `update` draws nothing and names no drawing type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

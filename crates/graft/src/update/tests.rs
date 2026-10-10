@@ -97,6 +97,7 @@ use working_tree_row::dirty_on_screen;
 
 mod bar_keys;
 mod bar_over_overlay;
+mod carve_geometry;
 mod copy_and_compare;
 mod cursor_drawn;
 mod dead_keys;

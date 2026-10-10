@@ -7,6 +7,7 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
+use super::carve::{CarveInputs, row_carve};
 use super::header_tail::{Drop, TAIL_SEPARATOR, TailItem, fitted_tail};
 use super::{
     AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GUTTER, GraphEntry, GraphScreen, GraphView,
@@ -16,6 +17,7 @@ use super::{
 use crate::graph_column::{CELLS_PER_LANE, GraphColumn};
 use crate::paint::foreground;
 use crate::theme::Token;
+use crate::{cells_of, rect_of};
 
 /// The screen's rows, carved once by [`GraphScreen::screen_rows`]: one
 /// rectangle per part of the screen that owns rows of its own, none of which
@@ -234,148 +236,31 @@ impl<'a> GraphScreen<'a> {
     }
 }
 
-/// Rows [`GraphView::banner`](super::GraphView::banner) takes: one per
-/// harness-pinned line. Saturates, so a banner taller than any terminal
-/// still leaves the arithmetic sound.
-///
-/// The operation banner adds none. It had a `[ Continue ] [ Skip ]
-/// [ Abort ]` row here at 160 columns and up — a row of mouse targets
-/// nothing answers a click on (`banner_click` was never built) and that the
-/// design note's own mockup does not have; the verbs it drew are the hint
-/// bar's, which works at every width and on the keyboard the user already
-/// has. Removed rather than made clickable: a row that costs a graph row to
-/// teach three keys twice is not worth the row (m5/16, review C1).
-fn banner_rows(view: &GraphView<'_>) -> u16 {
-    u16::try_from(view.banner.len()).unwrap_or(u16::MAX)
-}
-
 /// [`GraphScreen::screen_rows`] as a plain function of the view: the row
 /// carve needs no theme and no widget, and a caller that has to know where
 /// the body rows are (a mouse hit-test) must read the very same carve rather
-/// than a second copy of it.
+/// than a second copy of it. A thin wrapper: the carve itself is
+/// [`row_carve`], which a caller with no [`GraphView`] reads directly.
 #[must_use]
 pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
-    let header = Rect {
-        height: 1.min(area.height),
-        ..area
-    };
-    // Bottom up. The hint bar always has the last row; the offer takes
-    // the one above it when a row is going spare; the banner takes what
-    // is left between the header and them. The banner outranks the offer
-    // because it is modal and the offer is a suggestion, so where only
-    // one row is free it is the offer that goes without.
-    let footer = Rect {
-        y: area.bottom().saturating_sub(1),
-        height: u16::from(area.height > 1),
-        ..area
-    };
-    // The blank row and the rule (ADR-0058 §4) are only drawn where the
-    // terminal is tall enough that the list can spare them, so they are
-    // carved before anything that could compete for a row.
-    let spaced = view.spaced && area.height >= 4;
-    let gap = Rect {
-        y: header.bottom(),
-        height: u16::from(spaced),
-        ..area
-    };
-    let rule_floor = footer.y;
-    let top = gap.bottom().min(footer.y);
-    let free = footer
-        .y
-        .saturating_sub(top)
-        .saturating_sub(u16::from(spaced));
-    let banner = Rect {
-        y: top,
-        height: banner_rows(view).min(free),
-        ..area
-    };
-    let offer = Rect {
-        y: rule_floor.saturating_sub(1),
-        height: u16::from(view.commit_graph.is_some() && free > banner.height),
-        ..area
-    };
-    let above_offer = if offer.height > 0 {
-        offer.y
-    } else {
-        rule_floor
-    };
-    let rule = Rect {
-        y: above_offer.saturating_sub(1),
-        height: u16::from(spaced),
-        ..area
-    };
-    let body_floor = if spaced { rule.y } else { above_offer };
-    let tour = tour_rect(view, banner.bottom(), body_floor, area);
-    let pending = pending_rect(view, tour.bottom(), body_floor, area);
-    let body = body_rect(area, pending.bottom(), body_floor);
+    let carve = row_carve(cells_of(area), CarveInputs::of(view));
     ScreenRows {
-        header,
-        gap,
-        banner,
-        tour,
-        pending,
-        body,
-        rule,
-        offer,
-        footer,
-    }
-}
-
-/// The graph rows, from `top` down to `floor`. The gutter and the margin
-/// come off only where the row can afford them: a screen a few cells wide
-/// keeps what it has.
-fn body_rect(area: Rect, top: u16, floor: u16) -> Rect {
-    Rect {
-        x: area.x + inset(area.width).0,
-        y: top,
-        width: body_width(area.width),
-        height: floor.saturating_sub(top),
-    }
-}
-
-/// The tour card's rows: from `top` (under the banner), as many as
-/// [`tour_rows`] gives out of what is left above `floor`.
-fn tour_rect(view: &GraphView<'_>, top: u16, floor: u16, area: Rect) -> Rect {
-    Rect {
-        y: top,
-        height: tour_rows(view, floor.saturating_sub(top)),
-        ..area
-    }
-}
-
-/// Rows the tour card takes out of `left` (the rows between the banner and
-/// the body's floor): all three, or none when that would leave the graph
-/// no row of its own.
-fn tour_rows(view: &GraphView<'_>, left: u16) -> u16 {
-    let wanted = if view.tour.is_some() {
-        crate::tour_card::TOUR_CARD_ROWS
-    } else {
-        0
-    };
-    if left > wanted { wanted } else { 0 }
-}
-
-/// The "still to apply" block under the banner: at most half the rows
-/// between `top` and `floor`, and none at all when that leaves it under the
-/// three rows it needs to say anything.
-fn pending_rect(view: &GraphView<'_>, top: u16, floor: u16, area: Rect) -> Rect {
-    let left = floor.saturating_sub(top);
-    let wanted = view
-        .pending
-        .as_ref()
-        .map_or(0, crate::still_to_apply::still_to_apply_height);
-    let height = wanted.min(left / 2);
-    Rect {
-        y: top,
-        height: if height >= 3 { height } else { 0 },
-        ..area
+        header: rect_of(carve.header),
+        gap: rect_of(carve.gap),
+        banner: rect_of(carve.banner),
+        tour: rect_of(carve.tour),
+        pending: rect_of(carve.pending),
+        body: rect_of(carve.body),
+        rule: rect_of(carve.rule),
+        offer: rect_of(carve.offer),
+        footer: rect_of(carve.footer),
     }
 }
 
 /// The cells a row of `columns` keeps left and right of its content: the
 /// gutter and the margin (ADR-0058 §4), or none on a screen too narrow to
 /// spare them.
-fn inset(columns: u16) -> (u16, u16) {
+pub(super) fn inset(columns: u16) -> (u16, u16) {
     if columns > GUTTER + RIGHT_MARGIN {
         (GUTTER, RIGHT_MARGIN)
     } else {
@@ -384,7 +269,7 @@ fn inset(columns: u16) -> (u16, u16) {
 }
 
 /// The cells a list row of a screen `columns` wide has for its content.
-fn body_width(columns: u16) -> u16 {
+pub(super) fn body_width(columns: u16) -> u16 {
     let (left, right) = inset(columns);
     columns - left - right
 }

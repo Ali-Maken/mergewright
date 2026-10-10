@@ -44,26 +44,14 @@ impl TourState {
     }
 }
 
-/// Rows the card takes above the graph rows, as `graft_ui`'s carve takes
-/// them (`graph_screen::layout::tour_rows`): all three while the tour is on
-/// and the rows left under the chrome, banner, offer and tab strip keep at
-/// least one for the graph; else none. Read by every mirror of that carve
-/// (`geometry::rows_above_graph`, `AppState::graph_pane_rows`,
-/// `banner::pending_rows_taken`), so `j`/`k` and every click row agree with
-/// what is drawn.
+/// Rows the card takes above the graph rows: the `tour` band of
+/// `graft_ui`'s own carve (`geometry::graph_carve`) — all three while the
+/// tour is on and the graph keeps at least one row; else none. Read by
+/// `geometry::rows_above_graph` and `AppState::graph_rows`, so `j`/`k` and
+/// every click row agree with what is drawn.
 #[must_use]
 pub(crate) fn card_rows(state: &AppState) -> u16 {
-    if state.tour.is_none() {
-        return 0;
-    }
-    let left = state.size.rows.saturating_sub(
-        graft_ui::graph_screen::chrome_rows(state.size.rows)
-            .saturating_add(state.harness.banner_rows())
-            .saturating_add(u16::from(state.commit_graph_line().is_some()))
-            .saturating_add(super::banner::tab_rows_above_graph(state)),
-    );
-    let card = graft_ui::tour_card::TOUR_CARD_ROWS;
-    if left > card { card } else { 0 }
+    super::geometry::graph_carve(state).tour.3
 }
 
 /// The tail of every `update`: a write that ended (`operating` let go)

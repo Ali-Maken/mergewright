@@ -1,6 +1,6 @@
 # health — one source for layout arithmetic: `update` calls graft-ui, the mirrors go
 
-Status: ready (planner, from `docs/reviews/m8-architecture.md` Major M3; re-specified 2026-10-10 after scout `scouts/40-geometry.md`)
+Status: done (builder 2026-10-10; was ready — planner, from `docs/reviews/m8-architecture.md` Major M3; re-specified 2026-10-10 after scout `scouts/40-geometry.md`)
 
 Build with: **Opus** (medium; scout and planner agree). This adds one new public seam, the vertical carve in plain numbers, and deletes two mirrors. A wrong carve puts a click one row off. New render-and-read-back tests judge that, so it doesn't pass Fable test 3.
 
@@ -78,21 +78,72 @@ impl From<graft_ui::Cells> for BoxRect;
 Removed from graft: the `left` arithmetic in `tour::card_rows` and in `banner::pending_rows_taken` (each fn stays as a one-line read), and `update`'s `MIN_BOX_ROWS`.
 
 ## Acceptance
-- [ ] New test `a_click_on_the_first_graph_row_lands_on_the_commit_drawn_there`, in `crates/graft/src/update/tests/carve_geometry.rs`. It sweeps widths 40/80/120, heights 12/24/48, a pending block of 0/2/5 rows, and tour on/off. For each case it renders the frame, checks that the first graph row drawn sits at `rows_above_graph`, and checks that a click there selects that row's commit. It passes before any deletion (commit named) and after.
-- [ ] `the_card_takes_three_rows_off_the_graph_while_the_tour_is_on` (`update/tour/tests.rs:276`) passes, unchanged.
-- [ ] `a_click_lands_on_the_button_the_widget_drew` (`update/preview/tests.rs:676`) passes, and its cases cover widths 40, 80 and 120. Add the missing widths; NOTES quotes the case list. `the_click_targets_match_what_the_widget_draws`: NOTES gives its location from `rg`, or says it doesn't exist.
-- [ ] `a_click_below_one_hundred_columns_still_lands_on_the_row_it_named` and `the_geometry_mirror_matches_the_rects_the_frame_hands_out` (`tab_strip_geometry.rs:93`, :221) pass, unchanged.
-- [ ] `update::tests::purity::update_cannot_reach_the_world` passes, unchanged.
-- [ ] One body each. NOTES quotes all three `rg` outputs:
+- [x] New test `a_click_on_the_first_graph_row_lands_on_the_commit_drawn_there`, in `crates/graft/src/update/tests/carve_geometry.rs`. It sweeps widths 40/80/120, heights 12/24/48, a pending block of 0/2/5 rows, and tour on/off. For each case it renders the frame, checks that the first graph row drawn sits at `rows_above_graph`, and checks that a click there selects that row's commit. It passes before any deletion (commit named) and after. — **verified by** `update::tests::carve_geometry::a_click_on_the_first_graph_row_lands_on_the_commit_drawn_there`: green at `705e8cb3` (unchanged code), green after. "0/2/5" = picks still to apply (blocks of 0, 4, 7 rows). Mutation checked: `+1` on `pending_rows_taken` fails at `40x12, 2 pending, tour false`; `+1` on `card_rows` fails at `40x12, 0 pending, tour true`.
+- [x] `the_card_takes_three_rows_off_the_graph_while_the_tour_is_on` (`update/tour/tests.rs:276`) passes, unchanged. — **verified by** that test, untouched file, full nextest.
+- [x] `a_click_lands_on_the_button_the_widget_drew` (`update/preview/tests.rs:676`) passes, and its cases cover widths 40, 80 and 120. Add the missing widths; NOTES quotes the case list. `the_click_targets_match_what_the_widget_draws`: NOTES gives its location from `rg`, or says it doesn't exist. — **verified by** `update::preview::tests::a_click_lands_on_the_button_the_widget_drew` (now `for columns in [40, 80, 120]`).
+- [x] `a_click_below_one_hundred_columns_still_lands_on_the_row_it_named` and `the_geometry_mirror_matches_the_rects_the_frame_hands_out` (`tab_strip_geometry.rs:93`, :221) pass, unchanged. — **verified by** both tests, file untouched.
+- [x] `update::tests::purity::update_cannot_reach_the_world` passes, unchanged. — **verified by** that test.
+- [x] One body each. NOTES quotes all three `rg` outputs: — **verified by** the greps in NOTES, plus `a_click_on_the_first_graph_row…` (behaviour).
   - `rg -n 'chrome_rows' crates/graft/src/update/tour.rs crates/graft/src/update/banner.rs` → no hits.
   - `rg -n 'MIN_BOX_ROWS' crates/graft/src` → only `graft_ui::preview_box::MIN_BOX_ROWS` uses.
   - `rg -n 'fn pending_rect|fn tour_rows' crates/graft-ui` → none, or called only from `row_carve`.
-- [ ] NOTES lists each deleted copy next to the graft-ui fn that replaced it, each deleted copy==source test with why it can no longer fail (the scout found none for mirrors 2-4), and `detail_split`'s kept difference.
-- [ ] ARCHITECTURE.md:267-276 rewritten as in Scope 6. NOTES quotes the `rg 'crate::view'` output it was written from.
-- [ ] NOTES gives the conductor:
+- [x] NOTES lists each deleted copy next to the graft-ui fn that replaced it, each deleted copy==source test with why it can no longer fail (the scout found none for mirrors 2-4), and `detail_split`'s kept difference. — NOTES below (doc item; behaviour backed by the tests above).
+- [x] ARCHITECTURE.md:267-276 rewritten as in Scope 6. NOTES quotes the `rg 'crate::view'` output it was written from. — doc item; table checked line by line against the grep below.
+- [x] NOTES gives the conductor: — NOTES below.
   - an ADR-0058 mirror-list line: which mirrors are gone and which remain
   - the KNOWN_GAPS line from Out
   - the new `pub` items for 38
+
+## NOTES (builder, 2026-10-10)
+Status: done. No compaction. Scout used: `scouts/40-geometry.md` (no new scout). Skills: implement (SKILL.md read), tdd approach (test first).
+
+**Test-first commit:** `705e8cb3` — `carve_geometry.rs` added, green on unchanged code.
+
+**Deleted copies → replacement**
+- `tour::card_rows`'s `left` rebuild (`chrome_rows` + harness banner + commit-graph + tab rows) → `graft_ui::graph_screen::row_carve(..).tour` via `update::geometry::graph_carve` (one line).
+- `banner::pending_rows_taken`'s `left` rebuild + `wanted.min(left / 2)`, `>= 3` → `row_carve(..).pending` via `graph_carve` (one line).
+- `preview/rect.rs` `preview_box_rect` dock arithmetic → `graft_ui::preview_box::dock_cells`. The `width == 0 || height == 0 → None` guard stays: a caller-side "no box on an empty frame", not arithmetic.
+- `update::preview::MIN_BOX_ROWS` → `graft_ui::preview_box::MIN_BOX_ROWS` (now pub; graft names it nowhere, dock_cells uses it).
+- graft-ui itself: `screen_rows` is now a wrapper over `row_carve` (one body, in new private file `graph_screen/carve.rs` with `tour_rows`/`pending_rect`/`tour_rect`/`body_rect`/`banner_rows`); `preview_box_area` is a wrapper over `dock_cells`.
+- Copy==source tests deleted: none existed for mirrors 2-4 (scout; confirmed — the only copy==source test is `the_geometry_mirror_matches…`, for `detail_split`, kept). None could fail now anyway: there is no second copy to diverge.
+- Behaviour note: the carve clips the banner to free rows and drops the offer when no row is spare; the old copies didn't. Differs only at tiny heights; the update side now matches what is drawn there.
+- `detail_split` kept: `Right` graph region is one column wider than `split_area`'s (gutter routes to its source region, `graft-ui/src/detail_pane/layout.rs:81-84`); `Tab` follows graft's `view::frame::detail_rects` (banner/hint rows), not `split_area`.
+
+**Greps** (`rg` is a shell alias here; plain `grep -rn` equivalents):
+- `grep -n 'chrome_rows' update/tour.rs update/banner.rs` → no hits.
+- `grep -rn 'MIN_BOX_ROWS' crates/graft/src` → no hits (graft names it nowhere; graft-ui's `dock_cells` is the only user).
+- `grep -rnE 'fn pending_rect|fn tour_rows|pending_rect\(|tour_rows\(' crates/graft-ui` → `graph_screen/carve.rs`: `fn tour_rows`, `fn pending_rect`, called only from `row_carve` (pending_rect) and `tour_rect` (tour_rows, itself called only from `row_carve`).
+
+**`crate::view` in production `update`** (ARCHITECTURE table written from this; test-module hits `confirm.rs:729`, `mouse.rs:293` excluded): `context_menu.rs:61`; `finish.rs:185,192,195`; `mouse.rs:118,131,153`; `geometry.rs:332,449,485`; `operate/failure.rs:233`; `detail/control.rs:138,155`; `operate/outcome/staging_not_kept.rs:60`; `finish/keys.rs:112,116`; `finish/mouse.rs:35,38,58,63`; `rewrite_editor/keys.rs:99,101`; `resolver/scroll.rs:89,90`; `resolver/geometry.rs:45,73`; `palette/input.rs:220-228`. Broader than the scout's five: not only hit-tests (also `radar::findings_for`, `status::dismiss`/`done_line`, `build_explain_view`). The rewrite says so rather than "hit-tests only".
+
+**Preview test cases:** `for columns in [40, 80, 120]` at 40 rows (fixture's height). Button cells now found by cell, not byte offset (the old `find` returned a byte index; `▸`/`│` are multi-byte). `the_click_targets_match_what_the_widget_draws`: **does not exist** — `grep -rn` finds it only in the comment at `update/preview/rect.rs` (`choice_at` doc, out of scope; stale name left for the `choice_at` ticket).
+
+**For the conductor**
+- ADR-0058 mirror list: gone — `tour::card_rows` left-carve, `banner::pending_rows_taken` left-carve, `preview_box_rect` dock + `MIN_BOX_ROWS`. Remain — `detail_split` (deliberate), `detail_hit_areas`/`percent_of`, `choice_at`, `strip_bounds`.
+- KNOWN_GAPS line: "health: four unnamed geometry mirrors left (`update/geometry.rs:158,165` `percent_of`/`detail_hit_areas` copy `graft_ui::detail_pane::detail_areas`; `update/preview/rect.rs:58` `choice_at` copies private `frame_box::buttons_row`; `update/geometry.rs:397` `strip_bounds` copies `render_graph_screen`'s carve-out) — unverified, not broken; the `choice_at` doc names a test that doesn't exist."
+- File-size ratchet (`crates/graft/tests/it/over_400.txt`) rows changed: `graph_screen/layout.rs` 765→650, `graph_screen/mod.rs` 601→603, `update/geometry.rs` 501→518, `update/preview.rs` 469→464, `update/preview/tests.rs` 2114→2141, `update/state.rs` 1287→1304. Four raised (visible in diff).
+- Captures: none re-shot; nothing drawn moves (graft-ui arithmetic unchanged, only moved). Backed by full nextest (6298/6298, capture tests included).
+
+**Public items for 38 (final signatures)**
+```rust
+// graft_ui (crate root)
+pub type Cells = (u16, u16, u16, u16); // x, y, width, height
+// graft_ui::graph_screen (defined in private graph_screen/carve.rs, re-exported)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct CarveInputs { pub spaced: bool, pub banner_rows: u16, pub commit_graph: bool, pub tour: bool, pub pending_rows: u16 }
+impl CarveInputs { pub fn of(view: &GraphView<'_>) -> Self; }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RowCarve { pub header: Cells, pub gap: Cells, pub banner: Cells, pub tour: Cells, pub pending: Cells, pub body: Cells, pub rule: Cells, pub offer: Cells, pub footer: Cells }
+pub fn row_carve(area: Cells, inputs: CarveInputs) -> RowCarve;
+// graft_ui::preview_box
+pub const MIN_BOX_ROWS: u16 = 4;
+pub fn dock_cells(frame: Cells, wanted: u16) -> Cells; // wanted = preview_rows(view, frame.width)
+// graft::update (crate-internal)
+impl AppState { pub(crate) fn carve_inputs(&self) -> CarveInputs; }
+pub(super) fn geometry::graph_carve(state: &AppState) -> RowCarve; // new, not in spec: the one place the update-side area is built
+impl From<graft_ui::Cells> for BoxRect; // in update/preview/rect.rs
+```
+No `DockInputs`: `preview_box_area` reads one value from `&PreviewBox` (`preview_rows(view, width)`), passed as `wanted`.
 
 ## Touches
 How each was checked goes on the report's **Touches:** line.

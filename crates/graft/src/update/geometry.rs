@@ -37,6 +37,23 @@ pub(super) fn rows_above_graph(state: &AppState) -> u16 {
         .saturating_add(super::banner::pending_rows_taken(state))
 }
 
+/// The graph screen's rows this frame, from `graft_ui`'s own carve
+/// (`graph_screen::row_carve`) rather than a copy of it: the frame less the
+/// rows the sub-100-column tab layout puts above the graph
+/// (`banner::tab_rows_above_graph`), cut for what `AppState::carve_inputs`
+/// asks. The tour card's rows (`tour::card_rows`) and the still-to-apply
+/// block's (`banner::pending_rows_taken`) are read off it.
+pub(super) fn graph_carve(state: &AppState) -> graft_ui::graph_screen::RowCarve {
+    let tab = super::banner::tab_rows_above_graph(state);
+    let area = (
+        0,
+        tab,
+        state.size.columns,
+        state.size.rows.saturating_sub(tab),
+    );
+    graft_ui::graph_screen::row_carve(area, state.carve_inputs())
+}
+
 /// A screen rectangle in the four plain numbers a `Rect` would carry.
 /// `update` mirrors the pane's geometry rather than depending on the view
 /// crate's rendering library to compute it: the module must stay pure enough
