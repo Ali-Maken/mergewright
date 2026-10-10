@@ -45,9 +45,8 @@ fn pieces_of(session: &Session, state: &AppState) -> BTreeSet<(usize, u64)> {
     let paint = StripPaint::of(session);
     let mut needed = BTreeSet::new();
     for strip in &pixels.strips {
-        let stand_in = u64::try_from(strip.first_row).expect("a row index fits");
         strip.with_layers(&pixels, &paint, |plain, selection| {
-            for piece in emphasis_pieces(plain, selection, stand_in) {
+            for piece in emphasis_pieces(plain, selection) {
                 needed.insert((strip.first_row, piece.key));
             }
         });

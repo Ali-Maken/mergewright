@@ -404,17 +404,17 @@ literals: graft `layers.rs`, graft-term tests, `examples/kitty_check` (grep).
 
 ### Acceptance (replaces Part 2's open boxes; each tick names its test)
 **Build A — graft-graph, plus graft's `piece_gate` test file:**
-- [ ] `raster_pieces::pieces_composite_equals_single_emphasis`: backdrop + pieces in `emphasis_pieces` order ==
+- [x] `raster_pieces::pieces_composite_equals_single_emphasis`: backdrop + pieces in `emphasis_pieces` order ==
       `composite(backdrop, rasterise_emphasis)`; alpha ±2 on every pixel; colour ≤ `b × 255` on every pixel (printed
       count 0, else the finding above).
-- [ ] `raster_pieces::piece_key_moves_only_with_its_pixels` (replaces `…_with_its_column`): one element's alpha
+- [x] `raster_pieces::piece_key_moves_only_with_its_pixels` (replaces `…_with_its_column`): one element's alpha
       changed → exactly its owner's key changes.
-- [ ] `raster_pieces::equal_keys_equal_pixels`: merge-heavy fixture, ≥ 20 selections incl. Focus, at two lane caps
+- [x] `raster_pieces::equal_keys_equal_pixels`: merge-heavy fixture, ≥ 20 selections incl. Focus, at two lane caps
       (fold on and off): any two pieces with one key rasterise byte-equal with the same anchor-relative crop. Prints
       pieces / distinct keys.
-- [ ] `raster_pieces::pieces_crop_both_axes`: every piece's frame has a drawn pixel in its first and last cell column
+- [x] `raster_pieces::pieces_crop_both_axes`: every piece's frame has a drawn pixel in its first and last cell column
       and its first and last cell row.
-- [ ] **Gate**, MONOREPO, 50 `j`, at 222×70 **and** 187×50: `piece_gate::pieces_localise_on_his_walk` — area of pieces
+- [x] **Gate** (`piece_gate::pieces_localise_on_his_walk`, `piece_gate::no_frame_rasterises_more`, heavy, release: 2.13 % / 2.11 %, 0 frames over), MONOREPO, 50 `j`, at 222×70 **and** 187×50: `piece_gate::pieces_localise_on_his_walk` — area of pieces
       whose key was not seen earlier in the walk ≤ 25 % of the whole-strip emphasis area over the walk;
       `piece_gate::no_frame_rasterises_more` — in every frame, px of unseen-key pieces ≤ px of that frame's whole-strip
       emphasis images. Numbers in NOTES. Either misses → stop, `blocked: pieces don't localise` with the numbers; no
@@ -482,3 +482,55 @@ order are fixed here; the equality, crop and count tests pin correctness; the on
 real terminal) rests on a cited doc line and his by-eye capture. Scout: none new — Part 2's scout plus continuation 1's
 reading cover `pieces.rs`, `layers.rs`, `raster.rs`, `kitty/mod.rs`; each build re-reads its lines in place. A
 stopping at its gate ends the pair: this is the last continuation before the user is asked.
+
+## NOTES (05 Part 2, amendment 1 — build A), 2026-10-11
+
+**Compacted once mid-build** (context ran out after the gate passed, before file splits / MAP / ticket). Remaining at
+that point, all done since: test-file split under 400, graft-graph MAP.md, workspace gates, this note. Then stopped on a
+network error before the gates; resumed in place, worktree intact. Scout: none new, as the ruling says; lines re-read.
+
+**Numbers** (all printed by the tests named in the ticks):
+- Gate, release, heavy, MONOREPO 50 `j`: 222×70 pieces 2,062,491 px vs today 96,933,932 px = **2.13 %**, 135 pieces
+  sent vs 144 strips changed; 187×50 1,551,743 vs 73,382,914 = **2.11 %**, 112 sent vs 96 changed.
+  `no_frame_rasterises_more`: 0 frames over at both; first frame 91,834 vs 1,512,745 (222×70), 71,706 vs 1,285,047
+  (187×50); most pieces in one frame 1,327,190 / 693,158 px.
+- Composite: 144 selections, all lit, 12,060 overlapped pixels, **N = 0 past `b × 255`** (miss 4 closed; ADR's
+  "Overlaps" paragraph can say 0, no pass line to cite). Stack sort: (edges 0 / nodes 1, column, Run before Arc, row).
+- Equal keys: 288 selections (both caps: `branchy` with marker, and fold off / `marker = None`), 5,112 pieces, 614
+  distinct keys, 0 mismatched.
+- Rail: drawn in the row pass (`raster/pen.rs:265`, `Pen::row` → `rail`), so it is the **marker column's Node**.
+  Recorded in graft-graph MAP.md.
+- Workspace gates: fmt, clippy (`--all-targets`, also `--features graft/heavy-tests`), nextest 6321/6321, doctests ok.
+
+**Implementation choices the reviewer should check** (none changes the ruling's shape):
+- Equal keys needed equal pixels at any position, which f32 `p + T` rounding broke (112/5,112 arc pieces off by one
+  AA step). Pieces are now drawn in a local frame (arc: its column cell, band top; node: its lane cell, band top) and
+  placed by a whole-pixel translate; stroke outlines are snapped to a 1/1024 px grid first (`geometry.rs`
+  `snapped`, `stroke_placed`, `fill_placed`) so the translate is exact. The whole pass draws the same way, so whole ==
+  pieces holds too.
+- That snapping moved anti-aliasing in the whole pass by at most one AA step. Captures regenerated
+  (`TRIB_UPDATE_SHOTS=1`); changed px / max channel delta: 22-criss-cross 15/16, -on-dark 15/11; 22-foxtrot 8/16,
+  -on-dark 8/9; 22-octopus 11/16, -on-dark 11/12; 22-rings-on-dark 12/9; 40-folded-on-dark 12/9; 42-rings-on-dark
+  12/9; 42-thread-on-dark 24/12; m7/fix-scroll-thread-composite 95 of 442,816 / 12. Snapshots
+  `raster-criss-cross-merge`, `raster-pixel-digests` re-accepted. AA level only, no reorder. Colour **unverified**
+  (rule 5); the user judges by eye (rule 6).
+- Bug fixed on the way (cause): `node.rs` `fill_square` (Stash ring) shifted by `tx` only, never `ty`, so a y-cropped
+  frame lost it. It now adds both.
+- Taken from B early, for interim correctness only: `layers.rs` `Crop` (key → anchor-relative columns/rows and size)
+  and `Graphics.pieces: HashMap<UploadKey, Crop>`; `places` clips piece rows to the strip. Without it A's pieces would
+  have been placed wrong in the app between A and B.
+- Files split for the 400-line ratchet: `pen/straight.rs`, `emphasis/pieces/extent.rs`,
+  `tests/it/raster_pieces/support.rs`.
+
+**Handoff for build B** (A's signatures are as the ruling fixed them; nothing else for B to change in graft-graph
+except MAP wording if the ADR text wants it):
+- graft-term `Place.stack` + kitty `one_upload_two_places`, `stack_reaches_the_command`. **Known interim defect until
+  then:** kitty places with `p=1` per image, so one content key placed twice in a frame shows once. Equal keys are
+  common (614 distinct of 5,112), so this is visible in the app until B lands. Not a gate case; flagging so nobody
+  reads A's state as shippable alone.
+- `layers.rs`: `Crop` / anchor already done; B adds `stack` from `emphasis_pieces` order (index in the Vec) into each
+  `Place`, and placement ids per (key, place) so duplicates coexist.
+- graft `transmits_equal_changed_pieces`, `back_and_forth_retransmits_nothing`: still green under content keys (in the
+  6321 run) — B re-checks once stacking changes placement.
+- `held_key` area metric ≤ 18.5; two AC after-runs; `docs/shots/m8-05-emphasis-pieces.png` (not regenerated by A).
+- ADR-0053 text with N = 0 and rail → node; DESIGN §3.8; graft-term MAP.md. graft-graph MAP.md is done.

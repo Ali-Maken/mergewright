@@ -105,15 +105,17 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `Lit` (struct) — one row's selection paint: `emphasis`, `thread`.
 - `PlainStrip` (struct) — everything one strip is drawn from: rows, `above`, lane columns, marker, cell size, palette.
 - `Selection` (struct) — `rows: &[Lit]` and the frame's `backdrop`.
-- `Emphasised` (struct) — an emphasis image `frame` cropped to whole cells, placed at `first_column`.
+- `Emphasised` (struct) — an emphasis image `frame` cropped to whole cells, placed at `first_column`, `first_row` (0 for `rasterise_emphasis`).
 - `rasterise_backdrop` (fn) — `PlainStrip` → premultiplied `RasterFrame`, every element at one backdrop alpha.
 - `rasterise_emphasis` (fn) — what draws above the backdrop, cropped; `None` when nothing does.
 - `composite` (fn) — `composite(&RasterFrame, &Emphasised) -> RasterFrame`; premultiplied "over".
-- `Piece` (struct) — one drawn column's share of a strip's emphasis: `column`, `key` (ADR-0053 amendment 2026-10-10).
-- `emphasis_pieces` (fn) — `(&PlainStrip, &Selection, strip_key) -> Vec<Piece>`: the pieces drawing above the backdrop; no rasterising.
-  Ownership: an edge (straight or arc) is its drawn column's; a row's node, lane stubs and tail are its lane's; the rail is the marker column's.
-  Key = hash(strip key, column, (row, element, alpha) of each element it owns): a `j` that leaves a column's alphas leaves its key.
-- `rasterise_piece` (fn) — one piece's pixels at `(a − b)/(1 − b)`, cropped to whole cells; `None` when it draws nothing.
+- `PieceKind` (enum) — `Run` (a column's straight edges), `Arc { row }` (one arc), `Node` (nodes, stubs, tails of the column's lane, plus the rail on the marker column).
+- `Piece` (struct) — one share of a strip's emphasis: `column`, `kind`, content `key` (ADR-0053 amendment 1, 2026-10-10).
+- `emphasis_pieces` (fn) — `(&PlainStrip, &Selection) -> Vec<Piece>`, bottom first: every Run then its Arcs, column by column, then every Node; no rasterising.
+  Ownership: a straight edge is its column's Run; an arc its column's `Arc { row }`; a row's node, stubs, tail are its lane's Node.
+  The rail is drawn in the row pass (`Pen::row` → `rail`, `raster/pen.rs:265`), so it is the marker column's Node.
+  Key = hash(kind, cell size, backdrop alpha, each element's anchor-relative geometry, resolved RGBA and alpha). No strip key, no absolute row or column: equal keys draw equal pixels anywhere.
+- `rasterise_piece` (fn) — one piece's pixels at `(a − b)/(1 − b)`, cropped to whole cells in both axes; `None` when it draws nothing.
 - `RasterPool` (struct) — strip-sized pixel buffers lent to the rasteriser; `new`, `take`, `give`, `flush`, `allocated`.
 
 ## raster::cache

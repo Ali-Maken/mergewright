@@ -71,26 +71,62 @@ pub(super) fn painted_cells_in(
     Some((cell_of(left)?, cell_of(right - 1)?))
 }
 
-/// Cell columns `first..=last` of `frame`, in its own buffer: each line
-/// moves left to where the cropped image's line goes, which is never right
-/// of where it was, then the buffer is cut to the cropped size.
-pub(super) fn crop(frame: RasterFrame, cell_width: u32, first: u32, last: u32) -> RasterFrame {
-    let columns = last - first + 1;
-    let width = columns * cell_width;
+/// The first and last cell rows of `frame` holding a painted pixel, or
+/// `None` when none does.
+pub(super) fn painted_rows(frame: &RasterFrame) -> Option<(usize, usize)> {
+    let width = usize::try_from(frame.width).ok()?;
+    let lines = usize::try_from(frame.height).ok()?;
+    let cell = lines.checked_div(frame.rows)?;
+    if width == 0 || cell == 0 {
+        return None;
+    }
+    let painted = |line: &[u8]| line.iter().any(|&byte| byte != 0);
+    let mut scan = frame.pixels.chunks_exact(width * 4);
+    let first = scan.position(painted)?;
+    let last = frame.pixels.chunks_exact(width * 4).rposition(painted)?;
+    Some((first / cell, last / cell))
+}
+
+/// Cell columns `columns.0..=columns.1` and cell rows `rows.0..=rows.1` of
+/// `frame`, in its own buffer: each kept line moves to where the cropped
+/// image's line goes, which is never right of or below where it was, then
+/// the buffer is cut to the cropped size.
+pub(super) fn crop(
+    frame: RasterFrame,
+    cell_width: u32,
+    columns: (u32, u32),
+    rows: (usize, usize),
+) -> RasterFrame {
+    let (first, last) = columns;
+    debug_assert!(
+        rows.0 <= rows.1 && rows.1 < frame.rows,
+        "rows within the frame"
+    );
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "rows × cell height is the frame's u32 height, so both fit a u32."
+    )]
+    let (cell_height, kept) = (
+        frame.height / (frame.rows.max(1) as u32),
+        (rows.1 + 1 - rows.0) as u32,
+    );
+    let count = last - first + 1;
+    let width = count * cell_width;
     let bytes = |pixels: u32| pixels as usize * 4;
     let (stride, left, span) = (bytes(frame.width), bytes(first * cell_width), bytes(width));
+    let height = kept * cell_height;
+    let (top, lines) = (rows.0 * cell_height as usize, height as usize);
     let mut pixels = frame.pixels;
-    let lines = frame.height as usize;
     for line in 0..lines {
-        let from = line * stride + left;
+        let from = (top + line) * stride + left;
         pixels.copy_within(from..from + span, line * span);
     }
     pixels.truncate(span * lines);
     RasterFrame {
         width,
-        height: frame.height,
-        rows: frame.rows,
-        columns,
+        height,
+        rows: kept as usize,
+        columns: count,
         pixels,
     }
 }

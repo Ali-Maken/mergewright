@@ -92,7 +92,7 @@ pub struct Graphics<R> {
     /// Where each emphasis piece the terminal holds sits, by key: its first
     /// cell column and width in cells, so a held piece is placed without
     /// being rasterised. Kept to the keys `images` holds.
-    pieces: HashMap<UploadKey, (u16, u32)>,
+    pieces: HashMap<UploadKey, layers::Crop>,
     replies: R,
     status: GraphicsStatus,
 }

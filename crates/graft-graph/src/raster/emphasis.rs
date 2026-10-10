@@ -26,9 +26,9 @@ use crate::row::Row;
 mod cells;
 mod pieces;
 
-use cells::{crop, painted_cells, painted_cells_in};
+use cells::{crop, painted_cells, painted_cells_in, painted_rows};
 
-pub use pieces::{Piece, emphasis_pieces, rasterise_piece};
+pub use pieces::{Piece, PieceKind, emphasis_pieces, rasterise_piece};
 
 /// The one alpha a strip draws every element at: the lowest in play for the
 /// frame. It changes only when Focus toggles or a thread comes or goes,
@@ -206,14 +206,18 @@ pub struct Selection<'a> {
     pub backdrop: Backdrop,
 }
 
-/// An emphasis image, cropped to the cell columns it touches.
+/// An emphasis image, cropped to the cells it touches: a whole strip's
+/// emphasis to its cell columns, a piece to its cell columns and rows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Emphasised {
-    /// The image: the strip's height, `frame.columns` cells wide. Shared
-    /// between the strip cache and the frame drawing it.
+    /// The image, `frame.columns` cells wide and `frame.rows` rows tall.
+    /// Shared between the strip cache and the frame drawing it.
     pub frame: Arc<RasterFrame>,
     /// The strip's cell column the image's left edge sits on.
     pub first_column: u16,
+    /// The strip row the image's top edge sits on: always 0 for a whole
+    /// strip's emphasis ([`rasterise_emphasis`]), which is the strip's height.
+    pub first_row: u16,
 }
 
 /// A strip drawn from layout only, every element at `backdrop`'s alpha.
@@ -293,7 +297,7 @@ pub(super) fn rasterise_emphasis_in(
             lit: *lit,
         })
         .collect();
-    let Some(reach) = lit_reach(&rows, strip.marker, backdrop, None) else {
+    let Some(reach) = lit_reach(&rows, strip.marker, backdrop) else {
         return Ok(None);
     };
     let frame = paint(&strip.look(), &rows, Some(backdrop), pool)?;
@@ -307,9 +311,11 @@ pub(super) fn rasterise_emphasis_in(
         cell_width: strip.cell_width,
         cell_height: strip.cell_height,
     })?;
+    let rows = (0, frame.rows.saturating_sub(1));
     Ok(Some(Emphasised {
-        frame: Arc::new(crop(frame, strip.cell_width, first, last)),
+        frame: Arc::new(crop(frame, strip.cell_width, (first, last), rows)),
         first_column,
+        first_row: 0,
     }))
 }
 
@@ -317,15 +323,8 @@ pub(super) fn rasterise_emphasis_in(
 /// `None` when it draws nothing: a bound for [`painted_cells`]' scan, so a
 /// thread a few lanes wide does not cost a scan of the whole strip. It
 /// mirrors which elements [`super::Pen`] draws above the backdrop; a column
-/// it missed would lose lit pixels. With `only`, the elements that lane
-/// column owns alone (an emphasis piece, [`pieces`]).
-fn lit_reach(
-    rows: &[Inked<'_>],
-    marker: Option<Marker>,
-    backdrop: f32,
-    only: Option<usize>,
-) -> Option<(usize, usize)> {
-    let owns = |column: usize| only.is_none_or(|only| only == column);
+/// it missed would lose lit pixels.
+fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Option<(usize, usize)> {
     let mut reach: Option<(usize, usize)> = None;
     let mut take = |from: usize, to: usize| {
         let (low, high) = (from.min(to), from.max(to));
@@ -336,11 +335,7 @@ fn lit_reach(
     for inked in rows {
         let row = inked.row;
         for (column, identity) in row.lanes.iter().enumerate() {
-            if identity.is_some()
-                && column != row.lane
-                && owns(column)
-                && inked.lit.alpha_at(column) > backdrop
-            {
+            if identity.is_some() && column != row.lane && inked.lit.alpha_at(column) > backdrop {
                 // An arc runs from its column to the node; a straight line
                 // stays in its column.
                 let ends_here = row.incoming.contains(&column)
@@ -348,12 +343,11 @@ fn lit_reach(
                 take(column, if ends_here { row.lane } else { column });
             }
         }
-        if owns(row.lane) && inked.lit.alpha_at(row.lane) > backdrop {
+        if inked.lit.alpha_at(row.lane) > backdrop {
             // Stubs and the node; a tail reaches toward the next column.
             take(row.lane, row.lane + usize::from(!inked.stubs.is_empty()));
         }
         if let Some(marker) = marker
-            && owns(marker.column)
             && inked.lit.rail_alpha() > backdrop
         {
             take(marker.column, marker.column);
@@ -362,12 +356,11 @@ fn lit_reach(
     reach
 }
 
-/// `top` drawn over `base` at its column offset, premultiplied "over"
-/// (ADR-0053): for iTerm2, which cannot layer two images in a cell.
+/// `top` drawn over `base` at its cell column and row, premultiplied
+/// "over" (ADR-0053): for iTerm2, which cannot layer two images in a cell.
 ///
-/// `top` is the emphasis of a strip drawn as `base`, so it has `base`'s
-/// height and lies within its width; anything of it outside `base` is not
-/// drawn.
+/// `top` is the emphasis of a strip drawn as `base` (or a piece of it), so
+/// it lies within `base`; anything of it outside `base` is not drawn.
 #[must_use]
 pub fn composite(base: &RasterFrame, top: &Emphasised) -> RasterFrame {
     composite_in(base, top, &mut RasterPool::new())
@@ -391,18 +384,25 @@ pub(super) fn composite_in(
     let Some(cell_width) = base.width.checked_div(base.columns) else {
         return out;
     };
-    debug_assert_eq!(
-        (top.frame.height, top.frame.rows),
-        (base.height, base.rows),
-        "an emphasis layer is its strip's height"
+    let Some(cell_height) = u32::try_from(base.rows)
+        .ok()
+        .and_then(|rows| base.height.checked_div(rows))
+    else {
+        // No rows: no pixels to draw over.
+        return out;
+    };
+    debug_assert!(
+        usize::from(top.first_row) + top.frame.rows <= base.rows,
+        "an emphasis layer lies within its strip's rows"
     );
     let left = u32::from(top.first_column) * cell_width;
+    let below = u32::from(top.first_row) * cell_height;
     let width = top.frame.width.min(base.width.saturating_sub(left));
-    let height = top.frame.height.min(base.height);
+    let height = top.frame.height.min(base.height.saturating_sub(below));
     let bytes = |pixels: u32| pixels as usize * 4;
     for y in 0..height {
         let from = bytes(y * top.frame.width);
-        let to = bytes(y * base.width + left);
+        let to = bytes((below + y) * base.width + left);
         let source = &top.frame.pixels[from..from + bytes(width)];
         let target = &mut out.pixels[to..to + bytes(width)];
         for (over, under) in source

@@ -2,10 +2,10 @@
 //! drawn in its ring style. Styles differ in *shape*, never only in colour,
 //! so they read with any palette — the Unicode tier's rule for its glyphs.
 
-use tiny_skia::{FillRule, PathBuilder, Pixmap, Rect, Stroke, StrokeDash, Transform};
+use tiny_skia::{PathBuilder, Pixmap, Rect, Stroke, StrokeDash, Transform};
 
 use super::Ink;
-use super::geometry::{eraser, paint};
+use super::geometry::{eraser, fill_placed, paint, snap, stroke_placed};
 use crate::row::Row;
 
 /// How a commit's node is drawn.
@@ -169,7 +169,7 @@ fn fill_circle(
         return;
     };
     let paint = ink.map_or_else(eraser, paint);
-    pixmap.fill_path(&path, &paint, FillRule::Winding, shift, None);
+    fill_placed(pixmap, &path, &paint, shift);
 }
 
 fn stroke_circle(
@@ -196,15 +196,18 @@ fn stroke_circle(
         dash,
         ..Stroke::default()
     };
-    pixmap.stroke_path(&path, &paint(ink), &stroke, shift, None);
+    stroke_placed(pixmap, &path, &paint(ink), &stroke, shift);
 }
 
 fn fill_square(pixmap: &mut Pixmap, (x, y): (f32, f32), half: f32, ink: Ink, shift: Transform) {
     // Moved by hand, after the strip-pixel edges are found: `fill_rect`
     // under a transform is a path fill, which anti-aliases differently.
-    let (left, right) = (x - half + shift.tx, x + half + shift.tx);
+    // Snapped first, as every outline is (`stroke_placed`), so the move is
+    // exact wherever the square lands.
+    let (left, right) = (snap(x - half) + shift.tx, snap(x + half) + shift.tx);
+    let (top, bottom) = (snap(y - half) + shift.ty, snap(y + half) + shift.ty);
     // `from_ltrb` is `None` only for an empty or non-finite rectangle.
-    let Some(rect) = Rect::from_ltrb(left, y - half, right, y + half) else {
+    let Some(rect) = Rect::from_ltrb(left, top, right, bottom) else {
         return;
     };
     pixmap.fill_rect(rect, &paint(ink), Transform::identity(), None);

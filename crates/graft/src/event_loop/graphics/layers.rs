@@ -7,14 +7,37 @@ use std::sync::Arc;
 
 use graft_core::raster::RasterFrame;
 use graft_graph::raster::cache::{CacheError, StripCache};
-use graft_graph::raster::{PlainStrip, Selection, emphasis_pieces, rasterise_piece};
+use graft_graph::raster::{
+    CELLS_PER_LANE, PieceKind, PlainStrip, Selection, emphasis_pieces, rasterise_piece,
+};
 use graft_term::kitty::{CellRect, KittyImages, Layer, Place, UploadKey};
 use ratatui::layout::Rect;
 
 /// What the terminal holds of the emphasis pieces, and where each sits.
 pub(super) struct Held<'a> {
     pub(super) images: &'a KittyImages,
-    pub(super) pieces: &'a mut HashMap<UploadKey, (u16, u32)>,
+    pub(super) pieces: &'a mut HashMap<UploadKey, Crop>,
+}
+
+/// Where a held piece's image sits relative to its anchor (its lane
+/// column's own cell, and row 0 or its arc's row), and its size in cells:
+/// a function of its key (ADR-0053 amendment), so one held image is placed
+/// wherever its key turns up, with no raster.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Crop {
+    columns_from: i64,
+    rows_from: i64,
+    columns: u32,
+    rows: usize,
+}
+
+/// A piece's anchor in the strip: (cell column, row).
+fn anchor(column: usize, kind: PieceKind) -> (i64, i64) {
+    let cell = i64::try_from(column).unwrap_or(i64::MAX) * i64::from(CELLS_PER_LANE);
+    match kind {
+        PieceKind::Arc { row } => (cell, i64::from(row)),
+        PieceKind::Run | PieceKind::Node => (cell, 0),
+    }
 }
 
 /// The strip at `first_row` from the cache, and what its upload is: the
@@ -40,15 +63,21 @@ pub(super) fn layers(
     let strip_key = cache.backdrop_key(first_row, plain, selection.backdrop)?;
     let base = cache.backdrop(first_row, plain, selection.backdrop)?;
     let mut pieces = Vec::new();
-    for piece in emphasis_pieces(plain, selection, strip_key) {
+    for piece in emphasis_pieces(plain, selection) {
         let key = UploadKey(piece.key);
+        let (cell, row) = anchor(piece.column, piece.kind);
         if held.images.holds(key)
-            && let Some(&(column, columns)) = held.pieces.get(&key)
+            && let Some(&crop) = held.pieces.get(&key)
+            && let (Ok(column), Ok(first_row)) = (
+                u16::try_from(cell + crop.columns_from),
+                usize::try_from(row + crop.rows_from),
+            )
         {
             pieces.push(Piece {
                 frame: None,
                 column,
-                columns,
+                columns: crop.columns,
+                rows: first_row..first_row + crop.rows,
                 key,
             });
             continue;
@@ -57,11 +86,20 @@ pub(super) fn layers(
         else {
             continue;
         };
-        held.pieces
-            .insert(key, (top.first_column, top.frame.columns));
+        let first_row = usize::from(top.first_row);
+        held.pieces.insert(
+            key,
+            Crop {
+                columns_from: i64::from(top.first_column) - cell,
+                rows_from: i64::from(top.first_row) - row,
+                columns: top.frame.columns,
+                rows: top.frame.rows,
+            },
+        );
         pieces.push(Piece {
             column: top.first_column,
             columns: top.frame.columns,
+            rows: first_row..first_row + top.frame.rows,
             frame: Some(top.frame),
             key,
         });
@@ -73,12 +111,13 @@ pub(super) fn layers(
 pub(super) type Layers = ((Arc<RasterFrame>, UploadKey), Vec<Piece>);
 
 /// One emphasis piece this frame places: its pixels when the terminal
-/// lacks them, the strip cell column it starts on, its width in cells, and
-/// its key.
+/// lacks them, the strip cell column it starts on, its width in cells, the
+/// strip rows it covers, and its key.
 pub(super) struct Piece {
     frame: Option<Arc<RasterFrame>>,
     column: u16,
     columns: u32,
+    rows: Range<usize>,
     key: UploadKey,
 }
 
@@ -120,12 +159,22 @@ pub(super) fn places(drawn: &[Drawn], graph: Rect) -> Vec<Place<'_>> {
             .iter()
             .filter(|piece| piece.column < graph.width)
         {
+            // The strip rows on screen that the piece covers, counted from
+            // the piece's own first row, and the screen row they land on.
+            let shown = piece.rows.start.max(strip.rows.start)..piece.rows.end.min(strip.rows.end);
+            if shown.is_empty() {
+                continue;
+            }
+            let below = u16::try_from(shown.start - strip.rows.start).unwrap_or(u16::MAX);
+            let mut rect = cells(piece.column, piece.columns);
+            rect.row = rect.row.saturating_add(below);
+            rect.rows = u16::try_from(shown.len()).unwrap_or(u16::MAX);
             places.push(Place {
                 first_row: strip.first_row,
                 key: piece.key,
                 frame: piece.frame.as_deref(),
-                rows: strip.rows.clone(),
-                cells: cells(piece.column, piece.columns),
+                rows: shown.start - piece.rows.start..shown.end - piece.rows.start,
+                cells: rect,
                 layer: Layer::Emphasis,
             });
         }

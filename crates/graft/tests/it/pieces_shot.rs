@@ -168,7 +168,7 @@ fn panel(state: &AppState) -> Result<(Panel, usize), String> {
         let frame = strip.with_layers(&pixels, &paint, |plain, selection| {
             // The strip key only names the pieces; nothing here is held.
             let mut frame = rasterise_backdrop(plain, selection.backdrop)?;
-            for piece in emphasis_pieces(plain, selection, 0) {
+            for piece in emphasis_pieces(plain, selection) {
                 if let Some(top) = rasterise_piece(plain, selection, piece)? {
                     frame = composite(&frame, &top);
                     count += 1;
