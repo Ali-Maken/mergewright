@@ -1,6 +1,6 @@
 # health — graft-ui MAP.md rewritten as a map
 
-Status: draft (planner, from `docs/reviews/m8-architecture.md` Major M1; revised 2026-10-09 for 37's § Addition ruling and graft-ui's ~636 `pub` items)
+Status: ready (planner, from `docs/reviews/m8-architecture.md` Major M1; revised 2026-10-09 for 37's § Addition ruling and graft-ui's ~636 `pub` items)
 
 Build with: **Sonnet** (conductor, after scout `scouts/38-health-map-ui.md`). The planner expects **Sonnet**. The `map_coverage` tests judge the work.
 
