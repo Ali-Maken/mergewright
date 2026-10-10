@@ -1,6 +1,6 @@
 # health — graft-ui MAP.md rewritten as a map
 
-Status: ready (planner, from `docs/reviews/m8-architecture.md` Major M1; revised 2026-10-09 for 37's § Addition ruling and graft-ui's ~636 `pub` items)
+Status: pass 1 done, pass 2 open (was: ready, planner, from `docs/reviews/m8-architecture.md` Major M1; revised 2026-10-09 for 37's § Addition ruling and graft-ui's ~636 `pub` items)
 
 Build with: **Sonnet** (conductor, after scout `scouts/38-health-map-ui.md`). The planner expects **Sonnet**. The `map_coverage` tests judge the work.
 
@@ -47,8 +47,8 @@ None.
 
 ## Acceptance
 Pass 1:
-- [ ] With `graft-ui` added to `CHECKED` for one run, the `every_pub_item_is_in_its_map` failure names no item from a pass-1 module. NOTES quotes the `graft-ui: <N> missing` line, then the change is reverted (`map_coverage::every_pub_item_is_in_its_map`).
-- [ ] No pass-1 section line is over 240 characters or carries a ticket id. Checked in the same run (`map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, with its failures, if any, outside pass-1 sections).
+- [x] With `graft-ui` added to `CHECKED` for one run, the `every_pub_item_is_in_its_map` failure names no item from a pass-1 module. NOTES quotes the `graft-ui: <N> missing` line, then the change is reverted (`map_coverage::every_pub_item_is_in_its_map`). — **verified by** `map_coverage::every_pub_item_is_in_its_map`, one run with `graft-ui` in `CHECKED`: `graft-ui: 2 missing: `FOCUS`, `ticks_text`` (text_input, tour_card — pass 2). Reverted. Because the old holding section still names items, I also ran a throwaway check against the pass-1 sections alone (MAP cut at the holding heading): 0 pass-1 items missing, 0 stale, 0 long/ticket-id lines. Throwaway test reverted.
+- [x] No pass-1 section line is over 240 characters or carries a ticket id. Checked in the same run (`map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, with its failures, if any, outside pass-1 sections). — **verified by** `map_coverage::map_lines_are_short_and_carry_no_ticket_ids` in the same run: every failure at MAP.md:221 or later; pass-1 sections are lines 1–219.
 
 Pass 2, or the single pass:
 - [ ] The three `map_coverage` tests pass with `graft-ui` in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`).
@@ -65,3 +65,15 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 About 60k tokens per pass, or about 70k as a single pass.
+
+## NOTES (builder, pass 1, 2026-10-10)
+Status: pass 1 done; `blocked: needs pass 2`. No compaction. Scout used: `scouts/38-health-map-ui.md`, re-checked against current code (40 landed `Cells`, `CarveInputs`, `RowCarve`, `row_carve`, `dock_cells`, `MIN_BOX_ROWS`; no `DockInputs`).
+- **Public set size: 554** (from `public_items`, via a throwaway test, reverted). Over 400, so two passes, as planned. Only re-export not declared as an item: `KeyCode` (`keymap.rs:29`, `pub use graft_core::event::KeyCode`) — pass 2, under `## keymap`.
+- MAP.md: 463 lines before, 472 after pass 1. Lines 1–219 are the new crate preamble and pass-1 sections (`lib.rs`, `blame`, `history`, `detail`, `detail_pane`, `diff_words`, `fit`, `graph_column`, `graph_screen`, `graph_screen::badges`, `graph_screen::columns`, `graph_screen::hints`). Old pass-1 sections deleted.
+- `## Pass 2 holding: old crate-root entries` (:220) keeps the old `## lib.rs` lines verbatim: they carry the only descriptions of pass-2 modules not in the old MAP's headings (`confirm`, `conflict_resolver`, `context_menu`, `credential_prompt`, `empty_state`, `finish_summary`, `name_prompt`, `palette`, `picker`, `preview_box`, `rewrite_editor`, `still_to_apply`, `tour_card`, `whitespace_tail`). **Pass 2 deletes this section** along with the old module sections and both `## File layout` sections.
+- `hints` is a public module (`graph_screen/mod.rs:25`), so its decide/draw preamble sits under `## graph_screen::hints`, not the crate preamble. `keymap`'s preamble is pass 2.
+- Test-only `pub` items found (pass 1), callers outside graft-ui only in tests: `every_context` (`graft/src/update/tests/{bar_keys,keymap_edge,sweep_screens,doorway,dead_keys}.rs`, `keymap_edge/{unbound,remaps}.rs`), `every_hint` (`graft/src/update/tests/hint_coverage.rs`). Listed as is; no visibility change.
+- Previously unlisted pass-1 items now listed: `BodyRow`, `body_len`, `body_row`, `section_at`, `selected_section`, `section_entries` (all have non-test callers in `graft::update`).
+- **Pass 2 left:** `journal_screen`, `map_screen`, `overview_strip`, `paint`, `stash_screen`, `status_screen`, `syntax`, `theme`, `text_input`, `keymap`, `commit_editor`, plus the 14 modules above in the holding section; add `graft-ui` to `CHECKED`. Currently missing beyond the holding section's names: `FOCUS` (text_input), `ticks_text` (tour_card).
+- Stale citations for the conductor (`rg 'graft-ui/MAP.md:'`): `KNOWN_GAPS.md:420` (`:151-152`), `.scratch/m7-power-tools/issues/20m-landing-in-a-partly-staged-file.md:94`, `.scratch/m6-conflicts/scouts/54-56.md:44` (`:272-275`), `docs/reviews/m2-details-and-diffs.md:649`, `.scratch/m8-polish-and-ship/issues/21b-7-moves-remainder.md:202`.
+- Touches: `crates/graft-ui/MAP.md` only. `map_coverage.rs` edited for the one-run check and reverted (`git status` shows only MAP.md + this ticket). No code.
