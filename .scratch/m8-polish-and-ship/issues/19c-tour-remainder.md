@@ -1,6 +1,6 @@
 # G-tour remainder — task 7 from git's own answer, a fixed clock, the owed walks and captures
 
-Status: ready (conductor 2026-10-08) — was draft (planner spec-only pass, 2026-10-08; supersedes ticket 19's §A3 task-7 rule and its open §A9 boxes)
+Status: done (all 17 boxes ticked by 19d builders; C+1 carried to 28 — conductor 2026-10-10) · was ready (conductor 2026-10-08) — was draft (planner spec-only pass, 2026-10-08; supersedes ticket 19's §A3 task-7 rule and its open §A9 boxes)
 Build with: three parts, **sequential** (b and c share `crates/graft/tests/it/main.rs` and need a's dates):
 - **19c-a — Sonnet.** Every signature fixed below; the one judgement (does git call the clash merge a conflict) is a
   git-backed test, not a reading.
