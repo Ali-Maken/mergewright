@@ -46,7 +46,7 @@ pub enum StageSource {
 ///
 /// 1. the index, when the status still calls the path unmerged;
 /// 2. an operation being live, its entry's backup ref chain — the commit
-///    [`snapshot::chain_backup`] took before each folded step, which is the
+///    `snapshot::chain_backup` took before each folded step, which is the
 ///    only place the stages survive once `git add` dropped them — read back
 ///    only as far as the current step began: a finished step's conflict is
 ///    not this step's to restore;

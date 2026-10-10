@@ -27,7 +27,7 @@ use super::plumbing::{self, TempIndex, commit_tree, mktree, update_ref};
 ///
 /// It never holds a `raw/` tree: only [`take`](super::take)'s before-snapshot keeps one
 /// (ADR-0052, "only before").
-pub fn commit_trees(
+pub(crate) fn commit_trees(
     repo: &RepoHandle,
     index: Option<IndexState>,
     worktree_tree: Option<Oid>,
@@ -90,7 +90,7 @@ pub(crate) fn scratch_commit(
 }
 
 /// Point an existing backup ref at another commit (the after-snapshot).
-pub fn move_backup_ref(
+pub(crate) fn move_backup_ref(
     repo: &RepoHandle,
     name: &str,
     to: Oid,

@@ -1,6 +1,6 @@
 # health — graft-ops: narrow its execution internals to `pub(crate)`
 
-Status: ready (planner spec-only pass 2026-10-10, after scout `.scratch/m8-polish-and-ship/scouts/39-ops-surface.md`)
+Status: done (2026-10-10). Was: ready (planner spec-only pass, after scout `.scratch/m8-polish-and-ship/scouts/39-ops-surface.md`)
 
 Build with: **Opus, medium.** One context. The judgement is which item stays `pub` and why (example caller, cross-crate test caller, stop rule); the edits themselves are small.
 
@@ -73,17 +73,55 @@ No shape changes, visibility only:
 
 ## Acceptance
 Every tick names its verifying test or command inline.
-- [ ] `cargo nextest list --workspace | wc -l` gives the same number before and after. Both numbers go in NOTES.
-- [ ] Each moved test fn is listed in NOTES with its old path (`tests/<file>.rs::<fn>`) and new path (`graft_ops::<module>::tests::<fn>`). Each passes under the new path; the tick names the nextest filter used.
-- [ ] Every class-(b) item is `pub(crate)`, listed in NOTES with `file:line`. Proof: `rg -n 'pub (fn|use).*\b(<names>)\b' crates/graft-ops/src` shows only `pub(crate)` hits (output quoted), and workspace gates pass, so no outside caller remains.
-- [ ] Every candidate that stays `pub` is listed in NOTES with its class ((a)/(a′)/(a″)/(s)) and the caller `file:line` or stop count.
-- [ ] `seam_rule.rs` passes.
-  - The deleted clauses are listed in NOTES with the narrowed item for each.
-  - Each new decision-6 clause is a named test fn, and NOTES gives its name.
-  - **Each new clause is shown to bite:** add a call in `crates/graft/src/`, run that test and see it fail, then revert. The failing line goes in NOTES.
-- [ ] `examples/snapshot_cost.rs` still builds (`cargo clippy --all-targets` covers examples; name it in the tick).
-- [ ] The ops MAP shows no class-(b) item as public, and marks every stay-`pub` candidate. Checked with `rg` on the item names in `crates/graft-ops/MAP.md` and quoted in NOTES.
-- [ ] ARCHITECTURE.md:50–55 carries the one sentence (quote it in NOTES).
+- [x] `cargo nextest list --workspace | wc -l`: 6297 before, 6302 after. Not equal by design: no test moved (see NOTES), and +5 are the new seam_rule fns (4 clauses + 1 guard self-test). Full run: 6302 passed. Verified: `cargo nextest list --workspace | wc -l` run at start and end.
+- [x] Moved test fns: **none** — the only class-(b) items have no `tests/` callers, and `render_*` hit stop condition 2 (NOTES). Nothing to filter; vacuous.
+- [x] Class-(b) items `pub(crate)` (NOTES lists `file:line`). Verified: `grep -rnE 'pub (fn|use).*\b(commit_trees|move_backup_ref|chain_backup|append_outcome)\b' crates/graft-ops/src` → no hits; the widened grep shows only `pub(crate)` (quoted in NOTES); workspace gates pass.
+- [x] Stay-`pub` candidates listed in NOTES with class and caller. Verified by grep of callers (NOTES).
+- [x] `seam_rule.rs` passes: `cargo nextest run --workspace -E 'test(seam_rule)'` → 7/7.
+  - No clause deleted (`render_*` stays `pub`, so its clause stays).
+  - New clause fns: `app_never_takes_a_snapshot`, `app_never_records_a_raw_snapshot`, `app_never_appends_a_pending_journal_line`, `app_never_runs_restore_execute`; plus the guard's self-test `the_kept_pub_guard_sees_a_path_and_an_import_and_skips_comments`.
+  - Each bites: stray `crates/graft/src/jobs/bite.rs` added, same filter run → 4 failed / 3 passed, failing lines in NOTES; file removed, rerun 7/7.
+- [x] `examples/snapshot_cost.rs` builds: `cargo clippy --workspace --all-targets -- -D warnings` (covers examples) passes.
+- [x] Ops MAP: narrowed items marked `(crate)`, stay-`pub` marked "pub for …; forbidden to app by seam_rule". Verified: grep quoted in NOTES.
+- [x] ARCHITECTURE.md seam paragraph carries the sentence (quoted in NOTES). Verified by reading ARCHITECTURE.md:55–60.
+
+## NOTES (builder, 2026-10-10)
+Scout used: `.scratch/m8-polish-and-ship/scouts/39-ops-surface.md`; each row re-checked with grep. No compaction.
+
+**Narrowed to `pub(crate)` (class b):**
+- `commit_trees` — `crates/graft-ops/src/snapshot/commit.rs:30`
+- `move_backup_ref` — `crates/graft-ops/src/snapshot/commit.rs:93`
+- `chain_backup` — `crates/graft-ops/src/snapshot/chain.rs:66`
+- **`Journal::append_outcome` — `crates/graft-ops/src/journal/file.rs:135`, contrary to decision 2.** Decision 2's premise was wrong: `undo_by_key.rs:249` and `conflict_interim.rs:976` call `append_pending` only. `grep -rn append_outcome crates --include='*.rs'` → only ops src (`journal/file.rs:230`, `apply/record.rs:244`, `rename/record.rs:79`). No outside caller, no `tests/` caller → class (b). Its decision-6 clause was written, then removed: the compiler holds it now.
+- Re-exports split: `snapshot.rs:39` `pub(crate) use chain::chain_backup;`, `snapshot.rs:41` `pub(crate) use commit::{commit_trees, move_backup_ref, scratch_commit, stash_create_on_copy};` (merged into the existing `pub(crate)` commit line).
+- Grep: `pub (fn|use)` → no hits. Widened (`pub.*(fn|use)`): `snapshot.rs:39 pub(crate) use chain::chain_backup;`, `snapshot.rs:41 pub(crate) use commit::{…}`, `commit.rs:30 pub(crate) fn commit_trees(`, `commit.rs:93 pub(crate) fn move_backup_ref(`, `chain.rs:66 pub(crate) fn chain_backup(`.
+- No `dead_code`: each has src callers (`apply/record.rs:330,339`, `apply/recover.rs:218,227`, `apply/fold.rs:130`, `apply/resume.rs:135`). No doctest names them.
+- Knock-on: four intra-doc links on public items pointed at the now-private items (`apply.rs:104`, `apply/restart.rs:49`, `snapshot/chain.rs:97,142`) — turned into plain code spans so `cargo doc` raises no `private_intra_doc_links`. `fold.rs:97` (private fn) left.
+
+**Stay `pub`:**
+- `snapshot::take` — (a′) `examples/snapshot_cost.rs:218`; also (s) `tests/it/snapshot_raw.rs:86,467` (16-test file).
+- `raw_record` — (a′) `examples/snapshot_cost.rs:223`.
+- `Journal::append_pending` — (a″) `crates/graft/tests/it/undo_by_key.rs:249`, `conflict_interim.rs:976`.
+- `restore::execute` — (s) 6 test files, 71 tests (`error_rows`, `finish_merge`, `octopus_merge`, `undo_bytes`, `undo_cancel`, `unmerged_index`), > 15.
+- **`render_pending` / `render_outcome` — (s), contrary to decision 7.** Callers: 2 test fns (`tests/it/unmerged_index.rs::merged_lines_render_unchanged` :395–396, `tests/it/abort_merge.rs::journal_round_trips_an_abort_merge_entry` :253–254). The second depends on shared test helpers: `abort()` → `crate::conflict_fixtures::run_resume` and `crate::support::{TempRepo, NOW}`, and `shell_merge_stopped()` → `two_files()`, which `undo_gate.rs:19` also imports. Stop condition 2 holds, so both stay `pub` and the existing `FORBIDDEN` clause stays. Option for the conductor: move only `merged_lines_render_unchanged` (self-contained) and rewrite the abort round-trip to go through `Journal::append_*` — that is a rewrite, outside "move-only", so not done.
+
+**seam_rule.rs:** new `KeptPub` clauses + `kept_pub_offences` matcher: skips `//` comments (app src mentions `restore::execute` in 6 comments), matches `module::name` on a word boundary, and flags a `use` (multi-line too) that imports the name from its module, so `use …::snapshot::{take}` + bare `take(` is caught at the `use`. Bare `take`/`execute` alone are not matched (`std::mem::take`, `.take(` are everywhere).
+Bite run output (stray file, filter `test(seam_rule)`):
+```
+FAIL seam_rule::app_never_takes_a_snapshot                 jobs/bite.rs:1: snapshot::take (imported)
+FAIL seam_rule::app_never_records_a_raw_snapshot           jobs/bite.rs:6: raw_record
+FAIL seam_rule::app_never_appends_a_pending_journal_line   jobs/bite.rs:7: append_pending
+FAIL seam_rule::app_never_runs_restore_execute             jobs/bite.rs:8: restore::execute
+Summary 7 tests run: 3 passed, 4 failed
+```
+
+**MAP grep** (`crates/graft-ops/MAP.md`): `:111 render_pending / render_outcome (fn) … pub for tests/it/abort_merge.rs:253 …; forbidden to app by seam_rule`; `:150 … append_pending pub for the app crate's tests graft/tests/it/undo_by_key.rs:249, conflict_interim.rs:976, forbidden to app by seam_rule; append_outcome (crate), pub(crate) since m8/39`; `:177 chain_backup (crate)`; `:185 raw_record (… pub for examples/snapshot_cost.rs:223; forbidden to app by seam_rule)`; `:186 take (fn; pub for examples/snapshot_cost.rs:218 …; forbidden to app by seam_rule)`; `:187 commit_trees (crate)`; `:188 move_backup_ref (crate)`; `:305 execute (fn; pub for 6 tests/it/ files holding 71 tests …; forbidden to app by seam_rule)`.
+
+**ARCHITECTURE.md sentence** (seam paragraph, :55–60): "The seam is visibility where it can be (`snapshot::{chain_backup, commit_trees, move_backup_ref}` and `Journal::append_outcome` are `pub(crate)`), and seam clauses for the enum constructors and for the internals kept `pub` for examples and cross-crate tests (`snapshot::take`, `raw_record`, `append_pending`, `restore::execute`, `render_*`)."
+
+**Ticket 41:** ops' public set shrinks by exactly 4 fns (3 free fns, 1 `Journal` method).
+
+**Touches checked:** graft-fixtures has no graft-ops dep (`grep -rl graft-ops crates/*/Cargo.toml` → only graft-ops, graft). graft `src/` unedited; no current caller of any kept-pub item (the 4 new clauses pass). `undo_by_key.rs`, `conflict_interim.rs`, `examples/snapshot_cost.rs` unedited, compile under clippy all-targets. No keymap/capture/behaviour change; undo/journal tests pass in the full nextest run.
 
 ## Touches
 Each needs a line in the builder's **Touches:** report.

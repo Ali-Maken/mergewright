@@ -132,7 +132,7 @@ impl Journal {
     ///
     /// Refuses an entry still marked `Pending` (`render_outcome`'s own rule),
     /// an id the file never opened, and a second outcome for one id.
-    pub fn append_outcome(&mut self, entry: &JournalEntry) -> Result<(), JournalError> {
+    pub(crate) fn append_outcome(&mut self, entry: &JournalEntry) -> Result<(), JournalError> {
         let position = self
             .entries
             .iter()

@@ -36,9 +36,9 @@ mod plumbing;
 mod raw;
 mod stage_tree;
 
-pub use chain::{LinkKind, backup_chain, chain_backup, current_step_chain, recorded_index_state};
-pub use commit::{commit_trees, move_backup_ref};
-pub(crate) use commit::{scratch_commit, stash_create_on_copy};
+pub(crate) use chain::chain_backup;
+pub use chain::{LinkKind, backup_chain, current_step_chain, recorded_index_state};
+pub(crate) use commit::{commit_trees, move_backup_ref, scratch_commit, stash_create_on_copy};
 pub use index_paths::index_paths_changed;
 pub(crate) use index_paths::{index_paths, tracked_paths_now};
 pub use plumbing::{BACKUP_AUTHOR_EMAIL, BACKUP_AUTHOR_NAME};

@@ -63,7 +63,7 @@ impl LinkKind {
 /// # Errors
 /// [`SnapshotError`] — the stop, or a `git` that would not run. Nothing is
 /// written when it fails: the ref moves last.
-pub fn chain_backup(
+pub(crate) fn chain_backup(
     ctx: &Context<'_>,
     entry: &JournalEntry,
     link: LinkKind,
@@ -94,7 +94,7 @@ pub fn chain_backup(
 /// one of Graft's backups.
 ///
 /// A backup commit's tree is `{ index/ | unmerged/, worktree/ }`
-/// ([`commit_trees`]), so the **name** of the index subtree is what says which
+/// (`commit_trees`), so the **name** of the index subtree is what says which
 /// shape it holds — the commit is readable on its own, without the journal
 /// line that named it. A commit with neither subtree is somebody's own
 /// history, which is how [`backup_chain`] knows it has walked off the end of
@@ -139,7 +139,7 @@ pub fn recorded_index_state(
 /// the [`LinkKind`] its commit was written as.
 ///
 /// The ref's own commit, then its first parent, and so on — the single linear
-/// chain [`chain_backup`] keeps: pre-operation → before step 1 → … The walk
+/// chain `chain_backup` keeps: pre-operation → before step 1 → … The walk
 /// stops at the first commit that is not a backup commit
 /// ([`recorded_index_state`] gives `None`), which is where the pre-operation
 /// snapshot's parents hand over to the user's own history. An absent ref is
