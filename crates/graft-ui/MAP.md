@@ -1,7 +1,223 @@
 # graft-ui — map
+The screens: widgets, layout, theme and the view models they render from. Draws and nothing else: no repository handle, no `git` or `ops`.
+Depends on `graph`, `term`, `core` (ARCHITECTURE.md crate table). Repo-derived strings arrive only as `SanitizedText`.
 One line per public item. Update when a public item changes.
 
 ## lib.rs
+- `blame` (mod) — the blame place's picture; pure draw.
+- `commit_editor` (mod) — the commit/amend editor screen.
+- `confirm` (mod) — the confirm box with N choices.
+- `conflict_resolver` (mod) — the conflict resolver screen: document with cards, file list, three panes.
+- `context_menu` (mod) — the `.`/right-click popup of row actions.
+- `credential_prompt` (mod) — the modal askpass answers a username, password or host-key question in.
+- `detail` (mod) — the detail pane's view-model types; no drawing.
+- `detail_pane` (mod) — the detail pane's layout and widget.
+- `diff_words` (mod) — word-level highlighting inside a paired diff line.
+- `empty_state` (mod) — the screen outside a repository: recent repositories, open and clone prompts.
+- `finish_summary` (mod) — the screen that sums up an operation before it is finished.
+- `fit` (mod) — clamp text to an exact cell width.
+- `graph_column` (mod) — the Unicode-tier graph column widget.
+- `graph_screen` (mod) — the graph screen Graft opens on: header, banner, rows, footer hints.
+- `history` (mod) — the file history place's picture; pure draw.
+- `journal_screen` (mod) — the journal overlay.
+- `keymap` (mod) — every key binding as data, and the translate that remaps them.
+- `map_screen` (mod) — the Map view widget.
+- `name_prompt` (mod) — the one-field name/create prompt.
+- `overview_strip` (mod) — the one-column whole-history strip.
+- `paint` (mod) — token-to-style helpers for widgets.
+- `palette` (mod) — the command palette and help box.
+- `picker` (mod) — the branch picker's box.
+- `preview_box` (mod) — the Ghost Preview box and its dock.
+- `rewrite_editor` (mod) — the rewrite editor's draw.
+- `stash_screen` (mod) — the stash overlay.
+- `status_screen` (mod) — the status screen view and widget.
+- `still_to_apply` (mod) — the still-to-apply block at a rewrite stop.
+- `syntax` (mod) — line-level syntax highlighting over sanitised text.
+- `text_input` (mod) — text entry: single-line, secret and multi-line fields.
+- `theme` (mod) — theme kinds, tokens and colour resolution.
+- `tour_card` (mod) — the practice tour's card.
+- `whitespace_tail` (mod) — the title tail saying whitespace is ignored, for blame, detail and history.
+- `Cells` (type) — `(u16, u16, u16, u16)` as `(x, y, width, height)`: a rectangle for a caller that must not name the rendering library.
+- `PendingRowView`, `PendingView`, `draw_still_to_apply` (re-exports from `still_to_apply`) — the still-to-apply block's view and draw.
+
+## blame
+The blame place's picture; pure draw, no state.
+- `BlameRev` (enum) — `Now` / `AsOf(sha7)` / `Before(sha7)`: the title's last words.
+- `Who` (struct) — `sha7`, `name`, `author_time`, `subject`: a gutter block's commit.
+- `BlockPos` (enum) — `Single` / `First` / `Middle` / `Last`: a row's place in its commit's block.
+- `RowMark` (enum) — `Plain` / `NotCommitted` / `Skipped` / `Unblamable` / `Shallow`: what the gutter says instead of a commit.
+- `BlameRowView` (struct) — `line_no`, `text`, `who: Option<Who>`, `block`, `mark`.
+- `BlameBody<'a>` (enum) — `Reading` / `Failed(&str)` / `Lines { rows, cursor, top }`.
+- `IgnoreLine` (struct) — `count`, `applied`: the `.git-blame-ignore-revs` line, drawn only when `Some`.
+- `FindTitle<'a>` (struct) — `query`, `at` (1-based), `of` (0 = no match): the title's find tail.
+- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, whitespace flags: everything the place draws.
+- `draw_blame` (fn) — `(frame, area, view, keys: &Keymap)`: title, ignore line, then gutter · number · code rows.
+- `blame_row_at` (fn) — `(area, view, y) -> Option<usize>`: mouse hit-test into rows; `None` off the rows.
+
+## history
+The file history place's picture; pure draw, no state.
+- `LIST_WIDE`, `LIST_MIDDLE`, `ONE_PANE_BELOW` (consts) — 56 / 40 / 120: the list's width by frame width; below 120 one pane shows.
+- `RANGE_MARK`, `SELECTED` (consts) — `┃` and `▸`.
+- `HistoryFocus` (enum) — `List` / `File`.
+- `HistoryRow<'a>` (struct) — `sha7`, `subject`, `who`, `when`, `added`, `removed`, `was` (a rename's `↳ was <path>` row).
+- `HistoryList<'a>` (enum) — `Rows { rows, selected, top, end }` / `Failed(&str)`.
+- `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading` / `Failed` / `Binary` / the file's text: what the file pane shows.
+- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`, `whitespace_ignored`.
+- `Columns` (struct), `columns` (fn) — `columns(width, focus)`: where the list and file pane sit; shared with the mouse hit-test.
+- `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the file's rows from its one hunk, which changed, and a line's row.
+- `list_index_at`, `rows_through` (fns) — list hit-test and height, counting a rename's `↳ was` row.
+- `draw_history` (fn) — `(frame, area, view, keys: &Keymap)`: title, then list | file pane.
+
+## detail
+View-model types for the detail pane; no widget. Every string is `SanitizedText`.
+- `Subject` (enum) — `None`, `Commit { sha }`, `Compare(CompareHeader)`, `WorkingTree { staged, unstaged, untracked }`: what the pane is about.
+- `CompareHeader` (struct, re-exported from `detail/compare.rs`) — `base`, `head`, `state`: a compare's title.
+- `CompareState` (enum) — `Reading`, `IsBase`, `Since { commits, tally }`, `AlreadyIn`, `NoSharedHistory`, `Failed`.
+- `FileTally` (struct) — a compare's `files`, `added`, `removed`.
+- `CompareSummary` (enum) — `Since { split, commits }` or `NoSharedHistory`: what a compare's file-list read learnt.
+- `DetailHeader` (struct) — subject, summary, author, dates, committer, co-authors, parents, contained, radar lines.
+- `ContainedIn` (enum) — `NotAsked`, `Checking`, `Known { branches, tags, more }`, `Failed`.
+- `RadarLine` (enum) — one Mistake Radar line in the header: a finding, or an evil-merge / force-push state.
+- `FileStatusView` (enum) — `Added`, `Deleted`, `Modified`, `Renamed`, `Copied`, `TypeChanged`, `Unmerged`, `Submodule`…: a file's status as listed.
+- `SubmoduleView` (struct, re-exported from `detail/submodule.rs`) — one submodule's pointer move and inside changes.
+- `SubmoduleView::move_words`, `SubmoduleView::row_words` (fns) — `(ids)`: the pointer's move, and the row's words after the path.
+- `SubmoduleLogView` (enum) — `Commits(Vec<SubmoduleCommitView>)` / `NotHere`: the diff body on a submodule path.
+- `SubmoduleCommitView` (struct) — one commit a pointer move pulled in or rewound.
+- `WorkingTreeSection` (enum) — `Unmerged`, `Staged`, `Unstaged`, `Untracked`; `WorkingTreeSection::title` is the heading word.
+- `FileRowKind` (enum) — `Message { lines }`, `Dir { collapsed }`, `File { status, added, removed }`, section rows.
+- `FileRow` (struct) — `depth`, `name`, `kind`, `entry` (index into the git list; `None` for message/dir).
+- `FileListView` (struct) — rows, cursor, top, totals, `message`, `compare`: the changed files as a folding tree.
+- `FileListView::visible`, `FileListView::toggle_dir`, `FileListView::move_cursor` (fns) — rows not under a folded dir; fold a dir; move, clamped.
+- `FileListView::selected_entry` (fn) — the cursor row's git entry, if a file.
+- `FileListView::section_at`, `FileListView::selected_section` (fns) — the changes-pane group a row, or the cursor, is in.
+- `FileListView::section_entries` (fn) — `(row) -> Vec<u32>`: every git entry under the section row at `row`.
+- `LineKindView` (enum, re-exported from `detail/diff.rs`) — `Context`, `Added`, `Removed`, `HunkHeading`.
+- `LineView` (struct) — kind, old/new numbers, text, word ranges, `SyntaxSpan`s, `pair` (its partner line).
+- `HunkView` (struct) — one hunk; `lines[0]` is its heading.
+- `DiffMode` (enum) — `Unified`, `SideBySide`.
+- `DiffOptionsView` (struct) — context, ignore_whitespace, word_tint; `Default`.
+- `DiffView` (struct) — path, old path, status, hunks, `binary`, `truncated`, `untracked`: one file's diff.
+- `BodyRow` (enum) — what a row of the drawn diff body is: a hunk heading or a hunk's line.
+- `DiffView::body_len`, `DiffView::body_row` (fns) — rows the body draws; what row `row` is, `None` past the end.
+- `BodyView` (enum) — `Empty`, `Message`, `Loading`, `Failed`, `Diff(Arc<DiffView>)`: what the pane's body shows.
+- `DetailFocus` (enum) — `Graph`, `Files`, `Diff`.
+- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain.
+- `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch.
+
+## detail_pane
+Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
+- `DetailLayout` (enum) — `Right { columns }` (160+), `Below { rows }` (100-159), `Tab { shown }` (<100).
+- `DetailLayout::compute` (fn) — the breakpoint for a size and focus; `override_cells` replaces the percentage, clamped to the minimum.
+- `split_area` (fn) — `(layout, area) -> (Option<Rect>, Option<Rect>)`: graph rect and pane rect; `None` for the side `Tab` hides.
+- `DetailAreas` (struct) — `header`, `files`, `body` rects for one layout.
+- `detail_areas` (fn) — `(pane_area, layout, files_count) -> DetailAreas`, the files region capped to what it needs.
+- `DiffFocus` (struct) — `focused`, `word_tint`, `cursor: Option<usize>`: how `diff_body` paints.
+- `diff_body` (fn) — `(hunks, top, truncated, area, buf, theme, focus)`: the unified diff body, with a load-all footer when cut.
+- `diff_body_side_by_side` (fn) — `(hunks, top, area, buf, theme, focused)`: the two-column diff over the same hunks.
+- `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`, `keys: &Keymap`: draws the whole pane.
+
+## diff_words
+- `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line.
+- `word_spans` (fn) — word diff of `removed[i]` against `added[i]`; unpaired lines get empty spans.
+
+## fit
+- `MAX_MARKS` (const) — combining marks kept per base character.
+- `fit` (fn) — text laid into exactly N cells: padded, or cut with `…`; wide chars never split.
+
+## graph_column
+- `CELLS_PER_LANE` (const) — 2: a lane's own cell, then the gap.
+- `STUB_BELOW`, `STUB_ABOVE`, `RAIL` (consts) — `▾` / `▴` / `⋮`: folded edges and the rail folded lanes sit behind.
+- `NodeKind` (enum, re-exported from `graph_column/kinds.rs`) — commit, merge, root, HEAD, stash, uncommitted, `StashOnly`, `Absent`.
+- `NodeKind::of`, `NodeKind::glyph` (fns) — the shape from a row's parents; the node's character.
+- `RowPaint` (enum) — `Normal`, `Dimmed`, `Highlighted`, `DropTarget`…: how a row is painted.
+- `GraphLine` (struct) — `row`, `node`, `paint`, `thread`, ghost lanes: one row as the widget draws it.
+- `GraphLine::plain`, `GraphLine::owned`, `GraphLine::ghost` (fns) — a borrowed row, a synthesised row, a Ghost Preview row.
+- `GraphColumn` (struct, `Widget`) — draws consecutive rows, filling its area exactly.
+- `GraphColumn::new`, `GraphColumn::ascii`, `GraphColumn::through` (fns) — lines in a theme; the ASCII glyph table; drawn through a `Fold`.
+- `GraphColumn::width_for`, `GraphColumn::width_through` (fns) — cells for N lanes; cells for a window through a `Fold`.
+
+## graph_screen
+- `SHA_WIDTH` (const) — 7: cells the short-SHA column takes.
+- `AUTHOR_BREAKPOINT` (const) — 100: below this width the author chip drops.
+- `CHROME_ROWS`, `SPACED_FROM_ROWS` (consts) — 2 non-graph rows under 30 rows; from 30 rows the chrome is spaced.
+- `spaced`, `chrome_rows` (fns) — `(rows)`: whether the blank row and rule show; non-graph rows (2, or 4 spaced).
+- `GUTTER`, `RIGHT_MARGIN` (consts) — 2 cells left of every list row (cursor slot + gap), 1 right.
+- `Location` (struct) — `repo`, `path`, `branch`, `practice`: where the header says the screen is.
+- `GraphView` (struct) — everything the graph screen draws: rows, header state, banner, tour, pending, footer state, hint context.
+- `ProblemLine` (struct) — `reason`, `keys`: a failure the footer shows in place of the hints.
+- `MarkerView` (struct) — a Mistake Radar marker's `severity`, painted in the row's marker slot.
+- `GraphicsStatus` (enum) — `Ok` / `Failed(text)`: drawn `gfx ok` / `gfx: <error>`.
+- `Filters` (struct) — `first_parent`, `folded`, `stash_hidden`, `focused`; `Filters::text(keys)` is the header's words.
+- `Compaction` (struct) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept.
+- `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `author`, `when`, `sha`, `compare_marked`, `marker`, `tag`, `fold`.
+- `FoldMark` (enum) — a folded merge's commit count; `FoldMark::words` is what follows the subject.
+- `RowTag` (enum) — `Changed`: a row's tag after its subject; `RowTag::words(ascii)` per tier.
+- `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a tag leaves.
+- `AuthorChip` (struct) — `initials` and the `identity` that colours them.
+- `OrderNotice` (enum) — `Sorting` / `Provisional`: the header's word on row order.
+- `WalkView` (enum) — opening, reading, jumping, paused, complete, cancelled: where the history walk is.
+- `GraphScreen` (struct, `Widget`) — the graph screen; `GraphScreen::new(view, theme)`.
+- `SearchLine` (enum) — `Prompt(text)`: the footer's ` /text_` while search is open.
+- `SearchTail` (struct) — `text`, `failed`: a running or finished search in the header's tail.
+- `CommitGraphLine` (enum) — `Offered { keys }`, …: the commit-graph offer's footer line.
+- `APP_NAME` (const, from `header.rs`) — the product's name where the app names itself.
+- `HeaderView` (struct), `header_line`, `tail_room` (fns) — the header row's words; drawn at a width; cells left for the tail.
+- `BannerView` (struct, from `banner.rs`) — `kind`, `step`, `conflict`: the operation banner.
+- `RewriteBannerView` (struct), `BannerChain` (enum) — what a rewrite stop adds to the banner, and its chain words.
+- `banner_line` (fn) — `(banner, width, keys) -> String`: the banner's text in its room.
+- `CarveInputs` (struct, from `carve.rs`) — what the row carve reads of a `GraphView`, as plain values; `CarveInputs::of(view)`.
+- `RowCarve` (struct) — `ScreenRows` in `Cells`: same bands, same names.
+- `row_carve` (fn) — `(area: Cells, inputs) -> RowCarve`: the one carve of the screen's rows, shared with `graft::update`.
+- `ScreenRows` (struct, from `layout.rs`) — header, gap, banner, tour, pending, body, offer, rule, footer rects.
+- `screen_rows` (fn) — `(view, area) -> ScreenRows`; also `GraphScreen::screen_rows(area)`.
+- `GraphScreen::graph_area`, `GraphScreen::column_boundaries` (fns) — where the graph column lands; every x where a row column ends.
+- `RowLayout` (struct), `row_layout` (fn) — `body` rect and resolved `Columns` for a frame.
+- `Columns` (struct) — where each trailing column of a row sits and how wide it is.
+- `row_at` (fn) — `(view, area, screen_row) -> Option<(&GraphEntry, Columns)>`: the entry drawn at a screen row.
+- `lanes_that_fit`, `max_lanes_for` (fns) — the most lane columns a width holds; the frame's lane cap (configured, else by width).
+- `snap_to_columns` (fn) — `(rect, boundaries, bounds) -> Option<Rect>`: grows `rect` so both edges sit on column boundaries.
+- `badge_spans` (fn, from `render.rs`) — the screen columns each of a row's badges occupies, as drawn.
+- `badges_that_fit` (fn) — `columns / 2 + 1`: the most badges a row can draw.
+- Re-exports here: `badges` and `columns` items below, and the `hints` items the footer uses.
+
+## graph_screen::badges
+- `Icons` (enum) — `Plain` (bracketed) or `Nerd` (icon-prefixed).
+- `Badge` (struct) — one ref on a commit: `name`, `kind`; `Badge::text(icons, keys)` is how it reads.
+- `BadgeKind` (enum) — branch, remote, tag, detached HEAD, stash, `CompareBase`, `OnlyInStash`.
+- `Tracking` (enum) — untracked, in sync, or apart by ahead/behind counts.
+- `separator` (fn) — what goes between two badges in an icon set.
+
+## graph_screen::columns
+- `initials` (fn) — two letters standing in for a name, for the author chip.
+- `relative_date`, `relative_date_long` (fns) — `(then, now)`: `"2m"`, `"3h"`…; the same spelled for a sentence.
+- `absolute_date` (fn) — a commit's date in its own offset, `"2026-09-13 14:02 +0500"`.
+- `short_sha` (fn) — the first N hex characters of an object id.
+
+## graph_screen::hints
+Decides which hints the footer draws, per context; `graph_screen`'s footer draws them. Words come from the keymap, never literals.
+- `HintContext` (enum) — where the cursor or focus is, for the footer's hint list; one variant per screen and state.
+- `RowVerbs` (struct) — which of a commit row's own verbs act on the cursor's row; `RowVerbs::NONE`, `RowVerbs::ALL`.
+- `WayToBanner` (enum) — `Forward` / `Back`: which one press reaches the banner from the graph.
+- `LiveC` (enum) — what `c` does while an operation is live: finish, continue, and the rest.
+- `TabWord` (enum) — `Graph`, `Diff`, `Banner`: where `⇥` lands from the changes pane; `TabWord::word`, `TabWord::ALL`.
+- `ConfirmYes` (enum) — the button `y` confirms in a confirm box; `ConfirmYes::label`, `ConfirmYes::word`, `ConfirmYes::from_label`, `ConfirmYes::ALL`.
+- `HintState` (enum) — `Live` / `Planned`: whether the key does the verb today.
+- `Rung` (enum) — `Key` < `Short` < `Full`: how much of a hint the bar had room for.
+- `HintKey` (enum) — one key a hint names, spelled from the keymap.
+- `NOT_A_BINDING` (const) — the words a hint may name that are not a binding, each with why.
+- `Hint` (struct) — keys, verb, state, rung; `Hint::keeps_words`, `Hint::key_text`, `Hint::text`, `Hint::is`, `Hint::drawn_verb`.
+- `MARK_RESOLVED`, `MARK_RESOLVED_SHORT` (consts) — `"mark resolved"` / `"mark"`: `space`'s verb on a conflicts row.
+- `Divider` (enum) — whether a detail pane is on screen, so its divider can be dragged.
+- `hints_for` (fn) — `(context, divider, columns)`: as many whole hints for `context` as fit.
+- `HINT_SEPARATOR` (const), `hints_text` (fn) — `" · "`; hints as the footer draws them.
+- `StopWording` (struct) — why an operation stopped, fullest wording first; `StopWording::new`, `StopWording::full`, `StopWording::before_keys`, `StopWording::is_before_keys`.
+- `stopped_row`, `stopped_row_before_keys` (fns) — the bottom row while an operation is stopped: reason and bar.
+- `fit_status_line` (fn) — `(reason, keys, columns)`: a `reason · keys` status line cut to fit.
+- `doorway_words` (fn) — `(keys) -> Option<String>`: the bar's doorway, `? keys` as the keymap spells it.
+- `blame_place_list`, `history_place_list` (fns) — the blame and history places' bars.
+- `every_context`, `every_hint` (fns) — every footer context and every hint, for sweeps.
+
+## Pass 2 holding: old crate-root entries
 - `Cells` (type, m8/40) — `(u16, u16, u16, u16)`, `(x, y, width, height)`: a rectangle in plain numbers for a caller that must not name the rendering library (`graft::update`). Used by `graph_screen::row_carve`, `preview_box::dock_cells`, `picker::picker_box`. Crate-private `cells_of`/`rect_of` convert.
 - `diff_words` (mod) — word-level highlighting inside a paired diff line.
 - `fit` (mod) — clamp text to an exact cell width.
@@ -49,213 +265,6 @@ One line per public item. Update when a public item changes.
 - `palette` (mod, m8-polish-and-ship/11) — the command palette / help box (§2.12): `PaletteView { mode: PaletteMode, query, query_cursor, groups: Vec<(header, Vec<PaletteRow>)>, cursor, wide }` (`row_count()`), `PaletteMode::{Here(ContextId), Everything}` (titles `keys here` / `find anything`), `PaletteRow { label, key: Option<KeyLabel>, config: Option<ActionId>, kind: RowKind }`, `RowKind::{Action, App, Branch, Tag, File, Commit, Recent, More}` (m8/12: `More` — `+N more`, `reading…`, `searching…` — drawn muted); `PaletteView::placeholder: Option<&'static str>` (m8/12: drawn muted in the query row while the query is empty); `palette_area(over, frame) -> Rect` (≤ `MAX_WIDTH` 96 centred on `over`, full frame width below `WIDE_FROM` 100; one row below `over`'s top), `palette_row_at(area, view, column, row) -> Option<usize>`; `Palette { view, theme }` (`Widget`: top-aligned box as tall as its lines, `esc close` on the top border spelled from `Keymap::shipped()`, `›` query, muted bold headers, rows `key  label … config id` (the id only when `wide`), cursor scrolled into view, `NOTHING_MATCHES` on an empty result).
 - m8/12b: `File` rows draw the directory (up to the last `/`) muted, `Commit` rows the sha before the two spaces.
 - `picker` (mod) — the branch picker's box (`C`, m7-power-tools/10): `PickerView` (`query`, `body: PickerBody` — `Reading` / `Failed(text)` / `NoBranches` / `NoMatch(query)` / `Rows { rows, selected }`, `footer` (`15 branches`, `2 of 15 branches`), `note` (why `⏎` did nothing; replaces the footer), `wide` (≥120 columns: kind, name, who, age, subject, relation; else glyph, name, age)), `PickerRow` (`kind: PickerKind`, `name`, `who`, `age`, `subject`, `relation`), `PickerKind` (`Before`/`Local`/`Remote`/`Here`; `glyph()`, `label()` — `↩ before`, `● local`, `◌ remote`, `· here`), `picker_area(graph) -> Rect` (width `min(graph − 4, 150)`, centred, the lower 60% of `graph`), `picker_box((x, y, w, h))` (the same in plain numbers, for `graft::update`), `first_drawn(height, selected)` (the first row drawn), `row_at(height, count, selected, line) -> Option<usize>` (the row a click `line` rows below the top border landed on), `draw_picker(frame, area, view, theme)` / `render_picker(buf, …)` (scrolls the selected row into view; the `here` row reads `you're on it` in the subject column), `TITLE`.
-
-## blame
-The blame place's picture (m7-power-tools/20c); pure draw, no state.
-- `BlameRev` (enum) — `Now` / `AsOf(sha7)` / `Before(sha7)`: the title's last words.
-- `Who` (struct) — `sha7`, `name`, `author_time`, `subject`.
-- `BlockPos` (enum) — `Single` `─` / `First` `┌` / `Middle` `│` / `Last` `└`.
-- `RowMark` (enum) — `Plain` / `NotCommitted` / `Skipped` / `Unblamable` / `Shallow` (m7-power-tools/20e: a shallow clone's boundary — the gutter never names an author, it says `^<sha7> shallow clone · can't say who` / `^<sha7> shallow` / `shallow` by width; trailer `◂ can't say who · this clone starts at <sha7>`, shedding to `◂ can't say who`): what the cursor trailer says beyond the commit.
-- `HintContext::Blame { finding, ignore_file, lines }` (variant, m7-power-tools/20e; `read` m7-power-tools/20k, renamed `lines` with its meaning inverted in 20n) — the blame place's modal bar (`blame_place_list`), no `<> resize`; `? keys` trailer since m8/11d. `lines`: the place's blame is read (`BlameLoad::Ready`). `false` while a read is in flight (first read, or a re-read after `w`/`i`) **and** when the read failed (`BlameLoad::Failed`, e.g. `^` on a line git can't trace): `⏎`, `^` and `n N` are left out, the place has no lines for them. Coverage slots 74–77 (`lines: true`), 81–84 (`lines: false`); `COVERAGE_SLOTS` 85. `HintContext::BackToBlame(Box<HintContext>)` — the inner bar led by `esc back to blame` while a trail waits under it. `HintContext::PaneFocused` gains `blamable` (inserts `B blame` after `⏎`, or first). Coverage slots 73 (blamable, diff focused only — `catalogue::forms::pane_focused_form` says why), 74–77, 78. `HintContext::PaneFocused` gains `folds` (m7-power-tools/20h): the files list on a directory row, `space fold` after `⏎`/`B`; the graph's `TAIL` `space fold` is filtered out in every form, files list or diff (the pane takes `space`; m7-power-tools/20l). Forms `(opens, blamable, folds)`: TTF, TFT, TFF, FTF, FFF; coverage slots 73, 79 (blamable, files list), 80 (folds); `COVERAGE_SLOTS` 81. **m7-power-tools/21b:** `HintContext::History { rows, on_file }` — the history place's modal bar (`history_place_list(rows, on_file)`, pub), no `<> resize`, `? keys` trailer since m8/11d (floor 36 cells, the doorway alone below); `rows: false` (tracing, failed, zero rows) is `esc back  ? keys`; `on_file` says `j/k scroll  ⇥ list`, else `j/k older·newer  ⇥ file` (`⇥` as every other bar, review m7-16b..21b Minor 4). `HintContext::BackToHistory(Box<HintContext>)` — the inner bar led by `esc back to history`. `PaneFocused { blamable: true }` also inserts `F history` after `B blame` and drops `TAIL`'s `F focus`. Blame's `L` is third. `short_form` adds `history of these lines → history`, `next change → next`, `older·newer → older` (conductor ruling: History's floor is 30 cells, empty below). Coverage slots 85–86 (rows, by `on_file`), 87 (no rows), 88 (`BackToHistory`); `COVERAGE_SLOTS` 89.
-- `HintContext::RewriteEditor { narrow, can_start }` / `RewriteMessage` / `Rewritable(Box<HintContext>)` (variants, m7-power-tools/08) — the rewrite editor's modal bar (`y rewrite` only when `can_start`, `tab after` only when `narrow`, then `⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓ move  esc cancel`); its `r` field's (`⏎ keep  ⌃E $EDITOR  esc drop the edit`); a graph row's own list with `R rewrite` appended last among the row's keys, ahead of the tail (ruling 10; the app decides which rows). No doorway on the two modal ones; coverage slots 96–101.
-- `RowVerbs { take, amend }` (struct, `Copy`, m7-power-tools/40; consts `NONE`, `ALL`) — which of a commit row's own verbs act on the cursor's row; `graft` decides (`view::rows::row_verbs`). `HintContext::BranchRow { current, verbs }` and `PlainRow { verbs }` carry it; `lists::with_verbs` inserts `o take` right after `⏎ open` (so 2nd on a plain or current row, 4th on another branch's row after `m merge  r rebase  ⏎ open`) and `a amend` right after the last of `c`/`P`/`p`/`f` the list holds, else after `⏎ open` (planner ruling 2026-10-01). `every_context` yields each row shape × `RowVerbs::ALL`, bare and `Rewritable`; live-operation forms only with `NONE`. Coverage slots 102–110; `COVERAGE_SLOTS` 111.
-- `HintContext::Picker` (variant, m7-power-tools/10) — the branch picker's modal bar: `type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row` (`esc` third so the 3-hint floor is 39 cells and fits 40 columns; none of these verbs has a short rung); no doorway, no `<> resize`. Coverage slot 89; `COVERAGE_SLOTS` 90. `TAIL` gains `C switch` (21 entries) and `GRAPH_ONLY` gains `C` (dropped while the pane has focus: the picker opens only with the graph focused).
-- `BlameRowView` (struct) — `line_no`, `text`, `who: Option<Who>`, `block`, `mark`.
-- `BlameBody<'a>` (enum) — `Reading` / `Failed(&str)` / `Lines { rows, cursor, top }`.
-- `IgnoreLine` (struct) — `count`, `applied`: the `.git-blame-ignore-revs` line, drawn only when `Some`.
-- `FindTitle<'a>` (struct) — `query`, `at` (1-based), `of` (0 = no match): the title's find tail.
-- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, `whitespace_ignored`, `default_ignored` (m8/21b-2: blame's own default, filled by graft from `BlameOptions::default().ignore_whitespace`; the tail is drawn only when the two differ — `· whitespace counted` / `· whitespace ignored`, DIM).
-- `whitespace_tail::whitespace_tail(ignored, default_ignored) -> Option<&'static str>` (fn, m8/17b; own module `whitespace_tail` since m8/21b-2, with crate `put_whitespace_tail` and the two tail constants) — the title tail naming the whitespace mode only when it departs from the screen's default: `· whitespace ignored` (default counted: detail, history) or `· whitespace counted` (default ignored: blame); `None` at the default. Every title tail goes through it.
-- `draw_blame(frame, area, view, keys: &Keymap)` (fn) — title, ignore line, body: gutter (46/22/10 cells at ≥180/120–179/<120) · `│` · number · code; `▸` and a trailer `◂ Name · age · subject · sha7` (shed sha, cut subject, drop) on the cursor row only. Heatmap colours the gutter only (unverified).
-- `blame_row_at(area, view, y) -> Option<usize>` (fn) — mouse hit-test: index into rows, `None` on title/ignore line/past the end.
-
-## history
-The history place's picture (m7-power-tools/21); pure draw, no state. Uses `detail_pane::line_render` (now `pub(crate)`) for the file pane's lines.
-- `LIST_WIDE` 56 / `LIST_MIDDLE` 40 / `ONE_PANE_BELOW` 120 (consts) — the list's width by frame width; below 120 one pane shows, the focused one.
-- `RANGE_MARK` `┃`, `SELECTED` `▸` (consts).
-- `HistoryFocus` (enum) — `List` / `File`.
-- `HistoryRow<'a>` (struct) — `sha7`, `subject`, `who`, `when`, `added`, `removed`, `was` (a rename's `↳ was <path>` row).
-- `HistoryList<'a>` (enum) — `Rows { rows, selected, top, end }` / `Failed(&str)` (drawn across the whole width).
-- `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading { header }` / `Failed(&str)` / `Binary { header, old, new, sizes_failed }` (`binary · <old> → <new>`, or dim `binary · couldn't read sizes: <why>`; 21c) / `Lines { header, hunks, top, range, side_by_side, word_tint }`.
-- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`, `whitespace_ignored` (m8/17; default counted, so `true` → tail `· whitespace ignored` via `whitespace_tail::whitespace_tail`).
-- `Columns` (struct), `columns(width, focus)` (fn) — where the list and the file pane sit; shared with the app's mouse hit-test.
-- `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the whole file's rows from its one hunk, which are changed, and the row of a line.
-- `list_index_at`, `rows_through` (fns) — list hit-test and height, counting a rename's `↳ was` row.
-- `draw_history(frame, area, view, keys: &Keymap)` (fn) — title `HISTORY · <path> · <range>`, list | file pane. Colour unverified.
-
-## detail
-View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every string is `SanitizedText`.
-- `Subject` (enum) — `None`, `Commit { sha }`, `Compare(CompareHeader)` (m7-14), `WorkingTree { staged, unstaged, untracked }`.
-- `CompareHeader` (struct) — `base`, `head` (names: first local branch, else remote, else sha7), `state: CompareState` (m7-14).
-- `CompareState` (enum) — `Reading`, `IsBase`, `Since { commits, tally: Option<FileTally> }`, `AlreadyIn`, `NoSharedHistory`, `Failed(SanitizedText)`; worded by `detail_pane::header::compare_title(compare, width, keys)` (m8/09d: `IsBase` spells `graph.compare` from his keymap, the clause dropped when unbound) with a narrow ladder (tally, then count, then the head's name cut).
-- `FileTally` (struct) — a compare's `files`, `added`, `removed`.
-- `CompareSummary` (enum) — `Since { split, commits }` or `NoSharedHistory`: what a compare's file-list read learnt (m7-14).
-- `DetailHeader` (struct) — subject, summary, author, dates, committer, co-authors, parents, against, contained, radar lines.
-- `ContainedIn` (enum) — `NotAsked`, `Checking`, `Known { branches, tags, more }`, `Failed`.
-- `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states, including `EvilResolved { files }` ("evil merge: none found · N hand-resolved files not checked", narrow rung "evil merge: none found · N not checked" — every other file checked, the probe cannot check files both sides touched, m8/20, m8/20b R7), or `NotChecked(why)` ("radar: not checked — <why> · ctrl+r to try again"), drawn only while the radar context has failed (m7-power-tools/33).
-- `FileStatusView` (enum, no longer `Copy` — `Unmerged` carries a `SanitizedText`) — `Added`, `Deleted`, `Modified`, `Renamed`, `Copied`, `TypeChanged`, `Unmerged { how: SanitizedText }` (the porcelain pair as words, `"both modified"` etc. — no single "the diff" while both sides are still in the index, so `detail_pane::files::file_row_text` draws `how` in place of a letter and add/remove counts, m5-history-and-ghost-preview/04), `Untracked`, `Submodule(Box<SubmoduleView>)` (m7-power-tools/13: the row draws `▣ <path>  submodule · <facts>`, the diff pane the commit list).
-- `SubmoduleView` (struct, m7-power-tools/13) — `from`/`to` (short ids; `None` = new/removed; equal = no move), `changed_inside`, `untracked_inside`, `not_set_up`, `log: Option<SubmoduleLogView>` (the diff pane's; `None` on a row). `move_words(ids)` (`pointer moved a → b` / `new at b` / `removed (was a)`, or the bare words without `ids`), `row_words(ids)` (`submodule · <each true fact>`, or `submodule · not set up`).
-- `SubmoduleLogView` (enum) — `Commits(Vec<SubmoduleCommitView>)` (pulled in first, then rewound) / `NotHere` (not set up, or the commits missing). `SubmoduleCommitView` (struct) — `pulled_in`, `id` (short), `subject`.
-- `WorkingTreeSection` (enum) — gained `Unmerged` as its first variant (drawn first in the changes pane by caller row order); `title()` returns `"CONFLICTS"` for it (m5-history-and-ghost-preview/04).
-- `FileRowKind` (enum, no longer `Copy`, cascades from `FileStatusView`) — `Message { lines }`, `Dir { collapsed }`, `File { status, added, removed }`.
-- `FileRow` (struct) — depth, name, kind, `entry` (index into the git list; `None` for message/dir).
-- `FileListView` (struct) — rows, cursor, top, totals, `message` (the `✉` row's body lines), `compare: Option<CompareSummary>` (m7-14; `None` but for a compare).
-- `FileListView::visible` (fn) — rows not under a collapsed dir, with their indices.
-- `FileListView::toggle_dir` (fn) — collapse or expand a dir row.
-- `FileListView::move_cursor` (fn) — move among visible rows, clamped.
-- `FileListView::selected_entry` (fn) — the cursor row's git entry, if a file.
-- `LineKindView` (enum) — `Context`, `Added`, `Removed`, `HunkHeading`.
-- `LineView` (struct) — kind, old/new numbers, text, word ranges, `SyntaxSpan`s, `pair` (index of its partner line).
-- `HunkView` (struct) — heading and lines.
-- `DiffMode` (enum) — `Unified`, `SideBySide`.
-- `DiffOptionsView` (struct) — context, ignore_whitespace, word_tint; `Default`.
-- `DiffView` (struct) — path, old path, status, hunks, `binary`, `truncated`, `untracked`.
-- `BodyView` (enum) — `Empty`, `Message`, `Loading`, `Failed`, `Diff(Arc<DiffView>)`.
-- `DetailFocus` (enum) — `Graph`, `Files`, `Diff`.
-- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain, `following` (G-settle: the title row ends in a muted `reading…`), `ascii` (m8/17: the submodule row's `[S]` `->` `+-` `?`). With `options.ignore_whitespace` the title row ends `· whitespace ignored` (muted).
-- `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch (built by `explain-panel`).
-
-## detail_pane
-Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-and-diffs/07). No I/O; `Theme` is the only extra it needs over the ticket's literal signature (undocumented deviation, see module doc). Split into files, public items unchanged (m2 review M8): `layout.rs` (breakpoints, `DetailAreas`), `line_render.rs` (row-drawing helpers shared by both diff bodies), `unified.rs` (`diff_body`), `side_by_side.rs` (`diff_body_side_by_side`), `header.rs`, `files.rs`, `body.rs` (`DetailPane` widget, Explain panel).
-- `DetailLayout` (enum) — `Right { columns }` (160+ cols), `Below { rows }` (100-159), `Tab { shown }` (<100).
-- `DetailLayout::compute` (fn) — picks the breakpoint for a size and focus; `override_cells` replaces the percentage, still clamped to the minimum.
-- `split_area(layout, area)` (fn) — `area` split into the graph rect and the pane rect for `layout` (`None` for whichever side `Tab` hides); pure geometry, shared by `view/frame.rs`'s draw and mirrored (plain `u16` math, not this fn) by `update/mod.rs`'s mouse hit-testing, which cannot depend on this crate's rendering library (`detail-resize-and-persistence`). **`Right` leaves one blank column between the two**, taken out of the graph's width, never out of the pane's `x` (m5/19): the two used to be flush, so the graph's short-SHA column and the pane's first column ran together — `a82960bCONFLICTS`, caught by the user by eye at 160 columns. Taking the gutter off the left keeps every boundary *position* where it was, so `graft::update::geometry::detail_split`, which mirrors this in plain `u16` and cannot call in here, still lands on the same cells; the one cell that changed hands is the gutter, which routes to the graph rather than to nothing. Pinned as a class, swept over every width, by `tests/pane_boundaries.rs`.
-- `DetailAreas` (struct) — `header`, `files`, `body` rects for one layout.
-- `detail_areas` (fn) — splits a pane rect into `DetailAreas`, capping the files region to what `files_count` needs. Under `Below` the file list and the diff sit side by side, and the list gives up its thirtieth column as a gutter for the same reason `split_area`'s graph does (m5/19); the body's `x` is unchanged.
-- `DiffFocus { focused, word_tint, cursor: Option<usize> }` (struct) — `diff_body`'s two independent flags bundled into one param to stay under clippy's 7-argument limit; `word_tint` actually gates the tint now (m2-details-and-diffs review M1: it used to be read nowhere).
-- `diff_body(hunks, top, truncated: Option<(shown, total, &Keymap)>, area, buf, theme, focus: DiffFocus)` (fn; m8/09d: the footer spells `diff.load_all` from the keymap) — full diff body: right-aligned old/new gutter (width = widest number, min 3), sign cell, soft `Surface` bg on added/removed rows, stronger `Added`/`Removed` bg on word-tinted ranges when `focus.word_tint` (fg forced to `Bg` for contrast), syntax-role fg elsewhere regardless of `focus.focused` (review M2: body colour no longer depends on focus; only the gutter does — accent when focused, muted otherwise), hunk heading pinned to the top row while scrolling within its hunk — **except when `focus.cursor` is the row at `top`**, since the pin takes that row's slot and `Space`/`d` must never act on a line that is not drawn (m3/04 review C1) — trailing `␍` glyph, and a muted "… N more lines · L load all" footer row when `truncated: Some((shown, total))`. At `Palette16`/`None`: no backgrounds/tint, sign+bold(added)/dim(removed) only. Returns total content rows (real rows + footer) for scroll clamping. Deviation: adds a `truncated: Option<(usize, usize)>` param beyond the ticket's literal signature — reported as a spec gap, not silently worked around (see module doc).
-- `diff_body_side_by_side(hunks, top, area, buf, theme, focused)` (fn) — the `v`-toggled two-column diff over the same `HunkView` data: old numbers/text left, new right, `│` rule between (plain at `Palette16`/`None`); `LineView::pair` keeps a removed/added run aligned row for row, an unpaired line leaves the other half blank (never shifted); hunk heading pins full-width above both halves; word tint, syntax fg, `␍`, 16-colour fallback match `diff_body` (m2-details-and-diffs/09).
-- Submodules (m7-power-tools/13, 30i): `files.rs` draws a `FileStatusView::Submodule` row as the first rung of `submodule_tails(view) -> Vec<SubmoduleTail>` (`Words` two spaces after the path / `Marks` right-aligned) that fits: `row_words(true)` → `row_words(false)` → without `submodule · ` → marks `→ ± ?` (`new`/`removed` in the `→` slot; `not set up` for one not set up); only the marks rung cuts the path (`fit`); `body.rs` draws its diff as the header `<path> · submodule · <old7> → <new7>`, then line 2 `submodule_inside_words(view)` (`changed inside · untracked inside`, only when true; facts taken from the cursor row, since the diff job reads only the pointer), then `+ <sha7> <subject>` / `− <sha7> <subject>` (`Added`/`Removed` fg) capped at `SUBMODULE_COMMITS_MAX` = 50 and `+N more`, or `the submodule's commits aren't here · not set up`; an empty list reads `the pointer did not move` (or `no commits to list` for a new/removed one). No scrolling inside the list (13b NOTES). Colour unverified.
-- `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`, `keys: &Keymap` (m8/09d: the compare line and the load-all footer spell his keys); draws header, files and body for one frame. When `view.explain` is `Some`, the files+body area (`detail_areas().files.union(.body)`) draws the Explain panel instead, at every breakpoint: severity glyph + title, wrapped paragraphs, a blank line, the sketch verbatim, `Esc close` (m2-details-and-diffs/17).
-
-## diff_words
-- `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line on the other side.
-- `word_spans` (fn) — word-diff (`similar`) `removed[i]` against `added[i]`; extra lines get empty `Vec`s; a pair sharing no word gets no spans on either side.
-
-## fit
-- `MAX_MARKS` (const) — combining marks kept per base character.
-- `fit` (fn) — text laid into exactly N cells: padded, or cut with `…`; wide chars never split.
-
-## graph_column
-- `CELLS_PER_LANE` (const) — cells per lane: its own, then a gap.
-- `NodeKind` (enum) — node shape: commit, merge, root, HEAD, stash, uncommitted, `StashOnly` (`□`, a commit only a stash reaches — the hollow form of the stash's `■`; not `◇`, which is the root's; accepted by the conductor 2026-09-27, m7-power-tools/16), `Absent`.
-- `NodeKind::Absent` (variant) — a blank where the node goes, for a drawn row that is not a commit (the Ghost Preview's `after rebase` label). Real lanes passing through it keep their glyph; nothing on the row claims to be a commit.
-- `NodeKind::of` (fn) — commit/merge/root from a row's parents.
-- `NodeKind::glyph` (fn) — the node's character.
-- `RowPaint` (enum) — normal, dimmed, highlighted, `DropTarget` (m5-history-and-ghost-preview/35: the row a dragged badge is over. Its own variant, not `Highlighted`, because during a drag the cursor row is on screen too and the two must read as two things — they were the same paint until 35, and the drop target *replaced* the cursor's highlight, so the whole of a drag was one faint background raise moving between rows. Drawn as `→` (ASCII `=`) in the marker slot since ADR-0058 §5 — `▸` is the cursor's gutter glyph — `Token::Accent` bold, at every colour depth; keeps the `selection` fill and bold, no gutter glyph), `Ghost` (Ghost Preview rows, ADR-0038 §5, m5-history-and-ghost-preview/04: node glyph forced to a hollow anchor — `○`, or `◎` for a merge, never a real commit's solid glyph at any tier — straight/diagonal edges forced dashed (`┊`/`┈`; ASCII `:`/`.`), colour forced `Token::TextMuted`, the odd-column dash convention skipped since every edge already dashes; `debug_assert!`s in `graph_screen::render` that a Ghost row never also carries `compare_marked` or a `marker` — the caller builds ghost rows fresh, never off a real row that had one).
-- **The cursor row** (ADR-0058, m8-polish-and-ship/07) — `▸` (ASCII `>`) in gutter cell 0, `Token::Accent` bold, cursor row only (`graph_screen::render::draw_gutter`); the `selection` fill runs from the marker slot to the body's right edge, so the gutter, the graph column (every tier; Pixel strip cells show ground) and the right margin keep the ground; every foreground on the fill goes through `Theme::on_selection`. At 16 colours / `NO_COLOR` no fill, `▸` and bold stay, badges draw `text`.
-- **The marker slot's rule** (`graph_screen::render::row_rule`, m5-history-and-ghost-preview/35; ADR-0058) — since ADR-0058: `▏` for the pinned compare base only (on the cursor row too), `→` for a drop target, `|`/`=` at the ASCII tier, always `Token::Accent` bold. History follows: until ADR-0058 the cursor drew `▏` here and a drop target `▸`. Drawn at **every** colour depth, not only `Palette16`/`None` as before: the cursor row's other mark is a `Token::SurfaceRaised` fill one step off the pane's own (`#14161B` → `#232730` dark), and the user could not find his own cursor by it (`docs/field-notes.md` 2026-09-22). It takes the **first** of the slot's three cells (`RULE_WIDTH`) and a Mistake Radar marker the second, so a row can carry both (`▏⚠`) and the cursor is never the one that loses. The slot was two cells wide until m5-history-and-ghost-preview/40: 35 gave the rule a cell of the two the slot already had, which spent the gap that separated the marker from the subject and drew `▏⚠Merge branch 'feature'`. It is three now — rule, glyph, gap — and the subject, which is the elastic column, pays the extra one at every width.
-- `GraphLine` (struct) — `row` (borrowed or synthesised), `node`, `paint`, `thread` (real columns on the selection's thread: bold; other lanes dim; `None` = no selection), `ghost_lanes: BTreeSet<usize>` (on a `RowPaint::Ghost` row, the real columns the preview owns: only those dash and mute, plus the anchor's own cell. A real lane crossing a ghost row keeps its solid glyph and its colour — DESIGN.md §1.7's `┊│┊●b┈`; m5-04 review Major 4) for one drawn row.
-- `GraphLine::ghost` (fn) — the same row drawn as a Ghost Preview row: sets `paint` and `ghost_lanes` together, so which edges are the preview's is always said.
-- `GraphLine::plain` (fn) — a row drawn normally, borrowing a real `Row`.
-- `GraphLine::owned` (fn) — a row drawn normally, owning a synthesised `Row` (the uncommitted-changes row).
-- `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly. At 16 colours and `NO_COLOR`, odd-column lanes draw dashed (`╎`, `╌`); at the ASCII tier, every glyph collapses onto `* | / \ - +` instead (m1-the-graph/19).
-- `GraphColumn::new` (fn) — draw lines in a theme.
-- `GraphColumn::ascii` (fn) — draw with the ASCII glyph table instead of Unicode box-drawing.
-- `GraphColumn::width_for` (fn) — cells for N lanes.
-- `GraphColumn::through` (fn) — draw through a `Fold`: kept lanes in their drawn columns, a `RAIL` in the last column on every row (text-muted), folded edges as one stub in the gap right of the node (first edge's colour); no count in the column; dashes still key on the real column.
-- `STUB_BELOW` / `STUB_ABOVE` / `RAIL` (const) — `▾` / `▴` / `⋮` (ASCII `v` / `^` / `:`).
-- `GraphColumn::width_through` (fn) — cells for a window drawn through a `Fold` (kept lanes plus the rail, two cells each).
-
-## graph_screen
-- `CHROME_ROWS` (const) — screen rows that are not graph rows below 30 rows (header + footer); a `GraphView::banner` adds one row per line. From 30 rows read `chrome_rows`.
-- `SPACED_FROM_ROWS` (const, 30), `spaced(rows) -> bool`, `chrome_rows(rows) -> u16` (2, or 4 when spaced: header, blank row, rule, bar) — m8-polish-and-ship/06, ADR-0058 §4. `rows` is the **terminal's**, not the widget's area, so every layout mirror in `graft` agrees.
-- `GUTTER` (const, 2), `RIGHT_MARGIN` (const, 1) — the cells list rows keep left (cursor glyph slot + gap) and right; the header and bar are indented one cell and keep the margin (m8-polish-and-ship/06).
-- `Location` (struct) — `repo`, `path` (`~`-relative), `branch` (or `detached <sha7>`), all `SanitizedText`, and `practice: bool` (`◇` instead of `◆`).
-- `HeaderView<'a>` (struct), `header_line(view, width, theme) -> Line<'static>`, `tail_room(view, width) -> u16`, `APP_NAME` (const `"Tributary"`, m8/27a) — `graph_screen/header.rs`: ` ◆ <repo>  <path> · <branch>` with the tail (the search, then walk, filters, gfx — or the search then the operation banner) right-aligned inside the margin; the tail's items drop whole in the order gfx, walk, filters, search, banner (`header_tail::fitted_tail`, m8/15b, moved from `layout` in m8/21b-7b; the last non-search group is cut with `…` rather than dropped); when room runs short the path is cut from the left with `…` first, then the branch, then the tail, the repo name last. `tail` is a styled `Line` (not `&str` as the ticket's signature had it) so the banner's warning/reverse styling survives. No product name is drawn.
-- `GraphView::spaced` (field) — `spaced(terminal rows)`, set by `graft`; the widget draws the blank row and rule only when it is true.
-- `SHA_WIDTH` (const) — cells the short-SHA column takes, and hex digits to call `short_sha` with.
-- `AUTHOR_BREAKPOINT` (const) — width below which the author chip drops (DESIGN.md §1.2/§1.3).
-- `GraphView` (struct) — everything the graph screen draws.
-- `GraphView::tour` (field, m8/19b) — `Option<TourCardView>`: the practice tour's card, carved as `ScreenRows::tour` (3 rows) under the banner, above `pending`; none when fewer than 4 rows are left.
-- `GraphView::pending` (field) — `Option<PendingView>`: the still-to-apply block, drawn under the banner in `ScreenRows::pending` (≤ half the rows the banner leaves, ≥ 3 or none) (07c).
-- `GraphView::location` (field) — `Option<Location>`: where the header says the user is, once a repository is open.
-- `GraphView::walk` (field) — where the history walk is.
-- `GraphView::problem` (field) — `Option<ProblemLine>`: an unsuperseded error, reason and keys apart; replaces the key hints while it lasts. Drawn with `hints::fit_status_line` so a sticky failure's keys survive a narrow footer (`hint-bar-redesign`).
-- `ProblemLine` (struct) — `reason: SanitizedText`, `keys: Option<SanitizedText>` — a status line kept in two parts so the footer can cut the reason and keep the keys whole.
-- `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
-- `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
-- `GraphView::compaction` (field) — lane limit, expansion flag and `Keep` priorities; the screen plans one `Fold` per frame over the rows it draws, and its header ends ` · +N lanes` while that fold hides lanes (not when expanded).
-- `GraphView::filters` (field) — what the history shown leaves out; said in the header.
-- `GraphView::reveal` (field) — index into `rows`: the footer shows that row's full subject in place of the hints, but only when the row's subject actually needed truncation (`None` for no reveal) (m1-the-graph/41, ADR-0023).
-- `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.
-- `GraphView::ascii` (field) — draw the graph column with the ASCII glyph table (`graph.renderer`, m1-the-graph/19).
-- `GraphView::notice` (field) — what the app layer did to the renderer tier, shown in the footer under `problem`, above the hints; `None` for nothing to say.
-- `GraphView::pixel` (field) — the pixel tier draws the graph: the column keeps its width, left blank for the images (m1-the-graph/24c).
-- `GraphView::search` (field) — the search prompt (`SearchLine::Prompt`) while `/` is open: below `problem`, above `notice`; `None` otherwise. `GraphView::search_tail` (field, `Option<SearchTail>`, m8/15b) — a standing search with its prompt closed: drawn leftmost in the header's tail, not the footer.
-- `GraphView::banner` (field) — `Vec<SanitizedText>` drawn under the header, above the rows, each fitted to the width (first line accent, rest info); each line costs a body row, so `graph_area` moves down with it; empty in the shipped binary (m1-the-graph/38).
-- `GraphView::commit_graph` (field) — `Option<CommitGraphLine>`: one footer row above the hints, below a notice; takes a graph row while `Some` (m1-the-graph/54).
-- `CommitGraphLine` (enum) — `Offered { keys }` (`keys: false`: the fact alone, no `B`/`X` — the pane has the keyboard, m7-power-tools/36), `NoGitToBuild`, `Writing`, `Written { commits }`; key letters in the accent. Each has two or three wordings and the **widest one that fits** the width it is drawn at is the one drawn — not a width tier (m5/19). The tiers it replaces (≥120, 100–119, <100) were calibrated against the screen's width, but the line is drawn inside the graph's area, which loses 42% of the screen to a `DetailLayout::Right` pane: a 160-column terminal handed the function 92 columns fell under the 100-column tier and drew the 47-cell wording where the 87-cell one fitted — forty more columns of terminal, less text than at 120. Picking by fit is monotone in width by construction, whatever order the wordings are written in (`no_footer_line_gets_terser_as_the_room_for_it_grows`). `Written`'s long wording still carries ` · ⌃R to use it` (`app.refresh` spelled, m8/10c) (m2-details-and-diffs/21), now from ~89 columns up rather than a flat ≥100.
-- `SearchLine` (enum) — `Prompt(text)` draws ` /text_` (`Status` removed in m8/15b). `SearchTail { text, failed }` (struct, m8/15b) — the search's line verbatim in the header's tail, warning-coloured only when failed (colour unverified).
-- `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
-- `GraphView::divider_shown` (field) — the detail pane is on screen **and its divider exists to drag**. Read by `graph_screen::footer` to build the `hints::Divider`, so `<> resize` is hinted in **every** context while a pane is split, not only the changes pane (ADR-0028; m5-03 review Major 4 — the field was written and never read). Was `detail_shown` until m5-history-and-ghost-preview/33: under 100 columns the pane is a tab strip with no divider, and the footer went on offering `<>`, a key that moves nothing (review M6's width sweep found it; `graft::view::rows::divider_shown` computes it, `graft::view::tests::the_resize_key_is_offered_only_where_there_is_a_divider_to_drag` pins it).
-- `GraphView::hint_context` (field) — `HintContext`: what the footer hints for this frame (`hint-bar-redesign`; replaces the old `changes_pane: bool`). `view::rows::hint_context` (graft) builds it: `on_changes_pane` → `ChangesPane { unmerged }` **first** (the pane opens on the uncommitted row, so `on_working_tree` is true at the same time and used to win — m5-03 review Critical 1), then `on_working_tree` → `WorkingTreeRow`; else the cursor row's own branch badge → `BranchRow { current }` or `PlainRow`, wrapped in `Marked` when that row carries a `GraphEntry::marker`. `Banner` comes from `view::rows::footer_context`/`banner_context` (graft) whenever the banner has focus, `Preview` from an open Ghost Preview; with an overlay open and the graph focused nothing is produced since m8/11e (the overlay's own footer is the bar), and `PaneOverOverlay { opens }` when the detail pane has the keyboard instead; the overlays still draw their own footer where they are visible, so the produced context is what the sub-100-column Detail tab draws.
-- `GraphView::compare_footer` (field) — the pinned compare base's footer line (`compare base <sha> — move, x again clears`); same footer slot as `search`/`notice` (m2-details-and-diffs/11).
-- `GraphView::stopped` (field) — `Option<StopWording>`: why the live operation stopped (m6-conflicts/12). The footer's sixth rung: with hints drawn, `hints::stopped_row` puts it before the bar; a problem, search, notice, compare footer or reveal still win.
-- `graph_screen::StopWording` (struct) — `new(full, shorter)`, `full()`: the stop reason's wordings, fullest first; each shorter one drops whole parts, so a number is drawn whole or not at all (m6-conflicts/24, review m6-amend-11-12 M1). `graft` writes the ladder. `before_keys()` / `is_before_keys()` (m6-conflicts/82, M1): the reason outranks the bar's tail keys — set for a stash clash, off for every git stop.
-- `graph_screen::hints::stopped_row` (fn) — `(&StopWording, &[Hint], columns) -> String`: ` <reason> · <bar>`, the bar kept whole and the reason the fullest wording that fits — else the last one cut with `…`; the bar alone when fewer than 12 cells are left for the reason. `q quit`, last on the banner's bar (m8-13b), gives way first: dropped whenever that lets a fuller wording fit whole.
-- `graph_screen::hints::stopped_row_before_keys` (fn, m6-conflicts/82) — `(&StopWording, &HintContext, Divider, columns) -> String`: for a `before_keys` reason: the fullest wording whose leftover room still holds the bar's first three hints at their floor rung (+ trailer), the bar then refitted to that room (`hints_for`); no wording fits → `stopped_row`. The footer calls it when `is_before_keys()`.
-- `HintContext::OperationLive { row: Box<HintContext>, c: LiveC, way_to_banner: Option<WayToBanner>, space_stages: bool }` (variant) — **an operation is live** (m6-conflicts/52, decision B): a graph row's own list with its `c commit` said as `c` acts (`LiveC`, via `lists::said_live_on_the_graph`), the `c` hint ranked first after `a amend it` (ahead of the graph's write keys, which refuse while live; m7-power-tools/07d, review Minor 7), then `space stage` in place of the row's `space` while `space_stages` (07d); and `⇥ banner` (`WayToBanner::Forward`, one `Tab` lands on the banner, m6-conflicts/12) or `⇧⇥ banner` (`WayToBanner::Back`, one `Shift+Tab`, the graph with the pane open, m8/20d-b) first, the row's own hint on that key dropped; `None` → no banner hint. `graft` wraps `WorkingTreeRow`, `BranchRow`, `PlainRow`, `Marked` and `PaneFocused` whenever an operation is live — bisect (no banner) and the detail pane open over a focused graph included. Not `ChangesPane`, which carries its own `live`. In `every_context` via `operation_live_form`: each `LiveC` × `way_to_banner`; coverage slots 29, 49–53, 115–118.
-- `WayToBanner` (enum, m8/20d-b) — `Forward | Back`: which single press (`app.next_pane` / `app.prev_pane`) reaches the banner from the graph; drawn `⇥ banner` / `⇧⇥ banner`.
-- `LiveC` (enum, m6-conflicts/52) — what `c` does in the graph or the changes pane while an operation is live: `Finish` (`c finish`, a merge), `Continue` (`c continue`, a rebase, cherry-pick or revert Graft began), `ContinueAmends` (07b: a rewrite Graft began stopped on an `edit` row — `a amend it` leads, `c continue`; coverage slots 90–95), `Refuses` (no `c` hint: a bisect, or a non-merge the shell began — `c` only refuses in words). `graft::view::rows::live_c` is the one mapping from `graft::update::commit_editor::pane_c_acts`.
-- m8-polish-and-ship/15 (bar content): `lists::REFUSED_WHILE_LIVE` (private const, `&[ActionId]`: `app.undo`, `graph.merge`, `graph.rebase`, `graph.take`, `graph.rewrite`) — `said_live_on_the_graph` drops every hint naming one, so no `OperationLive` bar offers a key that refuses while live (each member's refusing line in its doc; held by `graft`'s `no_key_a_live_operation_bar_draws_refuses_while_live`). `HintContext::StashRow` (variant) — a stash's row: `lists::stash_row_list` = `plain_row_list` less `m`/`r`, `S stash` right after `⏎ open`, then `TAIL`; never `Rewritable`, no `RowVerbs`; `every_context` yields it bare, `Marked`, `OperationLive` and `PaneFocused` forms; coverage slot 113. `HintContext::Searching(Box<HintContext>)` (variant, m8/15b) — a standing search: the inner graph-row bar led by `n next  N prev` (`SEARCH_NEXT`/`SEARCH_PREV`, keys `app.next_match`/`app.prev_match`); `catalogue::forms::searching_form` wraps the row forms (`WorkingTreeRow`, `BranchRow`, `PlainRow`, `StashRow`, `Rewritable`, `Marked`) and `operation_live_form` takes it inside `OperationLive`; never `PaneFocused`; coverage slot 114, `COVERAGE_SLOTS` 115. `fitting::fit_order` (`pub(super)`) — `fit_list` fits `u undo` **second** (keymap §2.1 "ranked selection"), survivors still drawn in list order; `fit_list`'s signature unchanged.
-- `HintContext::ConfirmBox { yes: Option<ConfirmYes> }` (was a unit variant; m6-conflicts/50) — the bar under a confirm box: `Some(v)` leads with `y <v.word()>` before `←/→ move  ⏎ choose  esc cancel`; `None` (a box `y` never confirms) draws the three alone. `every_context` yields `None` plus each `ConfirmYes`; coverage slots 25 (`None`), 54–62.
-- `ConfirmYes` (enum, m6-conflicts/50) — the acting button `y` takes: `Push`, `Drop`, `Discard`, `Delete`, `Skip`, `Abort`, `StartOver`, `Undo`, `Redo`, `Quit` (the `q` box while a write runs, m8-polish-and-ship/13). `ALL`; `label()` (the button's text, `Start over`); `word()` (lowercased, `start over`); `from_label(&str) -> Option<Self>`, which is how `graft` builds it, from the button's own label, so the bar's word cannot differ from the button's.
-- `HintContext::ChangesPane { unmerged, live: Option<LiveC>, tab: TabWord }` (fields `live`, m6-conflicts/52; `tab`, m6-conflicts/70) — `None` with nothing live (`c commit`); else `c` is said per `LiveC`, in place. `⇥` names `tab`. `every_context` yields the real forms (`changes_pane_forms`, `changes_pane_live_forms`); coverage slots 9–10, 43–48, 63–72.
-- `TabWord` (enum, m6-conflicts/70) — where one `⇥` lands from the changes pane: `Graph`, `Diff`, `Banner`; `word()` is the hint's verb, `ALL` every form. `HintContext::Banner { skippable, conflicted, merge }` (field `merge`, m6-conflicts/70): a merge's banner says `c finish`. `detail_pane::files`: an `Untracked` row with no counts reads `new`; any other reads `bin`.
-- `GraphView::banner_op` (field) — `Option<BannerView>`: an operation in progress (rebase/cherry-pick/merge step, a conflict). While `Some`, replaces the header's whole informational tail (walk state, filters, order notice, graphics status — all answer "is history still loading", not the question mid-operation) with the banner text; `focused` reverses the header row so a conflict landing is noticed without a click (m5-history-and-ghost-preview/04, DESIGN.md §1.13, ADR-0038 §3). Deviation: the ticket describes an "ahead/behind slot" the banner replaces; no such slot exists in `header()` (ahead/behind draws per-branch via `Tracking::Apart` badges on rows) — mapped instead onto the whole informational tail, the closest match to the design mockups.
-- `BannerView` (struct) — `kind: SanitizedText`, `step: Option<(u32, u32)>` ("step N of M"), `conflict: Option<SanitizedText>` (feeds `hint_context` only — never drawn), `focused: bool`, `skippable: bool`. `more_conflicts` is gone with the filename the banner used to name (m5/20).
-- `banner_line(banner, width, keys: &Keymap) -> String` (fn; m8/09d: the rewrite `edit` hint spells `graph.fold`/`graph.amend`/`graph.commit`/`app.next_pane` from `keys`; `graph_screen/banner.rs` since m7-power-tools/07b) — `<kind>[ step N of M]`. Without a rewrite, one wording at every width (`width` unread), and the state only: no warning glyph, no filename, no `(+N)`. The two spellings came off a `width >= 100` tier fed the banner's **own** region, which is 120 cells at 120 columns with the pane below and ~92 at 160 with it beside — so the wider terminal drew the terser banner (m5/20 items 1–3). The header still reserves its width **before** the location's: a long repository path is cut with an `…` and the banner is drawn whole (m5/16, review C1). The operation banner costs no row under the header.
-- `RewriteBannerView` (struct, 07b) — `action`, `sha7`, `subject`, `chain: Option<BannerChain>`, `edit_hint`; `BannerChain` (enum, m8/14c) — `Line { branch, index, of }` (`<branch>, branch k of m`) | `Fork { branch, at }` (`<fork>, forked at <at7>`, ADR-0059), dropped on the chain words' rung; `BannerView::rewrite: Option<RewriteBannerView>`. With it `banner_line` draws `KIND  step i of n · <action> <sha7> <subject> · <branch>, branch k of m · <edit hint>` and drops, as `width` shrinks, the hint, the subject, the chain words, then action+sha7; `KIND  step i of n` is never dropped.
-- `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
-- `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text(keys)` is the header's words (`focus (F/esc off)`, spelled from `graph.focus`+`app.back`), empty for none.
-- `Compaction` (struct) — `max_lanes` (the resolved cap for this frame, see `max_lanes_for`), `expanded` (the `+` key), `keep` (`graft_graph::fold::Keep`: selected column, reserved integration lanes, the selection's thread — budget priorities, not vetoes, ADR-0025).
-- `Compaction::at` (fn) — collapsed, `Keep::default()`.
-- `lanes_that_fit` (fn) — the most lane columns, rail included, the graph column can hold at a screen width, measured after the gutter and margin come off (19 at 80 columns since m8-polish-and-ship/06); never below 2 (m1-the-graph/44).
-- `max_lanes_for` (fn) — `graph.max_lanes` if configured, else 8/10/12 by the width breakpoint (`< 100`, `100..160`, `160+`), then clamped to `lanes_that_fit` so a configured number larger than the screen never cuts the rail (ADR-0022, ADR-0025; m1-the-graph/44).
-- `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`, `compare_marked`, `marker`.
-- `GraphEntry::compare_marked` (field) — this row is the pinned base of a live compare; draws the accent `▏` left rule (m2-details-and-diffs/11).
-- `GraphEntry::marker` (field) — `Option<MarkerView>`: this row's Mistake Radar marker, painted at draw time (`view::radar::marker_for`, m2-details-and-diffs/13).
-- `GraphEntry::tag` (field) — `Option<RowTag>`: words drawn two cells after the subject in the accent token (colour unverified); the subject is cut with `…` first, and the tag is left off when fewer than `TAG_MIN_SUBJECT` subject cells would remain (m7-power-tools/09).
-- `GraphEntry::fold` (field) / `FoldMark` (enum, m8/17b) — a folded merge's mark, one space after the subject, muted (`TextMuted` through `ink`, so lifted on the cursor row; colour unverified): `Counting` `+`, `Count(n)` `+n` (0 draws nothing), `Unknown` `+?`; `words()`. ASCII in every tier; the subject is cut with `…` before it and it is never cut (left off only when it and one subject cell do not fit). Drawn before a `RowTag`; `subject_truncated` subtracts it.
-- `RowTag` (enum) — `Changed` (`✎ changed`, ASCII `~ changed`): a commit a put-in just changed. `words(ascii)`: the drawn words, `ascii` being `GraphView::ascii`. `StoppedHere` (`HEAD · stopped here`, both tiers; 07b): `HEAD`'s row at a rewrite's `edit` stop. `PutBack` (`↺ put back`, ASCII `put back`) and `WasHere { branch }` (`○ <branch> was here`, ASCII `<branch> was here`) — m7/24-a: what a J put-back restored and where a moved branch was. `words` returns `Cow<str>` since `WasHere` formats.
-- `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a row keeps before its tag is dropped.
-- `MarkerView` (struct) — a marker's `severity`, all a paint-time lens needs; draws `⚠`/`ⓘ` (ASCII `!`/`i`) in the marker slot, only while `GraphView::marker_column` and only in the row's colour token.
-- `GraphView::marker_column` (field) — the marker slot may draw a glyph this session: sticky once a finding is known, never toggles off on scroll (m2-details-and-diffs/13).
-- `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
-- `OrderNotice` (enum) — header notice: `Sorting` (date order while sorting) or `Provisional` (sort stopped; order stays).
-- `WalkView` (enum) — walk state for the header: opening, reading, jumping, paused (`N rows so far`, nothing asked — m6-conflicts/85), complete, cancelled (`stopped at N rows · ⌃R reloads`, shortened to fit the header), failed. Reading/Jumping are drawn exactly when `Esc` would cancel.
-- `GraphScreen` (struct) — the graph screen, ready to render.
-- `GraphScreen::new` (fn) — draw `view` in `theme`.
-- `GraphScreen::graph_area` (fn) — the graph column's rectangle inside the screen area, every body row tall: where pixel images are placed.
-- `GraphScreen::screen_rows` (fn) — the whole screen carved into rows **once**: `ScreenRows { header, banner, body, offer, footer }` (m8/19b: `tour`, the card's 3 rows under the banner, above `pending`), no two of which ever overlap (m5/19). A zero-height rect means that part is not on screen at this size. The header, the banner, the commit-graph offer and the hint bar used to work their rows out separately, each from `area.height` and its own idea of what else was drawn, and on a screen with one row to spare all three of the banner, the offer and the footer claimed it — the offer and then the footer drew over the banner, which is the modal one. The offer now yields to the banner, and the banner is clipped to the rows actually free. `body_layout` and `graph_area` read the body from here. Swept over every width and height by `tests/pane_boundaries.rs`.
-- `GraphScreen::column_boundaries` (fn) — every x at which one row column ends and the next begins in `area`, ascending, deduped, `area`'s own two edges included (m5-history-and-ghost-preview/28, ADR-0040). The same `Columns::compute` the rows are drawn with, handed out as data rather than recomputed, so an overlay's snap and the draw cannot disagree about where a column is. Empty for an empty area.
-- `snap_to_columns` (fn) — `snap_to_columns(rect, boundaries, bounds) -> Option<Rect>`: the whole of ADR-0040's rule, and pure. Moves **both** of `rect`'s edges outward and returns the widened rect: the left edge to the nearest boundary at or below it, the right edge to the **gutter** one cell short of the nearest boundary at or beyond it — ADR-0040 clause 3 (amended 2026-09-21, m5-history-and-ghost-preview/29), so a border never stands flush against the column beside it and `╮60af0eb` cannot happen. No gutter is taken at `bounds.right()`, where nothing is beside the box. A boundary whose gutter no longer covers `rect` is not a position and the search goes on outward; `None` when none is left inside `bounds`, which is the caller's signal to clear the band instead. Never shrinks the rect to reach a position (clause 2) and knows nothing about the graph or about any box (clause 4) — `graft::view::frame` composes it with `column_boundaries` at the layout site.
-- `row_layout` (fn) — `row_layout(view, area) -> RowLayout { body, columns }`: the body rect and the resolved `Columns` for this frame, worked out exactly the way the draw works them out. Handed out so a caller that has to reason about where something was drawn does not recompute it (m5-history-and-ghost-preview/10).
-- `RowLayout` (struct) — `body: Rect`, `columns: Columns`; what `row_layout` answers.
-- `Columns` (struct) — where each column of a row starts and how wide it is (graph, marker, subject, initials, date, sha), `Columns::compute(body, graph_width)`. Public since m5-history-and-ghost-preview/10 because the hit-test needs the same numbers the draw used.
-- `row_at` (fn) — `row_at(view, area, screen_row) -> Option<(&GraphEntry, Columns)>`: which drawn entry is at a screen row, and the columns it was drawn with. `None` off the body. The inverse of the draw's own `rows.iter().zip(area.top()..)`, from the same `body_layout`, so the two cannot drift.
-- `badge_spans` (fn) — `badge_spans(entry, columns, icons, keys: &Keymap) -> Vec<(Range<u16>, usize)>` (m8/09d: the base badge's width follows his compare key): the packing rule for a row's ref badges — the column range each badge occupies, with its index in `entry.refs`. **This is the only implementation of that packing**: `render::draw_badges` draws from it and `graft::view::hit::badge_index_at` hit-tests against it, so a badge is grabbable exactly where it is drawn. A badge clipped at the pane edge keeps its true span and the draw elides it with `…`. Pinned by `graph_screen::tests::badge_spans_match_the_drawn_cells`, which draws a row at three widths and both icon sets and reads every cell back (m5-history-and-ghost-preview/10).
-- `badges_that_fit` (fn) — `badges_that_fit(columns: u16) -> usize`, `columns / 2 + 1`: the most badges a row on a screen `columns` wide can draw. A row builder that stops there gets the same spans from `badge_spans`, cell for cell, and anything pushed after the cut (`only in stash`) still lands past the edge; the doc comment gives the arithmetic. `graft::view::entries::row_entry` cuts each row's badges to it (m8-polish-and-ship/12c: 16 000 refs on one commit cost 16 000 badges a row a frame). Pinned by `graph_screen::tests::many_refs_row_draws_like_its_first_badges` (16 000 badges vs the first `badges_that_fit` at 80/120/200 columns, both icon sets, with and without `only in stash`, whole buffers equal).
-- `ScreenRows` (struct) — the row rectangles above, plus `gap` (blank row under the header) and `rule` (`─` above the offer and bar), both zero-height unless `GraphView::spaced` (m8-polish-and-ship/06); `body` is inset by `GUTTER` and `RIGHT_MARGIN`; `Copy`, `PartialEq`. `column_boundaries` names the frame's edges, not the body's right edge.
-- `row_carve(area: Cells, inputs: CarveInputs) -> RowCarve` (fn, m8/40, private file `graph_screen/carve.rs`, re-exported) — **the** body of the row carve; `screen_rows(view, area)` is a thin wrapper (`CarveInputs::of(view)`, then this, then `Cells` → `Rect`). `graft::update::geometry::graph_carve` reads it over plain state, so `tour::card_rows` and `banner::pending_rows_taken` are its `tour`/`pending` heights rather than copies. Private `tour_rows`/`pending_rect` are called only from here.
-- `CarveInputs` (struct, m8/40) — what the carve reads of a `GraphView`, plain: `spaced`, `banner_rows`, `commit_graph`, `tour` (bool), `pending_rows` (`still_to_apply_height` of `pending`, 0 for none). `CarveInputs::of(&GraphView)`. `Copy`, `Default`, `PartialEq`.
-- `RowCarve` (struct, m8/40) — `ScreenRows` in `Cells`: same nine bands, same names, same zero-height rule.
-
-## graph_screen::badges
-- `Icons` (enum) — `Plain` (default, bracketed) or `Nerd` (icon-prefixed).
-- `Badge` (struct) — one ref on a commit: sanitised `name` and `kind`.
-- `Badge::text(icons, keys: &Keymap)` (fn) — the badge as it reads on screen in an icon set; the compare base reads `<compare key> base`, `base` alone when unbound (m8/09d).
-- `BadgeKind` (enum) — branch (identity, current, tracking), remote, tag, detached HEAD, stash, `CompareBase` (reads `x base`, m7-14), `OnlyInStash(n)` (reads `only in stash@{n}`, the stash's colour and Nerd icon; last on its row; m7-power-tools/16).
-- `Tracking` (enum) — untracked, in sync with a remote, or apart by ahead/behind counts.
-- `separator` (fn) — what goes between two badges in an icon set.
-
-## graph_screen::columns
-- `initials` (fn) — two letters standing in for a sanitised name, for the author chip.
-- `relative_date(then, now)` (fn) — how long ago `then` was relative to `now` (both Unix seconds), in short form (`"2m"`, `"3h"`, `"2d"`, `"2w"`, `"2mo"`, `"1y"`), rounding to match `git log --date=relative`'s cascade exactly (m1-the-graph/48) — units below "now" never read `1`, only years can; `then > now` reads `"future"` (m1-the-graph/53).
-- `relative_date_long(then, now)` (fn) — the same ladder spelled for a sentence: `"7 months ago"`, `"1 year ago"`, `"just now"`, `"in the future"` (m7-power-tools/20c, the blame trailer).
-- `absolute_date` (fn) — a commit's recorded date in its own offset, `"2026-09-13 14:02 +0500"` (Hinnant's `civil_from_days`, integer-only, no date/time crate) (m1-the-graph/34).
-- `short_sha` (fn) — the first N hex characters of a full object id.
 
 ## journal_screen
 The undo journal browser (`J`, DESIGN.md §1.10): every write this repository
