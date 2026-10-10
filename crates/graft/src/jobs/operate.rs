@@ -399,7 +399,7 @@ fn in_context(
         Ok(path) => path,
         Err(error) => return nothing_ran(&error),
     };
-    let mut journal = match Journal::open(&path) {
+    let mut journal = match Journal::open_as(&path, handle.on_disk_names()) {
         Ok(journal) => journal,
         Err(error) => return nothing_ran(&error),
     };

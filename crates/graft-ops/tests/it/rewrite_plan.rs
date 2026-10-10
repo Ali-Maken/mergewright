@@ -625,7 +625,9 @@ fn progress_names_the_branch_of_the_step() {
     // The plan a Graft rewrite saves before its Pending line, on disk as a
     // relaunch reads it (the format is a contract: a newer Graft reads what
     // an older one left mid-rewrite).
-    let dir = repo.path().join(".git/graft/rewrite/1700000000000-0000");
+    let dir = repo
+        .path()
+        .join(".git/tributary/rewrite/1700000000000-0000");
     std::fs::create_dir_all(&dir).expect("the plan dir is made");
     let plan_json = format!(
         r#"{{"home":"refs/heads/feature-a","line":[["refs/heads/feature-a","{}"],["refs/heads/feature-b","{}"],["refs/heads/feature-c","{}"]],"onto":"{}"}}"#,

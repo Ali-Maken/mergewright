@@ -54,7 +54,7 @@ pub fn truth(fixture: &Fixture, statuses: &[String]) -> Result<Truth, String> {
 
 /// The journal's entries, or none when no write has happened yet.
 pub fn journal(work: &Path) -> Result<Vec<JournalEntry>, String> {
-    let path = work.join(".git/graft/undo-journal.jsonl");
+    let path = work.join(".git/tributary/undo-journal.jsonl");
     if !path.exists() {
         return Ok(Vec::new());
     }

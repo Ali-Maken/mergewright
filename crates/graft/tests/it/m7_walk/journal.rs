@@ -53,7 +53,16 @@ fn with_context<T>(
     at_ms: i64,
     run: impl FnOnce(&mut Context<'_>) -> Result<T, String>,
 ) -> Result<(), String> {
-    let repo = RepoHandle::open(work).map_err(|why| why.to_string())?;
+    // Settled first, as the app opens every repository (ticket 26): the
+    // fixture's history is written under the names the app reads, so no
+    // move — and no J row for one — lands in the walk.
+    let opened = RepoHandle::open(work).map_err(|why| why.to_string())?;
+    let settled = graft_ops::rename::settle_names(&opened);
+    let repo = if settled.names == opened.on_disk_names() {
+        opened
+    } else {
+        RepoHandle::open(work).map_err(|why| why.to_string())?
+    };
     let path = journal_path(&repo).map_err(|why| why.to_string())?;
     let mut journal = Journal::open(&path).map_err(|why| why.to_string())?;
     let version = graft_git::version::system_git()

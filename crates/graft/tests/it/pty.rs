@@ -88,7 +88,7 @@ impl Isolated {
 
     /// The first-launch count's file (m8/18d).
     pub fn launches_file(&self) -> PathBuf {
-        self.config().join("graft").join("launches")
+        self.config().join("tributary").join("launches")
     }
 
     /// The root, canonical: on macOS the temp dir is under a `/var` that is
@@ -113,7 +113,7 @@ impl Isolated {
 
     /// The recent list's file.
     pub fn recent_file(&self) -> PathBuf {
-        self.config().join("graft").join("recent")
+        self.config().join("tributary").join("recent")
     }
 
     /// Write the recent list: `(unix secs, path)`, newest first.

@@ -292,12 +292,12 @@ fn redo_of_an_undone_abort_is_allowed_while_the_merge_is_back() {
 }
 
 /// Every git file under the repository's git dir that is not a directory
-/// Graft keeps (`graft/`, `objects/`, `refs/`, `logs/`, `hooks/`, `info/`)
+/// Graft keeps (`tributary/`, `objects/`, `refs/`, `logs/`, `hooks/`, `info/`)
 /// nor the index, with its bytes — plus `rr-cache/`, walked. What a merge
 /// and its abort leave or take away, and what `u` does or does not put back.
 fn git_state_files(repo: &TempRepo) -> std::collections::BTreeMap<String, Vec<u8>> {
     const SKIP: [&str; 9] = [
-        "graft",
+        "tributary",
         "objects",
         "refs",
         "logs",

@@ -393,7 +393,7 @@ fn m_again_merges_through_the_real_path() {
 
 /// The journal, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal the writes just made is readable")
         .entries()
         .to_vec()

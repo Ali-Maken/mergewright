@@ -93,6 +93,8 @@ mod radar_not_checked;
 mod rebase_stop_forecast;
 mod refresh_race;
 mod remote_by_key;
+mod rename_opens;
+mod rename_status;
 mod repo_truth;
 mod resolver;
 mod rewrite_stop;

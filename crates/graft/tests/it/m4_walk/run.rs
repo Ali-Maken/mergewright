@@ -78,7 +78,7 @@ pub fn askpass_helper() -> Result<PathBuf, String> {
 /// line or open-prompt `{state:?}` the loop saw. Checked after every
 /// scenario, not only the HTTP ones: the rule is about the whole app.
 pub fn no_secret_leaked(fixture: &Fixture, seen: &Recorded) -> Result<(), String> {
-    let journal_path = fixture.work().join(".git/graft/undo-journal.jsonl");
+    let journal_path = fixture.work().join(".git/tributary/undo-journal.jsonl");
     let journal_bytes = match std::fs::read(&journal_path) {
         Ok(bytes) => bytes,
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => Vec::new(),

@@ -105,7 +105,7 @@ fn resolve(path: &str, side: Side, how: UnmergedHow) -> Operation {
 }
 
 fn journal_lines(repo: &TempRepo) -> usize {
-    std::fs::read_to_string(repo.path().join(".git/graft/undo-journal.jsonl"))
+    std::fs::read_to_string(repo.path().join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal reads")
         .lines()
         .count()

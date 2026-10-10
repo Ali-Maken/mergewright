@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::on_disk::OnDiskNames;
 
+use super::folder::{ConfigDirMoved, config_names, decide, migrate_config_dir};
 use super::types::Config;
 
 /// What [`load`] found.
@@ -67,6 +68,13 @@ pub enum ConfigWarning {
         /// What he wrote: the text of a string, the TOML of anything else.
         value: String,
     },
+    /// The config folder's move to its new name (ticket 26) left something
+    /// to say: the old folder still beside the new one, or the move failed
+    /// and the old one is still in use.
+    ConfigFolder {
+        /// What happened, in words.
+        words: String,
+    },
 }
 
 /// A warning is not a failure — nothing was prevented, and nobody can `?` on
@@ -90,6 +98,7 @@ impl fmt::Display for ConfigWarning {
             ConfigWarning::BadColour { path, value } => {
                 write!(f, "{path}: \"{value}\" is not a #RRGGBB colour")
             }
+            ConfigWarning::ConfigFolder { words } => write!(f, "config folder: {words}"),
         }
     }
 }
@@ -129,8 +138,16 @@ pub enum ConfigError {
 ///
 /// Returns defaults if there is no file there. Tests use [`load_from`] with a
 /// path of their own; nothing here ever reads a real home directory in a test.
+///
+/// First moves the config folder to its new name, once (ticket 26,
+/// `config::folder`), so this read is already of the new folder; a move that
+/// could not finish keeps the old folder for this run and says why among the
+/// warnings. Called once, at startup: the names it settles on hold for the
+/// rest of the process (`recent`, `launches`).
 pub fn load() -> Result<Loaded, ConfigError> {
-    load_at(default_path())
+    let (names, loaded) = load_settling(|name| env::var_os(name))?;
+    decide(names);
+    Ok(loaded)
 }
 
 /// Load a config file from an explicit path, for tests and for a future
@@ -154,8 +171,9 @@ pub fn load_from(path: &Path) -> Result<Loaded, ConfigError> {
     Ok(loaded)
 }
 
-/// Where `load` looks: `$XDG_CONFIG_HOME/graft/config.toml`, falling back to
-/// `$HOME/.config/graft/config.toml`. `None` when neither is usable.
+/// Where `load` looks: `$XDG_CONFIG_HOME/tributary/config.toml`, falling
+/// back to `$HOME/.config/tributary/config.toml` — the old folder name when
+/// its move failed this run. `None` when neither is usable.
 pub fn default_path() -> Option<PathBuf> {
     path_in_environment(|name| env::var_os(name))
 }
@@ -179,7 +197,13 @@ pub(super) fn load_at(path: Option<PathBuf>) -> Result<Loaded, ConfigError> {
 /// resolving it against the current directory would put a user's config
 /// somewhere different every time they `cd`.
 pub(super) fn path_in_environment(read: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    let config_home = read("XDG_CONFIG_HOME")
+    config_home(read).map(|home| config_file(&home, config_names()))
+}
+
+/// The config home the environment names: `$XDG_CONFIG_HOME`, else
+/// `$HOME/.config`, each only when absolute (see [`path_in_environment`]).
+pub(super) fn config_home(read: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    read("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
         .or_else(|| {
@@ -187,16 +211,52 @@ pub(super) fn path_in_environment(read: impl Fn(&str) -> Option<OsString>) -> Op
                 .map(PathBuf::from)
                 .filter(|path| path.is_absolute())
                 .map(|home| home.join(".config"))
-        })?;
-
-    Some(config_home.join(CONFIG_NAMES.dir()).join("config.toml"))
+        })
 }
 
-/// The on-disk names the config root uses: the app's folder under
-/// `$XDG_CONFIG_HOME` (or `~/.config`), holding `config.toml`, `recent` and
-/// `launches`. One seam for all three (ADR-0057, Amendment): still the old
-/// folder until the config-dir move (m8-polish-and-ship/26 Part B) lands.
-pub(crate) const CONFIG_NAMES: OnDiskNames = OnDiskNames::Old;
+/// `config.toml` in the app's folder under `config_home`, by `names`.
+fn config_file(config_home: &Path, names: OnDiskNames) -> PathBuf {
+    config_home.join(names.dir()).join("config.toml")
+}
+
+/// The config folder's move under `config_home`, the way [`load`] makes it
+/// (ticket 26): the names to use for the rest of the run, and what to say.
+/// No config home, nothing to move — the new names, unused.
+pub(super) fn settle_folder(config_home: Option<&Path>) -> (OnDiskNames, Option<ConfigWarning>) {
+    let Some(home) = config_home else {
+        return (OnDiskNames::New, None);
+    };
+    match migrate_config_dir(home) {
+        Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => (OnDiskNames::New, None),
+        Ok(ConfigDirMoved::BothPresent { old }) => (
+            OnDiskNames::New,
+            Some(ConfigWarning::ConfigFolder {
+                words: format!(
+                    "{} is still there beside the new folder; the new one is in use",
+                    old.display()
+                ),
+            }),
+        ),
+        Err(error) => (
+            OnDiskNames::Old,
+            Some(ConfigWarning::ConfigFolder {
+                words: format!("not moved to its new name, the old one stays in use: {error}"),
+            }),
+        ),
+    }
+}
+
+/// [`load`] against an arbitrary environment, the names it settled on
+/// returned rather than decided for the process — what a test drives.
+pub(super) fn load_settling(
+    read: impl Fn(&str) -> Option<OsString>,
+) -> Result<(OnDiskNames, Loaded), ConfigError> {
+    let home = config_home(read);
+    let (names, moved) = settle_folder(home.as_deref());
+    let mut loaded = load_at(home.map(|home| config_file(&home, names)))?;
+    loaded.warnings.extend(moved);
+    Ok((names, loaded))
+}
 
 /// The whole file, in two passes over the same text.
 ///

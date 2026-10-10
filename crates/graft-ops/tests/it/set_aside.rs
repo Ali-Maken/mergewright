@@ -581,7 +581,7 @@ fn a_clashing_put_back_is_clashed_and_keeps_the_stash() {
 
     let entries = journal_entries(&repo);
     let handle = repo.open();
-    let scratch = repo.path().join(".git/graft");
+    let scratch = repo.path().join(".git/tributary");
     let index_now =
         graft_ops::snapshot::index_state(&handle, &scratch, &Never).expect("the index reads");
     let found = live_clash(&entries, None, &index_now, &[(stash, 0)]).expect("the clash is live");
@@ -668,7 +668,7 @@ fn a_journal_failure_after_a_clash_names_the_stash() {
     let (repo, op) = clashing_checkout();
     post_checkout(
         &repo,
-        "j=$(git rev-parse --git-path graft/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\"",
+        "j=$(git rev-parse --git-path tributary/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\"",
     );
     let error = match try_run(&repo, &op, NOW) {
         Err(error @ ApplyError::Journal { .. }) => error,
@@ -691,7 +691,7 @@ fn a_journal_failure_after_a_clean_put_back_names_what_came_back() {
     std::fs::remove_file(repo.path().join("notes.md")).expect("removed");
     post_checkout(
         &repo,
-        "j=$(git rev-parse --git-path graft/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\"",
+        "j=$(git rev-parse --git-path tributary/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\"",
     );
     let op = checkout_to(&repo, "refs/heads/feature");
     let error = match try_run(&repo, &op, NOW) {

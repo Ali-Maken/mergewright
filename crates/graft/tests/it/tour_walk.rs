@@ -612,7 +612,7 @@ impl Before {
         Self {
             truth: git_truth(repo).expect("his repo reads"),
             journal: journal_bytes(repo),
-            graft_dir: bytes_under(&repo.join(".git").join("graft")),
+            graft_dir: bytes_under(&repo.join(".git").join("tributary")),
             state: bytes_under(&isolated.config()),
         }
     }
@@ -624,12 +624,12 @@ impl Before {
     }
 
     /// Every file of the state folder (recents, layout, first-launch) and
-    /// of his `.git/graft/`.
+    /// of his `.git/tributary/`.
     fn state_dir_is_unchanged(&self, repo: &Path, isolated: &Isolated) {
         assert_eq!(
-            bytes_under(&repo.join(".git").join("graft")),
+            bytes_under(&repo.join(".git").join("tributary")),
             self.graft_dir,
-            ".git/graft"
+            ".git/tributary"
         );
         assert_eq!(bytes_under(&isolated.config()), self.state, "state folder");
     }

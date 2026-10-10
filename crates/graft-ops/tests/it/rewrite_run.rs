@@ -525,7 +525,7 @@ fn resume_with(repo: &TempRepo, how: Resume) -> Result<Applied, ApplyError> {
 
 /// The saved plans still on disk.
 fn plans_left(repo: &TempRepo) -> Vec<PathBuf> {
-    match std::fs::read_dir(repo.path().join(".git/graft/rewrite")) {
+    match std::fs::read_dir(repo.path().join(".git/tributary/rewrite")) {
         Ok(entries) => entries
             .map(|entry| entry.expect("it reads").path())
             .collect(),

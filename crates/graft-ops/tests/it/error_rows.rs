@@ -309,10 +309,10 @@ fn chain_states_maps_each_error_kind() {
     }
 }
 
-/// Breaks every loose ref under `refs/graft/` the moment the commit lands:
+/// Breaks every loose ref under `refs/tributary/` the moment the commit lands:
 /// after `begin` made the backup ref, before `finish` seals onto it.
 const BREAK_BACKUP_REFS: &str = "#!/bin/sh
-for f in $(find \"$(git rev-parse --git-dir)/refs/graft\" -type f); do
+for f in $(find \"$(git rev-parse --git-dir)/refs/tributary\" -type f); do
   echo 'not an object id' > \"$f\"
 done
 ";

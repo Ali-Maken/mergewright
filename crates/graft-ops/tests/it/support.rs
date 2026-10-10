@@ -19,6 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use graft_core::journal::JournalEntry;
+use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::version::GitVersion;
@@ -39,7 +40,21 @@ impl TempRepo {
     /// A fresh `git init` with a hermetic local config: identity set, and the
     /// global-config knobs that would otherwise reach in (signing, CRLF
     /// translation) turned off locally, where local wins.
+    ///
+    /// Already on the new on-disk names (marker `clean`, ticket 26): the
+    /// app settles every repository before anything else touches it, so the
+    /// suite runs where every repository the app works on ends up.
     pub fn init() -> TempRepo {
+        let repo = TempRepo::init_old_names();
+        let dir = repo.path.join(".git").join(OnDiskNames::New.dir());
+        std::fs::create_dir_all(&dir).expect("the names dir is made");
+        std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker writes");
+        repo
+    }
+
+    /// [`init`](Self::init) as a build before the rename left it: no
+    /// marker, so the old names are in force until something settles them.
+    pub fn init_old_names() -> TempRepo {
         let repo = TempRepo::scratch();
         repo.git(&["init", "-q", "-b", "main", "."]);
         repo.harden(Path::new("."));
@@ -224,7 +239,11 @@ impl Stop for StopWhenGone {
 
 /// Open a journal for a repository.
 pub fn journal_for(repo: &RepoHandle) -> Journal {
-    Journal::open(&journal_path(repo).expect("the journal path resolves")).expect("it opens")
+    Journal::open_as(
+        &journal_path(repo).expect("the journal path resolves"),
+        repo.on_disk_names(),
+    )
+    .expect("it opens")
 }
 
 /// A `Context` over a repository and its journal.
@@ -263,7 +282,9 @@ pub fn state_of(repo: &TempRepo) -> RepoState {
     let refs = repo
         .git(&["for-each-ref", "--format=%(refname) %(objectname)"])
         .lines()
-        .filter(|line| !line.starts_with("refs/graft/"))
+        // Under either name: a repository on the old names (ticket 26) has
+        // its backups under the old prefix until it is moved.
+        .filter(|line| !line.starts_with("refs/tributary/") && !line.starts_with("refs/graft/"))
         .collect::<Vec<_>>()
         .join("\n");
     let index = repo.git(&["ls-files", "-s"]);

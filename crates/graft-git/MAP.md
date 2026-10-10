@@ -11,6 +11,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `contained` (mod) — which branches, remotes and tags contain a commit.
 - `diff` (mod) — diff reads and pure parsers: unified patches, file lists, hunk pairing, partial patches.
 - `editor` (mod) — the user's editor as git resolves it.
+- `file_lock` (mod) — advisory whole-file locks (`flock`, nix `fs`): alone or shared; the on-disk rename's lock.
 - `history` (mod) — rev-walks: chunked, ordered, resumable; the commit id table; reflog-based reads.
 - `history_reads` (mod) — reads history operations plan against: ranges, merge bases, merge forecasts, changed paths.
 - `mailmap` (mod) — `.mailmap` resolution via gix's parser.
@@ -124,6 +125,11 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 ## editor
 - `EditorError` (enum) — why the editor could not be resolved.
 - `git_editor` (fn) — `(directory) -> Result<String, EditorError>`; `git var GIT_EDITOR` through `run`.
+
+## file_lock
+- `FileLock` (struct) — a held `flock`, released on drop.
+- `FileLock::try_exclusive` (fn) — `(path) -> io::Result<Option<FileLock>>`; the lock alone, `None` when anyone holds it; never blocks.
+- `FileLock::shared` (fn) — `(path) -> io::Result<FileLock>`; a shared lock, waiting out an exclusive holder.
 
 ## history
 - `CHUNK` (const) — commits per chunk a walk hands back.

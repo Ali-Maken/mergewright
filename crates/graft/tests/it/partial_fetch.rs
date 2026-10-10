@@ -30,7 +30,7 @@ fn tracking(remote: &LocalRemote) -> String {
 }
 
 fn journal(repo: &std::path::Path) -> Vec<JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal the writes made is readable")
         .entries()
         .to_vec()

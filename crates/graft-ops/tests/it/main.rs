@@ -43,6 +43,7 @@ mod racy_index;
 mod recover;
 mod recover_bytes;
 mod remote_ops;
+mod rename;
 mod restart_gate;
 mod restart_whole_file;
 mod rewrite_followers;

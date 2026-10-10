@@ -378,7 +378,7 @@ fn a_journal_failure_after_a_failed_raw_step_keeps_its_words() {
     repo.git(&[
         "config",
         "filter.breaks-journal.smudge",
-        "j=$(git rev-parse --git-path graft/undo-journal.jsonl); \
+        "j=$(git rev-parse --git-path tributary/undo-journal.jsonl); \
          if grep -q 'put back your edit' \"$j\" 2>/dev/null; then rm -f \"$j\" && mkdir \"$j\"; fi; cat",
     ]);
 

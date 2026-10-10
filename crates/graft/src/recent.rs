@@ -72,7 +72,7 @@ impl fmt::Display for RecentError {
 /// `~/.config`).
 pub(crate) fn recent_file(config_dir: &Path) -> PathBuf {
     config_dir
-        .join(crate::config::CONFIG_NAMES.dir())
+        .join(crate::config::config_names().dir())
         .join("recent")
 }
 

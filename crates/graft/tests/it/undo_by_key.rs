@@ -46,7 +46,7 @@ fn journal(repo: &std::path::Path) -> Vec<graft_core::journal::JournalEntry> {
 
 /// Where a repository's journal lives.
 fn journal_path(repo: &std::path::Path) -> std::path::PathBuf {
-    repo.join(".git/graft/undo-journal.jsonl")
+    repo.join(".git/tributary/undo-journal.jsonl")
 }
 
 /// Discard an untracked file, then `u`: the file comes back byte for byte,

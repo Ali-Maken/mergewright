@@ -245,9 +245,10 @@ pub fn tour_progress(work: &Path) -> Result<[bool; 8], TourError> {
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => return Ok([false; 8]),
         Err(why) => return Err(TourError::Journal(why.into())),
     };
-    let parsed = parse(&bytes).map_err(TourError::Journal)?;
-    let conflicted = conflicted_merges(&repo, &parsed.entries)?;
-    Ok(tasks_done(&parsed.entries, &conflicted))
+    let mut entries = parse(&bytes).map_err(TourError::Journal)?.entries;
+    crate::rename::map_entries(&mut entries, repo.on_disk_names());
+    let conflicted = conflicted_merges(&repo, &entries)?;
+    Ok(tasks_done(&entries, &conflicted))
 }
 
 /// The committed `Merge` entries whose result git could not have made

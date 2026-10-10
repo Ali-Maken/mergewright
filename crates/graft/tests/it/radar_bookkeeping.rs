@@ -1,6 +1,6 @@
 //! m6-conflicts/66: the Mistake Radar ignores Graft's and git's own
 //! bookkeeping. After a pull that rebases, the pre-rebase commits live on in
-//! `refs/graft/backup/**` (for `u`) and under a stash made on the old tip;
+//! `refs/tributary/backup/**` (for `u`) and under a stash made on the old tip;
 //! neither makes the rebased commits "duplicates", and the stash commit is
 //! never called an evil merge.
 #![allow(
@@ -89,11 +89,11 @@ fn stash_then_rebase(remote: &LocalRemote) -> (App, AppState, String, String) {
     assert!(
         holders
             .lines()
-            .any(|name| name.starts_with("refs/graft/backup/"))
+            .any(|name| name.starts_with("refs/tributary/backup/"))
             && holders.lines().any(|name| name == "refs/stash")
             && holders
                 .lines()
-                .all(|name| name.starts_with("refs/graft/") || name == "refs/stash"),
+                .all(|name| name.starts_with("refs/tributary/") || name == "refs/stash"),
         "ours lives on only in Graft's backups and the stash: {holders}"
     );
     (app, state, stash, rebased)

@@ -75,7 +75,7 @@ fn the_worktree_snapshot_keeps_a_racily_clean_edit() {
     racily_clean(&repo, "x.txt", b"feature\n", b"my edit\n");
 
     let handle = repo.open();
-    let scratch = repo.path().join(".git/graft");
+    let scratch = repo.path().join(".git/tributary");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
 

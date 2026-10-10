@@ -21,6 +21,7 @@ pub mod layout;
 pub mod map;
 pub(crate) mod recent;
 pub mod refs;
+pub mod rename;
 pub mod repos;
 pub mod repository;
 pub mod search;

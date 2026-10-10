@@ -85,7 +85,7 @@ fn rev(repo: &Path, name: &str) -> String {
 }
 
 fn journal(repo: &Path) -> Vec<JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal the writes made is readable")
         .entries()
         .to_vec()
@@ -291,8 +291,8 @@ fn push_answering(
 
 /// None of `secrets` is in the undo journal's bytes.
 fn assert_not_in_journal(work: &Path, secrets: &[&str]) {
-    let journal_bytes =
-        std::fs::read(work.join(".git/graft/undo-journal.jsonl")).expect("the journal is readable");
+    let journal_bytes = std::fs::read(work.join(".git/tributary/undo-journal.jsonl"))
+        .expect("the journal is readable");
     for secret in secrets {
         assert!(
             !journal_bytes

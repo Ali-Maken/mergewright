@@ -367,7 +367,7 @@ fn take_all_and_mark(app: &App, state: AppState) -> AppState {
 
 /// The journal on disk, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
         .expect("the journal the merge just wrote is readable")
         .entries()
         .to_vec()
