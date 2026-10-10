@@ -45,12 +45,12 @@ pub(super) fn rows_above_graph(state: &AppState) -> u16 {
 /// block's (`banner::pending_rows_taken`) are read off it.
 pub(super) fn graph_carve(state: &AppState) -> graft_ui::graph_screen::RowCarve {
     let tab = super::banner::tab_rows_above_graph(state);
-    let area = (
-        0,
-        tab,
-        state.size.columns,
-        state.size.rows.saturating_sub(tab),
-    );
+    let area = graft_ui::Cells {
+        x: 0,
+        y: tab,
+        width: state.size.columns,
+        height: state.size.rows.saturating_sub(tab),
+    };
     graft_ui::graph_screen::row_carve(area, state.carve_inputs())
 }
 
@@ -379,14 +379,7 @@ pub(super) fn context_menu_graph_bounds(state: &AppState) -> Option<Bounds> {
 /// (`view::frame::boxes::draw_picker`) reads too.
 pub(super) fn picker_bounds(state: &AppState) -> Option<Bounds> {
     let pane = context_menu_graph_bounds(state)?;
-    let (x, y, width, height) =
-        super::picker::picker_box_in(state, (pane.x, pane.y, pane.width, pane.height));
-    Some(Bounds {
-        x,
-        y,
-        width,
-        height,
-    })
+    Some(super::picker::picker_bounds_in(state, pane))
 }
 
 /// The overview strip's own one-column rectangle, while it is shown

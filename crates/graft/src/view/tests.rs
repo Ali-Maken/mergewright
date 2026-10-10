@@ -4343,7 +4343,7 @@ fn confirm_over_graph(columns: u16, rows: u16) -> AppState {
 /// `draw` returns `TestBackend`'s debug rendering, which frames each row in
 /// quotes and marks style changes inline; an assertion about *cells* has to
 /// read cells, so this goes to the buffer instead.
-fn draw_cells(state: &AppState, columns: u16, rows: u16) -> Vec<Vec<String>> {
+pub(crate) fn draw_cells(state: &AppState, columns: u16, rows: u16) -> Vec<Vec<String>> {
     let mut terminal =
         Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
     terminal

@@ -23,6 +23,7 @@ use graft_ui::text_input::TextField;
 
 use super::detail::Loading;
 use super::events::Command;
+use super::geometry::Bounds;
 use super::state::{AppState, Screen};
 use super::switch::SwitchTarget;
 
@@ -246,16 +247,14 @@ fn show_on_graph(state: &mut AppState, commands: &mut Vec<Command>) {
     super::map::seek_to(state, commands, tip);
 }
 
-/// Where the box goes in the graph `pane` (`(x, y, width, height)`, the
-/// header row included): over the rows the graph itself draws, so neither
-/// the header, a banner above nor the footer's notice and hint rows below
-/// are covered, then `graft_ui::picker::picker_box`. The one placement both
+/// Where the box goes in the graph `pane` (the header row included): over
+/// the rows the graph itself draws, so neither the header, a banner above
+/// nor the footer's notice and hint rows below are covered, then `graft_ui::picker::picker_box`. The one placement both
 /// the drawing (`view::frame::boxes`) and the mouse
 /// ([`super::geometry::picker_bounds`]) read, so a click lands on the row
 /// the eye sees.
 #[must_use]
-pub fn picker_box_in(state: &AppState, pane: (u16, u16, u16, u16)) -> (u16, u16, u16, u16) {
-    let (x, y, width, height) = pane;
+pub fn picker_box_in(state: &AppState, pane: graft_ui::Cells) -> graft_ui::Cells {
     let above = super::geometry::rows_above_graph(state);
     // The footer's rows (the chrome less the header and the gap under
     // it: the bar, and the rule from 30 rows) and the commit-graph offer's
@@ -263,7 +262,33 @@ pub fn picker_box_in(state: &AppState, pane: (u16, u16, u16, u16)) -> (u16, u16,
     let below = (graft_ui::graph_screen::chrome_rows(state.size.rows)
         - super::geometry::header_rows(state))
         + u16::from(state.commit_graph_line().is_some());
-    graft_ui::picker::picker_box((x, y + above, width, height.saturating_sub(above + below)))
+    graft_ui::picker::picker_box(graft_ui::Cells {
+        y: pane.y + above,
+        height: pane.height.saturating_sub(above + below),
+        ..pane
+    })
+}
+
+/// [`picker_box_in`] in `geometry`'s own bounds, for the mouse
+/// ([`super::geometry::picker_bounds`]).
+pub(super) fn picker_bounds_in(state: &AppState, pane: Bounds) -> Bounds {
+    let (x, y, width, height) = (pane.x, pane.y, pane.width, pane.height);
+    let at = picker_box_in(
+        state,
+        graft_ui::Cells {
+            x,
+            y,
+            width,
+            height,
+        },
+    );
+    let (x, y, width, height) = (at.x, at.y, at.width, at.height);
+    Bounds {
+        x,
+        y,
+        width,
+        height,
+    }
 }
 
 /// Two clicks on one row this close together are a double-click (blame's).

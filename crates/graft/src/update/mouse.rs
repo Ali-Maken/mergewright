@@ -65,6 +65,9 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     if super::picker::picker_mouse(next, commands, mouse) {
         return;
     }
+    if preview_mouse(next, commands, mouse) {
+        return;
+    }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: any
     // button down either dispatches (inside it) or closes it (outside), and
     // nothing else this click would have done happens in the same press.
@@ -95,6 +98,22 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
         MouseKind::Moved => next.hover = geometry::graph_row_at(next, mouse.row),
         _ => {}
     }
+}
+
+/// An open preview box is modal to the left button: a click on one of its
+/// buttons is that choice, and any other left click is swallowed rather
+/// than selecting a graph row behind the box. `true` when the box took it.
+/// (Before m8/44 a click on `[ Confirm ]` fell through to the graph.)
+fn preview_mouse(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) -> bool {
+    if !matches!(mouse.kind, MouseKind::Down(MouseButton::Left)) {
+        return false;
+    }
+    let mut local_jobs = next.local_jobs;
+    let taken = super::preview::preview_click(next, commands, mouse.column, mouse.row, &mut || {
+        local_jobs.next_id()
+    });
+    next.local_jobs = local_jobs;
+    taken
 }
 
 /// A right button down: picks the row, then opens its menu.

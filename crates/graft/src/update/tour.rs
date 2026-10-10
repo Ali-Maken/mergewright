@@ -51,7 +51,7 @@ impl TourState {
 /// every click row agree with what is drawn.
 #[must_use]
 pub(crate) fn card_rows(state: &AppState) -> u16 {
-    super::geometry::graph_carve(state).tour.3
+    super::geometry::graph_carve(state).tour.height
 }
 
 /// The tail of every `update`: a write that ended (`operating` let go)
