@@ -20,7 +20,7 @@ checked: never the user's real one), waits WAIT seconds for the load, then:
 
 Times are wall clock from the write to the pty to the read that made the
 screen true, so they include the terminal side (pyte here) — an upper bound
-on Graft's own. Prints `SUMMARY` lines, numbers only: no ref names.
+on Tributary's own. Prints `SUMMARY` lines, numbers only: no ref names.
 """
 
 import os
@@ -35,7 +35,7 @@ import termios
 import pyte
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from graft_sandbox import sandbox_env  # noqa: E402
+from trib_sandbox import sandbox_env  # noqa: E402
 
 CTRL_P = b"\x10"
 ESC = b"\x1b"
@@ -145,7 +145,7 @@ def main():
 
     try:
         os.write(fd, b"q")
-    except OSError as why:  # Graft already gone: the exit line says so
+    except OSError as why:  # Tributary already gone: the exit line says so
         broken.append(f"quit_{type(why).__name__}")
     term.drain(1.0)
     finished, status = os.waitpid(pid, os.WNOHANG)

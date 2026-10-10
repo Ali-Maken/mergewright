@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 47 debugger: Graft-process RSS on the MONOREPO fixture over a real pty, at a rev.
+# 47 debugger: Tributary-process RSS on the MONOREPO fixture over a real pty, at a rev.
 #
 #   BISECT_WT=<dir> scripts/47-debug-rss.sh <rev|.> [hold_s]
 #

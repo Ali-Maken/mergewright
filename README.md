@@ -1,9 +1,8 @@
-# Graft
+# Tributary
 
-> **"Graft" is a working codename, not the name.** It is taken by another Git
-> GUI. The release name is decided (ADR-0057) and the rename lands before
-> anything is published; nothing is published, registered or tagged under
-> this one.
+> **"Tributary" (command `trib`) is a placeholder name, not the final one.**
+> The final name is still to be discussed; nothing is published, registered
+> or tagged under this one.
 
 A terminal Git client for the daily work: read history as a graph, stage,
 commit, branch, merge, rebase, stash, fetch, pull and push, all from the
@@ -38,8 +37,8 @@ for the rename (ADR-0057). The commands will carry the release name; `<owner>`
 is the account the release is published from.
 
 ```sh
-brew install <owner>/tap/graft                     # Homebrew tap
-curl -LsSf https://github.com/<owner>/graft/releases/latest/download/graft-installer.sh | sh
+brew install <owner>/tap/trib                      # Homebrew tap
+curl -LsSf https://github.com/<owner>/<repo>/releases/latest/download/trib-installer.sh | sh
 ```
 
 From a checkout of this repository, today (needs stable Rust, MSRV 1.88, and
@@ -49,17 +48,18 @@ From a checkout of this repository, today (needs stable Rust, MSRV 1.88, and
 cargo install --locked --path crates/graft
 ```
 
-Then `man ./docs/man/graft.1` reads the manual: every flag, every key in every
-place, every config key, the environment and the files Graft writes.
+Then `man ./docs/man/trib.1` reads the manual: every flag, every key in every
+place, every config key, the environment and the files Tributary writes.
+`GRAFT_*` environment variables are no longer read: each is now `TRIB_*`.
 
 ## First run
 
 ```sh
-graft              # the repository the current directory is in
-graft ../api       # or any other
+trib               # the repository the current directory is in
+trib ../api        # or any other
 ```
 
-- Outside a repository, Graft shows where you can go: a recent repository,
+- Outside a repository, Tributary shows where you can go: a recent repository,
   open, init, clone, or `t` for a practice tour in a throwaway repository.
 - `?` shows the keys for the place you are in.
 - `⌃P` opens the command palette: every action, found by name.
@@ -68,7 +68,7 @@ graft ../api       # or any other
 
 ## Command line
 
-`graft --help` prints it:
+`trib --help` prints it:
 
 ```text
 usage: trib [<path>]
@@ -106,10 +106,11 @@ any of them by the name in the last column.
 
 ## Configuration
 
-`$XDG_CONFIG_HOME/graft/config.toml`, or `$HOME/.config/graft/config.toml`.
+`$XDG_CONFIG_HOME/tributary/config.toml`, or `$HOME/.config/tributary/config.toml`
+(an old `graft/` folder there is moved on first launch).
 No file is the normal case, and every key is optional. An unknown key is a
 warning, so a file written for a later version still starts this one; a value
-a key does not take stops Graft with the line and column. Every key, its
+a key does not take stops Tributary with the line and column. Every key, its
 values and its default are in the man page's CONFIGURATION section.
 
 ```toml
@@ -180,8 +181,8 @@ cargo nextest run
 cargo test --doc
 ```
 
-`docs/man/graft.1` is generated; a test fails when it is stale. Regenerate it
-with `cargo run -q -p graft -- --generate-man > docs/man/graft.1`.
+`docs/man/trib.1` is generated; a test fails when it is stale. Regenerate it
+with `cargo run -q -p graft -- --generate-man > docs/man/trib.1`.
 
 ## Licence
 

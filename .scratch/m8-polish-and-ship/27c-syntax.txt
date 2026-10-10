@@ -1,0 +1,1 @@
+bash -n: 48 scripts; python parse (py_compile-equivalent, no .pyc): 32; fails: 0

@@ -14,7 +14,7 @@ import fcntl, os, pty, select, struct, sys, tempfile, termios, time
 import pyte
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from graft_sandbox import sandbox_env  # noqa: E402
+from trib_sandbox import sandbox_env  # noqa: E402
 
 TIER, STOPS = sys.argv[1], sys.argv[2:]
 BIN = "target/debug/examples/gallery"

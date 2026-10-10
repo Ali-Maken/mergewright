@@ -363,3 +363,11 @@ fn scripts_run_the_command() {
         found.join("\n")
     );
 }
+
+/// README.md and `scripts/**` name the command and the app, not the old
+/// name (27c); what may still say `graft`, and why, is in `rename_docs`.
+#[test]
+fn user_docs_and_scripts_name_the_command() {
+    let found = crate::rename_docs::old_name_lines();
+    assert!(found.is_empty(), "the old name:\n{}", found.join("\n"));
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # What the dependents check costs `a` on HEAD when another local branch
 # exists (m7-power-tools/09, "Decided": under one frame on the fixture;
-# 09b A1: the phases). Runs the heavy tier's measurement walks in graft
+# 09b A1: the phases). Runs the heavy tier's measurement walks in the graft package
 # (review m7-09..21c Minor 12: `heavy-tests`, no longer ignored), release
 # build, and writes their lines to docs/perf/09b.txt; a reader takes the
 # `summary` line.

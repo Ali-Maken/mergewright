@@ -53,7 +53,7 @@ STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
 
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from graft_sandbox import sandbox_env, scratch_root  # noqa: E402
+from trib_sandbox import sandbox_env, scratch_root  # noqa: E402
 config_home = tempfile.mkdtemp(prefix="graft-walk-m3-")
 os.makedirs(os.path.join(config_home, "graft"))
 with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:

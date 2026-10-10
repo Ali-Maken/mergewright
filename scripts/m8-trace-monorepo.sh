@@ -24,7 +24,7 @@ BIN=$TARGET/release/trib
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 REPO=$WORK/repo
-# Graft writes .git/graft/ in what it opens; the cache is sealed read-only.
+# Tributary writes .git/tributary/ in what it opens; the cache is sealed read-only.
 cp -R "$FIXTURE" "$REPO" && chmod -R u+w "$REPO"
 TRACE=$WORK/trace.txt
 

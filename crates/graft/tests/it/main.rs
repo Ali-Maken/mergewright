@@ -93,6 +93,7 @@ mod radar_not_checked;
 mod rebase_stop_forecast;
 mod refresh_race;
 mod remote_by_key;
+mod rename_docs;
 mod rename_names;
 mod rename_opens;
 mod rename_status;

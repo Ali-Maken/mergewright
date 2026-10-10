@@ -1,4 +1,4 @@
-# Testing Graft
+# Testing Tributary
 
 Three tiers. You only need the first one day to day.
 
@@ -40,7 +40,7 @@ red.
 When the new picture is the right one:
 
 ```sh
-GRAFT_UPDATE_SHOTS=1 cargo nextest run   # rewrites, and fails anyway
+TRIB_UPDATE_SHOTS=1 cargo nextest run   # rewrites, and fails anyway
 git diff --stat docs/shots/              # read it before you commit it
 ```
 
@@ -81,7 +81,7 @@ test that needs one of these literally assembles it from pieces, the way
 `graft_fixtures::capture::machine` spells its own roots and ports. The
 pty walks do not write to `docs/shots/` themselves: they pipe each frame to
 `graft-fixtures capture <path>`, which is the same mechanism on the same terms,
-so a walk asserts like everything else and `GRAFT_UPDATE_SHOTS=1` is how it
+so a walk asserts like everything else and `TRIB_UPDATE_SHOTS=1` is how it
 regenerates.
 
 **Records, not asserted** (m8/22c). "Every file is asserted" holds only for a
@@ -103,10 +103,10 @@ This list is not an audit of every file under `docs/shots/`.
 
 Two environment variables reach the shipped binary. Both are for reproducible
 pty runs and captures, not settings. Each takes whole seconds since 1970;
-anything else refuses (`GRAFT_NOW` at launch, exit 2; `GRAFT_PRACTICE_EPOCH`
+anything else refuses (`TRIB_NOW` at launch, exit 2; `TRIB_PRACTICE_EPOCH`
 when the tour starts, which then does not start).
 
-- **`GRAFT_NOW` draws only and writes nothing** (m8/19e §R1). It pins the
+- **`TRIB_NOW` draws only and writes nothing** (m8/19e §R1). It pins the
   clock every age on screen is drawn against, and the practice repo's `now`.
   The journal's stamps come from the wall clock, always: `u`, J and the time
   machine order entries by stamp, so a pin left exported in a shell would
@@ -117,7 +117,7 @@ when the tour starts, which then does not start).
   `graft_fixtures::PINNED_NOW` unless the test names it. So no pty test may
   assert a journal stamp's value, and no capture may draw a journal entry's
   age. Test: `clock_pin::graft_now_never_stamps_the_journal`.
-- **`GRAFT_PRACTICE_EPOCH` dates the practice repo**, the tour's temp
+- **`TRIB_PRACTICE_EPOCH` dates the practice repo**, the tour's temp
   repository (removed on every ending), so its commits and their ids are the
   same every run.
 
@@ -126,7 +126,7 @@ In-process tests pin stamps through `App::open_with_clock` and
 
 ## Times I left
 
-Every time you leave Graft for the shell, one line here. **This is the only
+Every time you leave Tributary for the shell, one line here. **This is the only
 measurement of the promise** — the fast tier, the heavy tier and the acceptance
 walk all test paths we already thought of; a reach for the shell marks the thing
 nobody specified. See [ADR-0033](docs/adr/0033-times-i-left.md).
@@ -309,8 +309,8 @@ line across all 3 runs, and the `frame_trace:` line's `send -> recv` under
 input thread that sends them into the loop's wake channel, as the app's
 input forwarder does, and a key's latency runs from its send: `oversleep`
 is that thread's own sleep waking late (OS timer slack, before the send, not
-in the latency; the `machine:` lines show it with no Graft code at all),
-`queued` is send → the loop taking it, `draw` is Graft's frame. What it
+in the latency; the `machine:` lines show it with no Tributary code at all),
+`queued` is send → the loop taking it, `draw` is Tributary's frame. What it
 cannot show: the real terminal (keys are made in the test, output goes to
 memory), so a pty's wake and the terminal's own paint are not in these
 numbers.
@@ -325,7 +325,7 @@ canned outputs (no cargo, seconds).
 **The idle advance** (m7-power-tools/12) adds three readings to the same
 runs. Right looks like:
 
-- `frame_trace: … startup …` lines (with `GRAFT_FRAME_TRACE` set): every
+- `frame_trace: … startup …` lines (with `TRIB_FRAME_TRACE` set): every
   wake from the first window of rows to key 1, then
   `startup burst_after_first_paint_us=` — how long a key pressed just after
   first paint could queue behind startup's job answers. Queued answers are
@@ -344,7 +344,7 @@ runs. Right looks like:
 (~40 min) runs `g_after_idle` ×3, `scripts/heap-slope.sh` ×2 and
 `examples/budgets` on git/git ×2 on both sides — "before" is this HEAD in a
 throwaway worktree with `scripts/m7-12-no-idle-advance.patch`, run with
-`GRAFT_FRAME_NO_IDLE_ADVANCE=1` — then the heavy tier's `heavy::` and the
+`TRIB_FRAME_NO_IDLE_ADVANCE=1` — then the heavy tier's `heavy::` and the
 release `heavy::budgets_hold`. It appends a section to
 `docs/perf/m7-12-idle-advance.txt`; read its `SUMMARY` lines. Every step
 records `uptime` and any process over 40% CPU (`SUMMARY quiet:`); a busy
@@ -374,7 +374,7 @@ B/commit, `.scratch/m1-the-graph/issues/56-memory-curve-acceptance.md`).
 
 **The guard asserts two bars, not one** (m1-the-graph/61, user decision
 2026-09-14, ADR-0026 amended): **heap (footprint) slope ≤ 50 B/commit** —
-what Graft itself allocates on this path (order, bitsets, promoted, malloc
+what Tributary itself allocates on this path (order, bitsets, promoted, malloc
 slack) — and **peak RSS slope ≤ 200 B/commit**, whose floor is named: commit-
 graph pages (~56 B/commit, the walk and the id table's own file) plus pack
 `.idx` pages (~68 B/commit on these fixtures — every hydration lookup goes
@@ -476,7 +476,7 @@ scripts/memory-curve.sh 1000000
 Read run 1's `first paint` line for the `1000000 small cg` cell (the
 `docs/shots/m1-memory-curve.txt` it writes) and compare it to the ~1.0 s cold
 number above; runs 2–3 in the same invocation should fall back to the warm
-88–112 ms range, confirming the difference is the page cache and not Graft.
+88–112 ms range, confirming the difference is the page cache and not Tributary.
 
 | Check | Time | Matches the ~1.0 s cold number? | Notes |
 |---|---|---|---|
@@ -541,7 +541,7 @@ them. That is the one maintenance job:
 rm -rf target/fixtures        # or `cargo clean`; both are safe, they rebuild
 ```
 
-Set `GRAFT_FIXTURES_DIR` to build them somewhere else — a different disk,
+Set `TRIB_FIXTURES_DIR` to build them somewhere else — a different disk,
 say.
 
 ### Building them by hand
@@ -591,7 +591,7 @@ scripts/clone-git-git.sh --where  # print the path and exit
 
 | | |
 |---|---|
-| Where | `${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git`, or `$GRAFT_GIT_GIT_DIR` |
+| Where | `${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git`, or `$TRIB_GIT_GIT_DIR` |
 | Disk | **42 MB** — a full clone is about 250 MB; `--filter=tree:0` fetches commits and leaves trees and blobs on the server |
 | Time | **15 s** to clone, 2 s to re-run |
 | Measured | 85,649 commits, 1,017 refs |
@@ -615,7 +615,7 @@ much larger answer — roughly 1.4 million commits, and several GB even with
 ```sh
 git clone --bare --filter=tree:0 \
   https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git \
-  ~/.cache/graft/linux.git
+  ~/.cache/tributary/linux.git
 ```
 
 ## The manual terminal checklist
@@ -774,7 +774,7 @@ already puts it.
 
 Exact commands (m1-the-graph/29). Every row: first run the probe report and
 paste its `tier`, `probe`, `budget`, `tmux` and `ssh` lines into Notes, then run
-Graft and walk "What to do in each terminal".
+Tributary and walk "What to do in each terminal".
 
 ```sh
 # Setup, once: tmux >= 3.3, and a git/git clone.
@@ -784,7 +784,7 @@ REPO="$(scripts/clone-git-git.sh --where)"
 # tmux (inside a pixel terminal): run from Ghostty or Kitty.
 # a) passthrough on: expect `tier Pixel`, `tmux Passthrough { version: "3.x" }`,
 #    a pixel graph.
-tmux -L graft -f /dev/null new-session \; set -g allow-passthrough on
+tmux -L trib -f /dev/null new-session \; set -g allow-passthrough on
 cargo run -p graft --example capability_probe
 cargo run -p graft -- "$REPO"
 # b) still inside, split and run in the right-hand pane: pixels must land in
@@ -792,31 +792,31 @@ cargo run -p graft -- "$REPO"
 cargo run -p graft -- "$REPO"
 # c) passthrough off (tmux's default): expect `tier Unicode`,
 #    `tmux PassthroughSilent { .. }`, a clean Unicode graph, no stray bytes.
-tmux kill-server -L graft; tmux -L graft -f /dev/null new-session
+tmux kill-server -L trib; tmux -L trib -f /dev/null new-session
 cargo run -p graft -- "$REPO"
 
 # tmux (inside a Unicode terminal): Zed or VS Code terminal, passthrough on.
 # Expect `tier Unicode` and a Unicode graph — never ASCII.
-tmux -L graft -f /dev/null new-session \; set -g allow-passthrough on
+tmux -L trib -f /dev/null new-session \; set -g allow-passthrough on
 cargo run -p graft -- "$REPO"
 
-# SSH: needs a host with Rust and a Graft checkout (ssh localhost works:
+# SSH: needs a host with Rust and a Tributary checkout (ssh localhost works:
 # System Settings > General > Sharing > Remote Login). Expect `ssh true`,
 # `budget 500ms`, and the tier the local terminal would get.
-ssh -t HOST 'cd ~/path/to/graft && cargo run -p graft --example capability_probe && cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"'
+ssh -t HOST 'cd ~/path/to/checkout && cargo run -p graft --example capability_probe && cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"'
 
 # SSH inside tmux: start tmux (passthrough on) locally, then the SSH line
 # inside it. Expect `tier Pixel` only if the report says `tmux Passthrough`.
 ```
 
-When done: `tmux kill-server -L graft`. A row passes or fails on the pass
+When done: `tmux kill-server -L trib`. A row passes or fails on the pass
 conditions below, never on the probe report alone.
 
 **tmux passes on *either* of two outcomes**: a correct pixel graph, *or* a
 clean fall back to the Unicode tier. Which one you get depends on the tmux
 version, on `allow-passthrough`, and on the outer terminal, so both are
 correct answers. What is *not* a pass: a broken screen, stray escape
-sequences, or a graph drawn half in pixels and half in characters. Graft
+sequences, or a graph drawn half in pixels and half in characters. Tributary
 must detect tmux and choose a tier deliberately rather than hoping
 passthrough works.
 
@@ -855,9 +855,9 @@ agrees with itself.
 | Select a commit, press `y` | The bottom line reads `<7 hex>… → clipboard (osc 52)`; paste in another window gives the 40-character SHA. Press `j`: the line is gone. |
 | Hint bar at 120 columns | Includes `y sha` after `H stash`; dropped from the right with the others when narrow |
 | Inside tmux (`allow-passthrough on`) | Same notice; paste outside tmux gives the full SHA |
-| Terminal with OSC 52 disabled | Same notice (Graft cannot tell); paste gives whatever was there before — not a Graft bug |
+| Terminal with OSC 52 disabled | Same notice (Tributary cannot tell); paste gives whatever was there before — not a Tributary bug |
 
-Automated: `python3 .scratch/m1-the-graph/pty-copy-check.py <release graft> <repo>`
+Automated: `python3 .scratch/m1-the-graph/pty-copy-check.py <release trib> <repo>`
 asserts the byte stream holds `ESC ] 52 ; c ;` + base64 of HEAD's SHA and
 writes `docs/shots/45-y-copies-sha.txt`. The paste itself is judged by hand
 per terminal (Ghostty, Zed, VS Code, tmux) — unticked until tried.
@@ -1152,7 +1152,7 @@ cargo run -p graft --example gallery -- --matrix                        # both t
 ```
 
 `]` next stop, `[` previous, `q` quit; the stop's keys are already pressed
-when its frame appears, and every Graft key works after that. The banner's
+when its frame appears, and every Tributary key works after that. The banner's
 first line names the keys where M1's names the group:
 `gallery 3/19 feature-branches · Enter Tab v · ] next [ back q quit · unicode`.
 Each stop restarts the run, so the prelude is pressed once per visit.
@@ -1323,7 +1323,7 @@ ASCII: `! i + * o # :`.
     grows. Never all at once.
 
 **Working-tree row** (no stop: the fixtures are clean) — in a dirty checkout
-of graft itself, `k` from the top row lands on `Uncommitted changes (…)`,
+of Tributary itself, `k` from the top row lands on `Uncommitted changes (…)`,
 its highlight moves and HEAD's row un-highlights; `Enter` opens
 `UNCOMMITTED · N staged N unstaged N untracked` / `diff vs HEAD <sha>`, staged
 and unstaged files listed, an untracked file's body shows its content as
@@ -1350,14 +1350,14 @@ Stop 1 at three sizes (`m2-01-feature-branches-enter-*`):
 Two lines added to the M1 procedure above: `cargo run -p graft --example
 gallery -- --group details`, then `]` through the 19 stops at ≥ 160 columns,
 checking each against its entry; at stop 10 wait for the subject row to
-settle on `· evil merge`; in a dirty checkout of graft itself press `k`,
+settle on `· evil merge`; in a dirty checkout of Tributary itself press `k`,
 `Enter` at the top and check the "Working-tree row" entry. Record the result
 in the tier tables, naming the stop that failed if one did.
 
 ## Working tree, undo and stash
 
 M3's acceptance ticket (m3-working-tree-undo-and-stash/07). M3 promises that
-**you cannot lose work**: every write Graft makes is journaled with a backup
+**you cannot lose work**: every write Tributary makes is journaled with a backup
 and comes back byte for byte on `u`. The walk is how a person checks that —
 one command, 22 scenarios, each a scratch copy of a corpus repository with a
 scripted dirty state, the real app driven by keys over the real job pool and
@@ -1560,12 +1560,12 @@ M3 is the first milestone that writes, so from today the two lists that
 measure the promise start collecting: **"Times I left"** at the top of this
 file (every reach for the shell, ADR-0033) and
 [`docs/field-notes.md`](docs/field-notes.md) (what real use turned up,
-ADR-0029/0030). Both are empty on purpose until you use Graft for a day.
+ADR-0029/0030). Both are empty on purpose until you use Tributary for a day.
 
 ## Remotes
 
 M4's acceptance ticket (m4-remotes/07). M4 promises that **you never leave
-Graft to fetch, pull or push — not for a password, a rejection or a hang**.
+Tributary to fetch, pull or push — not for a password, a rejection or a hang**.
 The walk is how a person checks that: one command, 21 scenarios, each a
 scratch `remote.git` (bare) with a `work` clone and a `teammate` clone, the
 bare served over `file://`, over loopback smart HTTP with Basic auth
@@ -1605,7 +1605,7 @@ expects to see itself.
 
 Captures: `docs/shots/m4-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, Unicode tier (`.scratch/m4-remotes/pty-walk-m4.py <WxH>`
-after `cargo build -p graft --example m4_walk`, `GRAFT_TARGET` naming the
+after `cargo build -p graft --example m4_walk`, `TRIB_TARGET` naming the
 target directory). The script runs `m4_walk --capture <scenario>`, which
 builds the remote, runs the scenario's headless prefix, then opens the real
 loop on the work clone with the capture's keys as the harness prelude (an
@@ -1618,7 +1618,7 @@ person saw, and it carries no colour** — the user judges by eye.
 
 - **Proves:** with a bare over `file://`, over loopback HTTP with Basic
   auth, and behind a socket that never answers, every fetch, pull and push
-  above ends inside Graft — a password is typed into Graft's own prompt, a
+  above ends inside Tributary — a password is typed into Tributary's own prompt, a
   rejection is a sticky line with the next key in it, a hung fetch, pull or
   push ends on `Esc` with no lock file left and nothing moved on either side
   (`hung-remote-esc-cancels`, `hung-remote-pull-esc-cancels`,
@@ -1630,7 +1630,7 @@ person saw, and it carries no colour** — the user judges by eye.
   proxies, `ssh-agent`, host keys or `SSH_ASKPASS`. The SSH askpass path is
   set up but **unverified** until a field note says it worked.
 - **No real credential helper.** Every clone disables helpers, so what a
-  Keychain helper does before Graft's prompt is not covered.
+  Keychain helper does before Tributary's prompt is not covered.
 - **Esc during `u`/`U` does nothing** (m4-05 review): the line says `undo
   cannot be stopped part-way — finishing…` and the undo completes. The walk
   never presses it.
@@ -1787,11 +1787,11 @@ What each capture shows; 120x40 is `not run` (the script takes two sizes).
 |---|---|---|---|
 | Push box (`m4-01-push-box-plain`) | `Push main → origin/main`, the `1 commit · …` line, the `git push --progress …` command, `[ Cancel ]     Push`; **no frame is drawn around the box**, and the graph's `Comm` shows left of it — judge whether that reads as a box | not run | same lines, the graph and pane around it |
 | Lease box (`m4-02-push-box-lease`) | `Force-push main → origin/main?`, `origin/main <a> → <b> · refused if origin moved since…`, `rewrites history for everyone who has <a>`, the `--force-with-lease=` command, `[ Cancel ]     Force push` | not run | same |
-| Credential prompt, masked (`m4-03-credential-masked`) | `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only (28 of them), `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel push main → origin/main` in the border (m6-conflicts/78; `esc cancel the push` only when that does not fit), `⏎ send  esc cancel` on the bottom row (m6-conflicts/69); pty capture re-taken 2026-10-01 (m7-power-tools/30u) | not run | same |
+| Credential prompt, masked (`m4-03-credential-masked`) | `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only (28 of them), `typed here only · never stored by Tributary`, `⏎ send  ⌃U clear  esc cancel push main → origin/main` in the border (m6-conflicts/78; `esc cancel the push` only when that does not fit), `⏎ send  esc cancel` on the bottom row (m6-conflicts/69); pty capture re-taken 2026-10-01 (m7-power-tools/30u) | not run | same |
 | Credential prompt, username (`m4-04-credential-username`) | `Username for 'http://127.0.0.1:<port>':`, `▏tester` in clear | not run | same |
 | Progress footer (`m4-05-progress-footer`) | `fetch all remotes · enumerating objects · esc cancels` on the status line | not run | same; taken the instant it appeared, the frame is not settled |
 | Rejected sticky (`m4-06-rejected-sticky`) | `push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease` — both keys on it; at 80 columns the reason is cut with `…` and both keys stay (`m4-06-rejected-sticky-80x24.txt:26`) | not run | the same line |
-| Journal (`m4-07-journal-remote-rows`) | three rows; the push row reads `not undoable — origin has it · <a> → …` (the verdict first, the ref pair is what 80 columns cuts); the pull row `1 ref · the index · the…  ← u`; summaries in one column, the push row's description cut to `push main →…` so its verdict fits (24-b) | not run | push `not undoable — origin has it · <a> → <b>`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `origin/main moved · not undoable` (the refs it moved, m8/21c; `nothing new` when none moved, per 21c's NOTES, not seen here). The committed capture still reads `remote-tracking refs`: its re-shoot draws every Graft row's age as `future` (frame pinned, journal rows stamped by the wall clock; m8/19d-c NOTES), so it is not re-taken yet |
+| Journal (`m4-07-journal-remote-rows`) | three rows; the push row reads `not undoable — origin has it · <a> → …` (the verdict first, the ref pair is what 80 columns cuts); the pull row `1 ref · the index · the…  ← u`; summaries in one column, the push row's description cut to `push main →…` so its verdict fits (24-b) | not run | push `not undoable — origin has it · <a> → <b>`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `origin/main moved · not undoable` (the refs it moved, m8/21c; `nothing new` when none moved, per 21c's NOTES, not seen here). The committed capture still reads `remote-tracking refs`: its re-shoot draws every Tributary row's age as `future` (frame pinned, journal rows stamped by the wall clock; m8/19d-c NOTES), so it is not re-taken yet |
 | `u` after a push (`m4-08-undo-after-push`) | `undo: commit "ours" · origin/main still has it ✓` | not run | same; the footer ends `S stash  H hide stash  f fetch  p pull  P push` (the remote hints need 156 columns) |
 
 ### Per terminal: walk the remotes group
@@ -1799,7 +1799,7 @@ What each capture shows; 120x40 is `not run` (the script takes two sizes).
 Run `cargo run -p graft --example m4_walk` (all `ok`), then in a clone of
 your own with a real remote: `f`, `p`, `P` on a branch that is ahead, `P`
 after a teammate pushed (expect the rejection, then the lease box), and a
-push to an HTTPS remote with no credential helper (expect Graft's own
+push to an HTTPS remote with no credential helper (expect Tributary's own
 prompt: **the password field shows `•` only**, and after `Esc` nothing was
 sent). Press `Esc` during a fetch that is slow. Record the result here,
 naming the scenario that failed if one did. Colour, focus and the box's
@@ -1906,7 +1906,7 @@ Captures: `docs/shots/m5-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, the banner also at 120x40, the too-small preview at
 38x10 only, Unicode tier
 (`.scratch/m5-history-and-ghost-preview/pty-walk-m5.py <WxH>` after
-`cargo build -p graft --example m5_walk`, `GRAFT_TARGET` naming the target
+`cargo build -p graft --example m5_walk`, `TRIB_TARGET` naming the target
 directory). The script runs `m5_walk --capture <scenario>`, which builds
 the scratch, runs the scenario's headless prefix (the time machine's three
 stages), then opens the real loop with the capture's keys as the harness
@@ -2280,7 +2280,7 @@ with three blocks, `zdiff3.txt` written with `zdiff3` markers, `crlf.txt`,
 the five whole-file shapes `added-by-us/them`, `ours/theirs-deleted`,
 `both-deleted`). `merge-resolved-with-the-keys` aborts that merge in its
 setup and **begins the same merge in the app** (`m` on `feature`): the
-banner's `c` finishes only an operation Graft started (ruling F5). The
+banner's `c` finishes only an operation Tributary started (ruling F5). The
 bytes a take should leave are **git's own**: `git
 checkout --ours|--theirs` on a fresh copy of the same fixture
 (`truth::side_bytes`), never a string typed into the test.
@@ -2300,10 +2300,10 @@ fast-tier time is in `docs/perf/m6-07.txt` (the ticket's bar is 60 s).
 
 Captures: `docs/shots/m6/m6-<nn>-<what>-<WxH>.txt` at 120x40 and 80x24,
 Unicode tier, from `.scratch/m6-conflicts/pty-walk-m6.py <WxH>` (build
-`-p graft --example m5_walk --bin graft` and `-p graft-fixtures --bin
-graft-fixtures` first; `GRAFT_TARGET` names the target directory;
-`GRAFT_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
-the **real `graft` binary** relaunched after the script sends the capture
+`-p graft --example m5_walk --bin trib` and `-p graft-fixtures --bin
+graft-fixtures` first; `TRIB_TARGET` names the target directory;
+`TRIB_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
+the **real `trib` binary** relaunched after the script sends the capture
 run `SIGKILL` and checks it died on signal 9. All nine captures exist at
 both sizes, and every one shows the text it is for: the script's second
 run, without `GRAFT_UPDATE_SHOTS`, is green on all 18 (2026-09-23, after
@@ -2462,7 +2462,7 @@ credential capture M6 changed.
     is `main`, one `Rebase` entry `Committed`.
 15. **kill-9-mid-rebase-then-abort** — the same kill; relaunched, `a`,
     confirm: not rebasing, `feature` unmoved, every file as before.
-16. **u-right-after-continue-is-accepted** — a merge Graft began stops;
+16. **u-right-after-continue-is-accepted** — a merge Tributary began stops;
     resolved, `c`, and `u` at once, before the re-read lands: accepted, the
     merge taken back.
 17. **repush-lease-is-the-entrys-tip** — a teammate pushes after ours and
@@ -2531,7 +2531,7 @@ count from the note's `journey-counts` block, where it records one.
 |---|---|---|---|---|---|
 | `a-merge-to-stop` (one-file, two-files) | the graph, cursor on `feature` | `m m` | 2 | — | the merge stops and lands **in the resolver** on the list's first file (`shared.txt`; `gone.txt` for two-files), cursor on block 0; header `MERGING`; the list's `▸` on that file; the bottom row starts `o yours`; the stop reads `merge stopped · …` |
 | `a-stop-to-first-conflict` | the stop | none | 0 | JetBrains 0 | the frame right after the stop is the one above: no key between the stop and the first conflict |
-| `b-launch-to-first-conflict` (+ one-file, three-blocks, after a `git pull`) | the app launched on a merge begun in the shell | `⏎` | 1 | — | the launch lands on the **banner**, which has the keyboard; the pane shows `CONFLICTS`; the stop's reason starts `merge in progress · begun outside Graft · `; the bottom row draws the fullest rung that fits (m6-conflicts/61) — at 120 columns `merge in progress · from the shell · 2 conflicted · ⏎ resolve` (the capture `m6-18` shows each size). `⏎` → the resolver on the list's first file, as in `a-merge-to-stop` |
+| `b-launch-to-first-conflict` (+ one-file, three-blocks, after a `git pull`) | the app launched on a merge begun in the shell | `⏎` | 1 | — | the launch lands on the **banner**, which has the keyboard; the pane shows `CONFLICTS`; the stop's reason starts `merge in progress · begun outside Tributary · `; the bottom row draws the fullest rung that fits (m6-conflicts/61) — at 120 columns `merge in progress · from the shell · 2 conflicted · ⏎ resolve` (the capture `m6-18` shows each size). `⏎` → the resolver on the list's first file, as in `a-merge-to-stop` |
 | `one-file-one-conflict` | the resolver on `shared.txt` | `O` | 1 | JetBrains 2 | lands on the **summary** the last file opened (m6-conflicts/60): top border `╭ Preview: finish merging feature into main`, the frame has `RESOLVED BY YOU`, status `shared.txt done ✓ · every file done`; `shared.txt` on disk equals `HEAD:shared.txt` and is staged; `git ls-files -u` is empty |
 | `three-conflicts-all-theirs` | the resolver on `three.txt`, three blocks open | `T` | 1 | JetBrains Accept Theirs 1 | lands on the **summary** the last file opened (m6-conflicts/60): top border `╭ Preview: finish merging feature into main`, the frame has `RESOLVED BY YOU`, status `three.txt done ✓ · every file done`; `three.txt` equals git's **per-block** theirs (`git merge-file -p --theirs` over the merge's base, ours and theirs — not `checkout --theirs`) |
 | `modify-delete-keep-yours` | the resolver on `gone.txt` (two-files) | `o` | 1 | JetBrains 1 | lands on `notes.txt`: the notice `gone.txt done ✓ · ▸ notes.txt`, the list's `▸` on `notes.txt`; `gone.txt` equals `HEAD:gone.txt` and is staged |
@@ -2563,7 +2563,7 @@ block of one file without marking it done (keymap §2.6, P3); the journeys
 route by `T`, and the capture `m6-13-after-ctrl-t` shows `Ctrl+T`.
 
 **Press `Ctrl+T` once in Zed's terminal — unverified.** The pty cannot tell
-whether Zed's terminal claims `Ctrl+T` for itself before Graft sees it.
+whether Zed's terminal claims `Ctrl+T` for itself before Tributary sees it.
 Until the user presses it once in the resolver in Zed and sees every open
 block of the file read `took theirs · feature` (the notice `took theirs ·
 feature in 3 blocks · ⏎ marks three.txt done` on `three.txt`), P3's key is
@@ -2619,7 +2619,7 @@ putting `g.txt` back clashes once it continues.
 | `switch-dirty` | the graph on `main`, dirty; cursor on `fix` (not counted) | `. ⏎ y` | 3 | lazygit 2, JetBrains 3 | on `fix`; status `… · your edits are back`. Git: `HEAD` → `fix`; `base.txt` and `notes.txt` hold the edit; `git status` `M  base.txt` (the staging kept), ` M notes.txt`; stash list empty |
 | `switch-staging-not-kept` (30b) | the graph on `main`, 20-line `f.txt`, line 5 edited and staged; `fix` changed line 7; cursor on `fix` (not counted) | `. ⏎ y` | 3 | shell: `git switch fix` refuses; by hand `stash`, `switch`, `stash pop` = 3 commands, the staging lost with no word | the preview row `your edits: 1 file set aside, put back after`, no staging words; after `y`, on `fix`, the sticky line `on fix ✓ · your edits are back · staging not kept: f.txt · u undoes it, staging included` (at 80 `your edits are back` is cut first); it stays after `j`; never `could not confirm`. Git: `git status` ` M f.txt`, lines 5 and 7 both in; stash list empty. Then `u` (1 key): on `main`, `M  f.txt`, index and tree byte-equal to before (`m6_stash_put_back::set_aside::a_switch_whose_staging_cannot_come_back_says_so`) |
 | …with an `AM` file (30c) | as above, plus `n.txt` new, staged at v1, then edited to v2 | `. ⏎ y` | 3 | as above, and v1 is lost with no word | the line names both: `… staging not kept: f.txt +1 more · u undoes it, staging included`. Git: ` M f.txt`, `A  n.txt` with `:n.txt` = v2. Then `u` (1 key): `:n.txt` = v1, worktree v2, everything byte-equal to before; redo byte-equal to after. Checked at the operation (`put_back_index::put_back_names_a_staged_new_file_edited_on`), not walked in the app |
-| `relaunch-after-kill` (30c) | Graft killed after the put-back brought the edits back (unstaged, fallback) and before the stash drop; he launches it again | none | 0 to see where the edits are | shell: `git status` + `git stash list`, then judge whether the stash is a duplicate = 2 commands and a judgement | HEAD on `fix`; the footer `an operation was interrupted: checkout fix · your edits are back · a copy stays in stash@{0} · J to inspect` at 120; at 80, whole, `interrupted · your edits are back · a copy stays in stash@{0} · J to inspect` (30d's ladder); never `edits in stash@{0}` alone. Git: ` M f.txt`, one stash listed. Then `u` (1 key): on `main`, `M  f.txt`, index and tree byte-equal to before the switch, stash list empty (`m6_stash_put_back::set_aside::a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back`; captures `docs/shots/m7/30c-relaunch-edits-back-{120x40,80x24}.txt`). 30f: at 160x50 with the pane open (`⏎`) the footer is whole, `J to inspect` included; after `git stash drop` + `Ctrl+R` it reads `… your edits are back · J to inspect`, no `stash@` (`…::the_relaunch_notice_fits_the_pane_and_follows_the_stash_list`); whole at every width 80–187, pane shown and hidden (`…::the_relaunch_notice_is_whole_at_every_width_pane_or_not`) |
+| `relaunch-after-kill` (30c) | Tributary killed after the put-back brought the edits back (unstaged, fallback) and before the stash drop; he launches it again | none | 0 to see where the edits are | shell: `git status` + `git stash list`, then judge whether the stash is a duplicate = 2 commands and a judgement | HEAD on `fix`; the footer `an operation was interrupted: checkout fix · your edits are back · a copy stays in stash@{0} · J to inspect` at 120; at 80, whole, `interrupted · your edits are back · a copy stays in stash@{0} · J to inspect` (30d's ladder); never `edits in stash@{0}` alone. Git: ` M f.txt`, one stash listed. Then `u` (1 key): on `main`, `M  f.txt`, index and tree byte-equal to before the switch, stash list empty (`m6_stash_put_back::set_aside::a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back`; captures `docs/shots/m7/30c-relaunch-edits-back-{120x40,80x24}.txt`). 30f: at 160x50 with the pane open (`⏎`) the footer is whole, `J to inspect` included; after `git stash drop` + `Ctrl+R` it reads `… your edits are back · J to inspect`, no `stash@` (`…::the_relaunch_notice_fits_the_pane_and_follows_the_stash_list`); whole at every width 80–187, pane shown and hidden (`…::the_relaunch_notice_is_whole_at_every_width_pane_or_not`) |
 | `switch-dirty-clash` | the graph on `fix`, fix over main's base; cursor on `main` (not counted) | `. ⏎ y o ⏎` | 5 | JetBrains ~5 (?) | `y` → the resolver on `base.txt`, notice `your edits clashed in 1 file · esc, u undoes the switch too`, panes `branch · main` and `yours · edits set aside`, bottom row `o branch  t yours …`; `o ⏎` → `every file done · set-aside copy dropped ✓ · u brings it back` (`t ⏎` instead keeps his edit, same count). Git: on `main`, `base.txt` = `main's base`, stash list empty; a `u` after lists the copy again |
 | `pull-rebase-stop-then-clash` | the graph, f and g | `p r r o ⏎ c o ⏎` | 8 | none counted | the rebase stops on `f.txt`; `o ⏎` resolves it, `c` continues; putting `g.txt` back clashes: notice `… esc, u undoes the rebase too`; `o ⏎` → `every file done · set-aside copy dropped ✓ · u brings it back`. Git: `g.txt` = `theirs`, no `rebase-merge`, nothing unmerged, stash list empty |
 | `menu-checkout` | the graph on `main`, clean; cursor on `fix` (not counted) | `. ⏎ y` | 3 | JetBrains 3 | `.` → the menu's first slot `Checkout fix`, the second `Cherry-pick <id>`, cursor on the first; `⏎` → the checkout preview; `y` → on `fix`. Git: `HEAD` → `fix` |
@@ -2950,7 +2950,7 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 | a remote-only branch | as above | `C sara ⏎` = 3 | a local `sara/login-page` made, tracking `origin/sara/login-page`, checked out; `on sara/login-page (new, tracks origin/sara/login-page) ✓ · u goes back`. `u`: on `main`, `sara/login-page` gone (`switch_to_a_remote_only_branch_makes_its_local_copy`; capture `docs/shots/m7/picker-remote-landed-120x40.txt`) |
 | `cherry-pick-other-branch` | `main`, clean; `login-page` has `fix the typo` on top of `fix the bug` | `C login ⇥ motion o y` = 6 (note: 6; typing counts 1, one motion to the commit below the tip) | `⇥` closes the picker, cursor on `login-page`'s tip, nothing written; one motion to `fix the bug`; `o` opens the take preview; after `y`: on `main`, one new commit on it carrying `fix the bug`'s change and not `fix the typo`'s; `took "fix the bug" onto main ✓ · u undoes`; cursor on the new `main`. `u`: `main` as before (`cherry_pick_other_branch`) |
 | `cherry-pick-in-view` | `main`, `base.txt` edited; the graph opens with the cursor on `login-page`'s `fix the bug` | `o y` = 2 (note: `motion o y` = 3; no motion needed here) | `o` opens `Preview: take <sha7> "fix the bug" onto main`, bar `y confirm  ←→ choose  ⏎ act  esc cancel`, `your edits: 1 file set aside, put back after`; after `y`: `took "fix the bug" onto main ✓ · your edits are back · u undoes`, cursor on the new HEAD, `base.txt` edit back. `u`: the commit gone (`cherry_pick_in_view`, `y_takes_it_and_lands_on_the_new_commit`; capture `docs/shots/m7/take-preview-120x40.txt`) |
-| take a merge | a merge commit on branch `merged`; cursor on it | `o` = 1 | no preview; the status line `<sha7> is a merge · taking a merge isn't in Graft yet` (`take_refused_on_a_merge`; capture `docs/shots/m7/take-refused-merge-120x40.txt`) |
+| take a merge | a merge commit on branch `merged`; cursor on it | `o` = 1 | no preview; the status line `<sha7> is a merge · taking a merge isn't in Tributary yet` (`take_refused_on_a_merge`; capture `docs/shots/m7/take-refused-merge-120x40.txt`) |
 | `.` on HEAD's row | `main`, cursor on `main`'s row | `.` = 1 | slot 1 `Checkout — already on main`, slot 2 `Cherry-pick (o) — already on main`, both dim, in places 1 and 2; `⏎` on either does nothing (`menu_slot_two_dim_on_head`, `update::context_menu::tests::slot_two_dim_behaves_as_slot_one_dim`; capture `docs/shots/m7/menu-slot-two-dim-120x40.txt`) |
 
 ## M7: put staged changes into their commits (m7-power-tools/09)
@@ -2995,7 +2995,7 @@ Walks: `cargo nextest run --workspace -E 'test(/m7_walk::journal/) | test(/journ
 
 | Scenario | Right looks like |
 |---|---|
-| `J` on the "lost work" fixture (journey 13's start) | Ticket 24-b (journey 13): `J` on the "lost work" fixture, every stage in. Title `JOURNAL · what happened in this repo, newest first`. Newest first: `●  Graft` fetch, then `$  outside Graft` steps each with its `git: "…"` column, a `└ ✗ lost` row under the reset (`a65d7e4 "Add rate limiter" · was main's tip · no branch holds it`, preselected `▸`) and under the switch (`419e109 "Try redis cache" · was spike's tip · spike is gone`), the undo `●` row marked `← U` with `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` under it, the discard `undone`. Last list line: `a branch deleted outside Graft and never checked out leaves no trace here` (muted). No status row (nothing wrong). Legend line, then the bar `⏎ put main back to it  b new branch here  / find  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-187x50.txt`. |
+| `J` on the "lost work" fixture (journey 13's start) | Ticket 24-b (journey 13): `J` on the "lost work" fixture, every stage in. Title `JOURNAL · what happened in this repo, newest first`. Newest first: `●  Graft` fetch, then `$  outside Graft` steps each with its `git: "…"` column, a `└ ✗ lost` row under the reset (`a65d7e4 "Add rate limiter" · was main's tip · no branch holds it`, preselected `▸`) and under the switch (`419e109 "Try redis cache" · was spike's tip · spike is gone`), the undo `●` row marked `← U` with `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` under it, the discard `undone`. Last list line: `a branch deleted outside Tributary and never checked out leaves no trace here` (muted). No status row (nothing wrong). Legend line, then the bar `⏎ put main back to it  b new branch here  / find  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-187x50.txt`. |
 | J at 140x40, cursor on the reset's `$` row | Ticket 24-b: J at 140x40 (120–179), cursor moved to the reset's `$` row: no `git:` column; the selected row's `git: "reset: moving to HEAD~1"` on the line under it; the source word (`Graft` / `outside Graft`) still drawn. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-140x40.txt`. |
 | J at 100x30 | Ticket 24-b: J at 100x30 (under 120): no source word (the legend carries it); the ✗ rows keep their words; the legend cut at a word with `…`; the bar whole. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-100x30.txt`. |
 | J at 187x24 | Ticket 24-b: J at 187x24: title, legend and bar kept; the list fits, so nothing scrolls here (scrolling is `journal_screen.rs::at_24_rows_the_frame_stays_and_the_rows_scroll`). Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-187x24.txt`. |
@@ -3006,7 +3006,7 @@ Walks: `cargo nextest run --workspace -E 'test(/m7_walk::journal/) | test(/journ
 | `y` on the edit's box (journey 15 lands) | Ticket 30o-a: the graph with the changes pane open on `src/a.rs` (`▾ src/`, `M a.rs`, its diff adding the lost edit's `2`; the pane's cursor row is colour only); the bottom row `your edit to src/a.rs is back ✓ · u undoes` (as `done_status` orders it). Then `u` (uncounted) puts back what was in the file: the walk reads `src/a.rs` = `DISCARDED_EDIT`. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-edit-landed-187x50.txt`. |
 | `J n ⏎` on his lost edit over a **staged** file (journey 15, `src/a.rs` staged then edited) | Ticket 30p-a (journey 15, `J n ⏎`, over a staged file: `src/a.rs` staged as `S`, then edited): the box titled `Preview: put back your edit to src/a.rs`, with the line `your files: src/a.rs comes back · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`, then `u undoes it`. The footer starts `y put it back`. J's rows above it, the lost edit's row selected; its two newest `$` rows are the test's shell stand-in for journeys 13 and 14. Test `crates/graft/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-staged-preview-187x50.txt`. |
 | `y` on that box (the staged file lands) | Ticket 30p-a (journey 15 over a staged file, after `y`): the changes pane shows `STAGED (1)` and `UNSTAGED (1)`, each with `M a.rs`. The diff shown is the lost edit's (`2` added, over the staged `3`). The bottom row is `your edit to src/a.rs is back ✓ · u undoes`. The cursor row is colour only (30o-a NOTES). Then `u` (uncounted): the walk reads `src/a.rs` = `W` and `git show :src/a.rs` = `S`. Test `crates/graft/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-staged-landed-187x50.txt`. |
-| `space` on a `●` row | Ticket 24-b: `space` on the discard's `●` row: under it `commands Graft ran`, then `┆ git --literal-pathspecs restore --worktree -- src/a.rs` — `┆`, never `$`, so `$` only ever means outside Graft. The bar `⏎ revert to before this  / find  space command log  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::journal_expanded_capture`. Colour unverified. Capture `docs/shots/m7/journal-expanded-120x40.txt`. |
+| `space` on a `●` row | Ticket 24-b: `space` on the discard's `●` row: under it `commands Tributary ran`, then `┆ git --literal-pathspecs restore --worktree -- src/a.rs` — `┆`, never `$`, so `$` only ever means outside Tributary. The bar `⏎ revert to before this  / find  space command log  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::journal_expanded_capture`. Colour unverified. Capture `docs/shots/m7/journal-expanded-120x40.txt`. |
 | `/spike ⏎` in J | Ticket 30o-c: `J` on the "lost work" fixture, then `/spike ⏎`. The title ends in blame's find tail, `JOURNAL · what happened in this repo, newest first · find "spike" 1 of 4` (the four rows naming spike: the two switches, spike's lost `✗` 419e109 and the commit on spike). `▸` on `switch from spike to main`, the first row naming spike at or below where the cursor stood (the preselected `✗` a65d7e4). Find is `⏎`-driven as blame's: typing alone moves nothing. The bar `⏎ switch back to spike  b new branch here  / find  n N match  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::journal_find_capture`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-find-187x50.txt`. |
 
 ## M7: the rewrite editor (m7-power-tools/08)
@@ -3021,7 +3021,7 @@ Walks: `cargo nextest run --workspace -E 'test(/m7_walk::rewrite_editor/) | test
 - Capture `m7/rewrite-editor-187x50.txt` — right: title `REWRITE feature-a · 5 commits since it left main · newest first`; two `squash ↓` rows over `pick <sha7> Handle expired tokens`; the `│` rule and `AFTER y · not written yet`; `3 in one`; `MESSAGE of the squashed commit`, the kept row's message first, then the melded ones newest first (`wip`, then `wip: tests`); the bar starts `y rewrite` (`capture_rewrite_editor`).
 - Capture `m7/rewrite-editor-140x40.txt` — right: AFTER below the rows, labelled `AFTER y · not written yet`; the message below it.
 - Capture `m7/rewrite-editor-100x30.txt` — right: rows only; `tab after` on the bar.
-- Capture `m7/rewrite-refused-fork-120x40.txt` — right: status `feature-b and feature-c are both built on yours · Graft moves one line`; no overlay.
+- Capture `m7/rewrite-refused-fork-120x40.txt` — right: status `feature-b and feature-c are both built on yours · Tributary moves one line`; no overlay.
 - Not proven by the walk: colour (the bold action word, the dim notes) — unverified (rule 5). The `$EDITOR` handover from the `r` field is unit-tested only (08-a).
 
 ## M7: a squash-merged bottom, and keeping a suggested drop (m7-power-tools/05b, rebase-preview-keeps-drops)
@@ -3043,7 +3043,7 @@ Walks: `cargo nextest run --workspace -E 'test(rewrite_stops) | test(continue_in
 - A click under the box selects the row drawn there, at 120x40 and 80x24 (`a_click_under_the_block_selects_the_row_drawn_there`).
 - Stage, amend, continue from the edit stop: `space a c`, 3 keys, fenced. After `space` the file is staged; after `a` still stopped, HEAD's tree has the edit, same message; after `c` the rewrite is done, his branch's commit has the edit, feature-b on top of his new tip (`edit_stop_amend_continue`).
 - Abort from a chain stop: `esc a y`, 3 keys, fenced; every branch back, HEAD on `feature-a`, status `aborted: rebase feature-a onto main` (`abort_from_a_chain_stop`). The note's words `✓ rewrite aborted · every branch is as before` are not what the app says (open question, ticket 07d NOTES).
-- `c` on a rebase/cherry-pick begun in the shell: the terminal goes to `git <kind> --continue`; back in Graft: finished → graph + `✓ git <kind> --continue finished`; conflicted again → resolver; non-zero, still live → `git <kind> --continue exited <code> · still stopped` (`continue_in_git` tests). A shell revert still refuses in words.
+- `c` on a rebase/cherry-pick begun in the shell: the terminal goes to `git <kind> --continue`; back in Tributary: finished → graph + `✓ git <kind> --continue finished`; conflicted again → resolver; non-zero, still live → `git <kind> --continue exited <code> · still stopped` (`continue_in_git` tests). A shell revert still refuses in words.
 - Capture `m7/rewrite-edit-stop-187x50.txt` — right: `still to apply · not commits yet` boxed; his two `pick` rows only (`a5`, `a4`); `feature-b (Sara): 2 commits follow, on top`; `▏` on `HEAD · stopped here`; bar contains `a amend it`, `c continue`, `space stage` (`capture_edit_stop_sizes`).
 - Capture `m7/rewrite-edit-stop-80x24.txt` — right: `REBASING  step 3 of 12` whole; no `change files` hint; six `pick` rows then `+1 more` (7 pending, 6 drawn); the follower row `feature-b (Sara): 2 commits follow, on top` is drawn (`capture_edit_stop_sizes`).
 - Capture `m7/rewrite-edit-stop-120x40.txt` — right: `pick a2` then `feature-b` and `feature-c` follower rows; bar `⇥ banner  a amend it  c continue`, then `space` and `⏎` bare (the width ladder). Reads `1 commit follow` — a grammar defect in graft-ui's follower line, open.
@@ -3168,7 +3168,7 @@ known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every
 - [ ] **Held `j`, Pixel (Kitty + deflate, iTerm2)** · `held_key::held_j_stops_on_release_pixel_deflate`,
   `held_key::held_j_stops_on_release_pixel_iterm2`; pty `kitty-yes-free`, `kitty-yes-40m`. **Right:** the same at
   40 MB/s, plus `bytes_per_frame_held ≤ 512 KiB` in-process and `bytes_per_key ≤ 512 KiB`, observed `deflate=yes`,
-  Graft's own `rss_mb ≤ 300` over the pty. The strip count prints `unjudged`; the invariant is guarded in the fast
+  Tributary's own `rss_mb ≤ 300` over the pty. The strip count prints `unjudged`; the invariant is guarded in the fast
   tier (see "The strip bound").
 - [ ] **`J` after held `j`** · `held_key::j_then_journal_opens_at_once_unicode`,
   `held_key::j_then_journal_opens_at_once_pixel_deflate`. **Right:** `frames_before_J ≤ 1`, `j_ms ≤ 100`.
@@ -3191,20 +3191,20 @@ known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every
 
 ## M8: how he runs the trace (m8-polish-and-ship G-trace)
 
-`GRAFT_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/graft/src/trace.rs`):
+`TRIB_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/graft/src/trace.rs`):
 where the frame's time went (`update_us`, `draw_us`, `write_us`), how many bytes it sent, how many keys it drew
 (`motions`) and how old the oldest was when it finished (`input_age_us`). **Numbers only** — no path, branch, sha
 or subject; the header's only words are the tier and `$TERM_PROGRAM`. `history_rows` is the rows laid out so far,
 not the repository's commit count. Unset, nothing is written. A file that cannot be written shows
 `trace: <reason>` on the status row and the app runs on.
 
-He runs it once per terminal, on his work repo, from the Graft checkout:
+He runs it once per terminal, on his work repo, from the Tributary checkout:
 
 ```sh
 # Ghostty, full screen
-GRAFT_PERF_TRACE=$HOME/graft-trace-ghostty.txt cargo run --release -p graft -- <his repo>
+TRIB_PERF_TRACE=$HOME/trib-trace-ghostty.txt cargo run --release -p graft -- <his repo>
 # Zed's terminal
-GRAFT_PERF_TRACE=$HOME/graft-trace-zed.txt cargo run --release -p graft -- <his repo>
+TRIB_PERF_TRACE=$HOME/trib-trace-zed.txt cargo run --release -p graft -- <his repo>
 ```
 
 Then: scroll the way that felt laggy (hold `j` ~3 s, let go; a wheel flick), quit with `q`, send the two files.
@@ -3223,10 +3223,10 @@ A person's step: the pty cannot judge whether a man page reads well. One step, a
 
 | Step | Command | Right looks like |
 |---|---|---|
-| 1 | `man ./docs/man/graft.1` (from the checkout) | NAME, SYNOPSIS, DESCRIPTION, OPTIONS (`path`, `-h, --help`, `-V, --version`, `--generate-man`), KEYS (one heading per place, `[keys.<name>]` beside it; each key as `[keys]` takes it, then the label and the action's name), CONFIGURATION (`[ui]` … `[theme.<kind>]`, values and default under each key), ENVIRONMENT, FILES, SEE ALSO `git(1)`. No raw `\[u…]` or `\e` showing, no line running off the page at 80 columns. |
+| 1 | `man ./docs/man/trib.1` (from the checkout) | NAME, SYNOPSIS, DESCRIPTION, OPTIONS (`path`, `-h, --help`, `-V, --version`, `--generate-man`), KEYS (one heading per place, `[keys.<name>]` beside it; each key as `[keys]` takes it, then the label and the action's name), CONFIGURATION (`[ui]` … `[theme.<kind>]`, values and default under each key), ENVIRONMENT, FILES, SEE ALSO `git(1)`. No raw `\[u…]` or `\e` showing, no line running off the page at 80 columns. |
 
-- Generated by `graft --generate-man`; `cli::docs_tests::committed_man_page_is_the_generated_one` fails when the
-  committed copy is stale. `mandoc -T lint docs/man/graft.1`: 0 errors, one warning (no date in `.TH`, on purpose: a
+- Generated by `trib --generate-man`; `cli::docs_tests::committed_man_page_is_the_generated_one` fails when the
+  committed copy is stale. `mandoc -T lint docs/man/trib.1`: 0 errors, one warning (no date in `.TH`, on purpose: a
   date would make the committed copy stale every day, or carry a false one).
 - [ ] **His read** (the user): step 1, at his usual width.
 
@@ -3238,7 +3238,7 @@ What can run today runs from scripts, writing summary lines to `docs/release/`:
 
 | Script | What it proves | Output |
 |---|---|---|
-| `scripts/release-local.sh` (needs `dist` 0.33 on `PATH` or `DIST=`) | `dist plan` (4 targets, installer, formula, `graft.1` in each archive); `dist build` of this Mac's archive, its `tar tf`, the binary runs; `brew style` on the formula (no tap, no install); shellcheck on the installer | `plan.txt`, `build.txt` |
+| `scripts/release-local.sh` (needs `dist` 0.33 on `PATH` or `DIST=`) | `dist plan` (4 targets, installer, formula, `trib.1` in each archive); `dist build` of this Mac's archive, its `tar tf`, the binary runs; `brew style` on the formula (no tap, no install); shellcheck on the installer | `plan.txt`, `build.txt` |
 | `scripts/linux-fast-tier.sh` (needs Docker) | the fast tier on Linux, in a throwaway official `rust` container, as a plain user | `linux.txt` |
 | `scripts/git-matrix.sh` | the git-sensitive tests against git built from source: the floor (2.38.0) and the newest release | `git-matrix.txt` |
 
@@ -3254,7 +3254,7 @@ says "not checked" and the fast tier is documented as needing 2.40.
 
 `cargo install --locked --path crates/graft` from a clean tree into an empty `CARGO_HOME`: `docs/release/cargo-install.txt`.
 
-A person's steps, after publishing, **on a clean macOS account** (one that never had Graft; Homebrew installed). Two
+A person's steps, after publishing, **on a clean macOS account** (one that never had Tributary; Homebrew installed). Two
 steps, as homebrew-core's tools (design note J16):
 
 | Step | Command | Right looks like |

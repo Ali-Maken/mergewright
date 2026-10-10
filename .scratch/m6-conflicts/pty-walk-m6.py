@@ -61,7 +61,7 @@ COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from graft_sandbox import check_sandboxed, sandbox_env, scratch_root  # noqa: E402
+from trib_sandbox import check_sandboxed, sandbox_env, scratch_root  # noqa: E402
 config_home = tempfile.mkdtemp(prefix="graft-walk-m6-")
 os.makedirs(os.path.join(config_home, "graft"))
 with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
