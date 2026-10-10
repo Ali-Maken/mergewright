@@ -289,3 +289,51 @@ does not hold to `b × 255`: the whole pass draws a row's node, stubs and tail a
 - For the conductor: the ruling lists KNOWN_GAPS M7/46-kitty-no-deflate (budget wording); not read here (builders
   do not). `KittyImages` is now budgeted in unplaced decoded bytes, not a count. Row 414 unchanged.
 - Not touched: keymap, journal/undo, Unicode tier.
+
+## NOTES Part 2, continuation 1 (builder-opus, 2026-10-10) — **blocked: needs ruling**
+
+No compaction. No Rust changed (a temporary probe was built, measured with and removed; diff kept out of the repo).
+No scout: the four misses are in files the previous builder named; I read `pieces.rs`, `layers.rs`, `raster.rs`
+`paint_part`, `pen.rs`, `emphasis.rs` `lit_reach`, `kitty/mod.rs` `frame`/`ensure_uploaded` directly.
+Worktree started from d1443600 by merge (fec68248; `reset --hard` was refused by the permission system); the
+merge adds only `docs/log/m8.md` lines.
+
+### Measured cause (`docs/perf/m8-trace-followup.txt`, "diagnosis" block)
+**One cause behind misses 1, 2 and 3: a piece is full strip height and as wide as its column's farthest arc.**
+- An incoming/outgoing arc in column `c` widens the piece's reach to the node's lane
+  (`graft-graph/src/raster/emphasis.rs:346-348`); the pixmap is every strip row tall (`raster.rs:225-228`) and
+  `crop` trims columns only (`raster/emphasis/cells.rs:77-83`). On MONOREPO most merges land on lane 0, so the
+  piece of column 33 is 1156×1184 px for one 37-px-tall arc.
+- Trace at his shape, first `j` (frame 10): 31 pieces, **13.9M px** rasterised + deflated (piece_us 29 ms,
+  images_us 23 ms of draw 73 ms). One whole-strip emphasis image was ≤ ~4.3M px for three strips. Load frame 3:
+  27 pieces, 7.5M px, 44 ms of 57 ms. The other heavy frame (8, 33 ms) is the strip load, as before. → miss 3.
+- Heavy held_key 187×50: pieces wider than one lane = **91 % of piece pixels** (228M of 252M px, 288 of 866
+  transmits). emphasis_cells_per_key sums those widths → miss 1; same bytes in the trace → miss 2.
+- The previous builder's cause (piece key holds the strip key, `pieces.rs:85`; strip key moves with the
+  cursor-dependent fold, `view/strips.rs:347-356`) is **real but secondary**: 263 of 866 piece transmits (30 %)
+  were pixel-identical to a piece already rasterised under another key. Fixing it alone cannot reach 25 %.
+- Miss 4 (overlap colour): cause as the previous builder said — the single pass draws all columns' edges, then
+  every row's node over them (`raster.rs:253-270`); pieces stack by column (`layers.rs:118-131`, emitted in that
+  order by `kitty/mod.rs:222-224`), so a later column's arc lands over an earlier lane's node. A piece holding
+  both edges and its node has no stacking order that matches.
+
+### Ruling change needed (exact)
+Every fix changes the piece shape the ruling fixed ("one per drawn column", "cropped to whole cells"):
+1. **Split each column's piece by kind:** a *lane* piece (straight runs, node, stubs, tail, rail — never wider than
+   the lane's own cells + tail) and one *arc* piece per row an arc in that column is drawn on (one row band tall,
+   as wide as the arc). Crop both kinds to whole cells **in both axes**.
+2. **Signature:** `Piece { column, row: Option<u16> /* arc row; None = lane */, key }`; `Emphasised` gains
+   `first_row: u16` (rows cropped); `Place.rows` intersected with the piece's own rows in `layers::places`.
+3. **Stacking:** all arc pieces placed before all lane pieces (fixes node-over-arc, miss 4); arcs crossing a later
+   column's straight run then sit under it, which the single pass does only for columns left of it — bound to be
+   re-measured by `pieces_composite_equals_single_emphasis`, not assumed.
+4. **Count:** `held_key`'s `emphasis_cells_per_key` becomes cell **area** per key (cells × rows / strip rows), since
+   pieces are no longer strip-tall.
+5. Optional, separate: key pieces on what they draw (theme, cell size, backdrop, the column's own rows' geometry)
+   instead of the whole strip key — worth ≤ 30 % of transmits on the held run.
+Estimate (**unverified**, from the shapes above): narrow area 23.6M px + one lane part per wide piece (~17M) +
+arcs at one row (~8.5M per arc row) ≈ 50M of 252M px → ~12 cell-equivalents per key vs 74 before (≈ 16 %).
+
+### Boxes
+None ticked or unticked by this continuation; the three missed ticks and the overlap deviation stand as Part 2
+left them. Gates not run (no Rust diff). Touches: `docs/perf/m8-trace-followup.txt` (diagnosis block), this ticket.

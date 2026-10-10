@@ -81,3 +81,21 @@ upload_shapes emphasis:17x1184=27 emphasis:51x1184=25 emphasis:51x1221=13 emphas
 #   bytes p95 288,075 -> 448,816, p99 486,064 -> 573,577 (bytes identical both runs). A few frames now
 #   cost more than before; which frames and why is not measured here (see ticket 05 NOTES).
 #   write_us p99 5,277 -> 6,419 / 6,609.
+
+# diagnosis, 05 Part 2 continuation 1: 2026-10-10, HEAD fec68248 (= d1443600 + log). Where the p95/p99 frames go.
+# Temporary probe (not committed): per Graphics::frame, µs in backdrop / emphasis_pieces / rasterise_piece /
+# KittyImages::frame (encode+deflate), and each rasterised piece's shape; joined to the trace's frame lines.
+# Same script, same shape. This run: draw_us p95=26994 p99=71810, bytes and uploads identical to the after runs.
+#   frame  motions draw_us  backdrop_us(misses) piece_us images_us pieces_rasterised piece_px
+#   3      0       57428    7557(3)             15878    20528     27                7,542,339
+#   6      0       16601    2517(1)             4682     5447      6                 1,743,588
+#   8      0       33457    17414(3)            1084     11872     5                 164,798    <- strip load, as before
+#   10     1       73498    134(0)              29153    23153     31                13,914,109 <- first j
+#   every other frame <= 7.4 ms draw.
+# Frame 10's pieces: c8@1:289x1221 c11@1:391x1221 c15@1:510x1221 c19@1:663x1184 ... c33@1:1156x1184 (column@first
+# cell:WxH). One piece per column, full strip height, and as wide as the column's farthest arc into a node (merges
+# into lane 0): sum of widths ~10x the graph width. One whole-strip emphasis image was <= ~4.3M px for three strips.
+# Heavy held_key A-deflate 187x50 with the probe: 866 piece transmits, 252,130,876 px; pieces wider than one lane
+# (3 cells) = 288 transmits, 228,494,314 px (91 %); narrow 578, 23,636,562 px. Pixel-identical to a piece
+# rasterised earlier under another key (strip key moved by the fold): 263 / 866 (30 %).
+# This run's emphasis_cells_per_key=63 (the previous builder's run: 53; frames 186 vs 168, timing-dependent).
