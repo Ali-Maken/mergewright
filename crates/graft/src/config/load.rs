@@ -228,13 +228,23 @@ pub(super) fn settle_folder(config_home: Option<&Path>) -> (OnDiskNames, Option<
     };
     match migrate_config_dir(home) {
         Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => (OnDiskNames::New, None),
-        Ok(ConfigDirMoved::BothPresent { old }) => (
+        Ok(ConfigDirMoved::OlderWrote { old, kept_aside }) => (
             OnDiskNames::New,
             Some(ConfigWarning::ConfigFolder {
-                words: format!(
-                    "{} is still there beside the new folder; the new one is in use",
-                    old.display()
-                ),
+                words: match kept_aside {
+                    Some(aside) => format!(
+                        "an older version wrote {} · close it; kept in {}",
+                        old.display(),
+                        aside.display()
+                    ),
+                    None => format!("an older version wrote {} · close it", old.display()),
+                },
+            }),
+        ),
+        Ok(ConfigDirMoved::OldLeft { old, why }) => (
+            OnDiskNames::New,
+            Some(ConfigWarning::ConfigFolder {
+                words: format!("moved; {} could not be removed: {why}", old.display()),
             }),
         ),
         Err(error) => (

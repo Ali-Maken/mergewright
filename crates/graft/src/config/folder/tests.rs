@@ -9,6 +9,7 @@ use std::path::Path;
 use graft_core::on_disk::OnDiskNames;
 use tempfile::TempDir;
 
+use super::{ConfigDirMoved, migrate_config_dir};
 use crate::config::{ConfigWarning, ThemeChoice, load_settling};
 
 /// His three files under `<home>/graft`, the config asking for the light
@@ -64,19 +65,37 @@ fn config_dir_moves_before_first_load() {
     assert!(again.warnings.is_empty(), "{:?}", again.warnings);
 }
 
+/// Review m8-26 Q2, replacing `config_dir_moves_both_present`, which pinned
+/// the old rule (old folder left as it was, warned every launch).
 #[test]
-fn config_dir_moves_both_present() {
+fn both_present_files_carry_or_go_aside() {
     let dir = TempDir::new().expect("temp dir");
     let home = dir.path();
     old_folder(home);
     let new = home.join("tributary");
     fs::create_dir_all(&new).expect("the new folder is made");
+    // Equal: `launches`. Differs: `config.toml`. No new copy: `recent`.
     fs::write(new.join("config.toml"), "[ui]\ntheme = \"dark\"\n").expect("config");
+    fs::write(new.join("launches"), "3\n").expect("launches");
 
     let (names, loaded) = load_settling(xdg(home)).expect("it loads");
 
     assert_eq!(names, OnDiskNames::New, "the new folder is kept");
     assert_eq!(loaded.config.ui.theme, ThemeChoice::Dark, "and read");
+    let aside = new.join("older-version/1");
+    assert_eq!(
+        fs::read_to_string(aside.join("config.toml")).expect("kept aside"),
+        "[ui]\ntheme = \"light\"\n"
+    );
+    assert!(
+        !aside.join("launches").exists(),
+        "equal is deleted, not kept"
+    );
+    assert_eq!(
+        fs::read_to_string(new.join("recent")).expect("carried"),
+        "/code/api\t1\n"
+    );
+    assert!(!home.join("graft").exists(), "the old folder is gone");
     let warned: Vec<_> = loaded
         .warnings
         .iter()
@@ -85,13 +104,80 @@ fn config_dir_moves_both_present() {
     assert_eq!(warned.len(), 1, "warned once: {:?}", loaded.warnings);
     let words = warned[0].to_string();
     assert!(
-        words.contains(&home.join("graft").display().to_string()),
-        "names the old folder: {words}"
+        words.contains("an older version wrote")
+            && words.contains(&home.join("graft").display().to_string())
+            && words.contains(&aside.display().to_string()),
+        "{words}"
     );
-    assert_eq!(
-        fs::read_to_string(home.join("graft/config.toml")).expect("still there"),
-        "[ui]\ntheme = \"light\"\n",
-        "the old folder is left as it was"
+
+    // Next launch, nothing new under the old name: silent.
+    let (_, again) = load_settling(xdg(home)).expect("it loads again");
+    assert!(again.warnings.is_empty(), "{:?}", again.warnings);
+    // An older version writes again: a second pass folder.
+    fs::create_dir_all(home.join("graft")).expect("old again");
+    fs::write(home.join("graft/config.toml"), "x = 1\n").expect("config");
+    let (_, third) = load_settling(xdg(home)).expect("it loads a third time");
+    assert_eq!(third.warnings.len(), 1, "{:?}", third.warnings);
+    assert!(new.join("older-version/2/config.toml").is_file());
+}
+
+/// Review m8-26 Minor 4: two launches at once, two fds on the flock.
+#[test]
+fn two_launches_move_the_config_once() {
+    for _ in 0..20 {
+        let dir = TempDir::new().expect("temp dir");
+        let home = dir.path().to_path_buf();
+        old_folder(&home);
+        let outcomes: Vec<_> = std::thread::scope(|scope| {
+            let runs: Vec<_> = (0..2)
+                .map(|_| scope.spawn(|| migrate_config_dir(&home)))
+                .collect();
+            runs.into_iter()
+                .map(|run| run.join().expect("no panic").expect("moves"))
+                .collect()
+        });
+        let moved = outcomes
+            .iter()
+            .filter(|outcome| matches!(outcome, ConfigDirMoved::Moved { files: 3 }))
+            .count();
+        assert_eq!(moved, 1, "{outcomes:?}");
+        assert!(outcomes.contains(&ConfigDirMoved::Nothing), "{outcomes:?}");
+        assert!(!home.join("tributary.moving").exists());
+        assert!(!home.join("graft").exists());
+        for name in ["config.toml", "recent", "launches"] {
+            assert!(home.join("tributary").join(name).is_file(), "{name}");
+        }
+    }
+}
+
+/// Review m8-26 Minor 3: the removal's own words.
+#[test]
+fn a_failed_old_folder_removal_says_why() {
+    let dir = TempDir::new().expect("temp dir");
+    let home = dir.path();
+    old_folder(home);
+    fs::create_dir_all(home.join("tributary")).expect("new");
+    // A symlink is never settled, so the old folder cannot be removed.
+    std::os::unix::fs::symlink("recent", home.join("graft/link")).expect("a symlink");
+
+    let outcome = migrate_config_dir(home).expect("settles");
+
+    let ConfigDirMoved::OldLeft { old, why } = &outcome else {
+        panic!("{outcome:?}");
+    };
+    assert_eq!(old, &home.join("graft"));
+    let expected = fs::remove_dir(home.join("graft"))
+        .expect_err("still not empty")
+        .to_string();
+    assert_eq!(why, &expected, "the io::Error words");
+    let (_, loaded) = load_settling(xdg(home)).expect("it loads");
+    assert!(
+        loaded
+            .warnings
+            .iter()
+            .any(|w| w.to_string().contains(&expected)),
+        "{:?}",
+        loaded.warnings
     );
 }
 

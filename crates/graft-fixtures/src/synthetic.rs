@@ -222,6 +222,7 @@ fn build(scale: Scale, dir: &Path) -> Result<(), SyntheticError> {
         git::run(dir, &["commit-graph", "write", "--reachable"]).map_err(git_error(scale))?;
     }
     check_size(scale, dir)?;
+    crate::settled::names_settled(dir).map_err(io_error(scale, dir))?;
 
     let marker = dir.join(cache::MARKER);
     let note = format!(
@@ -350,5 +351,20 @@ fn io_error(scale: Scale, path: &Path) -> impl FnOnce(io::Error) -> SyntheticErr
         scale: scale.name(),
         path,
         source,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Scale, build};
+    use crate::settled::is_settled;
+
+    /// Review m8-26 Minor 9: the cached fixture carries the marker, so no
+    /// test opening it writes the app's lock and marker into the cache.
+    #[test]
+    fn built_with_the_marker() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        build(Scale::of(40), dir.path()).expect("build");
+        assert!(is_settled(dir.path()));
     }
 }
