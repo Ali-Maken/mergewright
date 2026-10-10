@@ -36,7 +36,7 @@ TESTING.md captions (27c owns TESTING.md — any caption naming the old app word
 None.
 
 ## Acceptance (each box: the evidence named at tick time)
-- [ ] `27d-classified.txt` committed; counts `reshoot <n> · code-name <m>` in NOTES; reviewer samples ≥10
+- [x] (classify.py run, counts in NOTES) `27d-classified.txt` committed; counts `reshoot <n> · code-name <m>` in NOTES; reviewer samples ≥10
       `code-name` rows.
 - [ ] Each `reshoot` file re-shot by its writer: NOTES table `capture · writer command · result`.
 - [ ] After: `rg -l -i 'graft|GRAFT_'` over the re-shot files returns only code-name matches (output to file, count
