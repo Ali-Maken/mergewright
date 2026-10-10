@@ -14,7 +14,7 @@
 //! ```
 //!
 //! `capture` is [`graft_fixtures::capture`] exactly — redact, compare, fail
-//! on drift, rewrite only under `GRAFT_UPDATE_SHOTS=1` and stay red when it
+//! on drift, rewrite only under `TRIB_UPDATE_SHOTS=1` and stay red when it
 //! does. It exists so `pty-walk-*.py`, which draws its frames under a real
 //! pty and so cannot be a Rust test, asserts on the same terms as every other
 //! capture rather than inventing a second convention.

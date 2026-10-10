@@ -384,7 +384,7 @@ fn graph_shows_the_commit(app: &App, state: AppState) -> AppState {
 /// `c`, a subject, `⏎` — no `⇥ ⇥` to reach the button first — and the
 /// capture of the frames either side of it.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo nextest run -E
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo nextest run -E
 /// 'test(capture_fix_subject_enter_commits)'`.
 #[test]
 fn capture_fix_subject_enter_commits() {

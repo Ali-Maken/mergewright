@@ -285,7 +285,7 @@ pub(super) fn run_repo(
     // root a porcelain path is joined onto (m3/05 review, Major 2).
     let workdir = repos.workdir().ok().flatten();
     // Journal stamps come from the wall clock, always: the runner's default.
-    // The session clock (`harness.clock`, `GRAFT_NOW`) draws ages only; a
+    // The session clock (`harness.clock`, `TRIB_NOW`) draws ages only; a
     // pin must never write false history into his repository, which `u`,
     // J and the time machine order by stamp (m8/19e §R1).
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;

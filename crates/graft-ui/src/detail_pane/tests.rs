@@ -1248,7 +1248,7 @@ fn conflicts_section_draws_first_with_words_not_a_letter() {
 }
 
 /// Not an assertion — dumps the CONFLICTS-first changes pane at 80×24 and
-/// 160×48. Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui detail_pane::tests::capture_for_docs_shots`.
+/// 160×48. Run by hand to regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui detail_pane::tests::capture_for_docs_shots`.
 #[test]
 fn capture_for_docs_shots() {
     let mut shots = graft_fixtures::Captures::new();

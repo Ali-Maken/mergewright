@@ -123,15 +123,15 @@ fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open() 
     check(RenderingTier::Unicode, Refs::FiftyThousand, Pane::Map);
 }
 
-/// The scroll on a real repository no test may own (`GRAFT_REAL_REPO`, a
-/// path; `GRAFT_REAL_SIZE`, `COLSxROWS`, default 120x40; `GRAFT_REAL_TIER=pixel`, else Unicode). Manual, like the
+/// The scroll on a real repository no test may own (`TRIB_REAL_REPO`, a
+/// path; `TRIB_REAL_SIZE`, `COLSxROWS`, default 120x40; `TRIB_REAL_TIER=pixel`, else Unicode). Manual, like the
 /// git/git budgets: `scripts/scroll-lag-big-repo.sh` runs it on a clone of
 /// the user's 17.7k-commit, 1.3k-ref repository (debug: scroll lag).
 #[test]
-#[ignore = "manual: needs GRAFT_REAL_REPO, a repository outside the test fixtures"]
+#[ignore = "manual: needs TRIB_REAL_REPO, a repository outside the test fixtures"]
 fn a_real_repository_keeps_input_to_frame_under_16_ms() {
-    let repo = std::env::var_os("GRAFT_REAL_REPO").expect("GRAFT_REAL_REPO: the repository path");
-    let tier = match std::env::var("GRAFT_REAL_TIER").as_deref() {
+    let repo = std::env::var_os("TRIB_REAL_REPO").expect("TRIB_REAL_REPO: the repository path");
+    let tier = match std::env::var("TRIB_REAL_TIER").as_deref() {
         Ok("pixel") => RenderingTier::Pixel,
         _ => RenderingTier::Unicode,
     };
@@ -173,18 +173,18 @@ fn a_real_repository_keeps_input_to_frame_under_16_ms() {
     judge(tier, Refs::Fixture, Pane::Closed, &run, &gate, &summary);
 }
 
-/// `GRAFT_REAL_SIZE` as `(columns, rows)`; `None` when unset.
+/// `TRIB_REAL_SIZE` as `(columns, rows)`; `None` when unset.
 fn real_size() -> Result<Option<(u16, u16)>, String> {
-    let Some(text) = std::env::var_os("GRAFT_REAL_SIZE") else {
+    let Some(text) = std::env::var_os("TRIB_REAL_SIZE") else {
         return Ok(None);
     };
     let text = text.to_string_lossy();
     let (columns, rows) = text
         .split_once('x')
-        .ok_or_else(|| format!("GRAFT_REAL_SIZE={text}: want COLSxROWS"))?;
+        .ok_or_else(|| format!("TRIB_REAL_SIZE={text}: want COLSxROWS"))?;
     let parse = |part: &str| {
         part.parse::<u16>()
-            .map_err(|why| format!("GRAFT_REAL_SIZE={text}: {why}"))
+            .map_err(|why| format!("TRIB_REAL_SIZE={text}: {why}"))
     };
     Ok(Some((parse(columns)?, parse(rows)?)))
 }
@@ -325,7 +325,7 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
     if let Some(trace) = &trace {
         let label = format!(
             "tier={tier:?} refs={refs:?} pane={pane:?} control={control:?} run={}",
-            std::env::var("GRAFT_FRAME_RUN").unwrap_or_else(|_unset| "-".to_owned())
+            std::env::var("TRIB_FRAME_RUN").unwrap_or_else(|_unset| "-".to_owned())
         );
         let lines: Vec<String> = run
             .trace

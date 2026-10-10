@@ -187,7 +187,7 @@ fn literals(path: &Path) -> Vec<(usize, String)> {
     found
 }
 
-/// `graft` as a whole word, any case: not `graft_core`, not `GRAFT_X`,
+/// `graft` as a whole word, any case: not `graft_core`, not `TRIB_X`,
 /// not `graft-ui`'s path segment when joined by `_`.
 fn says_old_name(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
@@ -250,7 +250,7 @@ fn the_word_test_reads_words_only() {
     assert!(says_old_name("graft crashed"));
     assert!(says_old_name("usage: Graft"));
     assert!(!says_old_name("graft_core"));
-    assert!(!says_old_name("GRAFT_PERF_TRACE"));
+    assert!(!says_old_name("TRIB_PERF_TRACE"));
     assert!(!says_old_name("grafted"));
 }
 
@@ -277,17 +277,13 @@ fn names_old_binary(text: &str) -> bool {
     })
 }
 
-/// Scripts run the `trib` binary: a stale `target/*/graft` from an earlier
-/// build would otherwise run old code without failing.
-#[test]
-fn scripts_run_the_command() {
-    let root = crates_dir().parent().expect("repo root").to_path_buf();
+/// `.scratch/*/pty-walk*.py`: the milestones' pty walk scripts.
+fn pty_walk_scripts(root: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
-    every_file(&root.join("scripts"), &mut files);
     for scratch in fs::read_dir(root.join(".scratch")).expect(".scratch reads") {
         let dir = scratch.expect("a dir entry").path();
         let Ok(entries) = fs::read_dir(&dir) else {
-            continue;
+            continue; // a plain file in .scratch: no scripts under it
         };
         for entry in entries {
             let path = entry.expect("a dir entry").path();
@@ -297,6 +293,44 @@ fn scripts_run_the_command() {
             }
         }
     }
+    files
+}
+
+/// No environment name keeps the old prefix (m8-polish-and-ship/27b): every
+/// file under `crates/` (MAP.md files included) and `scripts/`, the pty-walk
+/// scripts, and ARCHITECTURE.md, read as bytes so no file is skipped as not
+/// text. The old names are read nowhere, so the allow-list is empty.
+#[test]
+fn no_old_env_name() {
+    let root = crates_dir().parent().expect("repo root").to_path_buf();
+    let old = concat!("GRAFT", "_").as_bytes();
+    let mut files = Vec::new();
+    every_file(&crates_dir(), &mut files);
+    every_file(&root.join("scripts"), &mut files);
+    files.extend(pty_walk_scripts(&root));
+    files.push(root.join("ARCHITECTURE.md"));
+    assert!(files.len() > 100, "only {} files swept", files.len());
+    let found: Vec<String> = files
+        .iter()
+        .filter(|file| {
+            fs::read(file)
+                .unwrap_or_else(|e| panic!("{} reads: {e}", file.display()))
+                .windows(old.len())
+                .any(|w| w == old)
+        })
+        .map(|file| file.display().to_string())
+        .collect();
+    assert!(found.is_empty(), "old env names in:\n{}", found.join("\n"));
+}
+
+/// Scripts run the `trib` binary: a stale `target/*/graft` from an earlier
+/// build would otherwise run old code without failing.
+#[test]
+fn scripts_run_the_command() {
+    let root = crates_dir().parent().expect("repo root").to_path_buf();
+    let mut files = Vec::new();
+    every_file(&root.join("scripts"), &mut files);
+    files.extend(pty_walk_scripts(&root));
     let mut found = Vec::new();
     for file in &files {
         let Ok(text) = fs::read_to_string(file) else {

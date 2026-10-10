@@ -129,7 +129,7 @@ impl Isolated {
 }
 
 /// The instant every pty run's session clock is pinned to unless the test
-/// names `GRAFT_NOW` itself (m8/19d-b). One value for every producer:
+/// names `TRIB_NOW` itself (m8/19d-b). One value for every producer:
 /// `graft_fixtures::PINNED_NOW` (m8/19d-b2).
 pub const PINNED_NOW: i64 = graft_fixtures::PINNED_NOW;
 
@@ -234,9 +234,9 @@ impl Pty {
             .env("GIT_CEILING_DIRECTORIES", ceiling)
             .env_remove("GIT_DIR")
             .env_remove("GIT_WORK_TREE")
-            .env_remove("GRAFT_TRACE")
-            // Set before `env`, so a caller naming `GRAFT_NOW` wins.
-            .env("GRAFT_NOW", PINNED_NOW.to_string())
+            .env_remove("TRIB_TRACE")
+            // Set before `env`, so a caller naming `TRIB_NOW` wins.
+            .env("TRIB_NOW", PINNED_NOW.to_string())
             // A commit made in the app is dated an hour before the pin, so
             // it draws `1h` (not `future`) and its id is the same every run
             // (m8/19d-b2, ticket 19d §R5). Graft itself never sets git's

@@ -32,9 +32,9 @@ use crate::support::{NOW, Never, TempRepo, context, journal_for, run_undo};
 /// The shim, shared with graft's K4.
 const SHIM: &str = include_str!("git_shim.sh");
 
-const CHILD_REPO: &str = "GRAFT_KILL_CHILD_REPO";
-const CHILD_TO: &str = "GRAFT_KILL_CHILD_TO";
-const CHILD_OUT: &str = "GRAFT_KILL_CHILD_OUT";
+const CHILD_REPO: &str = "TRIB_KILL_CHILD_REPO";
+const CHILD_TO: &str = "TRIB_KILL_CHILD_TO";
+const CHILD_OUT: &str = "TRIB_KILL_CHILD_OUT";
 
 /// Which call the shim stops, and how.
 #[derive(Clone, Copy)]
@@ -50,9 +50,9 @@ pub(crate) enum Shim {
 impl Shim {
     fn env(self) -> [(&'static str, &'static str); 2] {
         match self {
-            Shim::KillOnPlainApply => [("GRAFT_SHIM_ON", "plain-apply"), ("GRAFT_SHIM_DO", "kill")],
-            Shim::KillOnDrop => [("GRAFT_SHIM_ON", "drop"), ("GRAFT_SHIM_DO", "kill")],
-            Shim::FailDrop => [("GRAFT_SHIM_ON", "drop"), ("GRAFT_SHIM_DO", "fail")],
+            Shim::KillOnPlainApply => [("TRIB_SHIM_ON", "plain-apply"), ("TRIB_SHIM_DO", "kill")],
+            Shim::KillOnDrop => [("TRIB_SHIM_ON", "drop"), ("TRIB_SHIM_DO", "kill")],
+            Shim::FailDrop => [("TRIB_SHIM_ON", "drop"), ("TRIB_SHIM_DO", "fail")],
         }
     }
 }
@@ -90,7 +90,7 @@ pub(crate) fn run_child(repo: &TempRepo, to: &str, shim: Shim) -> (bool, Option<
             "--test-threads=1",
         ])
         .env("PATH", path)
-        .env("GRAFT_SHIM_REAL_GIT", real_git())
+        .env("TRIB_SHIM_REAL_GIT", real_git())
         .envs(shim.env())
         .env(CHILD_REPO, repo.path())
         .env(CHILD_TO, to)
@@ -108,9 +108,9 @@ pub(crate) fn run_child(repo: &TempRepo, to: &str, shim: Shim) -> (bool, Option<
     (killed, line)
 }
 
-/// The child's half: the switch to `$GRAFT_KILL_CHILD_TO` in
-/// `$GRAFT_KILL_CHILD_REPO`, its `explain()` (or `ok`) written to
-/// `$GRAFT_KILL_CHILD_OUT`. Does nothing when run on its own.
+/// The child's half: the switch to `$TRIB_KILL_CHILD_TO` in
+/// `$TRIB_KILL_CHILD_REPO`, its `explain()` (or `ok`) written to
+/// `$TRIB_KILL_CHILD_OUT`. Does nothing when run on its own.
 #[test]
 #[ignore = "the child of the kill tests; runs only under run_child"]
 fn child_runs_the_switch() {

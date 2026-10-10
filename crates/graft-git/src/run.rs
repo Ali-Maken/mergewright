@@ -46,6 +46,7 @@ use std::thread;
 use std::time::Duration;
 
 use graft_core::oid::Oid;
+use graft_core::on_disk::ASKPASS_SOCKET_VAR;
 
 use exec::{Ending, Event, Pipe, apply, collect_rest, drain, os_arg, shell_quote};
 use stop::{Graces, StopOrder, kill};
@@ -345,7 +346,7 @@ impl GitInvocation {
     /// Routes git's (and ssh's) credential prompts to `server`: sets
     /// `GIT_ASKPASS` and `SSH_ASKPASS` to its helper, `SSH_ASKPASS_REQUIRE`
     /// to `force` (ssh asks through it even with a terminal), and
-    /// `GRAFT_ASKPASS_SOCKET` to its socket, so the helper knows it is in
+    /// `TRIB_ASKPASS_SOCKET` to its socket, so the helper knows it is in
     /// askpass mode and where to call. `GIT_TERMINAL_PROMPT=0` stays: git
     /// asks the helper, never the terminal. Only these four variables are
     /// added; no credential ever travels in the environment or the arguments,
@@ -353,7 +354,7 @@ impl GitInvocation {
     #[must_use]
     pub fn askpass(self, server: &askpass::AskPassServer) -> Self {
         self.env("GIT_ASKPASS", server.helper())
-            .env("GRAFT_ASKPASS_SOCKET", server.socket_path())
+            .env(ASKPASS_SOCKET_VAR, server.socket_path())
             .env("SSH_ASKPASS", server.helper())
             .env("SSH_ASKPASS_REQUIRE", "force")
     }

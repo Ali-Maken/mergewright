@@ -15,7 +15,7 @@
 419 crates/graft-git/src/history/divergence.rs
 1004 crates/graft-git/src/history/tests.rs
 703 crates/graft-git/src/repo/tests.rs
-683 crates/graft-git/src/run.rs
+684 crates/graft-git/src/run.rs
 420 crates/graft-git/src/run/askpass.rs
 482 crates/graft-git/src/run/askpass/tests.rs
 699 crates/graft-git/src/status/tests.rs
@@ -227,7 +227,7 @@
 406 crates/graft/tests/it/app_harness.rs
 425 crates/graft/tests/it/blame_place.rs
 650 crates/graft/tests/it/budget_run.rs
-422 crates/graft/tests/it/clock_pin.rs
+443 crates/graft/tests/it/clock_pin.rs
 531 crates/graft/tests/it/commit_editor_writes.rs
 1992 crates/graft/tests/it/conflict_interim.rs
 875 crates/graft/tests/it/context_menu.rs

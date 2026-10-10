@@ -78,7 +78,7 @@ impl Tour {
             SIZE,
             &[
                 ("TMPDIR", tmp_path.as_os_str().to_owned()),
-                ("GRAFT_PRACTICE_EPOCH", EPOCH.to_string().into()),
+                ("TRIB_PRACTICE_EPOCH", EPOCH.to_string().into()),
             ],
         );
         pty.wait_for("the empty state", |s| s.has("no repository here"));

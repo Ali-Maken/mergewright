@@ -209,7 +209,7 @@ struct Carried {
     /// The next place is the way back from the tour (or from a tour that
     /// could not start): not put on the recent list again (§A6).
     returning: bool,
-    /// The session clock, for the whole process (`GRAFT_NOW`, m8/19d-b):
+    /// The session clock, for the whole process (`TRIB_NOW`, m8/19d-b):
     /// every repository's harness and the practice repo's `now`.
     clock: Clock,
 }

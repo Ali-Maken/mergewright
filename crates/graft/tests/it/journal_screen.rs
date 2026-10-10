@@ -545,7 +545,7 @@ fn u_typed_into_the_find_is_text() {
 }
 
 /// Set for [`squash_capture_git_clock_pinned`] by its parent.
-const SQUASH_CHILD: &str = "GRAFT_M7_38_SQUASH_PINNED_CHILD";
+const SQUASH_CHILD: &str = "TRIB_M7_38_SQUASH_PINNED_CHILD";
 
 /// `docs/shots/m7/journal-after-squash-187x44.txt` (m7/38). Right: after
 /// `R s s y` on `feature-b`, J's newest row is the `●` rewrite row; no `✗`

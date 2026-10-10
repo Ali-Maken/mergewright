@@ -456,7 +456,7 @@ fn esc_in_the_clone_password_box_stops_the_clone() {
         ])
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_CONFIG_GLOBAL", empty_config.path())
-        .env("GRAFT_ESC_CLONE_CHILD", "1")
+        .env("TRIB_ESC_CLONE_CHILD", "1")
         .output()
         .expect("the child test runs");
     let said = String::from_utf8_lossy(&output.stdout);
@@ -521,7 +521,7 @@ fn esc_in_the_box_stops_before_it_refuses() {
 #[test]
 #[ignore = "run only as the child of esc_in_the_clone_password_box_stops_the_clone"]
 fn child_esc_in_the_clone_password_box() {
-    if std::env::var_os("GRAFT_ESC_CLONE_CHILD").is_none() {
+    if std::env::var_os("TRIB_ESC_CLONE_CHILD").is_none() {
         return;
     }
     let remote = LocalRemote::new(graft_fixtures::Shape::Linear).unwrap();
@@ -648,7 +648,7 @@ fn practice_at_reads_whole_seconds_and_refuses_the_rest() {
         assert_eq!(
             practice_at(Some(OsStr::new(bad)), 42),
             Err(format!(
-                "GRAFT_PRACTICE_EPOCH must be whole seconds since 1970, got {bad}"
+                "TRIB_PRACTICE_EPOCH must be whole seconds since 1970, got {bad}"
             )),
             "{bad:?}"
         );

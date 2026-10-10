@@ -489,7 +489,7 @@ impl Walk<'_> {
                 .recv_timeout(PATIENCE)
                 .map_err(|why| format!("waiting for {what}: {why}"))?;
             deadline.note(what, &event)?;
-            if std::env::var_os("GRAFT_TEST_TRACE").is_some() {
+            if std::env::var_os("TRIB_TEST_TRACE").is_some() {
                 eprintln!("[{what}] {event:?} -> operating {:?}", state.operating);
             }
             self.seen.events.push(format!("{event:?}"));

@@ -476,7 +476,7 @@ fn capture_amend_into() {
 }
 
 /// Set for [`capture_amend_into_git_clock_pinned`] by its parent.
-const PINNED_CHILD: &str = "GRAFT_M7_AMEND_INTO_PINNED_CHILD";
+const PINNED_CHILD: &str = "TRIB_M7_AMEND_INTO_PINNED_CHILD";
 
 /// The committer date the rewrite's commits get: an hour after the
 /// fixture's last (`stage_auth_fix`, hour 5), before `CORPUS_NOW`.

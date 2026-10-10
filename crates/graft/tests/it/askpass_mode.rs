@@ -1,4 +1,4 @@
-//! The binary's askpass mode (m4-remotes/06): with `GRAFT_ASKPASS_SOCKET`
+//! The binary's askpass mode (m4-remotes/06): with `TRIB_ASKPASS_SOCKET`
 //! set and one argument, `graft` asks the running Graft over the socket,
 //! prints the answer for git and exits — 0 answered, 1 cancelled, 2 anything
 //! else — without touching the terminal.
@@ -40,7 +40,7 @@ fn graft() -> PathBuf {
 fn run_helper(socket: &std::path::Path, prompt: &str) -> Output {
     Command::new(graft())
         .arg(prompt)
-        .env("GRAFT_ASKPASS_SOCKET", socket)
+        .env(graft::cli::ASKPASS_SOCKET_VAR, socket)
         .env_remove("TERM")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

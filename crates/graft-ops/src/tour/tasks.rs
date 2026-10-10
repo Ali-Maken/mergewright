@@ -77,7 +77,7 @@ fn is_done(task: TourTask, entries: &[JournalEntry], conflicted: &BTreeSet<Entry
         }),
         // "Later" is the journal's own order (`parse` keeps entries in the
         // order they were opened), never id order: under a pinned clock
-        // (`GRAFT_NOW`) two ids share their millisecond and sort by their
+        // (`TRIB_NOW`) two ids share their millisecond and sort by their
         // random half.
         TourTask::StashAndBack => entries.iter().enumerate().any(|(at, push)| {
             push.kind == OperationKind::StashPush

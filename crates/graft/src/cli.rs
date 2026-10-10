@@ -37,17 +37,15 @@ pub enum Invocation {
     /// `prompt` to the running Graft listening on `socket`, print its answer
     /// for git, exit — never touching the terminal the running Graft owns.
     Askpass {
-        /// The running Graft's socket, from `GRAFT_ASKPASS_SOCKET`.
+        /// The running Graft's socket, from `TRIB_ASKPASS_SOCKET`.
         socket: PathBuf,
         /// git's question, its one argument (`Password for '…':`).
         prompt: String,
     },
 }
 
-/// The variable that names the running Graft's askpass socket. git passes it
-/// through to the helper; its presence is what selects askpass mode (design
-/// note m4, choice 2: an argument cannot ride in `GIT_ASKPASS` reliably).
-pub const ASKPASS_SOCKET_VAR: &str = "GRAFT_ASKPASS_SOCKET";
+/// The askpass socket variable; defined with the other on-disk names.
+pub use graft_core::on_disk::ASKPASS_SOCKET_VAR;
 
 /// The command the user types, and the word every message that means the
 /// command uses: usage, `--version`, the stderr prefix, the crash text, the

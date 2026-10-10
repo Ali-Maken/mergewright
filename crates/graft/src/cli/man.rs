@@ -90,11 +90,11 @@ const ENVIRONMENT: &[(&str, &str)] = &[
          graph.renderer overrides the tier.",
     ),
     (
-        "GRAFT_PERF_TRACE",
+        "TRIB_PERF_TRACE",
         "A file name: every drawn frame appends one line to it, for a performance report.",
     ),
     (
-        "GRAFT_ASKPASS_SOCKET",
+        crate::cli::ASKPASS_SOCKET_VAR,
         "Set by {cmd} for the git it runs, so that git can ask {cmd} for a password. \
          Not for setting by hand.",
     ),

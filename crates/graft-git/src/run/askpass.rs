@@ -4,7 +4,7 @@
 //! program named in `GIT_ASKPASS` (`SSH_ASKPASS`) with the prompt as its one
 //! argument and reading the answer from its stdout. Graft names **its own
 //! binary** there, and tells that second copy of itself where to call back
-//! through `GRAFT_ASKPASS_SOCKET` — an environment variable, not an argument,
+//! through `TRIB_ASKPASS_SOCKET` — an environment variable, not an argument,
 //! because git may run the helper through `sh` and an argument cannot ride
 //! in `GIT_ASKPASS` reliably. The helper half is [`respond`]; the Graft that
 //! started git runs an [`AskPassServer`], which hands each prompt to an
@@ -133,7 +133,7 @@ impl AskPassServer {
         })
     }
 
-    /// Where the helper connects: the value of `GRAFT_ASKPASS_SOCKET`.
+    /// Where the helper connects: the value of `TRIB_ASKPASS_SOCKET`.
     #[must_use]
     pub fn socket_path(&self) -> &Path {
         &self.socket

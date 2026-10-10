@@ -7,7 +7,7 @@
 #
 # Writes docs/perf/m8-palette.txt, one section per run, summary lines only,
 # numbers only:
-#   loop_us        per frame update+draw+write from the GRAFT_PERF_TRACE
+#   loop_us        per frame update+draw+write from the TRIB_PERF_TRACE
 #                  frame trace, p50/p95/max; check: p95 < 16 ms
 #   open_to_<group>_ms    `⌃P` `4` -> BRANCHES (refs cases) or FILES (paths)
 #                         drawn, settled (p50/p95)
@@ -115,7 +115,7 @@ run_palette() { # name fixture-dir description group queries
   copy_of "$2" "$repo"
   local started_load
   started_load=$(load)
-  GRAFT_PERF_TRACE=$trace python3 "$ROOT/scripts/perf-palette-pty.py" "$BIN" "$repo" 120 36 5 \
+  TRIB_PERF_TRACE=$trace python3 "$ROOT/scripts/perf-palette-pty.py" "$BIN" "$repo" 120 36 5 \
     "$4" "$5" >"$WORK/$name-pty.txt" 2>"$WORK/$name-pty.err" || status=$?
 
   local loop p95 check up95 upcheck
@@ -156,7 +156,7 @@ run_held_j() { # name fixture-dir: held `j` for 3 s at 60 Hz, no palette
   copy_of "$2" "$repo"
   local started_load d95 dcheck
   started_load=$(load)
-  GRAFT_PERF_TRACE=$trace python3 "$ROOT/scripts/scroll-lag-pty.py" "$BIN" "$repo" 120 36 5 0.016 3 "$name" \
+  TRIB_PERF_TRACE=$trace python3 "$ROOT/scripts/scroll-lag-pty.py" "$BIN" "$repo" 120 36 5 0.016 3 "$name" \
     >"$WORK/$name-j-pty.txt" 2>"$WORK/$name-j-pty.err" || status=$?
   d95=$(p95_of draw_us "$trace")
   if [ -n "$d95" ] && [ "$d95" -lt 16000 ]; then dcheck="check held_j_draw_p95_under_16ms ok p95=$d95"; else dcheck="check held_j_draw_p95_under_16ms FAIL p95=${d95:-none}"; fi

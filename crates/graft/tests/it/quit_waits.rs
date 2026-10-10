@@ -144,7 +144,7 @@ fn ctrl_c_mid_merge_boxes_and_never_cancels() {
 /// quitting when it finishes · esc stays`. The write is real and running:
 /// its answer is simply not pumped between the keys. Colour unverified.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_waits`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_waits`.
 #[test]
 fn capture_quit_waits() {
     use crate::preview::FORK_NOW;
@@ -201,7 +201,7 @@ fn capture_quit_waits() {
 /// place of the loop's 10 s (`STOP_OFFER_AFTER`), so no time passes. Colour
 /// unverified.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_stop_now`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_stop_now`.
 #[test]
 fn capture_quit_stop_now() {
     use crate::preview::FORK_NOW;
@@ -263,7 +263,7 @@ fn capture_quit_stop_now() {
 /// the graph tab, not here (NOTES 19d-a3). Colour unverified; looks-right
 /// is the user's.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_relaunch_after_a_stopped_merge`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_relaunch_after_a_stopped_merge`.
 #[test]
 fn capture_relaunch_after_a_stopped_merge() {
     use crate::preview::FORK_NOW;

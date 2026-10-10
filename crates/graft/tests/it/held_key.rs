@@ -744,7 +744,7 @@ fn replay<D>(wakes: &Paced<'_, D>, initial: AppState, reading: &mut Reading) {
 
 /// Set by `heavy::budgets_hold_at_pixel_*` for [`pixel_rss_child`]: the
 /// drain rate, bytes per second (m8 G-pixel-mem).
-pub(crate) const PIXEL_RSS_CHILD_RATE: &str = "GRAFT_PIXEL_RSS_CHILD_RATE";
+pub(crate) const PIXEL_RSS_CHILD_RATE: &str = "TRIB_PIXEL_RSS_CHILD_RATE";
 
 /// The child's result line starts with this.
 pub(crate) const PIXEL_RSS_MARK: &str = "pixel_rss:";

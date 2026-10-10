@@ -496,7 +496,7 @@ fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
 /// frame that wobbles is worse than none
 /// (m5-history-and-ghost-preview/13).
 ///
-/// To regenerate after a deliberate change: `GRAFT_UPDATE_SHOTS=1 cargo test
+/// To regenerate after a deliberate change: `TRIB_UPDATE_SHOTS=1 cargo test
 /// -p graft --test it context_menu::capture_context_menu_for_docs_shots`, then
 /// look at the diff before committing it. That run is **red** — see
 /// [`graft_fixtures::capture`].
@@ -585,7 +585,7 @@ fn context_menu_caption(label: &str, columns: u16, rows: u16) -> String {
              # (crates/graft/tests/it/context_menu.rs, capture_context_menu_for_docs_shots).\n\
              # This file is a golden snapshot: that test asserts the frame still\n\
              # matches it, so drift fails the suite. Regenerate on purpose with\n\
-             # GRAFT_UPDATE_SHOTS=1. Not a pty capture: the terminal is ratatui's\n\
+             # TRIB_UPDATE_SHOTS=1. Not a pty capture: the terminal is ratatui's\n\
              # TestBackend, so this is a character grid with no colour attributes in\n\
              # it — CLAUDE.md rule 5, colour ships unverified. The fixture's commits\n\
              # carry fixed dates and the ages are drawn against a fixed clock, so the\n\

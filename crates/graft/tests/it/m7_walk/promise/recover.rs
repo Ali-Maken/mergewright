@@ -33,7 +33,7 @@ use crate::app_harness::App;
 const TOTAL: usize = 16;
 
 /// Set for [`promise_recover_git_clock_pinned`] by its parent.
-const PINNED_CHILD: &str = "GRAFT_M7_PROMISE_RECOVER_CHILD";
+const PINNED_CHILD: &str = "TRIB_M7_PROMISE_RECOVER_CHILD";
 
 /// Run in a child with git's clock pinned to [`NOW`], for the reason
 /// `journal::the_three_lost_work_journeys` gives: the put-back's reflog

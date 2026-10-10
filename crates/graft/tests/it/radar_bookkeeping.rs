@@ -101,7 +101,7 @@ fn stash_then_rebase(remote: &LocalRemote) -> (App, AppState, String, String) {
 
 /// Regenerates `docs/shots/m6/fix-radar-bookkeeping-120x40.txt`.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it radar_bookkeeping`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it radar_bookkeeping`.
 #[test]
 fn a_pull_rebase_marks_no_duplicates() {
     let remote = local();

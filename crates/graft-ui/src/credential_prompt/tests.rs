@@ -183,7 +183,7 @@ fn masked_field_at_the_ascii_tier_draws_stars() {
 
 /// Not an assertion — prints the masked and unmasked prompts at both
 /// breakpoints plus the too-small fallback, for a `docs/shots/` capture.
-/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui credential_prompt::tests::capture_for_docs_shots`, by hand, when the rendering changes.
+/// `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui credential_prompt::tests::capture_for_docs_shots`, by hand, when the rendering changes.
 #[test]
 fn capture_for_docs_shots() {
     let theme = theme();

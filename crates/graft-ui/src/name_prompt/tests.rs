@@ -162,7 +162,7 @@ fn name_prompt_stays_inside_its_rect() {
 
 /// The plain prompt, with the checkout option, and with a refusal, at 80×24
 /// and 160×48, **asserted** against what is committed. Regenerate on purpose:
-/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui
+/// `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui
 /// name_prompt::tests::capture_for_docs_shots`.
 #[test]
 fn capture_for_docs_shots() {

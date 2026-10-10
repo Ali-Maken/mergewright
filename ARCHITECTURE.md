@@ -137,7 +137,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing the credential prompt** → `app::update::credential` for the
   state, the modal keys and the `Answer` that carries the secret,
   `app::jobs::askpass` for the waiting job's `AskPass`, `app::cli` for the
-  binary's askpass mode (`GRAFT_ASKPASS_SOCKET`), `app::view::credential` for
+  binary's askpass mode (`TRIB_ASKPASS_SOCKET`), `app::view::credential` for
   the view model and `ui::credential_prompt` for the widget. The protocol
   itself — the socket, the `Secret`, the helper — is `git::run::askpass`, and
   nothing in `app` speaks it by hand (m4-remotes/05–06).

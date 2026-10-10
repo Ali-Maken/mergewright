@@ -178,7 +178,7 @@ pub fn without_invented_id(body: &str, id: &str) -> String {
 }
 
 /// Asserts one capture under `docs/shots/` against what the code just drew —
-/// or, under `GRAFT_UPDATE_SHOTS=1`, rewrites it and fails anyway.
+/// or, under `TRIB_UPDATE_SHOTS=1`, rewrites it and fails anyway.
 ///
 /// It used to write, unconditionally, from a `#[ignore]`d test nobody re-ran,
 /// which is how 42 captures drifted across four milestones without a test
