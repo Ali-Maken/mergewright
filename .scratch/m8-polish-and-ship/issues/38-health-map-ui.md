@@ -53,7 +53,7 @@ Pass 1:
 Pass 2, or the single pass:
 - [x] The three `map_coverage` tests pass with `graft-ui` in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`). — **verified by** `cargo nextest run -p graft map_coverage`: 7/7 passed with `graft-ui` in `CHECKED`.
 - [x] `rg -c '^## File layout' crates/graft-ui/MAP.md` returns 0, quoted in NOTES. — **verified by** that `rg` run (pass-2 NOTES).
-- [ ] NOTES gives the line count before and after (`wc -l`), and lists any test-only `pub` item found, with its callers. — line counts given (`wc -l`, pass-2 NOTES); test-only sweep **not run** for pass-2 modules, so unticked.
+- [x] NOTES gives the line count before and after (`wc -l`), and lists any test-only `pub` item found, with its callers. — **verified by** `wc -l` (pass-2 NOTES) and the continuation-2 sweep (scratch script over pass-2 modules' `pub` items, then `rg -n -w spell_every crates`): one test-only item, listed in continuation-2 NOTES.
 
 ## Touches
 - ui MAP.md.
@@ -87,3 +87,10 @@ Status: done. No compaction. Scout: reused `scouts/38-health-map-ui.md` and pass
 - Test-only `pub` items: pass 2 did not run a per-item caller `rg` for the 25 pass-2 modules; only pass-1's (`every_context`, `every_hint`) are known. Unverified, not checked.
 - `CHECKED` in `crates/graft/tests/it/map_coverage.rs`: one line `"graft-ui",` added after `graft-capabilities` — ticket 41 may conflict on the same spot.
 - Stale citations: pass-1 list stands; line numbers past :219 have all moved.
+
+## NOTES (builder, continuation 2, 2026-10-10)
+Status: box 3 done. No compaction. No new scout (sweep is a grep; scout + pass NOTES suffice).
+- Sweep: every `pub fn|struct|enum|trait|type|const|static` in pass-2 files; flagged when no production file other than its own (tests dirs, `tests.rs`, `test_support`, trailing `#[cfg(test)] mod` cut) names it, word-boundary. Heuristic: common method names (`new`, `len`) match elsewhere, so a test-only method with a common name could be missed — unverified for those.
+- Found one: `Keymap::spell_every` (`keymap/spell.rs:35`). Callers: `crates/graft-ui/src/keymap/tests/spelling.rs:35,36,41,42,57` only — the crate's own unit tests. Per 37's ruling it would take `#[cfg(test)]`; this ticket's scope forbids code, so listed as is (MAP.md:408). Conductor: follow-up visibility fix.
+- Pass-1 items still stand: `every_context`, `every_hint`.
+- Touches: this ticket only. No MAP or code change, so `map_coverage` unaffected.
