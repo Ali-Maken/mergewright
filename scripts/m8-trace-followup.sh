@@ -35,6 +35,9 @@ line=$(PROFILE=kitty DEFLATE=yes SCROLL_LAG_DUMP=$WORK/stream.bin TRIB_PERF_TRAC
 echo "# $LABEL: $(date -u +%Y-%m-%dT%H:%MZ) $(uname -sm) $(git -C "$ROOT" rev-parse --short HEAD)"
 echo "${line#*SUMMARY }"
 "$ROOT/scripts/m8-trace-summary.sh" "$TRACE" "$WORK/summary.txt" >/dev/null
+# TRACE_KEEP=<path>: keep the raw trace (per-frame lines) for reading the
+# over-bound frames; never committed.
+if [ -n "${TRACE_KEEP:-}" ]; then cp "$TRACE" "$TRACE_KEEP"; fi
 cat "$WORK/summary.txt"
 # Frames after the last frame that drew a key, and what each carried: the
 # tail's shape, which the summary's one tail_ms cannot show.
