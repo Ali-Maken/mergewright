@@ -36,7 +36,7 @@ TESTING.md captions (27c owns TESTING.md — any caption naming the old app word
 None.
 
 ## Acceptance (each box: the evidence named at tick time)
-- [ ] `27d-classified.txt` committed; counts `reshoot <n> · code-name <m>` in NOTES; reviewer samples ≥10
+- [x] (classify.py run, counts in NOTES) `27d-classified.txt` committed; counts `reshoot <n> · code-name <m>` in NOTES; reviewer samples ≥10
       `code-name` rows.
 - [ ] Each `reshoot` file re-shot by its writer: NOTES table `capture · writer command · result`.
 - [ ] After: `rg -l -i 'graft|GRAFT_'` over the re-shot files returns only code-name matches (output to file, count
@@ -58,3 +58,24 @@ or `.scratch/`; read summary lines only, never a capture whole.
 
 ## Size
 One context, ~40k tokens if the reshoot set is a few dozen files; over ~60 files → split by writer, report first.
+
+## NOTES (builder, 2026-10-10) — partial: stopped at the size rule, report first
+
+- No scout dispatched: the spec's scout (`scouts/27-rename-sweep.md`) plus one classify pass sufficed to size it.
+- **Box 1 done:** `27d-classified.txt` written by `scratchpad/classify.py` (regex: line still says graft after
+  stripping crate paths, `graft-*`/`/tmp/graft*` temp prefixes, `Graft Fixture` author, `*.git` URLs, `-p graft`,
+  `graft_sandbox`). Counts: **reshoot 244 · code-name 199** (443 total). Ambiguous lines default to reshoot.
+  Main reshoot classes: header `graft <path>` (APP_NAME), journal `outside Graft` / `● Graft` rows, prose like
+  `Graft keeps a backup first`, `target/*/graft`, `~/.cache/graft`, stash message `graft: your edits`.
+- **Size stop (ticket §Size: >60 → split by writer, report first).** 244 ≫ 60. Writer map:
+  `.scratch/m8-polish-and-ship/27d-writers.txt` (filename grep over scripts/, crates/, .scratch/ .py/.sh/.rs).
+  **209 of 244 have no writer found by filename** — likely built from format strings (`m6/{name}-{w}x{h}`) or
+  hand-assembled contact sheets/`.md` captions; mapping them needs a scout per directory
+  (m6 76, m5 56, m2 52, m7 49, 35-* 48, m8 34, m3 28, m4 21 across both classes).
+- Also: several reshoot files are contact sheets (`m3-contact-sheet.txt`, `m5-contact-sheet-2.txt`,
+  `m7-contact-sheet-*.txt`) — assembled, not shot; regenerate from parts after the parts are re-shot.
+- Some candidates are written by Rust tests (`m7_walk/journal.rs`, `history_place.rs`, …) — 27a said TestBackend
+  was done; these still print `Graft` in journal rows, so either the app string in the journal (`outside Graft`)
+  was not renamed in 27a, or the capture wasn't updated. **Could not confirm which** — not checked.
+- Remaining boxes 2–6 open. Next step: conductor splits by directory; a scout maps each directory's writer; then
+  re-shoot per writer. Nothing re-shot, no capture touched; gates not run (no code changed).
