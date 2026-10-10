@@ -60,21 +60,23 @@ May depend on: `core` (ARCHITECTURE.md crate table). One line per public item.
 
 ## kitty
 - `EMPHASIS_ID_BIT` (const) — `u32` bit set in every emphasis image id, in no strip id.
-- `Layer` (enum) — `Strip` or `Emphasis` (`z=1`, drawn over strips).
+- `Layer` (enum) — `Strip` or `Emphasis` (`z` ≥ 1, over strips). Stacking by `z`: "If two images with the same z-index overlap then the image with the lower id is considered to have the lower z-index" (Kitty graphics-protocol doc).
 - `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows`.
 - `UploadKey` (struct) — `(pub u64)`: what an upload is known by; same key, same picture, no retransmit.
-- `Place` (struct) — one image this frame: `first_row`, `key`, `frame`, `rows`, `cells`, `layer`.
+- `Place` (struct) — one image this frame: `first_row`, `key`, `frame` (`None` only if `holds` said yes), `rows`, `cells`, `layer`, `stack` (rank, higher on top; emphasis sent as `z = 1 + stack`; strips 0). In `kitty/place.rs`.
 - `GraphicsReply` (struct) — one APC graphics reply: `image`, `placement`, `message`.
 - `GraphicsReply::is_error` (fn) — `-> bool`: the reply is not `OK`.
 - `GraphicsReply::is_missing_image` (fn) — `-> bool`: the terminal lost the image (`ENOENT`).
 - `replies` (fn) — `(&[u8]) -> Vec<GraphicsReply>`: every graphics reply in a byte buffer.
 - `KittyImages` (struct) — uploads the terminal holds; emits transmit-once, replace and quiet commands.
-- `KittyImages::new` (fn) — `(capacity: usize)`: at most that many unplaced images kept.
+- `KittyImages::new` (fn) — `(unplaced_bytes: usize)`: decoded bytes unplaced images may hold; least recently placed freed first.
+- `KittyImages::holds` (fn) — `(UploadKey) -> bool`: the terminal holds that image, so a place may come without pixels.
+- `KittyImages::unplaced` (fn) — `-> usize`: decoded bytes of the uploads no frame places now.
 - `KittyImages::deflating` (fn) — builder `(bool)`: transmit zlib-compressed RGBA.
 - `KittyImages::is_deflating` (fn) — `-> bool`: still deflating; false once an error turned it off.
 - `KittyImages::with_transport` (fn) — builder: send commands over a `Transport`.
 - `KittyImages::uploaded` (fn) — `-> usize`: images the terminal holds, as far as Graft knows.
-- `KittyImages::frame` (fn) — `(&[Place], &mut Vec<u8>)`: commands so the screen shows exactly these places.
+- `KittyImages::frame` (fn) — `(&[Place], &mut Vec<u8>)`: commands so the screen shows exactly these places; a key placed `n` times gets ids `p=1..=n`.
 - `KittyImages::hide` (fn) — remove every placement, keep data.
 - `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
 - `KittyImages::forget_uploads` (fn) — after a clear or resize: retransmit everything next frame.

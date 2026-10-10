@@ -1,6 +1,6 @@
 # G-trace follow-up — remove the per-frame cost that grows with history or refs
 
-Status: **partial 2026-10-10 — finding made, no product change; cause is designed (ADR-0053), needs a planner ruling (NOTES).** Was: **deferred by the user 2026-10-08 ("lets finish the product, and then deal with this") — runs after the rest of M8 is built, before the milestone stop.** His trace run exists (2026-10-08, docs/perf/m8-trace-2026-10-08-{ghostty,zed}.txt; was held until it did) (`docs/perf/m8-trace-<date>.txt` from his machine, not the
+Status: **Amendment 1 build B partial 2026-10-11 — built; after-measurement draw_us p50/p99 missed in run 1 of 2 (NOTES B).** Was: Part 2 partial 2026-10-10. Part 1: finding made, ruled below. Was: **deferred by the user 2026-10-08 ("lets finish the product, and then deal with this") — runs after the rest of M8 is built, before the milestone stop.** His trace run exists (2026-10-08, docs/perf/m8-trace-2026-10-08-{ghostty,zed}.txt; was held until it did) (`docs/perf/m8-trace-<date>.txt` from his machine, not the
 builder's). No run → this ticket does not start (rule 1: green fixtures did not match his screen, :84).
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: diagnosis from numbers, a fix at the cause.
 Blocked by: 02, 03
@@ -164,28 +164,31 @@ place (derivation internal). If `Place.frame` is not already optional, make it `
 said yes this frame — an unservable `None` goes down the missing-image path (retransmit next frame), never a blank.
 
 ### Acceptance (each tick names its test)
-- [ ] Count gate above, numbers in NOTES (test named).
-- [ ] `raster::pieces_composite_equals_single_emphasis`: merge-heavy fixture, ≥ 20 selections incl. Focus: backdrop +
+- [x] Count gate above, numbers in NOTES — `piece_gate::pieces_localise_on_his_walk` (heavy, release): 18 %.
+- [ ] **(not as specified: the `b × 255` bound does not hold on overlaps — Part 2 NOTES)**
+      `raster_pieces::pieces_composite_equals_single_emphasis`: merge-heavy fixture, ≥ 20 selections incl. Focus: backdrop +
       all pieces == `composite(backdrop, rasterise_emphasis)`; exact where lit elements don't overlap, else ≤ `b × 255`
       per channel (ADR-0053 bound).
-- [ ] `raster::piece_key_moves_only_with_its_column`: changing one element's alpha changes exactly its owner's key.
-- [ ] graft: `transmits_equal_changed_pieces` (held `j`, merge-heavy: emphasis transmits per frame == pieces whose key
+- [x] `raster_pieces::piece_key_moves_only_with_its_column`: changing one element's alpha changes exactly its owner's key.
+- [x] graft: `event_loop::tests::pixel_scroll::emphasis_pieces::transmits_equal_changed_pieces` (held `j`, merge-heavy: emphasis transmits per frame == pieces whose key
       the terminal didn't hold; linear history: 0 after the first frame, or say with a line why the cursor's own piece
-      moves) and `back_and_forth_retransmits_nothing` (`j` then `k`: 0 transmits).
-- [ ] graft-term: `held_unplaced_bytes_stay_under_budget` (1000 keys) and `holds_false_after_missing_image_reply`.
-- [ ] Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: emphasis upload bytes per key ≤ 25 % of its value
+      moves) and `…::emphasis_pieces::back_and_forth_retransmits_nothing` (`j` then `k`: 0 transmits). Linear: 0.
+- [x] graft-term: `kitty::tests::pieces::held_unplaced_bytes_stay_under_budget` (1000 keys) and
+      `kitty::tests::pieces::holds_false_after_missing_image_reply`.
+- [ ] **(MISSED: 74 → 53 cells per key, 72 %; the test asserts it and is red — Part 2 NOTES)**
+      Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: emphasis upload bytes per key ≤ 25 % of its value
       at HEAD before the change (recorded in the test comment). Count, not time.
-- [ ] After-measurement, same script, same shape: `scripts/m8-trace-followup.sh` → "after" block under "before" in
+- [ ] **(run and recorded; emphasis bytes MISSED by 2.6 %, the rest met — Part 2 NOTES)** After-measurement, same script, same shape: `scripts/m8-trace-followup.sh` → "after" block under "before" in
       `docs/perf/m8-trace-followup.txt`. Targets: emphasis bytes ≤ 1,078,750 (¼ of 4,315,003); bytes_per_key ≤ 46,054
       (½); draw_us p50 ≤ 3,172 (½); after_last_motion frames=0; deflate=yes; broken=no. Miss → report numbers, no
       constant tuning (rule 2). Script's layer split must still recognise piece uploads (check: emphasis id bit).
-- [ ] Capture `docs/shots/m8-05-emphasis-pieces.png` (≤ 200 KB): MONOREPO at a merge selection, then Focus on.
+- [x] `pieces_shot::emphasis_pieces_png` (heavy; 34,412 B). Capture `docs/shots/m8-05-emphasis-pieces.png` (≤ 200 KB): MONOREPO at a merge selection, then Focus on.
       Existing pixel PNG captures regenerated; any changed pixel listed in NOTES. Colour **unverified** (rule 5).
-- [ ] TESTING.md "M8: how he runs the trace", one line: in Ghostty full screen, release build, his repo — hold `j` 3 s,
+- [x] (doc; no test) TESTING.md "M8: how he runs the trace", one line: in Ghostty full screen, release build, his repo — hold `j` 3 s,
       let go (right: stops on the row he let go at, thread lit at every step, never half-drawn), hold `k` back, `F` and
       hold `j` again; then the trace + `scripts/m8-trace-summary.sh`. Expected from the after-run (finding, not a fail
       if missed): write_us p99 ≤ 7,000 (was 14,064), bytes p95 ≤ 30,700 (was 76,751). `tail_ms` is not a judge (NOTES).
-- [ ] ADR-0053: "Amendment 2026-10-10" — Decision 3 reads per-column pieces as above; "one image per row" rejection
+- [x] (doc; grep below) ADR-0053: "Amendment 2026-10-10" — Decision 3 reads per-column pieces as above; "one image per row" rejection
       kept, with why pieces differ (content-keyed, re-placed not re-sent). DESIGN §3.8 (`03-graph-layout-algorithm.md`
       :384-423): "a `j` re-sends a small emphasis image" → pieces; emphasis LRU now iTerm2-only (if so, grep).
 
@@ -203,6 +206,137 @@ pixel-equivalence and transmit-count tests, not judged from the diff. Reuse scou
 at the new hash; scout addendum on `Place`/placement ids and `KittyImages` capacity if the conductor wants one.
 ~70k. Over → split at the seam: (A) graft-graph pieces + count gate + equivalence/key tests; (B) graft-term + graft
 wiring + measurement + docs.
+
+## NOTES Part 2 (builder-opus, 2026-10-10)
+
+**Compacted once mid-ticket** (context summary after the graft-term/graft wiring). Nothing left unbuilt; what remains
+is the three misses below, for the conductor/planner.
+
+Scout: none new — `.scratch/m8-polish-and-ship/scouts/05-trace-followup.md` reused (shape and signatures fixed by the
+ruling); key lines re-read in place (`graphics.rs` `frame`/`layers`, `kitty/mod.rs` `frame`/`ensure_uploaded`/`evict`).
+
+### Built
+- graft-graph (commit bd93b388): `Piece`, `emphasis_pieces`, `rasterise_piece` (`raster/emphasis/pieces.rs`); the pen
+  draws one column in strip coordinates through a translate (`raster.rs` `Part`, `pen.rs` `shift`), so a piece's
+  anti-aliasing is the whole pass's. Cell scan + crop moved to `raster/emphasis/cells.rs` (file-size ratchet).
+- graft-term: `Place.frame: Option<&RasterFrame>`; `KittyImages::new(unplaced_bytes)`, `holds`, `unplaced`; emphasis
+  uploads found by key, strips by slot; eviction by decoded bytes, least recently placed (`kitty/mod.rs`). A `None`
+  frame the terminal does not hold is skipped that frame (`frame`), and `holds` says no next frame, so it is sent then.
+  `GraphicsReply` moved to `kitty/reply.rs`; piece tests in `kitty/tests/pieces.rs` (ratchet). iTerm2: a band with no
+  pixels is an `InvalidInput` error (`iterm2.rs` `band`), never reached (graft always sends iTerm2 pixels).
+- graft: `event_loop/graphics/layers.rs` (moved out of `graphics.rs`): per strip, the backdrop plus one place per
+  piece; a held key with known cells is placed with `frame: None`, else rasterised, sent, dropped. `Graphics.pieces`
+  (key → cells) is pruned to what `KittyImages` holds after every frame. `UNPLACED_BYTES` = 64 MiB.
+  `view::max_lanes` is now `pub` (the gate test reads it).
+- Signature note: `emphasis_pieces` returns `Vec` (no error) and is empty on a row-count mismatch;
+  `rasterise_piece` returns `RasterError::Selection` there. A piece that draws nothing is never held, so it is
+  rasterised again each frame it is wanted (rare: `emphasis_pieces` only lists columns with alpha above the backdrop).
+
+### Numbers (before → after)
+- Gate (pre-wire, `piece_gate::pieces_localise_on_his_walk`, 222×70, 50 `j`): pieces' area 17,992,545 px vs today's
+  96,933,932 px = **18 %** (< 50 %), so wiring went ahead.
+- `docs/perf/m8-trace-followup.txt` (two after runs, identical bytes): emphasis upload bytes **4,315,003 → 1,107,238**
+  (target ≤ 1,078,750: **missed by 28,488**); bytes_per_key **92,108 → 25,802** (≤ 46,054 met); draw_us p50
+  **6,345 → 2,504 / 2,854** (≤ 3,172 met); after_last_motion frames=0, deflate=yes, broken=no (met); the script's
+  layer split reads piece uploads as emphasis (bit 31 still set: `emphasis=125`) (met).
+- **Worse:** draw_us p95 15,459 → 26,526 / 28,713, p99 19,965 → 46,723 / 46,951; bytes p95 288,075 → 448,816,
+  p99 486,064 → 573,577. Kept trace (scratch run): the heavy frames are 3, 6, 8 (motions=0, load) and 11
+  (motions=1: bytes 486,334, draw 46 ms); every other frame is ≤ 5.1 ms. Cause **not measured**. Suspect (unverified):
+  a frame where every piece is new rasterises each piece in its own pass with its own fresh pixmap
+  (`rasterise_piece`, no pool by the ruling) and deflates each separately. Write p99 5,277 → 6,419 / 6,609.
+- Heavy held_key free, A-deflate, release: `emphasis_cells_per_key` (Σ emphasis transmit widths in cells / 188; every
+  emphasis image is one strip tall, so it is decoded upload bytes over a constant) **74 → 53** (72 %; target ≤ 25 %:
+  **missed**). bytes_per_key 173,089 → 137,783. HEAD value measured at 61b643d5 sources, recorded in the test as
+  `EMPHASIS_CELLS_PER_KEY_BEFORE`. Why, measured on the fast fixture (`pixel_scroll::a_capped_graph_…`, `--no-capture`):
+  on a graph wider than the lane cap every `j` that moves the fold re-sends both strips **and every piece of them**
+  (frames 1–16: 2 backdrops + 18/16/…/4 pieces each), because the piece key holds the strip key (the ruling's key).
+  At his 187×50 the cap folds MONOREPO on most of the hold (`strip_transmits_held` 139); at 222×70 (the gate, the
+  trace script) it folds less. No constant tuned (rule 2). A key without the strip key would not help: a fold change
+  moves columns, so most pieces' pixels change anyway — that is for the planner.
+
+### Deviation: the overlap bound (`raster_pieces::pieces_composite_equals_single_emphasis`)
+Exact on every pixel at most one piece paints. Where two pieces paint one pixel, alpha matches within 2 but the colour
+does not hold to `b × 255`: the whole pass draws a row's node, stubs and tail above every column's edges
+(`raster/pen.rs`), the pieces stack by column. Measured: **53 of 6,030** overlapped pixels past `b × 255` (test prints
+`SUMMARY pieces`). The test asserts alpha ±2 and counts colour. Recorded in the ADR-0053 amendment. Colour unverified.
+
+### Captures (rule 5, 6)
+- New: `docs/shots/m8-05-emphasis-pieces.png` (34,412 B), MONOREPO 222×70, cursor on row 4 (first merge past the
+  start), top Focus off, bottom Focus on. **Question (not a defect, no line proving intent):** the two panels are
+  byte-identical (`focus_on=true focus_changes_pixels=false`). With a thread, a Focus-dimmed row still gets
+  `thread: Some(..)` (`view/strips.rs:388-397`), and `Lit::alpha_at` ignores `emphasis` whenever `thread` is `Some`
+  (`graft-graph/src/raster/emphasis.rs:135-141`), so Focus may never fade a row at the Pixel tier once a thread is on
+  screen. Same at 61b643d5 by reading; not changed here.
+- Regenerated: `docs/shots/m7/fix-scroll-ghostty.png` — **231 pixels changed**, all in column x=824 (the rail),
+  rows 0–400, max channel delta 8. Not from this ticket: the same test on 61b643d5 sources produces the new bytes
+  (checked). Fast-tier PNG checks (`raster.rs` `check_png`, `emphasis_layer::thread_pngs`) green: unchanged.
+
+### Touches (how each was checked)
+- graft-graph `raster` + `cache`: `StripCache::emphasis`/`paint_key`/`lit_hash` kept — grep: `composited`
+  (iTerm2, cache.rs:283), `graphics/layers.rs` (iTerm2 key), tests. graft-graph snapshots green.
+- graft-term `kitty`: `new` callers (graphics.rs, `examples/kitty_check/driver.rs`, tests) updated; `frame`, `answer`
+  (ENOENT → `holds` false: test), `forget_uploads`/`free_all` iterate every upload incl. pieces (existing
+  `forget_covers_emphasis`, `free_all_frees_emphasis` green); `EMPHASIS_ID_BIT` unchanged. `iterm2`: only the
+  `Option` unwrap (grep `place.frame`).
+- graft `event_loop/graphics`, `running/frame.rs`, `row_clear`, idle prefetch: call `Graphics::frame`/`prefetch`
+  unchanged in signature; prefetch draws backdrops only (`graphics.rs` `prefetch`, unchanged). Fast tier green.
+- held_key + frames tests: `held_key` gains `emphasis_cells_per_key` (`Encoding` moved to `held_key/encoding.rs`,
+  ratchet); `pixel_scroll` (c) now "paint changed ⇒ emphasis placed changed".
+- `scripts/m8-trace-followup.sh`: unchanged; its bit-31 split still sees pieces (after block).
+- MAP.md ×2 (graft-graph pieces + ownership rule; graft-term `Place.frame`, `new`, `holds`, `unplaced`). graft MAP:
+  `map_coverage` green without a `max_lanes` line.
+- ADR-0053 amendment; DESIGN §3.8 (two paragraphs); TESTING.md line; `over_400.txt` rows.
+- For the conductor: the ruling lists KNOWN_GAPS M7/46-kitty-no-deflate (budget wording); not read here (builders
+  do not). `KittyImages` is now budgeted in unplaced decoded bytes, not a count. Row 414 unchanged.
+- Not touched: keymap, journal/undo, Unicode tier.
+
+## NOTES Part 2, continuation 1 (builder-opus, 2026-10-10) — **blocked: needs ruling**
+
+No compaction. No Rust changed (a temporary probe was built, measured with and removed; diff kept out of the repo).
+No scout: the four misses are in files the previous builder named; I read `pieces.rs`, `layers.rs`, `raster.rs`
+`paint_part`, `pen.rs`, `emphasis.rs` `lit_reach`, `kitty/mod.rs` `frame`/`ensure_uploaded` directly.
+Worktree started from d1443600 by merge (fec68248; `reset --hard` was refused by the permission system); the
+merge adds only `docs/log/m8.md` lines.
+
+### Measured cause (`docs/perf/m8-trace-followup.txt`, "diagnosis" block)
+**One cause behind misses 1, 2 and 3: a piece is full strip height and as wide as its column's farthest arc.**
+- An incoming/outgoing arc in column `c` widens the piece's reach to the node's lane
+  (`graft-graph/src/raster/emphasis.rs:346-348`); the pixmap is every strip row tall (`raster.rs:225-228`) and
+  `crop` trims columns only (`raster/emphasis/cells.rs:77-83`). On MONOREPO most merges land on lane 0, so the
+  piece of column 33 is 1156×1184 px for one 37-px-tall arc.
+- Trace at his shape, first `j` (frame 10): 31 pieces, **13.9M px** rasterised + deflated (piece_us 29 ms,
+  images_us 23 ms of draw 73 ms). One whole-strip emphasis image was ≤ ~4.3M px for three strips. Load frame 3:
+  27 pieces, 7.5M px, 44 ms of 57 ms. The other heavy frame (8, 33 ms) is the strip load, as before. → miss 3.
+- Heavy held_key 187×50: pieces wider than one lane = **91 % of piece pixels** (228M of 252M px, 288 of 866
+  transmits). emphasis_cells_per_key sums those widths → miss 1; same bytes in the trace → miss 2.
+- The previous builder's cause (piece key holds the strip key, `pieces.rs:85`; strip key moves with the
+  cursor-dependent fold, `view/strips.rs:347-356`) is **real but secondary**: 263 of 866 piece transmits (30 %)
+  were pixel-identical to a piece already rasterised under another key. Fixing it alone cannot reach 25 %.
+- Miss 4 (overlap colour): cause as the previous builder said — the single pass draws all columns' edges, then
+  every row's node over them (`raster.rs:253-270`); pieces stack by column (`layers.rs:118-131`, emitted in that
+  order by `kitty/mod.rs:222-224`), so a later column's arc lands over an earlier lane's node. A piece holding
+  both edges and its node has no stacking order that matches.
+
+### Ruling change needed (exact)
+Every fix changes the piece shape the ruling fixed ("one per drawn column", "cropped to whole cells"):
+1. **Split each column's piece by kind:** a *lane* piece (straight runs, node, stubs, tail, rail — never wider than
+   the lane's own cells + tail) and one *arc* piece per row an arc in that column is drawn on (one row band tall,
+   as wide as the arc). Crop both kinds to whole cells **in both axes**.
+2. **Signature:** `Piece { column, row: Option<u16> /* arc row; None = lane */, key }`; `Emphasised` gains
+   `first_row: u16` (rows cropped); `Place.rows` intersected with the piece's own rows in `layers::places`.
+3. **Stacking:** all arc pieces placed before all lane pieces (fixes node-over-arc, miss 4); arcs crossing a later
+   column's straight run then sit under it, which the single pass does only for columns left of it — bound to be
+   re-measured by `pieces_composite_equals_single_emphasis`, not assumed.
+4. **Count:** `held_key`'s `emphasis_cells_per_key` becomes cell **area** per key (cells × rows / strip rows), since
+   pieces are no longer strip-tall.
+5. Optional, separate: key pieces on what they draw (theme, cell size, backdrop, the column's own rows' geometry)
+   instead of the whole strip key — worth ≤ 30 % of transmits on the held run.
+Estimate (**unverified**, from the shapes above): narrow area 23.6M px + one lane part per wide piece (~17M) +
+arcs at one row (~8.5M per arc row) ≈ 50M of 252M px → ~12 cell-equivalents per key vs 74 before (≈ 16 %).
+
+### Boxes
+None ticked or unticked by this continuation; the three missed ticks and the overlap deviation stand as Part 2
+left them. Gates not run (no Rust diff). Touches: `docs/perf/m8-trace-followup.txt` (diagnosis block), this ticket.
 
 ## Ruling (05 Part 2, amendment 1) — planner, 2026-10-10
 
@@ -270,42 +404,47 @@ literals: graft `layers.rs`, graft-term tests, `examples/kitty_check` (grep).
 
 ### Acceptance (replaces Part 2's open boxes; each tick names its test)
 **Build A — graft-graph, plus graft's `piece_gate` test file:**
-- [ ] `raster_pieces::pieces_composite_equals_single_emphasis`: backdrop + pieces in `emphasis_pieces` order ==
+- [x] `raster_pieces::pieces_composite_equals_single_emphasis`: backdrop + pieces in `emphasis_pieces` order ==
       `composite(backdrop, rasterise_emphasis)`; alpha ±2 on every pixel; colour ≤ `b × 255` on every pixel (printed
       count 0, else the finding above).
-- [ ] `raster_pieces::piece_key_moves_only_with_its_pixels` (replaces `…_with_its_column`): one element's alpha
+- [x] `raster_pieces::piece_key_moves_only_with_its_pixels` (replaces `…_with_its_column`): one element's alpha
       changed → exactly its owner's key changes.
-- [ ] `raster_pieces::equal_keys_equal_pixels`: merge-heavy fixture, ≥ 20 selections incl. Focus, at two lane caps
+- [x] `raster_pieces::equal_keys_equal_pixels`: merge-heavy fixture, ≥ 20 selections incl. Focus, at two lane caps
       (fold on and off): any two pieces with one key rasterise byte-equal with the same anchor-relative crop. Prints
       pieces / distinct keys.
-- [ ] `raster_pieces::pieces_crop_both_axes`: every piece's frame has a drawn pixel in its first and last cell column
+- [x] `raster_pieces::pieces_crop_both_axes`: every piece's frame has a drawn pixel in its first and last cell column
       and its first and last cell row.
-- [ ] **Gate**, MONOREPO, 50 `j`, at 222×70 **and** 187×50: `piece_gate::pieces_localise_on_his_walk` — area of pieces
+- [x] **Gate** (`piece_gate::pieces_localise_on_his_walk`, `piece_gate::no_frame_rasterises_more`, heavy, release: 2.13 % / 2.11 %, 0 frames over), MONOREPO, 50 `j`, at 222×70 **and** 187×50: `piece_gate::pieces_localise_on_his_walk` — area of pieces
       whose key was not seen earlier in the walk ≤ 25 % of the whole-strip emphasis area over the walk;
       `piece_gate::no_frame_rasterises_more` — in every frame, px of unseen-key pieces ≤ px of that frame's whole-strip
       emphasis images. Numbers in NOTES. Either misses → stop, `blocked: pieces don't localise` with the numbers; no
       build B; the conductor asks the user.
 
 **Build B — graft-term, graft, docs:**
-- [ ] graft-term `kitty`: `one_upload_two_places` (one key placed twice in a frame: one transmit, two placements) and
+- [x] (`kitty::tests::pieces::one_upload_two_places`, `kitty::tests::pieces::stack_reaches_the_command`; the four
+      existing tests green in the workspace run) graft-term `kitty`: `one_upload_two_places` (one key placed twice in a frame: one transmit, two placements) and
       `stack_reaches_the_command` (`stack` maps to the field the cited doc line names). Existing
       `held_unplaced_bytes_stay_under_budget`, `holds_false_after_missing_image_reply`, `forget_covers_emphasis`,
       `free_all_frees_emphasis` green.
-- [ ] graft: `transmits_equal_changed_pieces` and `back_and_forth_retransmits_nothing` green under content keys.
-- [ ] Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: `emphasis_cells_per_key` becomes emphasis **area**
+- [x] (`event_loop::tests::pixel_scroll::emphasis_pieces::transmits_equal_changed_pieces`, `…::back_and_forth_retransmits_nothing`,
+      workspace nextest after the stack change) graft: `transmits_equal_changed_pieces` and `back_and_forth_retransmits_nothing` green under content keys.
+- [x] (`held_key::held_j_stops_on_release_pixel_deflate_free`, release, heavy: `emphasis_area_per_key=3.2`, verdict ok)
+      Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: `emphasis_cells_per_key` becomes emphasis **area**
       per key, Σ(cells × rows) / `STRIP_ROWS` / keys (a strip-tall image counts as before, so
       `EMPHASIS_CELLS_PER_KEY_BEFORE` = 74 stands); **≤ 18.5** (25 %). Count, not time.
-- [ ] After-measurement, `scripts/m8-trace-followup.sh`, same shape, **two runs, both on AC** (power line in each
+- [ ] **(run and recorded; bytes and the rest met both runs; draw_us p50 and p99 MISSED in run 1, met in run 2 —
+      NOTES B)** After-measurement, `scripts/m8-trace-followup.sh`, same shape, **two runs, both on AC** (power line in each
       block), "after, amendment 1" blocks under the existing ones. Targets, **each run**:
       emphasis upload bytes ≤ 1,078,750; bytes_per_key ≤ 46,054; bytes p95 ≤ 288,075, p99 ≤ 486,064 (no regression;
       deterministic); draw_us p50 ≤ 3,172, **p95 ≤ 15,459, p99 ≤ 19,965** (no regression vs before);
       after_last_motion frames=0; deflate=yes; broken=no; the emphasis id bit still splits the layers. Miss → the
       numbers, the trace frame line of each over-bound frame and whether it loads strips; no constant tuning (rule 2);
       the conductor goes to the user.
-- [ ] `docs/shots/m8-05-emphasis-pieces.png` and the pixel PNG captures regenerated; changed pixels listed in NOTES.
+- [x] (`pieces_shot::emphasis_pieces_png`, `ghostty_shot::fix_scroll_ghostty_png`; all 126 heavy `shot|png` tests green)
+      `docs/shots/m8-05-emphasis-pieces.png` and the pixel PNG captures regenerated; changed pixels listed in NOTES.
       Colour **unverified** (rule 5).
-- [ ] TESTING.md line from Part 2 stands; its expected numbers unchanged (write_us p99 ≤ 7,000, bytes p95 ≤ 30,700).
-- [ ] ADR-0053 text as below; DESIGN §3.8 pieces paragraph → three kinds, both-axis crop, content key, explicit stack;
+- [x] (doc; no test) TESTING.md line from Part 2 stands; its expected numbers unchanged (write_us p99 ≤ 7,000, bytes p95 ≤ 30,700).
+- [x] (doc; no test — `map_coverage` green for MAP.md) ADR-0053 text as below; DESIGN §3.8 pieces paragraph → three kinds, both-axis crop, content key, explicit stack;
       MAP.md graft-graph (`PieceKind`, ownership incl. rail, key inputs, edge order) and graft-term (`Place.stack`,
       the doc line).
 
@@ -348,3 +487,111 @@ order are fixed here; the equality, crop and count tests pin correctness; the on
 real terminal) rests on a cited doc line and his by-eye capture. Scout: none new — Part 2's scout plus continuation 1's
 reading cover `pieces.rs`, `layers.rs`, `raster.rs`, `kitty/mod.rs`; each build re-reads its lines in place. A
 stopping at its gate ends the pair: this is the last continuation before the user is asked.
+
+## NOTES (05 Part 2, amendment 1 — build A), 2026-10-11
+
+**Compacted once mid-build** (context ran out after the gate passed, before file splits / MAP / ticket). Remaining at
+that point, all done since: test-file split under 400, graft-graph MAP.md, workspace gates, this note. Then stopped on a
+network error before the gates; resumed in place, worktree intact. Scout: none new, as the ruling says; lines re-read.
+
+**Numbers** (all printed by the tests named in the ticks):
+- Gate, release, heavy, MONOREPO 50 `j`: 222×70 pieces 2,062,491 px vs today 96,933,932 px = **2.13 %**, 135 pieces
+  sent vs 144 strips changed; 187×50 1,551,743 vs 73,382,914 = **2.11 %**, 112 sent vs 96 changed.
+  `no_frame_rasterises_more`: 0 frames over at both; first frame 91,834 vs 1,512,745 (222×70), 71,706 vs 1,285,047
+  (187×50); most pieces in one frame 1,327,190 / 693,158 px.
+- Composite: 144 selections, all lit, 12,060 overlapped pixels, **N = 0 past `b × 255`** (miss 4 closed; ADR's
+  "Overlaps" paragraph can say 0, no pass line to cite). Stack sort: (edges 0 / nodes 1, column, Run before Arc, row).
+- Equal keys: 288 selections (both caps: `branchy` with marker, and fold off / `marker = None`), 5,112 pieces, 614
+  distinct keys, 0 mismatched.
+- Rail: drawn in the row pass (`raster/pen.rs:265`, `Pen::row` → `rail`), so it is the **marker column's Node**.
+  Recorded in graft-graph MAP.md.
+- Workspace gates: fmt, clippy (`--all-targets`, also `--features graft/heavy-tests`), nextest 6321/6321, doctests ok.
+
+**Implementation choices the reviewer should check** (none changes the ruling's shape):
+- Equal keys needed equal pixels at any position, which f32 `p + T` rounding broke (112/5,112 arc pieces off by one
+  AA step). Pieces are now drawn in a local frame (arc: its column cell, band top; node: its lane cell, band top) and
+  placed by a whole-pixel translate; stroke outlines are snapped to a 1/1024 px grid first (`geometry.rs`
+  `snapped`, `stroke_placed`, `fill_placed`) so the translate is exact. The whole pass draws the same way, so whole ==
+  pieces holds too.
+- That snapping moved anti-aliasing in the whole pass by at most one AA step. Captures regenerated
+  (`TRIB_UPDATE_SHOTS=1`); changed px / max channel delta: 22-criss-cross 15/16, -on-dark 15/11; 22-foxtrot 8/16,
+  -on-dark 8/9; 22-octopus 11/16, -on-dark 11/12; 22-rings-on-dark 12/9; 40-folded-on-dark 12/9; 42-rings-on-dark
+  12/9; 42-thread-on-dark 24/12; m7/fix-scroll-thread-composite 95 of 442,816 / 12. Snapshots
+  `raster-criss-cross-merge`, `raster-pixel-digests` re-accepted. AA level only, no reorder. Colour **unverified**
+  (rule 5); the user judges by eye (rule 6).
+- Bug fixed on the way (cause): `node.rs` `fill_square` (Stash ring) shifted by `tx` only, never `ty`, so a y-cropped
+  frame lost it. It now adds both.
+- Taken from B early, for interim correctness only: `layers.rs` `Crop` (key → anchor-relative columns/rows and size)
+  and `Graphics.pieces: HashMap<UploadKey, Crop>`; `places` clips piece rows to the strip. Without it A's pieces would
+  have been placed wrong in the app between A and B.
+- Files split for the 400-line ratchet: `pen/straight.rs`, `emphasis/pieces/extent.rs`,
+  `tests/it/raster_pieces/support.rs`.
+
+**Handoff for build B** (A's signatures are as the ruling fixed them; nothing else for B to change in graft-graph
+except MAP wording if the ADR text wants it):
+- graft-term `Place.stack` + kitty `one_upload_two_places`, `stack_reaches_the_command`. **Known interim defect until
+  then:** kitty places with `p=1` per image, so one content key placed twice in a frame shows once. Equal keys are
+  common (614 distinct of 5,112), so this is visible in the app until B lands. Not a gate case; flagging so nobody
+  reads A's state as shippable alone.
+- `layers.rs`: `Crop` / anchor already done; B adds `stack` from `emphasis_pieces` order (index in the Vec) into each
+  `Place`, and placement ids per (key, place) so duplicates coexist.
+- graft `transmits_equal_changed_pieces`, `back_and_forth_retransmits_nothing`: still green under content keys (in the
+  6321 run) — B re-checks once stacking changes placement.
+- `held_key` area metric ≤ 18.5; two AC after-runs; `docs/shots/m8-05-emphasis-pieces.png` (not regenerated by A).
+- ADR-0053 text with N = 0 and rail → node; DESIGN §3.8; graft-term MAP.md. graft-graph MAP.md is done.
+
+## NOTES (05 Part 2, amendment 1 — build B), 2026-10-11
+
+No compaction. Scout: none (the ruling says none new; A's handoff named the lines; I read `kitty/mod.rs`,
+`kitty/encode.rs`, `layers.rs`, `held_key.rs` in place). Started by merging A (2fe6d052); no ticket conflict.
+
+**Built**
+- graft-term: `Place.stack: u16` (`kitty/place.rs`, split out of `mod.rs` for the 400-line ratchet, re-exported).
+  Emphasis places send `z = 1 + stack`; strips send no `z`, as before. Doc line: "If two images with the same z-index
+  overlap then the image with the lower id is considered to have the lower z-index" (sw.kovidgoyal.net/kitty/
+  graphics-protocol, "Controlling displayed image layout"), so ids (an old upload keeps its old id) never decide order.
+- **A's interim defect fixed (cause):** `KittyImages::frame` numbers each upload's placements this frame `p=1..=n`
+  and removes `p > n` left from last frame; `hide` removes all `n`. One content key placed twice shows twice.
+  `Upload.placed: bool` → `placements: u32`. Pinned by `one_upload_two_places`.
+- graft `layers.rs`: each piece's `stack` = its index in `emphasis_pieces` (A's order: edges by (column, Run before
+  Arc, row), then nodes); strips 0.
+- `held_key`: `emphasis_area` = Σ(cells × rows) of emphasis transmits; bound `area × 4 ≤ 74 × 32 × 188` (18.5 per key,
+  compared exactly). Drain parser reads `v=` (`height_px`). Moved for the ratchet: `held_key/transmits.rs`,
+  `drain_sink/tests.rs`; `an_upload_is_matched_by_its_key` from `kitty/tests.rs` to `kitty/tests/pieces.rs`. Rows lowered.
+- `scripts/m8-trace-followup.sh`: optional `TRACE_KEEP=<path>` keeps the raw trace (measurement unchanged).
+
+**Numbers** (before → after)
+- held_key A-deflate free, release: emphasis area per key **74 → 3.2** (≤ 18.5 met); bytes_per_key 173,089 → 120,198;
+  emphasis transmits 656, strip 157.
+- Trace, `docs/perf/m8-trace-followup.txt` "after, amendment 1" (two runs, both AC, eee492a7), run 1 / run 2:
+  emphasis bytes 4,315,003 → 176,656 / 176,656 met; bytes_per_key 92,108 → 13,096 / 13,133 met; bytes p95 288,075 →
+  125,744 met; p99 486,064 → 439,220 met; draw p95 15,459 → 11,869 / 4,319 met; **draw p50 6,345 → 4,781 / 986
+  (≤ 3,172: MISSED run 1)**; **draw p99 19,965 → 35,747 / 12,740 (≤ 19,965: MISSED run 1)**; frames after last
+  motion 0, deflate yes, broken no, id bit splits the layers (emphasis=144): met.
+- Run 1's p99 frame: `motions=0 draw_us=35747 bytes=439220`, before the first key — it carries strips (439 KB > all
+  emphasis bytes of the run, 177 KB). Same binary, identical bytes frame for frame: run 1's draw times are 3–5× run 2's,
+  so the spread is not from the work done. Its cause is **not measured**; load average was 7.3 (node 157 %, dasd
+  100 %). Two extra after runs (p50 4,497 / 4,364, p99 37,296 / 26,258) and the BEFORE binary rebuilt from ad7a435f and
+  interleaved (p50 6,365 / 8,124, p99 39,535 / 38,112 — over its own recorded 19,965) are in the perf file. Under the
+  same conditions after is below before on every draw percentile; the absolute targets, set on a quieter run, hold in
+  1 of 4 after runs. No constant tuned (rule 2). **For the conductor:** re-run both binaries on a quiet machine, or
+  the user decides.
+
+**Captures** (colour unverified, rule 5; the user judges, rule 6)
+- `docs/shots/m8-05-emphasis-pieces.png` regenerated (34,406 B): 76 of 1,418,480 px changed, max channel delta 13,
+  x 0–344, y 21–1183 — A's AA snapping and stack order (A had not regenerated it). Panels still byte-identical Focus
+  on/off (the Part 2 question stands; out of scope).
+- `docs/shots/m7/fix-scroll-ghostty.png` regenerated: 32 of 345,950 px, max delta 13. Built through
+  `StripCache::composited`; graft-graph has no change since A's tip (diff --stat against 2fe6d052), so the drift is
+  A's raster change, not B's — by reading; A's tip not re-run.
+
+**Touches** (how checked)
+- `Place` literal sites (grep `layer: Layer::|layer: crate::kitty|layer: graft_term`): kitty tests, iterm2 tests,
+  `examples/kitty_check`, `layers.rs` — `stack` set in each; iTerm2 never reads `stack` (grep).
+- Kitty byte stream: strip placements unchanged (`deflate_off_is_unchanged`, pinned bytes, green); emphasis rank 0 is
+  `z=1` as before (`emphasis_sits_above_its_strip` green).
+- `forget_uploads`/`free_all`/`answer`: paths unchanged; `forget_covers_emphasis`, `free_all_frees_emphasis` green.
+- Not touched: keymap, journal/undo, Unicode tier, prefetch, graft-graph.
+- MAP.md graft-term (`Place.stack`, `frame` placement ids); ADR-0053 amendment rewritten to the ruling's text with
+  N = 0 and rail → node; DESIGN §3.8; TESTING.md line gains a by-eye stack check (dot over lit line), numbers
+  unchanged; `over_400.txt` rows lowered.

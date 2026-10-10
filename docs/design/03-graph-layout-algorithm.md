@@ -381,7 +381,8 @@ tier.
   viewport re-hit existing strips instead of missing on every new offset.
 - **Where it lives:** inside `graph`'s pixel renderer, as renderer-private
   state (§8.4 — an internal seam, invisible to callers). Three LRUs
-  (backdrops, emphasis images, iTerm2 composites) under one **byte budget**
+  (backdrops, and for iTerm2 emphasis images and composites; Kitty's
+  emphasis pieces are not cached in Graft, see the key below) under one **byte budget**
   (`ByteBudget`, 96 MiB, `event_loop/graphics.rs` `STRIP_BUDGET`), evicting
   the least recently used entry of any layer until the cache weighs no more
   than it (m8 04). Counted strips were not a bound: a strip weighs lanes ×
@@ -413,9 +414,28 @@ tier.
   joins the key: every strip in a frame is drawn at the lowest alpha any of
   its rows needs, so a cursor move that keeps it leaves every strip as it
   was. The selection's paint (lit thread, dimmed lanes, cursor) is not in
-  the strip: it is a second image placed above it, keyed on the strip plus
-  the selection (ADR-0053), so a `j` re-sends a small emphasis image, not
-  the strip. On a graph wider than the lane cap the fold follows the
+  the strip: it goes above it as **emphasis pieces** of three kinds — a
+  **run** per lane column (its straight edges), an **arc** per column and
+  row (the arcs drawn there), a **node** per lane column (nodes, stubs,
+  tails of rows on that lane; the rail goes with the marker column's node)
+  — each cropped to the whole cells its pixels touch, in both axes
+  (ADR-0053, amendment 2026-10-10, amended after continuation 1). A piece
+  is **keyed on its content**: kind, cell size, backdrop alpha, and each
+  element's geometry relative to the piece's anchor, its colour and alpha;
+  no strip key, no absolute position. So one picture anywhere on screen is
+  one upload, placed as often as it appears (placement ids `p=1..=n`), and
+  a `j` or a fold that leaves a piece's pixels alone re-places it by id;
+  only pieces whose key the terminal lacks are rasterised and sent, and
+  their pixels are dropped once sent. **Stacking is explicit:** pieces
+  stack as the whole pass draws (runs and arcs in its edge order, then
+  nodes), and each place carries that rank (`Place::stack`, sent as Kitty
+  `z = 1 + rank`), so the screen order never depends on the order commands
+  are written or on image ids. Pieces the
+  frame no longer places stay in the terminal up to 64 MiB of decoded
+  pixels (`KittyImages`, least recently placed freed first), so moving back
+  sends nothing. iTerm2 cannot stack images: it still gets one composited
+  band per strip, its emphasis cached on the strip key plus the selection's
+  paint (the only emphasis LRU left). On a graph wider than the lane cap the fold follows the
   selection (ADR-0025), so a `j` that moves the thread can still re-send
   every strip on screen: that is a layout change, not paint. Kitty uploads
   go deflated (`o=z`) when the terminal answers the probe for it; without

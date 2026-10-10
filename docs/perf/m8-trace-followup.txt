@@ -1,7 +1,7 @@
 # m8-polish-and-ship/05 trace follow-up. Builder run: scripts/m8-trace-followup.sh (Pixel tier, pty answering
 # like Ghostty with Kitty graphics + deflate, his Ghostty shape 222x70 at 17x37, 50 j at 33 ms, MONOREPO fixture).
-# BEFORE only. No product change landed: the cause is designed (ADR-0053 emphasis layer), see ticket 05 NOTES.
-# AFTER: none yet.
+# BEFORE: HEAD ad7a435f, one emphasis image per strip. AFTER: 05 Part 2, emphasis in per-column pieces (ADR-0053
+# amendment 2026-10-10), same script, same shape, two runs (both on battery; before was on AC).
 #
 # His Ghostty run, side by side (docs/perf/m8-trace-2026-10-08-ghostty.txt:1,8-13):
 #   header tier=pixel columns=222 rows=70 history_rows=3494 refs=291 term=ghostty
@@ -30,3 +30,142 @@ power Now drawing from 'AC Power'
 after_last_motion frames=0
 uploads strip=7/805016B(15%) emphasis=148/4315003B(82%) placements=330 stream=5228343B
 upload_shapes emphasis:17x1184=46 emphasis:1173x1221=41 emphasis:51x1184=27 emphasis:952x1184=12 emphasis:1173x1184=11 strip:1020x1184=2
+
+# after, pieces, MONOREPO: 2026-10-10T17:24Z Darwin arm64 f30acc26
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=6 frames_while_held=48 frames_after_release=1 bytes_per_key=25802 bytes_after_release=14033 tail_ms=4 rss_mb=145 first_byte_ms=584 deflate_answer=yes transmits=132 deflated=132 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=4
+frames=55 span_ms=6036.3 frames_per_s=8.9
+wakes n=55 p50=1 p95=3 p99=11 max=11
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=114 p95=279 p99=405 max=405
+commands n=55 p50=0 p95=1 p99=5 max=5
+draw_us n=55 p50=2504 p95=26526 p99=46723 max=46723
+bytes n=55 p50=4861 p95=448816 p99=573577 max=573577
+write_us n=55 p50=112 p95=4646 p99=6419 max=6419
+fence_us n=0
+input_age_us n=48 p50=2927 p95=40215 p99=51616 max=51616
+tail_ms=0.0
+power Now drawing from 'Battery Power'
+after_last_motion frames=0
+uploads strip=7/805016B(39%) emphasis=125/1107238B(54%) placements=625 stream=2049944B
+upload_shapes emphasis:17x1184=27 emphasis:51x1184=25 emphasis:51x1221=13 emphasis:17x259=9 emphasis:34x1184=8 emphasis:34x1221=7
+
+# after, pieces, MONOREPO, run 2: 2026-10-10T17:25Z Darwin arm64 f30acc26
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=6 frames_while_held=48 frames_after_release=1 bytes_per_key=25802 bytes_after_release=14033 tail_ms=3 rss_mb=145 first_byte_ms=6 deflate_answer=yes transmits=132 deflated=132 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=4
+frames=55 span_ms=6619.7 frames_per_s=8.2
+wakes n=55 p50=1 p95=2 p99=15 max=15
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=112 p95=205 p99=349 max=349
+commands n=55 p50=0 p95=1 p99=6 max=6
+draw_us n=55 p50=2854 p95=28713 p99=46951 max=46951
+bytes n=55 p50=4861 p95=448816 p99=573577 max=573577
+write_us n=55 p50=107 p95=4526 p99=6609 max=6609
+fence_us n=0
+input_age_us n=48 p50=4093 p95=37552 p99=51654 max=51654
+tail_ms=0.0
+power Now drawing from 'Battery Power'
+after_last_motion frames=0
+uploads strip=7/805016B(39%) emphasis=125/1107238B(54%) placements=625 stream=2049944B
+upload_shapes emphasis:17x1184=27 emphasis:51x1184=25 emphasis:51x1221=13 emphasis:17x259=9 emphasis:34x1184=8 emphasis:34x1221=7
+
+# before -> after (run 1 / run 2) against the ruling's targets:
+#   emphasis upload bytes 4,315,003 -> 1,107,238 / 1,107,238   target <= 1,078,750   MISSED by 28,488 (2.6 %)
+#   bytes_per_key         92,108    -> 25,802 / 25,802         target <= 46,054      met
+#   draw_us p50           6,345     -> 2,504 / 2,854           target <= 3,172       met
+#   after_last_motion frames=0, deflate=yes, broken=no                               met
+#   layer split: piece uploads read as emphasis (id bit 31): emphasis=125 uploads     met
+# Worse, not a target: draw_us p95 15,459 -> 26,526 / 28,713, p99 19,965 -> 46,723 / 46,951;
+#   bytes p95 288,075 -> 448,816, p99 486,064 -> 573,577 (bytes identical both runs). A few frames now
+#   cost more than before; which frames and why is not measured here (see ticket 05 NOTES).
+#   write_us p99 5,277 -> 6,419 / 6,609.
+
+# diagnosis, 05 Part 2 continuation 1: 2026-10-10, HEAD fec68248 (= d1443600 + log). Where the p95/p99 frames go.
+# Temporary probe (not committed): per Graphics::frame, µs in backdrop / emphasis_pieces / rasterise_piece /
+# KittyImages::frame (encode+deflate), and each rasterised piece's shape; joined to the trace's frame lines.
+# Same script, same shape. This run: draw_us p95=26994 p99=71810, bytes and uploads identical to the after runs.
+#   frame  motions draw_us  backdrop_us(misses) piece_us images_us pieces_rasterised piece_px
+#   3      0       57428    7557(3)             15878    20528     27                7,542,339
+#   6      0       16601    2517(1)             4682     5447      6                 1,743,588
+#   8      0       33457    17414(3)            1084     11872     5                 164,798    <- strip load, as before
+#   10     1       73498    134(0)              29153    23153     31                13,914,109 <- first j
+#   every other frame <= 7.4 ms draw.
+# Frame 10's pieces: c8@1:289x1221 c11@1:391x1221 c15@1:510x1221 c19@1:663x1184 ... c33@1:1156x1184 (column@first
+# cell:WxH). One piece per column, full strip height, and as wide as the column's farthest arc into a node (merges
+# into lane 0): sum of widths ~10x the graph width. One whole-strip emphasis image was <= ~4.3M px for three strips.
+# Heavy held_key A-deflate 187x50 with the probe: 866 piece transmits, 252,130,876 px; pieces wider than one lane
+# (3 cells) = 288 transmits, 228,494,314 px (91 %); narrow 578, 23,636,562 px. Pixel-identical to a piece
+# rasterised earlier under another key (strip key moved by the fold): 263 / 866 (30 %).
+# This run's emphasis_cells_per_key=63 (the previous builder's run: 53; frames 186 vs 168, timing-dependent).
+
+# after, amendment 1, MONOREPO: 2026-10-10T20:32Z Darwin arm64 eee492a7
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=5 frames_while_held=49 frames_after_release=1 bytes_per_key=13096 bytes_after_release=2223 tail_ms=4 rss_mb=92 first_byte_ms=516 deflate_answer=yes transmits=151 deflated=151 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=3
+frames=55 span_ms=6110.4 frames_per_s=8.8
+wakes n=55 p50=1 p95=2 p99=18 max=18
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=137 p95=236 p99=357 max=357
+commands n=55 p50=0 p95=0 p99=7 max=7
+draw_us n=55 p50=4781 p95=11869 p99=35747 max=35747
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=114 p95=862 p99=4995 max=4995
+fence_us n=0
+input_age_us n=49 p50=5605 p95=12484 p99=51102 max=51102
+tail_ms=0.0
+power Now drawing from 'AC Power'
+after_last_motion frames=0
+uploads strip=7/805076B(70%) emphasis=144/176656B(15%) placements=935 stream=1147811B
+upload_shapes emphasis:17x1184=27 emphasis:51x37=17 emphasis:17x259=12 emphasis:51x481=5 emphasis:17x999=4 emphasis:17x37=4
+
+# after, amendment 1, MONOREPO, run 2: 2026-10-10T20:33Z Darwin arm64 eee492a7
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=5 frames_while_held=50 frames_after_release=1 bytes_per_key=13133 bytes_after_release=2223 tail_ms=1 rss_mb=90 first_byte_ms=3 deflate_answer=yes transmits=151 deflated=151 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=3
+frames=56 span_ms=6622.1 frames_per_s=8.3
+wakes n=56 p50=1 p95=1 p99=19 max=19
+motions n=56 p50=1 p95=1 p99=1 max=1
+queued n=56 p50=0 p95=0 p99=0 max=0
+update_us n=56 p50=35 p95=87 p99=210 max=210
+commands n=56 p50=0 p95=0 p99=7 max=7
+draw_us n=56 p50=986 p95=4319 p99=12740 max=12740
+bytes n=56 p50=3949 p95=125744 p99=439220 max=439220
+write_us n=56 p50=47 p95=852 p99=3118 max=3118
+fence_us n=0
+input_age_us n=50 p50=1172 p95=4409 p99=17962 max=17962
+tail_ms=0.0
+power Now drawing from 'AC Power'
+after_last_motion frames=0
+uploads strip=7/805076B(70%) emphasis=144/176656B(15%) placements=945 stream=1149649B
+upload_shapes emphasis:17x1184=27 emphasis:51x37=17 emphasis:17x259=12 emphasis:51x481=5 emphasis:17x999=4 emphasis:17x37=4
+
+# after, amendment 1 (build B at eee492a7: three-kind content-keyed pieces, both-axis crop, Place.stack as z) ->
+# targets, run 1 / run 2 (both on AC, power line in each block):
+#   emphasis upload bytes 4,315,003 -> 176,656 / 176,656        target <= 1,078,750   met
+#   bytes_per_key         92,108    -> 13,096 / 13,133          target <= 46,054      met
+#   bytes p95             288,075   -> 125,744 / 125,744        target <= 288,075     met
+#   bytes p99             486,064   -> 439,220 / 439,220        target <= 486,064     met
+#   draw_us p50           6,345     -> 4,781 / 986              target <= 3,172       MISSED run 1, met run 2
+#   draw_us p95           15,459    -> 11,869 / 4,319           target <= 15,459      met
+#   draw_us p99           19,965    -> 35,747 / 12,740          target <= 19,965      MISSED run 1, met run 2
+#   after_last_motion frames=0, deflate=yes, broken=no (151 transmits, 151 deflated)       met both
+#   layer split: pieces read as emphasis (id bit 31): emphasis=144 uploads               met both
+#   write_us p99          5,277     -> 4,995 / 3,118 (no target)
+# Run 1's over-bound frames (trace kept with TRACE_KEEP, not committed): p99 is one frame,
+#   frame at_us=4551348 wakes=1 motions=0 queued=0 update_us=93 commands=0 draw_us=35747 bytes=439220 write_us=4995
+#   — before the first key (motions=0), 439,220 B; the run's 7 strip uploads total 805,076 B, emphasis 176,656 B,
+#   so it carries strips (a strip load). The trace has no per-frame layer split, so which strips is not read.
+#   p50: 38 of 55 frames over 3,172 µs (a distribution, not one frame).
+# Same binary, same bytes frame for frame (run 1 vs run 2, frames aligned): run 1's draw times are 3–5x run 2's on
+#   identical work (e.g. the load frame 35,747 vs 10,778 µs, both 439,220 B). Cause of that spread NOT measured; load
+#   average was 7.3 at the start (node at 157 % CPU, dasd at 100 %), so the machine was not quiet.
+# Extra runs, recorded so the two above are not read alone (not substitutes; same HEAD, same shape, AC):
+#   run 3:            draw_us p50=4497 p95=11397 p99=37296; bytes p95=125744 p99=439220 (identical bytes)
+#   run 4:            draw_us p50=4364 p95=12061 p99=26258
+#   control, BEFORE binary (ad7a435f sources, built now) interleaved with runs 3–4, same script, shape, fixture:
+#                     draw_us p50=6365 p95=16674 p99=39535 and p50=8124 p95=17386 p99=38112; bytes p95=288075
+#                     p99=486064 (identical to the recorded before). Under the same conditions the before binary
+#                     misses its own recorded p95/p99 too; the after binary is below it on every draw percentile.
+# Verdict: byte targets met in every run (deterministic). draw_us p50 and p99 met in 1 of 2 counted runs (1 of 4
+#   after runs in all); not met as the ruling states it ("each run"). Not tuned (rule 2). For the conductor.

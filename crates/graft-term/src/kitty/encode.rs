@@ -137,11 +137,36 @@ fn deflate_into(compressor: &mut CompressorOxide, input: &[u8], output: &mut Vec
     }
 }
 
+/// What a placement reads of an uploaded image: its width and the height of
+/// one of its rows, in pixels.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Shape {
+    width: u32,
+    cell_height: u32,
+}
+
+impl Shape {
+    pub(super) fn of(frame: &RasterFrame) -> Shape {
+        Shape {
+            width: frame.width,
+            cell_height: u32::try_from(frame.height as usize / frame.rows.max(1)).unwrap_or(0),
+        }
+    }
+}
+
 /// `a=p`: move to the cell, place the crop into the cell rectangle,
-/// replacing placement `p=1`, and leave the cursor where it was.
-pub(super) fn put_placement(transport: Transport, id: u32, place: &Place<'_>, out: &mut Vec<u8>) {
-    let frame = place.frame;
-    let cell_height = u32::try_from(frame.height as usize / frame.rows.max(1)).unwrap_or(0);
+/// replacing placement `p` (the place's count among this frame's places of
+/// the image, from 1: a strip has one, an emphasis piece one per spot its
+/// key turns up), and leave the cursor where it was.
+pub(super) fn put_placement(
+    transport: Transport,
+    id: u32,
+    placement: u32,
+    shape: Shape,
+    place: &Place<'_>,
+    out: &mut Vec<u8>,
+) {
+    let Shape { width, cell_height } = shape;
     let start = u32::try_from(place.rows.start).unwrap_or(u32::MAX);
     let count = u32::try_from(place.rows.len()).unwrap_or(u32::MAX);
     let rows = if place.cells.rows == 0 {
@@ -168,15 +193,16 @@ pub(super) fn put_placement(transport: Transport, id: u32, place: &Place<'_>, ou
         transport,
         out,
         format_args!(
-            "a=p,i={id},p=1,x=0,y={},w={},h={},c={columns},r={rows},C=1,{z}q=1",
+            "a=p,i={id},p={placement},x=0,y={},w={},h={},c={columns},r={rows},C=1,{z}q=1",
             start.saturating_mul(cell_height),
-            frame.width,
+            width,
             count.saturating_mul(cell_height),
             // Strips send no `z` at all (protocol default 0), so their bytes
-            // are what they were before layers existed.
+            // are what they were before layers existed. Emphasis stacks by
+            // `z` alone: rank 0 at `z=1`, each rank one higher.
             z = match place.layer {
-                Layer::Strip => "",
-                Layer::Emphasis => "z=1,",
+                Layer::Strip => String::new(),
+                Layer::Emphasis => format!("z={},", 1 + u32::from(place.stack)),
             },
         ),
         b"",
@@ -184,9 +210,14 @@ pub(super) fn put_placement(transport: Transport, id: u32, place: &Place<'_>, ou
     out.extend_from_slice(b"\x1b8");
 }
 
-/// `a=d,d=i`: remove a strip's placement, keep its data.
-pub(super) fn delete_placement(transport: Transport, id: u32, out: &mut Vec<u8>) {
-    write_command(transport, out, format_args!("a=d,d=i,i={id},p=1,q=1"), b"");
+/// `a=d,d=i`: remove one placement of an image, keep its data.
+pub(super) fn delete_placement(transport: Transport, id: u32, placement: u32, out: &mut Vec<u8>) {
+    write_command(
+        transport,
+        out,
+        format_args!("a=d,d=i,i={id},p={placement},q=1"),
+        b"",
+    );
 }
 
 /// `a=d,d=I`: delete an image and free its data.

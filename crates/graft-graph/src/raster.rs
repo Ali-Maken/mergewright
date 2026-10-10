@@ -45,8 +45,8 @@ use crate::identity::BranchIdentity;
 use crate::row::Row;
 
 pub use emphasis::{
-    Backdrop, Emphasised, Lit, PlainRow, PlainStrip, Selection, composite, rasterise_backdrop,
-    rasterise_emphasis,
+    Backdrop, Emphasised, Lit, Piece, PieceKind, PlainRow, PlainStrip, Selection, composite,
+    emphasis_pieces, rasterise_backdrop, rasterise_emphasis, rasterise_piece,
 };
 pub use node::Ring;
 pub use pool::RasterPool;
@@ -179,6 +179,86 @@ fn paint(
     lift: Option<f32>,
     pool: &mut RasterPool,
 ) -> Result<RasterFrame, RasterError> {
+    paint_part(look, rows, lift, None, pool)
+}
+
+/// One emphasis piece's pass (ADR-0053 amendment 2026-10-10, amended after
+/// continuation 1): only the elements piece `kind` of lane column `column`
+/// owns, into a pixmap covering strip cells `first_cell..first_cell +
+/// cells` and strip rows `first_row..first_row + rows` alone.
+#[derive(Clone, Copy, Debug)]
+struct Part {
+    column: usize,
+    kind: PieceKind,
+    first_cell: u32,
+    cells: u32,
+    first_row: usize,
+    rows: usize,
+}
+
+/// What a row draws in a non-node lane column: a straight line through the
+/// band, or an arc to or from the node.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum Edge {
+    Straight,
+    /// `incoming`: closes into the node from the band's top; else opens
+    /// from the node to the band's bottom.
+    Arc {
+        incoming: bool,
+    },
+}
+
+/// The edge `row` draws in lane column `column`, and its branch, or `None`
+/// when it draws none there: an empty column, the node's own lane, or the
+/// marker column passing straight through (it draws no edge of its own).
+/// The one reading both [`Pen::column`] and the piece keys make.
+fn edge_at(row: &Row, marker: Option<Marker>, column: usize) -> Option<(BranchIdentity, Edge)> {
+    let identity = row.lanes.get(column).copied().flatten()?;
+    if column == row.lane {
+        return None;
+    }
+    let incoming = row.incoming.contains(&column);
+    let outgoing = !incoming && row.outgoing.iter().any(|&(out, _)| out == column);
+    if incoming || outgoing {
+        Some((identity, Edge::Arc { incoming }))
+    } else if marker.is_some_and(|marker| marker.column == column) {
+        None
+    } else {
+        Some((identity, Edge::Straight))
+    }
+}
+
+/// An element's ADR-0024 alpha `alpha` as an emphasis layer over a
+/// backdrop at `backdrop` draws it, `(a − b) / (1 − b)`, or `None` when it
+/// is not above the backdrop and the layer leaves it out.
+fn lifted(alpha: f32, backdrop: f32) -> Option<f32> {
+    (alpha > backdrop).then(|| (alpha - backdrop) / (1.0 - backdrop))
+}
+
+/// An alpha in 0.0–1.0 as the byte an [`Ink`] carries.
+fn alpha_byte(alpha: f32) -> u8 {
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "alpha is clamped to 0.0..=1.0."
+    )]
+    let byte = (alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+    byte
+}
+
+/// [`paint`], or with `part` one piece of it: the same pen, the same order,
+/// with every element the piece does not own left out (node discs on its
+/// rows are still punched, as the whole pass punches them), drawn into a
+/// pixmap that starts at `part.first_cell` and `part.first_row`. Whole
+/// cells and rows from the strip's origin, so every stroke's sub-pixel
+/// position, and so its anti-aliasing, is the whole pass's.
+fn paint_part(
+    look: &Look<'_>,
+    rows: &[Inked<'_>],
+    lift: Option<f32>,
+    part: Option<Part>,
+    pool: &mut RasterPool,
+) -> Result<RasterFrame, RasterError> {
     if look.palette.is_empty() {
         return Err(RasterError::EmptyPalette);
     }
@@ -188,19 +268,25 @@ fn paint(
         cell_width: look.cell_width,
         cell_height: look.cell_height,
     };
-    let columns = u32::try_from(look.lane_columns)
-        .ok()
-        .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
-        .ok_or_else(too_large)?;
+    let columns = match part {
+        Some(part) => part.cells,
+        None => u32::try_from(look.lane_columns)
+            .ok()
+            .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
+            .ok_or_else(too_large)?,
+    };
+    let window = part.map_or(0..rows.len(), |part| {
+        part.first_row..(part.first_row + part.rows).min(rows.len())
+    });
     let width = columns.checked_mul(look.cell_width).ok_or_else(too_large)?;
-    let height = u32::try_from(rows.len())
+    let height = u32::try_from(window.len())
         .ok()
         .and_then(|count| count.checked_mul(look.cell_height))
         .ok_or_else(too_large)?;
     let frame = |pixels| RasterFrame {
         width,
         height,
-        rows: rows.len(),
+        rows: window.len(),
         columns,
         pixels,
     };
@@ -211,28 +297,7 @@ fn paint(
     let bytes =
         usize::try_from(u64::from(width) * u64::from(height) * 4).map_err(|_| too_large())?;
     let mut pixmap = Pixmap::from_vec(pool.take(bytes), size).ok_or_else(too_large)?;
-    let pen = Pen::new(look, rows, lift);
-    // Edges column by column down the whole strip, so a lane passing
-    // straight through many rows is one stroke, not one per row. Within any
-    // one band the order is unchanged (columns left to right), and edges
-    // stay confined to their band, so the pixels are the per-row drawing's.
-    let widest = rows
-        .iter()
-        .map(|inked| inked.row.lanes.len())
-        .max()
-        .unwrap_or(0);
-    for column in 0..widest {
-        pen.column(&mut pixmap, column);
-    }
-    // Then what sits on each row's node: its lane's own stubs, a folded
-    // edge's tail, the rail, the node disc punched over the edges.
-    for (index, inked) in rows.iter().enumerate() {
-        let above = match index.checked_sub(1) {
-            Some(previous) => Some(rows[previous].row),
-            None => look.above,
-        };
-        pen.row(&mut pixmap, index, inked, above);
-    }
+    Pen::new(look, rows, lift, part, window.clone()).pass(&mut pixmap);
     Ok(frame(pixmap.take()))
 }
 
@@ -259,6 +324,23 @@ struct Pen<'a> {
     /// The backdrop's alpha under an emphasis layer; `None` for a whole
     /// strip (see [`paint`]).
     lift: Option<f32>,
+    /// The one piece whose elements this pass draws (an emphasis piece):
+    /// its lane column and kind; `None` draws everything.
+    only: Option<(usize, PieceKind)>,
+    /// The strip rows this pass draws: all of them, or a piece's.
+    window: std::ops::Range<usize>,
+    /// The pixmap's left edge in strip pixels: a piece's pixmap starts
+    /// where the piece does. Whole pixels.
+    origin: f32,
+    /// The pixmap's top edge in strip pixels, likewise. Whole pixels.
+    top: f32,
+    /// Strip pixels to pixmap pixels: `-origin` across, `-top` down. Every element is
+    /// built in strip pixels, exactly as the whole pass builds it, and
+    /// moved after: tiny-skia strokes a path before it transforms the
+    /// outline, so a piece's strokes are the whole pass's shifted by whole
+    /// pixels, anti-aliasing included. Building them at the shifted x
+    /// instead rounds differently (seen: alpha 191 vs 175 on an arc).
+    shift: tiny_skia::Transform,
     cell_width: f32,
     cell_height: f32,
     stroke: f32,

@@ -144,7 +144,7 @@ impl ItermImages {
         }) {
             return Ok(index);
         }
-        let png = band_png(place.frame, &place.rows)?;
+        let png = band_png(place.frame.ok_or(io::ErrorKind::InvalidInput)?, &place.rows)?;
         self.encoded += 1;
         let mut sequence = Vec::with_capacity(png.len().div_ceil(3) * 4 + 96);
         // `write!` into a `Vec` cannot fail.
@@ -231,9 +231,8 @@ fn band_png(frame: &RasterFrame, rows: &Range<usize>) -> io::Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
+    use std::sync::Arc;
 
     /// A strip of `rows` rows, 3 columns of 2×4 px cells, one colour.
     fn strip(rows: usize) -> Arc<RasterFrame> {
@@ -251,7 +250,7 @@ mod tests {
         Place {
             first_row: 0,
             key: UploadKey(Arc::as_ptr(frame) as u64),
-            frame,
+            frame: Some(&**frame),
             cells: CellRect {
                 column: 2,
                 row,
@@ -260,6 +259,7 @@ mod tests {
             },
             rows,
             layer: crate::kitty::Layer::Strip,
+            stack: 0,
         }
     }
 

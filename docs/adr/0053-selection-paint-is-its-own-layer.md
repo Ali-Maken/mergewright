@@ -40,6 +40,51 @@ invalidation". Moving the cursor became one when ADR-0024 made the thread an alp
 - Prior art (`docs/research/big-repo-scroll.md`, gitui#2823): a value that changes every tick must not be in a cache
   key. The selection is that value here.
 
+## Amendment 2026-10-10 (m8-polish-and-ship 05 Part 2, amended after continuation 1): emphasis in pieces
+
+**Decision 3 now reads:** per strip, the emphasis is split into **pieces** of three kinds: a **run** per lane column
+(the straight edges drawn in it), an **arc** per column and row (the arcs drawn in that column on that row), and a
+**node** per lane column (the nodes, lane stubs and tails of rows on that lane); the rail goes with the marker column's
+node (it is drawn in the row pass, `graft-graph/src/raster/pen.rs:265`). Each holds exactly its elements, drawn alone at
+`(a − b) / (1 − b)`, cropped to the whole cells its pixels touch in both axes. **Piece key** = hash of what its pixels
+are drawn from — kind, cell size, backdrop alpha, and each element's geometry relative to the piece's anchor, its
+colour and its alpha — so one picture anywhere on screen is one upload. Pieces stack as the whole pass draws: edges
+(runs and arcs) in its edge order, then nodes; each place command carries that order (`Place::stack`, sent as Kitty
+`z = 1 + stack`: "If two images with the same z-index overlap then the image with the lower id is considered to have
+the lower z-index", sw.kovidgoyal.net/kitty/graphics-protocol, "Controlling displayed image layout"; Ghostty sorts
+placements by `z`, then image id, `docs/research/kitty-layering-deflate.md` §1). One key placed more than once a frame
+gets placement ids `p=1..=n`. On Kitty a piece is rasterised only when `KittyImages::holds` says the terminal lacks
+its key; it is sent, its pixels dropped, and placed by id from then on. Unplaced uploads stay in the terminal up to
+64 MiB of decoded bytes, least recently placed freed first ("the quota in kitty is 320MB per buffer",
+sw.kovidgoyal.net/kitty/graphics-protocol, "Image persistence and storage quotas"). iTerm2 keeps one composited band
+per strip (Decision 5), from the whole-strip emphasis.
+
+**Why:** one emphasis image per strip was keyed on the whole strip's paint, so any lit change anywhere in 32 rows × full
+width made a new picture, and his trace showed it: 82 % of the run's bytes were emphasis
+(`docs/perf/m8-trace-followup.txt`, before). Re-placing by id could not help while each `j` made new pixels; the key
+was the fix. The first cut — one piece per column, strip-tall, as wide as its farthest arc — cut bytes per key by
+72 % but not pixels: an arc into lane 0 made its column's piece the graph's width and 32 rows tall, so 91 % of piece
+pixels were in such pieces and the first `j` rasterised 13.9M px (draw 73 ms, `docs/perf/m8-trace-followup.txt`,
+diagnosis). An arc is one row tall, so its piece is. Keying pieces on the strip re-sent 30 % of them unchanged after
+a fold; a content key re-places them. Gate before wiring: on the 50-key walk on MONOREPO the area of pieces with an
+unseen key was 2.13 % (222×70) and 2.11 % (187×50) of the whole-strip emphasis area
+(`piece_gate::pieces_localise_on_his_walk`).
+
+**"One emphasis image per row" stays rejected**, and pieces differ from it: a row image was re-made whenever its
+row's thread changed, which a move onto another lane does to most rows; an arc piece is one row tall too, but holds one
+column's arcs and is keyed by its pixels, so a move re-sends only arcs whose own alpha changed, and the same arc
+anywhere is placed, not sent. A frame places more images, but a placement is a few dozen bytes.
+
+**Overlaps:** pieces stack in the whole pass's order (edges, then nodes), so overlapping lit pixels match it within
+`b × 255`: `raster_pieces::pieces_composite_equals_single_emphasis` counts 0 past it (144 selections, 12,060
+overlapped pixels). Colour is **unverified** (CLAUDE.md rule 5), and so is whether his terminal stacks by `z` as the
+protocol says: the user judges `docs/shots/m8-05-emphasis-pieces.png` and his own screen.
+
+**Consequences changed:** `KittyImages` is budgeted in decoded bytes of unplaced images, not a count of images. A
+frame places one strip plus its runs, nodes and arc pieces per strip; one upload may be placed more than once a frame.
+Emphasis on Kitty is not cached Graft-side (no `RasterPool` buffer, no LRU entry); the strip cache's emphasis entries
+serve iTerm2 only.
+
 ## Consequences
 
 - Two placements per strip on Kitty; `KittyImages` capacity counts both layers.

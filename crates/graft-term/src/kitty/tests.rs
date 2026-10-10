@@ -1,11 +1,13 @@
-//! The Kitty stream, byte for byte. A pty accepts anything, so these tests
-//! prove only what Graft emits; ADR-0012 is why that is never acceptance for
-//! rendering.
+//! The Kitty stream, byte for byte. A pty accepts anything, so these tests prove only what
+//! Graft emits; ADR-0012 is why that is never acceptance for rendering. Pieces: `pieces`.
 
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
+
+use graft_core::raster::RasterFrame;
 
 use super::*;
 use crate::tmux::Transport;
+mod pieces;
 
 /// A strip of `rows` rows, 3 columns of 2×4 px cells, every pixel the same
 /// premultiplied colour.
@@ -48,7 +50,7 @@ fn place(frame: &Arc<RasterFrame>, first_row: usize, rows: Range<usize>, at: u16
     Place {
         first_row,
         key: key_of(frame),
-        frame,
+        frame: Some(&**frame),
         rows,
         cells: CellRect {
             column: 2,
@@ -57,12 +59,13 @@ fn place(frame: &Arc<RasterFrame>, first_row: usize, rows: Range<usize>, at: u16
             rows: 0,
         },
         layer: Layer::Strip,
+        stack: 0,
     }
 }
 
 #[test]
 fn a_new_strip_is_transmitted_once_then_placed_by_cell_rect() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let frame = strip(4, [0, 0, 0, 0]);
     let mut out = Vec::new();
     images.frame(&[place(&frame, 0, 1..3, 5)], &mut out);
@@ -89,7 +92,7 @@ fn a_new_strip_is_transmitted_once_then_placed_by_cell_rect() {
 
 #[test]
 fn scrolling_one_row_moves_the_crop_by_one_cell_height() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let frame = strip(8, [0, 0, 0, 0]);
     let mut crops = Vec::new();
     for top in [0, 1, 2, 1] {
@@ -106,7 +109,7 @@ fn scrolling_one_row_moves_the_crop_by_one_cell_height() {
 
 #[test]
 fn placement_replaces_one_fixed_id_and_never_clears() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let frame = strip(4, [0, 0, 0, 0]);
     let mut out = Vec::new();
     for top in 0..3 {
@@ -132,7 +135,7 @@ fn placement_replaces_one_fixed_id_and_never_clears() {
 
 #[test]
 fn a_large_strip_is_chunked_at_4096_base64_bytes() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     // 6 × 1024 × 4 = 24 576 bytes → 32 768 base64 bytes → 8 full chunks.
     let frame = strip(256, [0, 0, 0, 0]);
     let mut out = Vec::new();
@@ -158,7 +161,7 @@ fn a_large_strip_is_chunked_at_4096_base64_bytes() {
 
 #[test]
 fn pixels_are_sent_straight_not_premultiplied() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     // Premultiplied 50% white: (128,128,128,128) is straight (255,255,255,128).
     let frame = strip(1, [128, 128, 128, 128]);
     let mut out = Vec::new();
@@ -186,7 +189,7 @@ fn base64_matches_the_standard_alphabet_with_padding() {
 
 #[test]
 fn a_changed_strip_frees_the_old_upload_and_gets_a_new_id() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let old = strip(4, [0, 0, 0, 0]);
     let new = strip(4, [255, 0, 0, 255]);
     let mut out = Vec::new();
@@ -205,7 +208,7 @@ fn a_changed_strip_frees_the_old_upload_and_gets_a_new_id() {
 
 #[test]
 fn a_strip_that_scrolls_out_loses_its_placement_but_keeps_its_data() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let first = strip(4, [0, 0, 0, 0]);
     let second = strip(4, [0, 0, 0, 0]);
     let mut out = Vec::new();
@@ -232,7 +235,7 @@ fn a_strip_that_scrolls_out_loses_its_placement_but_keeps_its_data() {
 
 #[test]
 fn uploads_past_capacity_free_the_least_recently_placed() {
-    let mut images = KittyImages::new(2);
+    let mut images = KittyImages::new(6 * 16 * 4); // one `strip(4, _)`
     let strips: Vec<_> = (0..3).map(|_| strip(4, [0, 0, 0, 0])).collect();
     let mut out = Vec::new();
     for (n, frame) in strips.iter().enumerate() {
@@ -245,7 +248,7 @@ fn uploads_past_capacity_free_the_least_recently_placed() {
 
 #[test]
 fn free_all_on_exit_deletes_every_upload_with_its_data() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let (a, b) = (strip(4, [0, 0, 0, 0]), strip(4, [0, 0, 0, 0]));
     let mut out = Vec::new();
     images.frame(&[place(&a, 0, 0..4, 0), place(&b, 4, 0..4, 4)], &mut out);
@@ -257,7 +260,7 @@ fn free_all_on_exit_deletes_every_upload_with_its_data() {
 
 #[test]
 fn hide_removes_placements_and_keeps_data() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let a = strip(4, [0, 0, 0, 0]);
     let mut out = Vec::new();
     images.frame(&[place(&a, 0, 0..4, 0)], &mut out);
@@ -271,7 +274,7 @@ fn hide_removes_placements_and_keeps_data() {
 
 #[test]
 fn a_missing_image_reply_makes_the_next_frame_retransmit() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let a = strip(4, [0, 0, 0, 0]);
     let mut out = Vec::new();
     images.frame(&[place(&a, 0, 0..4, 0)], &mut out);
@@ -294,7 +297,7 @@ fn a_missing_image_reply_makes_the_next_frame_retransmit() {
 
 #[test]
 fn forget_uploads_after_a_clear_retransmits_without_deleting() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let a = strip(4, [0, 0, 0, 0]);
     let mut out = Vec::new();
     images.frame(&[place(&a, 0, 0..4, 0)], &mut out);
@@ -340,9 +343,9 @@ fn through_tmux_each_command_and_each_chunk_gets_its_own_wrapper() {
     let frame = strip(40, [255, 0, 0, 255]);
     let places = [place(&frame, 0, 0..40, 0)];
     let mut direct = Vec::new();
-    KittyImages::new(4).frame(&places, &mut direct);
+    KittyImages::new(usize::MAX).frame(&places, &mut direct);
     let mut tmux = Vec::new();
-    KittyImages::new(4)
+    KittyImages::new(usize::MAX)
         .with_transport(Transport::TmuxPassthrough)
         .frame(&places, &mut tmux);
 
@@ -372,7 +375,7 @@ fn through_tmux_each_command_and_each_chunk_gets_its_own_wrapper() {
 #[test]
 fn through_tmux_hide_and_free_are_wrapped_too() {
     let frame = strip(1, [0, 0, 0, 255]);
-    let mut images = KittyImages::new(4).with_transport(Transport::TmuxPassthrough);
+    let mut images = KittyImages::new(usize::MAX).with_transport(Transport::TmuxPassthrough);
     images.frame(&[place(&frame, 0, 0..1, 0)], &mut Vec::new());
 
     let mut out = Vec::new();
@@ -470,11 +473,11 @@ const PINNED_BEFORE_DEFLATE: &str = "\u{1b}_Ga=t,f=32,t=d,i=1000,s=6,v=8,q=1,m=0
 
 #[test]
 fn deflate_off_is_unchanged() {
-    let out = pinned_run(&mut KittyImages::new(8).deflating(false));
+    let out = pinned_run(&mut KittyImages::new(usize::MAX).deflating(false));
     assert_eq!(text(&out), PINNED_BEFORE_DEFLATE);
     // Off is the default.
     assert_eq!(
-        text(&pinned_run(&mut KittyImages::new(8))),
+        text(&pinned_run(&mut KittyImages::new(usize::MAX))),
         PINNED_BEFORE_DEFLATE
     );
 }
@@ -548,7 +551,7 @@ fn base_and_glow() -> (Arc<RasterFrame>, Arc<RasterFrame>) {
 fn deflated_transmit_round_trips() {
     let frame = strip(40, [64, 32, 16, 128]);
     let mut out = Vec::new();
-    KittyImages::new(4)
+    KittyImages::new(usize::MAX)
         .deflating(true)
         .frame(&[place(&frame, 0, 0..1, 0)], &mut out);
     let sent = transmits(&out);
@@ -575,11 +578,11 @@ fn deflated_chunks_wrap_in_tmux() {
     });
     let places = [place(&frame, 0, 0..1, 0)];
     let mut direct = Vec::new();
-    KittyImages::new(4)
+    KittyImages::new(usize::MAX)
         .deflating(true)
         .frame(&places, &mut direct);
     let mut tmux = Vec::new();
-    KittyImages::new(4)
+    KittyImages::new(usize::MAX)
         .deflating(true)
         .with_transport(Transport::TmuxPassthrough)
         .frame(&places, &mut tmux);
@@ -595,7 +598,7 @@ fn deflated_chunks_wrap_in_tmux() {
 #[test]
 fn emphasis_sits_above_its_strip() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let mut out = Vec::new();
     // Emphasis listed first: the frame still emits every strip first.
     images.frame(
@@ -617,7 +620,7 @@ fn emphasis_sits_above_its_strip() {
 #[test]
 fn emphasis_goes_strip_stays() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     images.frame(
         &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
         &mut Vec::new(),
@@ -636,7 +639,7 @@ fn emphasis_goes_strip_stays() {
 #[test]
 fn emphasis_follows_a_moved_strip() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     images.frame(
         &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
         &mut Vec::new(),
@@ -659,7 +662,7 @@ fn emphasis_follows_a_moved_strip() {
 #[test]
 fn a_deflate_error_falls_back_to_raw() {
     let frame = strip(4, [64, 32, 16, 128]);
-    let mut images = KittyImages::new(8).deflating(true);
+    let mut images = KittyImages::new(usize::MAX).deflating(true);
     assert!(images.is_deflating());
     images.frame(&[place(&frame, 0, 0..4, 0)], &mut Vec::new());
 
@@ -707,7 +710,7 @@ fn deflate_shrinks_a_sparse_strip() {
     let places = [Place {
         first_row: 0,
         key: key_of(&frame),
-        frame: &frame,
+        frame: Some(&frame),
         rows: 0..rows,
         cells: CellRect {
             column: 0,
@@ -716,6 +719,7 @@ fn deflate_shrinks_a_sparse_strip() {
             rows: 0,
         },
         layer: Layer::Strip,
+        stack: 0,
     }];
     let mut raw = Vec::new();
     KittyImages::new(2).frame(&places, &mut raw);
@@ -748,7 +752,7 @@ fn deflate_shrinks_a_sparse_strip() {
 #[test]
 fn emphasis_enoent_retransmits() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let places = [place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)];
     images.frame(&places, &mut Vec::new());
     images.answer(&replies(format!("\x1b_Gi={FIRST_EMPHASIS};ENOENT:gone\x1b\\").as_bytes())[0]);
@@ -765,7 +769,7 @@ fn emphasis_enoent_retransmits() {
 #[test]
 fn forget_covers_emphasis() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let places = [place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)];
     images.frame(&places, &mut Vec::new());
     images.forget_uploads();
@@ -778,7 +782,7 @@ fn forget_covers_emphasis() {
 #[test]
 fn free_all_frees_emphasis() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     images.frame(
         &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
         &mut Vec::new(),
@@ -797,7 +801,7 @@ fn free_all_frees_emphasis() {
 #[test]
 fn hide_hides_emphasis() {
     let (base, glow) = base_and_glow();
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     images.frame(
         &[place(&base, 0, 0..2, 1), emphasis(&glow, 0, 0..2, 1)],
         &mut Vec::new(),
@@ -818,38 +822,12 @@ fn hide_hides_emphasis() {
 /// it is the only owner, and its eviction frees the pixels.
 #[test]
 fn an_upload_holds_no_pixels_after_transmit() {
-    let mut images = KittyImages::new(8);
+    let mut images = KittyImages::new(usize::MAX);
     let frame = strip(4, [10, 20, 30, 255]);
     let mut out = Vec::new();
     images.frame(&[place(&frame, 0, 0..4, 1)], &mut out);
     assert_eq!(images.uploaded(), 1);
     assert_eq!(Arc::strong_count(&frame), 1, "Kitty kept a reference");
-}
-
-/// The same key in a new allocation is the same picture: the strip cache
-/// evicted it and drew it again, and the terminal still holds it. No
-/// transmit; a different key in the same slot is a new upload.
-#[test]
-fn an_upload_is_matched_by_its_key() {
-    let mut images = KittyImages::new(8);
-    let (first, again) = (strip(4, [1, 2, 3, 255]), strip(4, [1, 2, 3, 255]));
-    let keyed = |frame, key| Place {
-        key: UploadKey(key),
-        ..place(frame, 0, 0..4, 1)
-    };
-    let mut out = Vec::new();
-    images.frame(&[keyed(&first, 7)], &mut out);
-    let mut out = Vec::new();
-    images.frame(&[keyed(&again, 7)], &mut out);
-    assert!(
-        commands(&out).iter().all(|c| !c.contains("a=t")),
-        "same key, no transmit: {:?}",
-        commands(&out)
-    );
-    let mut out = Vec::new();
-    images.frame(&[keyed(&again, 8)], &mut out);
-    assert!(commands(&out).iter().any(|c| c.contains("a=t")));
-    assert_eq!(images.uploaded(), 1, "the old one was freed");
 }
 
 /// m8 04: a transmit works in buffers kept from the last one. Two strips of
@@ -873,7 +851,7 @@ fn a_transmit_reuses_its_buffers_and_sends_the_same_bytes() {
             columns: 3,
         })
     };
-    let mut images = KittyImages::new(8).deflating(true);
+    let mut images = KittyImages::new(usize::MAX).deflating(true);
     let (sparse, loud, louder) = (strip(100, [0, 0, 0, 0]), noise(1), noise(2));
     for (frame, row) in [(&sparse, 0), (&loud, 1)] {
         let mut out = Vec::new();

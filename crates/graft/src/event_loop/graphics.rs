@@ -7,18 +7,15 @@
 //! wake drains them without waiting, and an `ENOENT` makes the next frame
 //! transmit that strip again rather than trusting uploads survive.
 
+use std::collections::HashMap;
 use std::io;
-use std::ops::Range;
-use std::sync::Arc;
 use std::time::Instant;
 
 use graft_core::capabilities::{Capabilities, PixelProtocol, RenderingTier};
-use graft_core::raster::RasterFrame;
-use graft_graph::raster::cache::{ByteBudget, CacheError, Flush, STRIP_ROWS, StripCache};
-use graft_graph::raster::{PlainStrip, Selection};
+use graft_graph::raster::cache::{ByteBudget, Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
 use graft_term::iterm2::ItermImages;
-use graft_term::kitty::{self, CellRect, KittyImages, Layer, Place, UploadKey};
+use graft_term::kitty::{self, KittyImages, UploadKey};
 use graft_term::{Transport, sanitize_line};
 use graft_ui::graph_screen::GraphicsStatus;
 use ratatui::layout::Rect;
@@ -27,19 +24,28 @@ use crate::session::Session;
 use crate::update::AppState;
 use crate::view::strips::{StripPaint, pixel_rows};
 
-/// Images the terminal keeps for us, and iTerm2 bands kept: a tall viewport
-/// plus a strip either side (`StripCache::capacity_for(32, 256, 64)` is 11).
-/// Kitty holds two images per strip, the strip and its emphasis (ADR-0053),
-/// so twice as many. The terminal holds those pixels, not Graft.
+mod layers;
+
+use layers::{Drawn, Held, layers, on_screen, places};
+
+/// iTerm2 bands kept: a tall viewport plus a strip either side
+/// (`StripCache::capacity_for(32, 256, 64)` is 11).
 const STRIPS_KEPT: usize = 16;
+
+/// Decoded bytes the terminal may hold for us in images no frame places:
+/// strips scrolled away and emphasis pieces the cursor left (ADR-0053
+/// amendment 2026-10-10), so scrolling or moving back places them for
+/// nothing. Kitty's own quota is 320 MB per buffer (`KittyImages::new`).
+const UNPLACED_BYTES: usize = 64 << 20;
 
 /// Pixel bytes the strip cache keeps across its layers (m8 04,
 /// `docs/perf/scroll-pixel-memory-budget.txt`). A strip weighs lanes × cell,
-/// and every cached entry holds a full-strip pool buffer, its emphasis image
-/// too (DESIGN §3.8): on MONOREPO at the user's 17×37 cell an entry weighs
-/// ~5.6 MB, so this keeps about 8 backdrops and 8 emphasis images; at a 24×52
-/// cell ~11.2 MB, so the viewport floor of 5 + 5 already exceeds it. The
-/// viewport's strips stay whatever they weigh (`keep_at_least`).
+/// and every cached entry holds a full-strip pool buffer (DESIGN §3.8): on
+/// MONOREPO at the user's 17×37 cell an entry weighs ~5.6 MB. On Kitty only
+/// backdrops are cached (emphasis pieces are sent once and dropped, ADR-0053
+/// amendment 2026-10-10), so this keeps ~17 of them; on iTerm2 a strip also
+/// caches its emphasis and composite. The viewport's strips stay whatever
+/// they weigh (`keep_at_least`).
 const STRIP_BUDGET: ByteBudget = ByteBudget(96 << 20);
 
 /// Rows kept above and below the viewport, on top of its own strips.
@@ -83,6 +89,10 @@ pub struct Graphics<R> {
     images: KittyImages,
     bands: ItermImages,
     strips: StripCache,
+    /// Where each emphasis piece the terminal holds sits, by key: its first
+    /// cell column and width in cells, so a held piece is placed without
+    /// being rasterised. Kept to the keys `images` holds.
+    pieces: HashMap<UploadKey, layers::Crop>,
     replies: R,
     status: GraphicsStatus,
 }
@@ -94,12 +104,13 @@ impl<R: GraphicsReplies> Graphics<R> {
     /// reply about one turns that off again ([`KittyImages::answer`]).
     pub fn new(replies: R, capabilities: &Capabilities) -> Self {
         Graphics {
-            images: KittyImages::new(2 * STRIPS_KEPT).deflating(capabilities.kitty_deflate),
+            images: KittyImages::new(UNPLACED_BYTES).deflating(capabilities.kitty_deflate),
             bands: ItermImages::new(STRIPS_KEPT),
             strips: StripCache::with_budget(
                 STRIP_BUDGET,
                 StripCache::capacity_for(STRIP_ROWS, 0, BUFFER_ROWS),
             ),
+            pieces: HashMap::new(),
             replies,
             status: GraphicsStatus::Ok,
         }
@@ -183,9 +194,13 @@ impl<R: GraphicsReplies> Graphics<R> {
             ) else {
                 continue;
             };
+            let mut held = Held {
+                images: &self.images,
+                pieces: &mut self.pieces,
+            };
             let cache = &mut self.strips;
             let layers = strip.with_layers(&pixels, &paint, |plain, selection| {
-                layers(cache, strip.first_row, plain, selection, iterm2)
+                layers(cache, &mut held, strip.first_row, plain, selection, iterm2)
             });
             match layers {
                 Ok(((frame, key), emphasis)) => drawn.push(Drawn {
@@ -208,6 +223,8 @@ impl<R: GraphicsReplies> Graphics<R> {
             }
         } else {
             self.images.frame(&places, out);
+            let images = &self.images;
+            self.pieces.retain(|key, _| images.holds(*key));
         }
     }
 
@@ -296,148 +313,5 @@ impl<R: GraphicsReplies> Graphics<R> {
     /// Append the commands deleting every upload. Call once, leaving.
     pub fn release(&mut self, out: &mut Vec<u8>) {
         self.images.free_all(out);
-    }
-}
-
-/// The strip at `first_row` from the cache, and what its upload is: the
-/// backdrop and the emphasis over it (from the cell column it starts on),
-/// or for iTerm2 one band with both composited (ADR-0053 5: it cannot
-/// stack images in a cell).
-fn layers(
-    cache: &mut StripCache,
-    first_row: usize,
-    plain: &PlainStrip<'_>,
-    selection: &Selection<'_>,
-    iterm2: bool,
-) -> Result<Layers, CacheError> {
-    let paint_key = UploadKey(cache.paint_key(first_row, plain, selection)?);
-    if iterm2 {
-        let band = cache.composited(first_row, plain, selection)?;
-        return Ok(((band, paint_key), None));
-    }
-    let base_key = UploadKey(cache.backdrop_key(first_row, plain, selection.backdrop)?);
-    let base = cache.backdrop(first_row, plain, selection.backdrop)?;
-    let emphasis = cache
-        .emphasis(first_row, plain, selection)?
-        .map(|top| (Arc::clone(&top.frame), top.first_column, paint_key));
-    Ok(((base, base_key), emphasis))
-}
-
-/// A strip's image and its key, and its emphasis image, start column and key.
-type Layers = (
-    (Arc<RasterFrame>, UploadKey),
-    Option<(Arc<RasterFrame>, u16, UploadKey)>,
-);
-
-/// One strip this frame draws: its backdrop (or iTerm2's composited band),
-/// the emphasis over it and the strip cell column it starts on, which of
-/// its rows show, and the graph row the first of them lands on.
-struct Drawn {
-    first_row: usize,
-    frame: Arc<RasterFrame>,
-    /// What `frame` is, for the upload cache.
-    key: UploadKey,
-    emphasis: Option<(Arc<RasterFrame>, u16, UploadKey)>,
-    rows: Range<usize>,
-    at: u16,
-}
-
-/// Where each drawn strip goes in `graph`: the strip across its own columns,
-/// then its emphasis, if any, from the cell column the emphasis starts on.
-fn places(drawn: &[Drawn], graph: Rect) -> Vec<Place<'_>> {
-    let mut places = Vec::with_capacity(2 * drawn.len());
-    for strip in drawn {
-        let cells = |column: u16, columns: u32| CellRect {
-            column: graph.x + column,
-            row: graph.y + strip.at,
-            columns: placed_columns(graph.width.saturating_sub(column), columns),
-            rows: u16::try_from(strip.rows.len()).unwrap_or(u16::MAX),
-        };
-        places.push(Place {
-            first_row: strip.first_row,
-            key: strip.key,
-            frame: &strip.frame,
-            rows: strip.rows.clone(),
-            cells: cells(0, strip.frame.columns),
-            layer: Layer::Strip,
-        });
-        // Starting right of the graph column, none of it would show.
-        if let Some((top, column, key)) = strip
-            .emphasis
-            .as_ref()
-            .filter(|(_, column, _)| *column < graph.width)
-        {
-            places.push(Place {
-                first_row: strip.first_row,
-                key: *key,
-                frame: top,
-                rows: strip.rows.clone(),
-                cells: cells(*column, top.columns),
-                layer: Layer::Emphasis,
-            });
-        }
-    }
-    places
-}
-
-/// Cells a strip is placed across: its own lane columns, never more than the
-/// graph column has. Placing a narrower strip across the whole column would
-/// make the terminal stretch it sideways.
-fn placed_columns(graph_width: u16, frame_columns: u32) -> u16 {
-    u16::try_from(frame_columns).map_or(graph_width, |columns| columns.min(graph_width))
-}
-
-/// The strip rows that land in a `height`-row graph column whose first row
-/// shows history row `top`, and the column row the first of them lands on.
-/// `lowered`: the uncommitted row sits above this strip's rows on screen.
-fn on_screen(
-    first_row: usize,
-    row_count: usize,
-    lowered: bool,
-    top: usize,
-    height: u16,
-) -> Option<(Range<usize>, u16)> {
-    // Strip row `j` is drawn on column row `start + j - top`.
-    let start = first_row + usize::from(lowered);
-    let first = top.saturating_sub(start);
-    let end = (top + usize::from(height))
-        .saturating_sub(start)
-        .min(row_count);
-    let at = u16::try_from(start + first - top).ok()?;
-    (first < end).then_some((first..end, at))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{on_screen, placed_columns};
-
-    #[test]
-    fn a_strip_is_placed_across_its_own_columns_not_stretched() {
-        assert_eq!(placed_columns(20, 6), 6);
-        assert_eq!(placed_columns(20, 20), 20);
-        // Wider than the column: clamped (and squeezed; KNOWN_GAPS).
-        assert_eq!(placed_columns(20, 30), 20);
-    }
-
-    #[test]
-    fn a_strip_starting_above_the_viewport_is_cropped_to_it() {
-        // Rows 50..70 of the strip 32..64: strip rows 18..32 on rows 0..14.
-        assert_eq!(on_screen(32, 32, false, 50, 20), Some((18..32, 0)));
-        // The next strip fills the rest: rows 64..70 on rows 14..20.
-        assert_eq!(on_screen(64, 32, false, 50, 20), Some((0..6, 14)));
-    }
-
-    #[test]
-    fn the_uncommitted_row_takes_the_first_screen_row() {
-        // Top 40, uncommitted row inserted at strip index 8 of 32..64 (33 rows).
-        assert_eq!(on_screen(32, 33, false, 40, 20), Some((8..28, 0)));
-        // A later strip sits one row lower than its history rows say.
-        assert_eq!(on_screen(64, 32, true, 50, 20), Some((0..5, 15)));
-    }
-
-    #[test]
-    fn a_strip_off_screen_places_nothing() {
-        assert_eq!(on_screen(96, 32, false, 50, 20), None);
-        assert_eq!(on_screen(0, 32, false, 50, 20), None);
     }
 }
