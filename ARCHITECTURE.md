@@ -52,7 +52,12 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   becomes an `Operation` and `ops` does the rest. Guarded by
   `crates/graft/tests/it/seam_rule.rs`: `GitInvocation` under `graft/src/`
   only inside `jobs/` (reads); the journal's `render_*` and the inverse's
-  `Step::`/`PathScope::` constructors nowhere in `app`.
+  `Step::`/`PathScope::` constructors nowhere in `app`. The seam is
+  visibility where it can be (`snapshot::{chain_backup, commit_trees,
+  move_backup_ref}` and `Journal::append_outcome` are `pub(crate)`), and
+  seam clauses for the enum constructors and for the internals kept `pub`
+  for examples and cross-crate tests (`snapshot::take`, `raw_record`,
+  `append_pending`, `restore::execute`, `render_*`).
 - **Changing fetch, pull or push** → `graft/src/update/remote.rs` for the
   `f`/`p` keys and the facts; `update/remote/push_box.rs` for `P` and its
   box, `after_push.rs` for `u` on pushed work, `in_flight.rs` for `Esc`,

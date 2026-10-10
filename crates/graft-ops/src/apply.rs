@@ -101,7 +101,7 @@ pub struct Applied {
     /// What to re-read.
     pub refresh: Refresh,
     /// The chained backup commit taken **before** a folded step ran, when
-    /// there was one ([`snapshot::chain_backup`](crate::snapshot::chain_backup)).
+    /// there was one (`snapshot::chain_backup`).
     ///
     /// `Some` only for the exception above: a step inside a live operation
     /// that writes the index or the working tree. It is not in the journal
