@@ -55,7 +55,7 @@ pub(super) fn public_items(src: &Path) -> BTreeSet<String> {
 }
 
 /// `[pub[(…)]] mod name` → `(name, is plain pub, has an inline body)`.
-fn mod_decl(line: &str) -> Option<(String, bool, bool)> {
+pub(super) fn mod_decl(line: &str) -> Option<(String, bool, bool)> {
     let (is_pub, rest) = if let Some(rest) = line.strip_prefix("pub ") {
         (true, rest)
     } else if line.starts_with("pub(") {
@@ -96,7 +96,7 @@ fn impl_target(line: &str) -> Option<String> {
 
 /// Lines of the brace-delimited body opening on `lines[0]`, and how many
 /// lines (including both braces' lines) it spans.
-fn inline_body<'a>(lines: &[&'a str]) -> (Vec<&'a str>, usize) {
+pub(super) fn inline_body<'a>(lines: &[&'a str]) -> (Vec<&'a str>, usize) {
     let mut depth = 0isize;
     for (i, line) in lines.iter().enumerate() {
         depth += brace_delta(line);
@@ -107,7 +107,7 @@ fn inline_body<'a>(lines: &[&'a str]) -> (Vec<&'a str>, usize) {
     (lines[1..].to_vec(), lines.len())
 }
 
-fn brace_delta(line: &str) -> isize {
+pub(super) fn brace_delta(line: &str) -> isize {
     let code = line.split("//").next().unwrap_or("");
     code.chars()
         .map(|c| match c {
