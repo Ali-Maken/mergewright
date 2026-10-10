@@ -1,6 +1,6 @@
 # health — graft-ops MAP.md rewritten as a map
 
-Status: ready (planner, from `docs/reviews/m8-architecture.md` Major M1; revised 2026-10-09 for 37's § Addition ruling)
+Status: done (builder, 2026-10-10). Was: ready (planner, from `docs/reviews/m8-architecture.md` Major M1; revised 2026-10-09 for 37's § Addition ruling)
 
 Build with: _(blank: brownfield, ADR-0035.)_ The planner expects **Sonnet**. The `map_coverage` tests judge the work.
 
@@ -34,10 +34,10 @@ Out: code, including visibility changes, and other crates' MAPs.
 None.
 
 ## Acceptance
-- [ ] The three `map_coverage` tests pass with `graft-ops` in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`).
-- [ ] NOTES gives the line count before and after (`wc -l`).
-- [ ] The four format-contract clauses are present. NOTES quotes each line (checked by `rg` per contract; the commands are quoted).
-- [ ] NOTES lists any surviving test-only `pub` item with its callers, or says "none" with the `rg` that shows it.
+- [x] The three `map_coverage` tests pass with `graft-ops` in `CHECKED` (`map_coverage::every_pub_item_is_in_its_map`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`, `map_coverage::every_map_item_still_exists`). Verified by workspace `cargo nextest run`, all three pass with `graft-ops` in `CHECKED`.
+- [x] NOTES gives the line count before and after (`wc -l`).
+- [x] The four format-contract clauses are present. NOTES quotes each line (checked by `rg` per contract; the commands are quoted).
+- [x] NOTES lists any surviving test-only `pub` item with its callers, or says "none" with the `rg` that shows it.
 
 ## Touches
 - ops MAP.md.
@@ -49,3 +49,20 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 About 60k tokens. If the public set is over about 400 items, stop after half the modules, in source order, and report `blocked: needs pass 2` with the split point.
+
+## NOTES (builder)
+- Scout used: `.scratch/m8-polish-and-ship/scouts/41-health-map-ops.md`. No compaction.
+- Line count (`wc -l crates/graft-ops/MAP.md`): before 469, after 372. The public set fit one pass (no pass 2).
+- Format contracts, each found by `rg -n '<pattern>' crates/graft-ops/MAP.md`; old → new line:
+  - `rg -n 'Tributary-Link'` → :317 (old :176): "- `LinkKind` (enum) — `Step` or `Resume`, the backup commit's last line `Tributary-Link: step|resume`; `Graft-Link:` still read; no line reads as `Step`."
+  - `rg -n 'plan.json'` → :4, preamble (old :369; `rewrite::saved` is crate-private): "Format contract (crate-private `rewrite::saved`): a rewrite's plan lives at `<git dir>/<names dir>/rewrite/<entry-id>/plan.json`; a relaunch reads what an older build left."
+  - `rg -n 'tributary@backup'` → :324 (old :184): "- `BACKUP_AUTHOR_NAME` / `BACKUP_AUTHOR_EMAIL` (consts) — `tributary` / `tributary@backup`: author and committer of every backup commit."
+  - `rg -n 'graft-ghost'` → :271 (old :341): "- `ghost_oid` (fn) — `sha1("graft-ghost\0<subject>\0<n>")`: a ghost row's stable synthetic id, never written to the object database."
+  - Spec drift (per scout): the trailer is now `Tributary-Link:` (spec said `Graft-Link:`, still read); backup identity is `tributary`.
+- Surviving test/example-only `pub` items (39's stay-pub set; listed as is, no visibility change):
+  - `journal::render_pending` / `render_outcome` — `grep -rlE "render_outcome|render_pending" crates/graft-ops/tests crates/graft-ops/examples` → `tests/it/abort_merge.rs`, `tests/it/unmerged_index.rs`.
+  - `snapshot::raw_record`, `snapshot::take` — `examples/snapshot_cost.rs`, `tests/it/snapshot_raw.rs`.
+  - `restore::execute` — 6 files in `crates/graft-ops/tests/it/` (`undo_bytes`, `unmerged_index`, `undo_cancel`, `error_rows`, `octopus_merge`, `finish_merge`); `rg restore::execute crates/graft/src` hits doc comments only.
+- Dropped as not in the public set: `Context::advance`, `Context::remote_run` (both `pub(crate)`), `PATHS_CAP`, `amends_at_edit_stop`, graft-git's `LostRun`/`Unreached` (used, not re-exported), every crate-private entry, the file-layout and examples sections. Added (were missing): `Operation::facts_scope`, `ForkStop`, `Replaced::extend`, `Journal::unresolved`.
+- Clauses were condensed from the old entries; measured git behaviour and rulings now live only in source docs, `docs/log/` and the ADRs. Clause content was not re-verified against source beyond the names the guard checks.
+- Touches: `crates/graft-ops/MAP.md`; `CHECKED` in `crates/graft/tests/it/map_coverage.rs` (one line; ticket 38 appends there too). 26/27 NOTES citing `graft-ops/MAP.md:<line>` are stale; the four contract lines' new numbers are above.

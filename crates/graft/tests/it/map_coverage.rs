@@ -26,6 +26,7 @@ const CHECKED: &[&str] = &[
     "graft-git",
     "graft-fixtures",
     "graft-capabilities",
+    "graft-ops",
 ];
 
 const MAX_LINE: usize = 240;
