@@ -27,6 +27,7 @@ use graft_ops::rename::{LOCK_FILE, MigrateError, SettleOutcome, Settled, settle_
 use crate::support::{NOW, TempRepo, journal_for, run, run_undo, state_of};
 
 mod more;
+mod review;
 mod shim;
 
 /// Every ref under `prefix`, name to value.
@@ -139,6 +140,7 @@ fn old_repo_moves_and_undo_still_restores() {
         refs,
         files,
         not_journaled,
+        kept_aside: None,
     } = settled.outcome
     else {
         panic!("migrated: {:?}", settled.outcome);
@@ -176,6 +178,17 @@ fn read_back_mismatch_keeps_old() {
     assert_eq!(repo.read(".git/graft/undo-journal.jsonl"), journal);
     assert_eq!(marker(&repo), None, "no switch");
     assert_eq!(repo.open().on_disk_names(), OnDiskNames::Old);
+
+    // The relaunch moves it: the ref the failed attempt left at another
+    // value is the move's own scratch, overwritten.
+    let settled = settle(&repo);
+    assert!(
+        matches!(settled.outcome, SettleOutcome::Migrated { refs: 2, .. }),
+        "{:?}",
+        settled.outcome
+    );
+    assert_eq!(refs_under(&repo, "refs/tributary/"), as_new(&old));
+    assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
 }
 
 #[test]
@@ -231,7 +244,11 @@ fn switched_marker_cleans_leftovers() {
 
     assert_eq!(
         settled.outcome,
-        SettleOutcome::CleanedUp { refs: 1, files: 1 }
+        SettleOutcome::CleanedUp {
+            refs: 1,
+            files: 1,
+            kept_aside: None
+        }
     );
     assert_eq!(settled.names, OnDiskNames::New);
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());

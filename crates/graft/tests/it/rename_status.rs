@@ -77,42 +77,105 @@ fn kept_old_words() {
 }
 
 /// Every outcome's words: the two that could not finish say so, a move
-/// that finished says nothing — unless its journal line failed.
+/// that finished says nothing — unless its journal line failed or an older
+/// build wrote under the old names, whose kept-aside folder is said
+/// relative to the repository.
 #[test]
 fn every_outcome_has_its_words_or_none() {
+    let root = std::path::Path::new("/work/api");
+    let said = |outcome: SettleOutcome| words(&outcome, root);
     let read_back = MigrateError::ReadBack {
         what: "refs/tributary/backup/main/1".to_owned(),
     };
     assert_eq!(
-        words(&SettleOutcome::KeptOld(read_back.clone())).as_deref(),
+        said(SettleOutcome::KeptOld(read_back.clone())).as_deref(),
         Some(
             "rename: still using the old names \u{b7} refs/tributary/backup/main/1 read back different"
         )
     );
     assert_eq!(
-        words(&SettleOutcome::LeftOld(read_back)).as_deref(),
+        said(SettleOutcome::LeftOld(read_back)).as_deref(),
         Some(
             "rename: old names left behind \u{b7} refs/tributary/backup/main/1 read back different"
         )
     );
     assert_eq!(
-        words(&SettleOutcome::Migrated {
+        said(SettleOutcome::Migrated {
             refs: 3,
             files: 2,
             not_journaled: Some("disk full".to_owned()),
+            kept_aside: None,
         })
         .as_deref(),
         Some("rename: done \u{b7} not in the journal: disk full")
     );
+    older_version_words(root);
     for quiet in [
         SettleOutcome::Done,
         SettleOutcome::Migrated {
             refs: 3,
             files: 2,
             not_journaled: None,
+            kept_aside: None,
         },
-        SettleOutcome::CleanedUp { refs: 1, files: 1 },
+        SettleOutcome::CleanedUp {
+            refs: 1,
+            files: 1,
+            kept_aside: None,
+        },
     ] {
-        assert_eq!(words(&quiet), None, "{quiet:?}");
+        assert_eq!(said(quiet.clone()), None, "{quiet:?}");
     }
+}
+
+/// [`every_outcome_has_its_words_or_none`]'s half for an older build's
+/// writes, kept aside or not.
+fn older_version_words(root: &std::path::Path) {
+    let said = |outcome: SettleOutcome| words(&outcome, root);
+    let kept = || Some(PathBuf::from("/work/api/.git/tributary/older-version/1"));
+    let older = "rename: an older version wrote under the old names \u{b7} close it";
+    let older_kept = format!("{older}; kept in .git/tributary/older-version/1");
+    for outcome in [
+        SettleOutcome::OlderWrote {
+            refs: 1,
+            files: 1,
+            kept_aside: kept(),
+        },
+        SettleOutcome::Migrated {
+            refs: 3,
+            files: 2,
+            not_journaled: None,
+            kept_aside: kept(),
+        },
+        SettleOutcome::CleanedUp {
+            refs: 1,
+            files: 1,
+            kept_aside: kept(),
+        },
+    ] {
+        assert_eq!(
+            said(outcome.clone()).as_deref(),
+            Some(older_kept.as_str()),
+            "{outcome:?}"
+        );
+    }
+    assert_eq!(
+        said(SettleOutcome::OlderWrote {
+            refs: 1,
+            files: 0,
+            kept_aside: None,
+        })
+        .as_deref(),
+        Some(older)
+    );
+    assert_eq!(
+        said(SettleOutcome::Migrated {
+            refs: 3,
+            files: 2,
+            not_journaled: Some("disk full".to_owned()),
+            kept_aside: kept(),
+        })
+        .as_deref(),
+        Some(format!("{older_kept} \u{b7} not in the journal: disk full").as_str())
+    );
 }
