@@ -1,6 +1,9 @@
 # G-rename 2 — the binary is `trib`, the app says Tributary, env vars are `TRIB_*`
 
-Status: ready
+Status: split (spec-only pass 2026-10-10, after scout `scouts/27-rename-sweep.md`: too big for one context) →
+`27a-rename-command-and-app-name` → `27b-rename-env-names` → (`27c-rename-user-docs-and-scripts` ∥
+`27d-rename-recaptures`). This file keeps the decisions; the four specs refine them (no `[[bin]]` exists today — 27a
+adds one; scout's unlisted sites assigned there). Not built as one ticket. Was: ready.
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Sonnet, alone**: mechanical, held by a grep test.
 Blocked by: 26
 Needs: `rename-on-disk-migration`. Last before the acceptance ticket.
