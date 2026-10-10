@@ -10,7 +10,7 @@
 #
 # Part 1, in-process: the release `frames::a_real_repository_...` test (the
 # real loop, real jobs, an in-memory terminal with no back-pressure), traced
-# per key (GRAFT_FRAME_TRACE): update, carry, draw (view + raster + encode)
+# per key (TRIB_FRAME_TRACE): update, carry, draw (view + raster + encode)
 # and write, at 120x40 and 200x50, Unicode and Pixel tiers.
 #
 # Part 2, a real pty: the release binary, `j` held at 30 Hz for 3 s
@@ -71,7 +71,7 @@ for tier in unicode pixel; do
   for size in 120x40 200x50; do
     label="tier=$tier size=$size"
     rm -f "$WORK/trace.txt"
-    GRAFT_REAL_REPO="$REPO" GRAFT_REAL_TIER=$tier GRAFT_REAL_SIZE=$size GRAFT_FRAME_TRACE="$WORK/trace.txt" \
+    TRIB_REAL_REPO="$REPO" TRIB_REAL_TIER=$tier TRIB_REAL_SIZE=$size TRIB_FRAME_TRACE="$WORK/trace.txt" \
       cargo test --release --features heavy-tests --quiet -p graft --test it -- --ignored --exact \
       frames::a_real_repository_keeps_input_to_frame_under_16_ms --nocapture \
       >"$WORK/out.txt" 2>&1

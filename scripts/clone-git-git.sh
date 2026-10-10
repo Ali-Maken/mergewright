@@ -23,7 +23,7 @@
 #   scripts/clone-git-git.sh --where    # print the path and exit
 #
 # Where it goes:
-#   $GRAFT_GIT_GIT_DIR, or ${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git
+#   $TRIB_GIT_GIT_DIR, or ${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git
 #
 # To delete it:
 #   rm -rf "$(scripts/clone-git-git.sh --where)"
@@ -35,7 +35,7 @@
 set -euo pipefail
 
 UPSTREAM="https://github.com/git/git.git"
-CACHE="${GRAFT_GIT_GIT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git}"
+CACHE="${TRIB_GIT_GIT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/graft/git-git.git}"
 
 if [ "${1:-}" = "--where" ]; then
 	printf '%s\n' "$CACHE"

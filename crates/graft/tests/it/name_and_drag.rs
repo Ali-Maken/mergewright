@@ -477,7 +477,7 @@ fn a_drag_onto_a_row_ends_in_a_preview() {
 ///
 /// The **user** judges these by eye (CLAUDE.md rule 6); this only keeps what
 /// he judged from changing behind his back. Regenerate on purpose with
-/// `GRAFT_UPDATE_SHOTS=1`, and read the diff — that run is red either way,
+/// `TRIB_UPDATE_SHOTS=1`, and read the diff — that run is red either way,
 /// see `graft_fixtures::capture`.
 #[test]
 fn capture_the_drop_menu_for_docs_shots() {
@@ -522,7 +522,7 @@ fn dragging_caption(columns: u16, rows: u16) -> String {
          # button is **still down**, two real mouse events through `update`, no release\n\
          # (crates/graft/tests/it/name_and_drag.rs, capture_a_drag_in_flight_for_docs_shots).\n\
          # A golden snapshot: that test fails if the frame drifts. Regenerate on\n\
-         # purpose with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so\n\
+         # purpose with TRIB_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so\n\
          # this is a character grid with no colour attributes in it — CLAUDE.md rule 5,\n\
          # colour ships unverified, and the raised background on two of these rows is\n\
          # **not** in this file. The three marks below are shapes for exactly that\n\
@@ -563,7 +563,7 @@ fn capture_the_name_prompt_for_docs_shots() {
 
 /// The stash's `b` → name → `Enter` preview: its footer names `y confirm`
 /// only — `b` again does not confirm (m6-conflicts/11). Regenerate on
-/// purpose with `GRAFT_UPDATE_SHOTS=1`.
+/// purpose with `TRIB_UPDATE_SHOTS=1`.
 #[test]
 fn capture_fix_preview_verb_name_prompt_for_docs_shots() {
     // Dated, so the stash's id and age are the same on every run.
@@ -639,7 +639,7 @@ fn drop_menu_caption(columns: u16, rows: u16) -> String {
          # there — three real mouse events through `update`\n\
          # (crates/graft/tests/it/name_and_drag.rs, capture_the_drop_menu_for_docs_shots).\n\
          # A golden snapshot: that test fails if the frame drifts. Regenerate on\n\
-         # purpose with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so\n\
+         # purpose with TRIB_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so\n\
          # this is a character grid with no colour attributes in it — CLAUDE.md rule 5,\n\
          # colour ships unverified.\n\
          #\n\
@@ -666,7 +666,7 @@ fn name_prompt_caption() -> String {
      # `b` pressed and `main` typed into the field\n\
      # (crates/graft/tests/it/name_and_drag.rs, capture_the_name_prompt_for_docs_shots).\n\
      # A golden snapshot: that test fails if the frame drifts. Regenerate on purpose\n\
-     # with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so this is a\n\
+     # with TRIB_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so this is a\n\
      # character grid with no colour attributes in it — CLAUDE.md rule 5, colour\n\
      # ships unverified.\n\
      #\n\

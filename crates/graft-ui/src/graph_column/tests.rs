@@ -715,7 +715,7 @@ fn ghost_row_paints_every_owned_cell_text_muted() {
 /// parents are clipped"). The first two rows are real; the last two are
 /// ghost rows standing in for parents that fell outside the preview slice —
 /// clipped, not loaded, drawn as anchors rather than a truncated shape.
-/// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_column::tests::capture_for_docs_shots`.
+/// Run by hand to regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui graph_column::tests::capture_for_docs_shots`.
 /// What the user is judging in `docs/shots/m5-ui-ghost-rows.txt`.
 const GHOST_CAPTION: &str = "\
 # docs/shots/m5-ui-ghost-rows.txt — ghost anchor vs real parent

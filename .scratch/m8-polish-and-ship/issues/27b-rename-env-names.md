@@ -1,6 +1,6 @@
 # G-rename 2b — every environment name is `TRIB_*`
 
-Status: ready (split from 27, spec-only pass 2026-10-10)
+Status: done
 Blocked by: 27a
 Build with: **Sonnet** — a token rename (`GRAFT_` → `TRIB_`) held by one grep test; no behaviour changes.
 Needs: 27a merged (same test files; sequential, not concurrent).
@@ -64,3 +64,17 @@ workspace-wide. Capture runs write to files; read summary lines only.
 
 ## Size
 One context, ~45k tokens (wide but sed-shaped; read files only where a match is not a plain token).
+
+## Done (2026-10-10)
+- [x] No `GRAFT_` left — `crates/graft/tests/it/rename_names.rs::no_old_env_name` (bytes, >100 files, allow-list empty).
+- [x] Askpass — `graft::it askpass_mode::binary_answers_over_socket`, `…binary_exits_1_with_nothing_on_stdout_when_cancelled`, `…binary_exits_2_naming_the_error_when_graft_is_gone`, `graft-git run::tests::askpass_env_is_set`; one string: `crates/graft-core/src/on_disk.rs:71: pub const ASKPASS_SOCKET_VAR: &str = "TRIB_ASKPASS_SOCKET";` (grep `"TRIB_ASKPASS` over crates: that line only).
+- [x] Old name not read — `graft::it clock_pin::the_old_now_name_is_not_read` (old name = `1.5`, launches, exit 0).
+- [x] Captures — update run then plain run: 6295 run, all pass after MAP-line fix (map_lines_are_short re-run green). Drift: `changed 7 · name-only 7 · drift-files 0 · png 0` (`.scratch/m8-polish-and-ship/27b-shot-drift.txt`).
+- [x] `27-shots-left.txt` re-run: 443 (unchanged).
+- [x] `.claude/**`, CLAUDE.md, PROMPT.md: `grep -rl GRAFT_` finds none.
+
+## NOTES
+- Scout used: `scouts/27-rename-sweep.md`. No compaction.
+- Also: `docs/man/trib.1` regenerated (env lines); `over_400.txt` raised: run.rs 683→684 (import), clock_pin.rs 422→443 (new test).
+- `.patch` files under `scripts/` renamed in-place too (in scope as `scripts/**`); they may no longer apply to old trees.
+- Env names stay literals per name (no shared `TRIB_` prefix const: Rust can't `concat!` a const); a later rename is a sed, held by the grep test.

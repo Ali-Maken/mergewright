@@ -91,7 +91,7 @@ fn nothing_a_commit_would_carry_names_this_machine() {
         "{total} machine-specific paths or ports in {files} files a commit from here would \
          carry, in a repository CLAUDE.md says may be published:\n{}\n\nA capture is redacted \
          where it is written (`graft_fixtures::capture`), so regenerate it:\n\n    \
-         GRAFT_UPDATE_SHOTS=1 cargo nextest run\n\nAnything else — a ticket, a perf log, a \
+         TRIB_UPDATE_SHOTS=1 cargo nextest run\n\nAnything else — a ticket, a perf log, a \
          fixture in a test — is written by hand and says `<home>` instead; a test that needs \
          one of these literally assembles it from pieces, the way \
          `graft_fixtures::capture::machine` does. A file that predates the rule is fixed with \

@@ -6,7 +6,7 @@
 #
 # Exports <rev> into a scratch tree (git archive; the worktree is not touched),
 # applies scripts/scroll-pixel-memory.patch — a counting allocator and one line
-# per pixel frame to GRAFT_MEM_STATS, measurement only, never committed to the
+# per pixel frame to TRIB_MEM_STATS, measurement only, never committed to the
 # source — and builds it --release under target/mem-instr. Then runs
 # scripts/scroll-lag-pty.py on a copy of the team-17700 fixture (MONOREPO),
 # 5 s load, `j` every 16 ms for 3 s, reader free, for:
@@ -58,7 +58,7 @@ run() { # label profile deflate cell [config dir]
   rm -rf "$REPO" && cp -R "$FIXTURE" "$REPO" && chmod -R u+w "$REPO"
   rm -f "$RUNS/$label.stats"
   local line
-  line=$(env PROFILE="$profile" DEFLATE="$deflate" CELL="$cell" XDG_CONFIG_HOME="$xdg" GRAFT_MEM_STATS="$RUNS/$label.stats" \
+  line=$(env PROFILE="$profile" DEFLATE="$deflate" CELL="$cell" XDG_CONFIG_HOME="$xdg" TRIB_MEM_STATS="$RUNS/$label.stats" \
     MEM_OUT="$RUNS/$label.vmmap" python3 "$ROOT/scripts/scroll-lag-pty.py" \
     "$BIN" "$REPO" "$cols" 50 "$WAIT" 0.016 "$HOLD" "$label" 2>"$RUNS/$label.err" | grep '^SUMMARY')
   python3 - "$label" "$cell" "$RUNS/$label.stats" "$RUNS/$label.vmmap" "$line" "$WAIT" "$HOLD" "$HASH" <<'PY' | tee -a "$OUT"

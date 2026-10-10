@@ -549,7 +549,7 @@ fn stash_and_back_needs_a_push_then_a_later_apply_or_pop() {
 }
 
 /// "Later" is journal order, not id order. Under a pinned clock
-/// (`GRAFT_NOW`) every entry of a run shares one millisecond, so two ids
+/// (`TRIB_NOW`) every entry of a run shares one millisecond, so two ids
 /// differ only in their random half and sort either way round. The pty
 /// test `task_4_ticks_by_setting_aside_and_bringing_back` failed about
 /// half its runs on exactly this.

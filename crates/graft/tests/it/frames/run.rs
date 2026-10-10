@@ -50,7 +50,7 @@ pub(super) struct Run {
     pub(super) prefetch: Vec<Duration>,
     /// Per trigger (key name, `Window`, `Other`): frames, and what they wrote.
     pub(super) by_trigger: Vec<(String, usize, Counts)>,
-    /// Per key: its phases, as `GRAFT_FRAME_TRACE` lines (see [`Paced::trace`]).
+    /// Per key: its phases, as `TRIB_FRAME_TRACE` lines (see [`Paced::trace`]).
     pub(super) trace: Vec<String>,
     /// Every non-key wake from the first window of rows to key 1's frame,
     /// and the burst's length (see [`Paced::startup`]).
@@ -185,7 +185,7 @@ pub(super) fn ready_to_scroll(
 }
 
 /// [`ready_to_scroll`] at `size` (`(columns, rows)`), whatever
-/// `GRAFT_REAL_SIZE` says: a parameter, never the process-wide env
+/// `TRIB_REAL_SIZE` says: a parameter, never the process-wide env
 /// (m7-power-tools/42 ruling 3).
 pub(crate) fn ready_to_scroll_at(
     repo: &Path,
@@ -198,7 +198,7 @@ pub(crate) fn ready_to_scroll_at(
     ready_sized(repo, tier, refs, post, events, Some(size))
 }
 
-/// The one body: `size` is what `GRAFT_REAL_SIZE` gave before (`None`:
+/// The one body: `size` is what `TRIB_REAL_SIZE` gave before (`None`:
 /// the opened state's own size).
 fn ready_sized(
     repo: &Path,

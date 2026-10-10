@@ -87,6 +87,7 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 ## on_disk
 - `OnDiskNames` (enum) — `New` / `Old`: which on-disk names a repository uses (ADR-0057, Amendment). `ALL` (const) both, new first.
 - `OnDiskNames::ref_prefix` / `dir` / `link_trailer` (fn) — `refs/tributary/`|`refs/graft/`; `tributary`|`graft`; `Tributary-Link:`|`Graft-Link:`.
+- `ASKPASS_SOCKET_VAR` (const) — `TRIB_ASKPASS_SOCKET`, its one definition: set on askpass children by graft-git, re-exported by `graft::cli`.
 - `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/tributary/`: its existence puts `New` in force.
 
 ## raster

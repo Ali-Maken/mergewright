@@ -163,7 +163,7 @@ fn fetch_row(frame: &[String]) -> &str {
 /// expanded, at 120x40 and 80x24 — each asserted, then written to
 /// `docs/shots/m8/`.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it partial_fetch::capture_a_partial_fetch`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it partial_fetch::capture_a_partial_fetch`.
 #[test]
 fn capture_a_partial_fetch() {
     let (remote, app, state, before, theirs) = fetched_part_way();

@@ -5,7 +5,7 @@
 #
 # A rev other than `.` is checked out detached into one reusable bisect
 # worktree (scratch dir, never committed); `.` measures this worktree as it
-# stands. Fixtures are shared through GRAFT_FIXTURES_DIR. Appends raw lines to
+# stands. Fixtures are shared through TRIB_FIXTURES_DIR. Appends raw lines to
 # target/47-debug/<rev>.txt and SUMMARY lines to docs/perf/47-debug.txt;
 # prints the SUMMARY line only.
 set -uo pipefail
@@ -17,7 +17,7 @@ OUT="$ROOT/docs/perf/47-debug.txt"
 machine_state_begin "$OUT"
 WORK="$ROOT/target/47-debug"
 mkdir -p "$WORK"
-export GRAFT_FIXTURES_DIR="$ROOT/target/fixtures"
+export TRIB_FIXTURES_DIR="$ROOT/target/fixtures"
 FILTER=${FILTER:-frames::after_idle::g_after_idle}
 
 if [ "$REV" = "." ]; then

@@ -548,8 +548,8 @@ fn a_config_change_after_the_handle_opened_is_seen() {
 // child below in a fresh copy of this test binary, with a fully controlled
 // config environment, and compares Graft's answer with git's under it.
 
-const CHILD_REPO: &str = "GRAFT_AUTOCRLF_CHILD_REPO";
-const CHILD_OUT: &str = "GRAFT_AUTOCRLF_CHILD_OUT";
+const CHILD_REPO: &str = "TRIB_AUTOCRLF_CHILD_REPO";
+const CHILD_OUT: &str = "TRIB_AUTOCRLF_CHILD_OUT";
 
 /// The child half: Graft's read and git's, `graft git` in `CHILD_OUT`.
 #[test]

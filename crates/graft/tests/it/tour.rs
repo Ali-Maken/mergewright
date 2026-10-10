@@ -6,7 +6,7 @@
 //!
 //! Elsewhere: each task ticked by doing it, `tour_tasks.rs` (19c-b); the
 //! captures and `P` under a macOS-length `TMPDIR`, `tour_walk.rs` (19c-c).
-//! `GRAFT_PRACTICE_EPOCH` fixes the practice repository's dates (19c-a), so
+//! `TRIB_PRACTICE_EPOCH` fixes the practice repository's dates (19c-a), so
 //! its ids and order are the same every build.
 #![allow(
     clippy::expect_used,

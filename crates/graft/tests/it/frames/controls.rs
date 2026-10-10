@@ -1,4 +1,4 @@
-//! The perf script's controls (`GRAFT_FRAME_CONTROL`, m7-power-tools/04)
+//! The perf script's controls (`TRIB_FRAME_CONTROL`, m7-power-tools/04)
 //! and control D, the machine alone.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use super::{IDLE, TICK};
 use crate::heavy::MEASURING;
 
-/// Which run this is: `GRAFT_FRAME_CONTROL`, set by `scripts/m7-perf-key.sh`
+/// Which run this is: `TRIB_FRAME_CONTROL`, set by `scripts/m7-perf-key.sh`
 /// (m7-power-tools/04); unset is the plain run. Each control takes one
 /// suspect away from the slow keys.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,13 +28,13 @@ pub(super) enum Control {
 
 impl Control {
     pub(super) fn from_env() -> Result<Self, String> {
-        match std::env::var("GRAFT_FRAME_CONTROL").as_deref() {
+        match std::env::var("TRIB_FRAME_CONTROL").as_deref() {
             Err(std::env::VarError::NotPresent) | Ok("" | "plain") => Ok(Self::Plain),
             Ok("a") => Ok(Self::NoIdle),
             Ok("b") => Ok(Self::Busy),
             Ok("c") => Ok(Self::NoPrefetch),
             other => Err(format!(
-                "GRAFT_FRAME_CONTROL: {other:?} is not plain, a, b or c"
+                "TRIB_FRAME_CONTROL: {other:?} is not plain, a, b or c"
             )),
         }
     }

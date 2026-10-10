@@ -1230,11 +1230,11 @@ fn no_git_child_outlives_shutdown() {
     let handle = store.shared().expect("this repository opens").handle();
     let (started, has_started) = mpsc::channel();
     let invocation = graft_git::run::GitInvocation::new(&handle)
-        .env("GRAFT_TEST_PIDFILE", pidfile.clone())
+        .env("TRIB_TEST_PIDFILE", pidfile.clone())
         .args([
             graft_git::run::GitArg::Flag("-c"),
             graft_git::run::GitArg::Flag(
-                "alias.graftslow=!echo $$ > \"$GRAFT_TEST_PIDFILE\"; exec sleep 30",
+                "alias.graftslow=!echo $$ > \"$TRIB_TEST_PIDFILE\"; exec sleep 30",
             ),
             graft_git::run::GitArg::Flag("graftslow"),
         ]);

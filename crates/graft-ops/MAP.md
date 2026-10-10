@@ -442,7 +442,7 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `filter_switch_rows(list, query) -> Vec<&SwitchRow>` (fn, pure) — empty query: previous then `rows`. Else `crate::matcher::fuzzy_score` over the short name (m8/11): a match at a segment start ranks above one inside; ties newest tip first; previous ranks like any row.
 
 ## bin (test-only)
-- `askpass_test_helper` (bin) — stands in for Graft's askpass mode (M4 05b) in `tests/it/remote_ops.rs`: reads `GRAFT_ASKPASS_SOCKET`, calls `graft_git::run::askpass::respond` with `argv[1]`. Nothing ships it (m4/04).
+- `askpass_test_helper` (bin) — stands in for Graft's askpass mode (M4 05b) in `tests/it/remote_ops.rs`: reads `TRIB_ASKPASS_SOCKET`, calls `graft_git::run::askpass::respond` with `argv[1]`. Nothing ships it (m4/04).
 
 ## File layout (m7-power-tools/30h: pure moves, public paths unchanged)
 

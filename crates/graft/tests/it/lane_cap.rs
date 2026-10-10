@@ -179,7 +179,7 @@ fn the_pane_narrows_the_graph_so_the_graph_folds_more() {
 
 /// Writes the lane-cap capture into `docs/shots/`.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it lane_cap::capture_lane_cap_for_docs_shots`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it lane_cap::capture_lane_cap_for_docs_shots`.
 #[test]
 fn capture_lane_cap_for_docs_shots() {
     let scratch = many_lanes();

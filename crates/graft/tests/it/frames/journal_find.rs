@@ -126,7 +126,7 @@ fn j_with_a_broad_find_holds_the_frame_budget() {
 /// enforces the p99, debug records it (ADR-0021).
 fn record(label: &str, control: Control, trace: Option<&FrameTrace>, run: &Measured, extra: &str) {
     if let Some(trace) = &trace {
-        let run_name = std::env::var("GRAFT_FRAME_RUN").unwrap_or_else(|_unset| "-".to_owned());
+        let run_name = std::env::var("TRIB_FRAME_RUN").unwrap_or_else(|_unset| "-".to_owned());
         let lines: Vec<String> = run
             .trace
             .iter()
@@ -239,7 +239,7 @@ struct Measured {
     latencies: Vec<Duration>,
     /// The key each latency is for.
     codes: Vec<KeyCode>,
-    /// `GRAFT_FRAME_TRACE` lines, `phase=` naming the pump.
+    /// `TRIB_FRAME_TRACE` lines, `phase=` naming the pump.
     trace: Vec<String>,
     /// J's title row as drawn right after `⏎`.
     title_after_enter: String,

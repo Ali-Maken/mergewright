@@ -109,7 +109,7 @@ impl<D> Paced<'_, D> {
         lines
     }
 
-    /// Per key: one `GRAFT_FRAME_TRACE` line of its phases, in µs.
+    /// Per key: one `TRIB_FRAME_TRACE` line of its phases, in µs.
     /// `latency`: send → the key's frame. `oversleep`: the input thread's
     /// own wake past the due tick, before the send, so outside `latency`
     /// (kept so the OS timer slack stays visible). `queued`: send → handed

@@ -5,7 +5,7 @@
 //! Read back from git and the files, never from `AppState`.
 //!
 //! Regenerate the capture on purpose:
-//! `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it undo_over_drift`.
+//! `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it undo_over_drift`.
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"

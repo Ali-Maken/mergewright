@@ -8,7 +8,7 @@ shape to scratch, runs its setup and headless prefix, then opens the real
 interactive loop with the capture's keys as the harness prelude. This script
 waits for the text the capture says must be on screen, then for the screen to
 settle, and asserts the frame against docs/shots/m6/<stem>-<WxH>.txt through
-`graft-fixtures capture` (redacted; rewritten only under GRAFT_UPDATE_SHOTS=1,
+`graft-fixtures capture` (redacted; rewritten only under TRIB_UPDATE_SHOTS=1,
 and a run that rewrites one is red anyway).
 
 One capture is different: **m6-06-relaunch-sticky** is what a relaunch after
@@ -16,17 +16,17 @@ One capture is different: **m6-06-relaunch-sticky** is what a relaunch after
 block) leave a rebase stopped with a file half-taken on disk; this script
 then sends that process **SIGKILL**, checks it died on signal 9 (and says so
 in its output — the log the ticket asks for), opens the real `graft` binary
-on the scratch it left (`GRAFT_CAPTURE_REPO_OUT` names it; a SIGKILL runs no
+on the scratch it left (`TRIB_CAPTURE_REPO_OUT` names it; a SIGKILL runs no
 destructor), captures the relaunch, and removes the scratch.
 
 pyte records character cells with no colour attributes: **a capture cannot
 show colour**. The user judges these by eye.
 
 Usage: python3 .scratch/m6-conflicts/pty-walk-m6.py <COLSxROWS> [<scenario> ...]
-Build first, and point GRAFT_TARGET at the directory holding the binaries:
+Build first, and point TRIB_TARGET at the directory holding the binaries:
     cargo build -q -p graft --example m5_walk --bin trib
     cargo build -q -p graft-fixtures --bin graft-fixtures
-    GRAFT_TARGET=target python3 .scratch/m6-conflicts/pty-walk-m6.py 120x40
+    TRIB_TARGET=target python3 .scratch/m6-conflicts/pty-walk-m6.py 120x40
 The ticket's sizes: 120x40 and 80x24.
 """
 import fcntl, os, pty, select, shutil, signal, struct, subprocess, sys, tempfile, termios, time
@@ -35,10 +35,10 @@ import pyte
 
 SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
-TARGET = os.environ.get("GRAFT_TARGET", "target")
+TARGET = os.environ.get("TRIB_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m5_walk"
 GRAFT = f"{TARGET}/debug/trib"
-FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+FIXTURES = os.environ.get("TRIB_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
@@ -110,7 +110,7 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = sandbox_env(config_home, GRAFT_SCRATCH_ROOT=scratch_root(label), TERM="xterm-256color",
+            env = sandbox_env(config_home, TRIB_SCRATCH_ROOT=scratch_root(label), TERM="xterm-256color",
                        GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             env.update(extra_env or {})
@@ -237,7 +237,7 @@ def frame_of(run, on_screen, notes):
 def relaunch(stem, scenario, on_screen, keys):
     """The kill -9 capture: SIGKILL the capture run, relaunch graft on its scratch."""
     out = os.path.join(config_home, "repo-path")
-    run = Run(scenario, [BIN, "--capture", scenario], {"GRAFT_CAPTURE_REPO_OUT": out})
+    run = Run(scenario, [BIN, "--capture", scenario], {"TRIB_CAPTURE_REPO_OUT": out})
     if not run.wait_for(BEFORE_KILL, APPEAR):
         print(f"{stem}-{SIZE}: `{BEFORE_KILL}` never appeared before the kill — not captured")
         # The screen it did reach, so the reason is on file, not guessed.

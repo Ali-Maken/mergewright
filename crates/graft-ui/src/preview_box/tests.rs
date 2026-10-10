@@ -316,7 +316,7 @@ fn the_only_constructor_opens_on_cancel() {
 /// too-small screen, every row as drawn. **No blank-row filter**: the
 /// filter this test used to apply is what hid the box the widget did not
 /// draw (review Critical 1), so a capture is only evidence if it shows the
-/// grid whole. Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui preview_box::tests::capture_for_docs_shots`.
+/// grid whole. Run by hand to regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui preview_box::tests::capture_for_docs_shots`.
 #[test]
 fn capture_for_docs_shots() {
     let mut shots = graft_fixtures::Captures::new();

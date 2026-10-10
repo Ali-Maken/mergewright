@@ -14,7 +14,7 @@ fn clock_from_reads_whole_seconds_only() {
         assert_eq!(
             clock_from(Some(OsStr::new(bad))),
             Err(format!(
-                "GRAFT_NOW must be whole seconds since 1970, got {bad}"
+                "TRIB_NOW must be whole seconds since 1970, got {bad}"
             )),
             "{bad:?}"
         );

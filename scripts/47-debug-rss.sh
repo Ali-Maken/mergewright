@@ -17,7 +17,7 @@ OUT="$ROOT/docs/perf/47-debug.txt"
 machine_state_begin "$OUT"
 WORK="$ROOT/target/47-debug"
 mkdir -p "$WORK"
-export GRAFT_FIXTURES_DIR="$ROOT/target/fixtures"
+export TRIB_FIXTURES_DIR="$ROOT/target/fixtures"
 if [ "$REV" = "." ]; then
   SRC="$ROOT"; export CARGO_TARGET_DIR="$ROOT/target"; HASH="worktree"
 else

@@ -14,12 +14,12 @@
 //! and the column. Regenerating is an explicit act:
 //!
 //! ```text
-//! GRAFT_UPDATE_SHOTS=1 cargo nextest run
+//! TRIB_UPDATE_SHOTS=1 cargo nextest run
 //! git diff --stat docs/shots/
 //! ```
 //!
 //! **A regeneration is always a red run.** Drift is an error whether or not
-//! the file was rewritten, so a `GRAFT_UPDATE_SHOTS` somebody left exported
+//! the file was rewritten, so a `TRIB_UPDATE_SHOTS` somebody left exported
 //! cannot turn a real regression green, and a rewritten capture is always
 //! something `git status` has to show (M5 groups 12/13 review, m1). The
 //! contract, the variable and this rule came from `crates/graft/tests/it`,
@@ -47,11 +47,11 @@ use std::path::Path;
 
 /// The environment variable that lets a run rewrite a capture. Named in
 /// `TESTING.md`.
-pub const UPDATE_VAR: &str = "GRAFT_UPDATE_SHOTS";
+pub const UPDATE_VAR: &str = "TRIB_UPDATE_SHOTS";
 
 /// May this run rewrite a committed capture? Only the literal `1`.
 ///
-/// `GRAFT_UPDATE_SHOTS=0` or `=false` left exported in a shell used to mean
+/// `TRIB_UPDATE_SHOTS=0` or `=false` left exported in a shell used to mean
 /// "yes" (`var_os(..).is_some()`), which is the shape of an accident, not of
 /// an instruction (M5 groups 12/13 review, m1).
 #[must_use]
@@ -398,7 +398,7 @@ mod tests {
             "{message}"
         );
         assert!(
-            message.contains("GRAFT_UPDATE_SHOTS=1 cargo nextest run"),
+            message.contains("TRIB_UPDATE_SHOTS=1 cargo nextest run"),
             "{message}"
         );
     }
@@ -457,7 +457,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("a temp dir");
         let why = check_text(&temp.path().join("absent.txt"), "drawn\n", false)
             .expect_err("a missing capture is an error");
-        assert!(why.contains("GRAFT_UPDATE_SHOTS=1"), "{why}");
+        assert!(why.contains("TRIB_UPDATE_SHOTS=1"), "{why}");
     }
 
     #[test]

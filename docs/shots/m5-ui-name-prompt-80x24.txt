@@ -4,7 +4,7 @@
 # `b` pressed and `main` typed into the field
 # (crates/graft/tests/it/name_and_drag.rs, capture_the_name_prompt_for_docs_shots).
 # A golden snapshot: that test fails if the frame drifts. Regenerate on purpose
-# with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so this is a
+# with TRIB_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so this is a
 # character grid with no colour attributes in it — CLAUDE.md rule 5, colour
 # ships unverified.
 #

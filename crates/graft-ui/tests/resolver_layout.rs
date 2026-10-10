@@ -21,7 +21,7 @@
 //! and text content, not its column widths — see the ticket for what still
 //! differs beyond width.
 //!
-//! Regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui --test resolver_layout`.
+//! Regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui --test resolver_layout`.
 
 mod support;
 

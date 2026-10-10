@@ -154,7 +154,7 @@ fn askpass_env_is_set() {
         "GIT_ASKPASS=/opt/graft helper".to_owned(),
         "SSH_ASKPASS=/opt/graft helper".to_owned(),
         "SSH_ASKPASS_REQUIRE=force".to_owned(),
-        format!("GRAFT_ASKPASS_SOCKET={socket}"),
+        format!("{}={socket}", graft_core::on_disk::ASKPASS_SOCKET_VAR),
         "GIT_TERMINAL_PROMPT=0".to_owned(),
     ] {
         assert!(env.lines().any(|seen| seen == line), "{line} in:\n{env}");

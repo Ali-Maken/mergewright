@@ -45,7 +45,7 @@ pub fn pump_events<E: std::fmt::Display>(
             return Ok(state);
         }
         let event = next(PATIENCE).map_err(|why| format!("waiting for {what}: {why}"))?;
-        if std::env::var_os("GRAFT_TEST_TRACE").is_some() {
+        if std::env::var_os("TRIB_TEST_TRACE").is_some() {
             eprintln!("[{what}] {event:?} -> operating {:?}", state.operating);
         }
         deadline.note(what, &event)?;
@@ -174,7 +174,7 @@ impl App {
         // `update::opening`'s, so this harness cannot drift from the real
         // loop (m5-history-and-ghost-preview/05).
         let (mut state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
-        // One clock for the frame and the journal stamps, as `GRAFT_NOW`
+        // One clock for the frame and the journal stamps, as `TRIB_NOW`
         // gives the binary (m8/19d-b2).
         state.harness.clock = clock;
         for command in commands {

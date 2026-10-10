@@ -289,7 +289,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
 /// section: his edit is in the stash, not the tree, and `c` or `a` puts it
 /// back. Colour unverified; looks-right is the user's.
 ///
-/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo nextest run -p graft
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo nextest run -p graft
 /// --test it quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`.
 fn capture_the_relaunch(repo: &Path) {
     use crate::preview::FORK_NOW;

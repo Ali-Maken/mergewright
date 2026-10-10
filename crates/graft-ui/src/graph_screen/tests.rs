@@ -1786,7 +1786,7 @@ fn unmerged_sections_heading_word_is_conflicts() {
 /// Not an assertion — dumps the banner at three widths, so the header's
 /// operation banner can be judged by eye. The widths are three sizes of
 /// terminal, **not** three tiers: a plain banner's `banner_line` reads no width and there is
-/// one wording (m5/20 item 3). Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_for_docs_shots`.
+/// one wording (m5/20 item 3). Run by hand to regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_for_docs_shots`.
 ///
 /// The long location is deliberate: it is what pushed the banner off the
 /// header before the room was reserved for it first (m5/16, review C1).
@@ -1882,7 +1882,7 @@ fn capture_for_docs_shots() {
 /// because a capture of a view model somebody set by hand cannot show
 /// whether the app picks that view model (m5-03 review, Major 5).
 ///
-/// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_hint_bar_for_docs_shots`.
+/// Run by hand to regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_hint_bar_for_docs_shots`.
 #[test]
 #[allow(
     clippy::too_many_lines,
@@ -1991,7 +1991,7 @@ fn capture_hint_bar_for_docs_shots() {
 /// it (variant B, the doorway leading the bare keys), and as-built is now B,
 /// so a comparison would be comparing the build against itself.
 ///
-/// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_the_ladder_for_docs_shots`.
+/// Run by hand to regenerate: `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_the_ladder_for_docs_shots`.
 #[test]
 #[allow(
     clippy::too_many_lines,

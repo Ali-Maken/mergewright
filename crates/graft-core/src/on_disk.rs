@@ -60,6 +60,13 @@ impl OnDiskNames {
     }
 }
 
+/// The variable that names the running app's askpass socket. git passes it
+/// through to the helper; its presence is what selects askpass mode (design
+/// note m4, choice 2: an argument cannot ride in `GIT_ASKPASS` reliably).
+/// Here with the other on-disk names (ADR-0057 section 2) so the crate that
+/// sets it and the binary that reads it share one definition.
+pub const ASKPASS_SOCKET_VAR: &str = "TRIB_ASKPASS_SOCKET";
+
 /// The marker file whose existence puts [`OnDiskNames::New`] in force. It
 /// lives in `<common_dir>/<OnDiskNames::New.dir()>/`; its one line reads
 /// `switched` or `clean`.

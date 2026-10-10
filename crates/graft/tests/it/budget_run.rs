@@ -153,7 +153,7 @@ fn peak() -> Result<u64, String> {
     dead_code,
     reason = "used by heavy.rs's slope guard, not visible from examples/budgets.rs's separate compilation of this file"
 )]
-pub const CHILD_REPO_ENV: &str = "GRAFT_CHILD_REPO";
+pub const CHILD_REPO_ENV: &str = "TRIB_CHILD_REPO";
 
 /// The child's one line of output carries this (cargo's own harness may
 /// share the line with a `test <name> ... ` prefix, so it is not

@@ -11,7 +11,7 @@
 //! merge sets it aside and puts it back staged (19d §R1, §R2).
 //!
 //! Reproducible: the practice repository's dates come from
-//! `GRAFT_PRACTICE_EPOCH` = `graft_fixtures::git::FIXED_DATE`'s instant, and
+//! `TRIB_PRACTICE_EPOCH` = `graft_fixtures::git::FIXED_DATE`'s instant, and
 //! the commits he makes in the tour from `GIT_AUTHOR_DATE` /
 //! `GIT_COMMITTER_DATE` an hour after it (no Graft commit or merge sets
 //! those itself: grep, 19c-c NOTES). `TMPDIR` is a fresh folder under
@@ -146,7 +146,7 @@ fn env(tmp: &OsString) -> Vec<(&'static str, OsString)> {
     let his = format!("{} +0000", EPOCH + 3_600);
     vec![
         ("TMPDIR", tmp.clone()),
-        ("GRAFT_PRACTICE_EPOCH", EPOCH.to_string().into()),
+        ("TRIB_PRACTICE_EPOCH", EPOCH.to_string().into()),
         ("GIT_AUTHOR_DATE", his.clone().into()),
         ("GIT_COMMITTER_DATE", his.into()),
     ]

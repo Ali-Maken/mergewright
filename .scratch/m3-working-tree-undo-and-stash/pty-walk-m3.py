@@ -10,7 +10,7 @@ harness prelude (fed one key per settled state — a write in flight holds the
 next key). This script waits for the text the capture says must be on
 screen, then for the screen to stop changing, asserts the frame against
 docs/shots/<stem>-<WxH>.txt through `graft-fixtures capture` (redacted;
-rewritten only under GRAFT_UPDATE_SHOTS=1, and a run that rewrites one is
+rewritten only under TRIB_UPDATE_SHOTS=1, and a run that rewrites one is
 red anyway) and ends the run with SIGTERM (a `q` would be typed into an open
 text field). Stems, scenario names, the expected text and the key label come
 from `m3_walk --stems`.
@@ -30,7 +30,7 @@ Usage: python3 pty-walk-m3.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build first:
     cargo build -q -p graft --example m3_walk
     cargo build -q -p graft-fixtures --bin graft-fixtures
-    GRAFT_TARGET=target python3 .scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py 80x24
+    TRIB_TARGET=target python3 .scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py 80x24
 """
 import fcntl, os, pty, select, signal, struct, subprocess, sys, tempfile, termios, time
 
@@ -38,9 +38,9 @@ import pyte
 
 SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
-TARGET = os.environ.get("GRAFT_TARGET", "target")
+TARGET = os.environ.get("TRIB_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m3_walk"
-FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+FIXTURES = os.environ.get("TRIB_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 # A commit the capture run makes is dated at a fixed instant, as
 # pty-walk-m6.py does (m6-conflicts/43), so its id is the same every run and
 # the capture can be asserted, not just rewritten (m6-conflicts/63).
@@ -104,7 +104,7 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = sandbox_env(config_home, GRAFT_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color",
+            env = sandbox_env(config_home, TRIB_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color",
                        GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             os.execve(BIN, [BIN, "--capture", scenario], env)
@@ -193,7 +193,7 @@ def write_capture(stem, scenario, keys, frame, note):
         body += f"({note})\n"
     body += "\n" + frame + "\n"
     # The same writer as pty-walk-m4/-m5/-m6.py: redacts, compares, and
-    # rewrites the file only under GRAFT_UPDATE_SHOTS=1.
+    # rewrites the file only under TRIB_UPDATE_SHOTS=1.
     checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: graft-fixtures, not Graft
                              capture_output=True)
     if checked.returncode != 0:

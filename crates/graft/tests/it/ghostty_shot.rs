@@ -16,7 +16,7 @@
 //! Colour is unverified (CLAUDE.md rule 5) and Ghostty's own rendering is
 //! unverified until the user looks. Run by `scripts/47-scroll-acceptance.sh`
 //! step 5; compares against the committed file, rewrites it only under
-//! `GRAFT_UPDATE_SHOTS=1` (`graft_fixtures::capture::check_bytes`).
+//! `TRIB_UPDATE_SHOTS=1` (`graft_fixtures::capture::check_bytes`).
 
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver};
