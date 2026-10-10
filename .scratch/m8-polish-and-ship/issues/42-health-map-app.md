@@ -1,6 +1,6 @@
 # health — graft (app) MAP.md as a map of modules, pass 1: the guard, update/ and view/
 
-Status: ready (planner spec-only pass 2026-10-10, after scout `scouts/42-health-map-app.md`; was ready 2026-10-09). Pass 2 is `42b-health-map-app-rest.md`.
+Status: done (pass 1, 2026-10-10). Was ready (planner spec-only pass 2026-10-10, after scout `scouts/42-health-map-app.md`; was ready 2026-10-09). Pass 2 is `42b-health-map-app-rest.md`.
 
 Build with: **Sonnet** (planner and scout agree). New temp-tree tests judge the guard, and the guard judges the MAP. Nothing structural: the guard is test code, the MAP is a doc. Fails Fable test 3.
 
@@ -70,12 +70,12 @@ Tests:
 - `fn module_map_fits_its_budget()` — `wc -l` equivalent ≤ `MODULE_MAP_MAX_LINES`.
 
 ## Acceptance
-- [ ] The three `module_tree_*` tests pass (`map_coverage::modules::module_tree_lists_private_and_nested_modules`, `…::module_tree_skips_cfg_test_modules_and_items`, `…::module_tree_records_items_per_module`); red first, quoted in NOTES.
-- [ ] Library checks unchanged: `map_coverage::every_pub_item_is_in_its_map`, `map_coverage::every_map_item_still_exists`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids` and the three `map_coverage::public_set_*` tests pass.
-- [ ] NOTES quotes the measurement: `graft: <N> missing headings` and the total module count (`map_coverage::modules::every_module_has_its_heading`, run once with `graft` enabled, reverted).
-- [ ] With `graft` enabled locally, `every_module_has_its_heading` names no `update` or `view` path, and `every_heading_names_one_module` and `every_listed_item_is_in_its_module` name no line under an `update`/`view` heading. Failure filtered with `rg 'update|view'`, quoted, reverted (`map_coverage::modules::every_module_has_its_heading`, `…::every_heading_names_one_module`, `…::every_listed_item_is_in_its_module`).
-- [ ] `MODULES_CHECKED` is empty at commit and `CHECKED` is byte-identical to the base (`git diff <base> -- crates/graft/tests/it/map_coverage.rs` quoted: two hunks, `mod modules;` and the chain).
-- [ ] NOTES gives `wc -l` of the MAP before and after.
+- [x] The three `module_tree_*` tests pass (`map_coverage::modules::module_tree_lists_private_and_nested_modules`, `…::module_tree_skips_cfg_test_modules_and_items`, `…::module_tree_records_items_per_module`); red first, quoted in NOTES.
+- [x] Library checks unchanged: `map_coverage::every_pub_item_is_in_its_map`, `map_coverage::every_map_item_still_exists`, `map_coverage::map_lines_are_short_and_carry_no_ticket_ids` and the three `map_coverage::public_set_*` tests pass.
+- [x] NOTES quotes the measurement: `graft: <N> missing headings` and the total module count (`map_coverage::modules::every_module_has_its_heading`, run once with `graft` enabled, reverted).
+- [x] With `graft` enabled locally, `every_module_has_its_heading` names no `update` or `view` path, and `every_heading_names_one_module` and `every_listed_item_is_in_its_module` name no line under an `update`/`view` heading. Failure filtered with `rg 'update|view'`, quoted, reverted (`map_coverage::modules::every_module_has_its_heading`, `…::every_heading_names_one_module`, `…::every_listed_item_is_in_its_module`).
+- [x] `MODULES_CHECKED` is empty at commit and `CHECKED` is byte-identical to the base (`git diff <base> -- crates/graft/tests/it/map_coverage.rs` quoted: two hunks, `mod modules;` and the chain).
+- [x] NOTES gives `wc -l` of the MAP before and after.
 
 ## Touches
 - `crates/graft/tests/it/map_coverage/modules.rs` (new); `map_coverage.rs` (two lines); `map_coverage/public_set.rs` if the walk is shared — `public_set_*` tests prove `public_items` unchanged.
@@ -89,3 +89,16 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 About 70k tokens. Compact or overflow → stop at a heading boundary and say which heading.
+
+## NOTES (builder, pass 1)
+- Scout used: `scouts/42-health-map-app.md`. No compaction.
+- **Red first**: with `module_tree` stubbed to return an empty map, the three `module_tree_*` tests panicked (modules.rs:182, :194, :207); green after the walk.
+- **Measurement** (`MODULES_CHECKED = ["graft"]`, before any MAP edit): `graft: 100 missing headings` (of 293 modules, `module_tree` keys incl. `crate`). 100 <= 160, so proceeded. After this pass: `graft: 58 missing headings` (of 293). Reverted to `&[]`.
+- **update/view check** (graft enabled, reverted): missing-headings list filtered `rg 'update|view'` → only `history::views`, `jobs::preview` (not update/view modules, match the word only). No `not a module`/`duplicate` line names update/view; no failing line in MAP.md:156–380 (the update/view block). Budget: `graft/MAP.md: 685 lines > 450` (42b's job).
+- **Library checks**: `map_coverage` run → the 6 library tests + `ticket_id_pattern…` + 3 `public_set_*` pass (11 passed with modules disabled).
+- **Diff of map_coverage.rs**: two hunks, `+mod modules;` and `for krate in CHECKED.iter().chain(modules::MODULES_CHECKED)`. `CHECKED` untouched. `MODULES_CHECKED` is `pub(super)` (not private as the spec says) so the chain can read it.
+- **Walk reuse**: `public_set.rs`'s walk is fused with the public-set bookkeeping, so `module_tree` has its own walk in `modules.rs`; it reuses `mod_decl`, `inline_body`, `brace_delta` (made `pub(super)`, bodies unchanged; `public_set_*` tests pass).
+- **MAP wc -l**: 1237 before → 685 after. Removed: old `## update`, every `## update::*`, `## view`, `## view::*` (incl. `view::strips` at old :76, `view::tour` at :359), and the three `## File layout` blocks (all were change logs; the 21b-4 one also named event_loop/session/empty_state moves). New preamble (4 lines); headings + purpose lines only, no item lines (items optional; the old item lines for update/view are gone — 42b or later may add entry items found by `rg 'crate::update::'`/`rg 'crate::view::'` outside the module; not run here).
+- **Stale citations**: `rg -l 'graft/MAP.md:'` → 23 files now cite line numbers that moved. Not edited.
+- `rg 'MAP.md' CLAUDE.md ARCHITECTURE.md`: only CLAUDE.md:65 (who writes MAP.md); nothing says every MAP lists `pub` items. Old MAP preamble said "One line per public item" — replaced.
+- For conductor: library check (a)'s loose match still stands (not fixed, out of scope).

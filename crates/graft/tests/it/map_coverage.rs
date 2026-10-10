@@ -10,6 +10,7 @@
 //!
 //! Later MAP tickets add their crates to [`CHECKED`].
 
+mod modules;
 mod public_set;
 
 use std::collections::BTreeSet;
@@ -171,7 +172,7 @@ fn has_ticket_id(line: &str) -> bool {
 #[test]
 fn map_lines_are_short_and_carry_no_ticket_ids() {
     let mut bad = Vec::new();
-    for krate in CHECKED {
+    for krate in CHECKED.iter().chain(modules::MODULES_CHECKED) {
         for (n, line) in map_text(krate).lines().enumerate() {
             let heading = line.starts_with('#');
             if !heading && line.chars().count() > MAX_LINE {
