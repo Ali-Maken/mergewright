@@ -1017,7 +1017,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r08rk-q3 | `r` and `R` side by side in the preview footer, opposite outcomes; a missed Shift confirms the drop (`u` recovers). Keymap §2.3b decided it → usability walk (review Q3, :299) | **unverified** (question) | M7 |
 | M7/30n-unborn | Two refusals for one state: `Refusal::UnbornHead` (amend/stash words) and 30n's `Refusal::HeadUnborn` (graft-ops operation.rs; 30n NOTES). Merge into one name | **broken** (naming) | M7 |
 | M7/24-nback | Put-back box has no `N commits back on main` clause (ticket 24 Background; V3 decision) | **broken** (unbuilt) | M7 |
-| M7/24-click | Mouse click on `Put back` over J untested (shared `preview_click`; 24-a2 NOTES) | **unverified** | M7 |
+| M7/24-click | Mouse click on `Put back` over J: since 44 a real click reaches `preview_click` (it never did from m5/08 to 44: preview-box buttons ignored clicks), but no stash-specific click test exists (24-a2 NOTES). | **unverified** | M8 |
 | M7/r24-m8 | `JournalView.location` computed every frame, never drawn (view/journal.rs:30,49; review minor 8, docs/reviews/m7-24-and-30n.md:226) | **broken** (dead field) | M7 |
 | M7/r24-m9 | J widget text fields are `String` not `SanitizedText` (journal_screen.rs:137,155,160; callers do sanitise; minor 9) | **broken** (types) | M7 |
 | M7/r24-m10 | ARCHITECTURE.md journal-browser entry misses M7 modules: update::recover, jobs::journal_list, ops::journal_list, Landing (minor 10) | **broken** (doc) | M7 |
