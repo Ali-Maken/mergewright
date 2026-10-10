@@ -1,8 +1,6 @@
 //! Where the preview box sits on screen, and which choice a click lands on.
 
-use super::{
-    AppState, BoxRect, MIN_BOX_ROWS, PREVIEW_MIN, PreviewBox, fits, preview_box, preview_rows,
-};
+use super::{AppState, BoxRect, PreviewBox, fits, preview_box, preview_rows};
 
 /// Rows the graph gives up to the box this frame, footer excluded.
 ///
@@ -30,26 +28,23 @@ pub fn preview_box_rect(state: &AppState, view: &PreviewBox) -> Option<BoxRect> 
     if width == 0 || height == 0 {
         return None;
     }
-    // `graft_ui::preview_box::preview_box_area`'s arithmetic, in plain
-    // numbers: `update` never names a drawing type
-    // (`update::tests::purity::update_cannot_reach_the_world`), so the two
-    // are kept in step by `tests::a_click_lands_on_the_button_the_widget_drew`, which renders
-    // the real widget and reads the buttons back off the buffer.
-    let footer_row = u16::from(height > 1);
-    // From 30 rows the rule above the bar is not the box's either.
-    let rule_row = u16::from(graft_ui::graph_screen::spaced(height));
-    let usable = height.saturating_sub(footer_row + rule_row);
-    let rows = if width < PREVIEW_MIN.0 || height < PREVIEW_MIN.1 {
-        usable.min(1)
-    } else {
-        preview_rows(view, width).max(MIN_BOX_ROWS).min(usable)
-    };
-    Some(BoxRect {
-        x: 0,
-        y: usable.saturating_sub(rows),
-        width,
-        height: rows,
-    })
+    // The guard above is the caller's, not arithmetic: an empty frame has
+    // no box. The dock itself is `graft_ui`'s own, in plain numbers — the
+    // function `preview_box_area` draws from — since `update` never names a
+    // drawing type (`update::tests::purity::update_cannot_reach_the_world`).
+    let wanted = preview_rows(view, width);
+    Some(graft_ui::preview_box::dock_cells((0, 0, width, height), wanted).into())
+}
+
+impl From<graft_ui::Cells> for BoxRect {
+    fn from((x, y, width, height): graft_ui::Cells) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
 }
 
 /// Which choice a click at `(column, row)` lands on, if any.

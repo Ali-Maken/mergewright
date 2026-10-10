@@ -264,16 +264,38 @@ into `ui` only as `term::SanitizedText` — a newtype only `term::sanitize`
 can construct, applied by `app` at the view-model boundary (`DESIGN.md`
 §8.2), so escape-sequence injection is a compile error, not a review catch.
 
-The same one-way rule holds *inside* `app`, between its own `update` and
-`view` modules, with one test-only exception: production `update` code never
-imports `view` — the diagram above is `Event ─▶ update ─▶ view`, not the
-other way round — but `update`'s own tests may read `view`, when the
-alternative is a second, hand-kept copy of `view`'s geometry that nothing
-checks against the real one (`update/tests.rs`'s
-`the_geometry_mirror_matches_the_rects_the_frame_hands_out`, which sweeps
-`update::geometry::detail_split` against `view::frame::detail_rects` itself,
-made `pub(crate)` for exactly this). Production code crosses neither
-direction, whichever module it sits in.
+Inside `app`, `update` may **call** `view`'s pure functions — never draw, and
+never name the rendering library (`update::tests::purity` greps for it) — so
+that a hit-test, a scroll bound or a refusal reads the renderer's own answer
+instead of a hand-kept copy of it. The diagram's `Event ─▶ update ─▶ view`
+is about who draws, not who may ask. Where layout arithmetic has to be
+shared with no `AppState` to hand, it lives in `graft-ui` in plain numbers
+(`graft_ui::Cells`: `graph_screen::row_carve`, `preview_box::dock_cells`,
+`picker::picker_box`) and both sides call it. The production calls today
+(`grep -rn 'crate::view' crates/graft/src/update`, test modules left out):
+
+| `view` fn | Called from |
+|---|---|
+| `uncommitted_shown` | `geometry.rs:332`, `:449`; `mouse.rs:118`, `:153` |
+| `badge_index_at` | `geometry.rs:485` |
+| `strip::strip_marks` | `mouse.rs:131` |
+| `frame::palette_click`, `frame::PaletteClick` | `palette/input.rs:220-228` |
+| `finish::summary_area`, `finish::finish_view` | `finish.rs:185-195`; `finish/keys.rs:112-116`; `finish/mouse.rs:35-63` |
+| `rewrite_editor::rewrite_view`, `rewrite_editor::editor_area` | `rewrite_editor/keys.rs:99-101` |
+| `resolver::resolver_area`, `resolver_view`, `resolver_split`, `resolver_layout` | `resolver/scroll.rs:89-90`; `resolver/geometry.rs:45`, `:73` |
+| `radar::findings_for` | `context_menu.rs:61`; `detail/control.rs:138` |
+| `build_explain_view` | `detail/control.rs:155` |
+| `status::dismiss`, `status::done_line` | `operate/failure.rs:233`; `operate/outcome/staging_not_kept.rs:60` |
+
+One exception is still test-only: `update`'s tests may read `view` where a
+copy of `view`'s geometry has to stay in `update` and be swept against the
+real one. Its one user is
+`the_geometry_mirror_matches_the_rects_the_frame_hands_out`
+(`update/tests/tab_strip_geometry.rs`), which sweeps
+`update::geometry::detail_split` against `view::frame::detail_rects`
+(`pub(crate)` for this). `detail_split` stays a copy on purpose: its `Right`
+graph region is one column wider than `split_area`'s, the gutter routing to
+the region it came out of (`graft-ui/src/detail_pane/layout.rs:81-84`).
 
 ### The open repository: `SharedRepo` and `RepoStore`
 

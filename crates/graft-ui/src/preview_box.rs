@@ -43,7 +43,7 @@ pub const PREVIEW_MIN: (u16, u16) = (40, 12);
 /// The fewest rows a box can be: the title border, one content row, the
 /// choices row, the footer border. Given less than this the widget draws
 /// `too_small` rather than a frame with nothing legible inside it.
-const MIN_BOX_ROWS: u16 = 4;
+pub const MIN_BOX_ROWS: u16 = 4;
 
 /// Everything the Ghost Preview box draws.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -170,22 +170,28 @@ pub fn preview_rows(view: &PreviewBox, _width: u16) -> u16 {
 /// draw a real box in.
 #[must_use]
 pub fn preview_box_area(frame: Rect, view: &PreviewBox) -> Rect {
-    let footer_row = u16::from(frame.height > 1);
-    let rule_row = u16::from(crate::graph_screen::spaced(frame.height));
-    let usable = frame.height.saturating_sub(footer_row + rule_row);
-    let height = if frame.width < PREVIEW_MIN.0 || frame.height < PREVIEW_MIN.1 {
+    crate::rect_of(dock_cells(
+        crate::cells_of(frame),
+        preview_rows(view, frame.width),
+    ))
+}
+
+/// [`preview_box_area`] in plain numbers, for a caller that must not name
+/// the rendering library (`graft::update` hit-tests the box's buttons
+/// against it). `wanted` is the box's own height, [`preview_rows`] of the
+/// view at `frame`'s width; it is not read below [`PREVIEW_MIN`].
+#[must_use]
+pub fn dock_cells(frame: crate::Cells, wanted: u16) -> crate::Cells {
+    let (x, y, width, height) = frame;
+    let footer_row = u16::from(height > 1);
+    let rule_row = u16::from(crate::graph_screen::spaced(height));
+    let usable = height.saturating_sub(footer_row + rule_row);
+    let rows = if width < PREVIEW_MIN.0 || height < PREVIEW_MIN.1 {
         usable.min(1)
     } else {
-        preview_rows(view, frame.width)
-            .max(MIN_BOX_ROWS)
-            .min(usable)
+        wanted.max(MIN_BOX_ROWS).min(usable)
     };
-    Rect {
-        x: frame.x,
-        y: frame.y + usable.saturating_sub(height),
-        width: frame.width,
-        height,
-    }
+    (x, y + usable.saturating_sub(rows), width, rows)
 }
 
 /// [`PreviewBox`] drawn into whatever `Rect` the caller docks it to —

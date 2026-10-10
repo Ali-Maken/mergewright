@@ -45,3 +45,28 @@ pub mod whitespace_tail;
 mod test_support;
 
 pub use still_to_apply::{PendingRowView, PendingView, draw_still_to_apply};
+
+/// A screen rectangle as four plain numbers: `(x, y, width, height)`.
+///
+/// The shape geometry is handed out in to a caller that must not name the
+/// rendering library: `graft::update` hit-tests clicks against the very
+/// carve the widgets draw from ([`graph_screen::row_carve`],
+/// [`preview_box::dock_cells`], [`picker::picker_box`]) rather than a copy
+/// of it.
+pub type Cells = (u16, u16, u16, u16);
+
+/// `rect` as [`Cells`].
+pub(crate) const fn cells_of(rect: ratatui::layout::Rect) -> Cells {
+    (rect.x, rect.y, rect.width, rect.height)
+}
+
+/// `cells` as a `Rect`.
+pub(crate) const fn rect_of(cells: Cells) -> ratatui::layout::Rect {
+    let (x, y, width, height) = cells;
+    ratatui::layout::Rect {
+        x,
+        y,
+        width,
+        height,
+    }
+}

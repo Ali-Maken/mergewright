@@ -310,28 +310,15 @@ pub fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
 }
 
 /// Screen rows the still-to-apply block takes from the graph body this
-/// frame: `graft_ui::graph_screen::screen_rows`' `pending` carve in plain
-/// numbers — the block's own height, capped at half the rows left under
-/// the header, and none when that is under three (review m7-10-to-07c
-/// Major 2). Read by the layout mirrors, `geometry::rows_above_graph` and
-/// `AppState::graph_rows`, as `preview_rows_taken` is.
+/// frame: the `pending` band of `graft_ui`'s own carve
+/// (`geometry::graph_carve`) — the block's own height, capped at half the
+/// rows left under the banner and the tour card, and none when that is
+/// under three (review m7-10-to-07c Major 2). Read by
+/// `geometry::rows_above_graph` and `AppState::graph_rows`, as
+/// `preview_rows_taken` is.
 #[must_use]
 pub fn pending_rows_taken(state: &AppState) -> u16 {
-    let Some(view) = pending_view(state) else {
-        return 0;
-    };
-    let wanted = graft_ui::still_to_apply::still_to_apply_height(&view);
-    // What `screen_rows` has left between the banner and the body's floor:
-    // the frame less the chrome and every row above the graph but the block.
-    let left = state.size.rows.saturating_sub(
-        graft_ui::graph_screen::chrome_rows(state.size.rows)
-            .saturating_add(state.harness.banner_rows())
-            .saturating_add(u16::from(state.commit_graph_line().is_some()))
-            .saturating_add(tab_rows_above_graph(state))
-            .saturating_add(super::tour::card_rows(state)),
-    );
-    let height = wanted.min(left / 2);
-    if height >= 3 { height } else { 0 }
+    super::geometry::graph_carve(state).pending.3
 }
 
 /// Why `c` will not run yet, or `None` when it would.

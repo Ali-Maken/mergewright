@@ -671,18 +671,60 @@ fn an_open_preview_takes_its_rows_out_of_the_graph_viewport() {
 // ── the mouse ───────────────────────────────────────────────────────────
 
 /// The click targets agree with what the widget actually draws: the test
-/// renders the real widget and reads the buttons back off the buffer.
+/// renders the real widget and reads the buttons back off the buffer. At
+/// 40 (the box's narrowest), 80 and 120 columns.
 #[test]
 fn a_click_lands_on_the_button_the_widget_drew() {
+    for columns in [40, 80, 120] {
+        let opened = || {
+            let (mut state, _) = opened_with(a_plan());
+            state.size.columns = columns;
+            state
+        };
+        let (row, cancel, confirm) = buttons_drawn(&opened());
+
+        let mut state = opened();
+        let mut commands = Vec::new();
+        assert!(preview_click(
+            &mut state,
+            &mut commands,
+            confirm,
+            row,
+            &mut ids()
+        ));
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::Operate(..))),
+            "{columns} columns: a click on Confirm runs it: {commands:?}"
+        );
+
+        let mut state = opened();
+        let mut commands = Vec::new();
+        assert!(preview_click(
+            &mut state,
+            &mut commands,
+            cancel,
+            row,
+            &mut ids()
+        ));
+        assert!(
+            state.preview.is_none(),
+            "{columns} columns: a click on Cancel closes"
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+    }
+}
+
+/// The buttons row, and a cell inside `Cancel` and inside `Confirm`, as the
+/// real widget draws them into the rect `update` worked out — the one place
+/// the pure geometry and the widget meet.
+fn buttons_drawn(state: &AppState) -> (u16, u16, u16) {
     use ratatui::buffer::Buffer;
     use ratatui::widgets::Widget;
 
-    let (mut state, _) = opened_with(a_plan());
-    let view = preview_box(&state).expect("a box");
-    let area = preview_box_rect(&state, &view).expect("somewhere to draw");
-    // The one place the pure geometry and the real widget meet: the widget
-    // is rendered into exactly the rect `update` worked out, and the
-    // buttons are read back off the buffer.
+    let view = preview_box(state).expect("a box");
+    let area = preview_box_rect(state, &view).expect("somewhere to draw");
     let rect = ratatui::layout::Rect {
         x: area.x,
         y: area.y,
@@ -704,40 +746,25 @@ fn a_click_lands_on_the_button_the_widget_drew() {
         &mut buffer,
     );
     let row = area.bottom() - 2;
-    let drawn: String = (rect.x..rect.right())
+    // Cells, not bytes: the border and the cursor's `▸` are wider than one
+    // byte, so a byte offset would land right of the word it found.
+    let drawn: Vec<String> = (rect.x..rect.right())
         .map(|x| buffer[(x, row)].symbol().to_owned())
         .collect();
-    let at_cancel = drawn.find("Cancel").expect("Cancel is drawn");
-    let at_confirm = drawn.find("Confirm").expect("Confirm is drawn");
-
-    let mut commands = Vec::new();
-    let column = area.x + u16::try_from(at_confirm + 3).expect("a small screen");
-    assert!(preview_click(
-        &mut state,
-        &mut commands,
-        column,
-        row,
-        &mut ids()
-    ));
-    assert!(
-        commands
-            .iter()
-            .any(|command| matches!(command, Command::Operate(..))),
-        "a click on Confirm runs it: {commands:?}"
-    );
-
-    let (mut state, _) = opened_with(a_plan());
-    let mut commands = Vec::new();
-    let column = area.x + u16::try_from(at_cancel + 3).expect("a small screen");
-    assert!(preview_click(
-        &mut state,
-        &mut commands,
-        column,
-        row,
-        &mut ids()
-    ));
-    assert!(state.preview.is_none(), "a click on Cancel closes");
-    assert!(commands.is_empty(), "{commands:?}");
+    let inside = |word: &str| {
+        let letters: Vec<char> = word.chars().collect();
+        let at = drawn
+            .windows(letters.len())
+            .position(|window| {
+                window
+                    .iter()
+                    .zip(&letters)
+                    .all(|(cell, letter)| cell.chars().eq(std::iter::once(*letter)))
+            })
+            .unwrap_or_else(|| panic!("{word} is drawn: {drawn:?}"));
+        area.x + u16::try_from(at + 1).expect("a small screen")
+    };
+    (row, inside("Cancel"), inside("Confirm"))
 }
 
 /// A click anywhere else is swallowed: the rows behind a modal picture are

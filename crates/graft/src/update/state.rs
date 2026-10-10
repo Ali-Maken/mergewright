@@ -585,6 +585,23 @@ impl AppState {
         usize::from(self.size.rows.saturating_sub(chrome)).max(1)
     }
 
+    /// What the graph screen's row carve (`graft_ui::graph_screen::row_carve`)
+    /// asks of this state, as plain values: the same reads the view's
+    /// `GraphView` is built from for these five, so `geometry::graph_carve`
+    /// carves the rows the frame draws.
+    #[must_use]
+    pub(crate) fn carve_inputs(&self) -> graft_ui::graph_screen::CarveInputs {
+        graft_ui::graph_screen::CarveInputs {
+            spaced: graft_ui::graph_screen::spaced(self.size.rows),
+            banner_rows: self.harness.banner_rows(),
+            commit_graph: self.commit_graph_line().is_some(),
+            tour: self.tour.is_some(),
+            pending_rows: super::banner::pending_view(self).map_or(0, |view| {
+                graft_ui::still_to_apply::still_to_apply_height(&view)
+            }),
+        }
+    }
+
     /// The commit-graph offer's footer line, if it shows one. Waits for the
     /// git check before offering, so the line never offers and then takes
     /// it back.
