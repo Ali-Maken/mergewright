@@ -1,6 +1,6 @@
 # G-trace follow-up — remove the per-frame cost that grows with history or refs
 
-Status: **Part 2 partial 2026-10-10 — pieces built and wired; 3 of the ruling's acceptance items missed (Part 2 NOTES).** Part 1: finding made, ruled below. Was: **deferred by the user 2026-10-08 ("lets finish the product, and then deal with this") — runs after the rest of M8 is built, before the milestone stop.** His trace run exists (2026-10-08, docs/perf/m8-trace-2026-10-08-{ghostty,zed}.txt; was held until it did) (`docs/perf/m8-trace-<date>.txt` from his machine, not the
+Status: **Amendment 1 build B partial 2026-10-11 — built; after-measurement draw_us p50/p99 missed in run 1 of 2 (NOTES B).** Was: Part 2 partial 2026-10-10. Part 1: finding made, ruled below. Was: **deferred by the user 2026-10-08 ("lets finish the product, and then deal with this") — runs after the rest of M8 is built, before the milestone stop.** His trace run exists (2026-10-08, docs/perf/m8-trace-2026-10-08-{ghostty,zed}.txt; was held until it did) (`docs/perf/m8-trace-<date>.txt` from his machine, not the
 builder's). No run → this ticket does not start (rule 1: green fixtures did not match his screen, :84).
 Build with: _(blank — brownfield, ADR-0035.)_ Planner expects **Opus**: diagnosis from numbers, a fix at the cause.
 Blocked by: 02, 03
@@ -421,25 +421,30 @@ literals: graft `layers.rs`, graft-term tests, `examples/kitty_check` (grep).
       build B; the conductor asks the user.
 
 **Build B — graft-term, graft, docs:**
-- [ ] graft-term `kitty`: `one_upload_two_places` (one key placed twice in a frame: one transmit, two placements) and
+- [x] (`kitty::tests::pieces::one_upload_two_places`, `kitty::tests::pieces::stack_reaches_the_command`; the four
+      existing tests green in the workspace run) graft-term `kitty`: `one_upload_two_places` (one key placed twice in a frame: one transmit, two placements) and
       `stack_reaches_the_command` (`stack` maps to the field the cited doc line names). Existing
       `held_unplaced_bytes_stay_under_budget`, `holds_false_after_missing_image_reply`, `forget_covers_emphasis`,
       `free_all_frees_emphasis` green.
-- [ ] graft: `transmits_equal_changed_pieces` and `back_and_forth_retransmits_nothing` green under content keys.
-- [ ] Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: `emphasis_cells_per_key` becomes emphasis **area**
+- [x] (`event_loop::tests::pixel_scroll::emphasis_pieces::transmits_equal_changed_pieces`, `…::back_and_forth_retransmits_nothing`,
+      workspace nextest after the stack change) graft: `transmits_equal_changed_pieces` and `back_and_forth_retransmits_nothing` green under content keys.
+- [x] (`held_key::held_j_stops_on_release_pixel_deflate_free`, release, heavy: `emphasis_area_per_key=3.2`, verdict ok)
+      Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: `emphasis_cells_per_key` becomes emphasis **area**
       per key, Σ(cells × rows) / `STRIP_ROWS` / keys (a strip-tall image counts as before, so
       `EMPHASIS_CELLS_PER_KEY_BEFORE` = 74 stands); **≤ 18.5** (25 %). Count, not time.
-- [ ] After-measurement, `scripts/m8-trace-followup.sh`, same shape, **two runs, both on AC** (power line in each
+- [ ] **(run and recorded; bytes and the rest met both runs; draw_us p50 and p99 MISSED in run 1, met in run 2 —
+      NOTES B)** After-measurement, `scripts/m8-trace-followup.sh`, same shape, **two runs, both on AC** (power line in each
       block), "after, amendment 1" blocks under the existing ones. Targets, **each run**:
       emphasis upload bytes ≤ 1,078,750; bytes_per_key ≤ 46,054; bytes p95 ≤ 288,075, p99 ≤ 486,064 (no regression;
       deterministic); draw_us p50 ≤ 3,172, **p95 ≤ 15,459, p99 ≤ 19,965** (no regression vs before);
       after_last_motion frames=0; deflate=yes; broken=no; the emphasis id bit still splits the layers. Miss → the
       numbers, the trace frame line of each over-bound frame and whether it loads strips; no constant tuning (rule 2);
       the conductor goes to the user.
-- [ ] `docs/shots/m8-05-emphasis-pieces.png` and the pixel PNG captures regenerated; changed pixels listed in NOTES.
+- [x] (`pieces_shot::emphasis_pieces_png`, `ghostty_shot::fix_scroll_ghostty_png`; all 126 heavy `shot|png` tests green)
+      `docs/shots/m8-05-emphasis-pieces.png` and the pixel PNG captures regenerated; changed pixels listed in NOTES.
       Colour **unverified** (rule 5).
-- [ ] TESTING.md line from Part 2 stands; its expected numbers unchanged (write_us p99 ≤ 7,000, bytes p95 ≤ 30,700).
-- [ ] ADR-0053 text as below; DESIGN §3.8 pieces paragraph → three kinds, both-axis crop, content key, explicit stack;
+- [x] (doc; no test) TESTING.md line from Part 2 stands; its expected numbers unchanged (write_us p99 ≤ 7,000, bytes p95 ≤ 30,700).
+- [x] (doc; no test — `map_coverage` green for MAP.md) ADR-0053 text as below; DESIGN §3.8 pieces paragraph → three kinds, both-axis crop, content key, explicit stack;
       MAP.md graft-graph (`PieceKind`, ownership incl. rail, key inputs, edge order) and graft-term (`Place.stack`,
       the doc line).
 
@@ -534,3 +539,59 @@ except MAP wording if the ADR text wants it):
   6321 run) — B re-checks once stacking changes placement.
 - `held_key` area metric ≤ 18.5; two AC after-runs; `docs/shots/m8-05-emphasis-pieces.png` (not regenerated by A).
 - ADR-0053 text with N = 0 and rail → node; DESIGN §3.8; graft-term MAP.md. graft-graph MAP.md is done.
+
+## NOTES (05 Part 2, amendment 1 — build B), 2026-10-11
+
+No compaction. Scout: none (the ruling says none new; A's handoff named the lines; I read `kitty/mod.rs`,
+`kitty/encode.rs`, `layers.rs`, `held_key.rs` in place). Started by merging A (2fe6d052); no ticket conflict.
+
+**Built**
+- graft-term: `Place.stack: u16` (`kitty/place.rs`, split out of `mod.rs` for the 400-line ratchet, re-exported).
+  Emphasis places send `z = 1 + stack`; strips send no `z`, as before. Doc line: "If two images with the same z-index
+  overlap then the image with the lower id is considered to have the lower z-index" (sw.kovidgoyal.net/kitty/
+  graphics-protocol, "Controlling displayed image layout"), so ids (an old upload keeps its old id) never decide order.
+- **A's interim defect fixed (cause):** `KittyImages::frame` numbers each upload's placements this frame `p=1..=n`
+  and removes `p > n` left from last frame; `hide` removes all `n`. One content key placed twice shows twice.
+  `Upload.placed: bool` → `placements: u32`. Pinned by `one_upload_two_places`.
+- graft `layers.rs`: each piece's `stack` = its index in `emphasis_pieces` (A's order: edges by (column, Run before
+  Arc, row), then nodes); strips 0.
+- `held_key`: `emphasis_area` = Σ(cells × rows) of emphasis transmits; bound `area × 4 ≤ 74 × 32 × 188` (18.5 per key,
+  compared exactly). Drain parser reads `v=` (`height_px`). Moved for the ratchet: `held_key/transmits.rs`,
+  `drain_sink/tests.rs`; `an_upload_is_matched_by_its_key` from `kitty/tests.rs` to `kitty/tests/pieces.rs`. Rows lowered.
+- `scripts/m8-trace-followup.sh`: optional `TRACE_KEEP=<path>` keeps the raw trace (measurement unchanged).
+
+**Numbers** (before → after)
+- held_key A-deflate free, release: emphasis area per key **74 → 3.2** (≤ 18.5 met); bytes_per_key 173,089 → 120,198;
+  emphasis transmits 656, strip 157.
+- Trace, `docs/perf/m8-trace-followup.txt` "after, amendment 1" (two runs, both AC, eee492a7), run 1 / run 2:
+  emphasis bytes 4,315,003 → 176,656 / 176,656 met; bytes_per_key 92,108 → 13,096 / 13,133 met; bytes p95 288,075 →
+  125,744 met; p99 486,064 → 439,220 met; draw p95 15,459 → 11,869 / 4,319 met; **draw p50 6,345 → 4,781 / 986
+  (≤ 3,172: MISSED run 1)**; **draw p99 19,965 → 35,747 / 12,740 (≤ 19,965: MISSED run 1)**; frames after last
+  motion 0, deflate yes, broken no, id bit splits the layers (emphasis=144): met.
+- Run 1's p99 frame: `motions=0 draw_us=35747 bytes=439220`, before the first key — it carries strips (439 KB > all
+  emphasis bytes of the run, 177 KB). Same binary, identical bytes frame for frame: run 1's draw times are 3–5× run 2's,
+  so the spread is not from the work done. Its cause is **not measured**; load average was 7.3 (node 157 %, dasd
+  100 %). Two extra after runs (p50 4,497 / 4,364, p99 37,296 / 26,258) and the BEFORE binary rebuilt from ad7a435f and
+  interleaved (p50 6,365 / 8,124, p99 39,535 / 38,112 — over its own recorded 19,965) are in the perf file. Under the
+  same conditions after is below before on every draw percentile; the absolute targets, set on a quieter run, hold in
+  1 of 4 after runs. No constant tuned (rule 2). **For the conductor:** re-run both binaries on a quiet machine, or
+  the user decides.
+
+**Captures** (colour unverified, rule 5; the user judges, rule 6)
+- `docs/shots/m8-05-emphasis-pieces.png` regenerated (34,406 B): 76 of 1,418,480 px changed, max channel delta 13,
+  x 0–344, y 21–1183 — A's AA snapping and stack order (A had not regenerated it). Panels still byte-identical Focus
+  on/off (the Part 2 question stands; out of scope).
+- `docs/shots/m7/fix-scroll-ghostty.png` regenerated: 32 of 345,950 px, max delta 13. Built through
+  `StripCache::composited`; graft-graph has no change since A's tip (diff --stat against 2fe6d052), so the drift is
+  A's raster change, not B's — by reading; A's tip not re-run.
+
+**Touches** (how checked)
+- `Place` literal sites (grep `layer: Layer::|layer: crate::kitty|layer: graft_term`): kitty tests, iterm2 tests,
+  `examples/kitty_check`, `layers.rs` — `stack` set in each; iTerm2 never reads `stack` (grep).
+- Kitty byte stream: strip placements unchanged (`deflate_off_is_unchanged`, pinned bytes, green); emphasis rank 0 is
+  `z=1` as before (`emphasis_sits_above_its_strip` green).
+- `forget_uploads`/`free_all`/`answer`: paths unchanged; `forget_covers_emphasis`, `free_all_frees_emphasis` green.
+- Not touched: keymap, journal/undo, Unicode tier, prefetch, graft-graph.
+- MAP.md graft-term (`Place.stack`, `frame` placement ids); ADR-0053 amendment rewritten to the ruling's text with
+  N = 0 and rail → node; DESIGN §3.8; TESTING.md line gains a by-eye stack check (dot over lit line), numbers
+  unchanged; `over_400.txt` rows lowered.

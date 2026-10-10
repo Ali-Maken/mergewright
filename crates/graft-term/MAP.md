@@ -60,10 +60,10 @@ May depend on: `core` (ARCHITECTURE.md crate table). One line per public item.
 
 ## kitty
 - `EMPHASIS_ID_BIT` (const) — `u32` bit set in every emphasis image id, in no strip id.
-- `Layer` (enum) — `Strip` or `Emphasis` (`z=1`, drawn over strips).
+- `Layer` (enum) — `Strip` or `Emphasis` (`z` ≥ 1, over strips). Stacking by `z`: "If two images with the same z-index overlap then the image with the lower id is considered to have the lower z-index" (Kitty graphics-protocol doc).
 - `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows`.
 - `UploadKey` (struct) — `(pub u64)`: what an upload is known by; same key, same picture, no retransmit.
-- `Place` (struct) — one image this frame: `first_row`, `key`, `frame` (`None` only for a key `holds` said yes to), `rows`, `cells`, `layer`, `stack` (rank in its layer, higher on top; emphasis sent as `z = 1 + stack`, per the Kitty doc line "If two images with the same z-index overlap then the image with the lower id is considered to have the lower z-index", sw.kovidgoyal.net/kitty/graphics-protocol, "Controlling displayed image layout"; strips and iTerm2: 0, ignored). Defined in `kitty/place.rs`, re-exported.
+- `Place` (struct) — one image this frame: `first_row`, `key`, `frame` (`None` only if `holds` said yes), `rows`, `cells`, `layer`, `stack` (rank, higher on top; emphasis sent as `z = 1 + stack`; strips 0). In `kitty/place.rs`.
 - `GraphicsReply` (struct) — one APC graphics reply: `image`, `placement`, `message`.
 - `GraphicsReply::is_error` (fn) — `-> bool`: the reply is not `OK`.
 - `GraphicsReply::is_missing_image` (fn) — `-> bool`: the terminal lost the image (`ENOENT`).
@@ -76,7 +76,7 @@ May depend on: `core` (ARCHITECTURE.md crate table). One line per public item.
 - `KittyImages::is_deflating` (fn) — `-> bool`: still deflating; false once an error turned it off.
 - `KittyImages::with_transport` (fn) — builder: send commands over a `Transport`.
 - `KittyImages::uploaded` (fn) — `-> usize`: images the terminal holds, as far as Graft knows.
-- `KittyImages::frame` (fn) — `(&[Place], &mut Vec<u8>)`: commands so the screen shows exactly these places; one key placed `n` times gets placement ids `p=1..=n`, and placements past last frame's count are removed.
+- `KittyImages::frame` (fn) — `(&[Place], &mut Vec<u8>)`: commands so the screen shows exactly these places; a key placed `n` times gets ids `p=1..=n`.
 - `KittyImages::hide` (fn) — remove every placement, keep data.
 - `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
 - `KittyImages::forget_uploads` (fn) — after a clear or resize: retransmit everything next frame.
