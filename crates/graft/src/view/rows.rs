@@ -431,7 +431,7 @@ pub(crate) fn divider_shown(state: &AppState) -> bool {
 /// could pass a different width to is the very divergence this function
 /// exists to close. `event_loop::graphics` already reads the screen
 /// rectangle the same way.
-pub(crate) fn max_lanes(state: &AppState) -> usize {
+pub fn max_lanes(state: &AppState) -> usize {
     graft_ui::graph_screen::max_lanes_for(
         super::frame::graph_columns(state, super::frame::screen_area(state)),
         state.max_lanes,

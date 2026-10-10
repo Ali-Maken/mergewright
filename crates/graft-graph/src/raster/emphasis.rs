@@ -23,6 +23,10 @@ use super::{
 };
 use crate::row::Row;
 
+mod pieces;
+
+pub use pieces::{Piece, emphasis_pieces, rasterise_piece};
+
 /// The one alpha a strip draws every element at: the lowest in play for the
 /// frame. It changes only when Focus toggles or a thread comes or goes,
 /// never on a cursor move.
@@ -286,7 +290,7 @@ pub(super) fn rasterise_emphasis_in(
             lit: *lit,
         })
         .collect();
-    let Some(reach) = lit_reach(&rows, strip.marker, backdrop) else {
+    let Some(reach) = lit_reach(&rows, strip.marker, backdrop, None) else {
         return Ok(None);
     };
     let frame = paint(&strip.look(), &rows, Some(backdrop), pool)?;
@@ -310,8 +314,15 @@ pub(super) fn rasterise_emphasis_in(
 /// `None` when it draws nothing: a bound for [`painted_cells`]' scan, so a
 /// thread a few lanes wide does not cost a scan of the whole strip. It
 /// mirrors which elements [`super::Pen`] draws above the backdrop; a column
-/// it missed would lose lit pixels.
-fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Option<(usize, usize)> {
+/// it missed would lose lit pixels. With `only`, the elements that lane
+/// column owns alone (an emphasis piece, [`pieces`]).
+fn lit_reach(
+    rows: &[Inked<'_>],
+    marker: Option<Marker>,
+    backdrop: f32,
+    only: Option<usize>,
+) -> Option<(usize, usize)> {
+    let owns = |column: usize| only.is_none_or(|only| only == column);
     let mut reach: Option<(usize, usize)> = None;
     let mut take = |from: usize, to: usize| {
         let (low, high) = (from.min(to), from.max(to));
@@ -322,7 +333,11 @@ fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Optio
     for inked in rows {
         let row = inked.row;
         for (column, identity) in row.lanes.iter().enumerate() {
-            if identity.is_some() && column != row.lane && inked.lit.alpha_at(column) > backdrop {
+            if identity.is_some()
+                && column != row.lane
+                && owns(column)
+                && inked.lit.alpha_at(column) > backdrop
+            {
                 // An arc runs from its column to the node; a straight line
                 // stays in its column.
                 let ends_here = row.incoming.contains(&column)
@@ -330,11 +345,12 @@ fn lit_reach(rows: &[Inked<'_>], marker: Option<Marker>, backdrop: f32) -> Optio
                 take(column, if ends_here { row.lane } else { column });
             }
         }
-        if inked.lit.alpha_at(row.lane) > backdrop {
+        if owns(row.lane) && inked.lit.alpha_at(row.lane) > backdrop {
             // Stubs and the node; a tail reaches toward the next column.
             take(row.lane, row.lane + usize::from(!inked.stubs.is_empty()));
         }
         if let Some(marker) = marker
+            && owns(marker.column)
             && inked.lit.rail_alpha() > backdrop
         {
             take(marker.column, marker.column);
@@ -356,13 +372,26 @@ fn painted_cells(
     let width = usize::try_from(frame.width).ok()?;
     let cell = usize::try_from(cell_width).ok()?;
     let lane = cell * usize::try_from(super::CELLS_PER_LANE).ok()?;
-    if width == 0 || cell == 0 {
-        return None;
-    }
     // From a cell left of the first lane's own cell to the end of the cell
     // right of the last lane's own cell.
     let from = (reach.0 * lane).saturating_sub(cell).min(width);
     let to = (reach.1 * lane + 2 * cell).min(width);
+    painted_cells_in(frame, cell_width, from..to)
+}
+
+/// [`painted_cells`] over the pixel columns `window` of `frame`, which
+/// start and end on cell edges.
+fn painted_cells_in(
+    frame: &RasterFrame,
+    cell_width: u32,
+    window: std::ops::Range<usize>,
+) -> Option<(u32, u32)> {
+    let width = usize::try_from(frame.width).ok()?;
+    let cell = usize::try_from(cell_width).ok()?;
+    if width == 0 || cell == 0 {
+        return None;
+    }
+    let (from, to) = (window.start.min(width), window.end.min(width));
     let painted = |byte: &u8| *byte != 0;
     // Both on cell edges, as `from` and `to` are.
     let start = |pixel: usize| pixel / cell * cell;

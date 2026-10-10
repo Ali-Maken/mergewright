@@ -57,8 +57,15 @@ pub(super) fn arc_out(from: (f32, f32), to: (f32, f32)) -> Option<tiny_skia::Pat
     path.finish()
 }
 
-pub(super) fn stroke(pixmap: &mut Pixmap, path: Option<tiny_skia::Path>, ink: Ink) {
-    stroke_with(pixmap, path, &paint(ink), ink.width);
+/// Stroke `path`, built in strip pixels, into `pixmap` moved by `shift`
+/// (`Pen::shift`).
+pub(super) fn stroke(
+    pixmap: &mut Pixmap,
+    path: Option<tiny_skia::Path>,
+    ink: Ink,
+    shift: Transform,
+) {
+    stroke_with(pixmap, path, &paint(ink), ink.width, shift);
 }
 
 pub(super) fn stroke_with(
@@ -66,6 +73,7 @@ pub(super) fn stroke_with(
     path: Option<tiny_skia::Path>,
     paint: &Paint<'_>,
     width: f32,
+    shift: Transform,
 ) {
     // `finish` yields `None` only for a path with no length; there is then
     // nothing to draw.
@@ -75,7 +83,7 @@ pub(super) fn stroke_with(
         line_cap: LineCap::Butt,
         ..Stroke::default()
     };
-    pixmap.stroke_path(&path, paint, &stroke, Transform::identity(), None);
+    pixmap.stroke_path(&path, paint, &stroke, shift, None);
 }
 
 pub(super) fn paint(ink: Ink) -> Paint<'static> {
