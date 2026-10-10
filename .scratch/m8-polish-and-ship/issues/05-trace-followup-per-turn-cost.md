@@ -112,3 +112,94 @@ Nothing new yet. After a fix lands: the same Ghostty command as TESTING.md "M8: 
 `scripts/m8-trace-summary.sh`; and a by-eye hold of `j` in Ghostty full screen on his repo.
 Touches: scripts/m8-trace-followup.sh (new), docs/perf/m8-trace-followup.txt (new), this ticket. No Rust, no MAP.md,
 no captures, no keymap. `m8-trace-summary.sh --self-test` ok (unchanged).
+
+## Ruling (05 Part 2) — planner, 2026-10-10
+
+**Spec change, internal; no visible change.** Amends ADR-0053 Decision 3 and DESIGN §3.8 (mechanism only — the look
+ADR-0024 decided stays). Not a user question (memory: stop bringing him design decisions); conductor records it.
+**Scope reshaped:** the ticket's premise (growth with history/refs) did not hold (NOTES); his numbers point at
+Pixel emphasis bytes, so that is the fix. Box 2 (history/ref guard) **retired** — cost is viewport × thread width,
+the guard below counts that instead. Row 414 **out** (his numbers don't point at it; Out clause) — stays open with the
+fix written in it. Zed: no change.
+
+### Decision: emphasis in per-column pieces, held by the terminal, placed not re-sent
+Cause: one emphasis image per strip whose key hashes the whole strip's paint (`key.rs:146-158`), so any lit change
+anywhere in 32 rows × full width makes a new picture. Re-placing by id (research `kitty-layering-deflate.md` §3) is
+already what `UploadKey` does — it can't help while each `j` makes new pixels. Fix the key, not the transport:
+- A strip's emphasis is split into **pieces, one per drawn column**. A piece holds exactly the elements whose ADR-0024
+  alpha is decided in that column (diagonal edges: the column whose lit bit decides them; rule written in MAP.md),
+  drawn alone at `(a − b)/(1 − b)`, cropped to whole cells of its own elements.
+- **Piece key** = hash(strip backdrop key, column, alpha of each element the piece owns) — nothing else. A `j` that
+  leaves a column's alphas alone leaves its key, so the terminal already holds it: one placement, zero transmit.
+- Kitty: pieces are rasterised **only when `KittyImages` does not hold the key**, transmitted, pixels dropped. They
+  never take a `RasterPool` buffer (one-size rule would weigh each at a full strip) and are not cached Graft-side.
+  Terminal-side, unplaced uploads are bounded by **decoded bytes** (64 MiB; Kitty/Ghostty storage defaults are
+  ~320 MB — builder cites the doc line), LRU by last placed; a placed image is never freed.
+- iTerm2 unchanged: whole-strip `rasterise_emphasis` + `composite` stay (also the equivalence reference).
+- Rejected: 8-row tiles (still full width: any column's change re-sends the tile); unaligned lane-run images (no strip
+  alignment, scroll re-keys); hold-while-held throttle (symptom, loses the live thread, needs his OK); thinner thread
+  (reverses ADR-0024).
+
+**Gate before wiring (rule 1):** implement `emphasis_pieces` first and count, on the 50-key walk at 222x70 on
+MONOREPO, the pixel area of pieces whose key changed per key vs today's emphasis area per key. ≥ 50 % → stop, report
+`blocked: pieces don't localise` with the numbers; no wiring.
+
+### Signatures
+```rust
+// graft-graph::raster
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Piece { pub column: usize, pub key: u64 }
+/// Pieces this strip's emphasis needs; no rasterising. Empty when nothing draws above the backdrop.
+pub fn emphasis_pieces(strip: &PlainStrip, selection: &Selection, strip_key: u64) -> Vec<Piece>;
+/// One piece's pixels, cropped to whole cells; `None` if it draws nothing.
+pub fn rasterise_piece(strip: &PlainStrip, selection: &Selection, piece: Piece) -> Result<Option<Emphasised>, RasterError>;
+// graft-term::kitty
+impl KittyImages {
+    pub fn new(unplaced_bytes: usize) -> Self;      // was `capacity: usize` (count); callers: graft event_loop/graphics, tests
+    pub fn holds(&self, key: UploadKey) -> bool;    // a look: terminal holds it, no retransmit
+}
+```
+`Place`: one per piece (`layer: Emphasis`, column from `Piece`/`Emphasised::first_column`); placement ids unique per
+place (derivation internal). If `Place.frame` is not already optional, make it `Option<…>`; `None` only after `holds`
+said yes this frame — an unservable `None` goes down the missing-image path (retransmit next frame), never a blank.
+
+### Acceptance (each tick names its test)
+- [ ] Count gate above, numbers in NOTES (test named).
+- [ ] `raster::pieces_composite_equals_single_emphasis`: merge-heavy fixture, ≥ 20 selections incl. Focus: backdrop +
+      all pieces == `composite(backdrop, rasterise_emphasis)`; exact where lit elements don't overlap, else ≤ `b × 255`
+      per channel (ADR-0053 bound).
+- [ ] `raster::piece_key_moves_only_with_its_column`: changing one element's alpha changes exactly its owner's key.
+- [ ] graft: `transmits_equal_changed_pieces` (held `j`, merge-heavy: emphasis transmits per frame == pieces whose key
+      the terminal didn't hold; linear history: 0 after the first frame, or say with a line why the cursor's own piece
+      moves) and `back_and_forth_retransmits_nothing` (`j` then `k`: 0 transmits).
+- [ ] graft-term: `held_unplaced_bytes_stay_under_budget` (1000 keys) and `holds_false_after_missing_image_reply`.
+- [ ] Heavy `held_key::held_j_stops_on_release_pixel_deflate_free`: emphasis upload bytes per key ≤ 25 % of its value
+      at HEAD before the change (recorded in the test comment). Count, not time.
+- [ ] After-measurement, same script, same shape: `scripts/m8-trace-followup.sh` → "after" block under "before" in
+      `docs/perf/m8-trace-followup.txt`. Targets: emphasis bytes ≤ 1,078,750 (¼ of 4,315,003); bytes_per_key ≤ 46,054
+      (½); draw_us p50 ≤ 3,172 (½); after_last_motion frames=0; deflate=yes; broken=no. Miss → report numbers, no
+      constant tuning (rule 2). Script's layer split must still recognise piece uploads (check: emphasis id bit).
+- [ ] Capture `docs/shots/m8-05-emphasis-pieces.png` (≤ 200 KB): MONOREPO at a merge selection, then Focus on.
+      Existing pixel PNG captures regenerated; any changed pixel listed in NOTES. Colour **unverified** (rule 5).
+- [ ] TESTING.md "M8: how he runs the trace", one line: in Ghostty full screen, release build, his repo — hold `j` 3 s,
+      let go (right: stops on the row he let go at, thread lit at every step, never half-drawn), hold `k` back, `F` and
+      hold `j` again; then the trace + `scripts/m8-trace-summary.sh`. Expected from the after-run (finding, not a fail
+      if missed): write_us p99 ≤ 7,000 (was 14,064), bytes p95 ≤ 30,700 (was 76,751). `tail_ms` is not a judge (NOTES).
+- [ ] ADR-0053: "Amendment 2026-10-10" — Decision 3 reads per-column pieces as above; "one image per row" rejection
+      kept, with why pieces differ (content-keyed, re-placed not re-sent). DESIGN §3.8 (`03-graph-layout-algorithm.md`
+      :384-423): "a `j` re-sends a small emphasis image" → pieces; emphasis LRU now iTerm2-only (if so, grep).
+
+### Touches
+graft-graph `raster` (+ `cache`: `paint_key`/`lit_hash`/`StripCache::emphasis` callers after the change — remove only
+if grep shows none); graft-term `kitty` (`new` callers, `frame`, `answer`, `forget_uploads` after resize, `free_all`
+must free every piece, `EMPHASIS_ID_BIT`), `iterm` (grep: untouched); graft `event_loop/graphics`, `running/frame.rs`,
+`row_clear`, idle prefetch (backdrops only, unchanged); held_key + frames tests; pixel PNG captures; scripts
+`m8-trace-followup.sh`; MAP.md ×3; ADR-0053; DESIGN §3.8; KNOWN_GAPS M7/46-kitty-no-deflate (budget wording), 414
+(unchanged). Not touched: keymap, journal/undo, Unicode tier.
+
+### Build with, size
+**Opus** — brownfield across three crates, but shape and signatures are fixed here and correctness is pinned by the
+pixel-equivalence and transmit-count tests, not judged from the diff. Reuse scout `05-trace-followup.md`, re-checked
+at the new hash; scout addendum on `Place`/placement ids and `KittyImages` capacity if the conductor wants one.
+~70k. Over → split at the seam: (A) graft-graph pieces + count gate + equivalence/key tests; (B) graft-term + graft
+wiring + measurement + docs.
