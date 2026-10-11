@@ -58,8 +58,13 @@ fn b_bound_stops_at_js_frame() {
 /// and the turn's one frame is stamped on its last wake. Looking for a
 /// drawn `Rest` missed it there and counted the pane's catch-up as the
 /// graph's tail.
-pub(crate) fn rest_index<T: Ord + Copy>(handed: &[(bool, T)], last_j: T) -> Option<usize> {
-    handed.iter().position(|&(rest, at)| rest && at > last_j)
+pub(crate) fn rest_index<T: Ord + Copy>(
+    handed: impl IntoIterator<Item = (bool, T)>,
+    last_j: T,
+) -> Option<usize> {
+    handed
+        .into_iter()
+        .position(|(rest, at)| rest && at > last_j)
 }
 
 #[test]
@@ -77,7 +82,7 @@ fn the_rest_is_found_when_job_answers_join_its_frame() {
         (false, 61),
     ];
     let drawn = [Some(10), Some(28), None, None, Some(62)];
-    let rest = rest_index(&handed, 0);
+    let rest = rest_index(handed, 0);
     assert_eq!(rest, Some(2));
     // Graph frames end where the rest begins: two after release, not three.
     assert_eq!(
@@ -85,7 +90,7 @@ fn the_rest_is_found_when_job_answers_join_its_frame() {
         2
     );
     // A rest drawn alone is found as before.
-    assert_eq!(rest_index(&[(false, 10), (true, 60)], 0), Some(1));
+    assert_eq!(rest_index([(false, 10), (true, 60)], 0), Some(1));
     // A rest handed before the last j is not the rest after release.
-    assert_eq!(rest_index(&[(true, -5), (false, 0)], 0), None);
+    assert_eq!(rest_index([(true, -5), (false, 0)], 0), None);
 }

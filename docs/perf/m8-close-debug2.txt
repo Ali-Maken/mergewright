@@ -108,3 +108,18 @@ SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_hel
 ## 10:39:29Z head=c35ca917 filter=held_key::held_j_with mode=release load={  1.77 2.98 3.75  } power='AC Power' lpm=0
 SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=162 frames_after_release=2 tail_ms=22 rest_frames=1 rest_ms=57
 SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=1 tail_ms=5 rest_frames=1 rest_ms=55
+# final, release, whole held_key:: group on the committed fix: 13 passed, 3 failed — all raw Kitty (A, A-free bytes, B), the M7/46-kitty-no-deflate family
+## 11:12:01Z head=cbe45c05 filter=held_key:: mode=release load={  4.17 4.86 4.20  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s frames_while_held=1 frames_after_release=2 tail_ms=1251
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s frames_while_held=171 frames_after_release=2 tail_ms=27
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=18446744073709551615B/s frames_while_held=188 frames_after_release=1 tail_ms=4
+SUMMARY held_key tier=Pixel scenario=A drain=18446744073709551615B/s frames_while_held=149 frames_after_release=1 tail_ms=16
+SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s frames_while_held=167 frames_after_release=1 tail_ms=16
+SUMMARY held_key tier=Unicode scenario=A drain=500000B/s frames_while_held=91 frames_after_release=1 tail_ms=37
+SUMMARY held_key tier=Unicode scenario=A drain=40000000B/s frames_while_held=190 frames_after_release=1 tail_ms=2
+SUMMARY held_key tier=Unicode scenario=A drain=18446744073709551615B/s frames_while_held=190 frames_after_release=1 tail_ms=3
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=173 frames_after_release=2 tail_ms=22
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=1 tail_ms=4
+SUMMARY held_key tier=Pixel scenario=B drain=40000000B/s frames_while_held=1 frames_after_release=1 tail_ms=800
+SUMMARY held_key tier=Pixel scenario=B-deflate drain=40000000B/s frames_while_held=171 frames_after_release=2 tail_ms=28
+SUMMARY held_key tier=Unicode scenario=B drain=500000B/s frames_while_held=90 frames_after_release=1 tail_ms=43

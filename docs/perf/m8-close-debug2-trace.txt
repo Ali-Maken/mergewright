@@ -1,0 +1,69 @@
+# M8 close debug 2 — red 2, real-app trace draw (scripts/m8-trace-followup.sh, ticket 05 box :435), 2026-10-11
+# Repro at HEAD (quiet, AC, LPM 0, load 1.4-2.7): draw_us p50 4,072/4,579, p99 34,726/30,393 (targets 3,172 / 19,965).
+# Where the time goes (temporary [DEBUG-dr9] split of draw_frame/graphics.frame/layers, removed; per frame):
+#   p99 = one first-load frame (motions=0, 439,220 B): 3 strip backdrops rasterised 18,318 us + Kitty encode/deflate
+#     11,455 us + text 3,777 us = 34,459 us. Not a per-key frame; no pieces rasterised in it.
+#   per-key frames (the p50): text layer (ratatui view+diff) 1.6-4.7 ms is the largest; pieces raster 0-5.5 ms
+#     (frames that rasterise ~17 new pieces); strip key/backdrop lookup ~0.1 ms; encode <1 ms.
+#   Same run with one busy spinner process on the machine: identical work frame for frame (same pieces rasterised,
+#     same held, same bytes), every layer ~5-7x faster — text 3.5 ms -> 0.47 ms, even the strip-key hash 108 -> 20 us;
+#     load frame 34,459 -> 10,018 us (backdrops 4,562, encode 4,721).
+# Cause: draw_us of this run measures the CPU clock state of a bursty, mostly idle process (50 keys at 33 ms, ~1-5 ms
+#   of work each), not the work: an idle machine leaves the cores clocked down. Uniform per-layer slowdown on
+#   identical work is a clock, not code. Code since amendment 1: none moved it (below, HEAD == eee492a7 both ways).
+# Interleaved below: plain, HEAD p50 4,712/4,089 p99 33,495/34,836 vs eee492a7 4,725/4,653, 32,881/35,784;
+#   spinner, HEAD p50 745/737 p95 4,246/4,349 p99 13,676/12,363 vs eee492a7 762/742, 4,284/4,276, 12,866/12,672.
+#   With the clock held up every target is met; without, neither binary meets p50/p99. Amendment 1's run 2
+#   (p50 986, p99 12,740, load 7.3) was the held-clock case; the close run's quiet machine was the other.
+# Not fixed: making the run hold the clock (or judging before/after interleaved) changes the measurement the 05
+#   ruling fixed — needs a ruling. Nothing tuned (rule 2).
+# trace draw, interleaved: new=HEAD cbe45c05 old=eee492a7; plain and with one busy spinner process; rounds=2
+## old-plain-r1 start=10:51:59Z load={  2.33 1.98 2.60  } power='AC Power' lpm=0
+## top: top 8.9 ;com.apple.Virtua 2.0 ;WindowServer 1.7 ;herdr 1.5 ;
+draw_us n=55 p50=4725 p95=12927 p99=32881 max=32881
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=88 p95=651 p99=5255 max=5255
+after_last_motion frames=0
+## old-spinner-r1 start=10:52:12Z load={  3.25 2.18 2.66  } power='AC Power' lpm=0
+## top: bash 75.2 ;top 4.7 ;ghostty 1.7 ;com.apple.Virtua 1.2 ;
+draw_us n=56 p50=762 p95=4284 p99=12866 max=12866
+bytes n=56 p50=3949 p95=125744 p99=439220 max=439220
+write_us n=56 p50=32 p95=639 p99=3592 max=3592
+after_last_motion frames=0
+## new-plain-r1 start=10:52:23Z load={  2.98 2.16 2.65  } power='AC Power' lpm=0
+## top: top 9.2 ;2.1.296 7.5 ;com.apple.Virtua 2.6 ;2.1.288 2.5 ;
+draw_us n=55 p50=4712 p95=12184 p99=33495 max=33495
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=95 p95=647 p99=5039 max=5039
+after_last_motion frames=0
+## new-spinner-r1 start=10:52:36Z load={  2.54 2.10 2.62  } power='AC Power' lpm=0
+## top: bash 75.3 ;top 4.7 ;com.apple.Virtua 4.1 ;2.1.288 2.1 ;
+draw_us n=56 p50=745 p95=4246 p99=13676 max=13676
+bytes n=56 p50=3949 p95=125744 p99=439220 max=439220
+write_us n=56 p50=33 p95=678 p99=3600 max=3600
+after_last_motion frames=0
+## old-plain-r2 start=10:52:47Z load={  2.38 2.08 2.60  } power='AC Power' lpm=0
+## top: top 8.8 ;com.apple.Virtua 2.7 ;2.1.296 2.2 ;kernel_task 2.2 ;
+draw_us n=55 p50=4653 p95=12411 p99=35784 max=35784
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=90 p95=653 p99=4931 max=4931
+after_last_motion frames=0
+## old-spinner-r2 start=10:53:00Z load={  2.06 2.02 2.57  } power='AC Power' lpm=0
+## top: bash 75.4 ;top 4.6 ;com.apple.Virtua 1.6 ;ghostty 1.2 ;
+draw_us n=56 p50=742 p95=4276 p99=12672 max=12672
+bytes n=56 p50=3949 p95=125744 p99=439220 max=439220
+write_us n=56 p50=32 p95=647 p99=3763 max=3763
+after_last_motion frames=0
+## new-plain-r2 start=10:53:11Z load={  1.90 1.99 2.55  } power='AC Power' lpm=0
+## top: top 9.0 ;2.1.288 2.7 ;2.1.296 2.1 ;ghostty 2.0 ;
+draw_us n=55 p50=4089 p95=12492 p99=34836 max=34836
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=63 p95=828 p99=5265 max=5265
+after_last_motion frames=0
+## new-spinner-r2 start=10:53:23Z load={  1.98 2.01 2.55  } power='AC Power' lpm=0
+## top: bash 75.3 ;top 4.7 ;com.apple.Virtua 2.2 ;kernel_task 0.9 ;
+draw_us n=56 p50=737 p95=4349 p99=12363 max=12363
+bytes n=56 p50=3949 p95=125744 p99=439220 max=439220
+write_us n=56 p50=30 p95=667 p99=3240 max=3240
+after_last_motion frames=0
+# end 10:53:35Z

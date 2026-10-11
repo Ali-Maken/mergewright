@@ -573,7 +573,8 @@ fn read<D>(
     };
     // A (G-settle): the graph's frames end where the loop's own rest begins;
     // `written[r]` is stamped at the rest's look, the graph's last byte.
-    let rest = (!journal).then(|| rest_after(handed, last_j)).flatten();
+    let rests = handed.iter().map(|h| (matches!(h.kind, Kind::Rest), h.at));
+    let rest = (!journal).then(|| rest_index(rests, last_j)).flatten();
     let graph_last = rest.map_or_else(|| written.last().copied().unwrap_or(0), |r| written[r]);
     let draws: Vec<_> = handed[..rest.unwrap_or(handed.len())]
         .iter()
@@ -609,16 +610,6 @@ fn read<D>(
     }
     replay(wakes, initial, &mut reading);
     Ok(reading)
-}
-
-/// The loop's own rest after the last `j` (G-settle): where the graph's
-/// frames end and the pane's catch-up begins ([`rest_index`]).
-fn rest_after(handed: &[Handed], last_j: Instant) -> Option<usize> {
-    let handed: Vec<(bool, Instant)> = handed
-        .iter()
-        .map(|frame| (matches!(frame.kind, Kind::Rest), frame.handed_at()))
-        .collect();
-    rest_index(&handed, last_j)
 }
 
 /// The rest's frames, from `handed[rest]` on — the pane catching up — and

@@ -240,7 +240,7 @@
 406 crates/graft/tests/it/frames/run.rs
 1298 crates/graft/tests/it/gallery.rs
 640 crates/graft/tests/it/heavy.rs
-757 crates/graft/tests/it/held_key.rs
+750 crates/graft/tests/it/held_key.rs
 972 crates/graft/tests/it/hint_bar.rs
 502 crates/graft/tests/it/journal_put_back.rs
 758 crates/graft/tests/it/journal_screen.rs
