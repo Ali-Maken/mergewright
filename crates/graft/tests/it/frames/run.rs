@@ -29,7 +29,7 @@ use ratatui::{Terminal, TerminalOptions, Viewport};
 use super::controls::{Control, Spinner};
 use super::paced::{Paced, Watching};
 use super::sink::{Counts, Sink};
-use super::{PATIENCE, Pane, REFS, Refs, keys, script};
+use super::{PATIENCE, Pane, REFS, Refs, answering_dsr, keys, script};
 use crate::budget_run;
 use crate::frame_trace::{KeyFeed, Post, Posted};
 
@@ -74,8 +74,8 @@ pub(super) fn scroll(
     let (jobs, state, before_loop) =
         ready_to_scroll(repo, tier, refs, Post(post.clone()), &events)?;
 
-    let mut session = Session::settle(&Loaded::default(), capabilities(tier));
-    let sink = Sink::timed(traced);
+    let mut session = Session::settle(&Loaded::default(), answering_dsr(capabilities(tier)));
+    let sink = Sink::timed(traced).answering(post.clone());
     let mut terminal = in_memory(&sink, &state)?;
 
     let watching = Watching {
@@ -136,7 +136,7 @@ fn measured<D>(
     let prefetch = std::mem::take(&mut wakes.prefetch);
     // The scroll is over and every latency stamped: only now read what the
     // terminal was sent.
-    let (written, counted) = sink.count(&wakes.written);
+    let (written, counted) = sink.count_fenced(&wakes.written)?;
     let breakdown = wakes.breakdown(&counted);
     let waited = wakes.waited(initial);
     let by_trigger = wakes.written_by_trigger(&counted);

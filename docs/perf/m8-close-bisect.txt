@@ -1,0 +1,9 @@
+8aecfc0d load={ 1.11 1.62 2.31 } p50_us=7655 p99_us=21040 bad
+bf0d39e7 load={ 2.61 2.00 2.39 } p50_us=7196 p99_us=20495 bad
+76895e67 load={ 2.87 2.19 2.44 } p50_us=8150 p99_us=20119 bad
+00345448 load={ 3.18 2.40 2.50 } p50_us=7191 p99_us=19878 bad
+edc9ff78 load={ 3.27 2.57 2.56 } p50_us=6729 p99_us=20335 bad
+aa5e9a3d load={ 3.62 2.77 2.63 } p50_us=7203 p99_us=21711 bad
+bb7acb61 load={ 3.96 3.01 2.72 } p50_us=1324 p99_us=2036 good
+c56cca86 load={ 3.85 3.24 2.84 } p50_us=8362 p99_us=19921 bad
+probe-H1-cap0 load={ 2.91 2.97 2.77 } p50_us=1983 p99_us=2160 good

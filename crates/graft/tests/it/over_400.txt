@@ -234,7 +234,7 @@
 405 crates/graft/tests/it/drain_sink.rs
 430 crates/graft/tests/it/finish/choices.rs
 419 crates/graft/tests/it/frame_trace.rs
-487 crates/graft/tests/it/frames/journal_find.rs
+462 crates/graft/tests/it/frames/journal_find.rs
 426 crates/graft/tests/it/frames/paced.rs
 439 crates/graft/tests/it/frames/readings.rs
 406 crates/graft/tests/it/frames/run.rs

@@ -48,7 +48,7 @@ mod verdict;
 use std::sync::PoisonError;
 use std::time::Duration;
 
-use graft_core::capabilities::RenderingTier;
+use graft_core::capabilities::{Capabilities, RenderingTier};
 use graft_core::event::KeyCode;
 use graft_fixtures::synthetic::{self, Scale};
 
@@ -57,6 +57,15 @@ use crate::heavy::MEASURING;
 use controls::Control;
 use run::{Run, scroll};
 use verdict::{judge, print_details};
+
+/// `caps` for a terminal that answers DSR, as his do: the loop fences every
+/// frame (ADR-0054), and a [`sink::Sink::answering`] sink answers each fence.
+fn answering_dsr(caps: Capabilities) -> Capabilities {
+    Capabilities {
+        answers_dsr: true,
+        ..caps
+    }
+}
 
 /// PROMPT.md §6.3: input to frame under 16 ms.
 const INPUT_TO_FRAME: Duration = Duration::from_millis(16);

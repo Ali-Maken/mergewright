@@ -1,0 +1,204 @@
+# interleaved release frames: old=f5080f50 new=8aecfc0d filter=frames:: rounds=2
+## round=1 side=old start=09:37:09Z load={ 2.97 2.91 3.04 } power='AC Power' lpm=0
+## top: top 8.4 ;2.1.296 3.0 ;WindowServer 2.4 ;kernel_task 2.0 ;
+[old r1] ok
+[old r1] ok
+[old r1] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=3184 p99_us=5465 max_us=9564 over_budget=0 kitty_commands=161670 bytes=642914721
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=990 p99_us=2323 max_us=3484 over_budget=0 kitty_commands=0 bytes=2142170
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1438 p99_us=1657 max_us=3808 over_budget=0 kitty_commands=0 bytes=37992
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1440 p99_us=1730 max_us=4032 over_budget=0 kitty_commands=0 bytes=34029
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=992 p99_us=1144 max_us=3650 over_budget=0 kitty_commands=0 bytes=74202
+[old r1] ok
+[old r1] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=4134 p99_us=8668 max_us=10428 over_budget=0 hits=2000 lost_rows=425
+[old r1] ok
+[old r1] test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+[old r1] test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+[old r1] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=3216 p99_us=5325 max_us=7806 over_budget=0 kitty_commands=161670 bytes=642592416
+[old r1] ok
+[old r1] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=963 p99_us=2015 max_us=2161 over_budget=0 kitty_commands=0 bytes=1811293
+[old r1] ok
+[old r1] test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+[old r1] test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+[old r1] test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 702 filtered out; finished in 103.49s
+## round=1 side=new start=09:38:54Z load={ 1.77 2.51 2.86 } power='AC Power' lpm=0
+## top: top 8.4 ;com.apple.Virtua 2.1 ;2.1.296 2.0 ;WindowServer 1.9 ;
+[new r1] ok
+[new r1] ok
+[new r1] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=14883 p99_us=31086 max_us=37461 over_budget=198 kitty_commands=94623 bytes=356363188
+[new r1] FAILED
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=9034 p99_us=22396 max_us=26230 over_budget=84 kitty_commands=0 bytes=1651421
+[new r1] FAILED
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=8055 p99_us=21134 max_us=25601 over_budget=78 kitty_commands=0 bytes=34833
+[new r1] FAILED
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=7755 p99_us=19492 max_us=22576 over_budget=72 kitty_commands=0 bytes=31230
+[new r1] FAILED
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=7874 p99_us=19777 max_us=24013 over_budget=55 kitty_commands=0 bytes=54802
+[new r1] FAILED
+[new r1] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=15451 p99_us=31254 max_us=31790 over_budget=60 hits=2000 lost_rows=425
+[new r1] FAILED
+[new r1] test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+[new r1] test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+[new r1] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=15043 p99_us=33629 max_us=40828 over_budget=194 kitty_commands=95029 bytes=357983699
+[new r1] FAILED
+[new r1] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=8459 p99_us=21055 max_us=23448 over_budget=85 kitty_commands=0 bytes=1397299
+[new r1] FAILED
+[new r1] test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+[new r1] test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+[new r1] test result: FAILED. 6 passed; 8 failed; 1 ignored; 0 measured; 886 filtered out; finished in 102.22s
+## round=2 side=old start=09:40:39Z load={ 1.49 2.21 2.71 } power='AC Power' lpm=0
+## top: top 8.8 ;WindowServer 3.0 ;kernel_task 2.1 ;com.apple.Virtua 1.9 ;
+[old r2] ok
+[old r2] ok
+[old r2] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=3149 p99_us=5346 max_us=7790 over_budget=0 kitty_commands=161670 bytes=642914721
+[old r2] ok
+[old r2] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=946 p99_us=2328 max_us=3458 over_budget=0 kitty_commands=0 bytes=2142088
+[old r2] ok
+[old r2] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1409 p99_us=1648 max_us=3895 over_budget=0 kitty_commands=0 bytes=37932
+[old r2] ok
+[old r2] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1418 p99_us=1707 max_us=3648 over_budget=0 kitty_commands=0 bytes=34029
+[old r2] ok
+[old r2] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=992 p99_us=1064 max_us=3543 over_budget=0 kitty_commands=0 bytes=74161
+[old r2] ok
+[old r2] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=5653 p99_us=8591 max_us=9323 over_budget=0 hits=2000 lost_rows=425
+[old r2] ok
+[old r2] test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+[old r2] test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+[old r2] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=3144 p99_us=5026 max_us=7215 over_budget=0 kitty_commands=161670 bytes=642592416
+[old r2] ok
+[old r2] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=985 p99_us=2014 max_us=2070 over_budget=0 kitty_commands=0 bytes=1811293
+[old r2] ok
+[old r2] test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+[old r2] test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+[old r2] test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 702 filtered out; finished in 100.08s
+## round=2 side=new start=09:42:20Z load={ 1.24 1.88 2.52 } power='AC Power' lpm=0
+## top: top 8.8 ;launchd 8.3 ;WindowServer 3.4 ;kernel_task 2.7 ;
+[new r2] ok
+[new r2] ok
+[new r2] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=14331 p99_us=29580 max_us=32844 over_budget=174 kitty_commands=98818 bytes=371919505
+[new r2] FAILED
+[new r2] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=8267 p99_us=21714 max_us=22240 over_budget=76 kitty_commands=0 bytes=1733801
+[new r2] FAILED
+[new r2] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=7462 p99_us=19541 max_us=21012 over_budget=72 kitty_commands=0 bytes=35116
+[new r2] FAILED
+[new r2] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=6141 p99_us=19175 max_us=20577 over_budget=56 kitty_commands=0 bytes=32009
+[new r2] FAILED
+[new r2] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=6227 p99_us=19023 max_us=21593 over_budget=42 kitty_commands=0 bytes=56059
+[new r2] FAILED
+[new r2] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=16528 p99_us=30849 max_us=32147 over_budget=67 hits=2000 lost_rows=425
+[new r2] FAILED
+[new r2] test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+[new r2] test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+[new r2] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=13263 p99_us=27172 max_us=31826 over_budget=165 kitty_commands=99068 bytes=372617052
+[new r2] FAILED
+[new r2] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=7910 p99_us=20310 max_us=21096 over_budget=75 kitty_commands=0 bytes=1486347
+[new r2] FAILED
+[new r2] test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+[new r2] test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+[new r2] test result: FAILED. 6 passed; 8 failed; 1 ignored; 0 measured; 886 filtered out; finished in 98.77s
+# end 09:44:01Z
+# interleaved release frames: old=f5080f50 new=8aecfc0d+fenced-harness filter=frames:: rounds=1
+## round=1 side=old start=09:57:00Z load={ 1.93 2.31 2.50 } power='AC Power' lpm=0
+## top: top 9.0 ;com.apple.Virtua 1.8 ;ghostty 1.8 ;herdr 1.7 ;
+[old r1] ok
+[old r1] ok
+[old r1] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=4036 p99_us=7228 max_us=9919 over_budget=0 kitty_commands=161674 bytes=642915050
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=1559 p99_us=2266 max_us=3410 over_budget=0 kitty_commands=0 bytes=2142170
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1401 p99_us=1549 max_us=3658 over_budget=0 kitty_commands=0 bytes=37992
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1410 p99_us=1573 max_us=3890 over_budget=0 kitty_commands=0 bytes=34029
+[old r1] ok
+[old r1] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=999 p99_us=1066 max_us=3528 over_budget=0 kitty_commands=0 bytes=74161
+[old r1] ok
+[old r1] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=6858 p99_us=10536 max_us=10754 over_budget=0 hits=2000 lost_rows=425
+[old r1] ok
+[old r1] test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+[old r1] test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+[old r1] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=4072 p99_us=7002 max_us=12765 over_budget=0 kitty_commands=161668 bytes=642592276
+[old r1] ok
+[old r1] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1573 p99_us=1892 max_us=2356 over_budget=0 kitty_commands=0 bytes=1811375
+[old r1] ok
+[old r1] test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+[old r1] test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+[old r1] test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 702 filtered out; finished in 101.08s
+## round=1 side=new start=09:58:42Z load={ 1.41 2.03 2.37 } power='AC Power' lpm=0
+## top: top 9.3 ;2.1.296 2.6 ;herdr 1.7 ;ghostty 1.5 ;
+[new r1] ok
+[new r1] ok
+[new r1] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=5626 p99_us=12581 max_us=18764 over_budget=2 kitty_commands=128408 bytes=476024205
+[new r1] ok
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=1988 p99_us=2581 max_us=7405 over_budget=0 kitty_commands=0 bytes=2023918
+[new r1] ok
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1687 p99_us=1858 max_us=7581 over_budget=0 kitty_commands=0 bytes=39588
+[new r1] ok
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1688 p99_us=1887 max_us=7805 over_budget=0 kitty_commands=0 bytes=35683
+[new r1] ok
+[new r1] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=1263 p99_us=1641 max_us=7788 over_budget=0 kitty_commands=0 bytes=75837
+[new r1] ok
+[new r1] FAILED
+[new r1] test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+[new r1] test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+[new r1] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=5669 p99_us=10459 max_us=15599 over_budget=0 kitty_commands=128435 bytes=475734987
+[new r1] ok
+[new r1] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=2014 p99_us=2311 max_us=2469 over_budget=0 kitty_commands=0 bytes=1717524
+[new r1] ok
+[new r1] test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+[new r1] test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+[new r1] test result: FAILED. 13 passed; 1 failed; 1 ignored; 0 measured; 886 filtered out; finished in 98.01s
+# end 10:00:22Z
+# release perf (review run 2 command) on 8aecfc0d+fenced-harness start=10:01:37Z load={ 1.84 1.86 2.23 } power='AC Power' lpm=0
+[release] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=5554 p99_us=11037 max_us=14267 over_budget=0 kitty_commands=128435 bytes=476026287
+[release] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=1974 p99_us=2516 max_us=7139 over_budget=0 kitty_commands=0 bytes=2023963
+[release] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1652 p99_us=1870 max_us=7861 over_budget=0 kitty_commands=0 bytes=39588
+[release] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1653 p99_us=1783 max_us=8274 over_budget=0 kitty_commands=0 bytes=35683
+[release] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=1254 p99_us=1657 max_us=7873 over_budget=0 kitty_commands=0 bytes=75837
+[release] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=7132 p99_us=10985 max_us=11544 over_budget=0 hits=2000 lost_rows=425
+[release] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=5528 p99_us=10614 max_us=15901 over_budget=0 kitty_commands=128435 bytes=475734987
+[release] thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier' (1344533902) panicked at crates/graft/tests/it/frames/verdict.rs:62:5:
+[release] FAILED
+[release] test result: FAILED. 20 passed; 1 failed; 1 ignored; 0 measured; 879 filtered out; finished in 150.56s
+# end 10:04:07Z
+# repeat 6 x new frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier start=10:04:27Z load={ 1.22 1.55 2.03 }
+[new 1] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1923 p99_us=2159 max_us=2276 over_budget=0 kitty_commands=0 bytes=1717524
+[new 1] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 900 filtered out; finished in 10.07s
+[new 2] 1 keys were drawn before their rows arrived (layout fell behind the keys): key 330 (PageDown): cursor 7505, top 7471, 0 of 35 rows on hand
+[new 2] test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 900 filtered out; finished in 10.07s
+[new 3] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1939 p99_us=2178 max_us=2845 over_budget=0 kitty_commands=0 bytes=1717479
+[new 3] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 900 filtered out; finished in 10.07s
+[new 4] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=2001 p99_us=2132 max_us=2154 over_budget=0 kitty_commands=0 bytes=1717524
+[new 4] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 900 filtered out; finished in 10.07s
+[new 5] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1996 p99_us=2142 max_us=2253 over_budget=0 kitty_commands=0 bytes=1717479
+[new 5] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 900 filtered out; finished in 10.07s
+[new 6] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1989 p99_us=2193 max_us=2274 over_budget=0 kitty_commands=0 bytes=1717524
+[new 6] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 900 filtered out; finished in 10.07s
+# end 10:05:28Z
+# repeat 6 x old frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier start=10:05:28Z load={ 1.24 1.51 1.98 }
+[old 1] 1 keys were drawn before their rows arrived (layout fell behind the keys): key 210 (PageDown): cursor 3487, top 3451, 0 of 37 rows on hand
+[old 1] test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 716 filtered out; finished in 10.06s
+[old 2] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1576 p99_us=1903 max_us=1983 over_budget=0 kitty_commands=0 bytes=1811293
+[old 2] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 716 filtered out; finished in 10.07s
+[old 3] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1551 p99_us=1935 max_us=2090 over_budget=0 kitty_commands=0 bytes=1811375
+[old 3] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 716 filtered out; finished in 10.07s
+[old 4] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1582 p99_us=1905 max_us=2065 over_budget=0 kitty_commands=0 bytes=1811334
+[old 4] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 716 filtered out; finished in 10.06s
+[old 5] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1587 p99_us=1887 max_us=1951 over_budget=0 kitty_commands=0 bytes=1811375
+[old 5] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 716 filtered out; finished in 10.06s
+[old 6] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1543 p99_us=1924 max_us=2109 over_budget=0 kitty_commands=0 bytes=1811334
+[old 6] test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 716 filtered out; finished in 10.07s
+# end 10:06:28Z
+# release perf (review run 2 command) on 8aecfc0d+fenced-harness start=10:13:07Z load={ 1.69 1.69 1.91 } power='AC Power' lpm=0
+[release] frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=4890 p99_us=8133 max_us=13689 over_budget=0 kitty_commands=128425 bytes=476025512
+[release] frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=2006 p99_us=2584 max_us=7308 over_budget=0 kitty_commands=0 bytes=2023963
+[release] frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=1683 p99_us=2076 max_us=7916 over_budget=0 kitty_commands=0 bytes=39549
+[release] frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=1684 p99_us=1985 max_us=8012 over_budget=0 kitty_commands=0 bytes=35683
+[release] frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=1259 p99_us=1678 max_us=7839 over_budget=0 kitty_commands=0 bytes=75792
+[release] test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=5354 p99_us=8715 max_us=9208 over_budget=0 hits=2000 lost_rows=425
+[release] frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=4808 p99_us=7882 max_us=10889 over_budget=0 kitty_commands=128435 bytes=475734987
+[release] frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=1949 p99_us=2212 max_us=2966 over_budget=0 kitty_commands=0 bytes=1717479
+[release] test result: ok. 21 passed; 0 failed; 1 ignored; 0 measured; 879 filtered out; finished in 110.11s
+# end 10:15:16Z
