@@ -41,9 +41,23 @@ pub(super) fn rewrite_editor_list(narrow: bool, can_start: bool) -> Vec<Hint> {
 /// 40-column bar would draw nothing. With `esc` third it is 39, and
 /// the way out stays in words (ADR-0044 §4's reason).
 pub(super) fn picker_list() -> Vec<Hint> {
+    picker_list_with(PICKER_SWITCH_WORD)
+}
+
+/// [`picker_list`] with the cursor on HEAD's branch: nothing to switch
+/// to, so `⏎` closes the picker (m8 usability Q2, keymap §2.16). Every
+/// other clause and the order are unchanged.
+pub(super) fn picker_on_current_list() -> Vec<Hint> {
+    picker_list_with(PICKER_CLOSE)
+}
+
+const PICKER_SWITCH_WORD: &str = "switch to it";
+const PICKER_CLOSE: &str = "close";
+
+fn picker_list_with(enter: &'static str) -> Vec<Hint> {
     vec![
         hint(TYPE, "to find"),
-        hint(PICKER_SWITCH, "switch to it"),
+        hint(PICKER_SWITCH, enter),
         hint(FIELD_ESC, "close"),
         hint(PICKER_SHOW, "show it on the graph"),
         hint(PICKER_ROWS, "row"),

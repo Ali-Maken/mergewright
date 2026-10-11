@@ -43,6 +43,57 @@ fn an_unfocused_banner_leaves_the_footer_to_the_cursor() {
     );
 }
 
+/// m8 usability Q2: the picker's bar says `⏎ close` on HEAD's own row,
+/// `⏎ switch to it` on any other, and the latter while the list loads.
+#[test]
+fn picker_bar_context_follows_the_row() {
+    use graft_ops::switch_list::{Relation, SwitchKind, SwitchList, SwitchRow};
+    let row = |full: &str, byte: u8, current: bool| SwitchRow {
+        name: graft_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name"),
+        kind: SwitchKind::Local,
+        tip: graft_core::oid::Oid::from_bytes(&[byte; graft_core::oid::Oid::SHA1_BYTES])
+            .expect("20 bytes is an oid"),
+        subject: String::new(),
+        author: String::new(),
+        when: 0,
+        relation: Relation::None,
+        current,
+    };
+    let with = |list, selected| AppState {
+        picker: Some(crate::update::picker::PickerState {
+            list,
+            selected,
+            ..crate::update::picker::PickerState::default()
+        }),
+        ..AppState::default()
+    };
+    let ready = || {
+        crate::update::detail::Loading::Ready(std::sync::Arc::new(SwitchList {
+            previous: None,
+            rows: vec![
+                row("refs/heads/login-page", 3, false),
+                row("refs/heads/main", 2, true),
+            ],
+        }))
+    };
+    assert_eq!(
+        hint_context(&with(ready(), 1), &[]),
+        HintContext::PickerOnCurrent
+    );
+    assert_eq!(hint_context(&with(ready(), 0), &[]), HintContext::Picker);
+    assert_eq!(
+        hint_context(
+            &with(
+                crate::update::detail::Loading::Pending(graft_core::job::JobId::new(1)),
+                0
+            ),
+            &[]
+        ),
+        HintContext::Picker
+    );
+}
+
 fn facts(path: &str, head: Head) -> RepositoryFacts {
     RepositoryFacts {
         path: PathBuf::from(path),

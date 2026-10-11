@@ -1146,6 +1146,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         | HintContext::RewriteEditor { .. }
@@ -2510,50 +2511,7 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
     assert_eq!(keys, ["⏎", "a", "b", "t"]);
 }
 
-/// Ruling R4 (ticket m8/10), as the code stands: a `Fixed` key — spelled
-/// from the shipped table whatever his config says — is drawn only where
-/// the edge passes every press as typed, so the default *is* the key that
-/// acts. Those are the fields `graft::update::state::AppState::text_field_open`
-/// names (state.rs: the name prompt, the credential box, the picker, the
-/// rewrite editor's `r` field, and the finish summary while its focus is
-/// not `Files`); `graft`'s `x_typed_into_every_field_is_an_x_with_merge_on_x`
-/// holds each of them to it. Everywhere else a key follows his remap.
-///
-/// Not R4's letter: R4 has the finish Subject/Body follow a `Finish` row,
-/// on the premise that his remap acts there. It does not — `edge::key`
-/// returns before `context_of` while `text_field_open` holds, and that
-/// includes the summary's Subject and Body — so a remapped spelling there
-/// would draw a key that does nothing (ticket 10c NOTES).
-#[test]
-fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
-    let typed = |context: &HintContext| match context {
-        HintContext::NamePrompt { .. }
-        | HintContext::Credential
-        | HintContext::Picker
-        | HintContext::RewriteMessage => true,
-        HintContext::Finish { focus, .. } => *focus != SummaryFocus::Files,
-        _ => false,
-    };
-    let mut fixed_drawn = 0;
-    for context in every_context() {
-        for divider in [Divider::Shown, Divider::Hidden] {
-            let (list, door) = spelled_bar(&context, divider, Keymap::shipped());
-            for hint in list.iter().chain(door.iter()) {
-                if !hint.keys.iter().any(|key| matches!(key, HintKey::Fixed(_))) {
-                    continue;
-                }
-                fixed_drawn += 1;
-                assert!(
-                    typed(&context),
-                    "{context:?} draws `{} {}` from the shipped table, but his remap acts there",
-                    hint.key(),
-                    hint.verb
-                );
-            }
-        }
-    }
-    assert!(fixed_drawn > 0, "no list draws a fixed key");
-}
+mod typed_fields;
 
 // --- m8/11b: the doorway is `? keys`, `. actions` an ordinary candidate ---
 
@@ -2801,6 +2759,7 @@ fn modal_bars_draw_no_doorway() {
                     | HintContext::NamePrompt { .. }
                     | HintContext::Credential
                     | HintContext::Picker
+                    | HintContext::PickerOnCurrent
                     | HintContext::Resolver { .. }
                     | HintContext::Finish { .. }
                     | HintContext::RewriteEditor { .. }

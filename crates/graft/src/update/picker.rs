@@ -19,6 +19,7 @@ use graft_core::event::{KeyCode, KeyPress, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_ops::operation::Tip;
 use graft_ops::switch_list::{SwitchKind, SwitchList, SwitchRow, filter_switch_rows};
+use graft_ui::graph_screen::HintContext;
 use graft_ui::text_input::TextField;
 
 use super::detail::Loading;
@@ -82,6 +83,20 @@ pub fn shown(state: &AppState) -> bool {
         .picker
         .as_ref()
         .is_some_and(|picker| !picker.under_preview)
+}
+
+/// The footer's context while the picker is [`shown`]: on HEAD's own row
+/// `⏎` closes rather than switches (m8 usability Q2), so the bar says so;
+/// any other row, or none yet (the list loading), is `Picker`.
+#[must_use]
+pub fn hint_context(state: &AppState) -> Option<HintContext> {
+    let picker = state.picker.as_ref().filter(|_| shown(state))?;
+    let on_current = picker.selected_row().is_some_and(|row| row.current);
+    Some(if on_current {
+        HintContext::PickerOnCurrent
+    } else {
+        HintContext::Picker
+    })
 }
 
 /// Opens the picker and asks for the list. The caller has checked that `C`
@@ -179,11 +194,15 @@ fn enter(state: &mut AppState, commands: &mut Vec<Command>) {
     else {
         return;
     };
-    let short = String::from_utf8_lossy(row.name.shorthand()).into_owned();
+    // On the branch he is on there is nothing to switch to: `⏎` closes the
+    // picker as `Tab` does, cursor on HEAD's row, nothing written or said
+    // (m8 usability Q2, keymap §2.16). Before the refusal check, so a dirty
+    // tree or a running write does not stop him leaving.
     if row.current {
-        say(state, format!("you're on {short}"));
+        show_on_graph(state, commands);
         return;
     }
+    let short = String::from_utf8_lossy(row.name.shorthand()).into_owned();
     // In the box, not on the status line under it: the picker stays up
     // (ticket 10, "⏎ while a write runs"), as the name prompt does.
     if let Some(words) = super::preview::preview_refusal(state) {

@@ -108,7 +108,7 @@
 554 crates/graft-ui/src/finish_summary/tests.rs
 795 crates/graft-ui/src/graph_column/tests.rs
 511 crates/graft-ui/src/graph_screen/hints/context.rs
-3176 crates/graft-ui/src/graph_screen/hints/tests.rs
+3135 crates/graft-ui/src/graph_screen/hints/tests.rs
 650 crates/graft-ui/src/graph_screen/layout.rs
 603 crates/graft-ui/src/graph_screen/mod.rs
 752 crates/graft-ui/src/graph_screen/render.rs
@@ -180,7 +180,7 @@
 1501 crates/graft/src/update/operate/tests.rs
 404 crates/graft/src/update/palette/mod.rs
 425 crates/graft/src/update/palette/tests.rs
-635 crates/graft/src/update/picker/tests.rs
+628 crates/graft/src/update/picker/tests.rs
 440 crates/graft/src/update/place.rs
 456 crates/graft/src/update/place/keys.rs
 1065 crates/graft/src/update/place/tests/history.rs
