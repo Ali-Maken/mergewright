@@ -1,0 +1,125 @@
+# M8 close debug 2 — red 1, heavy held_key (debugger, 2026-10-11)
+# Shape check first: held_key already runs fenced (held_key.rs `answering`: answers_dsr=true, DrainSink answers
+#   fences) — not 7f172570's silent-terminal shape.
+# Finding: release (the gate's own build) is red on held_j_with_the_pane_shown_stops_on_release_pixel_deflate
+#   3/3 runs, frames_after_release=3. Instrumented (tagged, removed): the loop's Rest is handed at +60 ms, its
+#   commands start the pane's reads, `Started::ListFiles` / `Started::ContainedIn` join the rest's turn, and the
+#   one frame (+62 ms) is stamped on the turn's last wake. held_key.rs `rest_after` looked for a *drawn* Rest,
+#   found none, and counted the pane's catch-up as a third graph frame. Harness, not product.
+# Fix: the rest is the first Rest *handed* after the last j (held_key_bound.rs `rest_index`).
+# Debug-only remainder: raw Kitty pair (pixel, pixel_free) — M7/46-kitty-no-deflate family; raw pixel's
+#   frames_after_release=3 in debug also at M7 end (old r2 below). iterm2's =3 in the close run not reproduced
+#   here (2 in 6 debug runs, M7 end and HEAD).
+# interleaved held_key debug: old=f5080f50 new=c35ca917+wip filter=held_key::held_j_stops_on_release_ rounds=2
+## round=1 side=old start=10:29:49Z load={  7.94 6.39 4.64  } power='AC Power' lpm=0
+## top: WindowServer 21.3 ;kernel_task 21.3 ;opendirectoryd 15.3 ;zed 10.8 ;
+[old r1] SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s pipe=16384 keys=188 frames_while_held=0 frames_after_release=2 tail_ms=3298 bytes_per_frame_held=0
+[old r1] SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s pipe=16384 keys=188 frames_while_held=25 frames_after_release=2 tail_ms=188 bytes_per_frame_held=189776
+[old r1] SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s pipe=16384 keys=188 frames_while_held=5 frames_after_release=2 tail_ms=571 bytes_per_frame_held=142718
+[old r1] SUMMARY held_key tier=Unicode scenario=A drain=500000B/s pipe=16384 keys=188 frames_while_held=95 frames_after_release=2 tail_ms=75 bytes_per_frame_held=14650
+[old r1] test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 713 filtered out; finished in 34.16s
+## round=1 side=new start=10:30:26Z load={  6.65 6.27 4.68  } power='AC Power' lpm=0
+## top: graft_ui-13b3242 72.8 ;graft_ui-13b3242 72.7 ;graft_ui-13b3242 72.6 ;graft_ui-13b3242 72.5 ;
+[new r1] SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s pipe=16384 keys=188 frames_while_held=1 frames_after_release=3 tail_ms=1555 bytes_per_frame_held=12576631
+[new r1] VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: FAILED
+[new r1] VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+[new r1] SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s pipe=16384 keys=188 frames_while_held=35 frames_after_release=2 tail_ms=192 bytes_per_frame_held=86877
+[new r1] SUMMARY held_key tier=Pixel scenario=A-deflate drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=39 frames_after_release=2 tail_ms=258 bytes_per_frame_held=88735
+[new r1] SUMMARY held_key tier=Pixel scenario=A drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=21 frames_after_release=2 tail_ms=588 bytes_per_frame_held=3684600
+[new r1] VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+[new r1] SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s pipe=16384 keys=188 frames_while_held=4 frames_after_release=2 tail_ms=831 bytes_per_frame_held=130260
+[new r1] SUMMARY held_key tier=Unicode scenario=A drain=500000B/s pipe=16384 keys=188 frames_while_held=83 frames_after_release=1 tail_ms=51 bytes_per_frame_held=14071
+[new r1] SUMMARY held_key tier=Unicode scenario=A drain=40000000B/s pipe=16384 keys=188 frames_while_held=190 frames_after_release=1 tail_ms=10 bytes_per_frame_held=14826
+[new r1] SUMMARY held_key tier=Unicode scenario=A drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=190 frames_after_release=1 tail_ms=9 bytes_per_frame_held=14826
+[new r1] test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 893 filtered out; finished in 42.60s
+## round=2 side=old start=10:31:10Z load={  5.91 6.13 4.71  } power='AC Power' lpm=0
+## top: graft_ui-13b3242 70.2 ;graft_ui-13b3242 70.2 ;graft_ui-13b3242 70.2 ;graft_ui-13b3242 70.1 ;
+[old r2] SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s pipe=16384 keys=188 frames_while_held=0 frames_after_release=3 tail_ms=3604 bytes_per_frame_held=0
+[old r2] VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: FAILED
+[old r2] SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s pipe=16384 keys=188 frames_while_held=20 frames_after_release=1 tail_ms=158 bytes_per_frame_held=220963
+[old r2] SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s pipe=16384 keys=188 frames_while_held=5 frames_after_release=2 tail_ms=648 bytes_per_frame_held=130507
+[old r2] SUMMARY held_key tier=Unicode scenario=A drain=500000B/s pipe=16384 keys=188 frames_while_held=95 frames_after_release=2 tail_ms=70 bytes_per_frame_held=14616
+[old r2] test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 713 filtered out; finished in 24.01s
+## round=2 side=new start=10:31:36Z load={  5.51 6.03 4.71  } power='AC Power' lpm=0
+## top: graft_ui-13b3242 72.5 ;graft_ui-13b3242 72.4 ;graft_ui-13b3242 72.4 ;top 4.9 ;
+[new r2] SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s pipe=16384 keys=188 frames_while_held=1 frames_after_release=3 tail_ms=1537 bytes_per_frame_held=12893183
+[new r2] VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: FAILED
+[new r2] VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+[new r2] SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s pipe=16384 keys=188 frames_while_held=36 frames_after_release=2 tail_ms=230 bytes_per_frame_held=85829
+[new r2] SUMMARY held_key tier=Pixel scenario=A-deflate drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=42 frames_after_release=2 tail_ms=107 bytes_per_frame_held=84836
+[new r2] SUMMARY held_key tier=Pixel scenario=A drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=17 frames_after_release=2 tail_ms=492 bytes_per_frame_held=4628941
+[new r2] VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+[new r2] SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s pipe=16384 keys=188 frames_while_held=5 frames_after_release=2 tail_ms=580 bytes_per_frame_held=126490
+[new r2] SUMMARY held_key tier=Unicode scenario=A drain=500000B/s pipe=16384 keys=188 frames_while_held=88 frames_after_release=1 tail_ms=48 bytes_per_frame_held=14119
+[new r2] SUMMARY held_key tier=Unicode scenario=A drain=40000000B/s pipe=16384 keys=188 frames_while_held=190 frames_after_release=1 tail_ms=4 bytes_per_frame_held=14826
+[new r2] SUMMARY held_key tier=Unicode scenario=A drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=190 frames_after_release=1 tail_ms=4 bytes_per_frame_held=14826
+[new r2] test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 893 filtered out; finished in 41.63s
+# end 10:32:19Z
+# after fix (rest found by hand time), debug, HEAD+wip, 2 runs
+## 10:39:53Z head=c35ca917 filter=held_key::held_j mode=debug load={  1.72 2.87 3.69  } power='AC Power' lpm=0
+## top: top 9.3 ;2.1.296 4.0 ;ghostty 1.8 ;herdr 1.6 ;
+SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s frames_while_held=1 frames_after_release=3 tail_ms=1626 bytes_per_frame_held=12896550
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: FAILED
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s frames_while_held=40 frames_after_release=1 tail_ms=12 bytes_per_frame_held=91636
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=18446744073709551615B/s frames_while_held=47 frames_after_release=2 tail_ms=141 bytes_per_frame_held=93031
+SUMMARY held_key tier=Pixel scenario=A drain=18446744073709551615B/s frames_while_held=27 frames_after_release=2 tail_ms=419 bytes_per_frame_held=3670774
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s frames_while_held=5 frames_after_release=2 tail_ms=600 bytes_per_frame_held=130408
+SUMMARY held_key tier=Unicode scenario=A drain=500000B/s frames_while_held=78 frames_after_release=2 tail_ms=60 bytes_per_frame_held=14042
+SUMMARY held_key tier=Unicode scenario=A drain=40000000B/s frames_while_held=189 frames_after_release=1 tail_ms=6 bytes_per_frame_held=14883
+SUMMARY held_key tier=Unicode scenario=A drain=18446744073709551615B/s frames_while_held=189 frames_after_release=1 tail_ms=6 bytes_per_frame_held=14883
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=42 frames_after_release=1 tail_ms=18 bytes_per_frame_held=84567
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=190 frames_after_release=1 tail_ms=6 bytes_per_frame_held=14224
+test result: FAILED. 8 passed; 2 failed; 0 ignored; 0 measured; 892 filtered out; finished in 51.11s
+## 10:40:49Z head=c35ca917 filter=held_key::held_j mode=debug load={  1.68 2.67 3.56  } power='AC Power' lpm=0
+## top: zed 17.5 ;WindowServer 16.6 ;top 9.4 ;kernel_task 8.4 ;
+SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s frames_while_held=1 frames_after_release=3 tail_ms=1616 bytes_per_frame_held=12896550
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: FAILED
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s frames_while_held=40 frames_after_release=2 tail_ms=103 bytes_per_frame_held=91924
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=18446744073709551615B/s frames_while_held=46 frames_after_release=2 tail_ms=101 bytes_per_frame_held=89309
+SUMMARY held_key tier=Pixel scenario=A drain=18446744073709551615B/s frames_while_held=28 frames_after_release=2 tail_ms=423 bytes_per_frame_held=3527328
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s frames_while_held=5 frames_after_release=2 tail_ms=537 bytes_per_frame_held=132657
+SUMMARY held_key tier=Unicode scenario=A drain=500000B/s frames_while_held=80 frames_after_release=1 tail_ms=56 bytes_per_frame_held=14090
+SUMMARY held_key tier=Unicode scenario=A drain=40000000B/s frames_while_held=189 frames_after_release=1 tail_ms=7 bytes_per_frame_held=14883
+SUMMARY held_key tier=Unicode scenario=A drain=18446744073709551615B/s frames_while_held=189 frames_after_release=1 tail_ms=6 bytes_per_frame_held=14883
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=42 frames_after_release=1 tail_ms=20 bytes_per_frame_held=84571
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=189 frames_after_release=1 tail_ms=6 bytes_per_frame_held=14299
+test result: FAILED. 8 passed; 2 failed; 0 ignored; 0 measured; 892 filtered out; finished in 50.97s
+# release, before fix (c35ca917), 3 runs: pane-shown pixel deflate red every run
+## 10:34:17Z head=c35ca917 filter=held_key::held_j mode=release load={  4.66 5.50 4.72  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=164 frames_after_release=3 tail_ms=63
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=2 tail_ms=59
+## 10:35:05Z head=c35ca917 filter=held_key::held_j mode=release load={  2.80 4.89 4.54  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=163 frames_after_release=3 tail_ms=57
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=2 tail_ms=56
+## 10:35:53Z head=c35ca917 filter=held_key::held_j mode=release load={  2.12 4.42 4.38  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=165 frames_after_release=3 tail_ms=59
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=2 tail_ms=58
+# release, after fix, 3 runs
+## 10:38:48Z head=c35ca917 filter=held_key::held_j_with mode=release load={  1.35 3.08 3.82  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=165 frames_after_release=2 tail_ms=20 rest_frames=1 rest_ms=58
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=1 tail_ms=4 rest_frames=1 rest_ms=58
+## 10:39:18Z head=c35ca917 filter=held_key::held_j_with mode=release load={  1.91 3.05 3.78  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=163 frames_after_release=1 tail_ms=18 rest_frames=1 rest_ms=55
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=1 tail_ms=5 rest_frames=1 rest_ms=58
+## 10:39:29Z head=c35ca917 filter=held_key::held_j_with mode=release load={  1.77 2.98 3.75  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=162 frames_after_release=2 tail_ms=22 rest_frames=1 rest_ms=57
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=1 tail_ms=5 rest_frames=1 rest_ms=55
+# final, release, whole held_key:: group on the committed fix: 13 passed, 3 failed — all raw Kitty (A, A-free bytes, B), the M7/46-kitty-no-deflate family
+## 11:12:01Z head=cbe45c05 filter=held_key:: mode=release load={  4.17 4.86 4.20  } power='AC Power' lpm=0
+SUMMARY held_key tier=Pixel scenario=A drain=40000000B/s frames_while_held=1 frames_after_release=2 tail_ms=1251
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=40000000B/s frames_while_held=171 frames_after_release=2 tail_ms=27
+SUMMARY held_key tier=Pixel scenario=A-deflate drain=18446744073709551615B/s frames_while_held=188 frames_after_release=1 tail_ms=4
+SUMMARY held_key tier=Pixel scenario=A drain=18446744073709551615B/s frames_while_held=149 frames_after_release=1 tail_ms=16
+SUMMARY held_key tier=Pixel scenario=A-iterm2 drain=40000000B/s frames_while_held=167 frames_after_release=1 tail_ms=16
+SUMMARY held_key tier=Unicode scenario=A drain=500000B/s frames_while_held=91 frames_after_release=1 tail_ms=37
+SUMMARY held_key tier=Unicode scenario=A drain=40000000B/s frames_while_held=190 frames_after_release=1 tail_ms=2
+SUMMARY held_key tier=Unicode scenario=A drain=18446744073709551615B/s frames_while_held=190 frames_after_release=1 tail_ms=3
+SUMMARY held_key tier=Pixel scenario=A-deflate-pane drain=40000000B/s frames_while_held=173 frames_after_release=2 tail_ms=22
+SUMMARY held_key tier=Unicode scenario=A-pane drain=40000000B/s frames_while_held=192 frames_after_release=1 tail_ms=4
+SUMMARY held_key tier=Pixel scenario=B drain=40000000B/s frames_while_held=1 frames_after_release=1 tail_ms=800
+SUMMARY held_key tier=Pixel scenario=B-deflate drain=40000000B/s frames_while_held=171 frames_after_release=2 tail_ms=28
+SUMMARY held_key tier=Unicode scenario=B drain=500000B/s frames_while_held=90 frames_after_release=1 tail_ms=43

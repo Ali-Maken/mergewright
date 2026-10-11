@@ -71,7 +71,7 @@ pub(crate) struct Handed {
     /// Just before it was sent (the input thread's or a job's send).
     pub(super) sent: Instant,
     /// When the loop took it: its frame runs from here to the next stamp.
-    pub(super) at: Instant,
+    pub(crate) at: Instant,
     /// A key: the script's tick for it. Due → sent is the input thread's own
     /// wake from its sleep, before the send and outside the latency.
     pub(super) due: Option<Instant>,
