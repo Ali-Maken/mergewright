@@ -1,4 +1,4 @@
-# m6 contact sheet
+# m6 contact sheet — colour unverified: character grids, no colour (rule 5)
 # Part 4 of 5 (m6-contact-sheet-1.txt … m6-contact-sheet-5.txt), each at most 180 000 B.
 #
 # Promise: a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md "Conflicts walk", "Conflict journeys").
@@ -28,8 +28,8 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
 # 1. A teammate pushed; `P` `→` `⏎` was rejected, then `P` opened the lease
 #    box: `←/→ move  ⏎ choose  esc cancel` — the box's keys, not the
 #    rejection line (which named `p`, a key the box swallows).
-# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull
-#    first · P force with lease` — hidden under the box, never cleared.
+# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull,
+#    then m or r · P force with lease` — hidden under the box, never cleared.
 # 3. Another repository: a checkout, an edit, then `u` over the drift box:
 #    `y undo  ←/→ move  ⏎ choose  esc cancel` — not `undo · esc cancels`,
 #    the finished job's busy line.
@@ -39,7 +39,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: the lease box over a rejected push ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
@@ -81,7 +81,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
@@ -165,7 +165,7 @@ what right looks like: (ticket 69) A box owns the bottom row. Frame 1: a push re
  y undo  ←/→ move  ⏎ choose  esc cancel
 
 === frame 4: `b`, `⏎` on an empty name ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
@@ -219,8 +219,8 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 # 1. A teammate pushed; `P` `→` `⏎` was rejected, then `P` opened the lease
 #    box: `←/→ move  ⏎ choose  esc cancel` — the box's keys, not the
 #    rejection line (which named `p`, a key the box swallows).
-# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull
-#    first · P force with lease` — hidden under the box, never cleared.
+# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull,
+#    then m or r · P force with lease` — hidden under the box, never cleared.
 # 3. Another repository: a checkout, an edit, then `u` over the drift box:
 #    `y undo  ←/→ move  ⏎ choose  esc cancel` — not `undo · esc cancels`,
 #    the finished job's busy line.
@@ -230,7 +230,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: the lease box over a rejected push ===
- ◆ api  ~/code/api · main                                       144 rows so far
+ ◆ api  ~/code/api · main                                           201 commits
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
@@ -256,7 +256,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
- ◆ api  ~/code/api · main                                       144 rows so far
+ ◆ api  ~/code/api · main                                           201 commits
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
@@ -308,7 +308,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
  y undo  ←/→ move  ⏎ choose  esc cancel
 
 === frame 4: `b`, `⏎` on an empty name ===
- ◆ api  ~/code/api · main                                       144 rows so far
+ ◆ api  ~/code/api · main                                           201 commits
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
@@ -454,7 +454,8 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
-#    m6-conflicts/79). The Radar has answered: its `ⓘ` is on `fix`.
+#    m6-conflicts/79). `fix`'s row reads `[fix] fix the bug`, no mark
+#    after the badge (this line said a Radar `ⓘ` until m8/28).
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
@@ -650,7 +651,8 @@ what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four fr
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
-#    m6-conflicts/79). The Radar has answered: its `ⓘ` is on `fix`.
+#    m6-conflicts/79). `fix`'s row reads `[fix] fix the bug`, no mark
+#    after the badge (this line said a Radar `ⓘ` until m8/28).
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
@@ -1811,7 +1813,7 @@ what right looks like: (ticket 74) `p` refused as diverged, then `r`, three file
 #    after`, with no staging words: the staging comes back as he left it.
 #    At narrow widths `put back after` may be cut; the file count may not.
 
- ◆ api  ~/code/api · main                                                                               140 rows so far
+ ◆ api  ~/code/api · main                                                                                   202 commits
 
          after rebase
     ○    [◆ main ↑1 ↓1] ours                                                                            GF —    —
@@ -1869,7 +1871,7 @@ what right looks like: (ticket 74, 84, 30b) The same box at 80x24: the `your edi
 #    after`, with no staging words: the staging comes back as he left it.
 #    At narrow widths `put back after` may be cut; the file count may not.
 
- ◆ api  ~/code/api · main                                       140 rows so far
+ ◆ api  ~/code/api · main                                           202 commits
          after rebase
     ○    [◆ main ↑1 ↓1] ours                                       —    —
     ●    [origin/main] theirs                                      6m   7be74b5
@@ -1973,10 +1975,10 @@ what right looks like: (ticket 74) `p r r` over three edited files, the rebase c
 #    `rebase main onto origin/main ✓ · your edits are back` (the op's own
 #    done line, as a clean-tree rebase words it, then the clause).
 
- ◆ api  ~/code/api · main                                                                               140 rows so far
+ ◆ api  ~/code/api · main                                                                                   202 commits
 
   ◌    Uncommitted changes (1 staged, 2 unstaged)
-▸ ◆    [◆ main ↑1] ours                                                                                 GF futu…0000000
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF futu…0000000
   ●    [origin/main] theirs                                                                             GF 6m   7be74b5
   ●    Commit 200                                                                                       GF 1y   d5ae5fd
   ●    Commit 199                                                                                       GF 1y   13e6ab1

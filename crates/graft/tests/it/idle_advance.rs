@@ -28,7 +28,7 @@ const COMMITS: usize = 3_000;
 /// `git fast-import` (no commit-graph file, so the order is provisional and
 /// is promoted, as in a repository nobody has run `git gc` in). Dated one
 /// minute apart, so the ids are the same every run.
-fn long_line(dir: &Path) {
+pub(crate) fn long_line(dir: &Path) {
     graft_fixtures::git::init_repo(dir).expect("git init");
     let mut stream = String::new();
     for i in 1..=COMMITS {
@@ -67,7 +67,7 @@ fn from_the_walk(state: &AppState, event: &AppEvent) -> Option<HistoryUpdate> {
 /// Pumps until the walk says it has laid out to the end **in the final
 /// order**: a `LaidOut` sent before the promotion is of a layout the
 /// promotion replaces, and a `G` after it would lay out again.
-fn laid_out_to_the_end(app: &App, mut state: AppState) -> AppState {
+pub(crate) fn laid_out_to_the_end(app: &App, mut state: AppState) -> AppState {
     let mut deadline = crate::deadline::Deadline::of(crate::deadline::DEADLINE);
     loop {
         let event = app
@@ -110,6 +110,7 @@ fn g_after_laid_out_lands_without_laying_out() {
     let state = laid_out_to_the_end(&app, state);
 
     let mut state = app.key(&state, KeyCode::Char('G'));
+    crate::m8_walk::within_the_note("jump-oldest", &["G"]);
     let mut on_the_way = Vec::new();
     while state.history.as_ref().expect("a walk").jump.is_some() {
         let event = app

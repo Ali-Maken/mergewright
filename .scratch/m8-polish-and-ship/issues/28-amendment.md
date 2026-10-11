@@ -1,6 +1,6 @@
 # 28 amendment — contact sheet path and order, two new journey ids, what 28 now waits for
 
-Status: draft (planner spec-only pass 2026-10-08, from 13l NOTES "m8 ruling" and the conductor's dispatch). Amends
+Status: applied by 28's builder 2026-10-11. Was: draft (planner spec-only pass 2026-10-08, from 13l NOTES "m8 ruling" and the conductor's dispatch). Amends
 `28-accept-m8.md` only where named; everything else in 28 stands.
 Build with: unchanged — **Fable** (the acceptance ticket; doesn't count against the Fable build expectation).
 Needs: unchanged, plus the names below ("Needs, replaced").
@@ -81,15 +81,21 @@ In 28's Needs list, `first-run-clone-and-first-launch` → `clone-op` (18a), `cl
 follow-ups `fold-count-and-pixel-ghosts` (17b) and `pixel-ghosts-draw-at-unicode` (17c).
 
 ## Acceptance (replaces 28's contact-sheet box; adds the rest)
-- [ ] Sheet `docs/shots/m8-contact-sheet.txt` (or its `-N` parts): every capture under `docs/shots/m8-*.txt` and
+- [x] Sheet `docs/shots/m8-contact-sheet.txt` (or its `-N` parts): every capture under `docs/shots/m8-*.txt` and
       `docs/shots/m8/*.txt` in ticket order under its "what right looks like" line; first line says colour
       unverified; coverage test named at tick fails on a missing capture and on a stale captions row (seen red once:
-      a captions row removed).
-- [ ] `every_m8_journey_id_has_a_walk` green over the fence's 31 ids, including `fold-merge-count` and
-      `whitespace-mode-shown` (tests named at tick).
-- [ ] TESTING.md "M8" holds the J33–J37 rows above, word for word or tighter.
-- [ ] NOTES: 05's outcome quoted before the perf run (file:line); the J19 allowance found/changed; the boxes this
-      sheet closes on 17/17b/17c, for the conductor.
+      a captions row removed). `docs/shots/m8-contact-sheet-{1,2,3}.txt`, 98 captures, 0 NOT RECORDED;
+      `m8_walk::contact_sheet::contact_sheet_captions_cover_every_m8_capture` (seen red by hand: the
+      `m8/polish-fold-120x36.txt` row removed → "no caption, so not on the sheet"; restored),
+      `m8_walk::contact_sheet::a_missing_capture_or_a_stale_caption_is_named`,
+      `m8_walk::contact_sheet::every_part_of_the_m8_sheet_opens_with_colour_unverified`.
+- [x] `every_m8_journey_id_has_a_walk` green over the fence's 31 ids, including `fold-merge-count` and
+      `whitespace-mode-shown` (tests named at tick). `m8_walk::every_m8_journey_id_has_a_walk`;
+      `m8_walk::journeys::fold_merge_count`, `m8_walk::journeys::whitespace_mode_shown` (both press the real key).
+- [x] TESTING.md "M8" holds the J33–J37 rows above, word for word or tighter. Section "M8 acceptance": J33/J34 in
+      the journey table, J35–J37 under "By eye and person steps", word for word.
+- [x] NOTES: 05's outcome quoted before the perf run (file:line); the J19 allowance found/changed; the boxes this
+      sheet closes on 17/17b/17c, for the conductor. In `28-accept-m8.md` NOTES "For the conductor".
 
 ## Touches (additions)
 - `scripts/contact-sheet.sh` (read; edit only if `--captions-order` can't take `m8/<file>` — then stop and report, it

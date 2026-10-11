@@ -1,0 +1,16 @@
+# m8-acceptance — 2026-10-11T05:58:23Z
+# HEAD e383c5f3 +uncommitted
+# Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+1 fast tier: Summary [ 866.282s] 6349 tests run: 6349 passed (6 slow), 15 skipped · rc=0 · .scratch/m8-polish-and-ship/accept/nextest.txt
+2 scroll (release): not run — pass --perf from a terminal (CLAUDE.md: never in a helper's context)
+3 contact sheet: wrote 98 captures, 0 without a recorded caption, in 3 part(s):
+  docs/shots/m8-contact-sheet-1.txt (175880 bytes)
+  docs/shots/m8-contact-sheet-2.txt (177636 bytes)
+  docs/shots/m8-contact-sheet-3.txt (47617 bytes)
+4 install (quoted from docs/release/, dated in each file's first line):
+    plan targets: 4 archives · # dist plan (cargo-dist 0.33.0), scripts/release-local.sh, 2026-10-09
+    host archive: graft-aarch64-apple-darwin/graft.1 (man page in the archive)
+    formula style: brew style graft.rb: FAILED
+    cargo install: install: ok in 165s
+5 journeys: 31 in the fence · missing a walk: none
+summary: docs/perf/m8-accept.txt

@@ -54,6 +54,7 @@ fn j7_help_mid_rebase_puts_continue_first_and_enter_asks_what_c_asks() {
     let state = crate::conflict_interim::launched(&app, state);
     let state = crate::captures::settled_frame(&app, state);
     let state = app.key(&state, KeyCode::Char('?'));
+    crate::m8_walk::within_the_note("stopped-how-go-on", &["?"]);
     let frame = crate::captures::frame(&state, 120, 36);
     let shot = frame.join("\n");
     // `docs/shots/m8-help-rebase-stop-120x36.txt` (m8/11b). What right looks

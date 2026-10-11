@@ -1,0 +1,52 @@
+m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the keys palette over the graph, HERE's actions first with their keys, then EVERYWHERE; the bar holds the palette's own keys. Judge beside m8-help-graph-120x36.txt and the mock-up m8-proto-2d-help-x.txt. Colour unverified (rule 5).
+
+ ◆ api  ~/code/api · main                                                                                                                                                       10 commits
+                                             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
+▸   ●        [feature/three] three: in progre│ ›                                                                                            │                              GF 7y   0683985
+  ◆─│─╮      [◆ main] Merge branch 'feature/t│ HERE                                                                                         │                              GF 7y   5202e1c
+  │ │ ●      [feature/two] two: finish       │▸c     Commit                                                                   graph.commit  │                              GF 7y   e30e870
+  │ │ ●      two: start                      │ a     Amend                                                                     graph.amend  │                              GF 7y   40034e4
+  ◉─│─│─╮    Merge branch 'feature/one'      │ R     Open the rewrite editor                                                 graph.rewrite  │                              GF 7y   3a97003
+  │ │ │ ●    [feature/one] one: finish       │ C     Switch branch (branch picker)                                            graph.switch  │                              GF 7y   fdb311f
+  │ │ │ ●    one: start                      │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │                              GF 7y   bba225a
+  ●─┴─╯ │    Add b.txt                       │ m     Merge selected branch into current                                        graph.merge  │                              GF 7y   de95041
+  ●─────╯    Add a.txt                       │ r     Rebase current onto selection                                            graph.rebase  │                              GF 7y   21b16b9
+  ◇          Add a readme                    │ b     New branch from selected commit                                          graph.branch  │                              GF 7y   daa5167
+                                             │ t     New tag at selected commit                                                  graph.tag  │
+                                             │ x     Compare against a marked base                                           graph.compare  │
+                                             │ +     Expand / collapse folded lanes                                            graph.lanes  │
+                                             │ S     Stash…                                                                    graph.stash  │
+                                             │ f     Fetch                                                                     graph.fetch  │
+                                             │ p     Pull                                                                       graph.pull  │
+                                             │ P     Push                                                                       graph.push  │
+                                             │ M     Map view                                                                    graph.map  │
+                                             │ F     Focus mode                                                                graph.focus  │
+                                             │ O     Overview strip                                                         graph.overview  │
+                                             │ space Fold a merged branch into its merge                                        graph.fold  │
+                                             │ 1     First-parent view                                                  graph.first_parent  │
+                                             │ H     Hide / show the stash                                                graph.hide_stash  │
+                                             │ y     Copy the commit's SHA                                                  graph.copy_sha  │
+                                             │ J     Undo journal                                                            graph.journal  │
+                                             │ F2    Status screen                                                            graph.status  │
+                                             │ F3    Cycle the graph renderer                                               graph.renderer  │
+                                             │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
+                                             │ X     Decline the commit-graph offer                             graph.decline_commit_graph  │
+                                             │ w     Ignore whitespace                                              diff.ignore_whitespace  │
+                                             │ W     Word-diff granularity                                                  diff.word_diff  │
+                                             │ v     Unified / side-by-side                                              diff.side_by_side  │
+                                             │ [     Fewer context lines                                                 diff.less_context  │
+                                             │ ]     More context lines                                                  diff.more_context  │
+                                             │ <     Shrink the detail pane                                                    diff.shrink  │
+                                             │ >     Grow the detail pane                                                        diff.grow  │
+                                             │ L     Load the full file                                                      diff.load_all  │
+                                             │ EVERYWHERE                                                                                   │
+                                             │ ⌃P    Command palette                                                           app.palette  │
+                                             │ ?     Help for this place                                                          app.help  │
+                                             │ ⇥     Next pane                                                               app.next_pane  │
+                                             │ ⇧⇥    Previous pane                                                           app.prev_pane  │
+                                             │ esc   Back out / close / cancel                                                    app.back  │
+                                             │ u     Undo                                                                         app.undo  │
+                                             │ U     Redo                                                                         app.redo  │
+                                             │ ⌃R    Refresh                                                                   app.refresh  │
+─────────────────────────────────────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯──────────────────────────────────────────────
+ ↑↓ move  ⏎ run  esc close

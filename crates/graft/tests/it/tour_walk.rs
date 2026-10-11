@@ -723,13 +723,32 @@ fn the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home() {
 }
 
 /// The tour's captures that do not need the whole walk: step 1 at 120×36
-/// from his repository (`⌃P tour ⏎`), and step 1 at 80×24 from the empty
-/// state (`t`). Each leaves by `Esc`, the practice folder gone after.
+/// from his repository (`⌃P tour ⏎`), and step 1 at 80×24 and 187×50 from
+/// the empty state (`t`). Each leaves by `Esc`, the practice folder gone after.
 #[test]
 fn the_tour_captures_match() {
     let mut shots = graft_fixtures::Captures::new();
     step1_from_his_repo(&mut shots);
-    step1_at_80x24(&mut shots);
+    step1_from_the_empty_state(
+        &mut shots,
+        (80, 24),
+        "m8-tour-80x24.txt",
+        "`t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · \
+         stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row \
+         is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the \
+         path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the \
+         practice graph under the card, `Uncommitted changes` on top, the cursor on `main`.",
+    );
+    // m8-polish-and-ship/28 (look): the card at his full-screen size too.
+    step1_from_the_empty_state(
+        &mut shots,
+        (187, 50),
+        "m8-tour-187x50.txt",
+        "`t` from the empty state at his full-screen 187×50: the card with `practice 1 of 8 · \
+         stage a change` and `esc leave` on its top border and the ticks row drawn (eight marks, \
+         none ticked yet); the header `◇ work`; the practice graph under the card. Judge beside \
+         m8-tour-step1-120x36.txt and the mock-up m8-proto-3f-tour-card.txt.",
+    );
     shots.finish();
 }
 
@@ -776,9 +795,16 @@ fn step1_from_his_repo(shots: &mut graft_fixtures::Captures) {
     practice_folder_is_gone(&tmp);
 }
 
-fn step1_at_80x24(shots: &mut graft_fixtures::Captures) {
+/// Step 1 by `t` from the empty state at `size`, shot as `name`; under 100
+/// columns no ticks row is drawn, from 100 it is.
+fn step1_from_the_empty_state(
+    shots: &mut graft_fixtures::Captures,
+    size: (u16, u16),
+    name: &str,
+    right: &str,
+) {
     let isolated = Isolated::new();
-    let (_root, root) = capture_root("tour-80x24", 6);
+    let (_root, root) = capture_root(&format!("tour-{}x{}", size.0, size.1), 6);
     let tmp = tour_tmp(&root);
     let plain = isolated.home().join("code");
     std::fs::create_dir_all(&plain).expect("plain folder");
@@ -786,26 +812,24 @@ fn step1_at_80x24(shots: &mut graft_fixtures::Captures) {
         &isolated,
         &plain,
         isolated.root.path(),
-        (80, 24),
+        size,
         &env(&tmp.as_os_str().to_owned()),
     );
     pty.wait_for("the empty state", |s| s.has("no repository here"));
     pty.send(b"t");
-    pty.wait_for("the card at 80 columns", |s| {
+    pty.wait_for("the card", |s| {
         s.has("practice 1 of 8 \u{b7} stage a change") && s.has("esc leave") && settled(s)
     });
-    let screen = shot(
-        shots,
-        &pty,
-        &root,
-        "m8-tour-80x24.txt",
-        "`t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · \
-         stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row \
-         is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the \
-         path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the \
-         practice graph under the card, `Uncommitted changes` on top, the cursor on `main`.",
-    );
-    assert_eq!(drawn_ticks(&screen), None, "no ticks under 100 columns");
+    let screen = shot(shots, &pty, &root, name, right);
+    if size.0 < 100 {
+        assert_eq!(drawn_ticks(&screen), None, "no ticks under 100 columns");
+    } else {
+        assert_eq!(
+            drawn_ticks(&screen),
+            Some([false; 8]),
+            "the ticks row, none ticked"
+        );
+    }
     pty.send(b"\x1b");
     pty.wait_for("back on the empty state", |s| s.has("no repository here"));
     quit_cleanly(pty);

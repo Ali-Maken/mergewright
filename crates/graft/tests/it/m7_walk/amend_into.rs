@@ -328,31 +328,14 @@ fn amend_with_dependents() {
     app.close();
 }
 
-/// The M8 note's key count for journey `id`, from its fence.
-fn m8_count(id: &str) -> usize {
-    crate::m5_walk::parse_counts(
-        &std::fs::read_to_string(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../docs/design-notes/m8-polish-and-ship.md"),
-        )
-        .unwrap_or_else(|why| panic!("the M8 note: {why}")),
-    )
-    .unwrap_or_else(|why| panic!("the M8 fence: {why}"))
-    .iter()
-    .find(|row| row.id == id)
-    .and_then(|row| row.keys)
-    .unwrap_or_else(|| panic!("the M8 fence has no count for {id}"))
-}
-
 /// `reword-head` (m8-polish-and-ship/14, J19): `a` on `HEAD` with
 /// `feature-b` built on it and nothing staged opens the commit editor on
 /// `HEAD`'s message (not the `nothing staged` refusal); the edit, `⏎`, and
 /// the preview's `y` reword `HEAD` and `feature-b` follows. `u` puts both
 /// back. Truth read with git.
 ///
-/// Counted as the M8 note counts it (`a <edit> ⏎`): the typing is the edit.
-/// The preview's `y` is the ruling's "previewed when dependents exist" — one
-/// past the note's 3; the ticket's NOTES ask which the count means.
+/// Counted as the M8 note counts it (`a <edit> ⏎ y`, 4 — note "Pass 2c"):
+/// the typing is the edit, the preview's `y` the fourth.
 #[test]
 fn reword_head_with_a_line_built_on_it() {
     let dir = oauth_repo(true);
@@ -379,11 +362,7 @@ fn reword_head_with_a_line_built_on_it() {
     assert!(state.preview.is_some(), "the preview: {:?}", state.status);
     capture_reword_preview(&state);
     let state = y(&app, &state, &mut route);
-    let allowed = m8_count("reword-head");
-    assert!(
-        route.len() <= allowed + 1,
-        "reword-head took {route:?}, the note allows {allowed} plus the preview's y"
-    );
+    crate::m8_walk::within_the_note("reword-head", &route);
 
     assert_eq!(
         git(repo, &["log", "-1", "--format=%s", "feature-a"], 0).trim(),

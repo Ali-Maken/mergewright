@@ -65,6 +65,7 @@ fn j18_a_pull_with_nothing_new_leaves_the_cursor() {
     let head = rev(work, "HEAD");
     // J18's one key.
     let state = app.press(&state, plain('p'));
+    crate::m8_walk::within_the_note("pull-nothing-new", &["p"]);
     let state = app.settle_write(state, "the pull");
     assert!(!state.land_on_head, "nothing new owes no landing");
     assert_eq!(
@@ -135,6 +136,7 @@ fn j20_u_and_capital_u_land_on_the_result() {
     let state = app.key(&state, KeyCode::Char('j'));
     let state = app.key(&state, KeyCode::Char('j'));
     let state = app.key(&state, KeyCode::Char('u'));
+    crate::m8_walk::within_the_note("undo-see-result", &["u"]);
     let state = settled(&app, state, "the undo");
     assert_eq!(rev(repo, "HEAD"), parent, "the commit was taken back");
     assert_on(&state, repo, "HEAD", "after u");

@@ -31,8 +31,8 @@ fn header(size: &str) -> String {
 # 1. A teammate pushed; `P` `→` `⏎` was rejected, then `P` opened the lease
 #    box: `←/→ move  ⏎ choose  esc cancel` — the box's keys, not the
 #    rejection line (which named `p`, a key the box swallows).
-# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull
-#    first · P force with lease` — hidden under the box, never cleared.
+# 2. `esc` on that box: the rejection is back, `push rejected: … · p pull,
+#    then m or r · P force with lease` — hidden under the box, never cleared.
 # 3. Another repository: a checkout, an edit, then `u` over the drift box:
 #    `y undo  ←/→ move  ⏎ choose  esc cancel` — not `undo · esc cancels`,
 #    the finished job's busy line.

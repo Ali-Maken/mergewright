@@ -24,10 +24,10 @@ use crate::captures::{check_shot, frame_at, radar_has_answered, settled_frame};
 const SIZES: [(u16, u16); 3] = [(80, 24), (120, 36), (187, 50)];
 
 /// Long after the fixture's commits, so their ages read the same every run.
-const NOW: i64 = 1_800_000_000;
+pub(crate) const NOW: i64 = 1_800_000_000;
 
 /// A feature-branch history, opened and settled at `columns`x`rows`.
-fn opened(columns: u16, rows: u16) -> (graft_fixtures::Scratch, App, AppState) {
+pub(crate) fn opened(columns: u16, rows: u16) -> (graft_fixtures::Scratch, App, AppState) {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches);
     let (app, state) = App::open(scratch.path());
     let state = app.resize(&state, columns, rows);
@@ -213,6 +213,9 @@ fn capture_the_cursor_row_in_dark_and_light() {
         "{line:?}"
     );
     assert!(!line.contains('\u{258f}'), "no ▏ for the cursor: {line:?}");
+    // J23: the branch is read off the `▸` row itself, no key.
+    assert!(line.contains("[feature/two]"), "its branch: {line:?}");
+    crate::m8_walk::within_the_note::<&str>("cursor-row-branch", &[]);
 
     for (name, choice, kind) in [
         ("dark", graft::config::ThemeChoice::Dark, ThemeKind::Dark),
@@ -263,6 +266,8 @@ fn capture_the_chrome_at_every_designed_size() {
             );
         }
         assert!(!header.contains("graft"), "no product name: {header:?}");
+        // J22: read off the header, no key.
+        crate::m8_walk::within_the_note::<&str>("which-repo-branch", &[]);
         let caption = format!(
             "m8-polish-and-ship/06 at {columns}x{rows}: what right looks like — the first row \
              is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows \

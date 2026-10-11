@@ -40,6 +40,8 @@ fn a_terminal_launch_counts_and_shows_the_line_until_the_palette() {
     let isolated = Isolated::first_launch();
     let mut pty = Pty::spawn(&isolated, scratch.path(), scratch.path(), (120, 36));
     let screen = pty.wait_for("the first-launch line", |s| s.has("first time?"));
+    // J11: the line is there with no key pressed.
+    crate::m8_walk::within_the_note::<&str>("first-launch", &[]);
     assert!(
         screen.has("first time? ? keys here · ⌃P anything"),
         "{}",
