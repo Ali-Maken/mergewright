@@ -8,7 +8,7 @@ use graft_core::oid::Oid;
 use graft_git::history_reads::LostRun;
 use graft_git::reflog::ReflogRecord;
 use graft_ops::journal_list::{
-    HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan, OutsideStep,
+    Fate, HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan, OutsideStep,
 };
 
 use super::super::JournalState;
@@ -90,6 +90,7 @@ fn journal() -> JournalState {
                     name: "spike".to_owned(),
                     gone: true,
                 },
+                fate: Fate::Lost,
             },
         },
         ListRow::LostEdit {

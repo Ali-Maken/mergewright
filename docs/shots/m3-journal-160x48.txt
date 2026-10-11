@@ -69,5 +69,5 @@
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-"● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                                                          "
+"● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back                                  "
 "⏎ redo this  / find  space command log  J/esc close  ? keys                                                                                                     "

@@ -1,6 +1,6 @@
 JOURNAL · what happened in this repo, newest first
 ▸ ●  Graft          now       rewrite feature-b                            1 ref · the index · the working tree · backup saved                                                         ← u
-     └ ✗ lost       90ebf9e "b3" · was feature-b's tip · no branch holds it · +2 under it
+     └ ⇢ replaced   90ebf9e "b3" · was feature-b's tip · undo brings it back · +2 under it
   $  outside Graft  5m ago    committed "b3" on feature-b                        git: "commit: b3"
   $  outside Graft  7m ago    committed "b2" on feature-b                        git: "commit: b2"
   $  outside Graft  8m ago    switch from main to feature-b                      git: "checkout: moving from main to feature-b"
@@ -40,5 +40,5 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back
 ⏎ undo this  / find  space command log  J/esc close  ? keys

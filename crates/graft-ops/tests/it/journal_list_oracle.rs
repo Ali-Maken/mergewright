@@ -30,10 +30,10 @@ use crate::support::{Never, TempRepo, git_version, journal_for, run};
 
 /// The shell's clock for a scenario: fixed seconds, well before now, so
 /// every step has its own second and Graft's steps (stamped now) come after.
-const SHELL: i64 = 1_700_000_000;
+pub(crate) const SHELL: i64 = 1_700_000_000;
 
 /// `git` in the repository with its commit and reflog clock at `at`.
-fn git_at(repo: &TempRepo, at: i64, args: &[&str]) -> String {
+pub(crate) fn git_at(repo: &TempRepo, at: i64, args: &[&str]) -> String {
     let date = format!("{at} +0000");
     let output = std::process::Command::new("git")
         .arg("-C")
@@ -54,17 +54,17 @@ fn git_at(repo: &TempRepo, at: i64, args: &[&str]) -> String {
 }
 
 /// A commit of `file` with `subject`, at `at`.
-fn commit_at(repo: &TempRepo, at: i64, file: &str, subject: &str) {
+pub(crate) fn commit_at(repo: &TempRepo, at: i64, file: &str, subject: &str) {
     repo.write(file, format!("{subject}\n").as_bytes());
     git_at(repo, at, &["add", "-A"]);
     git_at(repo, at, &["commit", "-q", "-m", subject]);
 }
 
-fn id(repo: &TempRepo, rev: &str) -> Oid {
+pub(crate) fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
 }
 
-fn now_ms() -> i64 {
+pub(crate) fn now_ms() -> i64 {
     let since = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("the clock is after 1970");
@@ -86,7 +86,7 @@ fn entries(repo: &TempRepo) -> Vec<JournalEntry> {
 }
 
 /// The three stages, run the way the app runs them.
-fn the_list(repo: &TempRepo) -> JournalList {
+pub(crate) fn the_list(repo: &TempRepo) -> JournalList {
     let handle = repo.open();
     let entries = entries(repo);
     let outside = read_outside(&handle, RECORDS_CAP, &Never).expect("the reflogs read");

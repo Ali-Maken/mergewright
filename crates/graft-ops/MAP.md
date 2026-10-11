@@ -102,7 +102,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `JournalError` (enum) — `Json { line, what }`, `TornTail`, `DuplicatePending`, `OutcomeWithoutPending`, `DuplicateOutcome`, `StillPending`, `Io`.
 - `in_force` (fn) — the entry took effect and no later in-force entry reverses it; a `Pending` entry is not in force.
 - `in_force_all` (fn) — one in-force flag per entry, in one walk.
-- `undoable_kind` (fn) — false for `Fetch`, `Push`, `Migrate`, `Undo`, `Redo`: kinds `u` passes over.
+- `undoable_kind` (fn) — false for `Fetch`, `Push`, `Migrate`: kinds `u` passes over (`Undo`/`Redo` are stepped over separately, as not operations).
 - `undoable` (fn) — `undoable_kind` and not a pull that moved nothing.
 - `next_undo` (fn) — newest in-force undoable entry.
 - `next_redo` (fn) — newest in-force `Undo` with no in-force undoable operation newer than it.
@@ -122,7 +122,9 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `OutsideRecord` (struct) — `record: ReflogRecord`, `back: Option<usize>` (commits back for a reset or fast-forward).
 - `OutsideStep` (struct) — `record`, `words`, `folded`: one `$` row of shell steps.
 - `HeldBy` (enum) — `Branch { name, gone }`, `Head`: what held a lost commit.
-- `LostCommit` (struct) — `run: LostRun`, `subject: Option<String>`, `held_by`.
+- `LostCommit` (struct) — `run: LostRun`, `subject: Option<String>`, `held_by`, `fate`.
+- `Fate` (enum) — `Lost`, `Replaced`, `Deleted`: whether `u` brings a lost run back (J's `⇢`, usability Q1).
+- `fate_of` (fn) — pure, `(Option<(&JournalEntry, in_force)>, tip) -> Fate`: not `Lost` only under an in-force undoable operation whose branch/`HEAD` moved off or deleted `tip`.
 - `LostEdit` (struct) — `entry`, `backup_tree`, `paths`: an edit an undo wrote over.
 - `ListRow` (enum) — `Graft(EntryId)`, `Outside(OutsideStep)`, `Lost { event, commit }`, `LostEdit { event, edit }`.
 - `LostScan` (enum) — `Running`, `Done`, `Capped { checked }`, `Failed(String)`.

@@ -57,6 +57,12 @@ pub enum RowKind {
     Lost,
     /// `└ ✗ lost` — an edit an undo replaced, kept only in its backup.
     LostEdit,
+    /// `└ ⇢ replaced` — a commit an undoable step moved a branch off: `u`
+    /// brings it back (usability Q1).
+    Replaced,
+    /// `└ ⇢ deleted` — a commit an undoable step deleted the branch of: `u`
+    /// brings it back.
+    Deleted,
 }
 
 /// One row, as the browser draws it.

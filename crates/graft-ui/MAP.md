@@ -356,14 +356,14 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 
 ## journal_screen
 - `JournalScreen` (struct) — The browser itself: `view`, `theme`, `keys: &Keymap` (footer, legend, empty state and row marks are spelled from it). The caller paints the surface underneath.
-- `legend` (fn) — What each glyph means, on screen for as long as the rows are (J1), with `app.undo`'s key spelled from `keys` (its first chord); unbound, the legend says it in words.
+- `legend` (fn) — What each glyph means, on screen for as long as the rows are (J1), with `app.undo`'s key spelled from `keys` (its first chord); unbound, the legend says it in words. The `⇢` clause is appended only when it all fits.
 - `NO_TRACE` (const) — The list's last line, muted: what the list cannot show (`reflog.md` takeaway 12).
 - `COMMANDS_HEADING` (const) — The heading over an expanded row's Command Log.
 - `moved_heading` (fn) — the heading over an expanded row's `moved` lines: `refs the fetch moved · u does not move them back`, `app.undo` spelled from `keys`; unbound, `refs the fetch moved` alone.
 - `cut_at_word` (fn) — `(text, width) -> String`: cut at the last whole word that fits, then `…`; a hard cut only when no word fits. Keeps the text's own spacing.
 - `RowMark` (enum) — What a row is to `u` and `U`, in words rather than colour: `None` (default), `NextUndo`, `NextRedo`, `Interrupted`, `Undone`, `NothingWritten`; `label(keys)` draws them as `← u`, `← U` (spelled from `keys`).
 - `label` (fn) — The mark as it is drawn, at the right of the row: `← u`, `← U`, the keys spelled from `keys` (`← next undo` when he left it unbound).
-- `RowKind` (enum) — `Graft` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup).
+- `RowKind` (enum) — `Graft` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup), `Replaced` (`└ ⇢ replaced`) / `Deleted` (`└ ⇢ deleted`), muted: a commit `u` brings back.
 - `JournalRowView` (struct) — `age`, `description`, `summary`, `mark`, `commands` (the Command Log, drawn while expanded), `failure` (the whole reason, same), `moved`, ADR-0062: the refs a fetch or a pull's fetch moved, one line each
 - `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
 - `JournalStatusRow` (struct) — `words`, `problem` (Warning ink when true): J's own status row, above the legend; `None` draws no row.

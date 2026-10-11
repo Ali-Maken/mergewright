@@ -142,10 +142,21 @@ fn fold_rebases(records: &[&ReflogRecord], taken: &mut [bool]) -> Vec<Step> {
 /// One rebase run (newest first) into one step.
 fn fold_one(records: &[&ReflogRecord], taken: &mut [bool], run: &[usize]) -> Step {
     let newest = run[0];
+    // The branch the run says it returned to. Two rebases in one second (a
+    // chain of branches rebased in turn) put both finishes in the window:
+    // nearness alone paired a run with the other branch's finish (m8/46).
+    let returned_to = run.iter().find_map(|index| {
+        let subject = &records[*index].subject;
+        subject
+            .strip_prefix("rebase (finish): returning to ")
+            .or_else(|| subject.strip_prefix("rebase -i (finish): returning to "))
+    });
     let finish = (0..records.len())
         .filter(|index| {
+            let branch = rebase_finish_branch(&records[*index].subject);
             !taken[*index]
-                && rebase_finish_branch(&records[*index].subject).is_some()
+                && branch.is_some()
+                && returned_to.is_none_or(|name| branch == Some(name))
                 && records[*index].refname.starts_with("refs/heads/")
                 && close_in_time(records[*index], records[newest])
         })

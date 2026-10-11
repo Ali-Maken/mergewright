@@ -57,24 +57,42 @@ pub(super) fn row_pieces(
             });
             pieces.extend(words_pieces(row, columns, width, words_x, keys));
         }
-        RowKind::Lost | RowKind::LostEdit => {
-            // `└ ✗ lost` under the event's glyph and source, the words in
-            // the age's column: the sha7 stands where the time does.
-            let lead_x = CURSOR + GLYPH;
-            pieces.push(Piece {
-                x: lead_x,
-                text: "└ ✗ lost".to_owned(),
-                ink: Ink::Warning,
-            });
-            let x = CURSOR + GLYPH + if columns.source { SOURCE } else { AGE };
-            pieces.push(Piece {
-                x,
-                text: cut_at_word(row.description.as_str(), width.saturating_sub(x + 1)),
-                ink: Ink::Warning,
-            });
+        RowKind::Lost | RowKind::LostEdit | RowKind::Replaced | RowKind::Deleted => {
+            pieces.extend(lost_pieces(row, columns, width));
         }
     }
     pieces
+}
+
+/// A `✗` or `⇢` row's label and words: `└ ✗ lost` under the event's glyph
+/// and source, the words in the age's column — the sha7 stands where the
+/// time does. A commit `u` brings back is `⇢` and muted, not a warning: it
+/// moved on, it is not gone (usability Q1).
+fn lost_pieces(row: &JournalRowView, columns: Columns, width: usize) -> [Piece; 2] {
+    let (label, ink) = match row.kind {
+        RowKind::Replaced => ("└ ⇢ replaced", Ink::Muted),
+        RowKind::Deleted => ("└ ⇢ deleted", Ink::Muted),
+        RowKind::Graft | RowKind::Outside | RowKind::Lost | RowKind::LostEdit => {
+            ("└ ✗ lost", Ink::Warning)
+        }
+    };
+    let lead_x = CURSOR + GLYPH;
+    // Below 120 the age column (10) is narrower than `└ ⇢ replaced` (12):
+    // the words then start one blank after the label.
+    let column = if columns.source { SOURCE } else { AGE };
+    let x = lead_x + column.max(label.width() + 1);
+    [
+        Piece {
+            x: lead_x,
+            text: label.to_owned(),
+            ink,
+        },
+        Piece {
+            x,
+            text: cut_at_word(row.description.as_str(), width.saturating_sub(x + 1)),
+            ink,
+        },
+    ]
 }
 
 /// The words of a `●` or `$` row, and what stands at their right.
@@ -111,7 +129,7 @@ pub(super) fn words_pieces(
                 ink: Ink::Text,
             }],
         },
-        RowKind::Lost | RowKind::LostEdit => Vec::new(),
+        RowKind::Lost | RowKind::LostEdit | RowKind::Replaced | RowKind::Deleted => Vec::new(),
     }
 }
 

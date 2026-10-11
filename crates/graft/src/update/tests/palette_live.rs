@@ -113,6 +113,7 @@ fn something_to_act_on(ctx: ContextId, id: ActionId) -> Option<AppState> {
                     },
                     subject: Some(format!("lost {tip}")),
                     held_by: HeldBy::Head,
+                    fate: graft_ops::journal_list::Fate::Lost,
                 },
             };
             let rows = &mut Arc::make_mut(state.journal.list.as_mut()?).rows;

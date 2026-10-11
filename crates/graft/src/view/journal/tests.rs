@@ -600,3 +600,5 @@ fn migrate_row_words() {
     assert_eq!(view.rows[1].mark, RowMark::NextUndo, "the stage before is");
     assert_eq!(view.rows[0].summary.as_str(), "", "the words are the row");
 }
+
+mod replaced;

@@ -1,0 +1,26 @@
+Ticket 46 (usability Q1) — capture drift after regeneration (TRIB_UPDATE_SHOTS=1, workspace-wide), base c8b08592.
+
+git diff --stat docs/shots/ : 9 files changed, 10 insertions(+), 10 deletions(-)
+
+Legend gains ` · ⇢ undo brings it back` (the whole legend fits at these widths) — one line each:
+  docs/shots/m3-journal-160x48.txt
+  docs/shots/m7/journal-140x40.txt
+  docs/shots/m7/journal-187x24.txt
+  docs/shots/m7/journal-187x50.txt
+  docs/shots/m7/journal-after-squash-187x44.txt
+  docs/shots/m7/journal-find-187x50.txt
+  docs/shots/m7/put-back-edit-preview-187x50.txt
+  docs/shots/m7/put-back-preview-187x50.txt
+  docs/shots/m7/put-back-staged-preview-187x50.txt
+
+Unchanged (legend cut at a word, no clause, as before): m7/journal-100x30.txt, m7/journal-120x40.txt,
+m3-journal-80x24.txt, and every other J capture narrower than the whole legend.
+
+One row changed meaning (the rule working on a real repo):
+  docs/shots/m7/journal-after-squash-187x44.txt
+  -     └ ✗ lost       90ebf9e "b3" · was feature-b's tip · no branch holds it · +2 under it
+  +     └ ⇢ replaced   90ebf9e "b3" · was feature-b's tip · undo brings it back · +2 under it
+  Graft's own `R s s y` squash is in force and undoable, and moved feature-b off b3: `u` brings it back.
+
+New: docs/shots/m8-q1-journal-replaced-ui-187x30.txt, docs/shots/m8-q1-journal-replaced-ui-80x24.txt
+(captioned in docs/shots/m8-contact-sheet-captions.tsv; the sheet files themselves are assembled by the acceptance ticket).
