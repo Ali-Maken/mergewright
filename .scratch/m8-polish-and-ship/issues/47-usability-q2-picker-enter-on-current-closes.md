@@ -69,8 +69,10 @@ impl PickerState {
 - [x] graft `view` test `picker_bar_context_follows_the_row`: `PickerOnCurrent` on the current row, `Picker` on
       another, `Picker` while loading.
 - [x] graft-ui `hints` test `picker_on_current_offers_close`: `footer_hints` for `PickerOnCurrent` has `⏎ close`, not
-      `switch to it`; for `Picker`, unchanged.
-- [x] Grep quoted in NOTES: `you're on` in `crates/*/src`: no hit.
+      `switch to it`; for `Picker`, unchanged. (Superseded by 46r: the clause is now `⏎ show it on the graph`,
+      test renamed `picker_on_current_enter_says_what_tab_says`.)
+- [x] Grep quoted in NOTES: the removed `you're on <b>` message in `crates/*/src`: no hit. (Reworded by 46r,
+      review m8 g1 minor 4: the `· here` row's own `you're on it` subject remains, by design.)
 - [x] TestBackend capture (rule 6, his eye; colour unverified, rule 5):
       `docs/shots/m8-q2-picker-current-row-ui-120x36.txt`: picker open on `main`, cursor on `main`'s row, bar
       `⏎ close`, no bottom-line message.
@@ -121,3 +123,8 @@ One context, ~30k tokens.
 - Not done: `keymap/table.rs:398` description "Switch to it" and `docs/man/trib.1` unchanged (help/man
   text for `picker.switch`); updating it drifts the man page — left for the conductor.
 - No compaction.
+- Capture drift (added by 46r, review m8 g1 minor 10): **no existing picker or hints capture drifted.**
+  `git diff --stat 5191a559~1 5191a559 -- docs/shots` lists only the new
+  `m8-q2-picker-current-row-ui-120x36.txt` and one new row in `m8-contact-sheet-captions.tsv`; every capture
+  test passed at the merge (`cf2b9919`, gates green). No `q2-shot-drift.txt` was written because there was
+  nothing to list. 46r later changed the Q2 capture's bar (`⏎ show it on the graph`), see 46r NOTES.

@@ -23,8 +23,11 @@ use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use unicode_width::UnicodeWidthStr;
 
+mod legend;
 mod pieces;
 mod view;
+pub use legend::legend;
+use legend::legend_at;
 use pieces::{row_pieces, under_pieces};
 pub use view::{
     JournalFindView, JournalRowView, JournalStatus, JournalStatusRow, JournalView, RowKind, RowMark,
@@ -48,40 +51,6 @@ fn empty(keys: &Keymap) -> String {
     match keys.spell_keys(&[ActionId("app.undo")]) {
         Some(undo) => format!("nothing yet — every write lands here and {undo} takes it back"),
         None => "nothing yet — every write lands here".to_owned(),
-    }
-}
-
-/// What each glyph means, on screen for as long as the rows are (J1), with
-/// `app.undo`'s key spelled from `keys` (`u`, or `u/⌃Z`'s first — the bar's
-/// one key per action). Unbound, the legend says it in words.
-#[must_use]
-pub fn legend(keys: &Keymap) -> String {
-    let (can, never) = match keys.spell_keys(&[ActionId("app.undo")]) {
-        Some(undo) => (
-            format!("{undo} can undo it"),
-            format!("{undo} never touches it"),
-        ),
-        None => (
-            "undo can take it back".to_owned(),
-            "undo never touches it".to_owned(),
-        ),
-    };
-    format!("● done in Graft: {can} · $ done outside Graft: {never} · ✗ a commit no branch holds")
-}
-
-/// The `⇢` row's clause, last in the legend (usability Q1).
-const REPLACED_CLAUSE: &str = " · ⇢ undo brings it back";
-
-/// The legend as drawn `width` cells wide: with the `⇢` clause last when the
-/// whole of it fits, else today's [`legend`] cut at a word as before — so
-/// the clause is the first thing to go and never shows in half.
-fn legend_at(keys: &Keymap, width: usize) -> String {
-    let legend = legend(keys);
-    let whole = format!("{legend}{REPLACED_CLAUSE}");
-    if whole.width() <= width {
-        whole
-    } else {
-        cut_at_word(&legend, width)
     }
 }
 

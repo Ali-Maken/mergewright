@@ -43,7 +43,6 @@
 431 crates/graft-ops/src/apply/remote/tests.rs
 407 crates/graft-ops/src/apply/restart.rs
 404 crates/graft-ops/src/journal.rs
-425 crates/graft-ops/src/journal_list/steps.rs
 807 crates/graft-ops/src/journal/tests.rs
 1078 crates/graft-ops/src/mistake_radar/probes.rs
 709 crates/graft-ops/src/mistake_radar/rules.rs
@@ -108,15 +107,15 @@
 554 crates/graft-ui/src/finish_summary/tests.rs
 795 crates/graft-ui/src/graph_column/tests.rs
 511 crates/graft-ui/src/graph_screen/hints/context.rs
-3135 crates/graft-ui/src/graph_screen/hints/tests.rs
+3137 crates/graft-ui/src/graph_screen/hints/tests.rs
 650 crates/graft-ui/src/graph_screen/layout.rs
 603 crates/graft-ui/src/graph_screen/mod.rs
 752 crates/graft-ui/src/graph_screen/render.rs
 3110 crates/graft-ui/src/graph_screen/tests.rs
 548 crates/graft-ui/src/history/tests.rs
-490 crates/graft-ui/src/journal_screen.rs
+459 crates/graft-ui/src/journal_screen.rs
 706 crates/graft-ui/src/journal_screen/tests.rs
-512 crates/graft-ui/src/keymap/table.rs
+513 crates/graft-ui/src/keymap/table.rs
 658 crates/graft-ui/src/preview_box/tests.rs
 639 crates/graft-ui/src/rewrite_editor/tests.rs
 424 crates/graft-ui/src/stash_screen/tests.rs
@@ -169,7 +168,6 @@
 481 crates/graft/src/update/events/command.rs
 823 crates/graft/src/update/finish/tests.rs
 511 crates/graft/src/update/geometry.rs
-426 crates/graft/src/update/journal/keys.rs
 1211 crates/graft/src/update/journal/tests.rs
 483 crates/graft/src/update/keys.rs
 562 crates/graft/src/update/keys/live_c_tests.rs

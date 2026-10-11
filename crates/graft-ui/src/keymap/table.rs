@@ -56,6 +56,7 @@ const PGUP: KeyChord = KeyChord::plain(KeyCode::PageUp);
 const PGDN: KeyChord = KeyChord::plain(KeyCode::PageDown);
 const BACKSPACE: KeyChord = KeyChord::plain(KeyCode::Backspace);
 const DELETE: KeyChord = KeyChord::plain(KeyCode::Delete);
+const PICKER_SWITCH: &str = "Switch to it; on your own branch, back to the graph";
 
 use ContextId::{
     Banner, Blame, Changes, CommitEditor, Confirm, Credential, Diff, EmptyState, Finish, Global,
@@ -395,7 +396,7 @@ const DEFAULTS: &[Binding] = &[
         "Show / hide the row's changes",
     ),
     // §2.16 Branch picker (a text field: fixed).
-    b("picker.switch", Picker, &[ENTER], "Switch to it"),
+    b("picker.switch", Picker, &[ENTER], PICKER_SWITCH),
     b("picker.show", Picker, &[TAB], "Show it on the graph"),
     // §2.8 Blame (`w` is `diff.ignore_whitespace`).
     b(

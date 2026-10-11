@@ -4,7 +4,8 @@
 # feature branch's old tip, `· undo brings it back`, muted; under the `$`
 # reset, `└ ✗ lost` as before, in warning ink. The legend ends
 # `· ⇢ undo brings it back` at 187 columns; at 80 it is today's legend,
-# cut at a word, with no half clause. Colour is not in this capture.
+# cut at a word, with no half clause. The two rows' shas start in
+# one column at both widths. Colour is not in this capture.
 
 === 187x30 ===
 JOURNAL · what happened in this repo, newest first

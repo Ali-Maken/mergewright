@@ -83,6 +83,24 @@ fn replaced_row_label_and_ink() {
     assert!(grid[4].starts_with("     └ ✗ lost"), "{grid:?}");
 }
 
+/// Review m8 g1, minor 5: below 120 columns the `⇢` and `✗` rows' shas
+/// start in one column, the widest label's, not each its own label's.
+#[test]
+fn lost_rows_shas_line_up_at_every_width() {
+    for width in [80u16, 119, 120, 187] {
+        let grid = draw(&view(replaced_rows(), JournalStatus::Ready), width, 12);
+        let sha_at = |sha: &str| {
+            let line = grid
+                .iter()
+                .find(|line| line.contains(sha))
+                .unwrap_or_else(|| panic!("{sha} at {width}: {grid:?}"));
+            let byte = line.find(sha).expect("found above");
+            line[..byte].width()
+        };
+        assert_eq!(sha_at("9a8b7c6"), sha_at("4d5e6f7"), "{width}: {grid:?}");
+    }
+}
+
 #[test]
 fn legend_shows_the_replaced_clause_only_when_whole() {
     let keys = Keymap::shipped();
@@ -124,7 +142,8 @@ fn capture_replaced_for_docs_shots() {
              # feature branch's old tip, `· undo brings it back`, muted; under the `$`\n\
              # reset, `└ ✗ lost` as before, in warning ink. The legend ends\n\
              # `· ⇢ undo brings it back` at 187 columns; at 80 it is today's legend,\n\
-             # cut at a word, with no half clause. Colour is not in this capture.\n\
+             # cut at a word, with no half clause. The two rows' shas start in\n\
+             # one column at both widths. Colour is not in this capture.\n\
              \n",
         );
         out.push_str(&format!("=== {width}x{height} ===\n"));

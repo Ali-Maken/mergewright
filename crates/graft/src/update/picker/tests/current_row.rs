@@ -55,7 +55,8 @@ fn enter_on_the_current_branch_with_a_dirty_tree_closes_too() {
 
 /// Rule 6 capture (his eye; `TestBackend`, colour unverified, rule 5): the
 /// picker open with its cursor on `main`, the branch he is on — the bar
-/// offers `⏎ close`, the box's bottom line carries no message.
+/// offers `⏎ show it on the graph` (`⇥`'s words, its act), the box's
+/// bottom line carries no message.
 #[test]
 fn capture_the_picker_on_the_current_row() {
     let mut state = on_row(&opened(&fixture()), "main");
@@ -64,7 +65,7 @@ fn capture_the_picker_on_the_current_row() {
         rows: 36,
     };
     let drawn = crate::view::tests::draw_pinned(&state, 120, 36);
-    assert!(drawn.contains("⏎ close"), "{drawn}");
+    assert!(drawn.contains("⏎ show it on the graph"), "{drawn}");
     assert!(!drawn.contains("switch to it"), "{drawn}");
     assert!(picker(&state).note.is_none());
     graft_fixtures::capture(

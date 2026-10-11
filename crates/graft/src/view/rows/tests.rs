@@ -43,8 +43,9 @@ fn an_unfocused_banner_leaves_the_footer_to_the_cursor() {
     );
 }
 
-/// m8 usability Q2: the picker's bar says `⏎ close` on HEAD's own row,
-/// `⏎ switch to it` on any other, and the latter while the list loads.
+/// m8 usability Q2: the picker's bar says `⏎ show it on the graph` on
+/// HEAD's own row, `⏎ switch to it` on any other, and the latter while the
+/// list loads.
 #[test]
 fn picker_bar_context_follows_the_row() {
     use graft_ops::switch_list::{Relation, SwitchKind, SwitchList, SwitchRow};

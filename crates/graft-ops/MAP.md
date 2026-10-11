@@ -124,7 +124,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `HeldBy` (enum) — `Branch { name, gone }`, `Head`: what held a lost commit.
 - `LostCommit` (struct) — `run: LostRun`, `subject: Option<String>`, `held_by`, `fate`.
 - `Fate` (enum) — `Lost`, `Replaced`, `Deleted`: whether `u` brings a lost run back (J's `⇢`, usability Q1).
-- `fate_of` (fn) — pure, `(Option<(&JournalEntry, in_force)>, tip) -> Fate`: not `Lost` only under an in-force undoable operation whose branch/`HEAD` moved off or deleted `tip`.
+- `fate_of` (fn) — pure, `(Option<(&JournalEntry, in_force)>, tip) -> Fate`: not `Lost` only under an in-force undoable operation whose branch/`HEAD` moved off or deleted `tip`. `build` passes a `Redo`'s root operation, not the redo (46r).
 - `LostEdit` (struct) — `entry`, `backup_tree`, `paths`: an edit an undo wrote over.
 - `ListRow` (enum) — `Graft(EntryId)`, `Outside(OutsideStep)`, `Lost { event, commit }`, `LostEdit { event, edit }`.
 - `LostScan` (enum) — `Running`, `Done`, `Capped { checked }`, `Failed(String)`.

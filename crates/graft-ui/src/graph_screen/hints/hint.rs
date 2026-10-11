@@ -276,6 +276,11 @@ pub(super) fn short_form(verb: &str) -> Option<&'static str> {
         // the ` · ` separator its floor is 50 cells whole, and the narrowest
         // bar is 47. Prefixes, so the reader still recovers the verb.
         "back to blame" | "back to history" => "back",
+        // The picker on his own branch (46r, review m8 g1 minor 1): `⏎`
+        // says `⇥`'s words, second in the bar, so its floor is 47 cells
+        // whole; with this prefix it is 31, and 40 columns still draw it.
+        // Builder's choice under the 21b precedent; the conductor confirms.
+        "show it on the graph" => "show",
         _ => return None,
     })
 }

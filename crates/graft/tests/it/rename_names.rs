@@ -103,7 +103,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "journal source column width",
     ),
     (
-        "graft-ui/src/journal_screen.rs",
+        "graft-ui/src/journal_screen/legend.rs",
         "done in Graft: {can}",
         "legend names that column",
     ),

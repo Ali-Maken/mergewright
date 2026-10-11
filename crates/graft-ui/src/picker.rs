@@ -116,8 +116,8 @@ pub struct PickerView {
     pub body: PickerBody,
     /// The bottom line: `15 branches`, `2 of 15 branches`.
     pub footer: String,
-    /// Why `⏎` did nothing (a write running, git mid-operation, `you're on
-    /// it`): drawn on the bottom line in place of the footer.
+    /// Why `⏎` did nothing (a write running, git mid-operation): drawn on
+    /// the bottom line in place of the footer.
     pub note: Option<SanitizedText>,
     /// At least 120 columns: every column; else glyph, name and age.
     pub wide: bool,

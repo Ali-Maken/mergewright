@@ -241,7 +241,8 @@ fn graft_row(
 /// A lost commit's line: `9a8b7c6 "Add rate limiter" · was main's tip · no
 /// branch holds it`, `· spike is gone`, or `· was HEAD`; `+N under it` when
 /// it is a run. A `⇢` row (`Fate::Replaced`/`Deleted`) ends `· was main's
-/// tip · undo brings it back` (or `· was HEAD · undo brings it back`). No subject known → the sha7 alone, never an empty `""`.
+/// tip · undo brings it back` (or `· was HEAD · undo brings it back`). No
+/// subject known → the sha7 alone, never an empty `""`.
 fn lost_words(commit: &LostCommit) -> String {
     let mut words = short(commit.run.tip);
     // Not read (m7/30o Minor 5): the sha7 alone, no quotes around nothing.

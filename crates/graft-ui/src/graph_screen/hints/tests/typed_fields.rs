@@ -49,10 +49,12 @@ fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
     assert!(fixed_drawn > 0, "no list draws a fixed key");
 }
 
-/// m8 usability Q2: on HEAD's own row the picker's `⏎` closes it, so the
-/// bar says `close`; on any other row it still says `switch to it`.
+/// m8 usability Q2: on HEAD's own row the picker's `⏎` does what `⇥` does
+/// (`update::picker` calls `show_on_graph`), so its clause is `⇥`'s words —
+/// not `close`, `esc`'s word for a different act (review m8 g1, minor 1).
+/// On any other row it still says `switch to it`.
 #[test]
-fn picker_on_current_offers_close() {
+fn picker_on_current_enter_says_what_tab_says() {
     let verbs = |context: &HintContext| -> Vec<&'static str> {
         hints_for(context, Divider::Hidden, 200)
             .iter()
@@ -69,10 +71,27 @@ fn picker_on_current_offers_close() {
             "row"
         ]
     );
+    let on_current = verbs(&HintContext::PickerOnCurrent);
     assert_eq!(
-        verbs(&HintContext::PickerOnCurrent),
-        ["to find", "close", "close", "show it on the graph", "row"]
+        on_current,
+        [
+            "to find",
+            "show it on the graph",
+            "close",
+            "show it on the graph",
+            "row"
+        ]
     );
+    // `⏎` and `⇥` are one act; every other pair of clauses shares no word.
+    let distinct: Vec<&str> = [0, 2, 3, 4].iter().map(|at| on_current[*at]).collect();
+    for (at, left) in distinct.iter().enumerate() {
+        for right in &distinct[at + 1..] {
+            let shared = left
+                .split(' ')
+                .find(|word| right.split(' ').any(|other| other == *word));
+            assert_eq!(shared, None, "{left:?} and {right:?}");
+        }
+    }
     let enter = |context: &HintContext| hints_for(context, Divider::Hidden, 200)[1].keys;
     assert_eq!(
         enter(&HintContext::PickerOnCurrent),
@@ -84,6 +103,7 @@ fn picker_on_current_offers_close() {
         Divider::Hidden,
         200,
     ));
-    assert!(text.contains("⏎ close"), "{text}");
+    assert!(text.contains("⏎ show it on the graph"), "{text}");
+    assert!(!text.contains("⏎ close"), "{text}");
     assert!(!text.contains("switch to it"), "{text}");
 }

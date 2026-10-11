@@ -698,6 +698,8 @@ fn every_short_rung_is_the_users_own_word() {
         ("back to history", "back"),
         // m8/20c R6' (B4): the conflict row's `space` at 80 columns.
         ("mark resolved", "mark"),
+        // m8/46r: picker `⏎` on his branch at 40 columns; builder's proposal.
+        ("show it on the graph", "show"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");

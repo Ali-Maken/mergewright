@@ -6,10 +6,32 @@
 //! that commit "lost" tells him real damage happened when none did; calling
 //! a shell reset's commit anything but lost would tell him the opposite.
 
-use graft_core::journal::JournalEntry;
+use graft_core::journal::{JournalEntry, OperationKind};
 use graft_core::oid::Oid;
 
-use crate::journal::{is_operation, undoable};
+use crate::journal::{is_operation, root_operation, undoable};
+
+/// The entry a run under `entries[index]` is judged by, and whether it is in
+/// force: the entry itself, or for a `Redo`, the operation it put back. `u`
+/// steps over the redo and undoes that operation, which puts the old tip
+/// back (review m8 g1, minor 6). Both must be in force.
+pub(super) fn judged_by<'a>(
+    entries: &'a [JournalEntry],
+    in_force: &[bool],
+    index: usize,
+) -> (&'a JournalEntry, bool) {
+    let entry = &entries[index];
+    let root = (entry.kind == OperationKind::Redo)
+        .then(|| root_operation(entries, entry))
+        .flatten()
+        .and_then(|root| entries.iter().position(|each| each.id == root.id));
+    match root {
+        Some(at) => (&entries[at], in_force[index] && in_force[at]),
+        // Not a redo, or a redo whose operation is gone: the entry itself
+        // (a dangling redo stays lost, `fate_of` refusing a non-operation).
+        None => (entry, in_force[index]),
+    }
+}
 
 /// What became of a lost run's tip, by the event it sits under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,9 +52,11 @@ pub enum Fate {
 /// entry must be in force and [`undoable`], and one of its before-refs (a
 /// branch or `HEAD`, the refs a run is placed by) must have pointed at `tip`:
 /// [`Fate::Replaced`] when its after-state has that ref on another commit,
-/// [`Fate::Deleted`] when it has the ref recorded as absent. A ref missing from the after-state was never recorded — unknown,
-/// not deleted — and leaves the run [`Fate::Lost`]. `u` steps over an `Undo`
-/// or `Redo` entry, so commits an undo dropped stay lost.
+/// [`Fate::Deleted`] when it has the ref recorded as absent. A ref missing
+/// from the after-state was never recorded — unknown, not deleted — and
+/// leaves the run [`Fate::Lost`]. `u` steps over an `Undo` or `Redo` entry,
+/// so commits an undo dropped stay lost; a redo's run is judged by the
+/// operation it put back ([`judged_by`]).
 #[must_use]
 pub fn fate_of(event: Option<(&JournalEntry, bool)>, tip: Oid) -> Fate {
     let Some((entry, in_force)) = event else {
