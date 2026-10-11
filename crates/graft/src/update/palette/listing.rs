@@ -5,6 +5,7 @@
     reason = "one module split in files: its parent is its prelude"
 )]
 use super::*;
+use graft_ui::conflict_resolver::SideRoles;
 
 pub(super) fn source_of(state: &AppState) -> Source<'_> {
     Source {
@@ -16,6 +17,10 @@ pub(super) fn source_of(state: &AppState) -> Source<'_> {
         recent: &state.palette_recent,
         finds: true,
         tags_read: state.refs.is_some(),
+        sides: state
+            .resolver
+            .is_some()
+            .then(|| crate::update::resolver::side_names(state).roles),
     }
 }
 
@@ -30,6 +35,7 @@ pub(crate) fn outside_source<'a>(keymap: &'a Keymap, problems: &'a [String]) -> 
         recent: &NO_RECENT,
         finds: false,
         tags_read: false,
+        sides: None,
     }
 }
 
@@ -43,7 +49,16 @@ pub(crate) fn rows(state: &AppState, palette: &PaletteState) -> Vec<Group> {
 /// Under `⌃P` with something typed, the find groups come after ACTIONS and
 /// before COMMANDS RUN RECENTLY (§2.12, ticket 12).
 pub(crate) fn listing(source: &Source<'_>, palette: &PaletteState) -> Vec<Group> {
-    let groups = groups(source, palette);
+    let mut groups = groups(source, palette);
+    if let Some(roles) = source.sides {
+        for (_, entries) in &mut groups {
+            for entry in entries.iter_mut() {
+                if let Some(words) = action_of(entry).and_then(|id| side_label(id, roles)) {
+                    entry.row.label = sanitize_line(&words);
+                }
+            }
+        }
+    }
     let mut out = filter(
         groups,
         palette.query.text(),
@@ -60,6 +75,30 @@ pub(crate) fn listing(source: &Source<'_>, palette: &PaletteState) -> Vec<Group>
         out.splice(at..at, finds);
     }
     out
+}
+
+/// The resolver's side keys named as its bar names them: `o` is `Take
+/// upstream` in a rebase, `Take yours` in a merge (ADR-0043 §4, review
+/// m8-usability B). `None` for every other action: its table label stands.
+fn side_label(action: ActionId, roles: SideRoles) -> Option<String> {
+    let (ours, theirs) = (roles.ours(), roles.theirs());
+    Some(match action.0 {
+        "resolver.take_ours" => format!("Take {ours}"),
+        "resolver.take_theirs" => format!("Take {theirs}"),
+        "resolver.all_ours" => format!("{} in every block", capital(ours)),
+        "resolver.all_theirs" => format!("{} in every block", capital(theirs)),
+        "resolver.file_ours" => format!("{} for the whole file, done", capital(ours)),
+        "resolver.file_theirs" => format!("{} for the whole file, done", capital(theirs)),
+        _ => return None,
+    })
+}
+
+/// `word` with its first letter upper-case (the role words are ASCII).
+fn capital(word: &str) -> String {
+    let mut letters = word.chars();
+    letters.next().map_or_else(String::new, |first| {
+        first.to_uppercase().chain(letters).collect()
+    })
 }
 
 /// The `more` row under [`COMMIT_HITS`] commits: `⏎` hands the query to `/`.

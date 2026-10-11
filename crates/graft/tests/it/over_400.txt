@@ -137,7 +137,7 @@
 545 crates/graft/src/event_loop/tests/pace.rs
 651 crates/graft/src/event_loop/tests/pixel_scroll.rs
 706 crates/graft/src/event_loop/tests/settle.rs
-1427 crates/graft/src/history/tests.rs
+1468 crates/graft/src/history/tests.rs
 406 crates/graft/src/jobs/conflict.rs
 558 crates/graft/src/jobs/operate.rs
 1285 crates/graft/src/jobs/tests.rs
@@ -178,7 +178,7 @@
 488 crates/graft/src/update/name_prompt/tests.rs
 415 crates/graft/src/update/operate/outcome.rs
 1501 crates/graft/src/update/operate/tests.rs
-402 crates/graft/src/update/palette/mod.rs
+404 crates/graft/src/update/palette/mod.rs
 425 crates/graft/src/update/palette/tests.rs
 635 crates/graft/src/update/picker/tests.rs
 440 crates/graft/src/update/place.rs
@@ -194,7 +194,7 @@
 1545 crates/graft/src/update/remote/tests.rs
 538 crates/graft/src/update/remote/tests/lease.rs
 452 crates/graft/src/update/resolver.rs
-953 crates/graft/src/update/resolver/tests.rs
+954 crates/graft/src/update/resolver/tests.rs
 988 crates/graft/src/update/resolver/tests/file_list.rs
 425 crates/graft/src/update/resolver/tests/opens_itself.rs
 1680 crates/graft/src/update/rewrite_editor/tests.rs
@@ -270,7 +270,7 @@
 420 crates/graft/tests/it/m7_walk/switch.rs
 403 crates/graft/tests/it/m8_walk/clone.rs
 685 crates/graft/tests/it/name_and_drag.rs
-558 crates/graft/tests/it/outside_repo.rs
+581 crates/graft/tests/it/outside_repo.rs
 1142 crates/graft/tests/it/preview.rs
 613 crates/graft/tests/it/pty.rs
 401 crates/graft/tests/it/quit_waits/hangup.rs

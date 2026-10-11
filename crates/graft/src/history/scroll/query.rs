@@ -84,6 +84,14 @@ impl History {
         if matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
             return None;
         }
+        Some(self.find(commit, height))
+    }
+
+    /// Asks the walk to lay out until it has `commit`'s row, as a jump: the
+    /// rows on hand are not looked in. [`History::seek`]'s ask, and a view
+    /// change's when a seek was still out (the rows on hand are the old
+    /// view's, so their row numbers mean nothing in the new one).
+    pub(super) fn find(&mut self, commit: Oid, height: usize) -> RowRequest {
         let fallback = self.drawn(self.top.saturating_sub(height)..self.top + 2 * height);
         let request = self.ask(
             Wanted::Find {
@@ -95,7 +103,7 @@ impl History {
         );
         self.jump = Some(request.id);
         self.seeking = Some(commit);
-        Some(request)
+        request
     }
 
     /// Puts the cursor and viewport back where they were (`Esc` on a running

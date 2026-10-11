@@ -337,6 +337,29 @@ fn starting_inside_a_repository_lands_on_head() {
     quit_cleanly(pty);
 }
 
+/// m8-polish-and-ship/45 A (review m8-usability A): a stash newer than
+/// `HEAD` is the top row, and the launch still lands on `HEAD`. The stash
+/// list arrives with the refs and changes the history view; that change
+/// dropped the pending seek, leaving the cursor on the stash.
+#[test]
+fn a_stash_newer_than_head_does_not_take_the_launch_landing() {
+    let tree = Tree::new();
+    let (repo, subject) = tree.repo("api");
+    let files = git(&repo, &["ls-files"]);
+    let file = files.lines().next().expect("a tracked file");
+    let path = repo.join(file);
+    let mut body = std::fs::read(&path).expect("reads");
+    body.extend_from_slice(b"\nparked\n");
+    std::fs::write(&path, body).expect("writes");
+    crate::app_harness::git_as_graft(&repo, &["stash", "push", "-m", "parked work"]);
+    let isolated = Isolated::new();
+    let pty = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
+    pty.wait_for("the stash row", |s| s.has("parked work"));
+    let (cursor, _) = landed(&pty, &subject, &[]);
+    assert!(cursor > 1, "not the top row");
+    quit_cleanly(pty);
+}
+
 /// The cursor row's index and the graph's rows down to it, once the cursor
 /// sits on `subject` and every line in `settled` is drawn (the working-tree
 /// read answers on its own time, and its pinned row moves every row below).

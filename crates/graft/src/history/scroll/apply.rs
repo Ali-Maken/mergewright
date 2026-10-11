@@ -225,7 +225,9 @@ impl History {
     /// Switching `Follow` starts at the top: the other view has different
     /// rows, and the row numbers here mean nothing in it. A fold or a hidden
     /// stash keeps the viewport. Either way the selected commit is looked for
-    /// in the rows that come back, and the cursor lands on it if it is there.
+    /// in the rows that come back, and the cursor lands on it if it is there
+    /// — unless a `G` or a seek is still out: that is asked again in the new
+    /// view and lands as it would have.
     pub fn change_view(&mut self, view: View, height: usize) -> Option<RowRequest> {
         if view == self.view || matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
             return None;
@@ -236,9 +238,21 @@ impl History {
             self.cursor = 0;
         }
         self.view = view;
-        self.jump = None;
         // The rows below the change are laid out again.
         self.phase = Phase::Streaming;
-        self.wanted(height.max(1), true)
+        let height = height.max(1);
+        // A `G` or a seek not yet answered is superseded by this request:
+        // ask it again in the new view, or it is lost — as `promote` does.
+        // The launch's seek to `HEAD` is one: the stash list arrives with the
+        // refs and changes the view (m8-polish-and-ship/45 A).
+        if self.jump.is_some() {
+            if let Some(commit) = self.seeking {
+                return Some(self.find(commit, height));
+            }
+            let request = self.ask(Wanted::Last(2 * height), height);
+            self.jump = Some(request.id);
+            return Some(request);
+        }
+        self.wanted(height, true)
     }
 }
