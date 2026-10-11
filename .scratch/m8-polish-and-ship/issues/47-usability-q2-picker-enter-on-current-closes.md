@@ -1,6 +1,7 @@
 # Usability Q2: `⏎` on the branch he is on closes the branch picker
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: **Sonnet**. One key's effect on one row, held by state tests and a pty walk; no git write.
 Brownfield: a **scout first** (ADR-0035), half a page: where the picker's `⏎` goes through `switch`, where "you're on
 <b>" is produced and drawn, which bar clause the row shows, and whether a mouse click on a row is the same action.

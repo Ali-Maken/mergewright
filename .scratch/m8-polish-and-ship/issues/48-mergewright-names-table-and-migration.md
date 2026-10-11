@@ -1,6 +1,7 @@
 # Mergewright 1: one table of every name, and one move from whatever is in force
 
-Status: draft
+Status: ready
+Blocked by: 46, 47
 Build with:
 - Part A: **Fable (signature)**. The generation table is the interface every later rename ticket calls, and every
   `New`/`Old` site is re-decided against it.

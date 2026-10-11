@@ -1,6 +1,7 @@
 # Mergewright 4: every environment name is `MWR_*`
 
-Status: draft
+Status: ready
+Blocked by: 50
 Build with: **Sonnet**. A token rename (`TRIB_` → `MWR_`) held by one grep test; no behaviour changes.
 Brownfield: 27b's NOTES are the scout (same 45 names, one prefix later).
 Needs: `mergewright-app-words` merged (same test files; sequential). Alone: it touches tests in every crate.

@@ -1,6 +1,7 @@
 # Mergewright 3: the app calls itself Mergewright, in every word it draws or prints
 
-Status: draft
+Status: ready
+Blocked by: 49
 Build with: **Sonnet**. A word swap held by one grep test over string literals; layout drift goes to the user's eye.
 Brownfield: 27a's NOTES ("Scope decisions to check") list the sites; conductor confirms no new scout.
 Needs: `mergewright-package-and-command` merged (`graft::cli::COMMAND`; same test files, so sequential).

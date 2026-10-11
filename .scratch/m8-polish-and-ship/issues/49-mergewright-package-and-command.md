@@ -1,6 +1,7 @@
 # Mergewright 2: the package is `mergewright`, the command is `mwr`
 
-Status: draft
+Status: ready
+Blocked by: 48
 Build with: **Sonnet**. Mechanical renames held by grep tests and `cargo metadata`; nothing the diff can't show.
 Brownfield: 27a's NOTES and `scouts/27-rename-sweep.md` serve as the scout (same sites, one name later). Conductor confirms.
 Needs: `mergewright-names-table-and-migration` Part B merged: `graft_core::on_disk::Generation::{CURRENT, command,

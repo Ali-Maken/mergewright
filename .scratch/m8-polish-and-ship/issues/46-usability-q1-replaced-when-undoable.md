@@ -1,6 +1,7 @@
 # Usability Q1: in J, a commit an undoable operation left behind reads "replaced", not "✗ lost"
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: **Opus**. It reads undo semantics (which entries are in force and undoable), and a wrong rule would tell
 him real damage is safe. Judged by tests that build the journal and git state, so not Fable.
 Brownfield: a **scout first** (ADR-0035), one page: where `build` attaches a lost run to its event, where the row's

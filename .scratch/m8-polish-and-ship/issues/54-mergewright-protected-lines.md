@@ -1,8 +1,9 @@
 # Mergewright 9: the lines in CLAUDE.md, PROMPT.md and `.claude/**` that the name changes — for the user
 
-Status: draft. **No edit until the user says yes.** These are his files (CLAUDE.md, PROMPT.md, `.claude/**`); no agent
-message is his consent. The conductor shows him the table below; on his yes, a builder applies exactly the approved
-rows; on "change", the conductor edits the table and asks again.
+Status: ready (user approved the protected-line edits 2026-10-11)
+Blocked by: 49
+He said yes to "about 20 lines naming the product in CLAUDE.md, PROMPT.md and the reviewer's instructions" before
+seeing the table; a builder applies exactly the table's rows, nothing beyond it.
 Build with: **Sonnet**, after his yes only. Runs no cargo, so it can go beside anything.
 Needs: none to list. To apply: `mergewright-package-and-command` merged (`-p mergewright` exists).
 

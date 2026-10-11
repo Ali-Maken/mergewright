@@ -1,6 +1,7 @@
 # Mergewright 5: messages written into git say `mergewright`; J's column says Mergewright
 
-Status: draft
+Status: ready
+Blocked by: 48, 51
 Build with: **Opus**. Git writes and the readers that find his set-aside edits again: a reader missed means a put-back
 that silently does nothing. Judged by git-truth tests, so not Fable.
 Brownfield: a **scout first** (ADR-0035), one page: every writer and every reader of a message the app writes into git

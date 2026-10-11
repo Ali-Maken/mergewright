@@ -1,6 +1,7 @@
 # Mergewright 7: README, TESTING.md, CHANGELOG, help docs and design-doc UI quotes say Mergewright and `mwr`
 
-Status: draft
+Status: ready
+Blocked by: 52, 53
 Build with: **Sonnet**. Line triage by a written rule, held by a grep test and a listed remainder.
 Needs: `mergewright-git-messages-and-journal-column` and `mergewright-release-and-formula` merged (final words in the
 app, README Install owned there). Beside: `mergewright-recaptures` (it commits only `docs/shots/` captures; this

@@ -1,6 +1,7 @@
 # Mergewright acceptance: his repositories open under the new name with nothing lost, and Q1/Q2 hold
 
-Status: draft
+Status: ready
+Blocked by: 46, 47, 48, 49, 50, 51, 52, 53, 55, 56
 Build with: **Fable**. The acceptance ticket (CLAUDE.md "Running work"); not counted against the Fable build budget.
 Brownfield: 28's NOTES ("Scout used", "One counter", the `m8_walk` harness) serve as the scout.
 Needs: every other spec of this set: `usability-q1-replaced-when-undoable`, `usability-q2-picker-enter-on-current-closes`,

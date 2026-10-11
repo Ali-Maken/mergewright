@@ -97,3 +97,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-10-11 · Usability Q1/Q2: "yes say replaced" (old tip after rebase reads replaced, not lost, when undoable); "close the picker" (⏎ on current branch closes it).
 - 2026-10-11 · Then switched: "lets keep it mergewright" → name **Mergewright**, command `mwr` (Scion dropped). `mergewright`/`mwr` free on crates.io + Homebrew, nothing on PATH, no tool found; `mw` avoided (MacWhisper CLI).
 - 2026-10-11 · Last naming round: rejected names that do not read as git at once ("guildmark doesnt scream git utility"); kept **Mergewright** ("lets go with mergewright"). Naming closed.
+- 2026-10-11 · Said yes to: changing the ~20 product-name lines in CLAUDE.md, PROMPT.md and reviewer.md (ticket 54); building dist into `.tools/` to check the brew install (ticket 53); deleting leftover temp/build folders.

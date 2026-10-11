@@ -1,6 +1,7 @@
 # Mergewright 8: M8's pty captures re-shot under the final name (27d unparked)
 
-Status: draft. Supersedes 27d's remaining boxes (27d stays parked as the record of the classify pass).
+Status: ready. Supersedes 27d's remaining boxes (27d stays parked as the record of the classify pass).
+Blocked by: 46, 47, 48, 49, 50, 51, 52
 Build with: _(blank: brownfield, ADR-0035)_. Planner expects **Sonnet** after the scout: runs existing writers; its
 judgement is bounded by the drift script and two stop rules.
 Scout first: one page mapping each M8 capture in the re-shoot set to its writer (`file · writer command`), and

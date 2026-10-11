@@ -1,6 +1,7 @@
 # Mergewright 6: what dist builds is named mergewright, and the formula is ours
 
-Status: draft
+Status: ready
+Blocked by: 49, 51
 Build with: **Opus**. Packaging judgement (dist config, a formula template, a hand-edited workflow) where a wrong call
 would ship another product's name; small code.
 Brownfield: ticket 24's NOTES and `scouts/24-release.md` serve as the scout. Conductor confirms.
@@ -16,7 +17,7 @@ Beside: `mergewright-git-messages-and-journal-column` (disjoint files; it runs c
 - `docs/research/install-docs.md` §2–§3 (dist, tap); README's Install section only
 
 ## Decisions
-- **dist:** 0.33.0, built from its `v0.33.0` tag into `.tools/` (gitignored), as ticket 24 did. If the build or install
+- **dist** (user allowed the .tools/ build 2026-10-11): 0.33.0, built from its `v0.33.0` tag into `.tools/` (gitignored), as ticket 24 did. If the build or install
   is refused (24 B+2 hit the permission classifier), **stop: `blocked: dist not installable`**, with the refusal's
   first line. Installing it is the user's call; do not work around it.
 - **Dist metadata:** homebrew installer off (`installers = ["shell"]`); `allow-dirty = ["ci"]` (§11);
