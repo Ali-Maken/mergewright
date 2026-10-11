@@ -283,6 +283,8 @@ pub(crate) struct Source<'a> {
     pub finds: bool,
     /// The refs job has answered: TAGS can be matched.
     pub tags_read: bool,
+    /// The resolver is open: its side keys named as its bar does (`side_label`).
+    pub sides: Option<graft_ui::conflict_resolver::SideRoles>,
 }
 
 /// One row before filtering: its words to match on, besides the label.

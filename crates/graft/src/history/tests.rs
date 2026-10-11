@@ -795,6 +795,47 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
     assert_eq!(history.reanchor, None);
 }
 
+/// A seek still out when the view changes is asked again in the new view,
+/// and lands when that answer comes (m8-polish-and-ship/45 A: the launch's
+/// seek to `HEAD` was dropped by the stash list's view change, and the
+/// cursor stayed on the stash row).
+#[test]
+fn a_seek_still_out_survives_a_view_change() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
+    let mut history = History::started();
+    let window = |request, first: usize, rows: &[Row]| {
+        HistoryUpdate::Window(Window {
+            request,
+            first,
+            rows: rows.to_vec().into(),
+            laid_out: whole.len(),
+            done: false,
+            promoted: false,
+        })
+    };
+    history.asked = 1;
+    history.apply(window(1, 0, &whole[..20]), HEIGHT);
+    let sought = whole[30].commit.id;
+    history
+        .seek(sought, HEIGHT)
+        .expect("asks the walk to find it");
+
+    let mut view = View::default();
+    view.inclusion.hidden_stashes.insert(whole[0].commit.id);
+    let asked = history.change_view(view, HEIGHT).expect("asks for rows");
+    assert!(
+        matches!(asked.wanted, Wanted::Find { commit, .. } if commit == sought),
+        "the view change asks for the sought commit again: {:?}",
+        asked.wanted
+    );
+    history.apply(window(asked.id, 20, &whole[20..40]), HEIGHT);
+    assert_eq!(history.selected().map(|r| r.commit.id), Some(sought));
+    assert_eq!(history.jump, None);
+    assert_eq!(history.seeking, None);
+}
+
 /// Sends `request` through the worker's loop — and the idle steps of any
 /// promotion it began — and applies what comes back, as the job and `update`
 /// would between them.
