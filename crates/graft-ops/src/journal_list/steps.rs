@@ -1,5 +1,4 @@
-//! Reflog records into steps, and steps onto Graft's own entries
-//! (ADR-0046 §2).
+//! Reflog records into steps (ADR-0046 §2).
 //!
 //! git writes more than one record for one act: a `reset` moves the branch
 //! and `HEAD` (two records, same old and new, same second); a rebase writes
@@ -7,7 +6,8 @@
 //! `git stash` resets `HEAD` to itself. The list shows one row per act, so
 //! the records are grouped first:
 //!
-//! 1. A run of `HEAD` records whose subjects start `rebase` folds into the
+//! 1. A run of `HEAD` records whose subjects start `rebase`, one rebase's
+//!    (from its `(start)` to its `(finish): returning to`), folds into the
 //!    branch's `rebase (finish): refs/heads/<b> onto …` record written
 //!    within [`PAIR_WINDOW_SECS`] of the run's newest, or into the run's
 //!    newest record when there is none.
@@ -19,26 +19,13 @@
 //! 3. A `HEAD` record pairs with a branch record of the same old and new
 //!    values written within [`PAIR_WINDOW_SECS`] of it.
 //!
-//! A step is Graft's when one of its records is one of Graft's moves: a
-//! journal entry's `refs_before`/`refs_after` for that ref, old and new
-//! alike; or, for a switch (whose entry records `HEAD`'s branches but no
-//! commit), `checkout: moving from <before> to <after>` within
-//! [`CHECKOUT_WINDOW_MS`] of the entry.
+//! [`super::owners`] then says which steps are Graft's own.
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::{HeadRef, JournalEntry};
 use graft_git::reflog::ReflogRecord;
 
 use super::{OutsideRecord, PAIR_WINDOW_SECS};
-
-/// How close (ms) a `checkout:` record must be to a Graft switch's entry to
-/// be that switch's. A switch's entry records `HEAD`'s branch before and
-/// after but no commit, so the record's (ref, old, new) has nothing to match
-/// and time stands in; a minute covers a slow checkout with its set-aside,
-/// and the same switch in the shell within a minute of Graft's is the only
-/// thing it could mistake.
-pub(super) const CHECKOUT_WINDOW_MS: i64 = 60_000;
 
 /// One act: the records that are one row.
 #[derive(Clone, Debug)]
@@ -112,6 +99,19 @@ fn rebase_finish_branch(subject: &str) -> Option<&str> {
     name.starts_with("refs/heads/").then_some(name)
 }
 
+/// `rebase (finish): returning to <x>` (`HEAD`'s last record of a rebase)
+/// → `<x>`: `refs/heads/<b>`, or a hex id after a detached rebase.
+fn returning_to(subject: &str) -> Option<&str> {
+    subject
+        .strip_prefix("rebase (finish): returning to ")
+        .or_else(|| subject.strip_prefix("rebase -i (finish): returning to "))
+}
+
+/// `rebase (start): checkout <x>`: `HEAD`'s first record of a rebase.
+fn is_rebase_start(subject: &str) -> bool {
+    subject.starts_with("rebase (start)") || subject.starts_with("rebase -i (start)")
+}
+
 fn close_in_time(left: &ReflogRecord, right: &ReflogRecord) -> bool {
     (left.at - right.at).abs() <= PAIR_WINDOW_SECS
 }
@@ -128,8 +128,16 @@ fn fold_rebases(records: &[&ReflogRecord], taken: &mut [bool]) -> Vec<Step> {
             at += 1;
             continue;
         }
+        // One rebase per run: two with no switch between (rebase, fetch,
+        // rebase again) write one unbroken stretch of `rebase` records, and
+        // one run would leave the older one's finish and old tip to the
+        // newer one's event (review m8 g1, Major 2).
         let mut end = at;
-        while end + 1 < head.len() && is_rebase(&records[head[end + 1]].subject) {
+        while end + 1 < head.len()
+            && is_rebase(&records[head[end + 1]].subject)
+            && !is_rebase_start(&records[head[end]].subject)
+            && returning_to(&records[head[end + 1]].subject).is_none()
+        {
             end += 1;
         }
         let run: Vec<usize> = head[at..=end].to_vec();
@@ -145,12 +153,9 @@ fn fold_one(records: &[&ReflogRecord], taken: &mut [bool], run: &[usize]) -> Ste
     // The branch the run says it returned to. Two rebases in one second (a
     // chain of branches rebased in turn) put both finishes in the window:
     // nearness alone paired a run with the other branch's finish (m8/46).
-    let returned_to = run.iter().find_map(|index| {
-        let subject = &records[*index].subject;
-        subject
-            .strip_prefix("rebase (finish): returning to ")
-            .or_else(|| subject.strip_prefix("rebase -i (finish): returning to "))
-    });
+    let returned_to = run
+        .iter()
+        .find_map(|index| returning_to(&records[*index].subject));
     let finish = (0..records.len())
         .filter(|index| {
             let branch = rebase_finish_branch(&records[*index].subject);
@@ -303,123 +308,11 @@ fn after_head_record(
         // record (the twin, above).
         return (!is_hex_id(to) && next_leave == Some(to)).then(|| to.to_owned());
     }
-    if let Some(rest) = subject
-        .strip_prefix("rebase (finish): returning to ")
-        .or_else(|| subject.strip_prefix("rebase -i (finish): returning to "))
-    {
+    if let Some(rest) = returning_to(subject) {
         return branch_short(rest).map(str::to_owned);
     }
-    if subject.starts_with("rebase (start)") || subject.starts_with("rebase -i (start)") {
+    if is_rebase_start(subject) {
         return None;
     }
     current
-}
-
-/// Per step, the journal entry (an index into `entries`) it is one of
-/// Graft's own moves for, or `None` for the shell's.
-///
-/// Each (entry, ref) takes at most one step, the nearest in time, so the
-/// same move made again in the shell later is still drawn.
-pub(super) fn match_entries(
-    entries: &[JournalEntry],
-    outside: &[OutsideRecord],
-    grouped: &Steps,
-) -> Vec<Option<usize>> {
-    let mut owner: Vec<Option<usize>> = vec![None; grouped.steps.len()];
-    for (entry_index, entry) in entries.iter().enumerate().rev() {
-        for (key, before) in &entry.refs_before {
-            let Some(after) = entry.refs_after.get(key) else {
-                continue;
-            };
-            if before == after {
-                continue;
-            }
-            let hit = |record: usize| {
-                let record_ref = &outside[record].record;
-                record_ref.old == *before
-                    && record_ref.new == *after
-                    && moves_ref(record, key, entry, outside, &grouped.on)
-            };
-            claim(&mut owner, entry_index, entry, outside, grouped, hit);
-        }
-        if let Some((from, to)) = switch_names(entry) {
-            let hit = |record: usize| {
-                let record_ref = &outside[record].record;
-                checkout_names(&record_ref.subject) == Some((from.as_str(), to.as_str()))
-                    && (record_ref.at.saturating_mul(1000) - entry.at_unix_ms).abs()
-                        <= CHECKOUT_WINDOW_MS
-            };
-            claim(&mut owner, entry_index, entry, outside, grouped, hit);
-        }
-    }
-    owner
-}
-
-/// The unclaimed step nearest the entry in time with a record `hit` accepts
-/// becomes the entry's.
-fn claim(
-    owner: &mut [Option<usize>],
-    entry_index: usize,
-    entry: &JournalEntry,
-    outside: &[OutsideRecord],
-    grouped: &Steps,
-    hit: impl Fn(usize) -> bool,
-) {
-    let best = grouped
-        .steps
-        .iter()
-        .enumerate()
-        .filter(|(index, step)| owner[*index].is_none() && step.members.iter().any(|m| hit(*m)))
-        .min_by_key(|(_, step)| {
-            (outside[step.primary].record.at.saturating_mul(1000) - entry.at_unix_ms).abs()
-        })
-        .map(|(index, _)| index);
-    if let Some(index) = best {
-        owner[index] = Some(entry_index);
-    }
-}
-
-/// Does the record at `record` move the ref `key` the entry recorded? Its
-/// own log's ref, or `HEAD` while on that branch (by the logs, or by the
-/// entry's own `HEAD`).
-fn moves_ref(
-    record: usize,
-    key: &str,
-    entry: &JournalEntry,
-    outside: &[OutsideRecord],
-    on: &[Option<String>],
-) -> bool {
-    let refname = &outside[record].record.refname;
-    if refname == key {
-        return true;
-    }
-    if refname != "HEAD" {
-        return false;
-    }
-    let Some(short) = branch_short(key) else {
-        return false;
-    };
-    let head_on = |head: &HeadRef| matches!(head, HeadRef::Branch(full) if full == key);
-    on[record].as_deref() == Some(short)
-        || head_on(&entry.head_before)
-        || entry.head_after.as_ref().is_some_and(head_on)
-}
-
-/// A switch's `(from, to)` as git's `checkout:` subject names them: short
-/// branch names, a detached `HEAD` as its full hex id.
-fn switch_names(entry: &JournalEntry) -> Option<(String, String)> {
-    let after = entry.head_after.as_ref()?;
-    if *after == entry.head_before {
-        return None;
-    }
-    Some((head_name(&entry.head_before), head_name(after)))
-}
-
-fn head_name(head: &HeadRef) -> String {
-    match head {
-        HeadRef::Branch(full) | HeadRef::Unborn(full) => {
-            branch_short(full).unwrap_or(full).to_owned()
-        }
-        HeadRef::Detached(oid) => oid.to_string(),
-    }
 }

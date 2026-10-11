@@ -15,6 +15,7 @@
 
 mod edits;
 mod fate;
+mod owners;
 mod recover;
 mod rows;
 mod scratch;
@@ -286,7 +287,7 @@ pub fn build(
     scan: LostScan,
 ) -> JournalList {
     let steps = steps::steps(outside);
-    let owner = steps::match_entries(entries, outside, &steps);
+    let owner = owners::match_entries(entries, outside, &steps);
     let events = rows::events(entries, outside, &steps, &owner);
     let rows = rows::assemble(
         entries,

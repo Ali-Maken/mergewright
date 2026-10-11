@@ -30,12 +30,14 @@ use crate::jobs::undo::JournalRead;
 pub(crate) mod answers;
 pub(crate) mod find;
 pub(crate) mod keys;
+mod reading;
 pub(super) use answers::journal_event;
 pub(crate) use answers::{lost_landed, outside_landed, recover_answered};
 #[cfg(test)]
 pub(crate) use keys::journal_enter;
+pub(crate) use keys::undo_from_j;
 pub(super) use keys::{close, journal_key};
-pub(crate) use keys::{not_undone_kind, switched_from, undo_from_j};
+pub(crate) use reading::{not_undone_kind, switched_from};
 
 /// A row of J's list by what it stands for, so the cursor keeps its row
 /// when the list is built again with more rows in it (note J1).

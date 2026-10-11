@@ -109,3 +109,18 @@ fn only_stash_has_hidden_search_words() {
         .collect();
     assert_eq!(with, ["graph.stash"]);
 }
+
+/// `?` and the man page say what `⏎` in the picker does on both kinds of
+/// row: it switches, and on the branch he is on it goes back to the graph
+/// (keymap §2.16, usability Q2; review m8 g1, minor 2).
+#[test]
+fn picker_switch_names_both_outcomes() {
+    let label = defaults()
+        .iter()
+        .find(|b| b.action.0 == "picker.switch")
+        .map(|b| b.label)
+        .expect("picker.switch is in the table");
+    assert!(label.starts_with("Switch to it"), "{label}");
+    assert!(label.contains("back to the graph"), "{label}");
+    assert!(label.contains("on your own branch"), "{label}");
+}

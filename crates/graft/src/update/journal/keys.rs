@@ -1,8 +1,8 @@
 //! The journal screen's keys: move, next lost, branch here, close, `Enter`.
 
 use super::{
-    AppState, Command, EntryId, JobId, KeyCode, KeyPress, ListRow, Loading, Oid, OperationKind,
-    Status, rebuild, row_commit, row_key,
+    AppState, Command, EntryId, JobId, KeyCode, KeyPress, ListRow, Loading, OperationKind, Status,
+    not_undone_kind, rebuild, row_commit, row_key, switched_from,
 };
 use graft_ops::journal_list::Fate;
 
@@ -285,20 +285,6 @@ pub(super) fn enter(
     }
 }
 
-/// The branch a shell switch left, as a switch target: `checkout: moving
-/// from main to spike` → `main`; a detached start is its commit.
-pub(crate) fn switched_from(subject: &str) -> Option<crate::update::switch::SwitchTarget> {
-    let (from, _) = subject
-        .strip_prefix("checkout: moving from ")?
-        .split_once(" to ")?;
-    let hex = (from.len() == 40 || from.len() == 64) && from.bytes().all(|b| b.is_ascii_hexdigit());
-    Some(if hex {
-        crate::update::switch::SwitchTarget::Detached(Oid::from_hex(from).ok()?)
-    } else {
-        crate::update::switch::SwitchTarget::Branch(format!("refs/heads/{from}"))
-    })
-}
-
 /// `Enter` on a `●` row: `u`, `U` or **the time machine** — revert to just
 /// before that entry (`docs/design/02-keymap.md` §2.11,
 /// `docs/design/06-undo-journal-design.md` §6.6).
@@ -370,25 +356,6 @@ pub(super) fn enter_graft(
         return;
     };
     undo_from_j(next, commands, redo, next_id);
-}
-
-/// The word J draws for a step Tributary doesn't undo, or `None` for one it
-/// does. The predicate is `graft_ops::journal::undoable`, the one
-/// `plan_revert_to` skips by, so J's `⏎` and its bar cannot disagree with
-/// what the time machine would do.
-pub(crate) fn not_undone_kind(entry: &graft_core::journal::JournalEntry) -> Option<&'static str> {
-    if graft_ops::journal::undoable(entry) {
-        return None;
-    }
-    Some(match entry.kind {
-        OperationKind::Fetch => "fetch",
-        OperationKind::Push => "push",
-        // `undoable` is false for a pull only when it changed nothing.
-        OperationKind::Pull => "pull that changed nothing",
-        // `undoable` answers false for no other kind; "step" is honest if
-        // graft-ops ever adds one.
-        _ => "step",
-    })
 }
 
 /// `u`/`U` in J and `⏎` on the `← u`/`← U` row: one path, one outcome

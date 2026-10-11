@@ -70,7 +70,7 @@ In the specs; the load-bearing one is `graft_core::on_disk::Generation` (ticket 
 - J row `└ ⇢ replaced  <sha> "<subject>" · was <b>'s tip · undo brings it back` (`deleted` for a branch delete),
   muted; legend clause `⇢ undo brings it back`, added only when it fits whole; no ASCII form (J has none). Eye lands on the `●` row above it (unchanged).
   `n`/`N` skip it. Empty and error states unchanged.
-- Picker: the current row's bar clause is `⏎ close`; the "you're on" message is gone.
+- Picker: the current row's bar clause is `⏎ show it on the graph`, `⇥`'s words for the same act (was `⏎ close`, beside `esc close`; amended 2026-10-12, review m8 g1 minor 1, conductor's call); the "you're on" message is gone.
 - J column: `●  Mergewright` / `$  outside`. No other new screen.
 
 ## Genuinely risky tickets

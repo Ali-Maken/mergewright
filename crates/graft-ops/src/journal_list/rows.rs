@@ -17,6 +17,7 @@ use graft_core::oid::Oid;
 use graft_git::history_reads::Unreached;
 use graft_git::reflog::ReflogRecord;
 
+use super::fate::judged_by;
 use super::steps::{Steps, branch_short, checkout_names, is_hex_id};
 use super::words::words_on;
 use super::{HeldBy, ListRow, LostCommit, LostEdit, OutsideRecord, OutsideStep, fate_of};
@@ -119,7 +120,7 @@ pub(super) fn assemble(
         for run in &found.lost {
             if let Some((event, hint)) = place(&olds, run.tip) {
                 let graft = match &events[event] {
-                    Event::Graft { entry, .. } => Some((&entries[*entry], in_force[*entry])),
+                    Event::Graft { entry, .. } => Some(judged_by(entries, &in_force, *entry)),
                     Event::Outside { .. } => None,
                 };
                 under[event].push(LostCommit {

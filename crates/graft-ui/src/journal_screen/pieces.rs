@@ -64,13 +64,16 @@ pub(super) fn row_pieces(
     pieces
 }
 
+/// The `⇢ replaced` row's label, the widest of a lost row's labels.
+const WIDEST_LABEL: &str = "└ ⇢ replaced";
+
 /// A `✗` or `⇢` row's label and words: `└ ✗ lost` under the event's glyph
 /// and source, the words in the age's column — the sha7 stands where the
 /// time does. A commit `u` brings back is `⇢` and muted, not a warning: it
 /// moved on, it is not gone (usability Q1).
 fn lost_pieces(row: &JournalRowView, columns: Columns, width: usize) -> [Piece; 2] {
     let (label, ink) = match row.kind {
-        RowKind::Replaced => ("└ ⇢ replaced", Ink::Muted),
+        RowKind::Replaced => (WIDEST_LABEL, Ink::Muted),
         RowKind::Deleted => ("└ ⇢ deleted", Ink::Muted),
         RowKind::Graft | RowKind::Outside | RowKind::Lost | RowKind::LostEdit => {
             ("└ ✗ lost", Ink::Warning)
@@ -78,9 +81,10 @@ fn lost_pieces(row: &JournalRowView, columns: Columns, width: usize) -> [Piece; 
     };
     let lead_x = CURSOR + GLYPH;
     // Below 120 the age column (10) is narrower than `└ ⇢ replaced` (12):
-    // the words then start one blank after the label.
+    // every lost row's words then start one blank after that, the widest
+    // label, so the shas of `⇢` and `✗` rows line up (review m8 g1, minor 5).
     let column = if columns.source { SOURCE } else { AGE };
-    let x = lead_x + column.max(label.width() + 1);
+    let x = lead_x + column.max(WIDEST_LABEL.width() + 1);
     [
         Piece {
             x: lead_x,
