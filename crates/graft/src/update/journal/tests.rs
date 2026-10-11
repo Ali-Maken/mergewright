@@ -352,7 +352,7 @@ fn an_open_browser_swallows_the_graphs_own_keys() {
 
 use graft_git::history_reads::{LostRun, Unreached};
 use graft_git::reflog::ReflogRecord;
-use graft_ops::journal_list::{HeldBy, LostCommit, LostEdit, OutsideStep};
+use graft_ops::journal_list::{Fate, HeldBy, LostCommit, LostEdit, OutsideStep};
 
 fn value(byte: u8) -> Option<graft_core::oid::Oid> {
     (byte != 0).then(|| oid(byte))
@@ -596,6 +596,10 @@ fn a_fetch_above_does_not_stop_the_preselect() {
 }
 
 fn lost_row(event: usize, tip: u8) -> ListRow {
+    row_with_fate(event, tip, Fate::Lost)
+}
+
+fn row_with_fate(event: usize, tip: u8, fate: Fate) -> ListRow {
     ListRow::Lost {
         event,
         commit: LostCommit {
@@ -605,6 +609,7 @@ fn lost_row(event: usize, tip: u8) -> ListRow {
             },
             subject: Some(format!("subject {tip}")),
             held_by: HeldBy::Head,
+            fate,
         },
     }
 }
@@ -1203,3 +1208,4 @@ fn closing_j_cancels_a_put_back_still_being_asked() {
 
 mod minors;
 mod one_u;
+mod replaced;

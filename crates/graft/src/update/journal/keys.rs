@@ -4,6 +4,7 @@ use super::{
     AppState, Command, EntryId, JobId, KeyCode, KeyPress, ListRow, Loading, Oid, OperationKind,
     Status, rebuild, row_commit, row_key,
 };
+use graft_ops::journal_list::Fate;
 
 /// `J`, and every key while the browser is open. `true` when the key was
 /// this view's, so the caller sends it nowhere else — the same shape as
@@ -123,17 +124,19 @@ pub(super) fn move_to(next: &mut AppState, index: Option<usize>) {
 }
 
 /// `n`/`N` with no find active: the next (older) or previous (newer) `✗`
-/// row, lost edits included. Nowhere to go stays put.
+/// row, lost edits included; a `⇢` row (a commit `u` brings back,
+/// usability Q1) is passed over. Nowhere to go stays put.
 pub(super) fn next_lost(next: &mut AppState, older: bool) {
     let Some(list) = &next.journal.list else {
         return;
     };
     let from = next.journal.selected();
     let is_lost = |index: &usize| {
-        matches!(
-            list.rows.get(*index),
-            Some(ListRow::Lost { .. } | ListRow::LostEdit { .. })
-        )
+        matches!(list.rows.get(*index), Some(ListRow::LostEdit { .. }))
+            || matches!(
+                list.rows.get(*index),
+                Some(ListRow::Lost { commit, .. }) if commit.fate == Fate::Lost
+            )
     };
     let found = if older {
         (from + 1..list.rows.len()).find(is_lost)

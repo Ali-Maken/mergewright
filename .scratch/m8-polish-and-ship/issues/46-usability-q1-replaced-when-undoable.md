@@ -1,6 +1,6 @@
 # Usability Q1: in J, a commit an undoable operation left behind reads "replaced", not "✗ lost"
 
-Status: ready
+Status: done
 Blocked by: none
 Build with: **Opus**. It reads undo semantics (which entries are in force and undoable); a wrong rule tells him real
 damage is safe. Judged by tests that build the journal and git state; one new pure fn, no shape others build on, so
@@ -82,24 +82,24 @@ pub enum RowKind { Graft, Outside, Lost, LostEdit, Replaced, Deleted } // + Repl
 graft-core/src/journal.rs:262).
 
 ## Acceptance (each box: the test named at tick time)
-- [ ] `journal_list::tests::an_undoable_rebase_replaces_its_old_tip`: real repo, in-app rebase entry; the old tip's
+- [x] `journal_list::tests::an_undoable_rebase_replaces_its_old_tip` — built as graft-ops `tests/it/journal_fate.rs::an_undoable_rebase_replaces_its_old_tip` (real repos need `TempRepo`, which lives in `tests/it`): real repo, in-app rebase entry; the old tip's
       row is `Replaced`; "old tip" from `git rev-parse` before the rebase.
-- [ ] `…::an_older_in_force_rebase_still_replaced`: two rebases, the first not the next undo: both `Replaced`.
-- [ ] `…::an_undone_rebase_leaves_no_replaced_row`: after undo no row names the old tip.
-- [ ] `…::a_shell_reset_stays_lost`: `git reset --hard HEAD~1` outside: `Lost` under `$`.
-- [ ] `…::a_deleted_branch_reads_deleted`: in-app delete: `Deleted`.
-- [ ] `…::fetch_and_push_never_replace`: non-undoable kinds: `Lost`.
-- [ ] graft `view::journal` tests `replaced_words_say_undo_brings_it_back` (branch, HEAD, `+N` cases) and
+- [x] `journal_fate::an_older_in_force_rebase_still_replaced` (+ pure `journal_list::tests::fate::two_rebases_in_one_second_keep_their_own_finish`, see NOTES): two rebases, the first not the next undo: both `Replaced`.
+- [x] `journal_fate::an_undone_rebase_leaves_no_replaced_row`: after undo no row names the old tip.
+- [x] `journal_fate::a_shell_reset_stays_lost`: `git reset --hard HEAD~1` outside: `Lost` under `$`.
+- [x] `journal_fate::a_deleted_branch_reads_deleted`: in-app delete: `Deleted`.
+- [x] `journal_list::tests::fate::fetch_and_push_never_replace` (pure, over `fate_of`: Fetch, Push, Migrate, Undo, Redo; a real fetch/push never moves a `refs/heads` ref, so a real repo would pass vacuously). Rule edges: `journal_list::tests::fate::*` (11 tests).
+- [x] graft `view::journal::tests::replaced::` tests `replaced_words_say_undo_brings_it_back` (branch, HEAD, `+N` cases) and
       `lost_words_unchanged` (today's three tails).
-- [ ] `journal_screen::tests::replaced_row_label_and_ink` (`└ ⇢ replaced`, `└ ⇢ deleted`, not Warning ink; `⇢` is one
+- [x] `journal_screen::tests::replaced::replaced_row_label_and_ink` (`└ ⇢ replaced`, `└ ⇢ deleted`, not Warning ink; `⇢` is one
       cell by the width fn `cut_at_word` uses), `…::legend_shows_the_replaced_clause_only_when_whole`
       (fits: clause last; one cell short: today's legend exactly).
-- [ ] graft `update journal` tests `n_passes_over_replaced_rows`, `enter_and_b_on_a_replaced_row_act_as_on_lost`,
+- [x] graft `update::journal::tests::replaced::` tests `n_passes_over_replaced_rows`, `enter_and_b_on_a_replaced_row_act_as_on_lost`,
       `replaced_row_bar_matches_lost_row_bar`, `preselect_never_lands_on_a_replaced_row`.
-- [ ] TestBackend captures (rule 6, his eye; colour unverified, rule 5): `docs/shots/m8-q1-journal-replaced-ui-187x30.txt`
+- [x] TestBackend captures (`journal_screen::tests::replaced::capture_replaced_for_docs_shots`) (rule 6, his eye; colour unverified, rule 5): `docs/shots/m8-q1-journal-replaced-ui-187x30.txt`
       and `…-ui-80x24.txt`: a `●` rebase row, `└ ⇢ replaced` under it, a `$` reset with `└ ✗ lost` under it; legend
       with the `⇢` clause at 187, without at 80.
-- [ ] Glyph grep quoted in NOTES: `⇢` in `crates/*/src` and `docs/design/` only at this ticket's sites.
+- [x] Glyph grep quoted in NOTES: `⇢` in `crates/*/src` and `docs/design/` only at this ticket's sites.
 
 ## Touches
 - **Callers:** `build`'s callers (graft `view::journal`, the journal job); every `LostCommit {` literal (grep
@@ -126,3 +126,34 @@ workspace-wide. Capture runs to files; summary lines only.
 
 ## Size
 One context, ~40k tokens.
+
+## NOTES (builder, 2026-10-11)
+- Scout used: `.scratch/m8-polish-and-ship/scouts/46-q1-replaced.md`; no new scout.
+- `fate_of` adds `is_operation` to `undoable`: `undoable` alone passes `Undo`/`Redo` (only Fetch/Push/Migrate are
+  excluded, `graft-ops/src/journal.rs:231`), so redo's case would have read "replaced". graft-ops MAP said
+  `undoable_kind` excluded Undo/Redo; it does not — MAP line corrected.
+- A ref absent from `refs_after` is "never recorded", so `Lost`, not `Deleted` (journal.rs doc: absent = unknown).
+- **Cause fix outside the listed files (journal_list/steps.rs `fold_one`):** two in-app rebases in one second (his
+  chain-rebase case) paired each `HEAD` rebase run with the nearest branch `(finish)` record by index, not by the
+  branch the run returned to; the first rebase's old tip was placed under the second rebase and read `✗ lost` (and the
+  real-repo test failed 2 of 3 runs). Now the finish must name the run's `returning to` branch. Regression:
+  `journal_list::tests::fate::two_rebases_in_one_second_keep_their_own_finish` (red before, green after). Placement of
+  shell rebases benefits the same way; all 32 journal integration tests and the oracle still pass.
+- At 80 cols the age column (10) is narrower than `└ ⇢ replaced` (12): the words start one blank after the label
+  (`pieces.rs` `lost_pieces`), else they overwrote it. `✗` rows unchanged.
+- Bar: same `ListRow`, no hint-chooser edit (test `replaced_row_bar_matches_lost_row_bar`).
+- Tour: `grep -n "✗\|lost" crates/graft/src/update/tour.rs` → no hits. Help strings: no `"✗ row"` text in graft /
+  graft-ui src (grep `✗ row\|next lost`), only the `next_lost` doc comment, updated.
+- Captures: drift in `.scratch/m8-polish-and-ship/q1-shot-drift.txt` (9 files: legend clause; one row in
+  `m7/journal-after-squash-187x44.txt` now `⇢ replaced` — Graft's squash is undoable). Captions added to
+  `docs/shots/m8-contact-sheet-captions.tsv`; the sheet files are the acceptance ticket's to assemble.
+- Glyph grep `grep -rn "⇢" crates/*/src docs/design`: graft-ops `journal_list.rs:104` (doc); graft-ui
+  `journal_screen.rs` (legend clause + docs), `journal_screen/pieces.rs` (labels), `journal_screen/view.rs`
+  (`RowKind` docs), `journal_screen/tests/replaced.rs`; graft `update/journal/keys.rs` (doc), `view/journal.rs` (doc),
+  `update/journal/tests/replaced.rs`, `view/journal/tests/replaced.rs`; docs `02-keymap.md` §2.11, `01-view-mockups.md`
+  §1.10. No other site.
+- File-size ratchet raised (`crates/graft/tests/it/over_400.txt`): journal_screen.rs 490, journal_screen/tests.rs 706,
+  update/journal/keys.rs 426, update/journal/tests.rs 1211, view/journal/tests.rs 604, journal_list/steps.rs 425. New
+  tests went to new `replaced.rs` files to keep growth small.
+- Colour unverified (rule 5): muted vs warning ink is asserted on the `Piece`, not seen.
+- Gap for the conductor: J has no ASCII tier (`✗`/`⇢` drawn in every tier).

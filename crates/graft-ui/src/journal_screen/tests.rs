@@ -702,3 +702,5 @@ fn footer_cases() -> Vec<(&'static str, JournalView, Vec<&'static str>)> {
     }
     cases
 }
+
+mod replaced;

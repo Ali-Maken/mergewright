@@ -69,6 +69,22 @@ pub fn legend(keys: &Keymap) -> String {
     format!("● done in Graft: {can} · $ done outside Graft: {never} · ✗ a commit no branch holds")
 }
 
+/// The `⇢` row's clause, last in the legend (usability Q1).
+const REPLACED_CLAUSE: &str = " · ⇢ undo brings it back";
+
+/// The legend as drawn `width` cells wide: with the `⇢` clause last when the
+/// whole of it fits, else today's [`legend`] cut at a word as before — so
+/// the clause is the first thing to go and never shows in half.
+fn legend_at(keys: &Keymap, width: usize) -> String {
+    let legend = legend(keys);
+    let whole = format!("{legend}{REPLACED_CLAUSE}");
+    if whole.width() <= width {
+        whole
+    } else {
+        cut_at_word(&legend, width)
+    }
+}
+
 /// The list's last line, muted: what the list cannot show (`reflog.md`
 /// takeaway 12).
 pub const NO_TRACE: &str =
@@ -409,7 +425,7 @@ impl JournalScreen<'_> {
                 area.x,
                 bottom,
                 area,
-                &cut_at_word(&legend(self.keys), width),
+                &legend_at(self.keys, width),
                 muted,
             );
         }

@@ -8,7 +8,7 @@
 //! key can never disagree.
 
 use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
-use graft_ops::journal_list::{HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan};
+use graft_ops::journal_list::{Fate, HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan};
 use graft_term::sanitize::{sanitize, sanitize_line};
 use graft_ui::journal_screen::{
     JournalFindView, JournalRowView, JournalStatus, JournalView, RowKind, RowMark,
@@ -138,7 +138,11 @@ fn rows_for(list: &JournalList, state: &AppState, now_seconds: i64) -> Vec<Journ
             },
             ListRow::Lost { event, commit } => JournalRowView {
                 description: sanitize_line(&lost_words(commit)),
-                kind: RowKind::Lost,
+                kind: match commit.fate {
+                    Fate::Lost => RowKind::Lost,
+                    Fate::Replaced => RowKind::Replaced,
+                    Fate::Deleted => RowKind::Deleted,
+                },
                 under: Some(*event),
                 ..JournalRowView::default()
             },
@@ -236,14 +240,22 @@ fn graft_row(
 
 /// A lost commit's line: `9a8b7c6 "Add rate limiter" · was main's tip · no
 /// branch holds it`, `· spike is gone`, or `· was HEAD`; `+N under it` when
-/// it is a run. No subject known → the sha7 alone, never an empty `""`.
+/// it is a run. A `⇢` row (`Fate::Replaced`/`Deleted`) ends `· was main's
+/// tip · undo brings it back` (or `· was HEAD · undo brings it back`). No subject known → the sha7 alone, never an empty `""`.
 fn lost_words(commit: &LostCommit) -> String {
     let mut words = short(commit.run.tip);
     // Not read (m7/30o Minor 5): the sha7 alone, no quotes around nothing.
     if let Some(subject) = &commit.subject {
         words.push_str(&format!(" \"{subject}\""));
     }
+    let moved_on = commit.fate != Fate::Lost;
     match &commit.held_by {
+        // Usability Q1: a step `u` takes back left it behind — say so, not
+        // that nothing holds it.
+        HeldBy::Branch { name, .. } if moved_on => {
+            words.push_str(&format!(" · was {name}'s tip · undo brings it back"));
+        }
+        HeldBy::Head if moved_on => words.push_str(" · was HEAD · undo brings it back"),
         HeldBy::Branch { name, gone: false } => {
             words.push_str(&format!(" · was {name}'s tip · no branch holds it"));
         }

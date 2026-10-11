@@ -19,7 +19,7 @@ use graft_git::reflog::ReflogRecord;
 
 use super::steps::{Steps, branch_short, checkout_names, is_hex_id};
 use super::words::words_on;
-use super::{HeldBy, ListRow, LostCommit, LostEdit, OutsideRecord, OutsideStep};
+use super::{HeldBy, ListRow, LostCommit, LostEdit, OutsideRecord, OutsideStep, fate_of};
 
 /// One event, before its rows are made.
 #[derive(Clone, Debug)]
@@ -115,12 +115,18 @@ pub(super) fn assemble(
         .collect();
     let mut under: Vec<Vec<LostCommit>> = vec![Vec::new(); events.len()];
     if let Some(found) = lost.found {
+        let in_force = crate::journal::in_force_all(entries);
         for run in &found.lost {
             if let Some((event, hint)) = place(&olds, run.tip) {
+                let graft = match &events[event] {
+                    Event::Graft { entry, .. } => Some((&entries[*entry], in_force[*entry])),
+                    Event::Outside { .. } => None,
+                };
                 under[event].push(LostCommit {
                     run: *run,
                     subject: (lost.subject_of)(run.tip),
                     held_by: held_by(hint, run.tip, outside, lost.branch_exists),
+                    fate: fate_of(graft, run.tip),
                 });
             }
             // A tip no event had as an old value cannot be placed. Every

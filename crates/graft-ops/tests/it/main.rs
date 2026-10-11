@@ -25,6 +25,7 @@ mod fork_follows;
 mod fork_pushed;
 mod history_ops;
 mod in_the_way;
+mod journal_fate;
 mod journal_list_oracle;
 mod journal_names;
 mod journal_tie;

@@ -1,0 +1,39 @@
+# J after a rebase in the app and a reset in the shell (usability Q1, m8/46).
+#
+# What right looks like: under the `●` rebase, `└ ⇢ replaced` and the
+# feature branch's old tip, `· undo brings it back`, muted; under the `$`
+# reset, `└ ✗ lost` as before, in warning ink. The legend ends
+# `· ⇢ undo brings it back` at 187 columns; at 80 it is today's legend,
+# cut at a word, with no half clause. Colour is not in this capture.
+
+=== 187x30 ===
+JOURNAL · what happened in this repo, newest first
+▸ ●  Graft          1m ago    rebase feature onto main                     backup saved                                                                                                ← u
+     └ ⇢ replaced   9a8b7c6 "Add rate limiter" · was feature's tip · undo brings it back
+  $  outside Graft  5m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
+     └ ✗ lost       4d5e6f7 "Try redis cache" · was main's tip · no branch holds it
+  a branch deleted outside Tributary and never checked out leaves no trace here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back
+/ find  space command log  J/esc close  ? keys

@@ -506,9 +506,11 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 | `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged; none on a step Graft doesn't undo, such as a fetch); `$` put that ref back to before it, and on a switch row switch back to the branch it left; `✗` put back what held the commit, or a lost edit's file, replacing what is in that file now (Ghost Preview, `y`; `u` brings it back) (M7) |
 | `b` | New branch at a `$` or `✗` row's commit (name prompt; prefilled `<branch>-restored` when the row names one); on a `●` row it says so (M7) |
 | `/` | Find a row by the words that name it, as blame's find (§2.8): `Enter` keeps it, `Esc` drops it (M7) |
-| `n` / `N` | Next / previous match; with no find, next / previous `✗` row (M7) |
+| `n` / `N` | Next / previous match; with no find, next / previous `✗` row (`⇢` rows passed over) (M7) |
 | `u` / `U` | Undo / redo, global as everywhere (§2.2): the journal's next entry (the `← u` / `← U` row), whatever row the cursor is on; never a `$` or `✗` row. Lands as `Enter` on that row (M7) |
 | `Esc`, `J` | Close (a find first: `Esc` drops it) |
+
+A `⇢ replaced` / `⇢ deleted` row is a commit an undoable step left behind; `Enter` and `b` act on it as on `✗`. Amended 2026-10-11 (usability Q1, user: 'yes say replaced').
 
 The cursor opens on the newest `✗` row under a `$` row, when that `$` row is
 newer than every `●` row except a fetch, until a key is pressed; a `✗` under a

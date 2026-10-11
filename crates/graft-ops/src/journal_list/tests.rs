@@ -9,6 +9,7 @@
 )]
 
 mod build;
+mod fate;
 mod recover;
 mod scratch;
 mod words;

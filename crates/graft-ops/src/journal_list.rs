@@ -14,6 +14,7 @@
 //! `words`'; the put-back is `recover`'s.
 
 mod edits;
+mod fate;
 mod recover;
 mod rows;
 mod scratch;
@@ -32,6 +33,7 @@ use graft_git::run::Stop;
 use crate::facts::FactsError;
 
 pub use edits::{LOST_EDITS_CAP, lost_edits};
+pub use fate::{Fate, fate_of};
 pub use recover::{Recover, recover_for, recover_scope};
 pub use words::words;
 
@@ -99,6 +101,8 @@ pub struct LostCommit {
     pub subject: Option<String>,
     /// What held the tip before its event.
     pub held_by: HeldBy,
+    /// Whether `u` brings it back ([`fate_of`]): J draws `⇢` for those.
+    pub fate: Fate,
 }
 
 /// An edit an undo or redo replaced, kept only in that entry's backup.
