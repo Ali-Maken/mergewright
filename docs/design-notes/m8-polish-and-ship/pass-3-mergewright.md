@@ -24,7 +24,7 @@ under Graft or Tributary is still his, and `u` still takes back his last real op
 | Moving a user's data under a new name | Copy, read back, delete; old readable forever (ADR-0057 2026-10-09, user-approved) | Same, generalised to any older generation | **T** (own prior decision) |
 | Package vs crate names | dist names artifacts by package (ticket 24 B+2, read in dist's source) | Rename the shipping package only | **I**: no override exists |
 | Homebrew formula | dist's template (compiled in; man page in `pkgshare`, 3 `brew style` offences) | Own 30-line template filled from dist's manifest | **R** dist's, **I** ours |
-| Naming what an op left behind | `docs/research/reflog.md` (J's study): tools show reflog loss without saying if it is recoverable | `↺ replaced`/`deleted` when undo brings it back; `✗ lost` otherwise | **I**: no tool found says it; UX H2, H9 |
+| Naming what an op left behind | `docs/research/reflog.md` (J's study): tools show reflog loss without saying if it is recoverable | `⇢ replaced`/`deleted` when undo brings it back; `✗ lost` otherwise | **I**: no tool found says it; UX H2, H9 |
 | `⏎` on the current item | Switch rule: `.` Checkout says `already on <b>` (keymap :174) | Close, land on HEAD, say nothing | **I**: UX §3.1 (land where he asked), H8 |
 
 No new prior-art study for Q1/Q2: they are word and landing fixes on screens whose studies exist (`reflog.md`,
@@ -48,7 +48,7 @@ adds the four ids to the main note's `journey-counts` fence with their walks.
 | Move can't run (another window) | graph on the old names; `rename: still using the old names · another Mergewright window is open on this repository` |
 | Move fails before the switch | old names in force; `rename: still using the old names · <reason>` (26r, unchanged) |
 | `⏎` on the current branch | picker closed, graph focused, cursor on HEAD, nothing written |
-| `⏎`/`b` on a `↺` row | as on `✗` (keymap §2.11) |
+| `⏎`/`b` on a `⇢` row | as on `✗` (keymap §2.11) |
 
 ## Interfaces and data shapes
 In the specs; the load-bearing one is `graft_core::on_disk::Generation` (ticket 1, Fable signature). The others:
@@ -67,8 +67,8 @@ In the specs; the load-bearing one is `graft_core::on_disk::Generation` (ticket 
   drew then. Trade-off: old milestones' sheets show the old name, labelled by date.
 
 ## New UI
-- J row `└ ↺ replaced  <sha> "<subject>" · was <b>'s tip · undo brings it back` (`deleted` for a branch delete),
-  muted; legend clause `↺ undo brings it back`, shed first; ASCII `~`. Eye lands on the `●` row above it (unchanged).
+- J row `└ ⇢ replaced  <sha> "<subject>" · was <b>'s tip · undo brings it back` (`deleted` for a branch delete),
+  muted; legend clause `⇢ undo brings it back`, added only when it fits whole; no ASCII form (J has none). Eye lands on the `●` row above it (unchanged).
   `n`/`N` skip it. Empty and error states unchanged.
 - Picker: the current row's bar clause is `⏎ close`; the "you're on" message is gone.
 - J column: `●  Mergewright` / `$  outside`. No other new screen.

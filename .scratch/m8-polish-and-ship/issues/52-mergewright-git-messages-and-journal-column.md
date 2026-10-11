@@ -45,7 +45,7 @@ included: tests compare them); the allow-list. Out: the `Migrate` row's words (t
 // graft-core::on_disk
 pub fn message_tag() -> &'static str; // Generation::CURRENT.dir(); the one tag every writer uses
 // graft-ui::journal_screen — RowKind unchanged; the source word for `Graft`-kind rows comes from the caller:
-pub fn source_word(kind: RowKind) -> &'static str; // Graft → CURRENT.title(), Outside → "outside", Lost* → "" (drawn as today)
+pub fn source_word(kind: RowKind) -> &'static str; // Graft → CURRENT.title(), Outside → "outside", Lost*, Replaced, Deleted → "" (drawn as today; ticket 46)
 ```
 If the scout shows the word is built in `graft::view::journal` instead, the function lives there with the same shape;
 say so in NOTES.

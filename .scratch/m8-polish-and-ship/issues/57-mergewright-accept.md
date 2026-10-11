@@ -47,7 +47,7 @@ J calls an undoable rewrite's old tip "replaced", and `⏎` on his own branch cl
      moved (`for-each-ref`). Helper drops the lock; relaunch moves.
    - **S4 Command and manual.** `mwr --version`, `mwr --help` line 1, `man docs/man/mwr.1 | head -3` (or the roff
      NAME line if `man` is absent) quoted in TESTING.md.
-   - **S5 Q1.** An in-app rebase of `feature` onto `main`, then `J` (1 step): the old tip's row reads `↺ replaced … was
+   - **S5 Q1.** An in-app rebase of `feature` onto `main`, then `J` (1 step): the old tip's row reads `⇢ replaced … was
      feature's tip · undo brings it back`; a shell `git reset --hard HEAD~1` in the same repo still reads `✗ lost`
      under `$`. 187×30 and 80×24.
    - **S6 Q2.** On `main`: `C`, `main`, `⏎` (3 steps). The picker is gone, `▸` on HEAD, no status line, `git reflog
