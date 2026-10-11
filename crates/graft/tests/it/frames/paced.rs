@@ -147,6 +147,11 @@ impl Handed {
         self.marks[slot(Phase::Drawn)]
     }
 
+    /// When the loop took it.
+    pub(crate) fn handed_at(&self) -> Instant {
+        self.at
+    }
+
     pub(super) fn kind_name(&self) -> String {
         match self.kind {
             Kind::Key(key, _) => format!("key {key}"),

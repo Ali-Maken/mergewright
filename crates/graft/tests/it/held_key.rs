@@ -612,11 +612,13 @@ fn read<D>(
 }
 
 /// The loop's own rest after the last `j` (G-settle): where the graph's
-/// frames end and the pane's catch-up begins.
+/// frames end and the pane's catch-up begins ([`rest_index`]).
 fn rest_after(handed: &[Handed], last_j: Instant) -> Option<usize> {
-    handed.iter().position(|frame| {
-        matches!(frame.kind, Kind::Rest) && frame.drawn_at().is_some_and(|at| at > last_j)
-    })
+    let handed: Vec<(bool, Instant)> = handed
+        .iter()
+        .map(|frame| (matches!(frame.kind, Kind::Rest), frame.handed_at()))
+        .collect();
+    rest_index(&handed, last_j)
 }
 
 /// The rest's frames, from `handed[rest]` on — the pane catching up — and
