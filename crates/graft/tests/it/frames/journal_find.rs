@@ -35,10 +35,7 @@ use graft::event_loop::{Exit, Wake, pump};
 use graft::jobs::{Dispatch, Shutdown};
 use graft::session::Session;
 use graft::update::{AppEvent, AppState, update};
-use graft_core::capabilities::{
-    Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Rgb,
-    Supported, Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
-};
+use graft_core::capabilities::RenderingTier;
 use graft_core::event::{Event, KeyCode};
 use graft_fixtures::synthetic::{self, Scale};
 use graft_git::repo::RepoHandle;
@@ -51,8 +48,9 @@ use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use super::controls::{Control, Spinner};
 use super::paced::{Kind, Paced, Watching};
+use super::run::capabilities;
 use super::sink::Sink;
-use super::{INPUT_TO_FRAME, TICK};
+use super::{INPUT_TO_FRAME, TICK, answering_dsr};
 use crate::budget_run;
 use crate::captures::frame_at;
 use crate::frame_trace::{FrameTrace, Gate, KeyFeed, Post, Posted, TRACE_VAR};
@@ -245,11 +243,18 @@ struct Measured {
     title_after_enter: String,
 }
 
+/// A truecolour terminal that answered every probe, DSR too (ADR-0054),
+/// drawing text at the Unicode tier: `run::capabilities`, fenced.
+fn session() -> Session {
+    let unicode = capabilities(RenderingTier::Unicode);
+    Session::settle(&Loaded::default(), answering_dsr(unicode))
+}
+
 fn measure(repo: &std::path::Path, control: Control) -> Result<Measured, String> {
     let (post, events) = mpsc::channel::<Posted>();
     let (jobs, state) = budget_run::open_into(repo, Post(post.clone()))?;
     let state = ready(&jobs, &events, &state)?;
-    let mut session = Session::settle(&Loaded::default(), capabilities());
+    let mut session = session();
     let spinner = (control == Control::Busy).then(Spinner::start);
 
     let open = vec![KeyCode::Char('J')];
@@ -325,12 +330,17 @@ fn title(state: &AppState) -> Result<String, String> {
 /// input thread has finished before any wait, so a key here is a harness
 /// fault.
 fn next_event(events: &Receiver<Posted>, patience: Duration) -> Result<AppEvent, String> {
-    let posted = events
-        .recv_timeout(patience)
-        .map_err(|why| why.to_string())?;
-    match posted.wake {
-        Wake::Event(event) => Ok(event),
-        other => Err(format!("a wake no job sends: {}", other.label())),
+    loop {
+        let posted = events
+            .recv_timeout(patience)
+            .map_err(|why| why.to_string())?;
+        match posted.wake {
+            Wake::Event(event) => return Ok(event),
+            // The last fence answer of a `pumped` loop that has ended
+            // (ADR-0054): nothing waits for it, so it is stepped over.
+            Wake::Fence => {}
+            other => return Err(format!("a wake no job sends: {}", other.label())),
+        }
     }
 }
 
@@ -388,7 +398,7 @@ fn pumped<D: Dispatch>(
     control: Control,
 ) -> Result<Pumped, String> {
     let script: Vec<(KeyCode, Duration)> = keys.iter().map(|key| (*key, TICK)).collect();
-    let sink = Sink::timed(true);
+    let sink = Sink::timed(true).answering(post.clone());
     let mut terminal = Terminal::with_options(
         CrosstermBackend::new(sink.clone()),
         TerminalOptions {
@@ -420,6 +430,7 @@ fn pumped<D: Dispatch>(
     if wakes.seen.is_some() {
         return Err("the loop ended with a wake taken off the channel and not handed".to_owned());
     }
+    wakes.sink.were_fenced()?;
     let latencies = wakes.latencies()?;
     let trace = wakes.trace(keys.len());
     let replay = wakes
@@ -448,40 +459,4 @@ fn replayed(mut state: AppState, replay: &[(Kind, AppEvent)], stop: Option<usize
         }
     }
     state
-}
-
-/// A truecolour terminal that answered every probe, drawing text at the
-/// Unicode tier (as `run::capabilities` answers for it).
-fn capabilities() -> Capabilities {
-    Capabilities {
-        tier: RenderingTier::Unicode,
-        pixel_protocol: None,
-        kitty_graphics: Supported::No,
-        kitty_deflate: false,
-        answers_dsr: false,
-        sixel: Supported::No,
-        iterm2_images: false,
-        kitty_keyboard: Supported::No,
-        synchronized_output: Supported::Yes,
-        cell_size: CellSize {
-            width: 17,
-            height: 37,
-            source: CellSizeSource::Reported,
-        },
-        theme: ThemeHint {
-            theme: TerminalTheme::Dark,
-            source: ThemeSource::Background(Rgb {
-                red: 0x10,
-                green: 0x10,
-                blue: 0x14,
-            }),
-        },
-        color_depth: ColorDepth::TrueColor,
-        no_color: false,
-        is_tty: true,
-        over_ssh: false,
-        tmux: TmuxStatus::Outside,
-        probe: ProbeOutcome::Answered,
-        probe_budget: Duration::from_millis(250),
-    }
 }

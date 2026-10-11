@@ -35,6 +35,8 @@ struct Log {
     /// [`Sink::answering`]: fences found as they are written, answered at
     /// once on the loop's channel.
     answer: Option<(FenceScan, Sender<Posted>)>,
+    /// Fences answered so far.
+    answered: usize,
 }
 
 /// A new chunk's capacity, unless one write is bigger.
@@ -68,6 +70,28 @@ impl Sink {
         self.0.lock().unwrap_or_else(PoisonError::into_inner).answer =
             Some((FenceScan::default(), post));
         self
+    }
+
+    /// Err when no fence was answered: ADR-0054 (Consequences) fences every
+    /// frame-timing run; unfenced, the loop's 16 ms frame cap is measured.
+    pub(super) fn were_fenced(&self) -> Result<(), String> {
+        let answered = self
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .answered;
+        if answered == 0 {
+            return Err(
+                "no fence answered: unfenced, the loop's 16 ms cap was measured".to_owned(),
+            );
+        }
+        Ok(())
+    }
+
+    /// [`Sink::count`], once [`Sink::were_fenced`] holds.
+    pub(super) fn count_fenced(&self, marks: &[usize]) -> Result<(Written, Vec<Counts>), String> {
+        self.were_fenced()?;
+        Ok(self.count(marks))
     }
 
     /// Time spent inside `write` so far; zero unless timed.
@@ -253,11 +277,13 @@ impl Write for Sink {
             clock,
             drain,
             answer,
+            answered,
         } = &mut *log;
         if let Some((scan, post)) = answer {
             let mut fences = VecDeque::new();
             scan.feed(*len as u64, buf, &mut fences);
             for _ in fences {
+                *answered += 1;
                 let fence = Posted {
                     at: Instant::now(),
                     wake: Wake::Fence,
