@@ -153,6 +153,7 @@ stays visible.
 | 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **0** — `u` on the banner undoes the whole-file take (`crates/graft/tests/it/resolver/shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`), and `a y` aborts the merge with `u` to put it back (`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`). Was: `git merge --abort`, then `Ctrl+R`, `u` — both keys refused while the merge was open. Source: ticket 08 `## Review fixes, part 2`. | closed (m6-conflicts/57, shell_begun::a_on_the_banner_aborts_a_shell_merge, shell_begun::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge) |
 | 2026-09-24 · review N3 | Finish a stash pop that clashed | Until the put-back pass: the clashing pop read as a git error and sent him to the shell — **11 keys** (review N3, `docs/design-notes/m6-stash-put-back.md` :15). Now **5**: `S p y o ⏎` (`y` confirms the pop preview since m6-conflicts/86), the resolver opens on the clash and the last file done drops the stash (`m5_walk::every_scenario::journey_stash_pop_clash_to_done`, `m6_stash_put_back::a_stash_pop_that_clashes_is_five_keys`) | closed (m6-conflicts/72b, 75, 86; `stash-pop-clash-to-done`) |
 | 2026-09-24 · review N4 | Pull and push with edits in the tree | Until the put-back pass: the dirty rebase was refused after confirm — **16 keys** walked (review N4, `m6-stash-put-back.md` :16). Now **5**: `p r r P y`, the edits set aside and put back (`m5_walk::every_scenario::journey_rejected_push_dirty_to_pushed`, `m6_stash_put_back::set_aside::a_rejected_push_with_edits_is_five_keys`). A fast-forward pull over edits to files it brings: was refused (m6-conflicts/85 D, 7 keys through a stash); now **1**, `p` (m7-power-tools/03b, `m7_walk::pull::pull_ff_over_edits`) | closed (m6-conflicts/73, 74, 75; `rejected-push-dirty-to-pushed`) |
+| M8 · daily use (to fill) | _each time M8's app sends him to the shell or another tool: what he wanted, one line, the day it happens_ | _what he ran instead_ | open (M8 daily use) |
 
 _Rows marked `walk` are what the M6 acceptance walk says a reach used to be
 and is now; they are not daily use. Rows marked `review N…` are the M6
@@ -3271,3 +3272,94 @@ steps, as homebrew-core's tools (design note J16):
 
 - [ ] **His install** (the user): steps 1–2 on a clean account, after publishing.
 - [ ] The curl installer, same account: `curl -LsSf https://github.com/<owner>/<name>/releases/latest/download/<name>-installer.sh | sh`, new shell, run. Three steps.
+
+## M8 acceptance (m8-polish-and-ship/28)
+
+Promise: **it stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches itself
+from inside the app.** One command walks it:
+
+```sh
+scripts/m8-accept.sh          # steps 1, 3, 4, 5 · raw: .scratch/m8-polish-and-ship/accept/ · summary: docs/perf/m8-accept.txt
+scripts/m8-accept.sh --perf   # and step 2, the release scroll run — from your terminal, never a helper's context
+```
+
+Steps: (1) the fast tier workspace-wide — every walk below, `m8_walk::*`, the tour to `practice done ✓` with the
+`trib` binary (`tour_walk`), every capture compared with what the code draws; (2) `--perf` only: held `j`/wheel, `G`
+after idle, RSS, release; (3) the contact sheet `docs/shots/m8-contact-sheet-{1,2,3}.txt` (parts at 180 000 B,
+colour unverified on each first line), from `docs/shots/m8-contact-sheet-captions.tsv`; (4) the install facts quoted
+from `docs/release/*.txt`; (5) `5 journeys: <n> in the fence · missing a walk: none`.
+
+One walk alone: `cargo nextest run --workspace -E 'test(/<test>$/)'`. Each reads its count from the note's fence
+(`docs/design-notes/m8-polish-and-ship.md` :213–246, 31 ids) through `m8_walk::within_the_note` and fails one key over
+(`m8_walk::one_key_over_the_note_fails`); `m8_walk::every_m8_journey_id_has_a_walk` holds `WALKS` to the fence.
+**colour: unverified (rule 5)** for every row: the checks read words, glyphs and rows, never colour. Captures keep the
+current name (`trib`/Tributary): the final rename (27d) is parked until the name is chosen.
+
+### Journeys (the fence, 31 ids) — what right looks like on your machine
+
+| Id | Keys | Walk | Right looks like |
+|---|---|---|---|
+| hold-j-stop | 1 | `held_key::held_j_stops_on_release_unicode` (heavy tier) | hold `j` 3 s on your work repo in Ghostty full screen, let go: the list stops within a blink — no rows move after your finger is up |
+| wheel-flick | 1 | `m8_walk::journeys::wheel_flick` | flick the wheel hard down your work repo and stop: the list stops when the wheel does — no rows keep sliding |
+| jump-oldest | 1 | `idle_advance::g_after_laid_out_lands_without_laying_out` | once the header shows the full row count, `G`: the root commit at once, no "reading…" |
+| find-key-by-name | 2 | `m8_walk::journeys::find_key_by_name` | `?` then `merge`: the cursor row reads `Merge selected branch into current`, `m` beside it |
+| what-does-key | 2 | `m8_walk::journeys::what_does_key` | `?` then `x`: the cursor row reads `Compare against a marked base`, `x` beside it |
+| run-unrecalled | 3 | `m8_walk::journeys::run_unrecalled` | `⌃P` `stash` `⏎`: the stash list opens, its bar names `s save` and `S/esc close` |
+| stopped-how-go-on | 1 | `palette_in_progress::j7_help_mid_rebase_puts_continue_first_and_enter_asks_what_c_asks` | stopped mid-rebase, `?`: continue is the first row; `⏎` asks what `c` asks |
+| light-theme | 3 | `m8_walk::journeys::light_theme` | `⌃P` `theme` `⏎` on the light row: the app turns light now, palette closed (colour by eye) |
+| first-launch | 0 | `first_launch::a_terminal_launch_counts_and_shows_the_line_until_the_palette` | first `trib` ever: the status row reads `first time? ? keys here · ⌃P anything`; after the first `?` it never shows again |
+| start-tour | 3 | `tour::the_palette_starts_the_tour_and_esc_returns_to_his_commit` | `⌃P` `tour` `⏎`: the tour's first card over a practice repo, not yours |
+| start-tour-empty-state | 1 | `tour::t_on_the_empty_state_starts_the_tour_and_esc_comes_back` | `trib` outside a repo, `t`: the tour starts; one `tributary-practice-*` folder made |
+| leave-tour | 1 | `tour::the_palette_starts_the_tour_and_esc_returns_to_his_commit` | `Esc` in the tour: back in your repo on the commit you left, the practice folder gone |
+| open-recent-outside | 2 | `outside_repo::open_recent_outside_opens_the_newest_at_head_on_one_terminal` | `trib` outside a repo, `⏎`: your newest repo opens on `HEAD`'s row |
+| open-second-recent | 3 | `outside_repo::open_second_recent_is_j_then_enter` | `trib`, `j`, `⏎`: the second repo in the list opens |
+| init-here | 2 | `outside_repo::init_here_is_i_then_y` | in an empty folder, `i` `y`: the folder is a repository and the app is on it |
+| clone | 3 | `m8_walk::clone::clone_from_the_empty_state` | `c`, paste a URL, `⏎`: it clones and opens the new repo; no shell |
+| which-repo-branch | 0 | `look_chrome::capture_the_chrome_at_every_designed_size` | glance at the header: repo and branch named, at 80×24 and full screen |
+| cursor-row-branch | 0 | `look_chrome::capture_the_cursor_row_in_dark_and_light` | cursor on a branch's tip: its row shows `[branch]`, readable in dark and light |
+| pull-nothing-new | 1 | `daily_landing::j18_a_pull_with_nothing_new_leaves_the_cursor` | cursor off `HEAD`, `p` with nothing new: the cursor stays; the line says `up to date ✓` |
+| reword-head | 4 | `m7_walk::amend_into::reword_head_with_a_line_built_on_it` | with a branch built on `HEAD`: `a`, edit, `⏎`, `y`: the message changed, the branch above follows |
+| undo-see-result | 1 | `daily_landing::j20_u_and_capital_u_land_on_the_result` | `u` after a commit: the cursor on the new `HEAD`; `U`: on the redone commit, wherever the cursor was |
+| quit-while-write | 2 | `quit_waits::stuck::quit_while_write_is_two_keys` | `q` `y` while a merge runs: the app quits when the merge lands |
+| quit-stuck-write | 4 | `quit_waits::stuck::stop_now_mid_merge_leaves_it_paused` | a hook hangs: `q` `y`, wait for the offer, `q` `y`: the app quits inside its wait; the exit line says the merge is paused |
+| seek-branch | 3 | `palette_find::walk_seek_branch` | `⌃P` a branch name `⏎`: the cursor on its tip; `HEAD` unchanged |
+| seek-tag | 3 | `palette_find::walk_seek_tag` | `⌃P` a tag `⏎`: the cursor on the tagged commit |
+| seek-commit-sha | 3 | `palette_find::walk_seek_commit_sha` | `⌃P` a sha prefix `⏎`: the cursor on that commit |
+| seek-commit-words | 3 | `palette_find::walk_seek_commit_words` | `⌃P` words from a message `⏎`: the cursor on that commit |
+| file-history | 3 | `palette_find::walk_file_history` | `⌃P` a path `⏎`: that file's history |
+| rerun-recent | 2 | `palette_find::walk_rerun_recent` | `⌃P` `⏎`: the last thing you ran runs again |
+| fold-merge-count (J33) | 1 | `m8_walk::journeys::fold_merge_count` | fold a merge with `Space`: its row ends `+` for a moment, then `+N`, N the commits the merge brought in; press `Ctrl+R`: the number stays, it is not re-counted |
+| whitespace-mode-shown (J34) | 1 | `m8_walk::journeys::whitespace_mode_shown` | in the detail pane press `w`: the title ends `· whitespace ignored`; press `w` again: the words go. In blame the title says nothing until `w`, then `· whitespace counted` |
+
+### Teaches itself (PROMPT §9's seven tasks, from the bar or `?` where he stands)
+
+| Task | Test | Right looks like |
+|---|---|---|
+| stage a hunk | `m8_walk::teaches::stage_a_hunk_is_found_in_the_changes_pane` | on a hunk the bar leads `space stage`; `?` `stage` lands on `Stage / unstage`. (`?` `hunk` finds nothing — a question, ticket 28 NOTES) |
+| commit | `m8_walk::teaches::commit_is_on_the_bar` | with something staged the bar names `c commit` |
+| stash and bring back | `m8_walk::teaches::stash_and_bring_back_are_found` | `?` `stash` lands on `S`; the stash list's bar names `p pop` |
+| create a branch | `m8_walk::teaches::create_a_branch_is_found` | `?` `new branch` lands on a branch row |
+| merge with a preview | `m8_walk::teaches::merge_is_found_on_a_branch_row` | on a branch row `?` `merge` lands on `m` |
+| resolve a conflict | `m8_walk::teaches::resolve_is_on_the_stop_banner_bar` | stopped on a conflict, the bar leads `⏎ resolve` |
+| push | `m8_walk::teaches::push_is_found` | `?` `push` lands on `P` |
+| the whole tour | `tour_walk::the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home` (the `trib` binary over a pty) | every card to `practice done ✓`, no shell step |
+
+### By eye and person steps (yours; nothing above can judge these)
+
+- [ ] **J35** (by eye, colour — rule 5): cursor on a commit in your work repo: lanes off its ancestry are paler than
+  the ones on it, in your theme, in Ghostty and Zed; at 16 colours they are dim, not gone.
+- [ ] **J36** (person step, 2+1): add `overview = true` under `[ui]`, restart: the overview strip is there at launch;
+  `O` still hides it for this run.
+- [ ] **J37** (by eye, Pixel terminal): at the Pixel tier open a rewrite preview: the graph turns to text lines with
+  the ghost rows dashed/hollow; header `gfx` unchanged; close it: the pixel lanes come back at once, no flicker of
+  re-drawing. (17c: bytes asserted in memory only; a real Kitty/iTerm2 terminal not verified.)
+- [ ] **J8 rebind** (5+1, note :127): `?` the action's name, edit 1 line under `[keys.<place>]` in your
+  config, restart, `?`: the row spells your key, the bar shows it, and it works.
+- [ ] **J10 fix one colour** (2+1, note :129): edit 1 line (`[theme.dark] selection = "#…"`), restart: that one
+  element changes, nothing else (by eye, rule 5).
+- [ ] **J16 install** (2): `brew install` then `trib` on a clean account — after publishing (see "M8: install it").
+- [ ] **J17 manual** (1): `man trib` — see "M8: read the manual".
+- [ ] **Look** (by eye): `docs/shots/m8-contact-sheet-1.txt` onwards beside the mock-up's scenes at its top
+  (`m8-proto-*`): same layout at 80×24, 120×36, 187×50.
+- [ ] **Scroll** (yours, release): `scripts/m8-accept.sh --perf` from your terminal; tails after release ≤ 100 ms
+  (J1, J2), `G` ≤ 16 ms (J3), RSS ≤ budget, in `docs/perf/m8-accept.txt`.

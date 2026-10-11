@@ -31,24 +31,9 @@ use super::{assert_no_cancel, merging, press};
 use crate::app_harness::{App, git};
 use crate::preview::{forked, on_main, opened};
 
-/// The design note whose `journey-counts` fence these walks are held to.
-const NOTE: &str = "../../docs/design-notes/m8-polish-and-ship.md";
-
 /// Fails when the walk took more keys than the note's fence allows for `id`.
 fn within_the_note(id: &str, keys: usize) {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(NOTE);
-    let note =
-        std::fs::read_to_string(&path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
-    let allowed = crate::m5_walk::parse_counts(&note)
-        .unwrap_or_else(|why| panic!("the M8 fence does not parse: {why}"))
-        .iter()
-        .find(|row| row.id == id)
-        .and_then(|row| row.keys)
-        .unwrap_or_else(|| panic!("the M8 fence has no count for {id}"));
-    assert!(
-        keys <= allowed,
-        "{id}: {keys} keys, the note allows {allowed}"
-    );
+    crate::m8_walk::within_the_note_taking(id, keys, "(keys)");
 }
 
 /// How long the hook may take to start once the write is launched.

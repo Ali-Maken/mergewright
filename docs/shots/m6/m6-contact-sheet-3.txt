@@ -1,4 +1,4 @@
-# m6 contact sheet
+# m6 contact sheet — colour unverified: character grids, no colour (rule 5)
 # Part 3 of 5 (m6-contact-sheet-1.txt … m6-contact-sheet-5.txt), each at most 180 000 B.
 #
 # Promise: a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md "Conflicts walk", "Conflict journeys").
@@ -616,7 +616,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 "                        ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮                        "
 "                        │ Password for 'http://user@127.0.0.1:8443':                           │                        "
 "                        │ ▏◦•••••••                                                            │                        "
-"                        │ typed here only · never stored by Graft                              │                        "
+"                        │ typed here only · never stored by Tributary                          │                        "
 "                        ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " ⏎ send  esc cancel                                                                                                     "
@@ -658,7 +658,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 "                        ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮                        "
 "                        │ Password for 'http://user@127.0.0.1:8443':                           │                        "
 "                        │ ▏••••••••                                                            │                        "
-"                        │ typed here only · never stored by Graft                              │                        "
+"                        │ typed here only · never stored by Tributary                          │                        "
 "                        ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " ⏎ send  esc cancel                                                                                                     "
@@ -692,7 +692,7 @@ what right looks like: (fix F9, superseded) Every frame's bottom row is the prom
 "    ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮    "
 "    │ Username for 'http://127.0.0.1:8443':                                │    "
 "    │ ▏alice                                                               │    "
-"    │ typed here only · never stored by Graft                              │    "
+"    │ typed here only · never stored by Tributary                          │    "
 "    ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯    "
 "     19▎+     app.get("/health", health);                                       "
 "     20 +     app.get("/ready", ready);                                         "
@@ -722,7 +722,7 @@ what right looks like: (ticket 47, re-taken by ticket 50) The force (lease) push
 # rejection's sticky line waits under the box (m6-conflicts/69).
 
 === after `y` (identical to before it) ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
@@ -782,9 +782,9 @@ what right looks like: (ticket 49) A teammate pushed; `P` was rejected; `p` name
 # - The action reads `Push`, not `Force push`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
- ◆ api  ~/code/api · main                                                                                                                                                  144 rows so far
+ ◆ api  ~/code/api · main                                                                                                                                                      202 commits
 
-▸ ◆    [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
   ●    [origin/main] theirs                                                                                                                                                GF 6y   7be74b5
   ●    Commit 200                                                                                                                                                          GF 7y   d5ae5fd
   ●    Commit 199                                                                                                                                                          GF 7y   13e6ab1
@@ -1716,9 +1716,9 @@ what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `P`, the plain push box ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
-▸ ◆    [◆ main ↑1] ours                                                                                 GF 6y   739071c
+▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
   ●    Commit 199                                                                                       GF 7y   13e6ab1
   ●    Commit 198                                                                                       GF 7y   f5055d9
@@ -1758,7 +1758,7 @@ what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   201 commits
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF 6y   739071c
   ●    [origin/main] Commit 200                                                                         GF 7y   d5ae5fd
@@ -1823,8 +1823,8 @@ what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `P`, the plain push box ===
- ◆ api  ~/code/api · main                                       144 rows so far
-▸ ◆    [◆ main ↑1] ours                                            6y   739071c
+ ◆ api  ~/code/api · main                                           201 commits
+▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
   ●    Commit 198                                                  7y   f5055d9
@@ -1849,7 +1849,7 @@ what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
- ◆ api  ~/code/api · main                                       144 rows so far
+ ◆ api  ~/code/api · main                                           201 commits
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
@@ -2077,7 +2077,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
 == 1. After `p r r` and `P`: no ⓘ on any row ==
 
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   204 commits
 
 ▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
@@ -2120,7 +2120,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
 == 2. Cursor on stash@{0}: no ⚠ ==
 
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   204 commits
 
   ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
@@ -2163,7 +2163,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 
 == 3. `.` on main's tip: the menu does not lead with Explain ==
 
- ◆ api  ~/code/api · main                                                                               144 rows so far
+ ◆ api  ~/code/api · main                                                                                   204 commits
 
 ▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
  Checkout — already on main

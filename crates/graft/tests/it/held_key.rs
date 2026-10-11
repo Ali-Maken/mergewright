@@ -84,8 +84,11 @@ const CELL_HEIGHT: u32 = 37;
 /// "At once" (Nielsen's 0.1 s).
 const AT_ONCE_MS: u128 = 100;
 
+/// J1 `hold-j-stop` = 1: the hold is one input, its tail after release
+/// held to [`AT_ONCE_MS`] (heavy tier, release build).
 #[test]
 fn held_j_stops_on_release_unicode() {
+    crate::m8_walk::within_the_note("hold-j-stop", &["hold j"]);
     held(RenderingTier::Unicode, false, Encoding::Raw);
 }
 

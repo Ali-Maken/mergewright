@@ -9,39 +9,18 @@
     reason = "a fixture that cannot be built leaves nothing to test; the panic names why"
 )]
 
-use std::path::Path;
-
 use crate::app_harness::git;
 use crate::pty::{Isolated, Pty, Screen};
 
-/// The design note whose `journey-counts` fence these walks are held to.
-const NOTE: &str = "../../docs/design-notes/m8-polish-and-ship.md";
 /// `⌃P`.
 const CTRL_P: &[u8] = b"\x10";
 /// The cursor glyph on the graph's row.
 const CURSOR: char = '\u{25b8}';
 
-fn noted_keys(id: &str) -> usize {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(NOTE);
-    let note =
-        std::fs::read_to_string(&path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
-    crate::m5_walk::parse_counts(&note)
-        .unwrap_or_else(|why| panic!("the M8 fence does not parse: {why}"))
-        .iter()
-        .find(|row| row.id == id)
-        .and_then(|row| row.keys)
-        .unwrap_or_else(|| panic!("the M8 fence has no count for {id}"))
-}
-
 /// A journey's inputs, counted as the fence counts them: each entry one
 /// step (a typed name is one step, as the fence's `<name>`).
 fn assert_within_the_note(id: &str, keys: &[&[u8]]) {
-    let noted = noted_keys(id);
-    assert!(
-        keys.len() <= noted,
-        "{id}: took {} inputs, the note allows {noted}",
-        keys.len()
-    );
+    crate::m8_walk::within_the_note(id, keys);
 }
 
 /// The feature-branch corpus with a branch `qzseek` and a tag `vqz9` on

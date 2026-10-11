@@ -141,6 +141,7 @@ case "$milestone" in
   m5) promise="you see the result before you confirm — the ghost the preview draws is what git then does, and u takes it back (TESTING.md \"History\")." ;;
   m6) promise="a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md \"Conflicts walk\", \"Conflict journeys\")." ;;
   m7) promise="you can rewrite, trace and recover history without leaving the app — the three promise scenarios (Rewrite, Trace, Recover) run end to end with no shell step, and each of the 29 journeys is walked at or under the note's count (TESTING.md \"M7 acceptance\")." ;;
+  m8) promise="it stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches itself from inside the app — the mock-up's scenes (m8-proto-*) first, then every M8 capture in ticket order; each journey of the note's fence is walked at or under its count (TESTING.md \"M8\")." ;;
   *) promise="NOT RECORDED — add this milestone's promise to scripts/contact-sheet.sh." ;;
 esac
 
@@ -177,7 +178,9 @@ done
 
 header() {
   local part="$1" parts="$2"
-  echo "# ${milestone} contact sheet"
+  # Rule 5 on the first line, where a reader who stops early still sees it
+  # (m8-polish-and-ship/28 amendment A1).
+  echo "# ${milestone} contact sheet — colour unverified: character grids, no colour (rule 5)"
   if [ "$parts" -gt 1 ]; then
     echo "# Part $part of $parts (${sheet_stem}-1.txt … ${sheet_stem}-$parts.txt), each at most 180 000 B."
   fi

@@ -1,0 +1,52 @@
+m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at his full-screen 187×50: the card with `practice 1 of 8 · stage a change` and `esc leave` on its top border and the ticks row drawn (eight marks, none ticked yet); the header `◇ work`; the practice graph under the card. Judge beside m8-tour-step1-120x36.txt and the mock-up m8-proto-3f-tour-card.txt. Colour unverified (rule 5).
+
+ ◇ workarpractice · /private/tmp/graft-capture/tour-187x50-XXXXXX/practice-tmp/tributary-practice-1609459200/work · a throwaway repo, not yours · main                           7 commits
+ ~/code
+╭─ practice 1 of 8 · stage a change ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── esc leave ╮
+│ ⏎ on the top row opens your changes · space stages the change under the cursor                                                       stage commit undo stash branch merge conflict push │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ◌        Uncommitted changes (1 unstaged, 1 untracked)
+▸ ◆      ⓘ [◆ main ↑1] Add today's specials                                                                                                                                PR 6y   ecad443
+  ●        [origin/main] Name the chef                                                                                                                                     PR 6y   9855ec8
+  ●        Pie for dessert                                                                                                                                                 PR 6y   eb4b686
+  │ ●      [clash] Ice cream for dessert                                                                                                                                   PR 6y   ebf3d77
+  │ │ ●    [feature] Add opening hours                                                                                                                                     PR 6y   8393dfc
+  ●─┴─╯    Add a side dish                                                                                                                                                 PR 6y   4a6c890
+  ◇        Start the menu                                                                                                                                                  PR 6y   4baa76b
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · ? keys

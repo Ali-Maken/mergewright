@@ -13,7 +13,7 @@ use crate::app_harness::{App, git};
 
 /// A two-commit repo whose tip changes only whitespace in one line and a
 /// word in another, so `w` visibly changes the diff.
-fn repo() -> graft_fixtures::Scratch {
+pub(crate) fn repo() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
     std::fs::write(path.join("notes.txt"), "alpha beta\ngamma\n").expect("writable");
@@ -27,7 +27,7 @@ fn repo() -> graft_fixtures::Scratch {
     scratch
 }
 
-fn opened(app: &App, state: AppState) -> AppState {
+pub(crate) fn opened(app: &App, state: AppState) -> AppState {
     app.pump(state, "the first rows and the refs", |state| {
         state.refs.is_some()
             && state.working_tree.is_some()

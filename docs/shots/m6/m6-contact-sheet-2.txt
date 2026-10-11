@@ -1,4 +1,4 @@
-# m6 contact sheet
+# m6 contact sheet — colour unverified: character grids, no colour (rule 5)
 # Part 2 of 5 (m6-contact-sheet-1.txt … m6-contact-sheet-5.txt), each at most 180 000 B.
 #
 # Promise: a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md "Conflicts walk", "Conflict journeys").

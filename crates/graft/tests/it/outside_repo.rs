@@ -13,37 +13,19 @@ use std::path::{Path, PathBuf};
 use crate::app_harness::git;
 use crate::pty::{Isolated, Pty, Screen, count};
 
-/// The design note whose `journey-counts` fence these walks are held to.
-const NOTE: &str = "../../docs/design-notes/m8-polish-and-ship.md";
-
 /// The alternate screen going up.
 const ALT_SCREEN: &[u8] = b"\x1b[?1049h";
 /// The capability probe's first query: kitty graphics, `a=q` on image 31
 /// (`graft_term::detect::probe::full_round`'s first item).
 const PROBE_FIRST: &[u8] = b"\x1b_Gi=31,";
 
-fn noted_keys(id: &str) -> usize {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(NOTE);
-    let note =
-        std::fs::read_to_string(&path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
-    crate::m5_walk::parse_counts(&note)
-        .unwrap_or_else(|why| panic!("the M8 fence does not parse: {why}"))
-        .iter()
-        .find(|row| row.id == id)
-        .and_then(|row| row.keys)
-        .unwrap_or_else(|| panic!("the M8 fence has no count for {id}"))
-}
-
 /// A journey's inputs, counted as the note's fence counts them: each key
 /// one, and launching Graft one more where the row's keys start at `trib`
 /// (`open-*`); `init-here` starts on the empty state (`i y`).
 pub(crate) fn assert_within_the_note(id: &str, launch: bool, keys: &[&[u8]]) {
     let taken = usize::from(launch) + keys.len();
-    let noted = noted_keys(id);
-    assert!(
-        taken <= noted,
-        "{id}: took {taken} inputs, the note allows {noted}"
-    );
+    let launched = if launch { "the launch, then " } else { "" };
+    crate::m8_walk::within_the_note_taking(id, taken, &format!("{launched}{keys:?}"));
 }
 
 /// A scratch tree: a plain folder to start in, and a ceiling above it.
@@ -503,6 +485,20 @@ fn outside_repo_captures() {
          `▸` on the newest (selection fill under it), name · `~` path · age; a `─` rule over \
          the bar row `o open… · i init · c clone… · t practice tour · ⏎ open the selected · \
          q quit · ? keys` (m8/18c added clone, m8/19b the tour).",
+        &screen,
+    );
+    quit_cleanly(pty);
+
+    // m8-polish-and-ship/28 (look): the same screen at his full-screen size.
+    let pty = Pty::spawn(&isolated, &code, isolated.root.path(), (187, 50));
+    let screen = pty.wait_for("the empty state", |s| s.has("RECENT"));
+    shot(
+        &mut shots,
+        "m8-look-outside-repo-187x50.txt",
+        "the 120x36 screen at his full-screen 187x50: the same rows in the same order (header, \
+         folder line, the four actions, RECENT newest first with `▸` on the newest), the `─` \
+         rule over the bar row; judge the spacing beside m8-look-outside-repo-120x36.txt and \
+         the mock-up m8-proto-3a-empty.txt.",
         &screen,
     );
     quit_cleanly(pty);

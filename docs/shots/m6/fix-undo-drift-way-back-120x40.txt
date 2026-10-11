@@ -10,7 +10,8 @@
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
-#    m6-conflicts/79). The Radar has answered: its `ⓘ` is on `fix`.
+#    m6-conflicts/79). `fix`'s row reads `[fix] fix the bug`, no mark
+#    after the badge (this line said a Radar `ⓘ` until m8/28).
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).

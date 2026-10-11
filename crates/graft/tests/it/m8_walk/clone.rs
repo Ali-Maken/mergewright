@@ -17,28 +17,13 @@ use graft_fixtures::remote::{HttpRemote, HungRemote, LocalRemote};
 
 use crate::pty::{Isolated, Pty, Screen};
 
-/// The design note whose `journey-counts` fence J15 is held to.
-const NOTE: &str = "../../docs/design-notes/m8-polish-and-ship.md";
-
 const USER: &str = "tester";
 const PASSWORD: &str = "clone-walk-horse-battery";
 
 /// J15's inputs as the fence counts them: `c`, the URL typed (one input,
 /// `Type`), `⏎`.
 fn assert_within_the_note(inputs: usize) {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(NOTE);
-    let note =
-        std::fs::read_to_string(&path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
-    let noted = crate::m5_walk::parse_counts(&note)
-        .unwrap_or_else(|why| panic!("the M8 fence does not parse: {why}"))
-        .iter()
-        .find(|row| row.id == "clone")
-        .and_then(|row| row.keys)
-        .expect("the M8 fence counts clone");
-    assert!(
-        inputs <= noted,
-        "clone: took {inputs} inputs, the note allows {noted}"
-    );
+    crate::m8_walk::within_the_note_taking("clone", inputs, "(c, the URL, ⏎)");
 }
 
 /// `~/code` under the isolated home, empty: where Graft starts and where
