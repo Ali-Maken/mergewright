@@ -633,3 +633,50 @@ Totals (this file's sums): **5 Critical, 83 Major, 248 Minor** across 30 reviews
 **After the checkpoint (scroll lag).** Model per ticket is the spec's where the log gives it: 41, 42, 43, 45, 46b Sonnet; 44, 47 Fable; 46, 46c, 48 Opus (m7:546, :563, :573, :581). No reviewer run is logged for 41–49. 47 left 2 boxes open by planner ruling (idle timing on battery + low power; Pixel RSS) as gaps (m7:581–582). User after 48: "still a bit laggy but improved for sure, lets move on" (m7:589).
 
 M7 total after the scroll work ≈ **22 691** tool uses (≈21 281 at the checkpoint, m7:542, + 1410 logged since). Waste the log names after the checkpoint: third unchecked spec pass (m7:545), two background-wait stalls (m7:557), 45's missed heavy-only sites (m7:559).
+
+## M8 Polish, final name, ship (m8-polish-and-ship)
+
+Go 2026-10-02 at `f7a9a8eb` (m8:7); ticket start `f5080f50` (m8:27). Last gate line in the log: 6349/6349 after the close debug merge (m8:509); debugger 2 merged after it, gates "running" at the log's end (m8:510). Tool-use counts are the harness's, cited `m8:<line>`. "No count" means the log gives none.
+
+**Models.** The M8 log names agents, not models. Per the M6 mapping (m6:79, m6:85): `builder-opus` Opus medium, `builder-sonnet` Opus low (tier label), `builder-fable`, `planner-fable`, `reviewer` and `debugger` Opus high, `builder-opus-xhigh` Opus xhigh, `scout` and `researcher` Opus low. The log itself never states a model for reviewer or debugger.
+
+| Role | Agent | Detail |
+|---|---|---|
+| Prior art | researcher | 5 studies: scroll-smoothness 16, install-docs 23 + 37 (pass 2, harness figure after resume), first-run 27, keymap-help-remap 21, themes 19 (m8:8–13). Later passes: 03-M2 addendum 18 (m8:109), quit-while-git-runs 24 (m8:144), chrome+empty-state 16 (m8:160), palette-find 22 (m8:208), look-polish post hoc 22 (m8:300). 11 runs, 245 counted (this file's sum). |
+| Prototype | builder-opus; builder-sonnet | Prototype scenes 1–4, 38 (m8:17). Phone/real-app shots by builder-sonnet: 11, 48, 65 (m8:18, :20, :21). |
+| Designed | planner-fable | Pass 1, 78, COMPACTED (m8:15); pass 2a, 97, ADRs 0054–0058 (m8:24); pass 2b, 95, 20 specs + acceptance (m8:28). ADRs later: 0059 (m8:65, accepted m8:79), 0060 and 0061 (m8:237), 0062 (m8:343). Architecture pass 25 (MAPs), 70, 0 / 4 / 8, filed 33–42 (m8:421). |
+| Specified | conductor; planner-fable | Conductor filed 01–28 (m8:29). planner-fable wrote every respec, split, ruling and fix spec after that: 74 lines with a count, **1897** (this file's script sum, loose match, not checked line by line over planner-fable lines); 8 lines with no count (m8:90, :225, :335, :337, :363, :365, :376, :379). |
+| Scouts | scout | 37 counted, **426** (this file's script sum, loose match, not checked line by line); no count on m8:43, :48, :49, :70, :81, :352, :354. |
+| Debugger | debugger | 12 runs, **1358**: 13g flake 106 (m8:235), 13h 94 (:251), http_remote 33 (:264), 13k 128 (:294), 13m 123 (:308), pull flake 94 (:339), task_4 43 (:369), 29 write_shots 50 (:401), 30 linux 341 (:411), tour/open-recent 114 (:444), close-run red 114 (:508), debugger 2 118 (:510). |
+| Built | builder-opus, builder-sonnet, builder-fable, builder-opus-xhigh | Counts per run are in the log line for each ticket; this file does not total them (log lines mix cumulative, post-resume and lost counts). Fable: 02 pace, 02 review fixes, 09 key table, 18e A1, 18e A2+A3, 26 Part B, 28 acceptance. Opus xhigh: 13c, 13d, 21c A, 21c B, 19d-a, 19d-a2, 19d-a3, 19e. Sonnet-tier: 22, 22 remainder, 21 review-fix, 10b (stop + done), 11b, 09e (stop + done), 13f, 17, 10f, 10g, 10j, 10h, 10i, 10k, 22c, 11d, 11c (blocked), 12f, 10l, 20, 20 remainder, 13l A, 18d, 18c, 11f A/B/C, 19c-a, 21b-1, 21b-2, 21b-4 additions, 21b-5, 21b-6, 21b-7b, 19d-b, 19d-b2, 18e B, 20b A, 20b B, 20c, 20d, 20d-b, 24-b, 20e, 31, 32, 33–37, 37 Addition, 43 (+ clippy fix), 26r B, 27a, 27b, 27c, 27d, 38 (pass 1, pass 2, cont 2), 41, 42, 42b. The rest are builder-opus (incl. 01, 03, 04, 05, 06, 07, 08, 10, 10c, 10e, 11, 12–12e, 13, 13b, 13e, 13g, 13j, 13l B, 14–14e, 15, 15b, 16, 17b, 17c, 18a, 18b, 19a, 19b, 19c-b, 19c-c, 19d-c, 21, 21b-3, 21b-4, 21b-7a, 23, 24, 26 A, 26r A, 39, 40, 44, 45). |
+| Reviewed | reviewer | 28 reviews and walks (usability walk included) + 2 quiet-run passes; 24 counted, **1955** (this file's sum). No count: 21+22 (m8:51), 13 (m8:61), 03 (paused at 48+, final not given, m8:96/:107), palette+theme (m8:261). |
+
+**Lost or partial counts the log names:** 13b review-fix first run (lost to the network drop, m8:179); 09d planner first run (m8:180); 16 first run (m8:186); 22 remainder and 04 review fixes pre-drop legs (m8:136–137); 05 A pre-stop (m8:497); 45 pre-stop (m8:502); 28's SKILLS line (lost to compaction, m8:504); 18d merge "tools n/a" (m8:312).
+
+**Compacted** (as logged): planner pass 1, 02, 14, 04 pass 1, 13b, 14b, 14 fixes, 07, 14c remainder, 08, 09b, 10 (×2), 10c, 09c, 13b fixes (×2), 09d, 13c, 11, 13d (×2), 11b, 10e, 09f, 12, 12b, 11e, 18b, 18c, 19b (×2), 18e A2+A3, 21c A, 21c B, 19d-a (×2), 19d-a2, 19d-a3, 19e, 26 A, 26 B, 05 Part 2, 05 A, 28.
+
+**Reviews** (reviewer). Critical / Major / Minor.
+- 01: 73, 0 / 2 / 9; 6/6 (m8:41). 21+22: no count, 0 / 2 / 10; 17/17 (m8:51).
+- 13: no count, 0 / 3 / 10; 5/5 (m8:61). 02: 87, 0 / 3 / 7; 10/10 (m8:83).
+- 14: 84, 0 / 5 / 9; 4/5 held (m8:86). 03: no final count, **1** / 3 / 8; 9/10 — C1 false tick on J1 (m8:107).
+- 04: 50, 0 / 5 / 5; 2/2 (m8:133). 13b: 84, 0 / 4 / 7; 10/10 (m8:141).
+- 14b+14c: 57, 0 / 3 / 9; 19/19 (m8:145). Look 06+07+08: 115, 0 / 2 / 11; 23/23 (m8:158).
+- 09+09b: 85, 0 / 5 / 12; 14/14 (m8:162). 14d: 40, 0 / 2 / 7; 15/15 (m8:166).
+- 22: 54, **1** / 3 / 4; 5 checked, 4 held — C1 false tick (m8:169). Keymap sweeps: 76, 0 / 4 / 9; 26/26 (m8:220).
+- Palette+theme: no count, 0 / 4 / 11; 24/24 (m8:261). 13b-fix/13c/13d: 84, 0 / 3 / 9; 15/15 (m8:203).
+- Stop+look: 91, 0 / 3 / 11; 30/30 (m8:299). Doorway+words: 119, 0 / 3 / 9; 42/42 (m8:314).
+- Clone: 77, **1** / 3 / 7; 30/33 checked, 29 held — C1 false tick on 18c box 2 (m8:327).
+- Palette/landing/stop: 68, **1** / 3 / 7; 26 checked, 25 held — C1 false tick on 12f D3 (m8:340).
+- Bars+hygiene: 112, 0 / 1 / 8; 25/25 (m8:350). Tour/setaside/fetch: 20 after resume, 0 / 2 / 5; 15/15 (m8:378).
+- Words-focus: 94, 0 / 4 / 9; 38/38 (m8:410). Hygiene-release: 63, 0 / 1 / 8; 39/39 (m8:414).
+- Health-1: 95, 0 / 2 / 7; no false tick (m8:434). 26 (A+B): 90, 0 / 3 / 11; 17/17 (m8:454).
+- Health-rename-2: 112, 0 / 4 / 10; 31/31 (m8:488). Usability walk: 125, 0 / 2 / 9; journeys within note counts (m8:501).
+- Quiet run: 8, ran nothing (battery, m8:506); rerun no count, RED, `docs/reviews/m8-close-run.md` (m8:507).
+
+Totals (this file's sums): **4 Critical, 84 Major, 238 Minor** across 28 reviews and walks. All four Criticals are false ticks.
+
+**Acceptance:** 28 by builder-fable, partial 7/8, 227, COMPACTED; perf box open for a quiet run (m8:504). Close run RED (m8:507) → debugger: frames harness ran unfenced since 02, release perf 21/21 after fix, product code unchanged (m8:508); debugger 2: held_key red was the harness, trace draw miss = CPU clock state, needs a measurement-method ruling (m8:510).
+
+**Conductor errors the log records:** 12f merged without checking ticks (m8:280); 11f A merge sealed with conflict markers (m8:319); 18c false tick merged with the gap filed (m8:327); home-path leaks in conductor commits (m8:238, :330, :333, :351); 20d-b's claim filed as broken without a line (m8:418); 24 builder left registered running (m8:429).
+
+**User decisions logged:** max 2 helpers (m8:94); pause/resume (m8:95, :101); name Tributary/trib as placeholder, naming discussion owed (m8:22, :456); 05 deferred then built (m8:284, :490); after 05 in Ghostty: "now it felt solid" (m8:500).
