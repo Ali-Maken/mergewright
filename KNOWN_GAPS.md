@@ -1339,3 +1339,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/28-j2-wheel-tail | No held-wheel heavy test exists, so J2's wheel tail can't be measured or quoted (28 NOTES). | **unverified** | post-M8 |
 | M8/28-release-docs-stale | docs/release/ files predate the trib rename; build.txt records `brew style: FAILED` (28 NOTES). | **broken** | M8 stop (with naming) |
 | M8/28-help-hunk-search | Question: `?` searching "hunk" finds nothing (28 NOTES). | **question** | post-M8 |
+| M8/46-j-no-ascii | J draws `✗`/`⇢` in every tier; nothing in J switches to ASCII (scout 46; `journal_screen/pieces.rs:66`). | **broken** (ASCII tier) | post-M8 |
+| M8/47-q2-prior-art | Q2 prior-art row names no other tool's `⏎`-on-current behaviour (VS Code, lazygit, Sublime Merge unchecked; review g1 m8). | **unverified** | post-M8 |
+| M8/47-capture-hostile-subject | Q2 capture shows the shared fixture's hostile subject `Commit 3␛[31m` in graph rows; noise for the eye check (review g1 m10). | **broken** (capture only) | 56 recaptures |
