@@ -1,0 +1,116 @@
+# m8 close: release perf — cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
+# HEAD 58367ddd
+# start 2026-10-11T09:08:52Z load={ 3.67 2.80 2.38 } power='AC Power' lowpower=0
+exit 101, 110s
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=104
+frames: g_after_idle build=idle-advance tier=Unicode refs=FiftyThousand rows=100000 laid_out=100000 gap_ms=2000 latency_us=9356 asked=1 wakes_between=1 idle_gap_wakes=0 woke=[]
+frames: tier=Pixel refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+frames: tier=Pixel refs=FiftyThousand trigger=Other frames=2 totals: bytes=3261 transmits=0 transmit_bytes=0 placements=20 deletes=0 frees=0
+frames: tier=Pixel refs=FiftyThousand trigger=Char('j') frames=88 totals: bytes=47077305 transmits=174 transmit_bytes=46515340 placements=1036 deletes=122 frees=61
+frames: tier=Pixel refs=FiftyThousand trigger=Window frames=70 totals: bytes=98688069 transmits=338 transmit_bytes=98189318 placements=896 deletes=730 frees=247
+frames: tier=Pixel refs=FiftyThousand trigger=PageDown frames=115 totals: bytes=183032301 transmits=633 transmit_bytes=182201558 placements=1423 deletes=1256 frees=469
+frames: tier=Pixel refs=FiftyThousand trigger=PageUp frames=33 totals: bytes=20405866 transmits=59 transmit_bytes=20231932 placements=400 deletes=358 frees=55
+frames: tier=Pixel refs=FiftyThousand trigger=Char('k') frames=1 totals: bytes=1577 transmits=0 transmit_bytes=0 placements=14 deletes=0 frees=0
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=644 p50=3890 p99=21138 max=599933 total=6643185 over_1ms=379 over_2ms=360
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=6833 PageDown=6480 Char('k')=2902 PageUp=4329 Char('j')=2832
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=13913 p99_us=29801 max_us=32985 over_budget=178 kitty_commands=93265 bytes=350797563
+frames: tier=Pixel refs=FiftyThousand pane=Closed keys over 16ms (recorded; the gate is the p99): 178 of 420: key 0: 23.593708ms (queued 7.299958ms behind other event frame 17.731458ms; own frame 16.29375ms, bytes=1748 transmits=0 placements=10), key 1: 16.276584ms (queued 196.417µs behind other event frame 12.410042ms; own frame 16.080167ms, bytes=1509 transmits=0 placements=10), key 6: 17.832375
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier' (1342041774) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 29.801083ms is over the 16ms input-to-frame budget at Pixel with FiftyThousand refs (178 of 420 keys over): key 0: 23.593708ms (queued 7.299958ms behind other event frame 17.731458ms; own frame 16.29375ms, bytes=1748 transmits=0 placements=10), key 1: 16.276584ms (queued 196.417µs behind other event frame 12.410042ms; own frame 16.080167ms, bytes=1509 transmits=0 placements=10), key 6: 17.8323
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=11
+frames: tier=Unicode refs=FiftyThousand trigger=Other frames=2 totals: bytes=1825 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('j') frames=99 totals: bytes=512503 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Window frames=94 totals: bytes=432065 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageDown frames=134 totals: bytes=563931 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageUp frames=35 totals: bytes=143559 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('k') frames=1 totals: bytes=557 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=645 p50=6645 p99=21456 max=599463 total=7279982 over_1ms=400 over_2ms=385
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=2266 PageDown=2354 Char('k')=2235 PageUp=2403 Char('j')=2235
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=8212 p99_us=22384 max_us=25516 over_budget=82 kitty_commands=0 bytes=1666893
+frames: tier=Unicode refs=FiftyThousand pane=Closed keys over 16ms (recorded; the gate is the p99): 82 of 420: key 0: 21.3785ms (queued 3.273625ms behind other event frame 18.939208ms; own frame 18.104875ms, bytes=1032 transmits=0 placements=0), key 1: 16.990375ms (queued 4.125µs behind other event frame 14.292333ms; own frame 16.98625ms, bytes=793 transmits=0 placements=0), key 2: 16.4345ms (queu
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier' (1342042701) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 22.384458ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (82 of 420 keys over): key 0: 21.3785ms (queued 3.273625ms behind other event frame 18.939208ms; own frame 18.104875ms, bytes=1032 transmits=0 placements=0), key 1: 16.990375ms (queued 4.125µs behind other event frame 14.292333ms; own frame 16.98625ms, bytes=793 transmits=0 placements=0), key 2: 16.4345ms (qu
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=10
+frames: tier=Unicode refs=FiftyThousand trigger=Other frames=2 totals: bytes=3079 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('j') frames=105 totals: bytes=6418 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageDown frames=208 totals: bytes=9033 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageUp frames=52 totals: bytes=2893 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('k') frames=1 totals: bytes=551 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=502 p50=9578 p99=22668 max=606991 total=7254991 over_1ms=399 over_2ms=390
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=2255 PageDown=2277 Char('k')=2300 PageUp=2270 Char('j')=2174
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=7836 p99_us=22406 max_us=24450 over_budget=72 kitty_commands=0 bytes=34427
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys over 16ms (recorded; the gate is the p99): 72 of 422: key 0: 18.277958ms (queued 3.513792ms behind other event frame 16.426791ms; own frame 14.764166ms, bytes=3038 transmits=0 placements=0), key 3: 20.079209ms (queued 12.375µs behind other event frame 326.334µs; own frame 20.066834ms, bytes=546 transmits=0 placements=0), key 4: 17.138084
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff' (1342042878) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 22.406709ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (72 of 422 keys over): key 0: 18.277958ms (queued 3.513792ms behind other event frame 16.426791ms; own frame 14.764166ms, bytes=3038 transmits=0 placements=0), key 3: 20.079209ms (queued 12.375µs behind other event frame 326.334µs; own frame 20.066834ms, bytes=546 transmits=0 placements=0), key 4: 17.138084ms
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=9
+frames: tier=Unicode refs=FiftyThousand trigger=Other frames=3 totals: bytes=3730 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('j') frames=104 totals: bytes=4264 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageDown frames=207 totals: bytes=8487 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageUp frames=52 totals: bytes=2132 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('k') frames=1 totals: bytes=41 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=501 p50=9882 p99=22686 max=598570 total=7319234 over_1ms=400 over_2ms=388
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=2246 PageDown=2179 Char('k')=2269 PageUp=2176 Char('j')=1321
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=8248 p99_us=22359 max_us=25946 over_budget=68 kitty_commands=0 bytes=31107
+frames: tier=Unicode refs=FiftyThousand pane=Open keys over 16ms (recorded; the gate is the p99): 68 of 421: key 0: 18.283292ms (queued 3.541333ms behind other event frame 16.366042ms; own frame 14.741959ms, bytes=3038 transmits=0 placements=0), key 17: 21.323792ms (queued 16.792µs behind key 16 frame 12.752167ms; own frame 21.307ms, bytes=41 transmits=0 placements=0), key 18: 18.619292ms (queued 
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open' (1342043147) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 22.359166ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (68 of 421 keys over): key 0: 18.283292ms (queued 3.541333ms behind other event frame 16.366042ms; own frame 14.741959ms, bytes=3038 transmits=0 placements=0), key 17: 21.323792ms (queued 16.792µs behind key 16 frame 12.752167ms; own frame 21.307ms, bytes=41 transmits=0 placements=0), key 18: 18.619292ms (que
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=12
+frames: tier=Unicode refs=FiftyThousand trigger=Other frames=12 totals: bytes=6816 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('j') frames=97 totals: bytes=24187 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageDown frames=211 totals: bytes=8651 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageUp frames=55 totals: bytes=2255 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Char('k') frames=1 totals: bytes=41 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=697 p50=4274 p99=22928 max=600480 total=7362732 over_1ms=511 over_2ms=375
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=1510 PageDown=741 Char('k')=1482 PageUp=1480 Char('j')=1484
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=7804 p99_us=21727 max_us=24777 over_budget=59 kitty_commands=0 bytes=54403
+frames: tier=Unicode refs=FiftyThousand pane=Map keys over 16ms (recorded; the gate is the p99): 59 of 421: key 0: 16.8755ms (queued 3.628084ms behind other event frame 14.169916ms; own frame 13.247416ms, bytes=5976 transmits=0 placements=0), key 15: 24.493458ms (queued 238µs behind key 14 frame 12.395417ms; own frame 24.255458ms, bytes=478 transmits=0 placements=0), key 16: 17.3165ms (queued 11.9
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open' (1342044107) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 21.727083ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (59 of 421 keys over): key 0: 16.8755ms (queued 3.628084ms behind other event frame 14.169916ms; own frame 13.247416ms, bytes=5976 transmits=0 placements=0), key 15: 24.493458ms (queued 238µs behind key 14 frame 12.395417ms; own frame 24.255458ms, bytes=478 transmits=0 placements=0), key 16: 17.3165ms (queued
+test frames::journal_find::j_with_a_broad_find_holds_the_frame_budget ... frames: tier=Unicode refs=2425 pane=JournalFind control=Plain keys=127 p50_us=15371 p99_us=30903 max_us=33215 over_budget=61 hits=2000 lost_rows=425
+frames: tier=Unicode refs=2425 pane=JournalFind keys over 16ms (recorded; the gate is the p99): 61 of 127: key 0 Char('J'): 19.4005ms, key 1 Char('/'): 22.794542ms, key 7 Char('n'): 16.131791ms, key 8 Char('n'): 20.086959ms, key 14 Char('n'): 21.166667ms, key 18 Char('n'): 18.500083ms, key 19 Char('n'): 23.509709ms, key 21 Char('n'): 18.617417ms, key 22 Char('n'): 26.295709ms, key 24 Char('n'): 16
+thread 'frames::journal_find::j_with_a_broad_find_holds_the_frame_budget' (1342044316) panicked at crates/graft/tests/it/frames/journal_find.rs:163:5:
+p99 30.903042ms is over the 16ms input-to-frame budget in J with /step kept (61 of 127 keys over): key 0 Char('J'): 19.4005ms, key 1 Char('/'): 22.794542ms, key 7 Char('n'): 16.131791ms, key 8 Char('n'): 20.086959ms, key 14 Char('n'): 21.166667ms, key 18 Char('n'): 18.500083ms, key 19 Char('n'): 23.509709ms, key 21 Char('n'): 18.617417ms, key 22 Char('n'): 26.295709ms, key 24 Char('n'): 16.367583m
+test frames::readings::a_batched_key_reads_its_batch_frame ... ok
+test frames::readings::idle_gaps_count_what_nothing_asked_for_after_laid_out ... ok
+frames: tier=Pixel refs=Fixture trigger=Other frames=1 totals: bytes=1532 transmits=0 transmit_bytes=0 placements=10 deletes=0 frees=0
+frames: tier=Pixel refs=Fixture trigger=Char('j') frames=95 totals: bytes=50739165 transmits=187 transmit_bytes=50351616 placements=1114 deletes=130 frees=66
+frames: tier=Pixel refs=Fixture trigger=PageDown frames=110 totals: bytes=174781990 transmits=597 transmit_bytes=173981886 placements=1365 deletes=1204 frees=454
+frames: tier=Pixel refs=Fixture trigger=Window frames=89 totals: bytes=123563934 transmits=418 transmit_bytes=122935520 placements=1148 deletes=934 frees=313
+frames: tier=Pixel refs=Fixture trigger=PageUp frames=30 totals: bytes=24674010 transmits=75 transmit_bytes=24501178 placements=355 deletes=332 frees=68
+frames: tier=Pixel refs=Fixture trigger=Char('k') frames=1 totals: bytes=1577 transmits=0 transmit_bytes=0 placements=14 deletes=0 frees=0
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=580 p50=4842 p99=18026 max=602272 total=6370422 over_1ms=370 over_2ms=347
+frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=6957 PageDown=3863 Char('k')=462 PageUp=3649 Char('j')=2865
+frames: tier=Pixel refs=Fixture pane=Closed control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Pixel refs=Fixture pane=Closed control=Plain keys=420 p50_us=14145 p99_us=28223 max_us=30871 over_budget=175 kitty_commands=99731 bytes=375348818
+frames: tier=Pixel refs=Fixture pane=Closed keys over 16ms (recorded; the gate is the p99): 175 of 420: key 0: 21.304292ms (queued 4.143167ms behind nothing; own frame 17.161125ms, bytes=1532 transmits=0 placements=10), key 1: 17.827875ms (queued 561.042µs behind other event frame 16.904959ms; own frame 17.266833ms, bytes=1258 transmits=0 placements=10), key 14: 19.729083ms (queued 1.471083ms behi
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier' (1342049236) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 28.223167ms is over the 16ms input-to-frame budget at Pixel with Fixture refs (175 of 420 keys over): key 0: 21.304292ms (queued 4.143167ms behind nothing; own frame 17.161125ms, bytes=1532 transmits=0 placements=10), key 1: 17.827875ms (queued 561.042µs behind other event frame 16.904959ms; own frame 17.266833ms, bytes=1258 transmits=0 placements=10), key 14: 19.729083ms (queued 1.471083ms be
+frames: tier=Unicode refs=Fixture trigger=Char('j') frames=110 totals: bytes=284526 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=Fixture trigger=Window frames=112 totals: bytes=502430 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=Fixture trigger=PageDown frames=127 totals: bytes=549101 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=Fixture trigger=PageUp frames=34 totals: bytes=147592 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=Fixture trigger=Char('k') frames=1 totals: bytes=557 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=581 p50=7588 p99=17705 max=601639 total=7136256 over_1ms=404 over_2ms=387
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=1555 PageDown=2489 Char('k')=2320 PageUp=2417 Char('j')=2180
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain keys=420 p50_us=7505 p99_us=20148 max_us=21515 over_budget=70 kitty_commands=0 bytes=1493943
+frames: tier=Unicode refs=Fixture pane=Closed keys over 16ms (recorded; the gate is the p99): 70 of 420: key 0: 19.669875ms (queued 332.166µs behind nothing; own frame 19.337709ms, bytes=816 transmits=0 placements=0), key 29: 16.566625ms (queued 16.542µs behind key 28 frame 9.822542ms; own frame 16.550083ms, bytes=544 transmits=0 placements=0), key 41: 17.731708ms (queued 13.916µs behind key 40 fr
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier' (1342050537) panicked at crates/graft/tests/it/frames/verdict.rs:75:5:
+p99 20.148166ms is over the 16ms input-to-frame budget at Unicode with Fixture refs (70 of 420 keys over): key 0: 19.669875ms (queued 332.166µs behind nothing; own frame 19.337709ms, bytes=816 transmits=0 placements=0), key 29: 16.566625ms (queued 16.542µs behind key 28 frame 9.822542ms; own frame 16.550083ms, bytes=544 transmits=0 placements=0), key 41: 17.731708ms (queued 13.916µs behind key 40 
+test frames::sink::tests::a_draining_sink_forwards_and_keeps_nothing ... ok
+test frames::sink::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+test heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb ... SUMMARY heavy pixel_rss drain=40000000B/s peak_rss=198950912 keys=188 rows_scrolled=188 strip_transmits_held=141 deflated_transmits=755
+test heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free ... SUMMARY heavy pixel_rss drain=18446744073709551615B/s peak_rss=231374848 keys=188 rows_scrolled=188 strip_transmits_held=157 deflated_transmits=815
+test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=40565 bottom_ms=58 top_ms=0 rows=100000 provisional=false rss_at_paint=92618752 rss_at_bottom=105807872 peak_rss=105938944 overflow_len=0
+test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=15786 bottom_ms=53 top_ms=0 rows=100000 provisional=false rss_at_paint=25526272 rss_at_bottom=33374208 peak_rss=33390592 overflow_len=0
+test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=18691 bottom_ms=587 top_ms=0 rows=100000 provisional=true rss_at_paint=28426240 rss_at_bottom=100302848 peak_rss=100302848 overflow_len=100000
+test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=16512 bottom_ms=51 top_ms=1 rows=100000 provisional=false rss_at_paint=28147712 rss_at_bottom=38240256 peak_rss=38354944 overflow_len=0
+test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=19508 bottom_ms=649 top_ms=1 rows=100000 provisional=true rss_at_paint=32292864 rss_at_bottom=107053056 peak_rss=107053056 overflow_len=100000
+    frames::journal_find::j_with_a_broad_find_holds_the_frame_budget
+test result: FAILED. 13 passed; 8 failed; 1 ignored; 0 measured; 879 filtered out; finished in 109.39s
+# end 2026-10-11T09:10:42Z load={ 1.50 2.31 2.24 } power='AC Power' lowpower=0

@@ -1,0 +1,33 @@
+# m8 close: heavy tier — cargo test --features heavy-tests -- --test-threads=2 (workspace)
+# HEAD 58367ddd; Darwin 27.0.0; rustc 1.98.1 (48a229cea 2026-09-01)
+# start 2026-10-11T09:00:15Z load={ 2.36 2.24 1.98 } power='AC Power' lowpower=0
+exit 101, 517s
+peak_rss_bytes (largest single process, /usr/bin/time -l) 753729536  maximum resident set size
+binaries: 8
+totals passed=3278 failed=5 ignored=8
+test held_key::held_j_stops_on_release_pixel ... FAILED
+test held_key::held_j_stops_on_release_pixel_free ... FAILED
+test held_key::held_j_stops_on_release_pixel_iterm2 ... FAILED
+test held_key::held_j_with_the_pane_shown_stops_on_release_pixel_deflate ... FAILED
+test held_key::held_j_with_the_pane_shown_stops_on_release_unicode_40mb ... FAILED
+thread 'held_key::held_j_stops_on_release_pixel' (1341468637) panicked at crates/graft/tests/it/held_key.rs:259:5:
+thread 'held_key::held_j_stops_on_release_pixel_free' (1341469297) panicked at crates/graft/tests/it/held_key.rs:259:5:
+thread 'held_key::held_j_stops_on_release_pixel_iterm2' (1341470132) panicked at crates/graft/tests/it/held_key.rs:259:5:
+thread 'held_key::held_j_with_the_pane_shown_stops_on_release_pixel_deflate' (1341470762) panicked at crates/graft/tests/it/held_key.rs:259:5:
+thread 'held_key::held_j_with_the_pane_shown_stops_on_release_unicode_40mb' (1341471495) panicked at crates/graft/tests/it/held_key.rs:259:5:
+    held_key::held_j_stops_on_release_pixel
+    held_key::held_j_stops_on_release_pixel_free
+    held_key::held_j_with_the_pane_shown_stops_on_release_pixel_deflate
+# end 2026-10-11T09:08:52Z load={ 3.67 2.80 2.38 } power='AC Power' lowpower=0
+
+# part 2: the binaries cargo never reached (it stops at the first failing binary) — cargo test --workspace --exclude graft --features heavy-tests --no-fail-fast -- --test-threads=2, then cargo test -p graft --features heavy-tests --doc
+# start 2026-10-11T09:21:35Z load={ 2.20 3.62 3.35 } power='AC Power' lowpower=0
+exit 0 (workspace minus graft), doc exit 0, 591s
+binaries: 35
+totals passed=3146 failed=0 ignored=9
+error: could not apply 2637f3e... side change
+error: could not revert 2637f3e... side change
+error: could not apply 2637f3e... side change
+error: Failed to merge in the changes.
+error: could not apply 6704713... feature change
+# end 2026-10-11T09:31:26Z load={ 2.83 3.17 3.26 }

@@ -169,3 +169,66 @@ upload_shapes emphasis:17x1184=27 emphasis:51x37=17 emphasis:17x259=12 emphasis:
 #                     misses its own recorded p95/p99 too; the after binary is below it on every draw percentile.
 # Verdict: byte targets met in every run (deterministic). draw_us p50 and p99 met in 1 of 2 counted runs (1 of 4
 #   after runs in all); not met as the ruling states it ("each run"). Not tuned (rule 2). For the conductor.
+
+# after, M8 close run (quiet machine), MONOREPO, run 1: 2026-10-11T09:20Z Darwin arm64 58367ddd
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=5 frames_while_held=49 frames_after_release=1 bytes_per_key=13096 bytes_after_release=2223 tail_ms=5 rss_mb=93 first_byte_ms=449 deflate_answer=yes transmits=151 deflated=151 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=3
+frames=55 span_ms=6173.4 frames_per_s=8.7
+wakes n=55 p50=1 p95=2 p99=18 max=18
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=69 p95=191 p99=485 max=485
+commands n=55 p50=0 p95=0 p99=7 max=7
+draw_us n=55 p50=3802 p95=7890 p99=26359 max=26359
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=68 p95=627 p99=5026 max=5026
+fence_us n=0
+input_age_us n=49 p50=4295 p95=8180 p99=35671 max=35671
+tail_ms=0.0
+power Now drawing from 'AC Power'
+after_last_motion frames=0
+uploads strip=7/805076B(70%) emphasis=144/176656B(15%) placements=935 stream=1147811B
+upload_shapes emphasis:17x1184=27 emphasis:51x37=17 emphasis:17x259=12 emphasis:51x481=5 emphasis:17x999=4 emphasis:17x37=4
+machine start 2026-10-11T09:20:19Z load={ 2.89 4.14 3.50 } power='AC Power' lowpower=0
+BUSY:  71.7 /System/Library/PrivateFrameworks/MediaAnalysis.framework/Versions/A/mediaanalysisd
+exit 0
+
+# after, M8 close run (quiet machine), MONOREPO, run 2: 2026-10-11T09:20Z Darwin arm64 58367ddd
+pty label=m8-trace-followup profile=kitty rate=- size=222x70 wait_s=5.0 period_ms=33 hold_s=1.65 keys=50 frames_before_keys=5 frames_while_held=49 frames_after_release=1 bytes_per_key=13096 bytes_after_release=2223 tail_ms=4 rss_mb=92 first_byte_ms=3 deflate_answer=yes transmits=151 deflated=151 deflate=yes broken=no
+header tier=pixel columns=222 rows=70 history_rows=17700 refs=1331 term=vscode headers=3
+frames=55 span_ms=6617.7 frames_per_s=8.2
+wakes n=55 p50=1 p95=2 p99=19 max=19
+motions n=55 p50=1 p95=1 p99=2 max=2
+queued n=55 p50=0 p95=0 p99=0 max=0
+update_us n=55 p50=68 p95=151 p99=202 max=202
+commands n=55 p50=0 p95=0 p99=7 max=7
+draw_us n=55 p50=3874 p95=9500 p99=26572 max=26572
+bytes n=55 p50=4087 p95=125744 p99=439220 max=439220
+write_us n=55 p50=64 p95=810 p99=5125 max=5125
+fence_us n=0
+input_age_us n=49 p50=4543 p95=8980 p99=40931 max=40931
+tail_ms=0.0
+power Now drawing from 'AC Power'
+after_last_motion frames=0
+uploads strip=7/805076B(70%) emphasis=144/176656B(15%) placements=935 stream=1147811B
+upload_shapes emphasis:17x1184=27 emphasis:51x37=17 emphasis:17x259=12 emphasis:51x481=5 emphasis:17x999=4 emphasis:17x37=4
+machine start 2026-10-11T09:20:29Z load={ 2.75 4.07 3.48 } power='AC Power' lowpower=0
+BUSY:  84.5 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd
+exit 0
+
+# M8 close run, diagnostic run 3 (not counted; TRACE_KEEP, trace not committed): 2026-10-11T09:32Z 58367ddd,
+#   load={ 2.11 2.96 3.18 } AC. draw_us p50=3833 p95=8583 p99=26579; bytes p95=125744 p99=439220 (identical bytes).
+#   p99 is one frame, before the first key (motions=0), carrying the strip load:
+#   frame at_us=5058478 wakes=1 motions=0 queued=0 update_us=47 commands=0 draw_us=26579 bytes=439220 write_us=4591
+#   p50: 40 of 56 frames over 3,172 µs (a distribution, not one frame).
+# M8 close verdict (runs 1 / 2, AC, Low Power Mode off, load 1-min 2.89 / 2.75 at start; BUSY mediaanalysisd 72 % in
+#   run 1, fseventsd 85 % in run 2 — not idle):
+#   emphasis upload bytes 176,656 / 176,656      target <= 1,078,750   met
+#   bytes_per_key         13,096 / 13,096        target <= 46,054      met
+#   bytes p95             125,744 / 125,744      target <= 288,075     met
+#   bytes p99             439,220 / 439,220      target <= 486,064     met
+#   draw_us p50           3,802 / 3,874          target <= 3,172       MISSED both
+#   draw_us p95           7,890 / 9,500          target <= 15,459      met
+#   draw_us p99           26,359 / 26,572        target <= 19,965      MISSED both
+#   after_last_motion frames=0, deflate=yes, broken=no, emphasis split by id bit 31   met both
+# Box :435 stays open. Not tuned (rule 2). For the conductor.
