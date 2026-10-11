@@ -1333,8 +1333,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/usab-m7-init-box-pattern | Init box breaks the box pattern: `esc keep it`, no button row (docs/reviews/m8-usability.md:143). | **broken** (textual) | post-M8 |
 | M8/usab-m8-tour-step1-bar | Tour step 1: bar leads with `. explain`, card says `⏎ on the top row` (docs/reviews/m8-usability.md:145). | **broken** (textual) | post-M8 |
 | M8/usab-m9-context-menu-cursor | `.` menu has no `▸` cursor and no frame (docs/reviews/m8-usability.md:149). | **broken** | post-M8 |
-| M8/usab-q1-lost-after-rebase | Question for the user: every rebase lists the old tip as "✗ lost … no branch holds it" though `u` restores it (docs/reviews/m8-usability.md:155). | **question** | M8 stop |
-| M8/usab-q2-picker-enter-current | Question for the user: `⏎` on the current branch in the picker keeps it open while the bar offers "switch to it" (docs/reviews/m8-usability.md:159). | **question** | M8 stop |
+| M8/usab-q1-lost-after-rebase | Decided (user 2026-10-11, "yes say replaced"): the old tip after a rebase/rewrite reads "replaced" when `u` can restore it, not "✗ lost" (docs/reviews/m8-usability.md:155). Spec pending (planner). | **broken** | M8 |
+| M8/usab-q2-picker-enter-current | Decided (user 2026-10-11, "close the picker"): `⏎` on the current branch closes the picker (docs/reviews/m8-usability.md:159). Spec pending (planner). | **broken** | M8 |
 | M8/28-perf-quiet-run | 28 acceptance perf box (docs/perf/m8-accept.txt: J1 tail, J3, RSS vs budgets) not run; needs `scripts/m8-accept.sh --perf` on a quiet machine, with the release perf run. | **unverified** | M8 close |
 | M8/28-j2-wheel-tail | No held-wheel heavy test exists, so J2's wheel tail can't be measured or quoted (28 NOTES). | **unverified** | post-M8 |
 | M8/28-release-docs-stale | docs/release/ files predate the trib rename; build.txt records `brew style: FAILED` (28 NOTES). | **broken** | M8 stop (with naming) |
