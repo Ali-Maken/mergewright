@@ -1335,3 +1335,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/usab-m9-context-menu-cursor | `.` menu has no `▸` cursor and no frame (docs/reviews/m8-usability.md:149). | **broken** | post-M8 |
 | M8/usab-q1-lost-after-rebase | Question for the user: every rebase lists the old tip as "✗ lost … no branch holds it" though `u` restores it (docs/reviews/m8-usability.md:155). | **question** | M8 stop |
 | M8/usab-q2-picker-enter-current | Question for the user: `⏎` on the current branch in the picker keeps it open while the bar offers "switch to it" (docs/reviews/m8-usability.md:159). | **question** | M8 stop |
+| M8/28-perf-quiet-run | 28 acceptance perf box (docs/perf/m8-accept.txt: J1 tail, J3, RSS vs budgets) not run; needs `scripts/m8-accept.sh --perf` on a quiet machine, with the release perf run. | **unverified** | M8 close |
+| M8/28-j2-wheel-tail | No held-wheel heavy test exists, so J2's wheel tail can't be measured or quoted (28 NOTES). | **unverified** | post-M8 |
+| M8/28-release-docs-stale | docs/release/ files predate the trib rename; build.txt records `brew style: FAILED` (28 NOTES). | **broken** | M8 stop (with naming) |
+| M8/28-help-hunk-search | Question: `?` searching "hunk" finds nothing (28 NOTES). | **question** | post-M8 |
