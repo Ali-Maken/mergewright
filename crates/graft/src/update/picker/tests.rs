@@ -415,15 +415,6 @@ fn y_on_that_preview_closes_the_picker() {
 }
 
 #[test]
-fn enter_on_here_writes_nothing() {
-    let state = on_row(&opened(&fixture()), "main");
-    let (state, commands) = press(&state, KeyCode::Enter);
-    assert!(operated(&commands).is_none());
-    assert!(state.preview.is_none());
-    assert_eq!(picker(&state).note.as_deref(), Some("you're on main"));
-}
-
-#[test]
 fn enter_while_a_write_runs_refuses_in_the_box() {
     let mut state = opened(&fixture());
     // A write in flight, as `operate::claim_write` records one.
@@ -633,3 +624,5 @@ fn letters_in_the_picker_at_a_live_stop_are_typed() {
     assert!(state.confirm.is_none(), "no skip or abort box");
     assert!(state.operating.is_none(), "nothing continued");
 }
+
+mod current_row;

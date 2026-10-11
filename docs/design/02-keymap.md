@@ -452,7 +452,7 @@ Amended 2026-09-26 (M7, user "all yes"). **Modal** (§2.1): a text field; claims
 |---|---|
 | typing | Filter |
 | `↑` / `↓` | Move the row |
-| `⏎` | Switch: instant on a clean tree (`u` goes back); a preview (`y`) with unsaved edits or a detached target |
+| `⏎` | Switch: instant on a clean tree (`u` goes back); a preview (`y`) with unsaved edits or a detached target; on the branch you are on, closes the picker, cursor on HEAD, nothing written (amended 2026-10-11, usability Q2, user: 'close the picker') |
 | `Tab` | Show it on the graph, cursor on its tip, nothing written |
 | `Esc` | Close |
 

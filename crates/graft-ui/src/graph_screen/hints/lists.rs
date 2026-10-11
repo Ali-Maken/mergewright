@@ -16,7 +16,7 @@ mod live;
 mod resolver;
 mod rows;
 
-use editors::{picker_list, rewrite_editor_list};
+use editors::{picker_list, picker_on_current_list, rewrite_editor_list};
 use live::said_live;
 pub(super) use live::said_live_on_the_graph;
 use resolver::{finish_list, resolver_context_list};
@@ -84,6 +84,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         } => blame_bar(*finding, *ignore_file, *lines),
         HintContext::History { rows, on_file } => history_place_list(*rows, *on_file),
         HintContext::Picker => picker_list(),
+        HintContext::PickerOnCurrent => picker_on_current_list(),
         // Only ever drawn in the sub-100-column `Tab` layout, which has no
         // divider to drag: everywhere else the overlay draws its own footer
         // beside the pane (`graft::view::frame::split_for_detail`, which

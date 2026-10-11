@@ -139,6 +139,14 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             })
             .collect(),
         HintContext::Picker => vec![picker_over(merge_on_screen(walk, MERGE_ROW).0)],
+        // m8 usability Q2: the same picker, its cursor on `main` (current).
+        HintContext::PickerOnCurrent => {
+            let mut state = picker_over(merge_on_screen(walk, MERGE_ROW).0);
+            if let Some(picker) = state.picker.as_mut() {
+                picker.selected = 1;
+            }
+            vec![state]
+        }
         // **The state ticket 31's sweep could not reach** (m5/42): the pane
         // has the keyboard and an overlay, not the graph, stands behind it.
         // One per overlay, because the three swallow different keys.

@@ -107,6 +107,7 @@ pub(super) fn words_for(context: &HintContext) -> Words {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }

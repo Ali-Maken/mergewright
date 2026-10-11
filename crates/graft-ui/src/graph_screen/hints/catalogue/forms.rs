@@ -56,6 +56,7 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Banner { .. }
         | HintContext::Preview
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -114,6 +115,7 @@ pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -152,6 +154,7 @@ pub(super) fn searching_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -226,6 +229,7 @@ pub(super) fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }

@@ -44,6 +44,7 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::WorkingTreeRow,
         HintContext::Preview,
         HintContext::Picker,
+        HintContext::PickerOnCurrent,
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,

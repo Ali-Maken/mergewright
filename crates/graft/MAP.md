@@ -267,7 +267,7 @@ Working-tree writes from the changes pane: stage, unstage, stage all, and openin
 ## update::palette
 The command palette and help (`?`, `⌃P`, `:`): one state, one listing from the live key table, one filter.
 ## update::picker
-The branch picker (`C`): type part of a name, `⏎` switches through `switch`, `Tab` shows it on the graph.
+The branch picker (`C`): type part of a name, `⏎` switches through `switch` (on the branch HEAD is on it closes, as `Tab` does), `Tab` shows it on the graph; `hint_context` picks the bar (`Picker` / `PickerOnCurrent`).
 ## update::place
 Places: the blame and history screens opened over the graph, and the `^` trail `Esc` walks back.
 ## update::prelude

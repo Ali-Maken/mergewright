@@ -116,12 +116,12 @@ pub enum HintContext {
         /// by `graft`'s `view::rows::overlay_context`.
         over_overlay: bool,
     },
-    // No `Journal`, `Stash` or `Map`: those overlays draw their own footers
-    // (`journal_screen`, `stash_screen`, `map_screen`), which carry the
-    // doorway from `hints::doorway_words` — one bar per place (m8/11e F2).
-    /// The branch picker (`C`, m7-power-tools/10) is up: a text field over
-    /// the lower graph that answers typing, `⏎`, `⇥`, `↑↓` and `Esc`.
+    // No `Journal`, `Stash` or `Map`: their overlays draw their own footers,
+    // with the doorway from `hints::doorway_words` — one bar per place (m8/11e F2).
+    /// The branch picker (`C`, m7/10) is up: a text field; typing, `⏎ ⇥ ↑↓ Esc`.
     Picker,
+    /// [`HintContext::Picker`] on HEAD's own branch, where `⏎` closes (m8 Q2).
+    PickerOnCurrent,
     /// **The detail pane has the keyboard with an overlay, not the graph,
     /// standing behind it** (m5/42).
     ///

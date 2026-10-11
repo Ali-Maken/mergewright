@@ -2339,8 +2339,8 @@ fn row_at_is_none_off_the_body() {
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
 /// place after `Redo` (63) was already the changes pane's; 116 → 113 in
-/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner).
-const COVERAGE_SLOTS: usize = 119;
+/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner; 119 → 120 in m8/47: `PickerOnCurrent`).
+const COVERAGE_SLOTS: usize = 120;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2442,11 +2442,11 @@ fn coverage_slot(context: &HintContext) -> usize {
         } => 85 + usize::from(*on_file),
         HintContext::History { rows: false, .. } => 87,
         HintContext::BackToHistory(_) => 88,
-        // m7-power-tools/10: the branch picker's one bar.
+        // m7-power-tools/10: the branch picker; on HEAD's own row 119 (m8/47).
         HintContext::Picker => 89,
-        // m7-power-tools/08: the rewrite editor's four flag pairs (96–99),
-        // its field (17, once 100), `R rewrite` on a commit row (112, once 101;
-        // both moved when m8/11e retired the journal, stash and Map slots).
+        HintContext::PickerOnCurrent => 119,
+        // m7-power-tools/08: the rewrite editor's four flag pairs (96–99), its field (17, once
+        // 100), `R rewrite` on a commit row (112, once 101; both moved in m8/11e).
         HintContext::RewriteEditor { narrow, can_start } => {
             96 + 2 * usize::from(*narrow) + usize::from(*can_start)
         }

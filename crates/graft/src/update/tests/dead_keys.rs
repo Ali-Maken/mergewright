@@ -296,6 +296,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // ticket's own finding). With the graph focused an overlay draws its
         // own footer (m8/11e), swept by `every_key_a_place_footer_draws_is_answered`.
         HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::PaneOverOverlay { .. }
         | HintContext::WorkingTreeRow
         | HintContext::Banner { .. }

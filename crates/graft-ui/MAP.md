@@ -197,7 +197,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 
 ## graph_screen::hints
 Decides which hints the footer draws, per context; `graph_screen`'s footer draws them. Words come from the keymap, never literals.
-- `HintContext` (enum) — where the cursor or focus is, for the footer's hint list; one variant per screen and state.
+- `HintContext` (enum) — where the cursor or focus is, for the footer's hint list; one variant per screen and state (`Picker` / `PickerOnCurrent`: the picker, its cursor off / on HEAD's branch).
 - `RowVerbs` (struct) — which of a commit row's own verbs act on the cursor's row; `RowVerbs::NONE`, `RowVerbs::ALL`.
 - `WayToBanner` (enum) — `Forward` / `Back`: which one press reaches the banner from the graph.
 - `LiveC` (enum) — what `c` does while an operation is live: finish, continue, and the rest.

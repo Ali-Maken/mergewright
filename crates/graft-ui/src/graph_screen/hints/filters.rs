@@ -34,6 +34,7 @@ pub(super) fn whole_bar(
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Picker
+        | HintContext::PickerOnCurrent
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         // The rewrite editor is modal (keymap §2.7): no doorway.
@@ -335,6 +336,7 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
             HintContext::Banner { .. }
                 | HintContext::Dragging
                 | HintContext::Picker
+                | HintContext::PickerOnCurrent
                 | HintContext::PaneOverOverlay { .. }
                 | HintContext::Resolver { .. }
                 | HintContext::Finish { .. }
