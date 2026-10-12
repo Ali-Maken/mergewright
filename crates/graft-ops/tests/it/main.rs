@@ -29,6 +29,7 @@ mod journal_fate;
 mod journal_list_oracle;
 mod journal_names;
 mod journal_tie;
+mod journal_two_writers;
 mod lost_work;
 #[cfg(unix)]
 mod merge_set_aside;

@@ -123,6 +123,16 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     if ctx.stop.should_stop() {
         return Err(ApplyError::Stopped);
     }
+    // The entry resumed is `Pending` and this run is about to finish it:
+    // hold the writer's lock from before git moves, so a journal read in
+    // another job or window does not close it as interrupted the moment git
+    // is done (m8-polish-and-ship/58). It re-reads the journal, so the
+    // entry looked up next is the file's, not a stale copy's.
+    ctx.journal.claim().map_err(|error| ApplyError::Journal {
+        error,
+        after: None,
+        kept: None,
+    })?;
     let (kind, entry) = match resume_target(ctx, &how)? {
         Target::Live { kind, entry } => (kind, *entry),
         Target::ShellMerge(params) => return apply(ctx, &Operation::FinishMerge(params)),

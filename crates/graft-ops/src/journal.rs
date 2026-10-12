@@ -19,7 +19,7 @@ use graft_core::journal::{EntryId, EntryStatus, HeadRef, IndexState, JournalEntr
 use graft_core::oid::Oid;
 
 pub use fetched::{moved_lines, moved_words, wrote_anything};
-pub use file::{Journal, journal_path, journal_path_in};
+pub use file::{Alone, Journal, journal_path, journal_path_in};
 pub use lines::{Line, OutcomeLine, PendingLine};
 
 /// Why the journal's bytes could not be read as entries.

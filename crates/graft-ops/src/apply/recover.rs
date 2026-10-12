@@ -7,6 +7,7 @@ use graft_core::oid::Oid;
 use graft_git::state;
 
 use crate::facts::{self, FactsError};
+use crate::journal::JournalError;
 use crate::rewrite::saved;
 use crate::snapshot;
 use crate::undo::RepoStateNow;
@@ -28,7 +29,24 @@ use super::{ApplyError, Context, EditsAt, set_aside};
 /// surface both: an entry closed with no after-state is one whose `u` will
 /// offer to overwrite the whole working tree, and the reason for that belongs
 /// on screen, not on the floor (m3/03 review, M1).
+///
+/// Closes nothing, and returns an empty [`Recovered`], while any other
+/// `Journal` — another job, another window — holds the writer's lock
+/// ([`crate::journal::Journal::alone`]): its `Pending` entry is running,
+/// not interrupted, and a dead run's cannot be told apart from it.
 pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyError> {
+    // Only an entry whose writer is gone is interrupted. A `Pending` entry
+    // whose writer is alive — an operation running in another job or
+    // another window, git perhaps already done and its outcome line about
+    // to land — is not, and closing it here gives it two outcomes, after
+    // which every read refuses the whole journal (m8-polish-and-ship/58).
+    // While any writer holds the journal, nothing is closed: the entries a
+    // dead run left wait for the read that follows that writer's operation.
+    // Held alone to the end, so no operation starts under the state read
+    // here as the interrupted entries' after-state.
+    let Some(_alone) = ctx.journal.alone().map_err(journal_failed)? else {
+        return Ok(Recovered::default());
+    };
     // A conflict that survived a relaunch: git's own state says the
     // operation is still live, so its entry stays `Pending` and the banner
     // takes over (m5/07, hard choice 2). Only the newest matching entry is
@@ -87,11 +105,7 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
         };
         ctx.journal
             .mark_interrupted(&id, now.as_ref())
-            .map_err(|error| ApplyError::Journal {
-                error,
-                after: None,
-                kept: None,
-            })?;
+            .map_err(journal_failed)?;
         // A rewrite's saved plan (ADR-0047) goes with its entry. One left
         // behind is harmless to git, but it is reported, not dropped.
         if let Err(error) = saved::remove(&saved::dir(ctx.repo, &id)) {
@@ -100,6 +114,16 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
         recovered.closed.push(id);
     }
     Ok(recovered)
+}
+
+/// A journal failure during recovery: nothing ran, so no after-state and
+/// nothing kept.
+fn journal_failed(error: JournalError) -> ApplyError {
+    ApplyError::Journal {
+        error,
+        after: None,
+        kept: None,
+    }
 }
 
 /// What [`recover_interrupted`] did at launch.
