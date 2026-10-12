@@ -87,3 +87,8 @@ workspace-wide. Capture runs to files; summary lines only.
 
 ## Size
 One context, ~45k tokens after the scout.
+
+## Added by the conductor (review 50, 2026-10-12)
+- `docs/reviews/m8-mergewright-50.md` minors in J: the 80-col footnote ends `leaves no trace…`, one cell over
+  (`journal_screen.rs:60`; the review suggests dropping `here`); comments at `journal_screen.rs:82,95`, `view.rs:51`;
+  `pieces.rs:30,32` draws `Graft`. Fix with this ticket's J column work; capture for his eye.
