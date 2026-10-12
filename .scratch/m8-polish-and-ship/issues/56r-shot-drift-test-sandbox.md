@@ -20,3 +20,11 @@ other fails. No Rust, no captures.
 ## Acceptance
 - [ ] `bash scripts/check-scripts.sh` exits 0 on the branch (name the command output line)
 - [ ] `python3 scripts/shot-drift-test.py` passes with `GIT_CONFIG_GLOBAL` pointed at a config that sets `commit.gpgsign=true` (name the command)
+
+## Added by the conductor (review 55-56 minors, textual only)
+Records keep their wording; these are live-doc lines.
+- [ ] Minor 1: one line above the M4 per-breakpoint table near `TESTING.md:1791`: "pre-M8 captures read the name of their time (ADR-0057 §12)". Do not edit the capture.
+- [ ] Minor 2: `TESTING.md:1384` backup prefix → any generation's `<dir> <ulid>` (current `mergewright`). Re-sweep TESTING.md with `grep -niE '\b(graft|tributary|trib)\b'`, skipping code paths, crate names and dated rows; list what you changed and what you left.
+- [ ] Minor 3: `TESTING.md:3295-3296` → "M8 captures carry the app's name, except the two throwaway prototypes `m8-proto-3a/3c` (records)".
+- [ ] Minor 7: `CHANGELOG.md:6-7` → "Entries after the newest name the app as it was called then."
+Ticks for these name the grep/diff that shows them.

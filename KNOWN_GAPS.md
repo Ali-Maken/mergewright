@@ -1352,3 +1352,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/52-review-minors | review 52 minors: MAP.md:454 `source_word` under palette; `no_old_message_literal` lets a hard-coded `"mergewright:"` writer through (rename_names.rs:242); m7 captions TSV and m3-08 captures stale. | **broken** (minor) | post-M8 |
 | M8/55-clone-git-git-unrun | clone-git-git.sh new message + rmdir only passed `bash -n`, never run (55 NOTES). | **unverified** | post-M8 |
 | M8/56-flake-outside-repo | `outside_repo::launch_and_open_land_alike` failed once then passed on rerun in 56's run; cause unknown. | **unverified** | watch in gates |
+| M8/55-changelog-m6-m8 | `CHANGELOG.md` has no M6, M7 or M8 entry; it ships in the release archive (review 55-56 Minor 5). | **broken** (doc incomplete) | before first public release |
+| M8/55-shots-left-unsorted | Review 51 Minor 4 (unsorted `27-shots-left.txt` output) not done by 55, no reason given (review 55-56 Minor 6). | **unverified** | post-M8 |
