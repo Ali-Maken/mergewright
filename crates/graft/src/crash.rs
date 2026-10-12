@@ -339,6 +339,7 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use graft_core::on_disk::CURRENT_DIR;
 
     use std::panic::AssertUnwindSafe;
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -396,8 +397,8 @@ mod tests {
     }
 
     #[test]
-    fn reports_go_to_the_tributary_folder_and_name_the_command() {
-        assert!(report_dir_under(Path::new("/state")).ends_with("tributary"));
+    fn reports_go_to_the_current_folder_and_name_the_command() {
+        assert!(report_dir_under(Path::new("/state")).ends_with(CURRENT_DIR));
         let first = report("m", "l", "b", &Timestamp::from_unix_seconds(0));
         let expected = format!("trib {} panicked\n", env!("CARGO_PKG_VERSION"));
         assert!(first.starts_with(&expected), "{first}");

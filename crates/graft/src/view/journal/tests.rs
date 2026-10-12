@@ -594,11 +594,36 @@ fn migrate_row_words() {
     let view = journal_view(&state, 10);
     assert_eq!(
         view.rows[0].description.as_str(),
-        "rename to Tributary (3 refs, 12 files)"
+        "rename to Mergewright (3 refs, 12 files)"
     );
     assert_eq!(view.rows[0].mark, RowMark::None, "not the next undo");
     assert_eq!(view.rows[1].mark, RowMark::NextUndo, "the stage before is");
     assert_eq!(view.rows[0].summary.as_str(), "", "the words are the row");
+}
+
+/// Ticket 48 Part B: a move written by an earlier build keeps the name it
+/// moved to. The words are stored in the journal line, not rebuilt from
+/// the generation in force, so a Tributary-era row still reads Tributary.
+/// The two lines are a golden in the journal's on-disk shape.
+#[test]
+fn an_old_migrate_row_keeps_its_target() {
+    let lines = concat!(
+        r#"{"id":"01HF7YAT000000000000000000","status":"pending","at_unix_ms":1700000000000,"kind":"migrate","description":"rename to Tributary (3 refs, 12 files)","touches":{"refs":[],"index":false,"worktree":false},"head_before":{"branch":"refs/heads/main"},"refs_before":{},"index_before":null,"worktree_before":null,"backup_ref":null,"pins":[],"reverses":null}"#,
+        "\n",
+        r#"{"id":"01HF7YAT000000000000000000","status":"committed","head_after":{"branch":"refs/heads/main"},"refs_after":{},"index_after":null,"worktree_after":null,"commands":[]}"#,
+        "\n",
+    );
+    let parsed = graft_ops::journal::parse(lines.as_bytes()).expect("the golden parses");
+    let mut entries = parsed.entries;
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].kind, OperationKind::Migrate);
+    entries.insert(0, entry(1, OperationKind::Stage, "stage src/a.rs"));
+    let state = state_with(entries);
+    let view = journal_view(&state, 10);
+    assert_eq!(
+        view.rows[0].description.as_str(),
+        "rename to Tributary (3 refs, 12 files)"
+    );
 }
 
 mod replaced;

@@ -25,7 +25,9 @@ use graft_ops::operation::{BranchCreateParams, OnEdits, Operation, Target};
 use graft_ops::rename::{LOCK_FILE, MigrateError, SettleOutcome, Settled, settle_names};
 
 use crate::support::{NOW, TempRepo, journal_for, run, run_undo, state_of};
+use graft_core::on_disk::CURRENT_DIR;
 
+mod generations;
 mod more;
 mod review;
 mod shim;
@@ -44,7 +46,7 @@ fn as_new(old: &BTreeMap<String, String>) -> BTreeMap<String, String> {
     old.iter()
         .map(|(name, oid)| {
             (
-                name.replacen("refs/graft/", "refs/tributary/", 1),
+                name.replacen("refs/graft/", &format!("refs/{CURRENT_DIR}/"), 1),
                 oid.clone(),
             )
         })
@@ -94,7 +96,12 @@ fn old_repo(branches: usize, backups: usize) -> TempRepo {
 }
 
 fn marker(repo: &TempRepo) -> Option<String> {
-    std::fs::read_to_string(repo.path().join(".git/tributary").join(MIGRATED_MARKER)).ok()
+    std::fs::read_to_string(
+        repo.path()
+            .join(format!(".git/{CURRENT_DIR}"))
+            .join(MIGRATED_MARKER),
+    )
+    .ok()
 }
 
 /// Opened again, the journal holds the 20 entries and the move, the
@@ -112,10 +119,11 @@ fn the_journal_reads_the_move(repo: &TempRepo, files: usize, newest: &JournalEnt
     );
     assert_eq!(
         entries[19].backup_ref,
-        newest
-            .backup_ref
-            .as_ref()
-            .map(|name| name.replacen("refs/graft/", "refs/tributary/", 1)),
+        newest.backup_ref.as_ref().map(|name| name.replacen(
+            "refs/graft/",
+            &format!("refs/{CURRENT_DIR}/"),
+            1
+        )),
         "read under the new prefix"
     );
 }
@@ -153,7 +161,10 @@ fn old_repo_moves_and_undo_still_restores() {
     assert_eq!(settled.names, Generation::CURRENT);
     assert!(settled.hold.is_none());
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
-    assert_eq!(refs_under(&repo, "refs/tributary/"), as_new(&old));
+    assert_eq!(
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
+        as_new(&old)
+    );
     assert!(!repo.exists(".git/graft"), "the old folder is gone");
     assert_eq!(marker(&repo).as_deref(), Some("clean\n"));
     the_journal_reads_the_move(&repo, files, &newest);
@@ -190,7 +201,10 @@ fn read_back_mismatch_keeps_old() {
         "{:?}",
         settled.outcome
     );
-    assert_eq!(refs_under(&repo, "refs/tributary/"), as_new(&old));
+    assert_eq!(
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
+        as_new(&old)
+    );
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
 }
 
@@ -202,7 +216,7 @@ fn killed_after_create_completes_next_open() {
     let outcome = shim::settle_in_child(&repo, &shim::After::Kill, 1);
     assert!(outcome.is_empty(), "the child died mid-move: {outcome:?}");
     assert_eq!(
-        refs_under(&repo, "refs/tributary/"),
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
         as_new(&old),
         "created"
     );
@@ -216,7 +230,7 @@ fn killed_after_create_completes_next_open() {
         settled.outcome
     );
     assert_eq!(
-        refs_under(&repo, "refs/tributary/"),
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
         as_new(&old),
         "none lost or doubled"
     );
@@ -237,11 +251,13 @@ fn switched_marker_cleans_leftovers() {
     }
     repo.write(".git/graft/layout", b"left\n");
     std::fs::write(
-        repo.path().join(".git/tributary").join(MIGRATED_MARKER),
+        repo.path()
+            .join(format!(".git/{CURRENT_DIR}"))
+            .join(MIGRATED_MARKER),
         "switched\n",
     )
     .expect("the marker writes");
-    let new_before = refs_under(&repo, "refs/tributary/");
+    let new_before = refs_under(&repo, &format!("refs/{CURRENT_DIR}/"));
 
     let settled = settle(&repo);
 
@@ -256,7 +272,7 @@ fn switched_marker_cleans_leftovers() {
     assert_eq!(settled.names, Generation::CURRENT);
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
     assert_eq!(
-        refs_under(&repo, "refs/tributary/"),
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
         new_before,
         "creates none"
     );
@@ -275,13 +291,26 @@ fn clean_marker_spawns_nothing() {
         Vec::<String>::new(),
         "the second open spawned git"
     );
+
+    // Ticket 48 Part B: empty folders under every earlier generation's names
+    // (what git leaves of a deleted ref, what an older build made and left)
+    // hold nothing to settle; `clean` still opens with no spawn.
+    for older in graft_core::on_disk::Generation::CURRENT.older() {
+        let dir = older.dir();
+        for empty in [format!(".git/{dir}"), format!(".git/refs/{dir}/a")] {
+            std::fs::create_dir_all(repo.path().join(empty)).expect("the folder is made");
+        }
+    }
+    let (outcomes, spawned) = shim::settle_once_counting(&repo);
+    assert_eq!(outcomes, ["Done"]);
+    assert_eq!(spawned, Vec::<String>::new(), "an empty folder spawned git");
 }
 
 #[test]
 fn old_names_hold_blocks_migration() {
     let repo = old_repo(0, 1);
     let old = refs_under(&repo, "refs/graft/");
-    let dir = repo.path().join(".git/tributary");
+    let dir = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&dir).expect("the dir is made");
     // Another window, still on the old names, holds the lock shared.
     let other = FileLock::shared(&dir.join(LOCK_FILE)).expect("the lock is shared");
@@ -296,7 +325,7 @@ fn old_names_hold_blocks_migration() {
     assert_eq!(refs_under(&repo, "refs/graft/"), old);
     assert_eq!(
         MigrateError::Busy.to_string(),
-        "another trib is open on this repository"
+        "another Mergewright window is open on this repository"
     );
 
     drop(other);
@@ -358,7 +387,7 @@ fn an_operation_after_the_move_writes_the_new_names() {
     assert!(
         last.backup_ref
             .as_deref()
-            .is_some_and(|name| name.starts_with("refs/tributary/backup/main/")),
+            .is_some_and(|name| name.starts_with(&format!("refs/{CURRENT_DIR}/backup/main/"))),
         "{last:?}"
     );
     assert!(!repo.exists(".git/graft"));

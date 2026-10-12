@@ -27,6 +27,7 @@ use graft_fixtures::Shape;
 use graft_fixtures::remote::{HttpRemote, LocalRemote};
 
 use crate::app_harness::{App, PATIENCE, git};
+use graft_core::on_disk::CURRENT_DIR;
 
 const USER: &str = "tester";
 const PASSWORD: &str = "correct-horse-battery-staple";
@@ -85,7 +86,7 @@ fn rev(repo: &Path, name: &str) -> String {
 }
 
 fn journal(repo: &Path) -> Vec<JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
         .expect("the journal the writes made is readable")
         .entries()
         .to_vec()
@@ -291,7 +292,7 @@ fn push_answering(
 
 /// None of `secrets` is in the undo journal's bytes.
 fn assert_not_in_journal(work: &Path, secrets: &[&str]) {
-    let journal_bytes = std::fs::read(work.join(".git/tributary/undo-journal.jsonl"))
+    let journal_bytes = std::fs::read(work.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
         .expect("the journal is readable");
     for secret in secrets {
         assert!(

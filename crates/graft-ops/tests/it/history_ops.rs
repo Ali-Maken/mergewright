@@ -40,6 +40,7 @@ use crate::support::{
     NOW, Never, RepoState, TempRepo, context, git_version, journal_for, round_trip, run, run_redo,
     run_undo, state_of, try_run,
 };
+use graft_core::on_disk::CURRENT_DIR;
 
 // ── building repositories ───────────────────────────────────────────────
 
@@ -1155,10 +1156,13 @@ fn conflict_of(error: ApplyError) -> (JournalEntry, InProgress, Vec<PathBuf>) {
 /// How many lines the journal file holds: two per finished entry, one for
 /// an operation that stopped and has not finished yet (§6.1).
 fn journal_lines(repo: &TempRepo) -> usize {
-    std::fs::read_to_string(repo.path().join(".git/tributary/undo-journal.jsonl"))
-        .expect("the journal reads")
-        .lines()
-        .count()
+    std::fs::read_to_string(
+        repo.path()
+            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal reads")
+    .lines()
+    .count()
 }
 
 /// The stop itself: one `Pending` entry, one journal line, git's own merge

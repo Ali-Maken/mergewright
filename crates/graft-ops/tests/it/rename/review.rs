@@ -11,10 +11,14 @@ use graft_ops::rename::{KEPT_ASIDE_DIR, MigrateError, SettleOutcome, settle_name
 
 use super::{as_new, marker, old_repo, refs_under, settle, shim, stage_edit};
 use crate::support::{NOW, TempRepo};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `.git/tributary/older-version/<n>/<path>`.
 fn kept(n: usize, path: &str) -> String {
-    format!(".git/tributary/{KEPT_ASIDE_DIR}/{n}/{path}")
+    format!(
+        ".git/{}/{KEPT_ASIDE_DIR}/{n}/{path}",
+        Generation::CURRENT.dir()
+    )
 }
 
 fn add_worktree(repo: &TempRepo, name: &str) {
@@ -72,8 +76,8 @@ fn a_failed_copy_retries_cleanly() {
         failed.outcome
     );
     assert!(
-        repo.exists(".git/tributary/rewrite/plan-id/plan.json")
-            && repo.exists(".git/tributary/undo-journal.jsonl"),
+        repo.exists(&format!(".git/{CURRENT_DIR}/rewrite/plan-id/plan.json"))
+            && repo.exists(&format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
         "copied part-way"
     );
     drop(failed);
@@ -105,16 +109,19 @@ fn a_failed_copy_retries_cleanly() {
         settled.outcome
     );
     // The new journal is the grown old one, then the move's own entry.
-    let new = repo.read(".git/tributary/undo-journal.jsonl");
+    let new = repo.read(&format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
     assert_eq!(&new[..grown.len()], &grown[..]);
     let tail = parse(&new[grown.len()..]);
     assert_eq!(tail.len(), 1);
     assert_eq!(tail[0].kind, OperationKind::Migrate);
     assert!(
-        !repo.exists(".git/tributary/rewrite/plan-id"),
+        !repo.exists(&format!(".git/{CURRENT_DIR}/rewrite/plan-id")),
         "no stale plan"
     );
-    assert_eq!(refs_under(&repo, "refs/tributary/"), as_new(&old));
+    assert_eq!(
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
+        as_new(&old)
+    );
     assert!(!repo.exists(".git/graft") && !repo.exists(".git/worktrees/linked/graft"));
     fsck_is_clean(&repo);
 }
@@ -128,7 +135,7 @@ fn a_stale_new_ref_before_the_switch_is_overwritten() {
     // An earlier, failed attempt's scratch: one at another value, one with
     // no old ref at all.
     repo.git(&["update-ref", &first_new, &other]);
-    repo.git(&["update-ref", "refs/tributary/stale", &other]);
+    repo.git(&["update-ref", &format!("refs/{CURRENT_DIR}/stale"), &other]);
 
     let settled = settle(&repo);
 
@@ -137,7 +144,10 @@ fn a_stale_new_ref_before_the_switch_is_overwritten() {
         "{:?}",
         settled.outcome
     );
-    assert_eq!(refs_under(&repo, "refs/tributary/"), as_new(&old));
+    assert_eq!(
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
+        as_new(&old)
+    );
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
 }
 
@@ -153,7 +163,7 @@ fn an_old_file_written_after_its_copy_is_kept_aside() {
     let outcomes = shim::settle_in_child(
         &repo,
         &shim::After::Run {
-            on: "refs/graft/ refs/tributary/",
+            on: &format!("refs/graft/ refs/{CURRENT_DIR}/"),
             script: &script,
         },
         1,
@@ -166,7 +176,7 @@ fn an_old_file_written_after_its_copy_is_kept_aside() {
     let mut appended = copy.clone();
     appended.extend_from_slice(b"{\"late\":1}\n");
     assert_eq!(repo.read(&kept(1, "graft/undo-journal.jsonl")), appended);
-    let new = repo.read(".git/tributary/undo-journal.jsonl");
+    let new = repo.read(&format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
     assert_eq!(&new[..copy.len()], &copy[..], "the new journal is the copy");
     assert!(!repo.exists(".git/graft"), "the old tree is gone");
     assert_eq!(marker(&repo).as_deref(), Some("clean\n"));
@@ -176,7 +186,7 @@ fn an_old_file_written_after_its_copy_is_kept_aside() {
 fn a_write_after_the_rename_is_found_next_open() {
     let repo = moved_repo();
     let head = repo.git(&["rev-parse", "HEAD"]);
-    repo.write(".git/tributary/layout", b"new\n");
+    repo.write(&format!(".git/{CURRENT_DIR}/layout"), b"new\n");
     repo.write(".git/graft/layout", b"old\n");
     repo.git(&["update-ref", "refs/graft/x", &head]);
     let layout = repo.path().join(".git/graft/layout");
@@ -224,14 +234,14 @@ fn an_older_build_writing_after_clean_is_carried_or_kept() {
     // An older build, still open, writes under the old names: a layout
     // that differs from the new one, a backup ref, and a linked worktree's
     // first journal.
-    repo.write(".git/tributary/layout", b"new\n");
+    repo.write(&format!(".git/{CURRENT_DIR}/layout"), b"new\n");
     repo.write(".git/graft/layout", b"older\n");
     repo.git(&["update-ref", "refs/graft/x", &head]);
     repo.write(
         ".git/worktrees/linked/graft/undo-journal.jsonl",
         b"{\"older\":1}\n",
     );
-    let new_before = refs_under(&repo, "refs/tributary/");
+    let new_before = refs_under(&repo, &format!("refs/{CURRENT_DIR}/"));
 
     let (outcomes, spawned_second) = shim::settle_twice_counting(&repo);
 
@@ -246,13 +256,15 @@ fn an_older_build_writing_after_clean_is_carried_or_kept() {
         "the second open spawned git"
     );
     let mut carried = new_before;
-    carried.insert("refs/tributary/x".to_owned(), head);
-    assert_eq!(refs_under(&repo, "refs/tributary/"), carried);
+    carried.insert(format!("refs/{CURRENT_DIR}/x"), head);
+    assert_eq!(refs_under(&repo, &format!("refs/{CURRENT_DIR}/")), carried);
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
     assert_eq!(repo.read(&kept(1, "graft/layout")), b"older\n");
-    assert_eq!(repo.read(".git/tributary/layout"), b"new\n");
+    assert_eq!(repo.read(&format!(".git/{CURRENT_DIR}/layout")), b"new\n");
     assert_eq!(
-        repo.read(".git/worktrees/linked/tributary/undo-journal.jsonl"),
+        repo.read(&format!(
+            ".git/worktrees/linked/{CURRENT_DIR}/undo-journal.jsonl"
+        )),
         b"{\"older\":1}\n"
     );
     assert!(!repo.exists(".git/graft") && !repo.exists(".git/worktrees/linked/graft"));
@@ -276,20 +288,24 @@ fn a_differing_stray_ref_is_kept_aside() {
     let repo = moved_repo();
     let theirs = repo.git(&["rev-parse", "HEAD"]);
     let ours = another_commit(&repo);
-    repo.git(&["update-ref", "refs/tributary/x", &ours]);
+    repo.git(&["update-ref", &format!("refs/{CURRENT_DIR}/x"), &ours]);
     repo.git(&["update-ref", "refs/graft/x", &theirs]);
 
     let settled = settle_names(&repo.open());
 
     assert!(
-        matches!(&settled.outcome, SettleOutcome::OlderWrote { refs: 1, files: 0, kept_aside: Some(at) } if at == Path::new("refs/tributary/older-version/1/")),
+        matches!(&settled.outcome, SettleOutcome::OlderWrote { refs: 1, files: 0, kept_aside: Some(at) } if at == Path::new(&format!("refs/{CURRENT_DIR}/older-version/1/"))),
         "{:?}",
         settled.outcome
     );
-    let refs = refs_under(&repo, "refs/tributary/");
-    assert_eq!(refs.get("refs/tributary/x"), Some(&ours), "ours untouched");
+    let refs = refs_under(&repo, &format!("refs/{CURRENT_DIR}/"));
     assert_eq!(
-        refs.get("refs/tributary/older-version/1/x"),
+        refs.get(&format!("refs/{CURRENT_DIR}/x")),
+        Some(&ours),
+        "ours untouched"
+    );
+    assert_eq!(
+        refs.get(&format!("refs/{CURRENT_DIR}/older-version/1/graft/x")),
         Some(&theirs),
         "theirs kept, not deleted"
     );
@@ -309,7 +325,7 @@ fn a_copied_journal_naming_a_missing_backup_is_refused() {
     let settled = settle(&repo);
 
     assert!(
-        matches!(&settled.outcome, SettleOutcome::KeptOld(MigrateError::ReadBack { what }) if what.contains("refs/tributary/backup/")),
+        matches!(&settled.outcome, SettleOutcome::KeptOld(MigrateError::ReadBack { what }) if what.contains(&format!("refs/{CURRENT_DIR}/backup/"))),
         "{:?}",
         settled.outcome
     );

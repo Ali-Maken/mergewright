@@ -13,6 +13,7 @@ use super::flags::FlagAction;
 use super::man::chord_text;
 use super::{CONFIG_KEYS, FLAGS, Invocation, man_page, parse, usage, version};
 use crate::config::{self, Config, KEYS_SUSPEND, SCHEMA};
+use graft_core::on_disk::CURRENT_DIR;
 
 const MAN_PAGE: &str = include_str!("../../../../docs/man/trib.1");
 const README: &str = include_str!("../../../../README.md");
@@ -72,7 +73,7 @@ fn committed_man_page_is_the_generated_one() {
 #[test]
 fn man_page_names_the_config_folder_in_force() {
     let page = man_page(FLAGS, defaults(), CONFIG_KEYS);
-    let dir = graft_core::on_disk::Generation::CURRENT.dir();
+    let dir = CURRENT_DIR;
     for path in [
         format!("$XDG_CONFIG_HOME/{dir}/config.toml"),
         format!("$XDG_CONFIG_HOME/{dir}/recent"),

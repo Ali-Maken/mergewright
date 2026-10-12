@@ -13,6 +13,7 @@ use graft_ops::rewrite::{RewriteRequest, TodoAction, plan};
 
 use super::{as_new, old_repo, refs_under, settle};
 use crate::support::{NOW, Never, TempRepo, context, git_version, journal_for, try_run};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `old_repo` with a linked worktree `linked` that has staged once (its own
 /// journal, its own backup), and a second, `never`, whose folder holds a
@@ -61,7 +62,7 @@ fn every_worktree_moves_in_one_pass() {
     );
 
     assert_eq!(
-        refs_under(&repo, "refs/tributary/"),
+        refs_under(&repo, &format!("refs/{CURRENT_DIR}/")),
         as_new(&old),
         "refs once"
     );
@@ -70,7 +71,10 @@ fn every_worktree_moves_in_one_pass() {
             !repo.exists(&format!(".git/{at}graft")),
             "{at}: old folder gone"
         );
-        let moved = repo.read(&format!(".git/{at}tributary/undo-journal.jsonl"));
+        let moved = repo.read(&format!(
+            ".git/{at}{}/undo-journal.jsonl",
+            Generation::CURRENT.dir()
+        ));
         if at == "worktrees/linked/" {
             assert!(
                 moved.starts_with(&bytes),
@@ -107,9 +111,9 @@ fn git_dir_and_git_path_dirs_both_move() {
     ));
     for at in [".", "linked"] {
         let handle = repo.open_at(at);
-        let new = handle.git_dir().join("tributary");
+        let new = handle.git_dir().join(CURRENT_DIR);
         assert_eq!(
-            handle.git_path(Path::new("tributary")).expect("resolves"),
+            handle.git_path(Path::new(CURRENT_DIR)).expect("resolves"),
             new
         );
         assert!(new.join("undo-journal.jsonl").is_file(), "{at}");
@@ -134,7 +138,7 @@ fn unknown_files_travel() {
         SettleOutcome::Migrated { .. }
     ));
     for (path, bytes) in &unknown {
-        let moved = path.replace("/graft/", "/tributary/");
+        let moved = path.replace("/graft/", &format!("/{CURRENT_DIR}/"));
         assert_eq!(&repo.read(&moved), bytes, "{moved}");
     }
 }
@@ -183,7 +187,7 @@ fn saved_rewrite_plan_survives() {
         SettleOutcome::Migrated { .. }
     ));
     assert_eq!(
-        repo.read(&format!(".git/tributary/{saved}")),
+        repo.read(&format!(".git/{}/{saved}", Generation::CURRENT.dir())),
         plan_bytes,
         "listed"
     );
@@ -196,7 +200,11 @@ fn saved_rewrite_plan_survives() {
     assert_eq!(finished.entry.id, entry, "the paused rewrite resumed");
     assert!(!repo.exists(".git/rebase-merge"));
     assert!(
-        !repo.exists(&format!(".git/tributary/rewrite/{}", entry.as_str())),
+        !repo.exists(&format!(
+            ".git/{}/rewrite/{}",
+            Generation::CURRENT.dir(),
+            entry.as_str()
+        )),
         "the finished rewrite cleared its plan from the new folder"
     );
     assert_eq!(repo.git(&["log", "--format=%s", "-2"]), "a2\na1");

@@ -27,12 +27,15 @@ use graft_ops::operation::{Operation, Target};
 use graft_ops::undo::{self, IndexPaths, Replaced, Step, UndoError};
 
 use crate::support::{NOW, TempRepo, journal_for, run, run_redo, run_undo, state_of};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// Cut the journal back to the one entry's pending line and close it with
 /// nothing known about what it left behind: the process died mid-run, and
 /// recovery could not read the repository either.
 fn interrupt_the_only_entry(repo: &TempRepo) {
-    let path = repo.path().join(".git/tributary/undo-journal.jsonl");
+    let path = repo
+        .path()
+        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the journal is truncated");

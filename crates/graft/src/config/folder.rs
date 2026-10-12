@@ -1,6 +1,10 @@
-//! The config folder's one-time move to the new name (ticket 26 Part B):
-//! `<config home>/graft/` — `config.toml`, `recent`, `launches` — becomes
-//! `<config home>/tributary/`, before the first `config::load` reads it.
+//! The config folder's one-time move to `CURRENT`'s name (tickets 26, 48):
+//! an earlier generation's `<config home>/<dir>/` — `config.toml`,
+//! `recent`, `launches` — becomes `<config home>/<CURRENT dir>/` before the
+//! first `config::load` reads it. `load` calls it for each earlier
+//! generation, newest first: the first present is moved, each older one
+//! then meets the new folder and takes the byte rule below (ADR-0057,
+//! 2026-10-11 §8), each in a pass `<n>` of its own.
 //!
 //! Copied into a staging folder beside it, every file read back, the
 //! staging folder renamed into place in one step, then the old folder
@@ -8,7 +12,7 @@
 //! new folder whole. When both are there (an older version wrote the old
 //! one after the move), each old file is settled by its bytes: equal →
 //! deleted, no new copy → carried forward, differs → kept aside under
-//! `tributary/older-version/<n>/` (review m8-26 Q2). Only the config home in force is touched: another root
+//! `<CURRENT dir>/older-version/<n>/` (review m8-26 Q2). Only the config home in force is touched: another root
 //! the environment could have named is never looked at.
 
 use std::fs;
@@ -38,7 +42,7 @@ pub(crate) enum ConfigDirMoved {
     OlderWrote {
         /// The old folder.
         old: PathBuf,
-        /// `<config_root>/tributary/older-version/<n>/`, when a file
+        /// `<config_root>/<CURRENT dir>/older-version/<n>/`, when a file
         /// differed.
         kept_aside: Option<PathBuf>,
     },

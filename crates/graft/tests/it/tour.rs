@@ -20,6 +20,7 @@ use crate::app_harness::git;
 use crate::outside_repo::{assert_within_the_note, quit_cleanly};
 use crate::pty::{Isolated, Pty, Screen};
 use crate::repo_truth::git_truth;
+use graft_core::on_disk::CURRENT_DIR;
 
 const CARD: &str = "practice 1 of 8";
 
@@ -201,7 +202,7 @@ fn the_palette_starts_the_tour_and_esc_returns_to_his_commit() {
     let moved = pty.wait_for("the cursor two rows down", |s| cursor_row(s) == landed + 2);
     let was_on = cursor_subject(&moved, &subjects);
     let truth_before = git_truth(&repo).expect("his repo reads");
-    let graft_before = bytes_under(&repo.join(".git").join("tributary"));
+    let graft_before = bytes_under(&repo.join(".git").join(CURRENT_DIR));
     let state_before = bytes_under(&isolated.config());
 
     pty.send(b"\x10");
@@ -233,7 +234,7 @@ fn the_palette_starts_the_tour_and_esc_returns_to_his_commit() {
     assert_eq!(left_in(&tmp), Vec::<String>::new(), "removed after Esc");
     assert_eq!(git_truth(&repo).expect("his repo reads"), truth_before);
     assert_eq!(
-        bytes_under(&repo.join(".git").join("tributary")),
+        bytes_under(&repo.join(".git").join(CURRENT_DIR)),
         graft_before
     );
     assert_eq!(

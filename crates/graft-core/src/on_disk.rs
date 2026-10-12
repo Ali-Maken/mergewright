@@ -30,7 +30,7 @@ pub enum Generation {
 impl Generation {
     /// The names this build writes. Every generation after it is
     /// unreachable: nothing reads or writes its names.
-    pub const CURRENT: Self = Generation::Tributary;
+    pub const CURRENT: Self = Generation::Mergewright;
 
     /// Every generation, oldest first.
     pub const GENERATIONS: [Self; 3] = [
@@ -177,6 +177,10 @@ pub const ASKPASS_SOCKET_VAR: &str = "TRIB_ASKPASS_SOCKET";
 /// `<common_dir>/<generation.dir()>/`; its one line reads `switched` or
 /// `clean`.
 pub const MIGRATED_MARKER: &str = "migrated";
+
+/// [`Generation::CURRENT`]'s folder name, for the paths this build writes:
+/// short enough to spell inline (`.git/{CURRENT_DIR}/...`).
+pub const CURRENT_DIR: &str = Generation::CURRENT.dir();
 
 #[cfg(test)]
 mod tests;

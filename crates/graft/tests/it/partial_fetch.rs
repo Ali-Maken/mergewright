@@ -20,6 +20,7 @@ use graft_fixtures::remote::{HungRemote, LocalRemote};
 use crate::app_harness::App;
 use crate::captures::{check_shot, frame};
 use crate::remote_by_key::{finish, local, plain, ready, run};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// The second remote, which is not there: a fixed path, so the failure's
 /// words are the same on every machine.
@@ -30,7 +31,7 @@ fn tracking(remote: &LocalRemote) -> String {
 }
 
 fn journal(repo: &std::path::Path) -> Vec<JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
         .expect("the journal the writes made is readable")
         .entries()
         .to_vec()

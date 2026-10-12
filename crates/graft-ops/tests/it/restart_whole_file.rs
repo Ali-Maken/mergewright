@@ -26,6 +26,7 @@ use crate::conflict_fixtures::{graft_merge_stops, graft_stage, run_resume};
 use crate::conflict_ops::unmerged_lines;
 use crate::restart_gate::{app_merge_with_a_whole_file_conflict, gate, keep_gone, mark_both_done};
 use crate::support::{NOW, TempRepo, run_undo, try_run};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// Graft's own merge of `feature` into `main`, stopped with one path per
 /// shape — the same history `conflict_ops::stopped_merge` builds, plus a
@@ -377,7 +378,7 @@ fn untouched(repo: &TempRepo, path: &str) -> Untouched {
     let journal = journal_path(&repo.open()).expect("the journal path resolves");
     Untouched {
         journal: std::fs::read(journal).ok(),
-        backups: repo.git(&["for-each-ref", "refs/tributary/"]),
+        backups: repo.git(&["for-each-ref", &format!("refs/{CURRENT_DIR}/")]),
         stages: repo.git(&["ls-files", "--stage"]),
         status: repo.git(&["status", "--porcelain=v2"]),
         bytes: std::fs::read(repo.path().join(path)).ok(),

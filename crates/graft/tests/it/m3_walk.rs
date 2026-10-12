@@ -36,6 +36,7 @@ use crate::repo_truth::{
     RepoTruth, blob_of, check, diff_truth, fsck_clean, git_path, git_truth,
     neutralise_global_config, run_git, same,
 };
+use graft_core::on_disk::CURRENT_DIR;
 
 /// What one scenario's `setup` and a `Shell` step run: plain files and git.
 pub type Fix = fn(&Path) -> Result<(), String>;
@@ -363,7 +364,7 @@ fn focus_gained(app: &App, state: &AppState) -> Result<AppState, String> {
 /// One `refs/tributary/backup/…` ref per journal entry whose operation took a
 /// backup (touches the index or the worktree, or pins an object).
 fn backups_match_journal(repo: &Path) -> Result<(), String> {
-    let path = git_path(repo, "tributary/undo-journal.jsonl")?;
+    let path = git_path(repo, &format!("{CURRENT_DIR}/undo-journal.jsonl"))?;
     let expected = match std::fs::read_to_string(&path) {
         Ok(text) => text
             .lines()
@@ -378,9 +379,12 @@ fn backups_match_journal(repo: &Path) -> Result<(), String> {
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => 0,
         Err(why) => return Err(format!("{}: {why}", path.display())),
     };
-    let refs = run_git(repo, &["for-each-ref", "refs/tributary/backup"])?
-        .lines()
-        .count();
+    let refs = run_git(
+        repo,
+        &["for-each-ref", &format!("refs/{CURRENT_DIR}/backup")],
+    )?
+    .lines()
+    .count();
     check(refs == expected, || {
         format!("{refs} backup refs for {expected} journal entries that took a backup")
     })
@@ -532,7 +536,7 @@ pub fn scenarios() -> Vec<Scenario> {
 
 /// No journal file, or an empty one: nothing was written.
 fn journal_is_empty(repo: &Path) -> Result<bool, String> {
-    let journal = git_path(repo, "tributary/undo-journal.jsonl")?;
+    let journal = git_path(repo, &format!("{CURRENT_DIR}/undo-journal.jsonl"))?;
     match std::fs::read(&journal) {
         Ok(bytes) => Ok(bytes.is_empty()),
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok(true),
@@ -1240,7 +1244,7 @@ fn drift_expect(repo: &Path, marks: &Marks) -> Result<(), String> {
 
 /// The backup ref of the journal's last entry.
 fn last_backup_ref(repo: &Path) -> Result<String, String> {
-    let path = git_path(repo, "tributary/undo-journal.jsonl")?;
+    let path = git_path(repo, &format!("{CURRENT_DIR}/undo-journal.jsonl"))?;
     let text =
         std::fs::read_to_string(&path).map_err(|why| format!("{}: {why}", path.display()))?;
     text.lines()
@@ -1504,7 +1508,7 @@ fn discard_then_tear(repo: &Path) -> Result<(), String> {
         vec![Step::Write("the discard")],
     ]);
     drive_app(repo, &steps, &mut Marks::default())?;
-    let path = git_path(repo, "tributary/undo-journal.jsonl")?;
+    let path = git_path(repo, &format!("{CURRENT_DIR}/undo-journal.jsonl"))?;
     let text =
         std::fs::read_to_string(&path).map_err(|why| format!("{}: {why}", path.display()))?;
     let mut lines: Vec<&str> = text.lines().collect();
@@ -1578,8 +1582,10 @@ fn linked_worktree() -> Scenario {
         ]),
         expect: |linked, _| {
             let main = linked.parent().ok_or("the linked worktree has no parent")?;
-            let own = main.join(".git/worktrees/linked/tributary/undo-journal.jsonl");
-            let mains = main.join(".git/tributary/undo-journal.jsonl");
+            let own = main.join(format!(
+                ".git/worktrees/linked/{CURRENT_DIR}/undo-journal.jsonl"
+            ));
+            let mains = main.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
             check(own.is_file(), || format!("{} should exist", own.display()))?;
             check(!mains.exists(), || {
                 format!("{} should not exist", mains.display())
@@ -1597,11 +1603,12 @@ fn linked_worktree() -> Scenario {
                 &[
                     "for-each-ref",
                     "--format=%(refname)",
-                    "refs/tributary/backup",
+                    &format!("refs/{CURRENT_DIR}/backup"),
                 ],
             )?;
             check(
-                refs.lines().count() == 1 && refs.starts_with("refs/tributary/backup/linked/"),
+                refs.lines().count() == 1
+                    && refs.starts_with(&format!("refs/{CURRENT_DIR}/backup/linked/")),
                 || format!("backup refs: {refs:?}"),
             )
         },

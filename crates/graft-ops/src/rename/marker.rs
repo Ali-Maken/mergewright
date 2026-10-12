@@ -1,4 +1,4 @@
-//! The marker, `<common_dir>/tributary/migrated`: absent (old names), or one
+//! The marker, `<common_dir>/<CURRENT dir>/migrated`: absent (earlier names), or one
 //! line, `switched` (new names in force, old leftovers maybe on disk) or
 //! `clean` (moved, nothing old left).
 

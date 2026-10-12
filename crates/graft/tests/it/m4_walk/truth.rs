@@ -10,6 +10,7 @@ use graft_fixtures::remote::{HttpRemote, HungRemote};
 
 use super::fixture::Fixture;
 use crate::repo_truth::{RepoTruth, diff_truth as diff_work, git_truth, run_git};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// Repository truth on both sides, plus what the loop drew, entirely from
 /// git, the file system and the remote's own counters.
@@ -54,7 +55,7 @@ pub fn truth(fixture: &Fixture, statuses: &[String]) -> Result<Truth, String> {
 
 /// The journal's entries, or none when no write has happened yet.
 pub fn journal(work: &Path) -> Result<Vec<JournalEntry>, String> {
-    let path = work.join(".git/tributary/undo-journal.jsonl");
+    let path = work.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
     if !path.exists() {
         return Ok(Vec::new());
     }

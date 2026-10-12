@@ -16,6 +16,7 @@ use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 
 use super::file_list::{at_step_two, graft_rebase_at_step_one, on_branch};
 use crate::app_harness::{App, git};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `s`, `y` from the banner at a stop, and the rebase's journal entry once
 /// the skip has finished it.
@@ -34,11 +35,12 @@ fn skip_to_the_end(app: &App, state: &AppState, repo: &Path) -> (AppState, Journ
             && state.in_progress.is_none()
             && matches!(state.status, Status::Done { .. })
     });
-    let entries =
-        graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
-            .expect("the journal the rebase wrote is readable")
-            .entries()
-            .to_vec();
+    let entries = graft_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the rebase wrote is readable")
+    .entries()
+    .to_vec();
     let rebase = entries
         .iter()
         .rev()

@@ -95,7 +95,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `Reflogged` (struct) — a generated history with a long reflog.
 - `with_reflog` / `with_reflog_of` (fn) — build such a history for a scale.
 
-Corpus, synthetic and team fixtures are all built with the app's rename marker (`.git/tributary/migrated` = `clean`, private `settled.rs`, in all three cache keys).
+Corpus, synthetic and team fixtures are all built with the app's rename marker (`.git/mergewright/migrated` = `clean`, `Generation::CURRENT`'s, private `settled.rs`, in all three cache keys).
 
 ## team
 - `TeamSpec` (struct) — a team-monorepo history's shape; `MONOREPO` (heavy tier), `SMALL` (fast tier).

@@ -67,9 +67,9 @@ fn generations_are_oldest_first_and_current_is_last_reachable() {
             .all(|pair| pair[0] < pair[1]),
         "the derived order is the release order"
     );
-    // Part A of ticket 48: the Mergewright row exists but nothing reaches it
-    // yet. Part B flips this to Mergewright.
-    assert_eq!(Generation::CURRENT, Tributary);
+    // Ticket 48 Part B: Mergewright is in force, and it is the last row.
+    assert_eq!(Generation::CURRENT, Mergewright);
+    assert_eq!(Generation::GENERATIONS.last(), Some(&Generation::CURRENT));
     assert!(Generation::GENERATIONS.contains(&Generation::CURRENT));
 
     assert_eq!(Graft.older().collect::<Vec<_>>(), []);

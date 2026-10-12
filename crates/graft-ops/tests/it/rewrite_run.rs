@@ -26,6 +26,7 @@ use graft_ops::rewrite::{RewriteRequest, TodoAction, plan};
 use crate::support::{
     NOW, Never, TempRepo, context, git_version, journal_for, run, run_undo, state_of, try_run,
 };
+use graft_core::on_disk::CURRENT_DIR;
 
 fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a commit id")
@@ -525,7 +526,7 @@ fn resume_with(repo: &TempRepo, how: Resume) -> Result<Applied, ApplyError> {
 
 /// The saved plans still on disk.
 fn plans_left(repo: &TempRepo) -> Vec<PathBuf> {
-    match std::fs::read_dir(repo.path().join(".git/tributary/rewrite")) {
+    match std::fs::read_dir(repo.path().join(format!(".git/{CURRENT_DIR}/rewrite"))) {
         Ok(entries) => entries
             .map(|entry| entry.expect("it reads").path())
             .collect(),

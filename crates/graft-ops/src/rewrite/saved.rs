@@ -239,7 +239,9 @@ mod tests {
         let repo = RepoHandle::open(copy.path()).expect("opens");
         assert_eq!(
             root(&repo),
-            repo.git_dir().join("tributary").join("rewrite")
+            repo.git_dir()
+                .join(graft_core::on_disk::CURRENT_DIR)
+                .join("rewrite")
         );
     }
 

@@ -1,4 +1,4 @@
-//! The config file: `${XDG_CONFIG_HOME:-~/.config}/tributary/config.toml`.
+//! The config file: `${XDG_CONFIG_HOME:-~/.config}/mergewright/config.toml`.
 //!
 //! One call — [`load`] — turns whatever is (or isn't) on disk into a typed
 //! [`Config`] plus the warnings worth telling the user about. Config lives in

@@ -171,8 +171,8 @@ pub fn load_from(path: &Path) -> Result<Loaded, ConfigError> {
     Ok(loaded)
 }
 
-/// Where `load` looks: `$XDG_CONFIG_HOME/tributary/config.toml`, falling
-/// back to `$HOME/.config/tributary/config.toml` — the old folder name when
+/// Where `load` looks: `$XDG_CONFIG_HOME/mergewright/config.toml`, falling
+/// back to `$HOME/.config/mergewright/config.toml` — the old folder name when
 /// its move failed this run. `None` when neither is usable.
 pub fn default_path() -> Option<PathBuf> {
     path_in_environment(|name| env::var_os(name))
@@ -222,40 +222,54 @@ fn config_file(config_home: &Path, names: Generation) -> PathBuf {
 /// The config folder's move under `config_home`, the way [`load`] makes it
 /// (ticket 26): the names to use for the rest of the run, and what to say.
 /// No config home, nothing to move — the new names, unused.
-pub(super) fn settle_folder(config_home: Option<&Path>) -> (Generation, Option<ConfigWarning>) {
-    // The move's source: the generation released just before `CURRENT`.
-    // ADR-0057 2026-10-11 §8 (every earlier folder) is not built yet.
-    let (Some(home), Some(from)) = (config_home, Generation::CURRENT.older().next()) else {
-        return (Generation::CURRENT, None);
+///
+/// Every earlier generation's folder, newest first (ADR-0057, 2026-10-11
+/// §8): the newest present is moved whole, since no new folder exists yet;
+/// each older one then meets the new folder and goes through the byte rule.
+pub(super) fn settle_folder(config_home: Option<&Path>) -> (Generation, Vec<ConfigWarning>) {
+    let Some(home) = config_home else {
+        return (Generation::CURRENT, Vec::new());
     };
-    match migrate_config_dir(home, from) {
-        Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => (Generation::CURRENT, None),
-        Ok(ConfigDirMoved::OlderWrote { old, kept_aside }) => (
-            Generation::CURRENT,
-            Some(ConfigWarning::ConfigFolder {
-                words: match kept_aside {
+    let warn = |words: String| ConfigWarning::ConfigFolder { words };
+    let mut warnings = Vec::new();
+    for from in Generation::CURRENT.older() {
+        match migrate_config_dir(home, from) {
+            Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => {}
+            Ok(ConfigDirMoved::OlderWrote { old, kept_aside }) => {
+                warnings.push(warn(match kept_aside {
                     Some(aside) => format!(
                         "an older version wrote {} · close it; kept in {}",
                         old.display(),
                         aside.display()
                     ),
                     None => format!("an older version wrote {} · close it", old.display()),
-                },
-            }),
-        ),
-        Ok(ConfigDirMoved::OldLeft { old, why }) => (
-            Generation::CURRENT,
-            Some(ConfigWarning::ConfigFolder {
-                words: format!("moved; {} could not be removed: {why}", old.display()),
-            }),
-        ),
-        Err(error) => (
-            from,
-            Some(ConfigWarning::ConfigFolder {
-                words: format!("not moved to its new name, the old one stays in use: {error}"),
-            }),
-        ),
+                }));
+            }
+            Ok(ConfigDirMoved::OldLeft { old, why }) => warnings.push(warn(format!(
+                "moved; {} could not be removed: {why}",
+                old.display()
+            ))),
+            // The new folder is not there: this was the move itself, and
+            // the old folder stays in use. Older folders wait for the move.
+            // A new folder that cannot even be looked at counts as not
+            // there: staying on the old names loses nothing.
+            Err(error)
+                if !matches!(home.join(Generation::CURRENT.dir()).try_exists(), Ok(true)) =>
+            {
+                warnings.push(warn(format!(
+                    "not moved to its new name, the old one stays in use: {error}"
+                )));
+                return (from, warnings);
+            }
+            // The new folder is in use; this older one is left for the
+            // next launch, which tries again.
+            Err(error) => warnings.push(warn(format!(
+                "{} not settled, left for the next launch: {error}",
+                home.join(from.dir()).display()
+            ))),
+        }
     }
+    (Generation::CURRENT, warnings)
 }
 
 /// [`load`] against an arbitrary environment, the names it settled on

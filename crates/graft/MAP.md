@@ -12,12 +12,12 @@ The one table of flags that `--help`, the man page and the README's flag list ar
 ## cli::man
 `--generate-man`: the roff man page, written from the flag, key and config tables the program runs on.
 ## config
-The config file under `${XDG_CONFIG_HOME:-~/.config}/tributary/`: `load` turns what is on disk into a typed `Config` plus warnings.
+The config file under `${XDG_CONFIG_HOME:-~/.config}/<Generation::CURRENT.dir()>/` (`mergewright/`): `load` turns what is on disk into a typed `Config` plus warnings.
 - `Config` (struct) — the typed file: `[ui]`, `[graph]`, `[diff]`, `[radar]`, `[keys]`, `[theme]`; read once at startup.
 - `Loaded` (struct) — a load's result: the `Config`, its path and the warnings worth telling the user.
 - `keymap_from` (fn) — `(&Loaded) -> (Keymap, Vec<String>)`: the keymap and every config problem as words.
 ## config::folder
-The config folder's one-time move from `graft/` to `tributary/`, under a lock, before the first load reads it.
+The config folder's one-time move from each earlier generation's folder (`graft/`, `tributary/`) to the current one, newest first, under a lock, before the first load reads it; an older folder meeting the new one takes the byte rule.
 ## config::keys
 `[keys]`: the suspend switch and the per-context remap sub-tables, read off the raw table.
 ## config::load

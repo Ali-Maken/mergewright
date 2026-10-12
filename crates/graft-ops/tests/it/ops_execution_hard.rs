@@ -25,6 +25,7 @@ use crate::support::{
     NOW, Never, StopWhenGone, TempRepo, context, expire_and_prune, holds, journal_for, round_trip,
     run, run_undo, run_with_stop, stash_list, state_of, try_run,
 };
+use graft_core::on_disk::CURRENT_DIR;
 
 fn paths(of: &[&str]) -> Target {
     Target::Paths(of.iter().map(PathBuf::from).collect())
@@ -104,7 +105,7 @@ fn parity(build: fn(&TempRepo), make: fn(&TempRepo) -> Operation) {
         let from_graft = a
             .git(&what)
             .lines()
-            .filter(|line| !line.contains("refs/tributary/"))
+            .filter(|line| !line.contains(&format!("refs/{CURRENT_DIR}/")))
             .collect::<Vec<_>>()
             .join("\n");
         assert_eq!(
@@ -595,7 +596,9 @@ fn an_entry_with_no_after_state_restores_the_whole_tree_after_asking() {
     // The operation runs and the process dies before the outcome line: only
     // the pending line is on disk.
     run(&repo, &Operation::Discard(paths(&["a.rs"])), NOW);
-    let path = repo.path().join(".git/tributary/undo-journal.jsonl");
+    let path = repo
+        .path()
+        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the journal is truncated");
@@ -658,7 +661,9 @@ fn recovery_that_can_read_the_repository_keeps_the_restore_narrow() {
     repo.write("a.rs", b"work\n");
 
     run(&repo, &Operation::Discard(paths(&["a.rs"])), NOW);
-    let path = repo.path().join(".git/tributary/undo-journal.jsonl");
+    let path = repo
+        .path()
+        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the journal is truncated");
@@ -768,26 +773,39 @@ fn a_linked_worktree_keeps_its_own_journal_and_namespaced_backup_refs() {
 
     assert!(
         repo.path()
-            .join(".git/worktrees/linked/tributary/undo-journal.jsonl")
+            .join(format!(
+                ".git/worktrees/linked/{CURRENT_DIR}/undo-journal.jsonl"
+            ))
             .exists(),
         "the journal is the linked worktree's own"
     );
     assert!(
         !repo
             .path()
-            .join(".git/tributary/undo-journal.jsonl")
+            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"))
             .exists(),
         "the main worktree's journal never saw it"
     );
     assert_eq!(
         entry.backup_ref.as_deref(),
-        Some(format!("refs/tributary/backup/linked/{}", entry.id).as_str()),
+        Some(
+            format!(
+                "{}backup/linked/{}",
+                graft_core::on_disk::Generation::CURRENT.ref_prefix(),
+                entry.id
+            )
+            .as_str()
+        ),
         "the backup ref carries the worktree's name"
     );
     assert_eq!(
-        repo.git(&["for-each-ref", "--format=%(refname)", "refs/tributary"])
-            .lines()
-            .count(),
+        repo.git(&[
+            "for-each-ref",
+            "--format=%(refname)",
+            &format!("refs/{CURRENT_DIR}")
+        ])
+        .lines()
+        .count(),
         1
     );
 

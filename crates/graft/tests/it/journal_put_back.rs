@@ -15,6 +15,7 @@
 use graft_core::event::KeyCode;
 
 use crate::app_harness::{App, git};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// Two commits on `main`, then the shell's `reset --hard HEAD~1`: the
 /// second commit is on no branch any more. Returns the scratch repo, the
@@ -135,11 +136,15 @@ fn u_never_acts_on_outside_rows() {
     app.close();
     assert_eq!(main_tip(repo), left, "the shell's reset stands");
     assert!(
-        !repo.join(".git/tributary/undo-journal.jsonl").exists()
-            || graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
-                .expect("the journal is readable")
-                .entries()
-                .is_empty(),
+        !repo
+            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"))
+            .exists()
+            || graft_ops::journal::Journal::open(
+                &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"))
+            )
+            .expect("the journal is readable")
+            .entries()
+            .is_empty(),
         "and nothing was journaled"
     );
 }

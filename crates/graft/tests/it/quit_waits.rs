@@ -17,6 +17,7 @@ use graft_core::journal::{EntryStatus, OperationKind};
 
 use crate::app_harness::{App, git, press_for_commands};
 use crate::preview::{forked, on_main, opened};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `feature` checked out, the cursor on `main`, `m m`: the merge is queued
 /// and running, its answer not yet pumped.
@@ -71,11 +72,12 @@ fn assert_merged_and_journaled(repo: &std::path::Path) {
         3,
         "a whole merge: {parents}"
     );
-    let entries =
-        graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
-            .expect("the journal the merge wrote is readable")
-            .entries()
-            .to_vec();
+    let entries = graft_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the merge wrote is readable")
+    .entries()
+    .to_vec();
     let merges: Vec<_> = entries
         .iter()
         .filter(|entry| entry.kind == OperationKind::Merge)

@@ -24,6 +24,7 @@ use graft_ops::undo::{self, InversePlan, Step};
 
 use crate::conflict_fixtures::two_file_conflict;
 use crate::support::{NOW, Never, TempRepo, context, git_version, journal_for, run};
+use graft_core::on_disk::CURRENT_DIR;
 
 // ── helpers ─────────────────────────────────────────────────────────────
 
@@ -309,13 +310,17 @@ fn chain_states_maps_each_error_kind() {
     }
 }
 
-/// Breaks every loose ref under `refs/tributary/` the moment the commit lands:
-/// after `begin` made the backup ref, before `finish` seals onto it.
-const BREAK_BACKUP_REFS: &str = "#!/bin/sh
-for f in $(find \"$(git rev-parse --git-dir)/refs/tributary\" -type f); do
+/// Breaks every loose ref under the backup prefix the moment the commit
+/// lands: after `begin` made the backup ref, before `finish` seals onto it.
+fn break_backup_refs() -> String {
+    format!(
+        "#!/bin/sh
+for f in $(find \"$(git rev-parse --git-dir)/refs/{CURRENT_DIR}\" -type f); do
   echo 'not an object id' > \"$f\"
 done
-";
+"
+    )
+}
 
 /// A `post-commit` hook breaks the commit's backup ref between `begin` and
 /// `finish`, so `seal_after` cannot read the tip it chains onto. That read's
@@ -337,7 +342,7 @@ fn a_failed_read_refs_in_seal_after_is_reported() {
     let hooks = repo.path().join("breaking-hooks");
     std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
     let hook = hooks.join("post-commit");
-    std::fs::write(&hook, BREAK_BACKUP_REFS).expect("the hook is written");
+    std::fs::write(&hook, break_backup_refs()).expect("the hook is written");
     std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
         .expect("the hook is executable");
     repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);

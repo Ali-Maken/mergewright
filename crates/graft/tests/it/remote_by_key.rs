@@ -25,6 +25,7 @@ use graft_fixtures::remote::{HungRemote, LocalRemote};
 
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame, without_invented_id};
+use graft_core::on_disk::CURRENT_DIR;
 
 pub(crate) fn local() -> LocalRemote {
     let remote =
@@ -81,7 +82,7 @@ fn tracking(remote: &LocalRemote) -> String {
 }
 
 fn journal(repo: &Path) -> Vec<JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
         .expect("the journal the writes made is readable")
         .entries()
         .to_vec()

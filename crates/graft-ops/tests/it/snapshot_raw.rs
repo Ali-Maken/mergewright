@@ -21,6 +21,7 @@ use graft_ops::operation::{Operation, Target};
 use graft_ops::snapshot;
 
 use crate::support::{NOW, Never, TempRepo, run};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `HEAD`'s commit, `None` while unborn.
 fn head_of(repo: &TempRepo) -> Option<Oid> {
@@ -40,7 +41,7 @@ fn raw_of(repo: &TempRepo) -> Option<Oid> {
 /// (m7-power-tools/30r: each one is a spawn, about 6 ms on the perf machine).
 fn recorded(repo: &TempRepo) -> (Option<Oid>, Vec<String>) {
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let mut commands = Vec::new();
@@ -79,7 +80,7 @@ fn subcommands(commands: &[String]) -> Vec<String> {
 /// The before-snapshot, as `begin` takes it.
 fn taken(repo: &TempRepo) -> snapshot::Snapshot {
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [7; 10]);
     let head = head_of(repo);
@@ -103,8 +104,11 @@ fn staged(repo: &TempRepo, path: &str) -> (JournalEntry, String) {
         &Operation::Stage(Target::Paths(vec![PathBuf::from(path)])),
         NOW,
     );
-    let journal = std::fs::read_to_string(repo.path().join(".git/tributary/undo-journal.jsonl"))
-        .expect("the journal reads");
+    let journal = std::fs::read_to_string(
+        repo.path()
+            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal reads");
     let pending = journal.lines().next().expect("a pending line").to_owned();
     assert!(pending.contains("\"status\":\"pending\""), "{pending}");
     (entry, pending)
@@ -201,7 +205,13 @@ fn a_backup_commit_carries_the_app_identity() {
     let name = snapshot::BACKUP_AUTHOR_NAME;
     let email = snapshot::BACKUP_AUTHOR_EMAIL;
     assert_eq!(who.trim(), format!("{name} <{email}> {name} <{email}>"));
-    assert_eq!((name, email), ("tributary", "tributary@backup"));
+    assert_eq!(
+        (name, email),
+        (
+            CURRENT_DIR,
+            graft_core::on_disk::Generation::CURRENT.backup_email()
+        )
+    );
 }
 
 /// `core.autocrlf=true`: only the changed LF files are kept. The CRLF file
@@ -364,7 +374,7 @@ fn a_handle_opened_in_a_subdirectory_keeps_the_same_path() {
     repo.write("src/deep/a.rs", b"a\nchanged\n");
 
     let handle = repo.open_at("src");
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let head = Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("HEAD is an id");
@@ -460,7 +470,7 @@ fn autocrlf_set_after_the_handle_opened_is_honoured() {
     let handle = repo.open();
     repo.git(&["config", "core.autocrlf", "true"]);
 
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [9; 10]);
     let head = head_of(&repo);
@@ -495,7 +505,7 @@ fn a_large_kept_set_is_hashed_from_stdin_not_the_command_line() {
     }
 
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let mut commands = Vec::new();
@@ -532,7 +542,7 @@ fn an_unreadable_tree_is_a_read_error_in_one_line() {
     repo.write("a.rs", b"a\n");
     repo.commit_all("first");
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let missing = Oid::from_hex(&"2".repeat(40)).expect("an id");
 
@@ -591,7 +601,7 @@ fn a_lone_checkout_failure_without_a_filter_is_not_blamed_on_one() {
     repo.commit_all("first");
     repo.write("a.txt", b"two\n");
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     // The worktree tree names a blob the object store does not hold.
     let missing = "3".repeat(40);

@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use super::*;
 use crate::terminal::SessionOptions;
 use crate::terminal::tests::{KITTY, Transcript, raw_mode};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `Ctrl+E`'s message file sits directly in the app's own dir — whichever
 /// names are in force decided that dir (ADR-0057, Amendment §4) — and what
@@ -21,7 +22,7 @@ use crate::terminal::tests::{KITTY, Transcript, raw_mode};
 #[test]
 fn the_message_file_lives_in_the_app_dir() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let app_dir = dir.path().join("tributary");
+    let app_dir = dir.path().join(CURRENT_DIR);
     let back = edit_message_in(&app_dir, "subject\n", |file| {
         assert_eq!(file, app_dir.join("COMMIT_EDITMSG"));
         std::fs::write(file, "edited\n").map_err(|error| error.to_string())
