@@ -1354,3 +1354,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/56-flake-outside-repo | `outside_repo::launch_and_open_land_alike` failed once then passed on rerun in 56's run; cause unknown. | **unverified** | watch in gates |
 | M8/55-changelog-m6-m8 | `CHANGELOG.md` has no M6, M7 or M8 entry; it ships in the release archive (review 55-56 Minor 5). | **broken** (doc incomplete) | before first public release |
 | M8/55-shots-left-unsorted | Review 51 Minor 4 (unsorted `27-shots-left.txt` output) not done by 55, no reason given (review 55-56 Minor 6). | **unverified** | post-M8 |
+| M8/56r-signing-config-unrun | `shot-drift-test.py` under a global config with `commit.gpgsign=true` not run (harness blocked setting `GIT_CONFIG_GLOBAL` for the builder). Code sets `GIT_CONFIG_GLOBAL=os.devnull`, `GIT_CONFIG_NOSYSTEM=1` per call. | **unverified** | post-M8 |
