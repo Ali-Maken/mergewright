@@ -1,0 +1,41 @@
+# m8-polish-and-ship/57, `mwr` over a pty (Unicode tier): what right looks like —
+# a repository the first-named build last used (`refs/graft/`, `.git/graft/`) opens on its graph, `▸` on HEAD (`b0`, where the
+# killed switch left it), no `rename:` line; the status row offers the set-aside: `your edits are in stash@{0} · S p puts them back`.
+# Colour unverified (rule 5).
+
+ ◆ api  ~/code/api · b0                                                                                       2 commits
+
+    ■    [stash@{0}] On main: graft: your edits, set aside for checkout b0                              GT 2d   6fbbc10
+▸ ◆─╯    [◆ b0] [b1] [b10] [b11] [b12] [b13] [b14] [b1… start the api                                   GT 2d   fefb7a2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ an operation was interrupted: checkout b0 · your edits are in stash@{0} · S p puts them back · J to inspect

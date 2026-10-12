@@ -41,7 +41,7 @@ fn capture_the_keys_doorway_for_docs_shots() {
         let out = format!(
             "# m8/{name}: {columns}x{rows}, drawn by `view::view` from the AppState\n\
              # `update::tests` builds for: {context}\n\
-             # (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).\n\
+             # (crates/graft/src/update/tests/doorway.rs, capture_the_keys_doorway_for_docs_shots).\n\
              # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour\n\
              # unverified).\n#\n# Here {what}.\n\n{frame}\n"
         );

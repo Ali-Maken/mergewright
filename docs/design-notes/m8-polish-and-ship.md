@@ -243,6 +243,10 @@ file-history                  3     # +1 · lazygit 3 · ⌃P <path> ⏎
 rerun-recent                  2     # +1 · VS Code 3 · ⌃P ⏎ (P-find-1; 3 if declined)
 fold-merge-count              1     # +0 · none shows N (jj: shell, #3099) · Space on a merge (row ends +N) — post hoc
 whitespace-mode-shown         1     # +0 · lazygit 1 (toast fades) · w (title tail names the mode) — post hoc
+open-older-names-repo         1     # +0 · silent migrations (VS Code, Homebrew) 1 · mwr (pass 3)
+undo-after-rename             1     # +0 · GitUp 1 · u (pass 3)
+journal-replaced              1     # +0 · not studied · J, read (pass 3; was read as damage)
+picker-enter-current          3     # +0 · J32's tools 3–4 · C <name> ⏎ (pass 3; was 4 with Esc)
 ```
 
 Not walked in the pty (a person's step, a TESTING.md row): rebind (5+1), fix a colour (2+1), install (2), man (1),

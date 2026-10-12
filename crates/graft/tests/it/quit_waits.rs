@@ -183,8 +183,9 @@ fn capture_quit_waits() {
         "m8-quit-waits-80x24.txt",
         &format!(
             "=== `m m` then `q` while the merge runs ===\n{}\n\
-             === then `y`: Graft waits for git ===\n{}\n",
+             === then `y`: {} waits for git ===\n{}\n",
             first.join("\n"),
+            graft_core::on_disk::Generation::CURRENT.title(),
             second.join("\n")
         ),
     );
