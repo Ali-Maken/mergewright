@@ -1342,3 +1342,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/46-j-no-ascii | J draws `✗`/`⇢` in every tier; nothing in J switches to ASCII (scout 46; `journal_screen/pieces.rs:66`). | **broken** (ASCII tier) | post-M8 |
 | M8/47-q2-prior-art | Q2 prior-art row names no other tool's `⏎`-on-current behaviour (VS Code, lazygit, Sublime Merge unchecked; review g1 m8). | **unverified** | post-M8 |
 | M8/47-capture-hostile-subject | Q2 capture shows the shared fixture's hostile subject `Commit 3␛[31m` in graph rows; noise for the eye check (review g1 m10). | **broken** (capture only) | 56 recaptures |
+| M8/48-two-builds-one-repo | Two real builds open on one repo at once during the Mergewright move: not exercised outside tests (48 Part B NOTES). | **unverified** | post-M8 |
+| M8/48-old-lock-stray-pass | A leftover old-generation lock file triggers one stray pass (spawns git); no test covers it (48 Part B NOTES). | **unverified** | post-M8 |

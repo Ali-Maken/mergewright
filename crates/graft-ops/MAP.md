@@ -276,7 +276,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `plan_revert_to` (fn) — `(entries, target)`: the time machine's picture, from the same `InversePlan`s `revert_to` runs.
 
 ## rename
-- `settle_names` (fn) — `(&RepoHandle) -> Settled`: the one-time move from whichever generation is in force straight to `Generation::CURRENT`'s names (scratch of a newer failed move removed, every earlier generation given one stray pass), run on every open before any job.
+- `settle_names` (fn) — `(&RepoHandle) -> Settled`: moves the generation in force straight to `Generation::CURRENT` (removes a failed move's scratch; one stray pass per older generation); runs on every open, before any job.
 - `Settled` (struct) — `names` in force, `outcome`, `hold: Option<OldNamesHold>`.
 - `SettleOutcome` (enum) — `Done`, `Migrated`, `CleanedUp`, `OlderWrote`, `KeptOld(MigrateError)`, `LeftOld(MigrateError)`.
 - `KEPT_ASIDE_DIR` (const) — `"older-version"`: where differing strays are kept — files at `<common>/<current>/older-version/<n>/<path>`, refs at `refs/<current>/older-version/<n>/<generation dir>/<rest>`.
