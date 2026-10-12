@@ -132,11 +132,7 @@ One context, ~60k tokens.
   (rule 7) or keep it a question.
 
 ### Boxes for the conductor's additions (57)
-- [ ] (review 53) `scripts/release-local.sh` re-run, archive README/CHANGELOG quoted. **Not run — unverified, not
-      broken.** `dist` is not on this machine (`which dist cargo-dist`: not found; 53's `.tools/` lived in a removed
-      worktree); building it from `~/.cargo/git/checkouts/cargo-dist-*/a1c829f` was refused by the agent sandbox.
-      `docs/release/*.txt` are still 53's run (2026-10-12): `plan.txt` lists 5 `mergewright-*` artifacts, each archive
-      with `[misc] CHANGELOG.md, README.md, mwr.1`; no archive on disk to `tar xOf`. Needs a run from his terminal.
+- [x] (review 53) `scripts/release-local.sh` re-run — **by the conductor on main 5ce4ed3b+, 2026-10-12** (builder's sandbox refused the build; user approved the `.tools/` dist build): `DIST=.tools/bin/dist bash scripts/release-local.sh` rc=0; dist 0.33.0 built from upstream tag v0.33.0 (a1c829f). Archive `target/distrib/mergewright-aarch64-apple-darwin.tar.xz`: README `# Mergewright`, CHANGELOG "Mergewright is unreleased" / "renamed to Mergewright (command `mwr`)"; `mwr 0.1.0`; brew style no offenses; shellcheck clean. Host-manifest formula.py exit 2 = no x86_64 archive on a single-host build (expected). Nothing pushed, tagged or uploaded.
 - [x] (56 report) `quit_waits.rs:186` label from the table (`Generation::CURRENT.title()`); capture regenerated —
       `quit_waits::capture_quit_waits` green; `m8-quit-waits-80x24.txt:26` now `=== then \`y\`: Mergewright waits for
       git ===`; the sheet re-assembled after it (no `Graft waits` left in `m8-contact-sheet-*.txt`).
