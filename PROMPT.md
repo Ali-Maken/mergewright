@@ -1,6 +1,6 @@
-# Build Prompt: "Graft", a graphical terminal Git client
+# Build Prompt: "Mergewright", a graphical terminal Git client
 
-> **Note for humans:** this is the product spec. The working process lives in `PROGRESS.md` and `CLAUDE.md`: open this folder in Claude Code and run `/conduct`. "Graft" is a codename; the real name is chosen in M8.
+> **Note for humans:** this is the product spec. The working process lives in `PROGRESS.md` and `CLAUDE.md`: open this folder in Claude Code and run `/conduct`. The product is Mergewright (command mwr); "Graft" remains the project's codename (ADR-0057).
 
 ---
 
@@ -10,7 +10,7 @@ You're a senior terminal-UI product designer and a senior Rust systems engineer 
 
 ## Mission
 
-Build **Graft**, a terminal Git client that works with both keyboard and mouse. Its centrepiece is a **real graphical commit graph**: the kind of visual history Sublime Merge shows, running inside the terminal. It must:
+Build **Mergewright**, a terminal Git client that works with both keyboard and mouse. Its centrepiece is a **real graphical commit graph**: the kind of visual history Sublime Merge shows, running inside the terminal. It must:
 
 - cover the everyday and advanced Git workflows that Sublime Merge covers
 - be the easiest Git tool to learn
@@ -20,11 +20,11 @@ Build **Graft**, a terminal Git client that works with both keyboard and mouse. 
 
 ## Why this exists (every decision follows from this)
 
-Terminal clients such as lazygit, tig and gitui draw history as a thin line of ASCII characters, or leave it out. That hides the most useful thing a Git GUI shows: the *shape* of history. In Sublime Merge you can see a bad merge straight away: main merged into a feature branch, an accidental `git pull` merge, a foxtrot merge that rewrites main's first-parent line, or a merge that slips in unrelated changes. Graft must make those mistakes obvious, easy to understand and easy to recover from.
+Terminal clients such as lazygit, tig and gitui draw history as a thin line of ASCII characters, or leave it out. That hides the most useful thing a Git GUI shows: the *shape* of history. In Sublime Merge you can see a bad merge straight away: main merged into a feature branch, an accidental `git pull` merge, a foxtrot merge that rewrites main's first-parent line, or a merge that slips in unrelated changes. Mergewright must make those mistakes obvious, easy to understand and easy to recover from.
 
 **The graph is the product.** Everything else supports it.
 
-This is inspiration only. Don't use Sublime Merge's name, logo, icons or copy. Give Graft its own identity.
+This is inspiration only. Don't use Sublime Merge's name, logo, icons or copy. Give Mergewright its own identity.
 
 Prior art to study (and beat): `serie`, a Rust commit graph drawn with terminal image protocols; `lazygit` and `gitui` for workflow coverage; `tig` for speed.
 
@@ -57,7 +57,7 @@ Prior art to study (and beat): `serie`, a Rust commit graph drawn with terminal 
 - **Pixel graph:** rasterise with `tiny-skia`. Encode for the Kitty graphics protocol (use Unicode-placeholder mode so images scroll with the text and survive tmux), iTerm2 inline images and Sixel. Evaluate `ratatui-image`, and write your own encoder if it doesn't fit.
 - **Auto-refresh:** `notify` file watching (debounced), plus a refresh when the terminal regains focus.
 - **Concurrency:** a worker pool for Git jobs with cancellation tokens. The UI thread only handles input and draws.
-- **Config:** TOML via `serde` at `~/.config/graft/config.toml`.
+- **Config:** TOML via `serde` at `~/.config/mergewright/config.toml`.
 - **Testing:** `insta`, `proptest`, ratatui `TestBackend`, `tempfile`, `criterion`, `cargo-fuzz`.
 
 ---
@@ -66,7 +66,7 @@ Prior art to study (and beat): `serie`, a Rust commit graph drawn with terminal 
 
 ### 1.1 Rendering tiers
 
-Graft detects which tier to use automatically. The user can override it with `graph.renderer = "auto" | "pixel" | "unicode" | "ascii"`.
+Mergewright detects which tier to use automatically. The user can override it with `graph.renderer = "auto" | "pixel" | "unicode" | "ascii"`.
 
 **Tier 1: Pixel.** For terminals with the Kitty graphics protocol (Kitty, Ghostty, WezTerm), iTerm2 inline images, or Sixel.
 
@@ -160,14 +160,14 @@ Each marker has two actions:
 
 ### 1.5 Ghost Preview
 
-Before a merge, rebase, reset, cherry-pick, revert or branch move, draw the predicted result in the graph with dashed or dimmed "ghost" nodes. The user confirms against that picture. This is the main way Graft makes history editing safe and easy to understand.
+Before a merge, rebase, reset, cherry-pick, revert or branch move, draw the predicted result in the graph with dashed or dimmed "ghost" nodes. The user confirms against that picture. This is the main way Mergewright makes history editing safe and easy to understand.
 
 ---
 
 ## 2. Screen layout and information architecture
 
 ```
-╭─ ◆ graft ─ ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ──────────── ⌃P Commands ─╮
+╭─ ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ──────────── ⌃P Commands ─╮
 │ BRANCHES      ⌕ │  GRAPH       SUBJECT                        AUTHOR   WHEN   │
 │ ● main     ↑2   │  ◌           Uncommitted changes (3)                        │
 │ ▾ feature/      │  ●           Fix token refresh race  [main] RM      2m      │
@@ -213,7 +213,7 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
 
 Keyboard-first, mouse fully supported: every action is reachable from the keyboard and no feature is mouse-only, but every mouse affordance below is first-class.
 
-- **Never send `XTSHIFTESCAPE` with `n=1`.** Terminals reserve `Shift`+drag to bypass mouse capture and do native text selection; requesting that `Shift` be delivered to the application instead would take the user's ability to select and copy text out of Graft.
+- **Never send `XTSHIFTESCAPE` with `n=1`.** Terminals reserve `Shift`+drag to bypass mouse capture and do native text selection; requesting that `Shift` be delivered to the application instead would take the user's ability to select and copy text out of Mergewright.
 - click to select; double-click to open; right-click for a context menu
 - the scroll wheel works on every scrollable area; drag dividers to resize
 - **Drag and drop:** drag a branch badge onto a commit or another branch. A menu offers Merge into…, Rebase onto…, Reset to here and Cherry-pick, each with a Ghost Preview.
@@ -239,13 +239,13 @@ Keyboard-first, mouse fully supported: every action is reachable from the keyboa
 
 **Undo and redo** (`Ctrl+Z` / `u`, redo with `Ctrl+Shift+Z` / `U`)
 
-This is Graft's headline safety feature, not plumbing. The tools it competes with cannot undo a discard, cannot undo a pull, and leave users unable to tell what is undoable at all. Graft's answer is an explicit, browsable journal — treat it as a differentiator and design it accordingly.
+This is Mergewright's headline safety feature, not plumbing. The tools it competes with cannot undo a discard, cannot undo a pull, and leave users unable to tell what is undoable at all. Mergewright's answer is an explicit, browsable journal — treat it as a differentiator and design it accordingly.
 
-`Ctrl+Z` is `SIGTSTP` (suspend) in a terminal. Graft captures it for undo by default, because undo is where every user reaches for that key. Restore suspend with `keys.suspend_on_ctrl_z = true`.
+`Ctrl+Z` is `SIGTSTP` (suspend) in a terminal. Mergewright captures it for undo by default, because undo is where every user reaches for that key. Restore suspend with `keys.suspend_on_ctrl_z = true`.
 
-- Undo reverses the last Graft operation: commit, amend, merge, rebase, reset, branch delete, discard, stash drop and so on.
-- Before each operation, Graft records ref states in an operation journal.
-- Before any operation that destroys working-tree content, it also saves a snapshot under `refs/graft/backup/<timestamp>`.
+- Undo reverses the last Mergewright operation: commit, amend, merge, rebase, reset, branch delete, discard, stash drop and so on.
+- Before each operation, Mergewright records ref states in an operation journal.
+- Before any operation that destroys working-tree content, it also saves a snapshot under `refs/mergewright/backup/<timestamp>`.
   - **`git stash create` is not sufficient on its own: it silently omits untracked files.** It has no `-u` flag, and passing one is accepted as the stash *message*, so it exits 0 and returns a valid commit containing none of the untracked work. Discarding a new file this way is unrecoverable.
   - Back untracked content up explicitly (write blobs with `git hash-object -w` and record them in the backup tree) so the snapshot covers tracked *and* untracked files.
   - Cover this with a test: create an untracked file, discard it, undo, and assert the contents come back byte-for-byte.
@@ -270,11 +270,11 @@ This is Graft's headline safety feature, not plumbing. The tools it competes wit
 
 ## 4. Feature scope (equal or better than Sublime Merge)
 
-Sublime Merge is the **floor**, not the target. Match its core workflows and beat it on safety and discoverability — the undo journal, Ghost Preview, Mistake Radar and the always-visible hint bar are where Graft is meant to be better. Do not chase parity on things Sublime Merge itself does not do well; see *Deferred* at the end of this section.
+Sublime Merge is the **floor**, not the target. Match its core workflows and beat it on safety and discoverability — the undo journal, Ghost Preview, Mistake Radar and the always-visible hint bar are where Mergewright is meant to be better. Do not chase parity on things Sublime Merge itself does not do well; see *Deferred* at the end of this section.
 
 **Repositories**
 
-- Open from the current directory or with `graft [path]`; init; clone with progress; recent repos.
+- Open from the current directory or with `mwr [path]`; init; clone with progress; recent repos.
 - Submodules appear in the sidebar and can be opened. *(Deferred: multiple repos in tabs; the worktree switcher; submodule update/sync.)*
 - Bare repos open read-only; shallow clones are handled.
 
@@ -605,7 +605,7 @@ Don't start the next milestone while any test is failing.
 - In Ghostty, Kitty, WezTerm and iTerm2, the graph renders as anti-aliased curves lined up with the text rows, with no smearing while scrolling. In Terminal.app, the Unicode tier looks deliberately designed. Inside tmux, the chosen tier renders cleanly, whichever tier that is.
 - On a translucent terminal background, the graph's own background stays translucent: no opaque rectangles behind the lanes.
 - The foxtrot-merge fixture is flagged in the graph, and Explain highlights the rewritten first-parent line.
-- Every write operation can be undone. Killing Graft with `kill -9` mid-rebase leaves a state that git recognises, and on relaunch Graft offers Continue or Abort.
+- Every write operation can be undone. Killing Mergewright with `kill -9` mid-rebase leaves a state that git recognises, and on relaunch Mergewright offers Continue or Abort.
 - A new user can do all of the following without reading docs, using only the hint bar and the command palette:
   - stage a single hunk
   - commit

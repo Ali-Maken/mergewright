@@ -1,6 +1,6 @@
 # Mergewright 9: the lines in CLAUDE.md, PROMPT.md and `.claude/**` that the name changes — for the user
 
-Status: ready (user approved the protected-line edits 2026-10-11)
+Status: done
 Blocked by: 49
 He said yes to "about 20 lines naming the product in CLAUDE.md, PROMPT.md and the reviewer's instructions" before
 seeing the table; a builder applies exactly the table's rows, nothing beyond it.
@@ -51,10 +51,11 @@ descriptions and "for Graft" lines (builder-fable :3 :8, builder-opus :3 :8, bui
 swaps; under §12 they name the project, and renaming them would make every agent file disagree with CLAUDE.md:1.
 
 ## Acceptance (after his yes; each box with its evidence)
-- [ ] Each approved row applied verbatim; `git diff --stat` touches only CLAUDE.md, PROMPT.md and
-      `.claude/agents/reviewer.md` (quoted).
-- [ ] `rg -n '\bGraft\b|refs/graft|~/.config/graft|\bgraft \[path\]' PROMPT.md` returns only row-kept lines (quoted).
-- [ ] The user's words of approval quoted in NOTES with the date (from his message, as relayed by the conductor).
+- [x] Each approved row applied verbatim (20/20; line numbers re-checked by grep at ee000ec5, all matched); `git diff --stat` touches only CLAUDE.md, PROMPT.md and
+      `.claude/agents/reviewer.md` (quoted): `reviewer.md 2 +-, CLAUDE.md 2 +-, PROMPT.md 36 +-; 3 files, 20 ins, 20 del`.
+- [x] `rg -n '\bGraft\b|refs/graft|~/.config/graft|\bgraft \[path\]' PROMPT.md` returns only row-kept lines (quoted):
+      only PROMPT.md:3 `… "Graft" remains the project's codename (ADR-0057).` (row 3's approved wording). Checked with grep -nE.
+- [x] The user's words of approval quoted in NOTES with the date (from his message, as relayed by the conductor).
 
 ## Touches
 - PROMPT.md is cited by section in design notes and reviews: section numbers don't change (lines are edited in
@@ -65,6 +66,14 @@ swaps; under §12 they name the project, and renaming them would make every agen
 
 ## Gates
 None (no code). `rg` outputs to a file; summary quoted.
+
+## NOTES
+- Approval, as relayed by the conductor: "The user said yes (2026-10-11) to changing the product-name lines in
+  CLAUDE.md, PROMPT.md and `.claude/**` (reviewer.md) listed in this ticket's table."
+- Row 10: `docs/shots/m8-bar-head-row-100x30.txt` top line is ` ◆ api  ~/code/api · main …` (no product word);
+  `◆ graft ─ ` dropped, rest kept.
+- Touches: lines edited in place (20 ins / 20 del), so PROMPT.md:N citations keep their numbers. No code/keymap/captures.
+  No scout: doc-only edit.
 
 ## Size
 Small: ~10k tokens.

@@ -2,7 +2,7 @@
 
 Why behind every rule here: [`docs/rules-rationale.md`](docs/rules-rationale.md) — not auto-loaded, read it when a rule seems wrong.
 
-"Graft" is a **codename**. The name is taken by another Git GUI; the real one is chosen in M8. Never publish, register or tag anything public under it.
+"Graft" is the project's **codename** (another Git GUI's name): never publish, register or tag anything under it. The product is **Mergewright**, command `mwr` (ADR-0057); nothing goes public under that either until the trademark search is done.
 
 ## The seven that pay
 
