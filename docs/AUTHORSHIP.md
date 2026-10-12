@@ -636,7 +636,7 @@ M7 total after the scroll work ≈ **22 691** tool uses (≈21 281 at the checkp
 
 ## M8 Polish, final name, ship (m8-polish-and-ship)
 
-Go 2026-10-02 at `f7a9a8eb` (m8:7); ticket start `f5080f50` (m8:27). Last gate line in the log: 6349/6349 after the close debug merge (m8:509); debugger 2 merged after it, gates "running" at the log's end (m8:510). Tool-use counts are the harness's, cited `m8:<line>`. "No count" means the log gives none.
+Go 2026-10-02 at `f7a9a8eb` (m8:7); ticket start `f5080f50` (m8:27). M8 STOP at 6350/6350 after debugger 2 (m8:512). The Mergewright set (tickets 46–59) follows below; last gate line in the log: 6437/6437 after 58r (m8:567); 59's builder reported 6445/6445, no conductor gate line after its merge (m8:571). Tool-use counts are the harness's, cited `m8:<line>`. "No count" means the log gives none.
 
 **Models.** The M8 log names agents, not models. Per the M6 mapping (m6:79, m6:85): `builder-opus` Opus medium, `builder-sonnet` Opus low (tier label), `builder-fable`, `planner-fable`, `reviewer` and `debugger` Opus high, `builder-opus-xhigh` Opus xhigh, `scout` and `researcher` Opus low. The log itself never states a model for reviewer or debugger.
 
@@ -680,3 +680,35 @@ Totals (this file's sums): **4 Critical, 84 Major, 238 Minor** across 28 reviews
 **Conductor errors the log records:** 12f merged without checking ticks (m8:280); 11f A merge sealed with conflict markers (m8:319); 18c false tick merged with the gap filed (m8:327); home-path leaks in conductor commits (m8:238, :330, :333, :351); 20d-b's claim filed as broken without a line (m8:418); 24 builder left registered running (m8:429).
 
 **User decisions logged:** max 2 helpers (m8:94); pause/resume (m8:95, :101); name Tributary/trib as placeholder, naming discussion owed (m8:22, :456); 05 deferred then built (m8:284, :490); after 05 in Ghostty: "now it felt solid" (m8:500).
+
+### M8 Mergewright set (tickets 46–59, m8:513–571)
+
+Name chosen 2026-10-11: Scion (m8:513), switched to **Mergewright**, command `mwr` (m8:514), re-confirmed after naming round 5, naming closed (m8:515). Set start `8c7b46df` (m8:518). Models per the same agent mapping as above; the log names agents only.
+
+| Role | Agent | Detail |
+|---|---|---|
+| Designed / specified | planner-fable | Mergewright pass: ADR-0057 §9–12, `pass-3-mergewright.md`, 12 specs, 75 (m8:516); spec-only 46/47, 32 (m8:521). Conductor filed 46–57 (m8:517); 46r, 48r, 49r, 56r, 58, 58r, 59 routed by conductor from reviews (m8:526, :537, :540, :561, :565, :570). |
+| Scouts | scout | 47: 11 (m8:519); 46: 11 (:520); 56: 7 (:553). **29**. |
+| Built | builder-opus | 46 160 (:523); 46r 188 (:526); 48 Part B 251, COMPACTED (:533); 48r 109 (:539); 53 79 (:549); 52 129 (:551); 59 162 (:571). |
+| Built | builder-sonnet | 47 110 (:522); 49 76 (:536); 54 18 (:541); 49r 33 (:542); 50 68 (:544); 51 77 (:547); 55 116 (:555); 56 62, partial 6/7 (:556); 56r partial 5/6, no count (:559). |
+| Built | builder-fable | 48 Part A: first run stopped by user pause (:529), continuation 33 (:532); 57 330, partial 14/15, COMPACTED (:560) — conductor ticked box 15 after building dist (:561). |
+| Built | builder-opus-xhigh | 58r 257 (:566). |
+| Debugger | debugger | 58 (journal refused during finishing rebase): 93, cause fix, advisory flock (m8:563). |
+| Researcher | researcher | Previous AUTHORSHIP M8 pass, 9 (m8:511). |
+| Reviewed | reviewer | 10 reviews/walks below. |
+
+**Reviews** (Critical / Major / Minor; ticks).
+- g1 (46+47): 34, 0 / 2 / 10; 11/11, 9/9 (m8:524). 48: 42, 0 / 2 / 7; 5/5, 14/14 (:534).
+- 49: 41, 0 / 4 / 9; 10/10 (:537). 50: 38, 0 / 1 / 6; 5/5 (:545).
+- 51: 30, 0 / 1 / 5; 6/6 (:548). 53: 23, 0 / 1 / 9; 7/7 (:552).
+- 52: no count, 0 / 0 / 7; 6/6 (:554). 55+56: no count, 0 / 2 / 7 (:558).
+- 58: 37, 0 / 2 / 8; 3/3 (:565). Usability walk (release `mwr` in pty): 124, 0 / 2 / 11 / 4Q; journeys at note counts (:569).
+
+Set totals (this file's sums): **0 Critical, 17 Major, 79 Minor** across 10; no false tick. 8 counted, 369.
+
+**M8 totals with the set:** 4 Critical, 101 Major, 317 Minor across 38 reviews and walks.
+
+**Conductor errors the log records:** graft-ops/MAP.md:279 over limit merged from 48 B — builder ran gates before its last MAP edit; conductor fixed on main (m8:535). 52's builder ran `pkill -f cargo-nextest` (m8:551).
+
+**User decisions logged:** protected name lines and `.tools/` dist build approved (m8:517); pause after 48 Part A (m8:528–529), resume (m8:531).
+
