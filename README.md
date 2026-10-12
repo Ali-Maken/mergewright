@@ -48,7 +48,7 @@ From a checkout of this repository, today (needs stable Rust, MSRV 1.88, and
 cargo install --locked --path crates/graft
 ```
 
-Then `man ./docs/man/trib.1` reads the manual: every flag, every key in every
+Then `man ./docs/man/mwr.1` reads the manual: every flag, every key in every
 place, every config key, the environment and the files Tributary writes.
 `GRAFT_*` environment variables are no longer read: each is now `TRIB_*`.
 
@@ -181,8 +181,8 @@ cargo nextest run
 cargo test --doc
 ```
 
-`docs/man/trib.1` is generated; a test fails when it is stale. Regenerate it
-with `cargo run -q -p mergewright -- --generate-man > docs/man/trib.1`.
+`docs/man/mwr.1` is generated; a test fails when it is stale. Regenerate it
+with `cargo run -q -p mergewright -- --generate-man > docs/man/mwr.1`.
 
 ## Licence
 

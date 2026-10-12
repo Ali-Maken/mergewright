@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from mwr_sandbox import sandbox_env  # noqa: E402
 
 repo, cols, rows, keys, out, note = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6]
-binary = os.path.join(os.path.dirname(__file__), "..", "..", "target", "release", "graft")
+binary = os.path.join(os.path.dirname(__file__), "..", "..", "target", "release", "mwr")
 
 screen = pyte.Screen(cols, rows)
 stream = pyte.ByteStream(screen)

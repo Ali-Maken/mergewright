@@ -273,7 +273,6 @@
 401 crates/graft/tests/it/quit_waits/hangup.rs
 550 crates/graft/tests/it/quit_waits/stuck.rs
 1262 crates/graft/tests/it/remote_by_key.rs
-451 crates/graft/tests/it/rename_names.rs
 424 crates/graft/tests/it/resolver/editor_words.rs
 717 crates/graft/tests/it/resolver/file_list.rs
 1397 crates/graft/tests/it/resolver/shell_begun.rs
