@@ -169,7 +169,7 @@ pub fn scope(touches: &Touches) -> SnapshotScope {
 
 /// `<prefix>backup/<worktree>/<ulid>` — shared across worktrees by git,
 /// namespaced per worktree by us (ADR-0010). `<prefix>` is the repository's
-/// names in force: `refs/graft/` or `refs/tributary/` (ADR-0057, Amendment).
+/// names in force, its `Generation::ref_prefix` (ADR-0057, Amendment).
 pub fn backup_ref_name(names: Generation, worktree: &str, id: &EntryId) -> String {
     format!("{}backup/{worktree}/{id}", names.ref_prefix())
 }

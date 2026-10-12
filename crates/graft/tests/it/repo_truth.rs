@@ -14,7 +14,7 @@ use graft_core::on_disk::CURRENT_DIR;
 pub struct RepoTruth {
     /// `HEAD`'s commit; `None` on an unborn branch.
     pub head: Option<String>,
-    /// Every ref but `refs/tributary/`, name → object.
+    /// Every ref but those under the prefix in force (`Generation::ref_prefix`), name → object.
     pub refs: BTreeMap<String, String>,
     /// `ls-files -s` lines.
     pub index: Vec<String>,

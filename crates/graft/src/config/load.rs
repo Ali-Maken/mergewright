@@ -233,7 +233,16 @@ pub(super) fn settle_folder(config_home: Option<&Path>) -> (Generation, Vec<Conf
     let warn = |words: String| ConfigWarning::ConfigFolder { words };
     let mut warnings = Vec::new();
     for from in Generation::CURRENT.older() {
-        match migrate_config_dir(home, from) {
+        let moved = migrate_config_dir(home, from);
+        if matches!(
+            moved,
+            Ok(ConfigDirMoved::Nothing
+                | ConfigDirMoved::Moved { .. }
+                | ConfigDirMoved::OlderWrote { .. })
+        ) {
+            warnings.extend(remove_earlier_lock(home, from).map(warn));
+        }
+        match moved {
             Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => {}
             Ok(ConfigDirMoved::OlderWrote { old, kept_aside }) => {
                 warnings.push(warn(match kept_aside {
@@ -270,6 +279,21 @@ pub(super) fn settle_folder(config_home: Option<&Path>) -> (Generation, Vec<Conf
         }
     }
     (Generation::CURRENT, warnings)
+}
+
+/// `<home>/<from>.lock`, the lock an earlier generation's build took to
+/// move its own folder, removed once `from`'s folder is settled (review
+/// m8-48 Minor 7). Never taken first: it guards that build's move, never
+/// this one's, and nothing is ever kept in it. Why it could not go, if it
+/// could not.
+fn remove_earlier_lock(home: &Path, from: Generation) -> Option<String> {
+    let lock = home.join(format!("{}.lock", from.dir()));
+    match fs::remove_file(&lock) {
+        Ok(()) => None,
+        // Safe to pass over: absent is the state this step makes.
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(error) => Some(format!("{} could not be removed: {error}", lock.display())),
+    }
 }
 
 /// [`load`] against an arbitrary environment, the names it settled on

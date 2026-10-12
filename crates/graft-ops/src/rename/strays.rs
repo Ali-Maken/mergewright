@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 
-use super::scratch::{machinery, remove_machinery};
+use super::scratch::{machinery, remove_marker};
 use super::{KEPT_ASIDE_DIR, MigrateError, refs, trees};
 
 /// What one stray pass did.
@@ -36,9 +36,12 @@ pub(crate) struct Strays {
 /// (ADR-0057, 2026-10-11 §5). The refs are listed first, in one
 /// `for-each-ref` naming every prefix (the pass number must be unused by
 /// refs and folders alike); then every old folder's files; then the refs,
-/// in one transaction; last, each generation's own lock and marker
-/// (`machinery`) — the marker last of all, so a pass cut short leaves the
-/// marker that says which generation the move came from.
+/// in one transaction; then every generation's empty ref folders; then
+/// every generation's marker, after everything of every generation that
+/// held data, so an older build never finds its marker gone while its
+/// names still hold anything (review m8-48 Major 1). Which generation the
+/// move came from is in the `switched` marker, not read from these. The
+/// locks stay until the move releases them.
 pub(crate) fn settle_strays(
     repo: &RepoHandle,
     froms: &[Generation],
@@ -76,7 +79,14 @@ pub(crate) fn settle_strays(
         // git leaves `refs/<dir>/` itself behind once its last loose ref
         // is deleted; empty, it would still read as that generation's.
         trees::remove_empty(&common.join("refs").join(from.dir()))?;
-        remove_machinery(&common.join(from.dir()), &machinery(common, from))?;
+    }
+    for &from in froms {
+        remove_marker(&machinery(common, from))?;
+    }
+    for &from in froms {
+        // Not empty yet while this move holds the lock in it: the release
+        // removes both.
+        trees::remove_empty(&common.join(from.dir()))?;
     }
     let kept_aside = if files_kept {
         Some(pass_dir)

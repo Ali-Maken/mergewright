@@ -1,6 +1,6 @@
 //! m6-conflicts/66: the Mistake Radar ignores Graft's and git's own
 //! bookkeeping. After a pull that rebases, the pre-rebase commits live on in
-//! `refs/tributary/backup/**` (for `u`) and under a stash made on the old tip;
+//! `<prefix in force>backup/**` (`Generation::ref_prefix`) (for `u`) and under a stash made on the old tip;
 //! neither makes the rebased commits "duplicates", and the stash commit is
 //! never called an evil merge.
 #![allow(

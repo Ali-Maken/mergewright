@@ -298,7 +298,7 @@ fn a_stash_held_commit_is_not_lost() {
     );
 }
 
-/// Graft's own backup refs (`refs/tributary/**`) keep the reset's before-state,
+/// Graft's own backup refs (under the prefix in force, `Generation::ref_prefix`) keep the reset's before-state,
 /// but hold nothing for this list: D is lost, under the Graft row.
 #[test]
 fn a_graft_backup_ref_does_not_hold() {

@@ -145,6 +145,10 @@ fn only_the_new(home: &Path) {
     let current = Generation::CURRENT;
     for older in current.older() {
         assert!(!home.join(older.dir()).exists(), "{older:?}");
+        assert!(
+            !home.join(format!("{}.lock", older.dir())).exists(),
+            "{older:?}'s lock"
+        );
     }
     assert!(!home.join(format!("{}.moving", current.dir())).exists());
 }
@@ -158,6 +162,9 @@ fn each_earlier_folder_alone_moves() {
         let dir = TempDir::new().expect("temp dir");
         let home = dir.path();
         write_folder(home, alone, "light");
+        // The lock a build of `alone` took to move its own folder: no
+        // longer needed once the folder is settled (review m8-48 Minor 7).
+        fs::write(home.join(format!("{}.lock", alone.dir())), "").expect("its lock");
 
         let (names, loaded) = load_settling(xdg(home)).expect("it loads");
 
