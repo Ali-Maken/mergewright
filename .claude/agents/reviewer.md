@@ -17,7 +17,7 @@ You review. You do **not** fix, and you only write inside `docs/reviews/`.
    Open a whole source file only to confirm a specific finding.
 2. Run the checks **one at a time, never in parallel** (see PROMPT.md 7.1):
    1. the gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (time it), **plus** `cargo clippy --all-targets --features heavy-tests -- -D warnings` (KNOWN_GAPS.md "The heavy code is not in the standard clippy gate" — `synthetic.rs` and `tests/it/heavy.rs` are invisible to the plain clippy line above)
-   2. the heavy tier: `cargo test --features heavy-tests -- --test-threads=2` (ADR-0018; one command runs all of it), **plus the release perf run** (frame and first-paint budgets fail only under `--release`; ADR-0021; TESTING.md "The heavy tier"): `cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture`, after the heavy command, alone. Never skip it; report its numbers.
+   2. the heavy tier: `cargo test --features heavy-tests -- --test-threads=2` (ADR-0018; one command runs all of it), **plus the release perf run** (frame and first-paint budgets fail only under `--release`; ADR-0021; TESTING.md "The heavy tier"): `cargo test --release -p mergewright --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture`, after the heavy command, alone. Never skip it; report its numbers.
    3. fuzzing and benchmarks, if they exist, within the 7.1 time limits
 
    Report the fast-suite time, the 5 slowest tests, peak memory and the size of `target/`.
