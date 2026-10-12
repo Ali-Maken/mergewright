@@ -200,4 +200,8 @@ pub struct JournalView {
     pub find: Option<JournalFindView>,
     /// The `/` prompt while he types, drawn in place of the bar (blame's).
     pub find_prompt: Option<SanitizedText>,
+    /// A write is running and `Esc` stops it before J sees the key
+    /// (graft's `update::remote::esc_stops_write`): the bar then reads
+    /// `J close` and `esc cancels`, never `J/esc close` (m8/59 Major A).
+    pub esc_cancels: bool,
 }

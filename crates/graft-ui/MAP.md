@@ -369,7 +369,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
 - `JournalStatusRow` (struct) — `words`, `problem` (Warning ink when true): J's own status row, above the legend; `None` draws no row.
 - `JournalFindView` (struct) — `query: SanitizedText`, `at: Option<usize>` (`None` = no match), `of: usize`.
-- `JournalView` (struct) — `location`, `rows` (newest first), `selected`, `status`
+- `JournalView` (struct) — `location`, `rows` (newest first), `selected`, `status`, `esc_cancels` (a write takes `Esc`: bar `esc cancels` … `J close`)
 
 ## keymap
 Decides, never draws: which action a chord means in which place (`ContextId` scope), and how a key is spelled. Hint bars and menus draw what it spells.
@@ -422,7 +422,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `MapMarkView` (enum) — `Tag(SanitizedText)` or `Radar(Severity)`: a mark on one bucket, sanitised for drawing.
 - `MapRowView` (struct) — one branch's row: `name`, `identity`, `counts`, `is_current`, `merged_into`, `marks`, `active`, `complete`.
 - `MapStatus` (enum) — `Loading { done, total }`, `Empty`, `Failed(SanitizedText)`, `Ready`: what draws instead of, or with, the rows.
-- `MapView` (struct) — everything the screen draws: `title_branch`, `span_days`, `rows`, `max_count`, `buckets`, `selected`, `more`, `complete`, `status`, `ascii`.
+- `MapView` (struct) — everything the screen draws: `title_branch`, `span_days`, `rows`, `max_count`, `buckets`, `selected`, `more`, `complete`, `status`, `ascii`, `esc_cancels` (a write takes `Esc`: footer `esc cancels` … `M back`).
 - `MapScreen` (struct) — `view`, `theme`, `keys: &Keymap`: the footer (`j/k select  ⏎ zoom to commits  M/esc back`, loading `esc cancels`) is spelled from it.
 
 ## name_prompt
@@ -523,7 +523,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `StashRowView` (struct) — one entry's row: `name` (`stash@{0}`), `message` (quoted, first line), `age`, `files`.
 - `StashPromptView` (struct) — the save prompt: `title`, `message` (a `text_input::FieldView`), `staged_only`, `refusal` (what `s` would refuse, shown before `⏎` is pressed).
 - `StashStatus` (enum) — `Loading`, `Empty` (`no stashes — s stashes the working tree`), `Failed(SanitizedText)`, `Ready`.
-- `StashView` (struct) — `rows` (newest first), `selected`, `preview` (the selected stash's `detail::FileListView`, drawn under the list), `prompt`, `status`, `notice`/`notice_is_failure` — the overlay covers the graph footer
+- `StashView` (struct) — `rows` (newest first), `selected`, `preview` (the selected stash's `detail::FileListView`, drawn under the list), `prompt`, `status`, `notice`/`notice_is_failure`, `esc_cancels` (a write has `Esc`)
 - `StashScreen` (struct) — `view`, `theme`, `keys`: footer and empty line spelled from his keymap; the save prompt, a text field, spells from `Keymap::shipped()` (`⏎ save  ⇥ scope  esc back`).
 - `files_label` (fn) — `1 file` / `3 files`: the count with the noun it agrees with.
 

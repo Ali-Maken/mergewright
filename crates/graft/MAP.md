@@ -283,7 +283,7 @@ A put-back from the journal once it has run: the line it leaves and the tags it 
 ## update::relaunch
 Landing on an operation git is part-way through: the banner takes the keyboard and the changes pane opens where the work is.
 ## update::remote
-Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running write, progress and failure lines.
+Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running write, progress and failure lines. `esc_stops_write` (fn): whether `Esc` goes to the running write now; J, stash and Map bars read it.
 ## update::resolver
 The conflict resolver: a modal over one conflicted file; `o`/`t`/`b` take a side per block, `⏎` marks it resolved.
 ## update::rewrite_editor

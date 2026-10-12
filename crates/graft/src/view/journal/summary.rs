@@ -11,6 +11,24 @@ pub(super) const ABORTED: &str = "aborted";
 /// What such a row says instead of `failed: aborted` (M6/68).
 pub(super) const ABORTED_BY_YOU: &str = "aborted by you · nothing changed";
 
+/// The reason a write he stopped himself carries (`Esc` on a running write,
+/// or `q`'s "stop it now"): `graft_ops`' `RemoteFailure::Cancelled` and a
+/// stopped restore both record exactly this.
+const CANCELLED: &str = "cancelled";
+
+/// What such a row says instead of `failed: cancelled`: his choice is not a
+/// failure (m8/59 m3). Whether anything was written is the row's mark.
+const CANCELLED_BY_YOU: &str = "cancelled by you";
+
+/// The verdict for an `Aborted` entry other than his `--abort`.
+fn stopped_words(reason: &str) -> String {
+    if reason == CANCELLED {
+        CANCELLED_BY_YOU.to_owned()
+    } else {
+        format!("failed: {}", first_line(reason))
+    }
+}
+
 /// What a live entry's row says instead of a verdict: the operation has not
 /// finished happening, and the two keys that end it either way — the
 /// banner's own `continue_abort` words (m8/10f), the dash dropped with them
@@ -110,7 +128,7 @@ pub(super) fn summary(entry: &JournalEntry, progress: Progress, keys: &Keymap) -
         }
         // The row carries the failure in short form; the whole reason is
         // under `Space`, which is where a multi-line stderr belongs.
-        parts.insert(0, format!("failed: {}", first_line(reason)));
+        parts.insert(0, stopped_words(reason));
     }
     if entry.backup_ref.is_some() {
         parts.push("backup saved".to_owned());
@@ -181,7 +199,7 @@ pub(super) fn with_failure(
     }
     match &entry.status {
         EntryStatus::Aborted { reason } if reason == ABORTED => ABORTED_BY_YOU.to_owned(),
-        EntryStatus::Aborted { reason } => format!("failed: {}", first_line(reason)),
+        EntryStatus::Aborted { reason } => stopped_words(reason),
         EntryStatus::Pending | EntryStatus::Committed => parts.join(" · "),
     }
 }
@@ -210,6 +228,7 @@ pub(super) fn failure(entry: &JournalEntry, progress: Progress) -> Option<String
     }
     match &entry.status {
         EntryStatus::Aborted { reason } if reason == ABORTED => Some(ABORTED_BY_YOU.to_owned()),
+        EntryStatus::Aborted { reason } if reason == CANCELLED => Some(CANCELLED_BY_YOU.to_owned()),
         EntryStatus::Aborted { reason } => Some(format!("failed: {reason}")),
         // Unreachable: `is_interrupted` has taken every `Pending` entry
         // above. Kept as the honest arm of the match rather than a

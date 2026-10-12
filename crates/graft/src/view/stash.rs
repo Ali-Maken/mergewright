@@ -47,6 +47,7 @@ pub fn stash_view(state: &AppState, now_seconds: i64) -> StashView<'_> {
         // The put-back preview over the list holds every key; its footer is
         // the bar (review 86, M2).
         box_open: state.preview.is_some(),
+        esc_cancels: crate::update::remote::esc_stops_write(state),
     }
 }
 

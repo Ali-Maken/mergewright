@@ -785,7 +785,7 @@ fn moved_on_shows_the_words_and_b_prefills_the_name() {
         state.status,
         Status::Sticky {
             reason: "main has moved on since".to_owned(),
-            keys: Some("b makes main-restored at 0404040".to_owned()),
+            keys: Some("b makes branch \"main-restored\" at 0404040".to_owned()),
         }
     );
     press(&mut state, KeyCode::Char('b'));

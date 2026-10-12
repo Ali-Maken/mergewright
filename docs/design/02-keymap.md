@@ -203,7 +203,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Ctrl+P`, `:` | Command palette, on everything (§2.12) |
 | `?` | Help for the focused place: the palette opened on its keys, an operation's keys first while one is live (§2.12; M8, ADR-0056). Every screen, the empty state included |
 | `Tab` / `Shift+Tab` | Next / previous pane. `Shift+Tab` runs the `Tab` cycle in reverse, the operation banner included: graph → banner → diff → file list → graph with the pane open (M8/20d) |
-| `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1). After `⏎` from blame or history: back to it (M7, ADR-0048) |
+| `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1). After `⏎` from blame or history: back to it (M7, ADR-0048). While a write runs, `Esc` stops it before any overlay's own `Esc` (a text field, a confirm box or a menu keeps its own); so J's, the stash list's and the Map's bars then read `esc cancels` and close by their own letter alone (`J close`, `S close`, `M back`) — one key, one meaning on screen (m8/59, usability walk Major A) |
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |
 | `Ctrl+R` | Manual refresh |
@@ -508,7 +508,7 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 | `/` | Find a row by the words that name it, as blame's find (§2.8): `Enter` keeps it, `Esc` drops it (M7) |
 | `n` / `N` | Next / previous match; with no find, next / previous `✗` row (`⇢` rows passed over) (M7) |
 | `u` / `U` | Undo / redo, global as everywhere (§2.2): the journal's next entry (the `← u` / `← U` row), whatever row the cursor is on; never a `$` or `✗` row. Lands as `Enter` on that row (M7) |
-| `Esc`, `J` | Close (a find first: `Esc` drops it) |
+| `Esc`, `J` | Close (a find first: `Esc` drops it). While a write runs, `Esc` stops the write instead (§2.2 `Esc`) and `J` alone closes; the bar reads `esc cancels` … `J close` (m8/59, usability walk Major A) |
 
 A `⇢ replaced` / `⇢ deleted` row is a commit an undoable step left behind; `Enter` and `b` act on it as on `✗`. Amended 2026-10-11 (usability Q1, user: 'yes say replaced').
 

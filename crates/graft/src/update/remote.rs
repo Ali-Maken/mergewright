@@ -569,7 +569,7 @@ pub(crate) use push_box::nothing_to_lease;
 pub(crate) use after_push::pushed_to;
 pub use after_push::repush_lease;
 pub(super) use after_push::{pushed_since, repush_chosen, undo_after_push, undo_after_push_box};
-pub use in_flight::{cancel_operating, remote_failed, remote_progress};
+pub use in_flight::{cancel_operating, esc_stops_write, remote_failed, remote_progress};
 pub(super) use in_flight::{cancelled, remote_done, stop_write};
 pub use push_box::{push_box, push_key, push_params};
 

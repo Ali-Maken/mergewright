@@ -25,8 +25,11 @@ pub fn man_page(flags: &[Flag], keys: &[Binding], config: &[ConfigKeyDoc]) -> St
         ".TH {upper} 1 \"\" \"{COMMAND}\" \"User Commands\"\n"
     ));
     section(&mut out, "NAME");
+    // The product's name too: `man -k` and `apropos` read this line
+    // (usability walk m8, m7).
     out.push_str(&format!(
-        "{COMMAND} \\- a terminal Git client for the daily work\n"
+        "{COMMAND} \\- {}, a terminal Git client for the daily work\n",
+        Generation::CURRENT.title()
     ));
     synopsis(&mut out, flags);
     section(&mut out, "DESCRIPTION");

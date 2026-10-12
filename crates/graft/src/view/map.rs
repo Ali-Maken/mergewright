@@ -25,7 +25,7 @@ const DAY_SECONDS: i64 = 86_400;
 #[must_use]
 pub fn map_view(state: &AppState, _now_seconds: i64) -> MapView {
     let map = &state.map;
-    match &map.data {
+    let mut view = match &map.data {
         Loading::Ready(data) => ready_view(data, map.selected),
         Loading::Pending(_) => placeholder_view(MapStatus::Loading {
             done: map.progress.map_or(0, |(done, _)| done),
@@ -35,7 +35,11 @@ pub fn map_view(state: &AppState, _now_seconds: i64) -> MapView {
         Loading::Failed(message) => {
             placeholder_view(MapStatus::Failed(graft_term::sanitize_line(message)))
         }
-    }
+    };
+    // `Esc` stops a running write before the Map sees it: the footer says
+    // so (m8/59 Major A).
+    view.esc_cancels = crate::update::remote::esc_stops_write(state);
+    view
 }
 
 /// A view with no rows, for every status but [`MapStatus::Ready`].
@@ -51,6 +55,7 @@ fn placeholder_view(status: MapStatus) -> MapView {
         complete: true,
         status,
         ascii: false,
+        esc_cancels: false,
     }
 }
 
@@ -84,6 +89,7 @@ fn ready_view(data: &MapData, selected: usize) -> MapView {
         complete: data.complete,
         status: MapStatus::Ready,
         ascii: false,
+        esc_cancels: false,
     }
 }
 

@@ -58,7 +58,7 @@ pub use fitting::{
     HINT_SEPARATOR, StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys,
 };
 use fitting::{Words, fit_list};
-pub(crate) use fitting::{fit_place_footer, place_footer_text};
+pub(crate) use fitting::{fit_place_footer, place_close, place_footer_text};
 pub(crate) use hint::{ACTIONS, DOORWAY, DOORWAY_BY_PALETTE};
 use hint::{EXPLAIN, RESIZE, hint};
 pub use hint::{Hint, HintKey, HintState, MARK_RESOLVED, MARK_RESOLVED_SHORT, NOT_A_BINDING, Rung};

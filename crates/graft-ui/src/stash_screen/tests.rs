@@ -7,6 +7,32 @@ use super::*;
 use crate::test_support::terminal as test_capabilities;
 use crate::theme::ThemeKind;
 
+/// m8/59 Major A, the stash list too: while a write runs `Esc` stops it
+/// before the list sees the key, so the bar reads `esc cancels` … `S close`,
+/// never `S/esc close`.
+#[test]
+fn while_a_write_runs_the_stash_bar_says_esc_cancels_it() {
+    let theme = theme();
+    for status in [StashStatus::Ready, StashStatus::Empty] {
+        let mut view = view(vec![row("stash@{0}", "wip", "2m", 1)], status.clone());
+        view.esc_cancels = true;
+        let bar = |view: &StashView<'_>| {
+            StashScreen {
+                keys: Keymap::shipped(),
+                view,
+                theme: &theme,
+            }
+            .footer(400)
+        };
+        let busy = bar(&view);
+        assert!(busy.starts_with("esc cancels"), "{status:?}: {busy}");
+        assert!(busy.contains("S close"), "{status:?}: {busy}");
+        assert!(!busy.contains("S/esc"), "{status:?}: {busy}");
+        view.esc_cancels = false;
+        assert!(bar(&view).contains("S/esc close"), "{status:?}");
+    }
+}
+
 fn theme() -> Theme {
     Theme::new(
         ThemeKind::Dark,
@@ -33,6 +59,7 @@ fn view<'a>(rows: Vec<StashRowView>, status: StashStatus) -> StashView<'a> {
         notice: None,
         notice_is_failure: false,
         box_open: false,
+        esc_cancels: false,
     }
 }
 

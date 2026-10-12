@@ -163,7 +163,8 @@ pub(crate) fn recover_answered(
     }
 }
 
-/// `b makes <name> at <short>`: the branch a `⏎` on a lost row offers,
+/// `b makes branch "<name>" at <short>`: the branch a `⏎` on a lost row
+/// offers, the name quoted so the clause reads as a sentence (m8/59 m10),
 /// spelled from `journal.branch` (J is up); `None` when unbound.
 pub(crate) fn offer_branch_keys(
     name: &str,
@@ -172,6 +173,6 @@ pub(crate) fn offer_branch_keys(
 ) -> Option<String> {
     keys.key_verb(
         &[graft_ui::keymap::ActionId("journal.branch")],
-        &format!("makes {name} at {at}"),
+        &format!("makes branch \"{name}\" at {at}"),
     )
 }

@@ -100,3 +100,27 @@ impl PlaceFooter {
             .join(FOOTER_SEP)
     }
 }
+
+/// A place's close clause and, while a write runs, the clause that says what
+/// `Esc` does instead (m8/59 Major A). Normally one clause, both keys
+/// (`J/esc close`). While `Esc` stops a running write before the place sees
+/// it (graft's `update/keys.rs`, design note choice 4), the place's own key
+/// closes alone (`J close`) and `esc cancels` is drawn apart, to go first:
+/// the first and last clauses are the ones [`shed_footer`] keeps longest.
+/// Returns `(cancels, close)`; either is `None` when its key is unbound.
+pub(crate) fn place_close(
+    keys: &Keymap,
+    own: crate::keymap::ActionId,
+    verb: &str,
+    esc_cancels: bool,
+) -> (Option<String>, Option<String>) {
+    let back = crate::keymap::ActionId("app.back");
+    if esc_cancels {
+        (
+            keys.key_verb(&[back], "cancels"),
+            keys.key_verb(&[own], verb),
+        )
+    } else {
+        (None, keys.key_verb(&[own, back], verb))
+    }
+}

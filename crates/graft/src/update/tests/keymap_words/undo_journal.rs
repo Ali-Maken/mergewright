@@ -85,7 +85,7 @@ const SITES: &[Site] = &[
                 "spike", "abc1234", k,
             ))
         },
-        expected: |k| format!("{} makes spike at abc1234", k("journal.branch")),
+        expected: |k| format!("{} makes branch \"spike\" at abc1234", k("journal.branch")),
     },
     Site {
         name: "journal::keys::lost_edit_keys",

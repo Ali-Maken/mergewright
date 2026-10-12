@@ -124,3 +124,20 @@ fn picker_switch_names_both_outcomes() {
     assert!(label.contains("back to the graph"), "{label}");
     assert!(label.contains("on your own branch"), "{label}");
 }
+
+/// `?` in J names both things `⏎` does: on the `← u`/`← U` row it undoes or
+/// redoes at once, as the bar's `⏎ redo this` says; on an older row it opens
+/// the put-back preview (keymap §2.11; usability walk m8, m6).
+#[test]
+fn journal_revert_names_the_at_once_rows_and_the_preview() {
+    let label = defaults()
+        .iter()
+        .find(|b| b.action.0 == "journal.revert")
+        .map(|b| b.label)
+        .expect("journal.revert is in the table");
+    assert!(label.starts_with("Undo / redo this row"), "{label}");
+    assert!(
+        label.contains("else put back to before it (preview)"),
+        "{label}"
+    );
+}

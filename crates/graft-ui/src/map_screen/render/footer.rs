@@ -3,7 +3,7 @@
 
 use super::{
     ActionId, Line, MapScreen, MapStatus, Span, Style, Token, fit_place_footer, foreground,
-    place_footer_text,
+    place_close, place_footer_text,
 };
 
 impl MapScreen<'_> {
@@ -16,6 +16,15 @@ impl MapScreen<'_> {
     pub(super) fn footer_line(&self, width: u16) -> Line<'static> {
         let muted = foreground(self.theme, Token::TextMuted);
         let keys = self.keys;
+        if let MapStatus::Loading { .. } = self.view.status
+            && self.view.esc_cancels
+        {
+            // A write is running: `esc` stops it, not the build, and `M`
+            // alone goes back (m8/59 Major A).
+            let (cancels, back) = place_close(keys, ActionId("map.close"), "back", true);
+            let clauses: Vec<String> = cancels.into_iter().chain(back).collect();
+            return Line::styled(place_footer_text(&clauses, keys, usize::from(width)), muted);
+        }
         if let MapStatus::Loading { .. } = self.view.status {
             // A cancellable job, not a prompt: `?` opens the palette here
             // (m8/11e G3), so the doorway follows `esc cancels`.
@@ -54,12 +63,17 @@ impl MapScreen<'_> {
     fn ready_clauses(&self) -> Vec<String> {
         let keys = self.keys;
         let has_rows = matches!(self.view.status, MapStatus::Ready);
+        // `M/esc back`, or `esc cancels` first and `M back` last while a
+        // write runs (m8/59 Major A).
+        let (cancels, back) =
+            place_close(keys, ActionId("map.close"), "back", self.view.esc_cancels);
         [
+            cancels,
             has_rows
                 .then(|| keys.key_verb(&[ActionId("app.down"), ActionId("app.up")], "select"))
                 .flatten(),
             keys.key_verb(&[ActionId("map.seek")], "zoom to commits"),
-            keys.key_verb(&[ActionId("map.close"), ActionId("app.back")], "back"),
+            back,
         ]
         .into_iter()
         .flatten()
