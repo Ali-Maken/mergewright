@@ -1,45 +1,26 @@
-# m8-acceptance — 2026-10-11T09:10:43Z
-# HEAD 58367ddd +uncommitted
+# m8-acceptance — 2026-10-12T11:22:21Z
+# HEAD 92d8953e +uncommitted
 # Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
-1 fast tier: Summary [ 457.537s] 6349 tests run: 6349 passed (4 slow), 15 skipped · rc=0 · .scratch/m8-polish-and-ship/accept/nextest.txt
-2 scroll (release): Summary [  46.121s] 11 tests run: 9 passed, 2 failed, 3275 skipped · rc=100 · .scratch/m8-polish-and-ship/accept/perf.txt
-           START [         ] ( 2/11) graft::it heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb
-    SUMMARY heavy pixel_rss drain=40000000B/s peak_rss=219217920 keys=188 rows_scrolled=188 strip_transmits_held=142 deflated_transmits=762
-    test heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb ... ok
-            PASS [   4.547s] ( 2/11) graft::it heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_40mb
-           START [         ] ( 3/11) graft::it heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free
-    SUMMARY heavy pixel_rss drain=18446744073709551615B/s peak_rss=231571456 keys=188 rows_scrolled=188 strip_transmits_held=157 deflated_transmits=815
-    test heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free ... ok
-            PASS [   4.465s] ( 3/11) graft::it heavy::budgets_hold_at_pixel_on_monorepo_with_j_held_free
-    SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=1 frames_after_release=2 tail_ms=1253 bytes_per_frame_held=22843143 strip_transmits_held=5 emphasis_transmits_held=5 rows_scrolled=188 fold_changes_held=unread bytes_per_key=285066 emphasis_area_per_key=0.0 emphasis_cells_p99=38 deflated_transmits=0 peak_rss_mb=133 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Pixel scenario=A tail_ms<=100: FAILED
-    held_key verdict failed ["bytes_per_frame_held<=512KiB", "tail_ms<=100"]: SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=1 frames_after_release=2 tail_ms=1253 bytes_per_frame_held=22843143 strip_transmits_held=5 emphasis_transmits_held=5 rows_scrolled=188 fold_changes_held=unread bytes_per_key=285066 emphasis_area_per_key=0.0 emphasis_cells_p99=38 deflated_transmits=0 peak_rss_mb=133 premise_wide=188/188 premise_lit_changed=184/188
-    SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=172 frames_after_release=1 tail_ms=15 bytes_per_frame_held=117770 strip_transmits_held=144 emphasis_transmits_held=619 rows_scrolled=188 fold_changes_held=unread bytes_per_key=109858 emphasis_area_per_key=3.0 emphasis_cells_p99=56 deflated_transmits=767 peak_rss_mb=195 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Pixel scenario=A-deflate tail_ms<=100: ok
-    SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=188 frames_after_release=1 tail_ms=4 bytes_per_frame_held=118076 strip_transmits_held=157 emphasis_transmits_held=654 rows_scrolled=188 fold_changes_held=unread bytes_per_key=120186 emphasis_area_per_key=3.2 emphasis_cells_p99=60 deflated_transmits=815 peak_rss_mb=219 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Pixel scenario=A-deflate tail_ms<=100: ok
-    SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=151 frames_after_release=2 tail_ms=21 bytes_per_frame_held=5606552 strip_transmits_held=124 emphasis_transmits_held=560 rows_scrolled=188 fold_changes_held=unread bytes_per_key=4635830 emphasis_area_per_key=2.7 emphasis_cells_p99=56 deflated_transmits=0 peak_rss_mb=666 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Pixel scenario=A tail_ms<=100: ok
-    held_key verdict failed ["bytes_per_frame_held<=512KiB"]: SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=151 frames_after_release=2 tail_ms=21 bytes_per_frame_held=5606552 strip_transmits_held=124 emphasis_transmits_held=560 rows_scrolled=188 fold_changes_held=unread bytes_per_key=4635830 emphasis_area_per_key=2.7 emphasis_cells_p99=56 deflated_transmits=0 peak_rss_mb=666 premise_wide=188/188 premise_lit_changed=184/188
-    SUMMARY held_key tier=Pixel scenario=A-iterm2 size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=165 frames_after_release=2 tail_ms=20 bytes_per_frame_held=126667 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 fold_changes_held=unread bytes_per_key=113043 emphasis_area_per_key=0.0 emphasis_cells_p99=none deflated_transmits=0 peak_rss_mb=344 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Pixel scenario=A-iterm2 tail_ms<=100: ok
-    SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=500000B/s pipe=16384 keys=188 frames_while_held=90 frames_after_release=1 tail_ms=40 bytes_per_frame_held=14427 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=27 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
-    SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=190 frames_after_release=1 tail_ms=3 bytes_per_frame_held=14832 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=27 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
-    SUMMARY held_key tier=Unicode scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=190 frames_after_release=1 tail_ms=4 bytes_per_frame_held=14832 strip_transmits_held=0 emphasis_transmits_held=0 rows_scrolled=188 peak_rss_mb=68 premise_wide=188/188 premise_lit_changed=184/188
-    VERDICT held_key tier=Unicode scenario=A tail_ms<=100: ok
-3 contact sheet: wrote 98 captures, 0 without a recorded caption, in 3 part(s):
-  docs/shots/m8-contact-sheet-1.txt (175880 bytes)
-  docs/shots/m8-contact-sheet-2.txt (177636 bytes)
-  docs/shots/m8-contact-sheet-3.txt (47617 bytes)
+1 fast tier: Summary [ 444.001s] 6427 tests run: 6427 passed (4 slow), 16 skipped · rc=0 · .scratch/m8-polish-and-ship/accept/nextest.txt
+2 scroll (release): not run — pass --perf from a terminal (CLAUDE.md: never in a helper's context)
+3 contact sheet: wrote 109 captures, 0 without a recorded caption, in 3 part(s):
+  docs/shots/m8-contact-sheet-1.txt (175887 bytes)
+  docs/shots/m8-contact-sheet-2.txt (177693 bytes)
+  docs/shots/m8-contact-sheet-3.txt (73206 bytes)
 4 install (quoted from docs/release/, dated in each file's first line):
-    plan targets: 4 archives · # dist plan (cargo-dist 0.33.0), scripts/release-local.sh, 2026-10-09
-    host archive: graft-aarch64-apple-darwin/graft.1 (man page in the archive)
-    formula style: brew style graft.rb: FAILED
-    cargo install: install: ok in 165s
-5 journeys: 31 in the fence · missing a walk: none
+    plan targets: 4 archives · # dist plan (cargo-dist 0.33.0), scripts/release-local.sh, 2026-10-12
+    host archive: mergewright-aarch64-apple-darwin/mwr.1 (man page in the archive)
+    formula style: brew style mergewright.rb: ok (1 file inspected, no offenses detected)
+    cargo install: install: ok in 144s
+5 journeys: 35 in the fence · missing a walk: none
+6 mergewright (S1–S8 · .scratch/m8-polish-and-ship/accept/mergewright.txt):
+    S1 older names open, u undoes: ok (1 test(s) passed)
+    S2 second-generation names: ok (1 test(s) passed)
+    S3 another window keeps old names: ok (1 test(s) passed)
+    S4 command and manual: ok · mwr 0.1.0 · usage: mwr [<path>] · man: mwr \- a terminal Git client for the daily work
+    S5 Q1 replaced: ok (1 test(s) passed)
+    S6 Q2 picker on his branch: ok (1 test(s) passed)
+    S7 what ships: ok · 5 mergewright-* artifacts, 0 under another name · brew style mergewright.rb: ok (1 file inspected, no offenses detected)
+    S8 no old name live: ok (7 test(s) passed)
+mergewright: 8 scenarios, 0 failed
 summary: docs/perf/m8-accept.txt
-# machine at start/end of this run (close run driver):
-#   accept-start 2026-10-11T09:10:42Z load={ 1.50 2.31 2.24 } power='AC Power' lowpower=0
-#   accept-end 2026-10-11T09:20:19Z load={ 2.89 4.14 3.50 } power='AC Power' lowpower=0

@@ -1,0 +1,40 @@
+# m8-polish-and-ship/57, `mwr` over a pty (Unicode tier): what right looks like —
+# after `C`, `main`, `⏎` on the branch he is on: the picker closed, `▸` on HEAD's row (`◆ main`), the bar the graph's, no status line.
+# Colour unverified (rule 5).
+
+ ◆ api  ~/code/api · main                                                                                     3 commits
+
+▸ ◆      [◆ main] M                                                                                     GT 2d   c4d8d2f
+  │ ●    [feature] work on feature                                                                      GT 2d   4c5e744
+  ◇─╯    [spare] A                                                                                      GT 2d   5a9f137
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys

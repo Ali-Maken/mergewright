@@ -3365,3 +3365,23 @@ app's name, except the two throwaway prototypes `m8-proto-3a/3c` (records).
   (`m8-proto-*`): same layout at 80×24, 120×36, 187×50.
 - [ ] **Scroll** (yours, release): `scripts/m8-accept.sh --perf` from your terminal; tails after release ≤ 100 ms
   (J1, J2), `G` ≤ 16 ms (J3), RSS ≤ budget, in `docs/perf/m8-accept.txt`.
+
+## M8 · Mergewright (the rename, m8-polish-and-ship/57)
+
+Promise: **your repositories open under the new name with nothing lost.** A repository an older build used (its names
+`.git/graft/` and `refs/graft/`, or `.git/tributary/` and `refs/tributary/`) opens in `mwr`, every backup and journal
+row comes along, and `u` still takes back your last real operation. `scripts/m8-accept.sh` step 6 prints one line per
+scenario and `mergewright: 8 scenarios, 0 failed`. The fence gains 4 ids (`open-older-names-repo` 1,
+`undo-after-rename` 1, `journal-replaced` 1, `picker-enter-current` 3), each in `WALKS`; the fence now holds 35.
+**colour: unverified (rule 5)** for every row.
+
+| Scenario | Steps | Test | Right looks like |
+|---|---|---|---|
+| S1 older names | 1 (`mwr`), then `J`, `Esc`, `u` (1) | `m8_walk::mergewright::older_names_repo_opens_and_undoes` | the graph, `▸` on HEAD (`◆ b0`, where a switch killed mid-way left it), **no** `rename:` line; the status row `an operation was interrupted: checkout b0 · your edits are in stash@{0} · S p puts them back · J to inspect`. Nothing under `refs/graft/`; `refs/mergewright/` holds the 3 backups. `J`: the older build's 20 `●` rows and, newest, `●  Mergewright … rename to Mergewright (3 refs, 1 file)` (the journal reader: 21 entries). `u`: back on `main` with `a.rs` staged and edited exactly as before the switch, the stash list empty. Captures `docs/shots/m8-mergewright-s1-{graph,journal}-120x36.txt` |
+| S2 Tributary-era | 1, then `J`, `u` | `m8_walk::mergewright::tributary_repo_opens` | as S1, no `rename:` line; nothing under `refs/graft/` or `refs/tributary/`; `J` shows both `rename to Tributary (3 refs, 1 file)` and `rename to Mergewright (3 refs, 1 file)` (22 entries); `u` takes back the third stage: `1 staged, 1 unstaged`, bytes as before |
+| S3 another window open | 1 | `m8_walk::mergewright::another_window_keeps_old_names` | while another window holds the old names' lock: the graph on the old names and the bottom row `rename: still using the old names · another Mergewright window is open on this repository · esc dismiss`; nothing moved (3 refs under `refs/graft/`, none under `refs/mergewright/`, no marker). Close the other window and relaunch: it moves, no `rename:` line. Capture `docs/shots/m8-mergewright-s3-busy-120x36.txt` |
+| S4 command and manual | 1 | step 6 runs the built binary | `mwr --version` → `mwr 0.1.0`; `mwr --help` line 1 → `usage: mwr [<path>]`; `man docs/man/mwr.1` → `MWR(1)  User Commands  MWR(1)`, `NAME`, `mwr - a terminal Git client for the daily work` (roff: `mwr \- a terminal Git client for the daily work`) |
+| S5 Q1 replaced | 1 (`J`) | `m8_walk::mergewright::journal_replaced` | after `g`, `r`, `y` (rebase `feature` onto `main` in the app), `J`: `▸` on the newest `●` rebase row; under it `└ ⇢ replaced <sha> "work on feature" · was feature's tip · undo brings it back`; under the shell's `$` reset `└ ✗ lost`; the legend ends `⇢ undo brings it back`. Same at 80×24, cut at a word. Captures `docs/shots/m8-q1-journal-replaced-{187x30,80x24}.txt` |
+| S6 Q2 picker on his branch | 3 (`C`, `main`, `⏎`) | `m8_walk::mergewright::picker_enter_current` | on `main`, cursor elsewhere: the picker closes, `▸` on HEAD's row (`◆ main`), the bottom row the graph's own bar (no status line); `git reflog -1` unchanged. Capture `docs/shots/m8-q2-picker-enter-current-120x36.txt` |
+| S7 what ships | 0 | step 6 reads `docs/release/plan.txt` | artifacts `mergewright-installer.sh`, `mergewright-{aarch64,x86_64}-apple-darwin.tar.xz`, `mergewright-{aarch64,x86_64}-unknown-linux-gnu.tar.xz`, each holding `[bin] mwr` and `[misc] CHANGELOG.md, README.md, mwr.1`; none named `graft` or `trib`. `build.txt`: `brew style mergewright.rb: ok (1 file inspected, no offenses detected)`. Dated 2026-10-12 (ticket 53's run; not re-run by 57: `dist` is not installed here) |
+| S8 no old name live | 0 | `rename_names::{no_old_message_literal, no_old_name_in_user_visible_strings, user_docs_and_scripts_name_the_command}`, `rename_names::scripts::{no_old_env_name, scripts_run_the_command, no_old_package_spec}`, `rename_opens::no_old_dir_literal` | all seven green |

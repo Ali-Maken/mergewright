@@ -15,6 +15,7 @@ mod clone;
 mod contact_sheet;
 mod journeys;
 mod look;
+mod mergewright;
 mod teaches;
 
 use std::path::Path;
@@ -167,6 +168,26 @@ pub const WALKS: &[(&str, &str, &str)] = &[
         "whitespace-mode-shown",
         "m8_walk/journeys.rs",
         "whitespace_mode_shown",
+    ),
+    (
+        "open-older-names-repo",
+        "m8_walk/mergewright.rs",
+        "older_names_repo_opens_and_undoes",
+    ),
+    (
+        "undo-after-rename",
+        "m8_walk/mergewright.rs",
+        "older_names_repo_opens_and_undoes",
+    ),
+    (
+        "journal-replaced",
+        "m8_walk/mergewright.rs",
+        "journal_replaced",
+    ),
+    (
+        "picker-enter-current",
+        "m8_walk/mergewright.rs",
+        "picker_enter_current",
     ),
 ];
 

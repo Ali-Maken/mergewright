@@ -23,7 +23,7 @@
 
 
  y quit  ←/→ move  ⏎ choose  esc cancel
-=== then `y`: Graft waits for git ===
+=== then `y`: Mergewright waits for git ===
  ◆ api  ~/code/api · feature                                          8 commits
     ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
