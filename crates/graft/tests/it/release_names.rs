@@ -46,7 +46,10 @@ fn formula_template_names_the_table() {
     let command = Generation::CURRENT.command();
 
     let class = format!("class {} < Formula", class_name(dir));
-    assert!(template.contains(&class), "the template's class is `{class}`");
+    assert!(
+        template.contains(&class),
+        "the template's class is `{class}`"
+    );
 
     let archives = template_archives(&template);
     let targets = [
@@ -59,7 +62,10 @@ fn formula_template_names_the_table() {
         .iter()
         .map(|target| format!("{dir}-{target}.tar.xz"))
         .collect();
-    assert_eq!(archives, wanted, "one archive per target, named {dir}-<target>");
+    assert_eq!(
+        archives, wanted,
+        "one archive per target, named {dir}-<target>"
+    );
     for archive in &wanted {
         assert!(
             template.contains(&format!("@SHA256:{archive}@")),
@@ -108,7 +114,9 @@ fn formula_template_names_the_table() {
 /// README's Install section, `## Install` up to the next `## `.
 fn readme_install() -> String {
     let readme = read("README.md");
-    let start = readme.find("## Install").expect("README has an Install section");
+    let start = readme
+        .find("## Install")
+        .expect("README has an Install section");
     let rest = &readme[start + 2..];
     let end = rest.find("\n## ").map_or(rest.len(), |at| at + 2);
     readme[start..start + end].to_owned()
@@ -169,7 +177,8 @@ fn readme_install_lines_match_the_plan() {
     for old in Generation::CURRENT.older() {
         for line in [curl, brew] {
             assert!(
-                !line.contains(&format!("/{}", old.command())) && !line.contains(&format!("/{}", old.dir())),
+                !line.contains(&format!("/{}", old.command()))
+                    && !line.contains(&format!("/{}", old.dir())),
                 "`{line}` names the earlier `{}`",
                 old.dir()
             );
