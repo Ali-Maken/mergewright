@@ -1347,3 +1347,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/48r-kept-aside-journal-blocks-move | If a backup named by a kept-aside journal is gone (by hand), every open stays on old names (`KeptOld`); nothing lost, move never happens. Proposal: `check_journals` skips `older-version/` (48r NOTES). | **broken** (low odds) | post-M8 |
 | M8/49-current-command-inline | `Generation::CURRENT.command()` spelled inline in three crates (review 49 m6); readability only. | **broken** (readability) | post-M8 |
 | M8/50-tour-header-letters | Question: tour header `workar…` → `workri…` after 50; letters may show through a gap. Pre-existing per builder; no line found (rule 7: question). | **question** | 56 recaptures |
+| M8/53-formula-four-checksums | A host build makes 1 of 4 archives; the styled formula uses zero sha256 placeholders for 3 targets. A formula with four real checksums is unverified (53 NOTES). | **unverified** | first release |
+| M8/53-installer-env-names | Question: dist's shell installer reads `MERGEWRIGHT_*`, not `MWR_*` (53 NOTES). | **question** | first release |
+| M8/53-unexplained-flakes | 53's first full run had 4 failures, names not captured; second run green. Cause unknown (rule 1: not evidence of health). | **unverified** | watch in gates |
