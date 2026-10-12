@@ -1360,3 +1360,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/58-claim-uncancellable | `FileLock::shared` blocks in the kernel (`graft-git/src/file_lock.rs:45-50`, `journal/file.rs:140`); a waiting job cannot be cancelled while recovery holds the journal (review 58 Minor 3). | **unverified** (cost not measured) | post-M8 |
 | M8/58-journal-lock-no-adr | Cross-process journal lock protocol has no ADR or design entry; cost note omits how deferred recovery shifts the after-state (review 58 Minors 4, 5). | **broken** (doc missing) | post-M8 |
 | M8/58-no-flock-filesystems | Behaviour on filesystems without `flock` (e.g. some network mounts) unknown (review 58 Minor 6). | **question** | post-M8 |
+| M8/58r-running-word | J now draws a writer-held entry as `running` — new on-screen word, not in CONTEXT.md, no capture shows it (rule 6). Busy read keeps git's fresh `live`, not the prior one (differs from review sketch). | **unverified** (needs his eye) | post-M8 |
+| M8/58r-partial-append | Whether a reader on APFS/ext4 can see a half-finished `O_APPEND` journal line. | **question** | post-M8 |
