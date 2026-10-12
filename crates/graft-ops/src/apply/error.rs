@@ -381,6 +381,16 @@ impl AfterState {
 }
 
 impl ApplyError {
+    /// [`ApplyError::Journal`] with nothing else to carry: no git failure
+    /// behind it, no raw step's words kept (review 58, Minor 8).
+    pub(crate) fn journal(error: JournalError) -> ApplyError {
+        ApplyError::Journal {
+            error,
+            after: None,
+            kept: None,
+        }
+    }
+
     /// Where a set-aside's edits are, `Some` only for a set-aside that ended
     /// other than clean or clashed (ADR-0045 §5 amended). The one place the
     /// app asks.
@@ -482,11 +492,7 @@ impl From<PrepareError> for ApplyError {
         match why {
             PrepareError::Facts(why) => ApplyError::Facts(why),
             PrepareError::Snapshot(why) => ApplyError::Snapshot(why),
-            PrepareError::Journal(why) => ApplyError::Journal {
-                error: why,
-                after: None,
-                kept: None,
-            },
+            PrepareError::Journal(why) => ApplyError::journal(why),
             PrepareError::Stopped => ApplyError::Stopped,
         }
     }

@@ -169,12 +169,10 @@ impl<'a> Context<'a> {
         let scratch = journal
             .path()
             .parent()
-            .ok_or_else(|| ApplyError::Journal {
-                error: JournalError::Io(std::io::Error::other(
+            .ok_or_else(|| {
+                ApplyError::journal(JournalError::Io(std::io::Error::other(
                     "the journal has no directory to keep scratch in",
-                )),
-                after: None,
-                kept: None,
+                )))
             })?
             .to_path_buf();
         let worktree = repo.worktree_name();

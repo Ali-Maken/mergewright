@@ -194,6 +194,10 @@ pub struct JournalRead {
     /// at read time, against git's own state. So nothing is migrated, and a
     /// journal written by an older Graft reads correctly.
     pub live: Vec<EntryId>,
+    /// The `Pending` entries this read could not judge: an operation was
+    /// writing the journal as it ran (`graft_ops::apply::Recovered::held`,
+    /// 58r). Drawn running, never announced as interrupted.
+    pub held: Vec<EntryId>,
     /// Where each interrupted set-aside's edits were when **this** read
     /// closed it (`graft_ops::apply::Recovered::set_aside`, 30c). Only the
     /// read that closed the entry knows; every later read finds nothing, so
@@ -593,6 +597,7 @@ pub(super) fn read_journal(
                 // about git's state *now*, which every read re-establishes,
                 // so it cannot go stale the way "what this read closed" did.
                 live: recovered.live.clone(),
+                held: recovered.held.clone(),
                 interrupted_edits: recovered.set_aside.clone(),
                 entries: entries.to_vec(),
             }))

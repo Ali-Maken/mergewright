@@ -231,6 +231,7 @@ fn a_continue_whose_put_back_clashes_lands_on_the_clash() {
         crate::jobs::undo::JournalRead {
             entries: vec![rebase],
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         },

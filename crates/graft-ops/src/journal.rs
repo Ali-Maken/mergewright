@@ -52,6 +52,10 @@ pub enum JournalError {
     /// An outcome line with `status: pending`, or the reverse.
     #[error("journal entry {0} cannot be rendered as an outcome while still pending")]
     StillPending(EntryId),
+    /// [`Journal::alone`] asked of a `Journal` holding the writer's lock: a
+    /// caller's mistake, refused rather than done (58r).
+    #[error("the journal was asked to recover while it is still writing an entry")]
+    StillWriting,
     /// Reading or writing the file: `ops-execution`'s handle wraps its I/O in
     /// this same error.
     #[error("journal file: {0}")]

@@ -2946,20 +2946,25 @@ fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
     ]
 }
 
+/// The scripted journal as a read hands it over: nothing live, nothing held.
+fn journal_read() -> crate::jobs::undo::JournalRead {
+    crate::jobs::undo::JournalRead {
+        entries: journal_entries(),
+        unreadable: Vec::new(),
+        held: Vec::new(),
+        live: Vec::new(),
+        interrupted_edits: Vec::new(),
+    }
+}
+
 /// The journal browser open over the scripted repository.
 fn journal_state(columns: u16, rows: u16) -> AppState {
     let mut state = changes_pane_state(columns, rows);
     state.repo_path = std::path::PathBuf::from("/code/api");
     state.harness.clock = crate::session::Clock::Fixed(JOURNAL_NOW);
     state.detail.shown = false;
-    state.journal.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(
-        crate::jobs::undo::JournalRead {
-            entries: journal_entries(),
-            unreadable: Vec::new(),
-            live: Vec::new(),
-            interrupted_edits: Vec::new(),
-        },
-    ));
+    state.journal.entries =
+        crate::update::detail::Loading::Ready(std::sync::Arc::new(journal_read()));
     // Opened as `J` opens it (m7/30o Minor 6), not by setting `shown`: the
     // notice is taken up and the rows are built from the entries read
     // before. The re-read it asks for never lands here; stages 2 and 3 are

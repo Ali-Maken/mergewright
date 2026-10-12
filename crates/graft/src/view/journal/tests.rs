@@ -50,6 +50,7 @@ fn state_with(entries: Vec<JournalEntry>) -> AppState {
     state.journal.entries = Loading::Ready(Arc::new(JournalRead {
         entries,
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -220,6 +221,33 @@ fn remote_rows() {
             ),
         ]
     );
+}
+
+/// m8-polish-and-ship/58r: the read ran while an operation was writing its
+/// entry, so the `Pending` entry is held, not judged. It is drawn as
+/// running: no `interrupted` mark, no "a previous run stopped" line, and
+/// `⏎` promises nothing on it.
+#[test]
+fn an_entry_a_busy_read_held_is_drawn_running_not_interrupted() {
+    let mut running = entry(2, OperationKind::Commit, "commit \"x\"");
+    running.status = EntryStatus::Pending;
+    let mut state = AppState::default();
+    state.journal.entries = Loading::Ready(Arc::new(JournalRead {
+        entries: vec![running],
+        unreadable: Vec::new(),
+        held: vec![EntryId::new(2, [0; 10])],
+        live: Vec::new(),
+        interrupted_edits: Vec::new(),
+    }));
+    crate::update::journal::rebuild(&mut state);
+    let view = journal_view(&state, 10);
+    assert_eq!(view.rows[0].mark, RowMark::None);
+    assert_eq!(
+        view.rows[0].summary.as_str(),
+        "running · the index · backup saved"
+    );
+    assert_eq!(view.rows[0].failure, None);
+    assert_eq!(view.enter_words, None);
 }
 
 /// What recovery actually leaves behind, and therefore the only shape

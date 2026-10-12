@@ -150,7 +150,7 @@ The branch picker's read, off the loop's thread.
 ## jobs::types
 What work looks like, how it ends, and the `JobEvents` and `Dispatch` seams.
 ## jobs::undo
-`u`, `U` and the journal read: opens the undo journal and hands it to `ops`, which plans the inverse.
+`u`, `U` and the journal read: opens the undo journal and hands it to `ops`, which plans the inverse. `JournalRead` carries `live` (git is inside it) and `held` (an operation was writing it: running).
 ## layout
 The detail pane's saved split: right-pane width and below-strip height, remembered apart.
 - `save_split` (fn) — writes the split to the app's own folder.
@@ -329,7 +329,7 @@ The top of the draw: picks the tier and screen, then hands off to `rows` and `st
 ## view::hit
 Which drawn thing a screen cell belongs to: the hit-test half that needs the view's layout.
 ## view::journal
-The undo journal screen's view model (`J`): rows, with marks answered by `graft_ops`; a lost commit's `Fate` picks `RowKind::Lost`/`Replaced`/`Deleted` and its words (`· undo brings it back` for `⇢`).
+The undo journal screen's view model (`J`): rows, marks from `graft_ops`, open ones `in progress`/`running`; a lost commit's `Fate` picks `RowKind::Lost`/`Replaced`/`Deleted` and its words (`· undo brings it back` for `⇢`).
 ## view::map
 The Map screen's widget input, built from `state.map`.
 ## view::name_prompt

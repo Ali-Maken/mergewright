@@ -22,13 +22,39 @@ pub(super) fn in_progress(keys: &Keymap) -> String {
     }
 }
 
+/// What a row says for an entry an operation is still writing (58r).
+const RUNNING: &str = "running";
+
+/// Whether an entry has finished yet, as the last journal read found it.
+/// An open entry (`Live`, `Running`) outranks every verdict, because there
+/// is not one yet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Progress {
+    /// Finished, or interrupted: the entry's own status is the verdict.
+    Settled,
+    /// git is standing part-way through this very entry
+    /// ([`crate::update::AppState::live_entries`]).
+    Live,
+    /// An operation was writing the journal when it was read, so this
+    /// `Pending` entry was held, not judged
+    /// ([`crate::jobs::undo::JournalRead::held`]): its own, running.
+    Running,
+}
+
+impl Progress {
+    /// The words that stand in for the verdict, or `None` when there is one.
+    fn words(self, keys: &Keymap) -> Option<String> {
+        match self {
+            Progress::Settled => None,
+            Progress::Live => Some(in_progress(keys)),
+            Progress::Running => Some(RUNNING.to_owned()),
+        }
+    }
+}
+
 /// What the entry moved, and whether a backup was kept — the two facts that
 /// decide whether `u` can put it back.
-///
-/// `live` is git standing part-way through this very entry
-/// ([`crate::update::AppState::live_entries`]); it outranks every verdict,
-/// because there is not one yet.
-pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String {
+pub(super) fn summary(entry: &JournalEntry, progress: Progress, keys: &Keymap) -> String {
     let mut parts: Vec<String> = Vec::new();
     // A push or a fetch is journaled but `u` passes over it (design note,
     // choice 1): the row says what moved and that it stays moved, instead of
@@ -52,9 +78,9 @@ pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String
             }
             let remote = tracking.split('/').next().unwrap_or("the remote");
             parts.insert(0, format!("not undoable \u{2014} {remote} has it"));
-            return with_failure(entry, live, &parts, keys);
+            return with_failure(entry, progress, &parts, keys);
         }
-        OperationKind::Fetch => return fetch_summary(entry, live, keys),
+        OperationKind::Fetch => return fetch_summary(entry, progress, keys),
         _ => {}
     }
     match entry.touches.refs.len() {
@@ -72,8 +98,8 @@ pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String
     // entry as `Aborted { reason: "interrupted" }`, so the two arms overlap
     // and "failed: interrupted" is the wrong word for a process that died
     // (m3/06 review, Major 2).
-    if live {
-        parts.insert(0, in_progress(keys));
+    if let Some(words) = progress.words(keys) {
+        parts.insert(0, words);
     } else if entry.is_interrupted() {
         parts.insert(0, "interrupted".to_owned());
     } else if let EntryStatus::Aborted { reason } = &entry.status {
@@ -101,7 +127,7 @@ pub(super) fn summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String
 /// name; `nothing new` when it was read and nothing moved; today's
 /// `remote-tracking refs` where nothing was recorded (a line from before the
 /// ADR) or a failed fetch moved nothing — that row stays exactly as it was.
-fn fetch_summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String {
+fn fetch_summary(entry: &JournalEntry, progress: Progress, keys: &Keymap) -> String {
     let moved = moves(entry);
     let clause = match (&moved, &entry.fetched_refs, &entry.status) {
         (Some(moved), ..) => moved.clone(),
@@ -109,12 +135,12 @@ fn fetch_summary(entry: &JournalEntry, live: bool, keys: &Keymap) -> String {
         (None, ..) => "remote-tracking refs".to_owned(),
     };
     let parts = [clause, "not undoable".to_owned()];
-    let row = with_failure(entry, live, &parts, keys);
+    let row = with_failure(entry, progress, &parts, keys);
     // `with_failure` keeps a failed row's failure alone. What the fetch
     // moved before it stopped is the one fact that has to outlive it: the
     // row no longer says `nothing written`, so it must say what was.
     match moved {
-        Some(_) if failed(entry, live) => format!("{row} · {}", parts.join(" · ")),
+        Some(_) if failed(entry, progress) => format!("{row} · {}", parts.join(" · ")),
         _ => row,
     }
 }
@@ -131,10 +157,10 @@ fn moves(entry: &JournalEntry) -> Option<String> {
 }
 
 /// The row reads `failed: …` ([`with_failure`]'s failure arm): `Aborted`
-/// for a reason other than his own `--abort`, and neither live nor
+/// for a reason other than his own `--abort`, and neither open nor
 /// interrupted.
-fn failed(entry: &JournalEntry, live: bool) -> bool {
-    !live
+fn failed(entry: &JournalEntry, progress: Progress) -> bool {
+    progress == Progress::Settled
         && !entry.is_interrupted()
         && matches!(&entry.status, EntryStatus::Aborted { reason } if reason != ABORTED)
 }
@@ -143,12 +169,12 @@ fn failed(entry: &JournalEntry, live: bool) -> bool {
 /// aborted push sent nothing, so "origin has it" would be false.
 pub(super) fn with_failure(
     entry: &JournalEntry,
-    live: bool,
+    progress: Progress,
     parts: &[String],
     keys: &Keymap,
 ) -> String {
-    if live {
-        return in_progress(keys);
+    if let Some(words) = progress.words(keys) {
+        return words;
     }
     if entry.is_interrupted() {
         return "interrupted".to_owned();
@@ -169,12 +195,12 @@ pub(super) fn short(oid: graft_core::oid::Oid) -> String {
 
 /// The whole reason an `Aborted` entry gives, for the expanded row.
 ///
-/// A live entry has none: nothing failed, and the operation has not finished
-/// happening. Saying "a previous run stopped between this entry's two
-/// journal lines" about a merge running right now is the very lie this
-/// ticket exists to stop.
-pub(super) fn failure(entry: &JournalEntry, live: bool) -> Option<String> {
-    if live {
+/// An open entry has none: nothing failed, and the operation has not
+/// finished happening. Saying "a previous run stopped between this entry's
+/// two journal lines" about a merge standing right now, or a push still
+/// running, is the very lie m5/09 and 58r exist to stop.
+pub(super) fn failure(entry: &JournalEntry, progress: Progress) -> Option<String> {
+    if progress != Progress::Settled {
         return None;
     }
     if entry.is_interrupted() {

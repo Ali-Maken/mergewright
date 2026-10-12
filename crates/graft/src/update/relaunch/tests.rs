@@ -70,6 +70,7 @@ fn journal_read(state: &mut AppState, live: bool) -> AppEvent {
         Product::Journal(Ok(Arc::new(crate::jobs::undo::JournalRead {
             entries: Vec::new(),
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: if live {
                 vec![graft_core::journal::EntryId::new(1, [0; 10])]
             } else {

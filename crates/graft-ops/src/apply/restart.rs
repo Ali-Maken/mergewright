@@ -398,10 +398,6 @@ pub(super) fn abandon_pending(
     };
     match finish(ctx, pending, status, Vec::new()) {
         Ok(_unread) => Err(why),
-        Err(error) => Err(ApplyError::Journal {
-            error,
-            after: None,
-            kept: None,
-        }),
+        Err(error) => Err(ApplyError::journal(error)),
     }
 }

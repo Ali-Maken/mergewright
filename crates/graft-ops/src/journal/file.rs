@@ -30,7 +30,7 @@ use graft_git::file_lock::FileLock;
 use graft_git::repo::RepoHandle;
 use graft_git::run::RunError;
 
-use super::{JournalError, parse, render_outcome, render_pending};
+use super::{JournalError, Parsed, parse, render_outcome, render_pending};
 use crate::undo::RepoStateNow;
 
 /// The journal file's name under the per-worktree names-in-force directory
@@ -81,6 +81,11 @@ impl Journal {
     /// parse would then see a torn line that is not last and refuse the whole
     /// file. [`Journal::torn_tail`] keeps the line number so a caller can say
     /// it happened.
+    ///
+    /// Cut only with the journal held alone (`cut_torn_tail`): while any
+    /// writer holds it, the line may be that writer's own append, unfinished,
+    /// and it is left exactly as a re-read under the lock leaves it, with
+    /// [`Journal::torn_tail`] `None`.
     pub fn open(path: &Path) -> Result<Journal, JournalError> {
         if let Some(directory) = path.parent() {
             std::fs::create_dir_all(directory)?;
@@ -93,15 +98,9 @@ impl Journal {
             }
             Err(why) => return Err(why.into()),
         };
-        let parsed = parse(&bytes)?;
+        let mut parsed = parse(&bytes)?;
         if parsed.torn_tail.is_some() {
-            let keep = match bytes.iter().rposition(|byte| *byte == b'\n') {
-                Some(last_newline) => last_newline + 1,
-                None => 0,
-            };
-            let file = OpenOptions::new().write(true).open(path)?;
-            file.set_len(keep as u64)?;
-            file.sync_all()?;
+            parsed = cut_torn_tail(path, parsed)?;
         }
         Ok(Journal {
             path: path.to_path_buf(),
@@ -146,34 +145,48 @@ impl Journal {
     /// The journal alone, or `None` while any other `Journal` holds the
     /// writer's lock — some operation, in this process or another, has an
     /// entry it is still writing. On success the copy is read again from the
-    /// file, so it holds every outcome a writer appended before letting go.
+    /// file, so it holds every outcome a writer appended before letting go,
+    /// and a torn last line is cut as [`open`](Journal::open) cuts one: an
+    /// `open` made while a writer held the journal left it, and recovery's
+    /// outcome lines must not splice onto it (58r).
     ///
-    /// This `Journal`'s own writer's lock is let go first: asking for the
-    /// journal alone says this `Journal` is not part-way through an entry.
+    /// [`JournalError::StillWriting`] when this `Journal` holds the writer's
+    /// lock itself ([`Journal::claim`]): it may be part-way through an entry,
+    /// and the lock is what keeps recovery off that entry, so it is kept and
+    /// the request refused (review 58, Minor 1). Recovery opens a `Journal`
+    /// of its own.
     pub fn alone(&mut self) -> Result<Option<Alone>, JournalError> {
-        self.writing = None;
+        if self.writing.is_some() {
+            return Err(JournalError::StillWriting);
+        }
         let Some(held) = FileLock::try_exclusive(&self.path)? else {
             return Ok(None);
         };
-        self.reread()?;
+        let parsed = read_cutting_torn_tail(&self.path)?;
+        self.torn_tail = parsed.torn_tail.or(self.torn_tail);
+        self.hold(parsed.entries);
         Ok(Some(Alone { _held: held }))
     }
 
-    /// Replace the held copy with the file as it stands, mapped under the
-    /// same names as at open.
+    /// Replace the held copy with the file as it stands.
     ///
     /// Reads only — unlike [`open`](Journal::open) it never cuts a torn
     /// tail: under a shared lock another writer may be part-way through its
-    /// own append, and that line is unfinished, not wreckage. `open` already
-    /// cut any a crash left.
+    /// own append, and that line is unfinished, not wreckage. `open` and
+    /// [`alone`](Journal::alone) cut one a crash left, holding the journal
+    /// alone.
     fn reread(&mut self) -> Result<(), JournalError> {
         let bytes = std::fs::read(&self.path)?;
-        let mut entries = parse(&bytes)?.entries;
+        self.hold(parse(&bytes)?.entries);
+        Ok(())
+    }
+
+    /// Keep `entries` as the held copy, mapped under the same names as at open.
+    fn hold(&mut self, mut entries: Vec<JournalEntry>) {
         if let Some(names) = self.names {
             crate::rename::map_entries(&mut entries, names);
         }
         self.entries = entries;
-        Ok(())
     }
 
     /// The journal file's path.
@@ -186,8 +199,8 @@ impl Journal {
         &self.entries
     }
 
-    /// The 1-based line number of a torn last line cut off at [`open`], if
-    /// there was one. Nothing was lost by it — the record it held never
+    /// The 1-based line number of a torn last line cut off at [`open`] (or
+    /// later, by [`Journal::alone`]), if there was one. Nothing was lost by it — the record it held never
     /// finished being written — but the caller may want to say so.
     ///
     /// [`open`]: Journal::open
@@ -322,6 +335,47 @@ impl Journal {
         file.sync_all()?;
         Ok(())
     }
+}
+
+/// Cut the torn last line `seen` found off the file at `path` — but only
+/// while no writer holds the journal (m8-polish-and-ship/58r).
+///
+/// A writer holds the writer's lock for every line it appends
+/// ([`Journal::claim`]), so a torn line found while the journal is held
+/// alone is a dead run's wreckage. Found while a writer holds it, it may be
+/// that writer's append, not finished yet: cutting it would lose the
+/// writer's line — a `Pending` one leaves its outcome with no opening, and
+/// every later read refuses the file. That line is left, and not reported as
+/// cut. (Whether a reader can see a partial `O_APPEND` write at all is
+/// unverified on APFS and ext4; this holds either way.)
+///
+/// The file is read again under the lock: the line that looked torn may have
+/// been finished between the first read and the lock.
+fn cut_torn_tail(path: &Path, seen: Parsed) -> Result<Parsed, JournalError> {
+    let Some(_alone) = FileLock::try_exclusive(path)? else {
+        return Ok(Parsed {
+            torn_tail: None,
+            ..seen
+        });
+    };
+    read_cutting_torn_tail(path)
+}
+
+/// Read the journal at `path`, cutting a torn last line off the file. Only
+/// with the journal held alone: see [`cut_torn_tail`].
+fn read_cutting_torn_tail(path: &Path) -> Result<Parsed, JournalError> {
+    let bytes = std::fs::read(path)?;
+    let parsed = parse(&bytes)?;
+    if parsed.torn_tail.is_some() {
+        let keep = match bytes.iter().rposition(|byte| *byte == b'\n') {
+            Some(last_newline) => last_newline + 1,
+            None => 0,
+        };
+        let file = OpenOptions::new().write(true).open(path)?;
+        file.set_len(keep as u64)?;
+        file.sync_all()?;
+    }
+    Ok(parsed)
 }
 
 /// The journal's path for a repository: `<dir>/undo-journal.jsonl` resolved

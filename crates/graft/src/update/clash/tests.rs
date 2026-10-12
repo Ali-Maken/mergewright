@@ -102,6 +102,7 @@ fn facts(unmerged: bool) -> AppState {
     state.journal.entries = Loading::Ready(Arc::new(JournalRead {
         entries: vec![pop_entry()],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -220,6 +221,7 @@ fn the_index_is_read_only_while_a_candidate_exists() {
         *read = Arc::new(JournalRead {
             entries,
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         });
@@ -734,6 +736,7 @@ fn a_merge_put_back_clash_notice_names_the_merge() {
             ..pop_entry()
         }],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -781,6 +784,7 @@ fn the_clash_notice_names_each_set_aside_kind() {
                 ..pop_entry()
             }],
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         }));

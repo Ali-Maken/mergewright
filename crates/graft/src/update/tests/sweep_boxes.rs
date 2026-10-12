@@ -170,6 +170,7 @@ pub(super) fn overlay_over(mut state: AppState, overlay: Shown) -> AppState {
             state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
                 entries: vec![journal_entry()],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             }));

@@ -28,7 +28,10 @@ pub(in crate::update) fn journal_event(
         // Only a successful read knows what is live. A failed one is left
         // holding the last answer rather than silently claiming "nothing is
         // live", which would put the interrupted notice back on a merge that
-        // is standing right there.
+        // is standing right there. A busy read — one that ran while an
+        // operation was writing the journal — is a successful one: it asks
+        // git what is live like any other, and says which entries it could
+        // not judge (`JournalRead::held`, 58r), so it is trusted too.
         state.live_entries.clone_from(&read.live);
         // Merged, not replaced: see `JournalState::unreadable`.
         for line in &read.unreadable {

@@ -7,7 +7,6 @@ use graft_core::oid::Oid;
 use graft_git::state;
 
 use crate::facts::{self, FactsError};
-use crate::journal::JournalError;
 use crate::rewrite::saved;
 use crate::snapshot;
 use crate::undo::RepoStateNow;
@@ -30,10 +29,14 @@ use super::{ApplyError, Context, EditsAt, set_aside};
 /// offer to overwrite the whole working tree, and the reason for that belongs
 /// on screen, not on the floor (m3/03 review, M1).
 ///
-/// Closes nothing, and returns an empty [`Recovered`], while any other
-/// `Journal` — another job, another window — holds the writer's lock
-/// ([`crate::journal::Journal::alone`]): its `Pending` entry is running,
-/// not interrupted, and a dead run's cannot be told apart from it.
+/// Closes nothing while any other `Journal` — another job, another window —
+/// holds the writer's lock ([`crate::journal::Journal::alone`]): its
+/// `Pending` entry is running, not interrupted, and a dead run's cannot be
+/// told apart from it. That read still says what git has live, and lists
+/// every other `Pending` entry as [`Recovered::held`] (58r).
+///
+/// `ctx.journal` must not hold the writer's lock itself: that is
+/// [`crate::journal::JournalError::StillWriting`].
 pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyError> {
     // Only an entry whose writer is gone is interrupted. A `Pending` entry
     // whose writer is alive — an operation running in another job or
@@ -44,25 +47,20 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
     // dead run left wait for the read that follows that writer's operation.
     // Held alone to the end, so no operation starts under the state read
     // here as the interrupted entries' after-state.
-    let Some(_alone) = ctx.journal.alone().map_err(journal_failed)? else {
-        return Ok(Recovered::default());
-    };
-    // A conflict that survived a relaunch: git's own state says the
-    // operation is still live, so its entry stays `Pending` and the banner
-    // takes over (m5/07, hard choice 2). Only the newest matching entry is
-    // live — an older one of the same kind was left behind by something
-    // else and closes as interrupted like any other.
-    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
-    let live_id = match live {
-        Some(kind) => live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?
-            .map(|entry| entry.id.clone()),
-        None => None,
+    let alone = ctx.journal.alone().map_err(ApplyError::journal)?;
+    // What is live is git's own state, a read that needs no lock: a busy
+    // read works it out too, or a merge standing on a conflict would be
+    // reported as nothing live — and drawn as interrupted — whenever some
+    // other job happened to be writing (m8-polish-and-ship/58r).
+    let live = find_live_entry(ctx)?;
+    let Some(_alone) = alone else {
+        return Ok(hold_the_rest(ctx, live));
     };
     let open: Vec<Open> = ctx
         .journal
         .unresolved()
         .into_iter()
-        .filter(|entry| Some(&entry.id) != live_id.as_ref())
+        .filter(|entry| Some(&entry.id) != live.as_ref())
         .map(|entry| Open {
             id: entry.id.clone(),
             refs: entry.refs_before.keys().cloned().collect(),
@@ -71,7 +69,7 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
         })
         .collect();
     let mut recovered = Recovered {
-        live: live_id.into_iter().collect(),
+        live: live.into_iter().collect(),
         set_aside: edits_left(ctx, &open),
         ..Recovered::default()
     };
@@ -105,7 +103,7 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
         };
         ctx.journal
             .mark_interrupted(&id, now.as_ref())
-            .map_err(journal_failed)?;
+            .map_err(ApplyError::journal)?;
         // A rewrite's saved plan (ADR-0047) goes with its entry. One left
         // behind is harmless to git, but it is reported, not dropped.
         if let Err(error) = saved::remove(&saved::dir(ctx.repo, &id)) {
@@ -116,13 +114,40 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
     Ok(recovered)
 }
 
-/// A journal failure during recovery: nothing ran, so no after-state and
-/// nothing kept.
-fn journal_failed(error: JournalError) -> ApplyError {
-    ApplyError::Journal {
-        error,
-        after: None,
-        kept: None,
+/// The entry git's own state says is still under way, if any.
+///
+/// A conflict that survived a relaunch: git's own state says the operation
+/// is still live, so its entry stays `Pending` and the banner takes over
+/// (m5/07, hard choice 2). Only the newest matching entry is live — an older
+/// one of the same kind was left behind by something else and closes as
+/// interrupted like any other.
+fn find_live_entry(ctx: &Context<'_>) -> Result<Option<EntryId>, ApplyError> {
+    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
+    Ok(match live {
+        Some(kind) => live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?
+            .map(|entry| entry.id.clone()),
+        None => None,
+    })
+}
+
+/// The answer of a read that found a writer holding the journal: what git
+/// has live, and every other `Pending` entry held, not closed (58r).
+///
+/// Said, not left for the caller to infer from an empty `closed`: each entry
+/// here is `Pending` exactly as a dead run's is, and only this answer knows
+/// it was not for recovery to judge.
+fn hold_the_rest(ctx: &Context<'_>, live: Option<EntryId>) -> Recovered {
+    let held = ctx
+        .journal
+        .unresolved()
+        .into_iter()
+        .filter(|entry| Some(&entry.id) != live.as_ref())
+        .map(|entry| entry.id.clone())
+        .collect();
+    Recovered {
+        live: live.into_iter().collect(),
+        held,
+        ..Recovered::default()
     }
 }
 
@@ -140,6 +165,14 @@ pub struct Recovered {
     /// `rebase-merge/` …). The banner offers `resume`; nothing was closed
     /// (m5/07). At most one.
     pub live: Vec<EntryId>,
+    /// The `Pending` entries this read could not decide, because another
+    /// `Journal` held the writer's lock (m8-polish-and-ship/58r): one of them
+    /// is that writer's own, running now — and nothing tells which, so none
+    /// of them is closed, and none is interrupted *yet*. A dead run's entry
+    /// among them is closed by the first read after the writers let go.
+    /// Empty whenever the read held the journal alone. Never holds a `live`
+    /// entry.
+    pub held: Vec<EntryId>,
     /// Closed entries whose rewrite plan (`graft/rewrite/<id>/` under the
     /// git dir) could not be removed, and why (rewrite-engine-b).
     pub plans_left: Vec<(EntryId, std::io::Error)>,

@@ -31,8 +31,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `restart_gate` (fn) — `d`'s gate as a read: `Result<Result<RestartPlan, Refusal>, RestartReadError>`, asking what `apply(RestartConflict)` would.
 - `RestartPlan` (struct) — `source: StageSource`, `kind: RestartKind`.
 - `RestartReadError` (enum) — a read `restart_gate` needed failed.
-- `recover_interrupted` (fn) — closes every `Pending` entry a dead run left as `interrupted`; leaves ones git says are still under way, and closes nothing while another `Journal` holds the writer's lock.
-- `Recovered` (struct) — `live`, `closed`, `unreadable: Vec<(EntryId, FactsError)>`, `plans_left`, the set-aside edits found: what recovery did.
+- `recover_interrupted` (fn) — closes every `Pending` entry a dead run left as `interrupted`, bar git's live one; while a writer holds the journal, closes nothing and lists the rest as `held`.
+- `Recovered` (struct) — `live`, `held` (undecided: a writer held the journal), `closed`, `unreadable: Vec<(EntryId, FactsError)>`, `plans_left`, the set-aside edits found: what recovery did.
 - `came_back_from_index` (fn) — `(repo, stash, worktree_before)`: staged-new files he had deleted that a set-aside put-back checked out again.
 - `came_back_words` (fn) — `(paths) -> Option<String>`: the note naming those files.
 
@@ -99,7 +99,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `wrote_anything` (fn) — the entry took effect, or a fetch moved refs, or an aborted fetch's refs are unknown: what `nothing written` asks.
 - `moved_words` (fn) — up to two moved refs in words (`origin/main moved`), then ` +N more`; `None` when empty.
 - `moved_lines` (fn) — `(moved, at_most)`: one line per moved ref, old → new, then `+N more`.
-- `JournalError` (enum) — `Json { line, what }`, `TornTail`, `DuplicatePending`, `OutcomeWithoutPending`, `DuplicateOutcome`, `StillPending`, `Io`.
+- `JournalError` (enum) — `Json { line, what }`, `TornTail`, `DuplicatePending`, `OutcomeWithoutPending`, `DuplicateOutcome`, `StillPending`, `StillWriting`, `Io`.
 - `in_force` (fn) — the entry took effect and no later in-force entry reverses it; a `Pending` entry is not in force.
 - `in_force_all` (fn) — one in-force flag per entry, in one walk.
 - `undoable_kind` (fn) — false for `Fetch`, `Push`, `Migrate`: kinds `u` passes over (`Undo`/`Redo` are stepped over separately, as not operations).
@@ -109,13 +109,13 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `root_operation` (fn) — follows an `Undo`/`Redo` chain of `reverses` to the operation at its root.
 - `PointInTime` (struct) — `head`, `refs`, `index`, `worktree`.
 - `state_at` (fn) — ADR-0031's query: the tracked state at an entry, from the journal alone.
-- `Journal` (struct) — the open journal file and its entries; `open` (cuts a torn tail), `path`, `entries`, `torn_tail`, `append_pending`, `append_outcome`.
+- `Journal` (struct) — the open journal file and its entries; `open` (cuts a torn tail, only with the journal alone), `path`, `entries`, `torn_tail`, `append_pending`, `append_outcome`.
 - `Journal::open_as` (fn) — `open`, then every entry's ref names read under `names`; the bytes never rewritten.
 - `Journal::unresolved` (fn) — entries with no outcome line: a process that died between the two.
 - `Journal::hold_commands` (fn) — keep a stopped operation's command lines on the held entry until its outcome line.
 - `Journal::mark_interrupted` (fn) — close a `Pending` entry as interrupted, recording the state read now.
 - `Journal::claim` (fn) — take the writer's shared lock (`flock` on the journal file) and re-read; `append_pending` and `resume` take it; held until drop.
-- `Journal::alone` / `Alone` (fn, struct) — the journal held exclusively and re-read, or `None` while a writer holds it: recovery's gate.
+- `Journal::alone` / `Alone` (fn, struct) — the journal held exclusively and re-read (a torn tail cut), or `None` while a writer holds it: recovery's gate; `StillWriting` when asked of a `Journal` holding the writer's lock.
 - `journal_path` (fn) — `git rev-parse --git-path <dir>/undo-journal.jsonl`: per worktree (ADR-0010).
 - `journal_path_in` (fn) — `journal_path` under names given rather than the handle's.
 

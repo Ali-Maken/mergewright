@@ -401,6 +401,7 @@ pub(in crate::update) fn merge_read(
                 crate::jobs::undo::JournalRead {
                     entries: Vec::new(),
                     unreadable: Vec::new(),
+                    held: Vec::new(),
                     live,
                     interrupted_edits: Vec::new(),
                 },
@@ -1760,6 +1761,7 @@ fn a_stop_with_edits_aside_says_so_and_drops_it_first() {
             crate::jobs::undo::JournalRead {
                 entries: vec![entry],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             },
