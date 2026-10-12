@@ -81,7 +81,7 @@ pub enum Availability {
 
 /// Where heavy repositories are looked for.
 pub struct Roots {
-    /// The fixture cache (`target/fixtures` or `TRIB_FIXTURES_DIR`).
+    /// The fixture cache (`target/fixtures` or `MWR_FIXTURES_DIR`).
     pub fixtures: PathBuf,
     /// The bare `git/git` clone (`scripts/clone-git-git.sh --where`).
     pub git_git: PathBuf,
@@ -662,13 +662,13 @@ pub fn listing(all: &[Entry]) -> String {
 /// Where the heavy repositories are looked for on this machine, following
 /// the fixture cache's and `scripts/clone-git-git.sh`'s own rules.
 pub fn roots(workspace: &Path) -> Roots {
-    let fixtures = std::env::var_os("TRIB_FIXTURES_DIR")
+    let fixtures = std::env::var_os("MWR_FIXTURES_DIR")
         .map(PathBuf::from)
         .or_else(|| {
             std::env::var_os("CARGO_TARGET_DIR").map(|dir| PathBuf::from(dir).join("fixtures"))
         })
         .unwrap_or_else(|| workspace.join("target/fixtures"));
-    let git_git = std::env::var_os("TRIB_GIT_GIT_DIR").map_or_else(
+    let git_git = std::env::var_os("MWR_GIT_GIT_DIR").map_or_else(
         || {
             std::env::var_os("XDG_CACHE_HOME")
                 .map(PathBuf::from)

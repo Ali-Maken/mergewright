@@ -1,6 +1,6 @@
 # Mergewright 4: every environment name is `MWR_*`
 
-Status: ready
+Status: done
 Blocked by: 50
 Build with: **Sonnet**. A token rename (`TRIB_` → `MWR_`) held by one grep test; no behaviour changes.
 Brownfield: 27b's NOTES are the scout (same 45 names, one prefix later).
@@ -42,16 +42,16 @@ Values change, names unchanged: `UPDATE_VAR = "MWR_UPDATE_SHOTS"` (graft-fixture
 `MWR_FRAME_TRACE`, `MWR_NOW`, `MWR_PRACTICE_EPOCH`, `MWR_FIXTURES_DIR`, `MWR_INIT_TARGET`, and the rest of 27b's 45.
 
 ## Acceptance (each box: the test named at tick time)
-- [ ] `rename_names::no_old_env_name`: no `GRAFT_` or `TRIB_` (from the table) in the file set; allow-list count in NOTES.
-- [ ] Askpass: `askpass_mode::binary_answers_over_socket`, `…binary_exits_1_with_nothing_on_stdout_when_cancelled`,
+- [x] `rename_names::no_old_env_name`: no `GRAFT_` or `TRIB_` (from the table) in the file set; allow-list count in NOTES.
+- [x] Askpass: `askpass_mode::binary_answers_over_socket`, `…binary_exits_1_with_nothing_on_stdout_when_cancelled`,
       `…binary_exits_2_naming_the_error_when_graft_is_gone`, `graft-git run::tests::askpass_env_is_set` green; grep for
       `"MWR_ASKPASS` over `crates/` returns `on_disk.rs` only (quoted).
-- [ ] Old name not read: `clock_pin::the_old_now_name_is_not_read` checks both `GRAFT_NOW` and `TRIB_NOW` set alone.
-- [ ] `clone-git-git.sh`: a dry run against a temp `HOME` with only `~/.cache/tributary/git-git.git` (an empty bare
+- [x] Old name not read: `clock_pin::the_old_now_name_is_not_read` checks both `GRAFT_NOW` and `TRIB_NOW` set alone.
+- [x] `clone-git-git.sh`: a dry run against a temp `HOME` with only `~/.cache/tributary/git-git.git` (an empty bare
       repo) moves it and does not clone (output to file, last line quoted). No network.
-- [ ] Captures: `MWR_UPDATE_SHOTS=1` run, then a plain run, green. Drift summary quoted
+- [x] Captures: `MWR_UPDATE_SHOTS=1` run, then a plain run, green. Drift summary quoted
       (`.scratch/m8-polish-and-ship/mwr-env-shot-drift.txt`); drift-files 0 expected (a shorter name); any drift listed.
-- [ ] `27-shots-left.txt` re-run: count in NOTES.
+- [x] `27-shots-left.txt` re-run: count in NOTES.
 
 ## Touches
 - **Callers:** every test or example reading or setting an env var; askpass child env (graft-git `run.rs`); trace,
@@ -70,3 +70,13 @@ workspace-wide. Capture runs to files; summary lines only.
 
 ## Size
 One context, ~40k tokens (sed-shaped).
+
+## NOTES
+- Scout: none dispatched; 27b's NOTES served (ticket says so), plus direct greps. No compaction.
+- Ticks: `rename_names::no_old_env_name` now reads `Generation::CURRENT.older().env_prefix()` (`GRAFT_`, `TRIB_`) over crates/**, scripts/**, pty-walk + `docs/shots/*.py`, ARCHITECTURE.md, README.md; **allow-list 1 entry** (`graft-core/src/on_disk` + its tests: the table spells each prefix). TESTING.md is not swept by the test (dated records keep `GRAFT_UPDATE_SHOTS`, ~lines 2310/2318); its 16 `TRIB_` instruction lines renamed. Askpass four tests green; `grep '"MWR_ASKPASS' crates/` → `on_disk.rs:173` only. `clock_pin::the_old_now_name_is_not_read` loops both old prefixes, each set alone.
+- clone-git-git.sh dry run (fake `git` on PATH logging args, temp HOME, no network): `.scratch/m8-polish-and-ship/mwr-clone-git-git-dry-run.txt`, last line `clone called: 0`; old dir gone, new is the bare repo. Move skipped when `MWR_GIT_GIT_DIR` is set.
+- Captures: update run, then plain run. `shot-drift.py`: `changed 10 · name-only 2 · drift-files 8 · png 0`. Not 0: 7 m5-ui TestBackend captures' header comment (`MWR_UPDATE_SHOTS`), and m8-tour-step1 header + caption path now `mergewright-practice-` (the folded-in finding; path cut from the left shifts by one char). Plain run green after the ratchet: over_400 raised tour/tests.rs 846→893, clock_pin.rs 443→448, tour_walk.rs 928→929.
+- `27-shots-left.txt` re-run: **450** (unchanged).
+- Folded in (conductor; review m8-mergewright-50 Major 1): `PRACTICE_PREFIX` const → `graft_ops::tour::practice_prefix(Generation) -> String` (`<dir>-practice-`); new roots use CURRENT; the removal guard accepts every generation's prefix. Red first: `tour::tests::a_new_practice_folder_takes_the_current_name`, `…removal_accepts_every_earlier_generations_folder`. Grep test: `says_old_name` also matches `old.dir()` as a word; `the_word_test_reads_words_only` red then green on `"tributary-practice-"` (its `tributary-ish` case became `tributary_ish`). Closes gap M8/50-practice-temp-prefix.
+- `.claude/**`, CLAUDE.md, PROMPT.md: 0 `TRIB_` hits.
+- His machine: a `TRIB_*` export in a shell rc is now silently ignored.

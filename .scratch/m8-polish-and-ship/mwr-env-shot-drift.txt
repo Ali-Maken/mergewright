@@ -1,0 +1,10 @@
+docs/shots/m5-ui-context-menu-verbs-160x48.txt:9
+docs/shots/m5-ui-context-menu-verbs-80x24.txt:9
+docs/shots/m5-ui-dragging-160x48.txt:8
+docs/shots/m5-ui-dragging-80x24.txt:8
+docs/shots/m5-ui-drop-menu-160x48.txt:8
+docs/shots/m5-ui-drop-menu-80x24.txt:8
+docs/shots/m5-ui-name-prompt-80x24.txt:7
+docs/shots/m8-tour-step1-120x36.txt:1
+docs/shots/m8-tour-step1-120x36.txt:3
+changed 10 · name-only 2 · drift-files 8 · png 0

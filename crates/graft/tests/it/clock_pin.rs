@@ -1,4 +1,4 @@
-//! `TRIB_NOW` pins the binary's drawn clock (m8-polish-and-ship/19d-b):
+//! `MWR_NOW` pins the binary's drawn clock (m8-polish-and-ship/19d-b):
 //! the ages on screen, for the whole run. It never reaches the journal: the
 //! binary stamps every entry from the wall clock (19e §R1), so a stray pin
 //! in his shell writes no false history. A value that is not whole seconds
@@ -10,6 +10,8 @@
 
 use std::path::Path;
 
+use graft_core::on_disk::Generation;
+
 use crate::pty::{Isolated, Pty, Screen};
 
 const SIZE: (u16, u16) = (120, 30);
@@ -19,14 +21,14 @@ const SIZE: (u16, u16) = (120, 30);
 const EARLIER: i64 = 1_704_067_200;
 const A_YEAR_LATER: i64 = 1_735_689_600;
 
-/// Launch on `repo` with `TRIB_NOW` = `now`.
+/// Launch on `repo` with `MWR_NOW` = `now`.
 fn launch(isolated: &Isolated, repo: &Path, now: &str) -> Pty {
     Pty::spawn_with_env(
         isolated,
         repo,
         repo.parent().expect("a temp repo has a parent"),
         SIZE,
-        &[("TRIB_NOW", now.into())],
+        &[("MWR_NOW", now.into())],
     )
 }
 
@@ -59,25 +61,28 @@ fn graft_now_pins_the_drawn_age() {
     age_drawn_at(A_YEAR_LATER, "5y");
 }
 
-/// The old name is not read (m8-polish-and-ship/27b): a value `TRIB_NOW`
-/// would refuse, set under the pre-rename name, launches normally. The name
-/// is spelt in two halves so `rename_names::no_old_env_name` stays exact.
+/// The old names are not read (27b, 51): a value `MWR_NOW` would refuse, set
+/// alone under each earlier generation's name, launches normally. The names
+/// come from the table so `rename_names::no_old_env_name` stays exact.
 #[test]
 fn the_old_now_name_is_not_read() {
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
-    let isolated = Isolated::new();
-    let repo = scratch.path();
-    let mut pty = Pty::spawn_with_env(
-        &isolated,
-        repo,
-        repo.parent().expect("a temp repo has a parent"),
-        SIZE,
-        &[(concat!("GRAFT", "_NOW"), "1.5".into())],
-    );
-    pty.wait_for("the app drew", |s| !s.text().trim().is_empty());
-    pty.send(b"q");
-    let (status, stderr, _) = pty.wait_exit();
-    assert_eq!(status.code(), Some(0), "stderr: {stderr}");
+    for old in Generation::CURRENT.older() {
+        let name = format!("{}NOW", old.env_prefix());
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let isolated = Isolated::new();
+        let repo = scratch.path();
+        let mut pty = Pty::spawn_with_env(
+            &isolated,
+            repo,
+            repo.parent().expect("a temp repo has a parent"),
+            SIZE,
+            &[(name.as_str(), "1.5".into())],
+        );
+        pty.wait_for("the app drew", |s| !s.text().trim().is_empty());
+        pty.send(b"q");
+        let (status, stderr, _) = pty.wait_exit();
+        assert_eq!(status.code(), Some(0), "{name}: stderr: {stderr}");
+    }
 }
 
 /// Not whole seconds: exit 2, the words on stderr, and the terminal never
@@ -91,7 +96,7 @@ fn a_bad_graft_now_refuses_to_launch() {
     assert_eq!(status.code(), Some(2), "stderr: {stderr}");
     assert_eq!(
         stderr,
-        "mwr: TRIB_NOW must be whole seconds since 1970, got 1.5\n"
+        "mwr: MWR_NOW must be whole seconds since 1970, got 1.5\n"
     );
     assert_eq!(
         crate::pty::count(&output, b"\x1b[?1049h"),
@@ -140,7 +145,7 @@ fn wall_ms() -> i64 {
 }
 
 /// Every entry stamped by the wall clock while the run lasted, none at the
-/// pin: `TRIB_NOW` drew the ages and wrote nothing (19e §R1).
+/// pin: `MWR_NOW` drew the ages and wrote nothing (19e §R1).
 fn stamped_by_the_wall(entries: &[graft_core::journal::JournalEntry], run: (i64, i64), pin: i64) {
     let (from, to) = run;
     for entry in entries {

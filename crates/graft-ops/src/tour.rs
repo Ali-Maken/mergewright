@@ -27,6 +27,7 @@ pub use tasks::{TourTask, tasks_done};
 
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
+use graft_core::on_disk::Generation;
 use graft_git::history_reads::{Forecast, forecast_merge};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation};
@@ -39,13 +40,13 @@ use crate::journal::{JournalError, journal_path, parse};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PracticeAt {
     /// The app's: the last commit is a minute before `now_unix_secs` (the
-    /// session clock's). Folder `tributary-practice-<pid>-<unix_ms>`.
+    /// session clock's). Folder `mergewright-practice-<pid>-<unix_ms>`.
     Now {
         /// The instant to end before, Unix seconds.
         now_unix_secs: i64,
     },
     /// Reproducible: the first commit at `first_unix_secs`, folder
-    /// `tributary-practice-<first_unix_secs>`, so two builds at the same
+    /// `mergewright-practice-<first_unix_secs>`, so two builds at the same
     /// instant give the same commits and the same drawn path.
     Fixed {
         /// The first commit's date, Unix seconds.
@@ -57,15 +58,20 @@ pub enum PracticeAt {
 /// folder without it (as a regular file, not a link).
 pub const PRACTICE_MARKER: &str = ".practice";
 
-/// Every practice root's name starts with this, then `<pid>-<unix_ms>`
+/// `<dir>-practice-`: a new practice root's name starts with this for
+/// [`Generation::CURRENT`] (`mergewright-practice-`), then `<pid>-<unix_ms>`
 /// ([`PracticeAt::Now`]) or `<first_unix_secs>` ([`PracticeAt::Fixed`]).
-pub const PRACTICE_PREFIX: &str = "tributary-practice-";
+/// Removal accepts every generation's, so older folders still clean up.
+#[must_use]
+pub fn practice_prefix(generation: Generation) -> String {
+    format!("{}-practice-", generation.dir())
+}
 
 /// A built practice repo. Only [`build_practice_repo`] makes one, so holding
 /// one means the folder was made by us, under `under`, with the marker.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PracticeRepo {
-    /// `<under>/tributary-practice-<pid>-<unix_ms>`, canonical.
+    /// `<under>/mergewright-practice-<pid>-<unix_ms>`, canonical.
     root: PathBuf,
     /// `<root>/work`: the repository the app opens.
     work: PathBuf,
@@ -177,7 +183,7 @@ fn inside(root: &Path, rel: &Path) -> Result<PathBuf, TourError> {
 
 /// Remove a practice repo, after checking it is one: its root, canonical, is
 /// the recorded root; the root's parent is the folder it was made in; its
-/// name starts with [`PRACTICE_PREFIX`]; the root is not a link; and
+/// name starts with [`practice_prefix`] of any generation; the root is not a link; and
 /// `<root>/.practice` is a regular file. Any miss removes nothing.
 /// `remove_dir_all` does not follow links inside.
 ///
@@ -212,7 +218,11 @@ fn check_practice(repo: &PracticeRepo) -> Result<(), TourError> {
     let named = canonical
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with(PRACTICE_PREFIX));
+        .is_some_and(|name| {
+            Generation::GENERATIONS
+                .iter()
+                .any(|generation| name.starts_with(&practice_prefix(*generation)))
+        });
     if !named {
         return Err(not_practice());
     }

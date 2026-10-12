@@ -78,13 +78,13 @@ impl Tour {
             SIZE,
             &[
                 ("TMPDIR", tmp_path.as_os_str().to_owned()),
-                ("TRIB_PRACTICE_EPOCH", EPOCH.to_string().into()),
+                ("MWR_PRACTICE_EPOCH", EPOCH.to_string().into()),
             ],
         );
         pty.wait_for("the empty state", |s| s.has("no repository here"));
         pty.send(b"t");
         let work = tmp_path
-            .join(format!("tributary-practice-{EPOCH}"))
+            .join(format!("mergewright-practice-{EPOCH}"))
             .join("work");
         let tour = Self {
             _isolated: isolated,

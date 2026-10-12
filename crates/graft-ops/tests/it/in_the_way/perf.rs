@@ -4,7 +4,7 @@
 //!
 //! Two repositories, because the read has two costs: a long history (the
 //! heavy tier's 100k-commit fixture, whose tree is three files) and a wide
-//! tree (`TRIB_M728_FILES` tracked files, default 20 000, where `ls-files`
+//! tree (`MWR_M728_FILES` tracked files, default 20 000, where `ls-files`
 //! lists them all).
 
 #![allow(
@@ -80,7 +80,7 @@ fn blocking_for_a_switch_on_big_repositories() {
         millis(history)
     );
 
-    let files: usize = std::env::var("TRIB_M728_FILES")
+    let files: usize = std::env::var("MWR_M728_FILES")
         .ok()
         .and_then(|n| n.parse().ok())
         .unwrap_or(20_000);

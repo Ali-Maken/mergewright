@@ -1094,7 +1094,7 @@ fn every_refusal_fits_80_columns() {
 // ------------------------------------------ the operation refusal (m6-conflicts/48)
 
 /// The keys a Graft-begun operation's refusal names.
-const TRIB_KEYS: Option<&str> = Some("⇥ banner, then c continue  a abort");
+const MWR_KEYS: Option<&str> = Some("⇥ banner, then c continue  a abort");
 
 /// Every `(InProgress, Begun)` pair: today's editor sentence, then the pane's
 /// reason and keys.
@@ -1124,7 +1124,7 @@ const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
         (InProgress::Rebase, Begun::InGraft),
         "rebase in progress — esc, ⇥ banner, then c continue  a abort",
         "rebase in progress",
-        TRIB_KEYS,
+        MWR_KEYS,
     ),
     (
         (InProgress::Rebase, Begun::InShell),
@@ -1136,7 +1136,7 @@ const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
         (InProgress::CherryPick, Begun::InGraft),
         "cherry-pick in progress — esc, ⇥ banner, then c continue  a abort",
         "cherry-pick in progress",
-        TRIB_KEYS,
+        MWR_KEYS,
     ),
     (
         (InProgress::CherryPick, Begun::InShell),
@@ -1148,7 +1148,7 @@ const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
         (InProgress::Revert, Begun::InGraft),
         "revert in progress — esc, ⇥ banner, then c continue  a abort",
         "revert in progress",
-        TRIB_KEYS,
+        MWR_KEYS,
     ),
     (
         (InProgress::Revert, Begun::InShell),

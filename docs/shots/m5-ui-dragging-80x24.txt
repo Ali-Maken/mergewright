@@ -5,7 +5,7 @@
 # button is **still down**, two real mouse events through `update`, no release
 # (crates/graft/tests/it/name_and_drag.rs, capture_a_drag_in_flight_for_docs_shots).
 # A golden snapshot: that test fails if the frame drifts. Regenerate on
-# purpose with TRIB_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so
+# purpose with MWR_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so
 # this is a character grid with no colour attributes in it — CLAUDE.md rule 5,
 # colour ships unverified, and the raised background on two of these rows is
 # **not** in this file. The three marks below are shapes for exactly that

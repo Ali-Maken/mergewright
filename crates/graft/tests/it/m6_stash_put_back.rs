@@ -312,7 +312,7 @@ fn the_checkout_slot_on_head_s_row_is_drawn_dim_and_only_it() {
 
 /// Regenerates `docs/shots/m6/menu-fixed-slots-120x40.txt`.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it m6_stash_put_back`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it m6_stash_put_back`.
 #[test]
 fn capture_menu_fixed_slots() {
     let scratch = main_and_fix();

@@ -12,7 +12,7 @@ with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
     f.write('[graph]\nrenderer = "pixel"\n')
 pid, fd = pty.fork()
 if pid == 0:
-    os.execve(os.environ.get("GRAFT_BIN", "<home____________>/dev/sandbox/gitter/target/debug/mwr"),
+    os.execve(os.environ.get("MWR_BIN", "<home____________>/dev/sandbox/gitter/target/debug/mwr"),
               ["graft", os.path.expanduser("~/.cache/graft/git-git.git")],
               sandbox_env(config_home, TERM="xterm-kitty"))
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, COLS*10, ROWS*20))

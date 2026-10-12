@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# m8-polish-and-ship G-trace: summarise a TRIB_PERF_TRACE file.
+# m8-polish-and-ship G-trace: summarise a MWR_PERF_TRACE file.
 #
 #   scripts/m8-trace-summary.sh <trace> [out]   summary -> out (default
 #                                               docs/perf/m8-trace-<date>.txt)

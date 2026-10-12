@@ -33,7 +33,7 @@ const PEAK_RSS_LIMIT: u64 = 300 * 1024 * 1024;
 const FIRST_PAINT_LIMIT: Duration = Duration::from_millis(150);
 
 /// Set by the parent for the child: the repository to measure.
-const CHILD_REPO: &str = "TRIB_BUDGET_CHILD_REPO";
+const CHILD_REPO: &str = "MWR_BUDGET_CHILD_REPO";
 
 /// The child's result line starts with this.
 const MARK: &str = "budget:";

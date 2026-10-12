@@ -27,7 +27,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## scratch (re-exported)
 - `Scratch` (struct) — a temp directory deleted on drop; `path`.
-- `FIXED_ROOT_VAR` (const) — `TRIB_SCRATCH_ROOT`: when set, scratches get stable names under that root.
+- `FIXED_ROOT_VAR` (const) — `MWR_SCRATCH_ROOT`: when set, scratches get stable names under that root.
 
 ## memory (re-exported)
 - `measure` (fn) — `measure(work) -> Result<(T, Measured), MemoryError>`; run work and report its peak memory rise.
@@ -42,7 +42,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## capture
 - `machine` (mod) — what a committed capture may never hold and the placeholders standing in.
-- `UPDATE_VAR` (const) — `TRIB_UPDATE_SHOTS`: set it to rewrite captures instead of asserting them.
+- `UPDATE_VAR` (const) — `MWR_UPDATE_SHOTS`: set it to rewrite captures instead of asserting them.
 - `updating_shots` / `updating` (fn) — whether a given value / the environment asks for captures to be rewritten.
 - `check` / `check_bytes` (fn) — `check(&Path, drawn) -> Result<(), String>`; compare one capture, or write it when updating.
 - `capture` / `capture_bytes` (fn) — `check` that panics with the difference.

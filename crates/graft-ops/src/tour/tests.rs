@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
+use graft_core::on_disk::Generation;
 use graft_git::history_reads::{Forecast, forecast_merge};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation};
@@ -20,8 +21,8 @@ use graft_git::version::system_git;
 
 use super::build::finish_or_clean;
 use super::{
-    PRACTICE_MARKER, PRACTICE_PREFIX, PracticeAt, PracticeRepo, TourError, TourTask,
-    build_practice_repo, inside, remove_practice_repo, tasks_done, tour_progress,
+    PRACTICE_MARKER, PracticeAt, PracticeRepo, TourError, TourTask, build_practice_repo, inside,
+    practice_prefix, remove_practice_repo, tasks_done, tour_progress,
 };
 use crate::journal::tests::{committed, reversal};
 use crate::journal::{render_outcome, render_pending};
@@ -95,7 +96,7 @@ fn fake_practice(under: &Path, name: &str) -> PathBuf {
 
 #[test]
 fn inside_joins_a_plain_relative_path() {
-    let root = Path::new("/tmp/tributary-practice-1-2");
+    let root = Path::new("/tmp/mergewright-practice-1-2");
     assert_eq!(
         inside(root, Path::new("work/menu.txt")).unwrap(),
         root.join("work/menu.txt")
@@ -151,7 +152,10 @@ fn building_writes_nothing_outside_its_root() {
     let made = names(&under);
     assert_eq!(made.len(), 1, "{made:?}");
     let name = made.iter().next().unwrap();
-    assert!(name.starts_with(PRACTICE_PREFIX), "{name}");
+    assert!(
+        name.starts_with(&practice_prefix(Generation::CURRENT)),
+        "{name}"
+    );
     assert_eq!(repo.root(), under.canonicalize().unwrap().join(name));
     assert_eq!(repo.work(), repo.root().join("work"));
     assert_eq!(
@@ -288,7 +292,10 @@ fn building_under_a_read_only_folder_fails_and_makes_nothing() {
 #[test]
 fn a_build_that_fails_part_way_removes_its_folder() {
     let (_top, under) = scratch();
-    let root = fake_practice(&under, &format!("{PRACTICE_PREFIX}9-9"));
+    let root = fake_practice(
+        &under,
+        &format!("{}9-9", practice_prefix(Generation::CURRENT)),
+    );
     let repo = claimed(&root, &under.canonicalize().unwrap());
 
     let answer = finish_or_clean(repo, |_| {
@@ -317,6 +324,35 @@ fn removing_a_built_repo_removes_its_folder_and_nothing_else() {
     assert_eq!(names(top.path()), BTreeSet::from(["under".to_owned()]));
 }
 
+/// The folder the tour header shows is named from the names table (51).
+#[test]
+fn a_new_practice_folder_takes_the_current_name() {
+    let (_top, under) = scratch();
+    let repo = build_practice_repo(&under, NOW).expect("builds");
+    let name = repo
+        .root()
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let current = format!("{}-practice-", Generation::CURRENT.dir());
+    assert!(name.starts_with(&current), "{name}");
+    assert_eq!(practice_prefix(Generation::CURRENT), current);
+}
+
+/// A practice folder an earlier generation made is still cleaned up.
+#[test]
+fn removal_accepts_every_earlier_generations_folder() {
+    let (_top, under) = scratch();
+    for (n, old) in Generation::CURRENT.older().enumerate() {
+        let root = fake_practice(&under, &format!("{}-practice-{n}-{n}", old.dir()));
+        let repo = claimed(&root, &under.canonicalize().unwrap());
+        remove_practice_repo(&repo).expect("an old practice folder removes");
+        assert!(!root.exists(), "{}", old.dir());
+    }
+}
+
 #[test]
 fn removal_refuses_a_folder_without_the_marker() {
     let (_top, under) = scratch();
@@ -339,7 +375,10 @@ fn removal_refuses_a_folder_without_the_marker() {
 #[test]
 fn removal_refuses_a_marker_that_is_a_link() {
     let (top, under) = scratch();
-    let root = fake_practice(&under, &format!("{PRACTICE_PREFIX}1-1"));
+    let root = fake_practice(
+        &under,
+        &format!("{}1-1", practice_prefix(Generation::CURRENT)),
+    );
     std::fs::remove_file(root.join(PRACTICE_MARKER)).unwrap();
     let target = top.path().join("elsewhere-marker");
     std::fs::write(&target, "x").unwrap();
@@ -367,7 +406,7 @@ fn removal_refuses_a_root_that_is_a_link() {
     let link = under
         .canonicalize()
         .unwrap()
-        .join(format!("{PRACTICE_PREFIX}2-2"));
+        .join(format!("{}2-2", practice_prefix(Generation::CURRENT)));
     std::os::unix::fs::symlink(&his, &link).unwrap();
 
     let answer = remove_practice_repo(&claimed(&link, &under));
@@ -385,7 +424,10 @@ fn removal_refuses_a_root_outside_the_folder_it_was_made_in() {
     let (top, under) = scratch();
     let other = top.path().join("other");
     std::fs::create_dir(&other).unwrap();
-    let root = fake_practice(&other, &format!("{PRACTICE_PREFIX}3-3"));
+    let root = fake_practice(
+        &other,
+        &format!("{}3-3", practice_prefix(Generation::CURRENT)),
+    );
 
     let answer = remove_practice_repo(&claimed(&root, &under));
 
@@ -413,7 +455,10 @@ fn removal_refuses_a_root_with_the_wrong_name() {
 #[test]
 fn removal_refuses_a_recorded_root_that_is_not_canonical() {
     let (_top, under) = scratch();
-    let root = fake_practice(&under, &format!("{PRACTICE_PREFIX}4-4"));
+    let root = fake_practice(
+        &under,
+        &format!("{}4-4", practice_prefix(Generation::CURRENT)),
+    );
     let dotted = root.join("..").join(root.file_name().unwrap());
 
     let answer = remove_practice_repo(&claimed(&dotted, &under));
@@ -549,7 +594,7 @@ fn stash_and_back_needs_a_push_then_a_later_apply_or_pop() {
 }
 
 /// "Later" is journal order, not id order. Under a pinned clock
-/// (`TRIB_NOW`) every entry of a run shares one millisecond, so two ids
+/// (`MWR_NOW`) every entry of a run shares one millisecond, so two ids
 /// differ only in their random half and sort either way round. The pty
 /// test `task_4_ticks_by_setting_aside_and_bringing_back` failed about
 /// half its runs on exactly this.
@@ -685,7 +730,9 @@ fn now_dates_end_a_minute_before_now() {
     assert_eq!(rows.last().unwrap().1, now - 60);
     assert_eq!(rows.first().unwrap().0, now - 60 * 7);
     let name = repo.root().file_name().unwrap().to_str().unwrap();
-    let rest = name.strip_prefix(PRACTICE_PREFIX).unwrap();
+    let rest = name
+        .strip_prefix(&practice_prefix(Generation::CURRENT))
+        .unwrap();
     assert!(
         rest.starts_with(&format!("{}-", std::process::id())),
         "{name}"
@@ -698,7 +745,7 @@ fn a_fixed_instant_names_the_folder_and_never_reuses_one() {
     let repo = build_practice_repo(&under, AT).expect("builds");
     assert_eq!(
         repo.root().file_name().unwrap(),
-        "tributary-practice-1700000000"
+        "mergewright-practice-1700000000"
     );
     let main_before = tip(repo.work(), "main");
 
@@ -707,7 +754,7 @@ fn a_fixed_instant_names_the_folder_and_never_reuses_one() {
     assert!(matches!(again, Err(TourError::TempDir(_))), "{again:?}");
     assert_eq!(
         names(&under),
-        BTreeSet::from(["tributary-practice-1700000000".to_owned()])
+        BTreeSet::from(["mergewright-practice-1700000000".to_owned()])
     );
     assert!(
         repo.root().join(PRACTICE_MARKER).is_file(),

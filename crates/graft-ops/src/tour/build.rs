@@ -1,4 +1,4 @@
-//! Building the practice repo: `<under>/tributary-practice-<pid>-<unix_ms>/`
+//! Building the practice repo: `<under>/mergewright-practice-<pid>-<unix_ms>/`
 //! (or `-<first_unix_secs>/` for a fixed instant, `PracticeAt::Fixed`)
 //! holding `.practice`, an empty `hooks/`, a bare `remote.git` and `work/`.
 //!
@@ -19,10 +19,11 @@
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use graft_core::on_disk::Generation;
 use graft_git::run::{GitArg, GitInvocation};
 
 use super::{
-    PRACTICE_MARKER, PRACTICE_PREFIX, PracticeAt, PracticeRepo, TourError, inside,
+    PRACTICE_MARKER, PracticeAt, PracticeRepo, TourError, inside, practice_prefix,
     remove_practice_repo,
 };
 
@@ -50,12 +51,17 @@ pub fn build_practice_repo(under: &Path, at: PracticeAt) -> Result<PracticeRepo,
     let under = under.canonicalize().map_err(TourError::TempDir)?;
     let (name, first) = match at {
         PracticeAt::Now { now_unix_secs } => (
-            format!("{PRACTICE_PREFIX}{}-{}", std::process::id(), unix_ms()),
+            format!(
+                "{}{}-{}",
+                practice_prefix(Generation::CURRENT),
+                std::process::id(),
+                unix_ms()
+            ),
             // The last of `COMMITS` minutes ends one minute before now.
             now_unix_secs.saturating_sub(COMMITS * 60),
         ),
         PracticeAt::Fixed { first_unix_secs } => (
-            format!("{PRACTICE_PREFIX}{first_unix_secs}"),
+            format!("{}{first_unix_secs}", practice_prefix(Generation::CURRENT)),
             first_unix_secs,
         ),
     };

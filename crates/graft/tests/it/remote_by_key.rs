@@ -897,7 +897,7 @@ fn progress_reaches_the_status_line() {
 
 /// Writes the undo-after-push capture into `docs/shots/`.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it remote_by_key::capture_undo_after_push_for_docs_shots`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it remote_by_key::capture_undo_after_push_for_docs_shots`.
 #[test]
 fn capture_undo_after_push_for_docs_shots() {
     let remote = local();
@@ -1049,7 +1049,7 @@ const BOX_KEEPS_ON_Y_HEADER: &str = "\
 /// `fix-box-keeps-on-y-120x40.txt` (m6-conflicts/50): `y` takes the plain
 /// push box from `Cancel` against a real remote, and never the lease box.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it remote_by_key::capture_fix_box_takes_y`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it remote_by_key::capture_fix_box_takes_y`.
 #[test]
 fn capture_fix_box_takes_y() {
     let remote = local();
@@ -1201,7 +1201,7 @@ pub(crate) fn rejected_then_diverged(app: &App, state: AppState, branch: &str) -
 /// (m6-conflicts/49): a teammate pushed, `P` was rejected, `p` named the
 /// divergence, `r r` rebased onto their work — now `P` opens the plain box.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it remote_by_key::capture_fix_plain_box_after_rebase`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it remote_by_key::capture_fix_plain_box_after_rebase`.
 #[test]
 fn capture_fix_plain_box_after_rebase() {
     let remote = local();

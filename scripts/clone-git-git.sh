@@ -23,7 +23,10 @@
 #   scripts/clone-git-git.sh --where    # print the path and exit
 #
 # Where it goes:
-#   $TRIB_GIT_GIT_DIR, or ${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git
+#   $MWR_GIT_GIT_DIR, or ${XDG_CACHE_HOME:-$HOME/.cache}/mergewright/git-git.git
+#
+# A clone left at the pre-rename path (.../tributary/git-git.git) is moved
+# there once, so git/git is not fetched again.
 #
 # To delete it:
 #   rm -rf "$(scripts/clone-git-git.sh --where)"
@@ -35,7 +38,9 @@
 set -euo pipefail
 
 UPSTREAM="https://github.com/git/git.git"
-CACHE="${TRIB_GIT_GIT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git}"
+CACHES="${XDG_CACHE_HOME:-$HOME/.cache}"
+CACHE="${MWR_GIT_GIT_DIR:-$CACHES/mergewright/git-git.git}"
+OLD_CACHE="$CACHES/tributary/git-git.git"
 
 if [ "${1:-}" = "--where" ]; then
 	printf '%s\n' "$CACHE"
@@ -45,6 +50,12 @@ fi
 if [ "${1:-}" != "" ]; then
 	printf 'usage: %s [--where]\n' "$0" >&2
 	exit 2
+fi
+
+if [ -z "${MWR_GIT_GIT_DIR:-}" ] && [ ! -e "$CACHE" ] && [ -d "$OLD_CACHE" ]; then
+	printf 'moving %s to %s\n' "$OLD_CACHE" "$CACHE"
+	mkdir -p "$(dirname "$CACHE")"
+	mv "$OLD_CACHE" "$CACHE"
 fi
 
 if [ -d "$CACHE" ]; then

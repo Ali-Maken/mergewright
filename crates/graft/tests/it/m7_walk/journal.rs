@@ -230,7 +230,7 @@ fn the_three_lost_work_journeys() {
 }
 
 /// Set for [`the_three_lost_work_journeys_git_clock_pinned`] by its parent.
-const PINNED_CHILD: &str = "TRIB_M7_JOURNAL_PINNED_CHILD";
+const PINNED_CHILD: &str = "MWR_M7_JOURNAL_PINNED_CHILD";
 
 /// The child half of [`the_three_lost_work_journeys`]. Does nothing when
 /// run on its own.

@@ -90,7 +90,7 @@ const ENVIRONMENT: &[(&str, &str)] = &[
          graph.renderer overrides the tier.",
     ),
     (
-        "TRIB_PERF_TRACE",
+        "MWR_PERF_TRACE",
         "A file name: every drawn frame appends one line to it, for a performance report.",
     ),
     (

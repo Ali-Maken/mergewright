@@ -346,7 +346,7 @@ impl GitInvocation {
     /// Routes git's (and ssh's) credential prompts to `server`: sets
     /// `GIT_ASKPASS` and `SSH_ASKPASS` to its helper, `SSH_ASKPASS_REQUIRE`
     /// to `force` (ssh asks through it even with a terminal), and
-    /// `TRIB_ASKPASS_SOCKET` to its socket, so the helper knows it is in
+    /// `MWR_ASKPASS_SOCKET` to its socket, so the helper knows it is in
     /// askpass mode and where to call. `GIT_TERMINAL_PROMPT=0` stays: git
     /// asks the helper, never the terminal. Only these four variables are
     /// added; no credential ever travels in the environment or the arguments,

@@ -129,7 +129,7 @@ fn asks_and_clones_over_http() {
         ])
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_CONFIG_GLOBAL", empty_config.path())
-        .env("TRIB_CLONE_CHILD", "1")
+        .env("MWR_CLONE_CHILD", "1")
         .output()
         .expect("the child test runs");
     let said = String::from_utf8_lossy(&output.stdout);
@@ -150,7 +150,7 @@ fn asks_and_clones_over_http() {
 #[test]
 #[ignore = "run only as the child of asks_and_clones_over_http"]
 fn child_asks_and_clones_over_http() {
-    if std::env::var_os("TRIB_CLONE_CHILD").is_none() {
+    if std::env::var_os("MWR_CLONE_CHILD").is_none() {
         return;
     }
     let remote = local();

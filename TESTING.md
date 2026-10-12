@@ -40,7 +40,7 @@ red.
 When the new picture is the right one:
 
 ```sh
-TRIB_UPDATE_SHOTS=1 cargo nextest run   # rewrites, and fails anyway
+MWR_UPDATE_SHOTS=1 cargo nextest run   # rewrites, and fails anyway
 git diff --stat docs/shots/              # read it before you commit it
 ```
 
@@ -81,7 +81,7 @@ test that needs one of these literally assembles it from pieces, the way
 `graft_fixtures::capture::machine` spells its own roots and ports. The
 pty walks do not write to `docs/shots/` themselves: they pipe each frame to
 `graft-fixtures capture <path>`, which is the same mechanism on the same terms,
-so a walk asserts like everything else and `TRIB_UPDATE_SHOTS=1` is how it
+so a walk asserts like everything else and `MWR_UPDATE_SHOTS=1` is how it
 regenerates.
 
 **Records, not asserted** (m8/22c). "Every file is asserted" holds only for a
@@ -103,10 +103,10 @@ This list is not an audit of every file under `docs/shots/`.
 
 Two environment variables reach the shipped binary. Both are for reproducible
 pty runs and captures, not settings. Each takes whole seconds since 1970;
-anything else refuses (`TRIB_NOW` at launch, exit 2; `TRIB_PRACTICE_EPOCH`
+anything else refuses (`MWR_NOW` at launch, exit 2; `MWR_PRACTICE_EPOCH`
 when the tour starts, which then does not start).
 
-- **`TRIB_NOW` draws only and writes nothing** (m8/19e §R1). It pins the
+- **`MWR_NOW` draws only and writes nothing** (m8/19e §R1). It pins the
   clock every age on screen is drawn against, and the practice repo's `now`.
   The journal's stamps come from the wall clock, always: `u`, J and the time
   machine order entries by stamp, so a pin left exported in a shell would
@@ -117,7 +117,7 @@ when the tour starts, which then does not start).
   `graft_fixtures::PINNED_NOW` unless the test names it. So no pty test may
   assert a journal stamp's value, and no capture may draw a journal entry's
   age. Test: `clock_pin::graft_now_never_stamps_the_journal`.
-- **`TRIB_PRACTICE_EPOCH` dates the practice repo**, the tour's temp
+- **`MWR_PRACTICE_EPOCH` dates the practice repo**, the tour's temp
   repository (removed on every ending), so its commits and their ids are the
   same every run.
 
@@ -326,7 +326,7 @@ canned outputs (no cargo, seconds).
 **The idle advance** (m7-power-tools/12) adds three readings to the same
 runs. Right looks like:
 
-- `frame_trace: … startup …` lines (with `TRIB_FRAME_TRACE` set): every
+- `frame_trace: … startup …` lines (with `MWR_FRAME_TRACE` set): every
   wake from the first window of rows to key 1, then
   `startup burst_after_first_paint_us=` — how long a key pressed just after
   first paint could queue behind startup's job answers. Queued answers are
@@ -345,7 +345,7 @@ runs. Right looks like:
 (~40 min) runs `g_after_idle` ×3, `scripts/heap-slope.sh` ×2 and
 `examples/budgets` on git/git ×2 on both sides — "before" is this HEAD in a
 throwaway worktree with `scripts/m7-12-no-idle-advance.patch`, run with
-`TRIB_FRAME_NO_IDLE_ADVANCE=1` — then the heavy tier's `heavy::` and the
+`MWR_FRAME_NO_IDLE_ADVANCE=1` — then the heavy tier's `heavy::` and the
 release `heavy::budgets_hold`. It appends a section to
 `docs/perf/m7-12-idle-advance.txt`; read its `SUMMARY` lines. Every step
 records `uptime` and any process over 40% CPU (`SUMMARY quiet:`); a busy
@@ -542,7 +542,7 @@ them. That is the one maintenance job:
 rm -rf target/fixtures        # or `cargo clean`; both are safe, they rebuild
 ```
 
-Set `TRIB_FIXTURES_DIR` to build them somewhere else — a different disk,
+Set `MWR_FIXTURES_DIR` to build them somewhere else — a different disk,
 say.
 
 ### Building them by hand
@@ -592,7 +592,7 @@ scripts/clone-git-git.sh --where  # print the path and exit
 
 | | |
 |---|---|
-| Where | `${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git`, or `$TRIB_GIT_GIT_DIR` |
+| Where | `${XDG_CACHE_HOME:-$HOME/.cache}/tributary/git-git.git`, or `$MWR_GIT_GIT_DIR` |
 | Disk | **42 MB** — a full clone is about 250 MB; `--filter=tree:0` fetches commits and leaves trees and blobs on the server |
 | Time | **15 s** to clone, 2 s to re-run |
 | Measured | 85,649 commits, 1,017 refs |
@@ -1606,7 +1606,7 @@ expects to see itself.
 
 Captures: `docs/shots/m4-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, Unicode tier (`.scratch/m4-remotes/pty-walk-m4.py <WxH>`
-after `cargo build -p mergewright --example m4_walk`, `TRIB_TARGET` naming the
+after `cargo build -p mergewright --example m4_walk`, `MWR_TARGET` naming the
 target directory). The script runs `m4_walk --capture <scenario>`, which
 builds the remote, runs the scenario's headless prefix, then opens the real
 loop on the work clone with the capture's keys as the harness prelude (an
@@ -1907,7 +1907,7 @@ Captures: `docs/shots/m5-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, the banner also at 120x40, the too-small preview at
 38x10 only, Unicode tier
 (`.scratch/m5-history-and-ghost-preview/pty-walk-m5.py <WxH>` after
-`cargo build -p mergewright --example m5_walk`, `TRIB_TARGET` naming the target
+`cargo build -p mergewright --example m5_walk`, `MWR_TARGET` naming the target
 directory). The script runs `m5_walk --capture <scenario>`, which builds
 the scratch, runs the scenario's headless prefix (the time machine's three
 stages), then opens the real loop with the capture's keys as the harness
@@ -2302,8 +2302,8 @@ fast-tier time is in `docs/perf/m6-07.txt` (the ticket's bar is 60 s).
 Captures: `docs/shots/m6/m6-<nn>-<what>-<WxH>.txt` at 120x40 and 80x24,
 Unicode tier, from `.scratch/m6-conflicts/pty-walk-m6.py <WxH>` (build
 `-p mergewright --example m5_walk --bin mwr` and `-p graft-fixtures --bin
-graft-fixtures` first; `TRIB_TARGET` names the target directory;
-`TRIB_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
+graft-fixtures` first; `MWR_TARGET` names the target directory;
+`MWR_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
 the **real `trib` binary** relaunched after the script sends the capture
 run `SIGKILL` and checks it died on signal 9. All nine captures exist at
 both sizes, and every one shows the text it is for: the script's second
@@ -3192,7 +3192,7 @@ known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every
 
 ## M8: how he runs the trace (m8-polish-and-ship G-trace)
 
-`TRIB_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/graft/src/trace.rs`):
+`MWR_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/graft/src/trace.rs`):
 where the frame's time went (`update_us`, `draw_us`, `write_us`), how many bytes it sent, how many keys it drew
 (`motions`) and how old the oldest was when it finished (`input_age_us`). **Numbers only** — no path, branch, sha
 or subject; the header's only words are the tier and `$TERM_PROGRAM`. `history_rows` is the rows laid out so far,
@@ -3203,9 +3203,9 @@ He runs it once per terminal, on his work repo, from the Tributary checkout:
 
 ```sh
 # Ghostty, full screen
-TRIB_PERF_TRACE=$HOME/trib-trace-ghostty.txt cargo run --release -p mergewright -- <his repo>
+MWR_PERF_TRACE=$HOME/trib-trace-ghostty.txt cargo run --release -p mergewright -- <his repo>
 # Zed's terminal
-TRIB_PERF_TRACE=$HOME/trib-trace-zed.txt cargo run --release -p mergewright -- <his repo>
+MWR_PERF_TRACE=$HOME/trib-trace-zed.txt cargo run --release -p mergewright -- <his repo>
 ```
 
 Then: scroll the way that felt laggy (hold `j` ~3 s, let go; a wheel flick), quit with `q`, send the two files.

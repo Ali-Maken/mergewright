@@ -130,7 +130,7 @@ fn legend_shows_the_replaced_clause_only_when_whole() {
 /// Not an assertion — J with a `⇢ replaced` row under Graft's rebase and a
 /// `✗ lost` row under the shell's reset, at 187×30 and 80×24, for his eye
 /// (rule 6; colour unverified, rule 5). Regenerate by hand:
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p graft-ui journal_screen::tests::capture_replaced_for_docs_shots`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p graft-ui journal_screen::tests::capture_replaced_for_docs_shots`.
 #[test]
 fn capture_replaced_for_docs_shots() {
     let mut shots = graft_fixtures::Captures::new();

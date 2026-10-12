@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# m8-polish-and-ship G-trace: the builder's TRIB_PERF_TRACE run on the
+# m8-polish-and-ship G-trace: the builder's MWR_PERF_TRACE run on the
 # MONOREPO fixture (TeamSpec::MONOREPO, 17 700 commits, 1 330 refs) through a
 # real pty, never his repo. 50 `j` presses at 33 ms after a 5 s load, 187x50,
 # Unicode (the pty answers no probe). Writes docs/perf/m8-trace-monorepo.txt:
@@ -28,7 +28,7 @@ REPO=$WORK/repo
 cp -R "$FIXTURE" "$REPO" && chmod -R u+w "$REPO"
 TRACE=$WORK/trace.txt
 
-line=$(TRIB_PERF_TRACE=$TRACE python3 "$ROOT/scripts/scroll-lag-pty.py" \
+line=$(MWR_PERF_TRACE=$TRACE python3 "$ROOT/scripts/scroll-lag-pty.py" \
   "$BIN" "$REPO" 187 50 5 0.033 1.65 m8-trace 2>"$WORK/pty.err" | grep SUMMARY || true)
 sent=$(echo "$line" | grep -oE ' keys=[0-9]+' | cut -d= -f2)
 

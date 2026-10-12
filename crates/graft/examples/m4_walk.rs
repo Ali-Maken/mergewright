@@ -23,7 +23,7 @@
 //!
 //! This binary is also git's **askpass helper** while it runs: the job pool
 //! names `current_exe` as the helper, so when git asks for a password it
-//! runs this example with `TRIB_ASKPASS_SOCKET` set, and the process
+//! runs this example with `MWR_ASKPASS_SOCKET` set, and the process
 //! answers the way `graft` itself does — never touching the terminal.
 
 use std::ffi::OsString;

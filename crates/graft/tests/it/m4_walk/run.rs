@@ -240,7 +240,7 @@ impl Walk<'_> {
             let (next, commands) = update(&state, event);
             state = next;
             self.seen.note(&state);
-            if std::env::var_os("TRIB_TEST_TRACE").is_some() {
+            if std::env::var_os("MWR_TEST_TRACE").is_some() {
                 eprintln!(
                     "[{what}] {} -> operating {:?} remotes ready {} reading {:?} status {:?}",
                     self.seen.events.last().map_or("", String::as_str),

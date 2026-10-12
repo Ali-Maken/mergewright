@@ -28,7 +28,7 @@ pub(crate) const MARKER: &str = "corpus.ok";
 
 /// Set this to build fixtures somewhere other than the workspace's
 /// `target/fixtures`.
-const OVERRIDE_VAR: &str = "TRIB_FIXTURES_DIR";
+const OVERRIDE_VAR: &str = "MWR_FIXTURES_DIR";
 
 /// Why a cached build could not be published or measured.
 #[derive(Debug, thiserror::Error)]

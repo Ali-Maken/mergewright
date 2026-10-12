@@ -55,7 +55,7 @@
 407 crates/graft-ops/src/restore.rs
 722 crates/graft-ops/src/restore/steps.rs
 477 crates/graft-ops/src/rewrite/progress.rs
-846 crates/graft-ops/src/tour/tests.rs
+893 crates/graft-ops/src/tour/tests.rs
 833 crates/graft-ops/src/undo.rs
 740 crates/graft-ops/src/undo/tests.rs
 466 crates/graft-ops/tests/it/aborted_fetch.rs
@@ -224,7 +224,7 @@
 406 crates/graft/tests/it/app_harness.rs
 425 crates/graft/tests/it/blame_place.rs
 650 crates/graft/tests/it/budget_run.rs
-443 crates/graft/tests/it/clock_pin.rs
+448 crates/graft/tests/it/clock_pin.rs
 532 crates/graft/tests/it/commit_editor_writes.rs
 1994 crates/graft/tests/it/conflict_interim.rs
 875 crates/graft/tests/it/context_menu.rs
@@ -280,6 +280,6 @@
 597 crates/graft/tests/it/stash_clash.rs
 510 crates/graft/tests/it/submodule_truth.rs
 548 crates/graft/tests/it/tour_tasks.rs
-928 crates/graft/tests/it/tour_walk.rs
+929 crates/graft/tests/it/tour_walk.rs
 438 crates/graft/tests/it/two_boxes_over_content.rs
 640 crates/graft/tests/it/undo_over_drift.rs

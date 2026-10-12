@@ -1,0 +1,18 @@
+moving <tmp>/fakehome/.cache/tributary/git-git.git to <tmp>/fakehome/.cache/mergewright/git-git.git
+updating <tmp>/fakehome/.cache/mergewright/git-git.git
+
+<tmp>/fakehome/.cache/mergewright/git-git.git
+  commits  0
+  refs     0
+  on disk   80K
+
+  Open it with:  cargo run -p mergewright -- <tmp>/fakehome/.cache/mergewright/git-git.git
+  Delete it with: rm -rf <tmp>/fakehome/.cache/mergewright/git-git.git
+--- git calls:
+git -C <tmp>/fakehome/.cache/mergewright/git-git.git fetch --quiet --filter=tree:0 --prune origin +refs/heads/*:refs/heads/*
+git -C <tmp>/fakehome/.cache/mergewright/git-git.git commit-graph write --reachable --quiet
+git -C <tmp>/fakehome/.cache/mergewright/git-git.git rev-list --count --all
+git -C <tmp>/fakehome/.cache/mergewright/git-git.git for-each-ref --format=%(refname)
+--- old exists: no
+new is bare repo: yes
+clone called: 0

@@ -703,7 +703,7 @@ fn reports_render_time_for_a_32_row_strip() {
 /// It used only to write them, from an `#[ignore]`d test — which is how 42
 /// captures drifted across four milestones with nothing going red
 /// (m5-history-and-ghost-preview/40). Regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1`; a run that rewrites a drifted file is red too, so
+/// `MWR_UPDATE_SHOTS=1`; a run that rewrites a drifted file is red too, so
 /// the change cannot pass unnoticed — and a run in which nothing drifted is
 /// green, as every other capture's is (`graft_fixtures::capture`).
 ///
@@ -848,7 +848,7 @@ fn save(
 /// The committed file is read **before** it is rewritten, so the comparison is
 /// against what was committed, not against the picture just written. It used
 /// to write first and then record every file as regenerated whatever the
-/// comparison said, so `TRIB_UPDATE_SHOTS=1` was red with not one pixel
+/// comparison said, so `MWR_UPDATE_SHOTS=1` was red with not one pixel
 /// changed (m8-polish-and-ship/29). Same contract as
 /// `graft_fixtures::capture::check_bytes`: drift is red whether or not the
 /// file was rewritten, and no drift is green either way.
@@ -860,7 +860,7 @@ fn save(
 ///
 /// Drift is recorded, not asserted: one PNG's drift must not stop the next
 /// from being written (m8-polish-and-ship/22 — it used to panic on the
-/// first, so `TRIB_UPDATE_SHOTS=1` rewrote one file per run). The caller
+/// first, so `MWR_UPDATE_SHOTS=1` rewrote one file per run). The caller
 /// fails once, after every file, through [`Drifted::finish`].
 fn check_png(
     out: &tiny_skia::Pixmap,
@@ -877,13 +877,13 @@ fn check_png(
         "It has been rewritten: read the diff under docs/shots/ and commit it if it is right."
     } else {
         "A capture is the evidence the user judges by eye (CLAUDE.md rule 6), so it must \
-         match. If the new drawing is the right one, regenerate with TRIB_UPDATE_SHOTS=1 \
+         match. If the new drawing is the right one, regenerate with MWR_UPDATE_SHOTS=1 \
          and read the diff."
     };
     let complaint = match committed {
         Err(why) => Some(format!(
             "the committed capture could not be read ({why}); if it is simply missing, \
-             create it with TRIB_UPDATE_SHOTS=1"
+             create it with MWR_UPDATE_SHOTS=1"
         )),
         Ok(committed) if (committed.width(), committed.height()) != (out.width(), out.height()) => {
             Some(format!(
@@ -945,7 +945,7 @@ fn solid(red: u8) -> tiny_skia::Pixmap {
 
 /// m8-polish-and-ship/29: a regeneration pass in which nothing drifted is
 /// green. It used to write first and then record every file as
-/// "regenerated", so `TRIB_UPDATE_SHOTS=1` was red with no picture changed.
+/// "regenerated", so `MWR_UPDATE_SHOTS=1` was red with no picture changed.
 #[test]
 fn check_png_regenerating_an_unchanged_capture_is_green() {
     let path = scratch_png("unchanged");

@@ -53,7 +53,7 @@ pub(super) fn moved(
 
 /// Set to whole seconds since 1970, dates the practice repo from that
 /// instant (`PracticeAt::Fixed`), for reproducible runs and captures.
-pub(crate) const PRACTICE_EPOCH_VAR: &str = "TRIB_PRACTICE_EPOCH";
+pub(crate) const PRACTICE_EPOCH_VAR: &str = "MWR_PRACTICE_EPOCH";
 
 /// What [`PRACTICE_EPOCH_VAR`]'s value asks for: unset → `Now` at
 /// `now_unix_secs`; whole seconds → `Fixed`; anything else → the words of
@@ -88,7 +88,7 @@ pub(super) fn practise(
     // first, `update::tour::start_from_palette`) ends the first.
     let _left: Option<Open> = leave_practice(practice, carried);
     // Read at the tour's start, not at launch (m8/19c R2). `now` is the
-    // session clock: `Wall` unless `TRIB_NOW` pins it (m8/19d-b).
+    // session clock: `Wall` unless `MWR_NOW` pins it (m8/19d-b).
     let var = std::env::var_os(PRACTICE_EPOCH_VAR);
     let at = match practice_at(var.as_deref(), carried.clock.now_seconds()) {
         Ok(at) => at,

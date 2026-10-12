@@ -8,7 +8,7 @@
 //! the last row with the cursor on it. The wakes in the gap are counted
 //! (`idle_gap_wakes`): with history laid out, nothing should wake.
 //!
-//! `TRIB_FRAME_NO_IDLE_ADVANCE` is set only by `scripts/m7-12-final-perf.sh`
+//! `MWR_FRAME_NO_IDLE_ADVANCE` is set only by `scripts/m7-12-final-perf.sh`
 //! for its "before" build, which has the idle advance patched out
 //! (`scripts/m7-12-no-idle-advance.patch`): the walk never says `LaidOut`
 //! there, so the wait is for startup's jobs only, and nothing is asserted.
@@ -44,7 +44,7 @@ const SCALE: Scale = Scale::HEAVY.with_commit_graph();
 const GAP: Duration = Duration::from_secs(2);
 
 /// Set by the perf script's "before" build only (see the module docs).
-const NO_IDLE_ADVANCE: &str = "TRIB_FRAME_NO_IDLE_ADVANCE";
+const NO_IDLE_ADVANCE: &str = "MWR_FRAME_NO_IDLE_ADVANCE";
 
 const TIER: RenderingTier = RenderingTier::Unicode;
 

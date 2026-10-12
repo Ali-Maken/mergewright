@@ -203,7 +203,7 @@ The terminal session: every mode switched on at startup and off in reverse order
 - `TerminalSession` (struct) — the RAII guard; `suspend`/`resume` for `$EDITOR` and `SIGTSTP`.
 - `TerminalRestorer` (struct) — restore handle usable from the panic hook.
 ## trace
-The frame trace the binary writes when `TRIB_PERF_TRACE` is set: one line per drawn frame saying where its time went.
+The frame trace the binary writes when `MWR_PERF_TRACE` is set: one line per drawn frame saying where its time went.
 - `Tracer` (struct) — the open trace file and its per-frame record.
 - `TerminalOut` (enum) — the terminal's writer: plain `Stdout`, or metered when tracing.
 ## update

@@ -258,7 +258,7 @@ fn esc_closes_the_preview_and_the_repository_never_moved() {
 /// The captures under `docs/shots/`, from this same real path — the **user**
 /// judges the ghost rows and the docked box by eye (CLAUDE.md rule 6).
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it preview::capture_preview_for_docs_shots`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it preview::capture_preview_for_docs_shots`.
 #[test]
 fn capture_preview_for_docs_shots() {
     let scratch = forked();
@@ -317,7 +317,7 @@ fn capture_preview_for_docs_shots() {
 
 /// `m` on `main`'s row: the box names both confirm keys in its footer, and
 /// the cursor still rests on `Cancel` (m6-conflicts/11). Regenerate on
-/// purpose with `TRIB_UPDATE_SHOTS=1`.
+/// purpose with `MWR_UPDATE_SHOTS=1`.
 #[test]
 fn capture_fix_preview_verb_for_docs_shots() {
     let scratch = forked();
@@ -570,7 +570,7 @@ fn three_stages_undone(repo: &Path, said: &str) {
 /// The time machine's own capture — the picture the journal's `Enter` draws
 /// before anything runs. The **user** judges it (CLAUDE.md rule 6).
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it preview::capture_time_machine_for_docs_shots`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it preview::capture_time_machine_for_docs_shots`.
 #[test]
 fn capture_time_machine_for_docs_shots() {
     let scratch = three_to_stage();
@@ -828,7 +828,7 @@ fn a_preview_scrolled_into_history_draws_the_rows_the_user_was_on() {
 /// history**, which is where the graph spends most of its life on a real
 /// repository. The user judges it by eye (CLAUDE.md rule 6).
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it preview::capture_scrolled_preview_for_docs_shots`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it preview::capture_scrolled_preview_for_docs_shots`.
 #[test]
 fn capture_scrolled_preview_for_docs_shots() {
     let scratch = left_behind();

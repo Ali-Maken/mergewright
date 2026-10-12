@@ -75,7 +75,7 @@ most likely no network reached github.com from this machine. This is a real
 prerequisite for the git-git checkpoint, not something to skip: PROMPT.md
 §7.2 names git/git as the human-proof corpus, so the checkpoint has nothing
 honest to show without it. Get network access (or a pre-existing clone at
-\$TRIB_GIT_GIT_DIR / \${XDG_CACHE_HOME:-\$HOME/.cache}/tributary/git-git.git) and
+\$MWR_GIT_GIT_DIR / \${XDG_CACHE_HOME:-\$HOME/.cache}/tributary/git-git.git) and
 run this again.
 MISSING
 		exit 1

@@ -12,7 +12,7 @@
 //!
 //! Colour is **unverified** (CLAUDE.md rule 5), and so is whether his
 //! terminal stacks the pieces by `z` as the Kitty protocol says. Compares against the
-//! committed file; rewrites it only under `TRIB_UPDATE_SHOTS=1`.
+//! committed file; rewrites it only under `MWR_UPDATE_SHOTS=1`.
 
 use std::path::Path;
 use std::sync::mpsc;

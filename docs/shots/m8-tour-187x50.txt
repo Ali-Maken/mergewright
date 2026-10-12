@@ -1,6 +1,6 @@
 m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at his full-screen 187×50: the card with `practice 1 of 8 · stage a change` and `esc leave` on its top border and the ticks row drawn (eight marks, none ticked yet); the header `◇ work`; the practice graph under the card. Judge beside m8-tour-step1-120x36.txt and the mock-up m8-proto-3f-tour-card.txt. Colour unverified (rule 5).
 
- ◇ workripractice · /private/tmp/graft-capture/tour-187x50-XXXXXX/practice-tmp/tributary-practice-1609459200/work · a throwaway repo, not yours · main                           7 commits
+ ◇ workripractice · /private/tmp/graft-capture/tour-187x50-XXXXXX/practice-tmp/mergewright-practice-1609459200/work · a throwaway repo, not yours · main                         7 commits
  ~/code
 ╭─ practice 1 of 8 · stage a change ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── esc leave ╮
 │ ⏎ on the top row opens your changes · space stages the change under the cursor                                                       stage commit undo stash branch merge conflict push │
