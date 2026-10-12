@@ -364,24 +364,25 @@ M7 (ADR-0048; keymap §2.11) adds shell (`$`) rows from the reflog and lost
 branch at the row's commit, `/` finds, `n`/`N` step matches (or `✗` rows).
 A commit an undoable `●` step left behind reads `└ ⇢ replaced` (or `⇢ deleted`),
 muted, ending `· undo brings it back`; the legend's `⇢` clause shows only when
-the whole legend fits. Amended 2026-10-11 (usability Q1, user: 'yes say replaced'):
+the whole legend fits: at this mock's 130 cells it no longer does since the product word became `Mergewright`
+(m8/52); on a wider screen (187 columns) it shows. Amended 2026-10-11 (usability Q1, user: 'yes say replaced'):
 
 ```
  ┌─ JOURNAL · what happened in this repo, newest first ─────────────────────────────────────────────────────────────────────────────┐
- │   ●  Graft          10:44   fetch · origin/main moved                                                                            │
- │   $  outside Graft  10:41   reset main 1 commit back               git: "reset: moving to HEAD~1"                                │
+ │   ●  Mergewright    10:44   fetch · origin/main moved                                                                            │
+ │   $  outside        10:41   reset main 1 commit back               git: "reset: moving to HEAD~1"                                │
  │ ▸    └ ✗ lost       9a8b7c6 "Add rate limiter" · was main's tip · no branch holds it                                             │
- │   $  outside Graft  10:37   switch from spike to main              git: "checkout: moving from spike to main"                    │
+ │   $  outside        10:37   switch from spike to main              git: "checkout: moving from spike to main"                    │
  │      └ ✗ lost       4d5e6f7 "Try redis cache" · was spike's tip · spike is gone                                                  │
- │   ●  Graft          10:12   switch from main to spike                                                                            │
- │   ●  Graft          10:05   rebase feature onto main               1 ref · backup saved                                          │
+ │   ●  Mergewright    10:12   switch from main to spike                                                                            │
+ │   ●  Mergewright    10:05   rebase feature onto main               1 ref · backup saved                                          │
  │      └ ⇢ replaced   1c2d3e4 "Add OAuth" · was feature's tip · undo brings it back                                                │
- │  ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back  │
+ │ ● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds               │
  └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
  ⏎ put main back to it  b new branch here  / find  esc close  ? keys  (bar is per row; `? keys` last, m8/11e)
 ```
 
-An expanded `●` row lists `commands Graft ran`, each drawn `┆ git …`; `$`
+An expanded `●` row lists `commands Mergewright ran`, each drawn `┆ git …`; `$`
 means only "outside Graft".
 
 ### 1.11 Stash list + diff

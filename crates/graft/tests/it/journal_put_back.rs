@@ -254,7 +254,7 @@ fn a_put_back_refused_at_launch_stays_on_j() {
     assert!(state.journal.shown, "J still up:\n{body}");
     let legend = frame
         .iter()
-        .rposition(|row| row.starts_with("● done in Graft"))
+        .rposition(|row| row.starts_with("● done in Mergewright"))
         .unwrap_or_else(|| panic!("J's legend:\n{body}"));
     assert!(
         frame[legend - 1].contains("wait for the write to finish"),
@@ -305,7 +305,7 @@ fn j_again_shows_a_graft_row_and_no_lost_row() {
     assert!(
         frame
             .iter()
-            .any(|row| row.contains("\u{25cf}  Graft") && row.contains("put main back to")),
+            .any(|row| row.contains("\u{25cf}  Mergewright") && row.contains("put main back to")),
         "the put-back's own \u{25cf} row:\n{body}"
     );
     assert!(!body.contains("\u{2717} lost"), "no \u{2717} row:\n{body}");

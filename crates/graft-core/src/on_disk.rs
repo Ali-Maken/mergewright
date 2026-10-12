@@ -178,6 +178,15 @@ pub const ASKPASS_SOCKET_VAR: &str = "MWR_ASKPASS_SOCKET";
 /// `clean`.
 pub const MIGRATED_MARKER: &str = "migrated";
 
+/// The tag this build puts at the start of every message it writes into
+/// git: a set-aside stash (`<tag>: your edits, set aside for …`), a backup
+/// commit (`<tag> <id> <label>`), the index, absorb and forecast commits.
+/// [`Generation::CURRENT`]'s dir, so a rename moves it; the messages an
+/// earlier generation wrote stay as they are and [`Generation::of_message`]
+/// reads them all (ADR-0057 amendment 2026-10-11 §1).
+/// A const, not a fn: graft-core exports no free functions (ADR-0007).
+pub const MESSAGE_TAG: &str = Generation::CURRENT.dir();
+
 /// [`Generation::CURRENT`]'s folder name, for the paths this build writes:
 /// short enough to spell inline (`.git/{CURRENT_DIR}/...`).
 pub const CURRENT_DIR: &str = Generation::CURRENT.dir();

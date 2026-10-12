@@ -7,13 +7,13 @@
 # Here the journal (J) is open with the graph's keyboard, the detail pane shut. Right: its footer ends `J/esc close  ? keys` — the doorway last, after the journal's own keys (m8/11e F2).
 
 JOURNAL · what happened in this repo, newest first                                                                      
-▸ $  outside Graft  57y ago   moved main to 0303030                                                                     
+▸ $  outside        57y ago   moved main to 0303030                                                                     
                               git: "reset: moving to HEAD~1"                                                            
      └ ✗ lost       0404040 "D" · was main's tip · main is gone                                                         
-  $  outside Graft  57y ago   committed "D" on main                                                                     
-  $  outside Graft  57y ago   switch from spike to main                                                                 
-  ●  Graft          57y ago   commit "x"                                   the index · backup saved                 ← u 
-  a branch deleted outside Mergewright and never checked out leaves no trace here                                       
+  $  outside        57y ago   committed "D" on main                                                                     
+  $  outside        57y ago   switch from spike to main                                                                 
+  ●  Mergewright    57y ago   commit "x"                                   the index · backup saved                 ← u 
+  a branch deleted outside Mergewright and never checked out leaves no trace                                            
                                                                                                                         
                                                                                                                         
                                                                                                                         
@@ -40,5 +40,5 @@ JOURNAL · what happened in this repo, newest first
                                                                                                                         
                                                                                                                         
                                                                                                                         
-● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds                  
+● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds      
 ⏎ put main back to before this  b new branch here  / find  J/esc close  ? keys                                          

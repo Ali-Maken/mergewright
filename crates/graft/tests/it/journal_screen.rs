@@ -64,7 +64,7 @@ fn a_refusal_in_j_shows_on_its_status_row() {
         "the refusal on J's status row:\n{body}"
     );
     assert!(
-        from_bottom(&frame, LEGEND).starts_with("● done in Graft"),
+        from_bottom(&frame, LEGEND).starts_with("● done in Mergewright"),
         "the legend under it:\n{body}"
     );
     drop(state);
@@ -84,7 +84,7 @@ fn no_status_row_when_nothing_is_wrong() {
         "a blank line above the legend:\n{body}"
     );
     assert!(
-        from_bottom(&frame, LEGEND).starts_with("● done in Graft"),
+        from_bottom(&frame, LEGEND).starts_with("● done in Mergewright"),
         "{body}"
     );
     drop(state);
@@ -318,7 +318,7 @@ fn spike_rows(frame: &[String]) -> usize {
         .iter()
         .skip_while(|row| !row.starts_with("JOURNAL ·"))
         .skip(1)
-        .take_while(|row| !row.contains("leaves no trace here"))
+        .take_while(|row| !row.contains("leaves no trace"))
         .filter(|row| row.contains("spike"))
         .count()
 }
@@ -727,7 +727,7 @@ fn a_find_survives_rows_arriving() {
     let state = app.pump(state, "stage 2", |state| {
         drawn(state, 187, 50)
             .iter()
-            .any(|row| row.contains("$  outside Graft"))
+            .any(|row| row.contains("$  outside "))
     });
     assert!(state.journal.finding_lost(), "stage 3 is still out");
     let state = find_typed(&app, &state, "spike");

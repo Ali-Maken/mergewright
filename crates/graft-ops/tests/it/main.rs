@@ -54,6 +54,8 @@ mod rewrite_preview;
 mod rewrite_run;
 mod set_aside;
 #[cfg(unix)]
+mod set_aside_generations;
+#[cfg(unix)]
 mod set_aside_kill;
 mod shell_begun_merge;
 mod snapshot_raw;

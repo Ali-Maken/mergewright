@@ -27,7 +27,7 @@ fn frame(state: &AppState) -> Vec<String> {
 fn status_row(frame: &[String]) -> &str {
     let legend = frame
         .iter()
-        .rposition(|line| line.starts_with("● done in Graft"))
+        .rposition(|line| line.starts_with("● done in Mergewright"))
         .expect("J's legend is drawn");
     &frame[legend - 1]
 }

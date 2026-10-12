@@ -109,18 +109,6 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "Graft's message helper",
         "generated helper script: its comment and temp file name",
     ),
-    // The journal's source column is 14 cells, sized for `outside Graft`;
-    // `outside Tributary` is cut. Needs a word or width decision (27a NOTES).
-    (
-        "graft-ui/src/journal_screen/pieces.rs",
-        "Graft",
-        "journal source column width",
-    ),
-    (
-        "graft-ui/src/journal_screen/legend.rs",
-        "done in Graft: {can}",
-        "legend names that column",
-    ),
     // Perf examples (50): run by hand to measure, never drawn to the user.
     (
         "graft-git/examples/stash_only_cost.rs",
@@ -131,28 +119,6 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "graft-ops/examples/snapshot_cost.rs",
         "graft",
         "perf example's temp prefix and scratch folder",
-    ),
-    // Messages written into git (stash and backup commits): left until a
-    // reader audit renames them with their readers (27a NOTES).
-    (
-        "graft-ops/src/apply/set_aside.rs",
-        "graft: your edits",
-        "stash message in git",
-    ),
-    (
-        "graft-ops/src/apply/set_aside/rebuild.rs",
-        "graft: ",
-        "commit messages in git",
-    ),
-    (
-        "graft-ops/src/rewrite/absorb.rs",
-        "graft: absorb",
-        "commit message in git",
-    ),
-    (
-        "graft-ops/src/snapshot/commit.rs",
-        "graft",
-        "backup commit messages in git",
     ),
 ];
 
@@ -234,14 +200,11 @@ fn says_old_name(text: &str) -> Option<Generation> {
     })
 }
 
-/// No string literal in any crate's production source names an earlier
-/// generation but the allowed files: the user reads `mwr` or Mergewright
-/// everywhere (50).
-#[test]
-fn no_old_name_in_user_visible_strings() {
-    let crates = crates_dir();
+/// Every production source file under `crates/*/src` and `crates/*/examples`,
+/// in path order.
+fn every_production_file(crates: &Path) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = Vec::new();
-    let mut dirs: Vec<_> = fs::read_dir(&crates)
+    let mut dirs: Vec<_> = fs::read_dir(crates)
         .expect("crates/ reads")
         .map(|entry| entry.expect("a dir entry").path())
         .collect();
@@ -254,6 +217,49 @@ fn no_old_name_in_user_visible_strings() {
             }
         }
     }
+    files
+}
+
+/// No production string literal starts with an earlier generation's
+/// message tag (`graft:`, `graft `, `tributary:` …) outside the names
+/// table: every message written into git takes its tag from
+/// `on_disk::MESSAGE_TAG`, and every reader goes through
+/// `Generation::of_message` (ticket m8/52).
+#[test]
+fn no_old_message_literal() {
+    let crates = crates_dir();
+    let mut found = Vec::new();
+    for file in every_production_file(&crates) {
+        let shown = file
+            .strip_prefix(&crates)
+            .unwrap_or(&file)
+            .display()
+            .to_string();
+        if shown == "graft-core/src/on_disk.rs" {
+            continue;
+        }
+        for (line, literal) in literals(&file) {
+            let older = Generation::of_message(&literal)
+                .is_some_and(|generation| generation != Generation::CURRENT);
+            if older {
+                found.push(format!("{shown}:{line}: \"{literal}\""));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "an earlier generation's message tag in a literal:\n{}",
+        found.join("\n")
+    );
+}
+
+/// No string literal in any crate's production source names an earlier
+/// generation but the allowed files: the user reads `mwr` or Mergewright
+/// everywhere (50).
+#[test]
+fn no_old_name_in_user_visible_strings() {
+    let crates = crates_dir();
+    let files = every_production_file(&crates);
     let mut found = Vec::new();
     for file in &files {
         let shown = file

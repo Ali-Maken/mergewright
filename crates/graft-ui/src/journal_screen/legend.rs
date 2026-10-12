@@ -7,6 +7,9 @@ use crate::keymap::{ActionId, Keymap};
 
 use super::cut_at_word;
 
+/// The product word the legend names (ADR-0057 §10), from the names table.
+const APP: &str = graft_core::on_disk::Generation::CURRENT.title();
+
 /// What each glyph means, on screen for as long as the rows are (J1), with
 /// `app.undo`'s key spelled from `keys` (`u`, or `u/⌃Z`'s first — the bar's
 /// one key per action). Unbound, the legend says it in words.
@@ -22,7 +25,7 @@ pub fn legend(keys: &Keymap) -> String {
             "undo never touches it".to_owned(),
         ),
     };
-    format!("● done in Graft: {can} · $ done outside Graft: {never} · ✗ a commit no branch holds")
+    format!("● done in {APP}: {can} · $ done outside {APP}: {never} · ✗ a commit no branch holds")
 }
 
 /// The `⇢` row's clause, last in the legend (usability Q1).

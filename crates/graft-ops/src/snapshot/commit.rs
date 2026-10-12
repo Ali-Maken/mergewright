@@ -5,6 +5,7 @@ use std::path::Path;
 
 use graft_core::journal::{EntryId, IndexState};
 use graft_core::oid::Oid;
+use graft_core::on_disk::MESSAGE_TAG;
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 
@@ -49,7 +50,13 @@ pub(super) fn commit_joined(
     parents: &[Oid],
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
-    commit_tree(repo, joined, parents, &format!("graft {id} {label}"), stop)
+    commit_tree(
+        repo,
+        joined,
+        parents,
+        &format!("{MESSAGE_TAG} {id} {label}"),
+        stop,
+    )
 }
 
 /// `git stash create` over a temporary copy of the index, as
@@ -86,7 +93,13 @@ pub(crate) fn scratch_commit(
     parents: &[Oid],
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
-    commit_tree(repo, tree, parents, "graft: put-back forecast", stop)
+    commit_tree(
+        repo,
+        tree,
+        parents,
+        &format!("{MESSAGE_TAG}: put-back forecast"),
+        stop,
+    )
 }
 
 /// Point an existing backup ref at another commit (the after-snapshot).

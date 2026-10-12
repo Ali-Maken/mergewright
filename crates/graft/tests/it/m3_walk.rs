@@ -36,7 +36,7 @@ use crate::repo_truth::{
     RepoTruth, blob_of, check, diff_truth, fsck_clean, git_path, git_truth,
     neutralise_global_config, run_git, same,
 };
-use graft_core::on_disk::CURRENT_DIR;
+use graft_core::on_disk::{CURRENT_DIR, Generation};
 
 /// What one scenario's `setup` and a `Shell` step run: plain files and git.
 pub type Fix = fn(&Path) -> Result<(), String>;
@@ -227,7 +227,9 @@ fn no_bookkeeping_in_the_graph(state: &AppState) -> Result<(), String> {
         .map(|row| String::from_utf8_lossy(row.commit.subject()).into_owned())
         .collect();
     check(
-        !drawn.iter().any(|subject| subject.starts_with("graft ")),
+        !drawn
+            .iter()
+            .any(|subject| Generation::of_message(subject).is_some()),
         || format!("a backup commit is drawn in the history window: {drawn:?}"),
     )
 }

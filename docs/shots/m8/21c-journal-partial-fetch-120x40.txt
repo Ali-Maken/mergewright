@@ -16,9 +16,9 @@
 == J, collapsed ==
 
 JOURNAL · what happened in this repo, newest first
-▸ ●  Graft          now       fetch all…   failed: no repository at '/nonexistent/graft-21c.git', or no…
-  $  outside Graft  6y ago    clone: from…
-  a branch deleted outside Mergewright and never checked out leaves no trace here
+▸ ●  Mergewright    now       fetch all…   failed: no repository at '/nonexistent/graft-21c.git', or no…
+  $  outside        6y ago    clone: from…
+  a branch deleted outside Mergewright and never checked out leaves no trace
 
 
 
@@ -53,20 +53,20 @@ JOURNAL · what happened in this repo, newest first
 
 
 fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no ac… · origin/main moved before it stopped
-● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
+● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds
 / find  space command log  J/esc close  ? keys
 
 == the fetch row, expanded (Space) ==
 
 JOURNAL · what happened in this repo, newest first
-▸ ●  Graft          now       fetch all…   failed: no repository at '/nonexistent/graft-21c.git', or no…
+▸ ●  Mergewright    now       fetch all…   failed: no repository at '/nonexistent/graft-21c.git', or no…
                               failed: no repository at '/nonexistent/graft-21c.git', or no access to it
                               refs the fetch moved · u does not move them back
                               ┆ origin/main  d5ae5fd → 7be74b5
                               commands Mergewright ran
                               ┆ git fetch --progress --prune --all
-  $  outside Graft  6y ago    clone: from…
-  a branch deleted outside Mergewright and never checked out leaves no trace here
+  $  outside        6y ago    clone: from…
+  a branch deleted outside Mergewright and never checked out leaves no trace
 
 
 
@@ -96,5 +96,5 @@ JOURNAL · what happened in this repo, newest first
 
 
 fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no ac… · origin/main moved before it stopped
-● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds
+● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds
 / find  space command log  J/esc close  ? keys

@@ -5,7 +5,7 @@ use crate::keymap::Keymap;
 use super::{
     AGE, COMMANDS_HEADING, CURSOR, Columns, GLYPH, Ink, JournalRowView, MARK, Piece, RowKind,
     RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, cut_at_word, moved_heading,
-    pad,
+    pad, source_word,
 };
 
 /// A row's own line: cursor, glyph, source word, age, words, and a `●`
@@ -26,11 +26,12 @@ pub(super) fn row_pieces(
     let words_x = columns.words_x();
     match row.kind {
         RowKind::Graft | RowKind::Outside => {
-            let (glyph, source) = if row.kind == RowKind::Graft {
-                ("●", "Graft")
+            let glyph = if row.kind == RowKind::Graft {
+                "●"
             } else {
-                ("$", "outside Graft")
+                "$"
             };
+            let source = source_word(row.kind);
             let source_ink = if row.kind == RowKind::Graft {
                 Ink::Text
             } else {

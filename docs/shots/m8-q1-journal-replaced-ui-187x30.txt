@@ -9,11 +9,11 @@
 
 === 187x30 ===
 JOURNAL · what happened in this repo, newest first
-▸ ●  Graft          1m ago    rebase feature onto main                     backup saved                                                                                                ← u
+▸ ●  Mergewright    1m ago    rebase feature onto main                     backup saved                                                                                                ← u
      └ ⇢ replaced   9a8b7c6 "Add rate limiter" · was feature's tip · undo brings it back
-  $  outside Graft  5m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
+  $  outside        5m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
      └ ✗ lost       4d5e6f7 "Try redis cache" · was main's tip · no branch holds it
-  a branch deleted outside Mergewright and never checked out leaves no trace here
+  a branch deleted outside Mergewright and never checked out leaves no trace
 
 
 
@@ -36,5 +36,5 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back
+● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back
 / find  space command log  J/esc close  ? keys

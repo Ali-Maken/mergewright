@@ -534,7 +534,7 @@ fn a_clean_put_back_drops_the_set_aside_stash() {
             .find(|line| line.contains("stash store"))
             .unwrap();
         assert!(
-            stored.contains("graft: your edits, set aside for"),
+            stored.contains("mergewright: your edits, set aside for"),
             "{stored}"
         );
     }

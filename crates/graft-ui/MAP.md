@@ -363,6 +363,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `cut_at_word` (fn) — `(text, width) -> String`: cut at the last whole word that fits, then `…`; a hard cut only when no word fits. Keeps the text's own spacing.
 - `RowMark` (enum) — What a row is to `u` and `U`, in words rather than colour: `None` (default), `NextUndo`, `NextRedo`, `Interrupted`, `Undone`, `NothingWritten`; `label(keys)` draws them as `← u`, `← U` (spelled from `keys`).
 - `label` (fn) — The mark as it is drawn, at the right of the row: `← u`, `← U`, the keys spelled from `keys` (`← next undo` when he left it unbound).
+- `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Graft` rows `Generation::CURRENT.title()` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
 - `RowKind` (enum) — `Graft` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup), `Replaced` (`└ ⇢ replaced`) / `Deleted` (`└ ⇢ deleted`), muted: a commit `u` brings back.
 - `JournalRowView` (struct) — `age`, `description`, `summary`, `mark`, `commands` (the Command Log, drawn while expanded), `failure` (the whole reason, same), `moved`, ADR-0062: the refs a fetch or a pull's fetch moved, one line each
 - `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
@@ -450,6 +451,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `WIDE_FROM` (const) — Below this many frame columns the box takes the frame's full width and rows drop their config id (§1.16).
 - `NOTHING_MATCHES` (const) — The one line drawn when the query keeps no row; the key that closes is spelled after it (`nothing matches · esc close`).
 - `PaletteMode` (enum) — Which way the palette was opened.
+- `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Graft` rows `Generation::CURRENT.title()` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
 - `RowKind` (enum) — What a row stands for: `Action`, `App`, `Branch`, `Tag`, `File`, `Commit`, `Recent` (drawn as an action row), `More` (a find group's muted `+N more` / `reading…` line).
 - `PaletteRow` (struct) — One row, worded.
 - `PaletteView` (struct) — Everything the box draws.

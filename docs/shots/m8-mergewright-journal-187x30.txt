@@ -1,0 +1,41 @@
+# J with the app's steps, the shell's and two lost commits (ADR-0057 §10, m8/52).
+#
+# What right looks like: at 187 columns each `●` row reads `●  Mergewright`
+# and each `$` row `$  outside`, the ages in one column after them; at 80
+# there is no source column and the rows start at the glyph. At both
+# widths the legend names Mergewright: `● done in Mergewright: u can undo
+# it · $ done outside Mergewright: …`, cut at a word at 80. The list's
+# last line ends `leaves no trace`, whole at 80. Colour is not in this
+# capture.
+
+=== 187x30 ===
+JOURNAL · what happened in this repo, newest first
+▸ ●  Mergewright    2m ago    fetch all remotes                            origin/main moved · not undoable
+  $  outside        5m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
+     └ ✗ lost       9a8b7c6 "Add rate limiter" · was main's tip · no branch holds it
+  $  outside        9m ago    switch from spike to main                          git: "checkout: moving from spike to main"
+     └ ✗ lost       4d5e6f7 "Try redis cache" · was spike's tip · spike is gone
+  ●  Mergewright    40m ago   switch from main to spike                    backup saved                                                                                                ← u
+  a branch deleted outside Mergewright and never checked out leaves no trace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back
+/ find  space command log  J/esc close  ? keys
