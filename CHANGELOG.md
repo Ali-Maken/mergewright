@@ -3,10 +3,17 @@
 Notable changes, per milestone. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-There are no version numbers yet: Graft is unreleased, and both the name and
-the versioning scheme are decided in M8.
+There are no released versions yet: Mergewright is unreleased. Entries below
+the first name the app by what it was called at the time.
 
 ## [Unreleased]
+
+### Unreleased: renamed to Mergewright (command `mwr`)
+
+The app, its command and its package are now Mergewright and `mwr`. On-disk
+names move on first launch, nothing lost: the config folder
+(`~/.config/mergewright/`), and in each repository `.git/mergewright/` and
+`refs/mergewright/` (ADR-0057).
 
 ### M5 — History and Ghost Preview
 

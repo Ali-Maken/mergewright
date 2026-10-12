@@ -1,0 +1,10 @@
+# m8 55: UI quotes in docs/design/** and DESIGN.md changed to what the app draws today (ADR-0057 §12).
+# file:line · old → new · the app's source string
+docs/design/01-view-mockups.md:386 · "outside Graft" → "outside Mergewright" · crates/graft-ui/src/journal_screen/legend.rs:28 `$ done outside {APP}` (APP = Generation::CURRENT.title() = Mergewright, :11)
+docs/design/01-view-mockups.md:465 · ` <app> · no repository here` → ` Mergewright · no repository here` · crates/graft-ui/src/empty_state/draw.rs:26 APP_NAME then :31 " · no repository here"; APP_NAME = CURRENT.title() (graph_screen/header.rs:20)
+docs/design/01-view-mockups.md:479 · `<app>` is the product name (… renamed in M8) → `Mergewright` is the product name (one constant, `APP_NAME` …) · same as :465 (prose describing the quoted line)
+# Kept, not quotes of what the app draws today:
+# docs/design/01-view-mockups.md:57,89,110,195,210,425 and 05-visualization.md:110 `◆ graft` header mock-ups: the app never names itself in a repository's header (graph_screen/header.rs:17-18, test :223); that slot draws the repo name today. Redrawing old mock-ups is out of scope.
+# docs/design/06-undo-journal-design.md:17-102 `graft/…`, `refs/graft/…`: design prose of the journal layout (codename, §12).
+# Every other `Graft` hit in docs/design/** and DESIGN.md is prose or a `# Graft: Design` title (codename, §12).
+# Count: 3 changed.

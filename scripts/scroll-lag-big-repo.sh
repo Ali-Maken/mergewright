@@ -3,8 +3,8 @@
 # j kept going after I let go"). Writes docs/perf/scroll-lag-big-repo.txt
 # (or $2). Lines a reader needs first start with SUMMARY.
 #
-#   $1  a COPY or clone of the repository (never the user's own: Tributary
-#       writes .git/tributary/ in what it opens). This debug used
+#   $1  a COPY or clone of the repository (never the user's own: Mergewright
+#       writes .git/mergewright/ in what it opens). This debug used
 #       `rsync -a` of his work repo into target/scroll-lag/, so the
 #       working tree, node_modules and reflogs match his.
 #
@@ -16,7 +16,7 @@
 # Part 2, a real pty: the release binary, `j` held at 30 Hz for 3 s
 # (scripts/scroll-lag-pty.py), the probe answered like VS Code/Zed (text)
 # or like Ghostty (kitty), at open (0.3 s) and settled (5 s). The reader
-# costs nothing, so `tail_ms` is Tributary's own backlog, before any terminal
+# costs nothing, so `tail_ms` is Mergewright's own backlog, before any terminal
 # parses a byte.
 #
 # Part 3, a model: the text profile read at a fixed rate, to show what the

@@ -212,7 +212,7 @@ REPO=$WORK/repo
 if [ -z "$FIXTURE" ]; then
   miss "no MONOREPO fixture under the target dir (step 1 builds it)"
 else
-  # Tributary writes .git/tributary/ in what it opens; the cache is sealed read-only.
+  # Mergewright writes .git/mergewright/ in what it opens; the cache is sealed read-only.
   rm -rf "$REPO" && cp -R "$FIXTURE" "$REPO" && chmod -R u+w "$REPO"
 fi
 BIN=$TARGET/release/mwr
@@ -235,7 +235,7 @@ judge_pty() { # line judged(1/0)
   fi
   [ -n "$fa" ] && [ "$fa" -le 2 ] || miss "pty $label frames_after_release=$fa > 2"
   [ -n "$tail" ] && [ "$tail" -le 100 ] || miss "pty $label tail_ms=$tail > 100"
-  [ -n "$rss" ] && [ "$rss" -le 300 ] || miss "pty $label rss_mb=$rss > 300 (Tributary process)"
+  [ -n "$rss" ] && [ "$rss" -le 300 ] || miss "pty $label rss_mb=$rss > 300 (Mergewright process)"
   case $label in kitty-yes-*)
     [ "$deflate" = yes ] || miss "pty $label observed deflate=$deflate, judged run must send o=z"
     [ -n "$bpk" ] && [ "$bpk" -le 524288 ] || miss "pty $label bytes_per_key=$bpk > 512 KiB" ;;

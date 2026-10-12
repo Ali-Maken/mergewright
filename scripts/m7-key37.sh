@@ -12,7 +12,7 @@
 # parts that add up to its latency:
 #   late       the loop still drawing the previous wake past the key's due tick
 #   oversleep  the harness's recv_timeout waking after the due tick
-#   frames     Tributary's update + draw, summed over the key's wakes
+#   frames     Mergewright's update + draw, summed over the key's wakes
 #   worker     the waits between those wakes (the row worker's answer)
 #
 # Writes docs/perf/m7-12g-key-37.txt (or $1, relative to the repo root); a
@@ -34,7 +34,7 @@ M1=${M1:-b5380399}
 # (30b, 30d, 30c part a, 35c), and there the first key to ask for rows is 75.
 TMP=${TMPDIR:-/tmp}
 TMP=${TMP%/}
-WT=$TMP/trib-12g-wt
+WT=$TMP/mwr-12g-wt
 # Target inside this checkout's gitignored target/, never the shared one.
 export CARGO_TARGET_DIR=${KEY37_TARGET:-$ROOT/target/m7-key37}
 TEST=frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier
@@ -191,7 +191,7 @@ print(f"{S} H1 harness slack (late + oversleep before key 37): plain quiet {spre
 print(f"{S} H2 spinner: key 37 latency spin quiet {spread(lat(qs))} vs plain quiet {spread(lat(qp))}; "
       f"frames spin {spread([int(r['key']['frames_us']) for r in qs])} vs plain {spread([int(r['key']['frames_us']) for r in qp])}; "
       f"worker spin {spread([int(r['key']['worker_wait_us']) for r in qs])} vs plain {spread([int(r['key']['worker_wait_us']) for r in qp])}")
-print(f"{S} H3 Tributary's frames (update+draw summed) and worker waits, per run: "
+print(f"{S} H3 Mergewright's frames (update+draw summed) and worker waits, per run: "
       + " ".join(f"r{r['n']}{tag(r)}:{r['mode']}:frames={ms(r['key']['frames_us'])},worker={ms(r['key']['worker_wait_us'])},wakes={r['key']['wakes']}" for r in runs if r["key"])
       + "; all keys' own frame p50/max per run "
       + " ".join(f"r{r['n']}={ms(r['keys']['own_frame_us_p50'])}/{ms(r['keys']['own_frame_us_max'])}" for r in runs if "keys" in r))

@@ -15,7 +15,7 @@
 # `--filter=tree:0` asks the server for commits and nothing else. Trees and
 # blobs arrive only if something asks for them, which for reading history is
 # never. That turns a ~250 MB clone into a small fraction of it, and it is
-# also the honest shape to test against: Tributary reads history, so a history-only
+# also the honest shape to test against: Mergewright reads history, so a history-only
 # clone is the working set.
 #
 # Usage:
@@ -56,6 +56,12 @@ if [ -z "${MWR_GIT_GIT_DIR:-}" ] && [ ! -e "$CACHE" ] && [ -d "$OLD_CACHE" ]; th
 	printf 'moving %s to %s\n' "$OLD_CACHE" "$CACHE"
 	mkdir -p "$(dirname "$CACHE")"
 	mv "$OLD_CACHE" "$CACHE"
+	old_parent="$(dirname "$OLD_CACHE")"
+	if [ -z "$(ls -A "$old_parent")" ]; then
+		rmdir "$old_parent"
+	fi
+elif [ -z "${MWR_GIT_GIT_DIR:-}" ] && [ -d "$OLD_CACHE" ]; then
+	printf 'left %s: %s already exists; remove it with rm -rf %s\n' "$OLD_CACHE" "$CACHE" "$OLD_CACHE"
 fi
 
 if [ -d "$CACHE" ]; then

@@ -1,8 +1,7 @@
-# Tributary
+# Mergewright
 
-> **"Tributary" (command `trib`) is a placeholder name, not the final one.**
-> The final name is still to be discussed; nothing is published, registered
-> or tagged under this one.
+> **Mergewright, command `mwr`.** Nothing is published, registered or tagged
+> under the name until the trademark search is done (ADR-0057).
 
 A terminal Git client for the daily work: read history as a graph, stage,
 commit, branch, merge, rebase, stash, fetch, pull and push, all from the
@@ -54,11 +53,11 @@ place, every config key, the environment and the files Mergewright writes.
 ## First run
 
 ```sh
-trib               # the repository the current directory is in
-trib ../api        # or any other
+mwr                # the repository the current directory is in
+mwr ../api         # or any other
 ```
 
-- Outside a repository, Tributary shows where you can go: a recent repository,
+- Outside a repository, `mwr ⏎` shows where you can go: a recent repository,
   open, init, clone, or `t` for a practice tour in a throwaway repository.
 - `?` shows the keys for the place you are in.
 - `⌃P` opens the command palette: every action, found by name.
@@ -67,7 +66,7 @@ trib ../api        # or any other
 
 ## Command line
 
-`trib --help` prints it:
+`mwr --help` prints it:
 
 ```text
 usage: mwr [<path>]
@@ -105,12 +104,17 @@ any of them by the name in the last column.
 
 ## Configuration
 
-`$XDG_CONFIG_HOME/tributary/config.toml`, or `$HOME/.config/tributary/config.toml`
-(an old `graft/` folder there is moved on first launch).
+`$XDG_CONFIG_HOME/mergewright/config.toml`, or `$HOME/.config/mergewright/config.toml`
+(an old `graft/` or old `tributary/` folder there is moved on first launch).
 No file is the normal case, and every key is optional. An unknown key is a
 warning, so a file written for a later version still starts this one; a value
-a key does not take stops Tributary with the line and column. Every key, its
+a key does not take stops Mergewright with the line and column. Every key, its
 values and its default are in the man page's CONFIGURATION section.
+
+In each repository it opens, Mergewright keeps its files in
+`.git/mergewright/` (the undo journal among them) and its own refs under
+`refs/mergewright/`. Files and refs under an earlier name move there on first
+launch; nothing is lost.
 
 ```toml
 [ui]

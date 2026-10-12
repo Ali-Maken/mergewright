@@ -61,7 +61,9 @@ pub const PRACTICE_MARKER: &str = ".practice";
 /// `<dir>-practice-`: a new practice root's name starts with this for
 /// [`Generation::CURRENT`] (`mergewright-practice-`), then `<pid>-<unix_ms>`
 /// ([`PracticeAt::Now`]) or `<first_unix_secs>` ([`PracticeAt::Fixed`]).
-/// Removal accepts every generation's, so older folders still clean up.
+/// Removal accepts every generation's prefix, so a rename never makes the
+/// guard refuse a root this build recorded. Nothing scans for older
+/// folders: one an earlier build left ages out of the temp dir.
 #[must_use]
 pub fn practice_prefix(generation: Generation) -> String {
     format!("{}-practice-", generation.dir())

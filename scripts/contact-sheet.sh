@@ -137,7 +137,7 @@ caption_for() {
 # case here when a new milestone's sheet is generated for the first time.
 case "$milestone" in
   m3) promise="you cannot lose work — every write is journaled with a backup and comes back byte for byte on u (TESTING.md \"Working tree, undo and stash\")." ;;
-  m4) promise="you never leave Tributary to fetch, pull or push — not for a password, a rejection or a hang (TESTING.md \"Remotes\")." ;;
+  m4) promise="you never leave Mergewright to fetch, pull or push — not for a password, a rejection or a hang (TESTING.md \"Remotes\")." ;;
   m5) promise="you see the result before you confirm — the ghost the preview draws is what git then does, and u takes it back (TESTING.md \"History\")." ;;
   m6) promise="a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md \"Conflicts walk\", \"Conflict journeys\")." ;;
   m7) promise="you can rewrite, trace and recover history without leaving the app — the three promise scenarios (Rewrite, Trace, Recover) run end to end with no shell step, and each of the 29 journeys is walked at or under the note's count (TESTING.md \"M7 acceptance\")." ;;

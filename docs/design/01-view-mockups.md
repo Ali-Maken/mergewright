@@ -383,7 +383,7 @@ the whole legend fits: at this mock's 130 cells it no longer does since the prod
 ```
 
 An expanded `●` row lists `commands Mergewright ran`, each drawn `┆ git …`; `$`
-means only "outside Graft".
+means only "outside Mergewright".
 
 ### 1.11 Stash list + diff
 
@@ -462,7 +462,7 @@ prompt or failing silently.
 ### 1.15 First-run / empty state (redrawn M8, ADR-0056, ADR-0058)
 
 ```
- <app> · no repository here
+ Mergewright · no repository here
  ~/code
 
   o  Open…     i  Init     c  Clone…     t  practice tour
@@ -476,8 +476,8 @@ prompt or failing silently.
  o open… · i init · c clone… · t practice tour · ⏎ open the selected · ? keys · q quit
 ```
 
-- Shown when Graft starts in, or is pointed at, a folder that is not inside a repository. `<app>` is the product
-  name (one constant; renamed in M8). The second line is the folder, `~`-abbreviated; a path that does not exist
+- Shown when Graft starts in, or is pointed at, a folder that is not inside a repository. `Mergewright` is the product
+  name (one constant, `APP_NAME`, read from the names table). The second line is the folder, `~`-abbreviated; a path that does not exist
   reads `~/foo · no such folder` there.
 - RECENT: newest first, the newest preselected, so "open what I had yesterday" is `⏎`. Name bold, path muted, age
   muted. Empty list: the RECENT block is not drawn.

@@ -20,7 +20,7 @@
 # Since 04b the keys come from an input thread (`KeyFeed`) and a key's
 # latency starts at its send; `oversleep` is that thread's own wake, kept
 # visible but outside the latency. Control D (`machine:` lines) still
-# shows the OS timer slack with no Tributary code at all.
+# shows the OS timer slack with no Mergewright code at all.
 #
 # Failed runs (m7-power-tools/12d, review 04 Major 1): `SUMMARY runs:` counts
 # each run's exit; a spread verdict is FAIL(<run> failed) when a plain run

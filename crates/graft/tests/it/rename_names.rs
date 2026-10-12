@@ -308,12 +308,35 @@ fn the_word_test_reads_words_only() {
     assert_eq!(says_old_name("Mergewright · mwr"), None);
 }
 
-/// README.md and `scripts/**` name the command and the app, not the old
-/// name (27c); what may still say `graft`, and why, is in `rename_docs`.
+/// README.md, CHANGELOG.md's top entry and `scripts/**` name the command and
+/// the app, not an earlier generation's title or command (27c, m8 55); what
+/// may still say one, and why, is in `rename_docs`.
 #[test]
 fn user_docs_and_scripts_name_the_command() {
     let found = crate::rename_docs::old_name_lines();
-    assert!(found.is_empty(), "the old name:\n{}", found.join("\n"));
+    assert!(found.is_empty(), "an old name:\n{}", found.join("\n"));
+}
+
+/// The gallery looks for git/git where `scripts/clone-git-git.sh` puts it
+/// (review m8-mergewright-51, Major 1): same `HOME`, no overrides, same path.
+#[test]
+fn gallery_git_git_default_is_the_scripts_path() {
+    let home = tempfile::tempdir().expect("a temp home");
+    let root = crates_dir().parent().expect("repo root").to_path_buf();
+    let out = std::process::Command::new("bash")
+        .arg(root.join("scripts/clone-git-git.sh"))
+        .arg("--where")
+        .env_clear()
+        .env("HOME", home.path())
+        .env("PATH", std::env::var_os("PATH").expect("PATH"))
+        .output()
+        .expect("the script runs");
+    assert!(out.status.success(), "{out:?}");
+    let script = String::from_utf8(out.stdout).expect("utf-8");
+    let roots = crate::gallery::roots_with(&root, |key| {
+        (key == "HOME").then(|| home.path().as_os_str().to_owned())
+    });
+    assert_eq!(roots.git_git, PathBuf::from(script.trim_end()));
 }
 
 mod scripts;

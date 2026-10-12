@@ -7,7 +7,7 @@ macOS key repeat sends it. Reads the pty on its own thread and stamps every
 read.
 
 Env:
-  PROFILE=text   answer Tributary's probe like a terminal without Kitty graphics
+  PROFILE=text   answer Mergewright's probe like a terminal without Kitty graphics
                  (VS Code, Zed): Unicode tier.
   PROFILE=kitty  answer like Ghostty, Kitty graphics yes, the user's 17x37
                  cell (ADR-0012): Pixel tier.
@@ -18,12 +18,12 @@ Env:
   (unset)        no answers; the probe times out; Unicode (COLORTERM=truecolor).
   DEFLATE=yes|no (PROFILE=kitty only, m7-power-tools/47) answer the `o=z`
                  probe (i=32) `OK` or with an error. Unset: no answer, the
-                 probe times out (this debug's original behaviour). What Tributary
+                 probe times out (this debug's original behaviour). What Mergewright
                  then *sent* is printed as `deflate=`, observed from the
                  uploads' APC headers, never taken from this answer.
   RATE=<bytes/s> read no faster than this: a terminal that parses and paints
                  at that rate. Unset: read as fast as the pty gives (a reader
-                 that costs nothing; tail_ms is then Tributary's own backlog).
+                 that costs nothing; tail_ms is then Mergewright's own backlog).
   THEN_J=<seconds> (47) after the hold, wait this long and send `J` (journey
                  2). Adds `j_ms` (J sent -> first frame begun after it) and
                  `frames_before_J` (frames begun after the last `j`, before `J`).
@@ -39,7 +39,7 @@ read while held and after release (after the last `j`; with THEN_J, frames
 stop at the first frame begun after `J`, which `j_ms` judges, as in
 `held_key`'s scenario B), and `tail_ms`: last key sent (`J` when sent) -> last
 byte read. The user's symptom is a large tail_ms: "i stopped pressing and it kept
-going". `rss_mb` is the Tributary process's own resident set (`ps -o rss` on its
+going". `rss_mb` is the Mergewright process's own resident set (`ps -o rss` on its
 pid at the end). PROFILE=kitty adds `transmits` (image uploads, first chunks),
 `deflated` (of those, carrying `o=z`) and `deflate=yes|no|none` (some upload
 deflated / uploads, none deflated / no upload).
@@ -64,7 +64,7 @@ from mwr_sandbox import sandbox_env  # noqa: E402
 BEGIN = b"\x1b[?2026h"
 QUIET = 1.5
 
-# Replies to Tributary's probe (crates/graft-term/src/detect/probe.rs:20-30).
+# Replies to Mergewright's probe (crates/graft-term/src/detect/probe.rs:20-30).
 REPLIES = [
     (b"\x1b_Gi=31,", b"\x1b_Gi=31;OK\x1b\\", "kitty"),
     (b"\x1b_Gi=32,", b"\x1b_Gi=32;OK\x1b\\", "deflate-yes"),
@@ -111,7 +111,7 @@ def main():
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
 
     reads = []  # (time, bytes)
-    # Why a run ended early, if it did: Tributary exited, the reader died, or the
+    # Why a run ended early, if it did: Mergewright exited, the reader died, or the
     # pty would not take a key. Printed as `broken=`; a broken run is not a
     # measurement (47: a dead reader once left a write blocked for 16 min).
     broken = []
@@ -197,7 +197,7 @@ def main():
             j_sent = time.monotonic()
     last_key = j_sent or last_j
 
-    # Wait until Tributary has been quiet for QUIET seconds (cap 120 s).
+    # Wait until Mergewright has been quiet for QUIET seconds (cap 120 s).
     while time.monotonic() - last_key < 120:
         time.sleep(0.1)
         last_read = reads[-1][0] if reads else 0
@@ -208,7 +208,7 @@ def main():
     ).stdout.strip()
     if os.environ.get("MEM_OUT"):
         # 47 debugger: where the resident set sits (malloc zones, allocated vs
-        # fragmented), read before Tributary is killed. Never committed.
+        # fragmented), read before Mergewright is killed. Never committed.
         with open(os.environ["MEM_OUT"], "w") as out:
             subprocess.run(["vmmap", "--summary", str(pid)], stdout=out, stderr=out)
     quit_at = time.monotonic()
