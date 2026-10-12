@@ -1,4 +1,4 @@
-"""m8/22b: check-sandbox.py must fail a planted script for every way it can launch Tributary.
+"""m8/22b: check-sandbox.py must fail a planted script for every way it can launch Mergewright.
 
 Writes each case to a temp file, runs `check-sandbox.py <file>` on it, and
 asserts: every BAD case exits 1 and names its line; every GOOD case exits 0.

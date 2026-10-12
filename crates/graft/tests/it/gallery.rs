@@ -662,19 +662,23 @@ pub fn listing(all: &[Entry]) -> String {
 /// Where the heavy repositories are looked for on this machine, following
 /// the fixture cache's and `scripts/clone-git-git.sh`'s own rules.
 pub fn roots(workspace: &Path) -> Roots {
-    let fixtures = std::env::var_os("MWR_FIXTURES_DIR")
+    roots_with(workspace, |key| std::env::var_os(key))
+}
+
+/// [`roots`] with the environment passed in, so a test can pin it.
+pub fn roots_with(workspace: &Path, var: impl Fn(&str) -> Option<std::ffi::OsString>) -> Roots {
+    let fixtures = var("MWR_FIXTURES_DIR")
         .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("CARGO_TARGET_DIR").map(|dir| PathBuf::from(dir).join("fixtures"))
-        })
+        .or_else(|| var("CARGO_TARGET_DIR").map(|dir| PathBuf::from(dir).join("fixtures")))
         .unwrap_or_else(|| workspace.join("target/fixtures"));
-    let git_git = std::env::var_os("MWR_GIT_GIT_DIR").map_or_else(
+    let git_git = var("MWR_GIT_GIT_DIR").map_or_else(
         || {
-            std::env::var_os("XDG_CACHE_HOME")
+            var("XDG_CACHE_HOME")
                 .map(PathBuf::from)
-                .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+                .or_else(|| var("HOME").map(|home| PathBuf::from(home).join(".cache")))
                 .unwrap_or_else(|| workspace.join(".cache"))
-                .join("graft/git-git.git")
+                .join(graft_core::on_disk::Generation::CURRENT.dir())
+                .join("git-git.git")
         },
         PathBuf::from,
     );

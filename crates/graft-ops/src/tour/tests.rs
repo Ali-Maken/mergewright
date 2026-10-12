@@ -292,10 +292,7 @@ fn building_under_a_read_only_folder_fails_and_makes_nothing() {
 #[test]
 fn a_build_that_fails_part_way_removes_its_folder() {
     let (_top, under) = scratch();
-    let root = fake_practice(
-        &under,
-        &format!("{}9-9", practice_prefix(Generation::CURRENT)),
-    );
+    let root = fake_practice(&under, &current_name("9-9"));
     let repo = claimed(&root, &under.canonicalize().unwrap());
 
     let answer = finish_or_clean(repo, |_| {
@@ -324,6 +321,11 @@ fn removing_a_built_repo_removes_its_folder_and_nothing_else() {
     assert_eq!(names(top.path()), BTreeSet::from(["under".to_owned()]));
 }
 
+/// A practice root name for this build: the current prefix, then `rest`.
+fn current_name(rest: &str) -> String {
+    format!("{}{rest}", practice_prefix(Generation::CURRENT))
+}
+
 /// The folder the tour header shows is named from the names table (51).
 #[test]
 fn a_new_practice_folder_takes_the_current_name() {
@@ -341,7 +343,7 @@ fn a_new_practice_folder_takes_the_current_name() {
     assert_eq!(practice_prefix(Generation::CURRENT), current);
 }
 
-/// A practice folder an earlier generation made is still cleaned up.
+/// The removal guard accepts a root named with an earlier generation's prefix.
 #[test]
 fn removal_accepts_every_earlier_generations_folder() {
     let (_top, under) = scratch();
@@ -375,10 +377,7 @@ fn removal_refuses_a_folder_without_the_marker() {
 #[test]
 fn removal_refuses_a_marker_that_is_a_link() {
     let (top, under) = scratch();
-    let root = fake_practice(
-        &under,
-        &format!("{}1-1", practice_prefix(Generation::CURRENT)),
-    );
+    let root = fake_practice(&under, &current_name("1-1"));
     std::fs::remove_file(root.join(PRACTICE_MARKER)).unwrap();
     let target = top.path().join("elsewhere-marker");
     std::fs::write(&target, "x").unwrap();
@@ -403,10 +402,7 @@ fn removal_refuses_a_root_that_is_a_link() {
     std::fs::write(his.join(PRACTICE_MARKER), "x").unwrap();
     std::fs::write(his.join("keep.txt"), "his file").unwrap();
     // …and a correctly named link to it inside `under`.
-    let link = under
-        .canonicalize()
-        .unwrap()
-        .join(format!("{}2-2", practice_prefix(Generation::CURRENT)));
+    let link = under.canonicalize().unwrap().join(current_name("2-2"));
     std::os::unix::fs::symlink(&his, &link).unwrap();
 
     let answer = remove_practice_repo(&claimed(&link, &under));
@@ -424,10 +420,7 @@ fn removal_refuses_a_root_outside_the_folder_it_was_made_in() {
     let (top, under) = scratch();
     let other = top.path().join("other");
     std::fs::create_dir(&other).unwrap();
-    let root = fake_practice(
-        &other,
-        &format!("{}3-3", practice_prefix(Generation::CURRENT)),
-    );
+    let root = fake_practice(&other, &current_name("3-3"));
 
     let answer = remove_practice_repo(&claimed(&root, &under));
 
@@ -455,10 +448,7 @@ fn removal_refuses_a_root_with_the_wrong_name() {
 #[test]
 fn removal_refuses_a_recorded_root_that_is_not_canonical() {
     let (_top, under) = scratch();
-    let root = fake_practice(
-        &under,
-        &format!("{}4-4", practice_prefix(Generation::CURRENT)),
-    );
+    let root = fake_practice(&under, &current_name("4-4"));
     let dotted = root.join("..").join(root.file_name().unwrap());
 
     let answer = remove_practice_repo(&claimed(&dotted, &under));

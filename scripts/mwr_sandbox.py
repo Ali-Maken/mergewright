@@ -1,14 +1,14 @@
-"""The environment every script launches Tributary with (m8/22, gap M8/pty-scripts-real-recents).
+"""The environment every script launches Mergewright with (m8/22, gap M8/pty-scripts-real-recents).
 
-Tributary writes `<config>/mergewright/recent` on every open, and reads `config.toml` from
-the same folder. A script that execs Tributary with the caller's environment edits
+Mergewright writes `<config>/mergewright/recent` on every open, and reads `config.toml` from
+the same folder. A script that execs Mergewright with the caller's environment edits
 the user's real `~/.config/mergewright/recent`. `sandbox_env` returns an environment
 whose `XDG_CONFIG_HOME` is a temporary folder, and refuses (raises) when the
 result would still point at the real config folder.
 
 `scripts/check-sandbox.py` (run by `scripts/check-scripts.sh`) fails any
 tracked Python script that launches a program (exec*, spawn*, subprocess,
-pty.spawn, os.system...) other than a known non-Tributary tool without an env
+pty.spawn, os.system...) other than a known non-Mergewright tool without an env
 from `sandbox_env`.
 """
 
@@ -17,7 +17,7 @@ import tempfile
 
 
 def real_config_home(environ=None):
-    """The config folder Tributary would use for this environment (XDG, else ~/.config)."""
+    """The config folder Mergewright would use for this environment (XDG, else ~/.config)."""
     environ = os.environ if environ is None else environ
     xdg = environ.get("XDG_CONFIG_HOME")
     if xdg:
@@ -29,7 +29,7 @@ def check_sandboxed(env):
     """Raise unless `env`'s config folder is a temp folder, not the user's real one."""
     xdg = env.get("XDG_CONFIG_HOME")
     if not xdg:
-        raise RuntimeError("mwr_sandbox: XDG_CONFIG_HOME unset; Tributary would write ~/.config/mergewright/recent")
+        raise RuntimeError("mwr_sandbox: XDG_CONFIG_HOME unset; Mergewright would write ~/.config/mergewright/recent")
     path = os.path.realpath(xdg)
     if path in (real_config_home(os.environ), os.path.realpath(os.path.join(os.path.expanduser("~"), ".config"))):
         raise RuntimeError(f"mwr_sandbox: {path} is the real config folder")

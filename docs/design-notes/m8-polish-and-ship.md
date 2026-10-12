@@ -224,8 +224,8 @@ first-launch                  0     # +0 · lazygit 1 · —
 start-tour                    3     # +0 · helix 2 · ⌃P tour ⏎
 start-tour-empty-state        1     # +0 · helix 2 · t
 leave-tour                    1     # +0 · zellij trapped · Esc
-open-recent-outside           2     # +0 · Sublime Merge 2+ · trib ⏎
-open-second-recent            3     # +0 · Sublime Merge 3 · trib j ⏎
+open-recent-outside           2     # +0 · Sublime Merge 2+ · mwr ⏎
+open-second-recent            3     # +0 · Sublime Merge 3 · mwr j ⏎
 init-here                     2     # +1 · Sublime Merge ~3 · i y
 clone                         3     # +1 · Sublime Merge ~4 · c <url> ⏎
 which-repo-branch             0     # +0 · VS Code 0 · —

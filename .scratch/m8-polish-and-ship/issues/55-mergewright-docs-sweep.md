@@ -1,6 +1,6 @@
 # Mergewright 7: README, TESTING.md, CHANGELOG, help docs and design-doc UI quotes say Mergewright and `mwr`
 
-Status: ready
+Status: done
 Blocked by: 52, 53
 Build with: **Sonnet**. Line triage by a written rule, held by a grep test and a listed remainder.
 Needs: `mergewright-git-messages-and-journal-column` and `mergewright-release-and-formula` merged (final words in the
@@ -46,16 +46,16 @@ from live words (regenerate, don't hand-edit). Out: as above; captures.
 None (docs and scripts). Test: `crates/graft/tests/it/rename_docs.rs`.
 
 ## Acceptance (each box: the test named at tick time)
-- [ ] `rename_names::user_docs_and_scripts_name_the_command` extended from the table: README.md, CHANGELOG.md's top
+- [x] (`rename_names::user_docs_and_scripts_name_the_command` + `rename_docs::the_word_finder_reads_words_only`, green) `rename_names::user_docs_and_scripts_name_the_command` extended from the table: README.md, CHANGELOG.md's top
       entry and `scripts/**` have no earlier generation's title or command outside the allow-list (crate names, `-p`
       already handled, `rename_docs`' reasons). Finder: `rename_docs::the_word_finder_reads_words_only` gains a
       `Tributary`/`trib` case.
-- [ ] TESTING.md remainder: `.scratch/m8-polish-and-ship/mwr-testing-kept.txt`, one line per kept match
+- [x] (grep of the old-name pattern over TESTING.md = the 4 lines in the file) TESTING.md remainder: `.scratch/m8-polish-and-ship/mwr-testing-kept.txt`, one line per kept match
       `line · class`; counts in NOTES; no kept line is an instruction (reviewer samples ≥10).
-- [ ] `mwr-design-quotes.txt` committed; count in NOTES. Each changed quote matches a string the app draws today
+- [x] (3 changed; each row names its source line) `mwr-design-quotes.txt` committed; count in NOTES. Each changed quote matches a string the app draws today
       (grep of the source string or a capture line, named per row).
-- [ ] `bash -n` / `ast.parse` over touched scripts: summary quoted.
-- [ ] `cli::docs_tests::readme_command_line_is_the_usage_of_flags` still green (README usage block).
+- [x] `bash -n` / `ast.parse` over touched scripts: summary quoted. `bash -n: 16 scripts, 0 fail; ast.parse: 5 scripts, 0 fail`; `check-sandbox: ok`; `check-sandbox-test: ok (18 bad, 7 good)`.
+- [x] (green in the workspace nextest run) `cli::docs_tests::readme_command_line_is_the_usage_of_flags` still green (README usage block).
 
 ## Touches
 - **Callers:** scripts that print words other scripts parse (grep `m8-accept.sh`, `m7-accept.sh` for the words they
@@ -88,3 +88,18 @@ One context, ~40k tokens.
   landed"; the rename has landed. The real gate is the trademark search (ADR-0057 §1) and the user's say. Reword the
   comment to name that gate. Do not arm, run or dispatch anything.
 - The release archive's README/CHANGELOG still say Tributary/Graft: sweep them here (57 re-runs `release-local.sh`).
+
+## NOTES (builder, 55)
+- No scout: a docs/scripts sweep plus review-named lines, read directly. No compaction.
+- TESTING.md: 63 lines changed; 4 kept (Times-I-left records :148-149; fixture author `Graft Fixture` :1237, :1342).
+- Journal rows :2999/3000/3005 now say `Mergewright` / `outside` (journal_screen/view.rs:75-76); captures
+  `docs/shots/m7/journal-*` still read Graft — for 56 to re-shoot (or keep as pre-M8 records, §12).
+- Design quotes: 3 changed. `◆ graft` header mock-ups kept: header never names the app (header.rs:17-18).
+- Fence comments :227-228 → `mwr`. CAPABILITIES.md not regenerated: built from hand-written per-milestone records.
+- Review 51: Major 1 fixed (`gallery::roots_with`, path from `Generation::CURRENT.dir()`; test
+  `rename_names::gallery_git_git_default_is_the_scripts_path`, red then green); m1-checkpoint.sh:78, TESTING.md:595,619.
+  Minor 1 helper `current_name` (893→883); Minor 2 comments reworded; Minor 3 both-exist message + rmdir of empty old
+  parent (bash -n only, not run); Minor 5 tour_walk prefix from the table. Minor 4 not done.
+- Ratchet raised: tour_walk.rs 929→934, it/gallery.rs 1298→1302 (test files).
+- release.yml comment names the trademark-search gate; nothing armed or run. README/CHANGELOG swept (release archive).
+- m3-snapshot-cost.sh backup identity now `mergewright` (on_disk.rs:115).

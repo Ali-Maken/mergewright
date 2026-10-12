@@ -208,7 +208,7 @@ fn his_repo(root: &Path) -> PathBuf {
     path
 }
 
-/// The `mergewright-practice-*` folders under `tmp`.
+/// The current generation's practice folders under `tmp`.
 fn practice_folders(tmp: &Path) -> Vec<String> {
     std::fs::read_dir(tmp)
         .expect("tmp readable")
@@ -219,8 +219,13 @@ fn practice_folders(tmp: &Path) -> Vec<String> {
                 .to_string_lossy()
                 .into_owned()
         })
-        .filter(|name| name.starts_with("mergewright-practice-"))
+        .filter(|name| name.starts_with(&current_prefix()))
         .collect()
+}
+
+/// The practice-folder prefix this build writes, from the names table.
+fn current_prefix() -> String {
+    graft_ops::tour::practice_prefix(graft_core::on_disk::Generation::CURRENT)
 }
 
 fn practice_folder_is_gone(tmp: &Path) {
@@ -272,7 +277,7 @@ fn with(done: &[usize]) -> [bool; 8] {
 
 /// The practice repository's work tree under `tmp`.
 fn work_under(tmp: &Path) -> PathBuf {
-    tmp.join(format!("mergewright-practice-{EPOCH}"))
+    tmp.join(format!("{}{EPOCH}", current_prefix()))
         .join("work")
 }
 

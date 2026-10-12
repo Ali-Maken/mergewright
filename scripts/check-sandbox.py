@@ -1,4 +1,4 @@
-"""m8/22, m8/22b: no script may launch Tributary against the user's real config folder.
+"""m8/22, m8/22b: no script may launch Mergewright against the user's real config folder.
 
 Usage: check-sandbox.py            every tracked *.py (git ls-files)
        check-sandbox.py FILE...    just those files (used by check-sandbox-test.py)
@@ -6,12 +6,12 @@ Usage: check-sandbox.py            every tracked *.py (git ls-files)
 1. Static (AST): every call that starts a program -- os.exec*, os.spawn*,
    os.posix_spawn*, os.system, os.popen, pty.spawn, subprocess.*,
    asyncio.create_subprocess_* -- must either
-   - start a known non-Tributary tool named by a literal (`git`, `ps`, ...) or
+   - start a known non-Mergewright tool named by a literal (`git`, `ps`, ...) or
      `sys.executable`, or
    - pass an env that is a `sandbox_env(...)` / `check_sandboxed(...)` call, or
      a name assigned from one in the same function, or
    - carry `# sandbox-ok: <reason>` on one of the call's lines (a program that
-     is not Tributary, or a Tributary binary that opens no repo; the reason says which).
+     is not Mergewright, or a Mergewright binary that opens no repo; the reason says which).
    Calls that inherit the caller's environment (execv, pty.spawn, os.system,
    subprocess without env=) can only pass the first or third way.
 2. The guard itself (whole-repo run only): `check_sandboxed` refuses an env
@@ -32,7 +32,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from mwr_sandbox import check_sandboxed, sandbox_env  # noqa: E402
 
-# Programs that are not Tributary and never open a Tributary config.
+# Programs that are not Mergewright and never open a Mergewright config.
 SAFE_PROGRAMS = {"git", "ps", "vmmap", "shellcheck", "python3", "python", "kill", "true"}
 SANCTIONED = {"sandbox_env", "check_sandboxed"}
 WAIVER = "# sandbox-ok:"
@@ -88,7 +88,7 @@ def qualified(func, names):
 
 
 def program_is_safe(expr):
-    """True when `expr` (the program argument) names a known non-Tributary tool."""
+    """True when `expr` (the program argument) names a known non-Mergewright tool."""
     while isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
         expr = expr.left  # `[prog, ...] + args`
     if isinstance(expr, (ast.List, ast.Tuple)) and expr.elts:
@@ -132,7 +132,7 @@ def scopes(tree):
 
 
 def violations(path, text):
-    """Each launch in `text` that could start Tributary with the caller's config."""
+    """Each launch in `text` that could start Mergewright with the caller's config."""
     try:
         tree = ast.parse(text, filename=path)
     except SyntaxError as err:

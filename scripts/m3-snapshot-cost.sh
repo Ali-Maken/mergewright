@@ -19,8 +19,8 @@ trap 'chmod -R u+w "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_SYSTEM=/dev/null
-export GIT_AUTHOR_NAME=tributary GIT_AUTHOR_EMAIL=tributary@backup
-export GIT_COMMITTER_NAME=tributary GIT_COMMITTER_EMAIL=tributary@backup
+export GIT_AUTHOR_NAME=mergewright GIT_AUTHOR_EMAIL=mergewright@backup
+export GIT_COMMITTER_NAME=mergewright GIT_COMMITTER_EMAIL=mergewright@backup
 
 REPO="$WORK/repo"
 SCRATCH="$WORK/scratch"

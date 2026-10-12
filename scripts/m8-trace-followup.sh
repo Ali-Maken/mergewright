@@ -24,7 +24,7 @@ BIN=$TARGET/release/mwr
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 REPO=$WORK/repo
-# Tributary writes .git/tributary/ in what it opens; fixtures are sealed read-only.
+# Mergewright writes .git/mergewright/ in what it opens; fixtures are sealed read-only.
 cp -R "$SRC" "$REPO" && chmod -R u+w "$REPO"
 TRACE=$WORK/trace.txt
 

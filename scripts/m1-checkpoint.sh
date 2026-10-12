@@ -14,7 +14,7 @@
 #   scripts/m1-checkpoint.sh octopus       # one merge, four parents
 #
 # Every scenario but `list` ends by handing control to `cargo run -p mergewright --`,
-# so `q` quits it the same way as any other Tributary session. `-p mergewright` is
+# so `q` quits it the same way as any other Mergewright session. `-p mergewright` is
 # required at the workspace root now that `graft-fixtures` also builds a
 # binary (its corpus-report `main.rs`) — bare `cargo run --` is ambiguous
 # there (KNOWN_GAPS.md, m1-the-graph/28).
@@ -43,7 +43,7 @@ require() {
 open_shape() {
 	# open_shape <fixture-shape-name> <what to look at, one line>
 	local shape=$1 look=$2
-	require cargo "builds and runs Tributary and the fixtures crate"
+	require cargo "builds and runs Mergewright and the fixtures crate"
 
 	printf 'building the fixture corpus (cargo run -p graft-fixtures)...\n' >&2
 	if ! cargo run --quiet -p graft-fixtures >&2; then
@@ -63,7 +63,7 @@ open_shape() {
 }
 
 open_git_git() {
-	require cargo "builds and runs Tributary"
+	require cargo "builds and runs Mergewright"
 	require git "clones and inspects git/git"
 
 	printf 'locating or cloning git/git (scripts/clone-git-git.sh)...\n' >&2
@@ -75,7 +75,7 @@ most likely no network reached github.com from this machine. This is a real
 prerequisite for the git-git checkpoint, not something to skip: PROMPT.md
 §7.2 names git/git as the human-proof corpus, so the checkpoint has nothing
 honest to show without it. Get network access (or a pre-existing clone at
-\$MWR_GIT_GIT_DIR / \${XDG_CACHE_HOME:-\$HOME/.cache}/tributary/git-git.git) and
+\$MWR_GIT_GIT_DIR / \${XDG_CACHE_HOME:-\$HOME/.cache}/mergewright/git-git.git) and
 run this again.
 MISSING
 		exit 1
