@@ -2,7 +2,7 @@
 source: crates/graft-ui/src/status_screen/tests.rs
 expression: "draw(&view, 60, 10)"
 ---
-"Tributary                                                   "
+"Mergewright                                                 "
 "                                                            "
 "Repository  /code/api                                       "
 "HEAD        detached at 4f1a9c02be77                        "

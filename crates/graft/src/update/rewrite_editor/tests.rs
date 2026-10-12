@@ -442,7 +442,7 @@ fn a_refused_open_shows_the_words_and_no_overlay() {
     assert_eq!(
         state.status,
         Status::sticky(
-            "feature-b and feature-c are both built on yours \u{b7} Tributary moves one line"
+            "feature-b and feature-c are both built on yours \u{b7} Mergewright moves one line"
         )
     );
     assert_eq!(state.graph_overlay(), None);

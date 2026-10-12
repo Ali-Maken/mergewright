@@ -581,7 +581,7 @@ fn stopped_on(fixture: &Fixture, theirs: &str) -> Result<(), String> {
 }
 
 /// [`conflicting`], merged in the shell: one file, one block, begun
-/// outside Tributary.
+/// outside Mergewright.
 pub fn one_conflict_in_the_shell(fixture: &Fixture) -> Result<(), String> {
     conflicting(fixture)?;
     merge_in_the_shell(fixture)

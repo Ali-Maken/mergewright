@@ -66,7 +66,7 @@ fn password_prompt() -> CredentialView<'static> {
             focused: true,
             secret: Some(false),
         },
-        note: sanitize_line("typed here only · never stored by Tributary"),
+        note: sanitize_line("typed here only · never stored by Mergewright"),
         footer: sanitize_line("⏎ send  ⌃U clear  esc cancel the push"),
     }
 }
@@ -84,7 +84,7 @@ fn username_prompt() -> CredentialView<'static> {
             focused: true,
             secret: None,
         },
-        note: sanitize_line("typed here only · never stored by Tributary"),
+        note: sanitize_line("typed here only · never stored by Mergewright"),
         footer: sanitize_line("⏎ send  ⌃U clear  esc cancel the push"),
     }
 }

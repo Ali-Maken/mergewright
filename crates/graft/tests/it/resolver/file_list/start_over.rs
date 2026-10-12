@@ -150,7 +150,7 @@ fn done_start_over_capture() {
     capture_cannot();
 }
 
-/// `shared.rs` done in Tributary's own merge: `d` offered.
+/// `shared.rs` done in Mergewright's own merge: `d` offered.
 fn capture_can() {
     let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
     let (app, state) = on_gone_card(&scratch);

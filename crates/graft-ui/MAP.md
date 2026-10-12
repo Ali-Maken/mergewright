@@ -162,7 +162,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `SearchLine` (enum) — `Prompt(text)`: the footer's ` /text_` while search is open.
 - `SearchTail` (struct) — `text`, `failed`: a running or finished search in the header's tail.
 - `CommitGraphLine` (enum) — `Offered { keys }`, …: the commit-graph offer's footer line.
-- `APP_NAME` (const, from `header.rs`) — the product's name where the app names itself.
+- `APP_NAME` (const, from `header.rs`) — the product's name where the app names itself: `Generation::CURRENT.title()` (`Mergewright`).
 - `HeaderView` (struct), `header_line`, `tail_room` (fns) — the header row's words; drawn at a width; cells left for the tail.
 - `BannerView` (struct, from `banner.rs`) — `kind`, `step`, `conflict`: the operation banner.
 - `RewriteBannerView` (struct), `BannerChain` (enum) — what a rewrite stop adds to the banner, and its chain words.

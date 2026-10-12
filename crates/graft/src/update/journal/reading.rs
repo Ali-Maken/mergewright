@@ -20,7 +20,7 @@ pub(crate) fn switched_from(subject: &str) -> Option<SwitchTarget> {
     })
 }
 
-/// The word J draws for a step Tributary doesn't undo, or `None` for one it
+/// The word J draws for a step Mergewright doesn't undo, or `None` for one it
 /// does. The predicate is `graft_ops::journal::undoable`, the one
 /// `plan_revert_to` skips by, so J's `⏎` and its bar cannot disagree with
 /// what the time machine would do.

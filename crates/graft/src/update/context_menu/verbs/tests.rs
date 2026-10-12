@@ -860,7 +860,7 @@ fn slot_two_dims_on_head_and_on_a_merge() {
         dim_of(oid(3), &[oid(2), oid(4)]),
         (
             "Cherry-pick (o)".to_owned(),
-            "a merge \u{b7} taking a merge isn't in Tributary yet".to_owned()
+            "a merge \u{b7} taking a merge isn't in Mergewright yet".to_owned()
         )
     );
     // Already on the branch wins over a merge (`check_commit`'s order).

@@ -47,7 +47,7 @@ pub fn taken(
                 // Something else wrote the file between the read and the
                 // take, so what is on screen is not what is on disk. The
                 // document is thrown away and read again rather than
-                // written over: an edit made outside Tributary is never
+                // written over: an edit made outside Mergewright is never
                 // silently undone (design note, hard choice 2).
                 let next = next_id();
                 if let Some(open) = state.resolver.as_mut() {

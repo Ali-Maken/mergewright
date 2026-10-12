@@ -281,7 +281,7 @@ impl StashScreen<'_> {
                 foreground(self.theme, Token::Warning),
             ),
             None => (
-                "  Tributary journals it, so u takes the stash back.".to_owned(),
+                "  Mergewright journals it, so u takes the stash back.".to_owned(),
                 foreground(self.theme, Token::TextMuted),
             ),
         };

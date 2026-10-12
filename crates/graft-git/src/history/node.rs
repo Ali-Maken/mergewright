@@ -306,7 +306,7 @@ pub(crate) fn node_from_graph(
 fn graph_id(graph: &gix::commitgraph::Graph, pos: gix::commitgraph::Position) -> Oid {
     match Oid::from_bytes(graph.id_at(pos).as_bytes()) {
         Ok(id) => id,
-        Err(error) => panic!("the commit-graph holds an id Tributary cannot: {error}"),
+        Err(error) => panic!("the commit-graph holds an id Mergewright cannot: {error}"),
     }
 }
 

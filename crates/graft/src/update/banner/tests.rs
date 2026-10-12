@@ -1532,12 +1532,12 @@ fn stop_reason_words() {
         (
             stop(LiveOrigin::OutsideGraft, false, InProgress::Merge, 1),
             Some((&merge, 1)),
-            "merge in progress · begun outside Tributary · 1 file conflicted",
+            "merge in progress · begun outside Mergewright · 1 file conflicted",
         ),
         (
             stop(LiveOrigin::OutsideGraft, false, InProgress::Rebase, 2),
             Some((&rebase, 2)),
-            "rebase in progress · begun outside Tributary · step 3 of 7 · 2 files conflicted",
+            "rebase in progress · begun outside Mergewright · step 3 of 7 · 2 files conflicted",
         ),
         // The read names another operation: the stop's own kind and count,
         // and no step.
@@ -1597,7 +1597,7 @@ fn stop_wordings_drop_whole_parts_lowest_value_first() {
             Some((&merge, 13)),
         ),
         [
-            "merge in progress · begun outside Tributary · 13 files conflicted",
+            "merge in progress · begun outside Mergewright · 13 files conflicted",
             "merge in progress · from the shell · 13 conflicted",
             "merge in progress · 13 conflicted",
             "merge in progress",

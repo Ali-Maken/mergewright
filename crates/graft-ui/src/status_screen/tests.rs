@@ -237,7 +237,7 @@ fn a_terminal_the_user_turned_the_colour_off_in() {
 fn notes_and_a_problem() {
     let mut view = healthy();
     view.notes = vec![
-        text("git 2.30.1 is older than the 2.38 Tributary needs"),
+        text("git 2.30.1 is older than the 2.38 Mergewright needs"),
         text("unknown config key `ui.colour`, ignored"),
     ];
     view.problem = Some(text("could not read HEAD: permission denied"));

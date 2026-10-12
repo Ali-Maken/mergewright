@@ -77,7 +77,7 @@ pub enum StatusError {
     /// [`parse_porcelain_v2`] cannot read: an unrecognised record kind, an
     /// `XY` letter that is not one of `.MADRCT`, a rename record with no
     /// following original-path record, or too few fields in a record.
-    #[error("git status printed something Tributary cannot parse: {0}")]
+    #[error("git status printed something Mergewright cannot parse: {0}")]
     Malformed(String),
     /// `git status` printed more than `OUTPUT_CAP` bytes, so what came back
     /// is a prefix of the real status. Parsing it would report a shorter,

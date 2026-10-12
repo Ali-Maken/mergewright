@@ -388,7 +388,7 @@ fn capture_rewrite_refused_fork() {
     crate::captures::check_shot("m7/rewrite-refused-fork-120x40.txt", &body);
     assert!(
         body.contains(
-            "feature-b and feature-c are both built on yours \u{b7} Tributary moves one line"
+            "feature-b and feature-c are both built on yours \u{b7} Mergewright moves one line"
         ),
         "{body}"
     );

@@ -518,7 +518,7 @@ fn request_drop(next: &mut AppState) -> bool {
                 "{name} holds {files}. Dropping it takes it off the list."
             )),
             sanitize_line(
-                "Tributary keeps a backup first, so `u` puts it back — but it comes back \
+                "Mergewright keeps a backup first, so `u` puts it back — but it comes back \
                  as stash@{0}, not where it was: git has no way to insert into the list.",
             ),
         ],

@@ -231,7 +231,7 @@ const INLINE: &[Inline] = &[
         },
         expected: |k| {
             format!(
-                "Tributary keeps a backup first, so `{}` can undo it afterwards.",
+                "Mergewright keeps a backup first, so `{}` can undo it afterwards.",
                 k("app.undo")
             )
         },

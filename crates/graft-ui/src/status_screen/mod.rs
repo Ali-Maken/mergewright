@@ -170,7 +170,7 @@ impl<'a> StatusScreen<'a> {
     fn lines(&self) -> Vec<Line<'static>> {
         let mut lines = vec![
             Line::from(Span::styled(
-                "Tributary",
+                crate::graph_screen::APP_NAME,
                 foreground(self.theme, Token::Accent),
             )),
             Line::default(),

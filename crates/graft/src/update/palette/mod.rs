@@ -401,4 +401,6 @@ pub(crate) fn bar() -> String {
 }
 
 #[cfg(test)]
+mod names_tests;
+#[cfg(test)]
 mod tests;

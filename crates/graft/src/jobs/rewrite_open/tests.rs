@@ -146,6 +146,6 @@ fn open_refuses_forked_dependents_in_words() {
         refusal.explain(&crate::update::op_keys::OpKeys(
             graft_ui::keymap::Keymap::shipped()
         )),
-        "feature-b and feature-c are both built on yours · Tributary moves one line"
+        "feature-b and feature-c are both built on yours · Mergewright moves one line"
     );
 }

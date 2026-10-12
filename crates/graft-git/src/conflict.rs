@@ -315,7 +315,7 @@ impl fmt::Display for ParseError {
             ParseErrorKind::MarkerSize => write!(
                 f,
                 "line {}: this file's conflict markers are longer than seven characters \
-                 (conflict-marker-size); Tributary cannot resolve it yet",
+                 (conflict-marker-size); Mergewright cannot resolve it yet",
                 self.line
             ),
         }

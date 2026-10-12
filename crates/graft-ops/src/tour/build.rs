@@ -72,7 +72,7 @@ pub fn build_practice_repo(under: &Path, at: PracticeAt) -> Result<PracticeRepo,
     write(
         &repo.root,
         PRACTICE_MARKER,
-        "Tributary practice tour. Safe to delete.\n",
+        "Mergewright practice tour. Safe to delete.\n",
     )?;
     let mut dates = Dates { next: first };
     finish_or_clean(repo, |repo| populate(repo, &mut dates))

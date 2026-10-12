@@ -3694,7 +3694,7 @@ fn the_credential_prompt_draws_over_everything_and_masks_what_is_typed() {
         "the typed password reached the screen: {screen}"
     );
     assert!(
-        screen.contains("typed here only") && screen.contains("never stored by Tributary"),
+        screen.contains("typed here only") && screen.contains("never stored by Mergewright"),
         "{screen}"
     );
     assert!(
