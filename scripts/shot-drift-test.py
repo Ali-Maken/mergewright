@@ -11,6 +11,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mwr_sandbox import sandbox_env  # noqa: E402
+
 SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shot-drift.py")
 OLD = {"a.txt": "title graft x\n", "b.txt": "Tributary  title\n", "c.txt": "$ trib --help\n", "d.txt": "row one\n"}
 NEW = {"a.txt": "title mwr x\n", "b.txt": "Mergewright  title\n", "c.txt": "$ mwr --help\n", "d.txt": "row two\n"}
@@ -25,18 +28,23 @@ def write_all(shots, files):
 
 def main():
     with tempfile.TemporaryDirectory() as repo:
+        # No global/system git config: a user's commit.gpgsign or hooks must
+        # not reach the throwaway repo (m8/56r).
+        config = os.path.join(repo, ".config")
+        os.makedirs(config)
+        env = sandbox_env(config_home=config, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
         git = ["git", "-C", repo, "-c", "user.name=t", "-c", "user.email=t@t"]
-        subprocess.run(git + ["init", "-q"], check=True)
+        subprocess.run(git + ["init", "-q"], check=True, env=env)
         shots = os.path.join(repo, "docs", "shots")
         os.makedirs(shots)
         write_all(shots, OLD)
-        subprocess.run(git + ["add", "."], check=True)
-        subprocess.run(git + ["commit", "-qm", "base"], check=True)
+        subprocess.run(git + ["add", "docs"], check=True, env=env)
+        subprocess.run(git + ["commit", "-qm", "base"], check=True, env=env)
         write_all(shots, NEW)
         out = os.path.join(repo, "drift.txt")
         got = subprocess.run(
             [sys.executable, SCRIPT, "--base", "HEAD", "--out", out],
-            cwd=repo, check=True, capture_output=True, text=True,
+            cwd=repo, env=env, check=True, capture_output=True, text=True,
         ).stdout.strip()
     if got != WANT:
         print(f"shot-drift-test: FAIL want {WANT!r} got {got!r}")
