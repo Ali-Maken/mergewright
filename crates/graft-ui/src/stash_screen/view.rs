@@ -67,6 +67,10 @@ pub struct StashView<'a> {
     /// key: the list's bar row is left blank, as the graph's is under a
     /// preview (review 86, M2).
     pub box_open: bool,
+    /// A write is running and `Esc` stops it before the list sees the key
+    /// (graft's `update::remote::esc_stops_write`): the bar reads `esc
+    /// cancels` … `S close`, never `S/esc close` (m8/59 Major A).
+    pub esc_cancels: bool,
 }
 
 /// The overlay itself. Carries the theme like every other screen; the

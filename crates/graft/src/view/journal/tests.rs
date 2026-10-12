@@ -341,6 +341,69 @@ fn an_aborted_entry_reads_aborted_by_you() {
     assert!(!summary.contains("failed"), "{summary}");
 }
 
+/// m8/59 Major A: J's bar is told `Esc` stops the running write exactly
+/// when `cancel_operating` would take the key — a write runs and no text
+/// field, confirm box or menu has it first.
+#[test]
+fn j_is_told_esc_cancels_exactly_when_a_write_would_take_it() {
+    let mut state = state_with(vec![entry(1, OperationKind::Push, "push main to origin")]);
+    assert!(!journal_view(&state, 10).esc_cancels, "no write runs");
+
+    state.operating = Some(graft_core::job::JobId::new(1));
+    assert!(journal_view(&state, 10).esc_cancels, "a write runs");
+    let mut commands = Vec::new();
+    let mut probe = state.clone();
+    assert!(
+        crate::update::remote::cancel_operating(&mut probe, &mut commands),
+        "and Esc does go to it"
+    );
+
+    // J's own `/` field keeps its `Esc`: the bar is not told otherwise.
+    state.journal.shown = true;
+    state.journal.find.typing = Some(String::new());
+    assert!(
+        !journal_view(&state, 10).esc_cancels,
+        "a text field has Esc"
+    );
+}
+
+/// m8/59 m3: a write he stopped with `Esc` (`Aborted("cancelled")`) is his
+/// choice, not a failure — on the row and in its expanded reason, for a
+/// push and for an undo alike. A cancel whose roll-back failed still is one.
+#[test]
+fn a_cancelled_entry_reads_cancelled_by_you() {
+    let cancelled = |kind, words: &str| {
+        let mut entry = entry(2, kind, words);
+        entry.status = EntryStatus::Aborted {
+            reason: "cancelled".to_owned(),
+        };
+        entry
+    };
+    for kind in [OperationKind::Push, OperationKind::Undo] {
+        let state = state_with(vec![cancelled(kind, "push main to origin")]);
+        let view = journal_view(&state, 10);
+        let row = &view.rows[0];
+        assert!(
+            row.summary.as_str().starts_with("cancelled by you"),
+            "{kind:?}: {:?}",
+            row.summary
+        );
+        let failure = row.failure.as_ref().map(|why| why.as_str().to_owned());
+        assert_eq!(failure.as_deref(), Some("cancelled by you"), "{kind:?}");
+    }
+
+    let mut torn = entry(2, OperationKind::Undo, "undo: reset");
+    torn.status = EntryStatus::Aborted {
+        reason: "cancelled — rollback failed: index".to_owned(),
+    };
+    let view = journal_view(&state_with(vec![torn]), 10);
+    assert!(
+        view.rows[0].summary.as_str().starts_with("failed: "),
+        "{:?}",
+        view.rows[0].summary
+    );
+}
+
 /// The 21b-3 probe's reason: the second remote is not there.
 const GONE: &str = "no repository at '/nonexistent/gone.git', or no access to it";
 

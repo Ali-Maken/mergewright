@@ -443,6 +443,42 @@ fn a_graft_switch_is_one_graft_row() {
     );
 }
 
+/// m8/59 Major B: `u` and then `U` on a Graft switch move `HEAD` back and
+/// forth; each move is the undo's or the redo's own `●` row. Before the fix
+/// the restore's `symbolic-ref` wrote an empty reflog subject that no entry
+/// claimed, drawn as a blank `$` row ("outside", `git: ""`).
+#[test]
+fn undo_and_redo_of_a_switch_leave_no_outside_row() {
+    let repo = a_to_d();
+    git_at(&repo, SHELL + 10, &["branch", "spike", "HEAD~1"]);
+    let op = Operation::Checkout(graft_ops::operation::CheckoutParams {
+        to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/spike".to_owned()),
+        head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
+    });
+    let at = now_ms();
+    run(&repo, &op, at);
+    crate::support::run_undo(&repo, at + 1_000, false).expect("the switch undoes");
+    crate::support::run_redo(&repo, at + 2_000, false).expect("the undo redoes");
+
+    let list = the_list(&repo);
+    let shown = lines(&list, &entries(&repo));
+
+    assert!(
+        shown.iter().all(|line| line.trim() != "$"),
+        "a blank outside row: {shown:#?}"
+    );
+    assert!(
+        shown.iter().all(|line| !line.contains("switch from")),
+        "an undo's or redo's HEAD move drawn as the shell's: {shown:#?}"
+    );
+    assert_eq!(
+        &shown[..3],
+        &["● Redo", "● Undo", "● Checkout"].map(str::to_owned)[..],
+        "{shown:#?}"
+    );
+}
+
 /// `<ref>`'s log, newest first, one subject per line: what the m7/38 NOTES
 /// quote.
 fn log_of(repo: &TempRepo, refname: &str) -> Vec<String> {

@@ -17,14 +17,22 @@ use crate::update::state::{AppState, RefsRead, Status};
 /// confirm box or the menu is open — their `Esc` is their own. A second
 /// `Esc` while the first is being honoured does nothing more.
 pub fn cancel_operating(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
-    if state.operating.is_none()
-        || state.text_field_open()
-        || state.confirm.is_some()
-        || state.context_menu.is_some()
-    {
+    if !esc_stops_write(state) {
         return false;
     }
     stop_write(state, commands)
+}
+
+/// Whether `Esc` now goes to the running write ([`cancel_operating`])
+/// before any overlay sees it. The overlays' bars ask this too, so a bar
+/// never offers `esc close` while `Esc` would stop the write instead
+/// (m8/59 Major A): one predicate, so the key and its words can't drift.
+#[must_use]
+pub fn esc_stops_write(state: &AppState) -> bool {
+    state.operating.is_some()
+        && !state.text_field_open()
+        && state.confirm.is_none()
+        && state.context_menu.is_none()
 }
 
 /// Ask the running write to stop, and say so — [`cancel_operating`]'s

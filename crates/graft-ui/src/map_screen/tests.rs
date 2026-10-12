@@ -66,6 +66,7 @@ fn sample_view(ascii: bool) -> MapView {
         complete: true,
         status: MapStatus::Ready,
         ascii,
+        esc_cancels: false,
     }
 }
 
@@ -158,6 +159,36 @@ fn the_map_footer_spells_his_keys() {
         &keys,
         &[&["app.back"]],
     );
+}
+
+/// m8/59 Major A, the Map too: while a write runs `Esc` stops it before the
+/// Map sees the key — its own build's `esc cancels` included — so the
+/// footer reads `esc cancels` … `M back`, never `M/esc back`.
+#[test]
+fn while_a_write_runs_the_map_footer_says_esc_cancels_it() {
+    let keys = crate::keymap::Keymap::shipped();
+    let footer = |view: &MapView| {
+        draw_with(view, 120, 24, keys)
+            .lines()
+            .last()
+            .unwrap_or_default()
+            // `draw_with` quotes each row.
+            .trim_matches('"')
+            .trim()
+            .to_owned()
+    };
+    let mut view = sample_view(false);
+    view.esc_cancels = true;
+    for status in [MapStatus::Ready, MapStatus::Loading { done: 2, total: 5 }] {
+        view.status = status.clone();
+        let bar = footer(&view);
+        assert!(bar.starts_with("esc cancels"), "{status:?}: {bar}");
+        assert!(bar.contains("M back"), "{status:?}: {bar}");
+        assert!(!bar.contains("M/esc"), "{status:?}: {bar}");
+    }
+    view.esc_cancels = false;
+    view.status = MapStatus::Ready;
+    assert!(footer(&view).contains("M/esc back"), "{}", footer(&view));
 }
 
 #[test]

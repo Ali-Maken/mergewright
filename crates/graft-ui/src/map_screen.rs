@@ -112,6 +112,10 @@ pub struct MapView {
     ///
     /// [`GraphView::ascii`]: crate::graph_screen::GraphView::ascii
     pub ascii: bool,
+    /// A write is running and `Esc` stops it before the Map sees the key
+    /// (graft's `update::remote::esc_stops_write`): the footer reads `esc
+    /// cancels` … `M back`, never `M/esc back` (m8/59 Major A).
+    pub esc_cancels: bool,
 }
 
 /// The Map view, ready to render.

@@ -468,7 +468,7 @@ const DEFAULTS: &[Binding] = &[
         "journal.revert",
         Journal,
         &[ENTER],
-        "Revert / put back (preview)",
+        "Undo / redo this row, else put back to before it (preview)",
     ),
     b(
         "journal.branch",

@@ -12,7 +12,7 @@ use ratatui::widgets::Widget;
 
 use super::{MapMarkView, MapRowView, MapScreen, MapStatus};
 use crate::fit::fit;
-use crate::graph_screen::hints::{fit_place_footer, place_footer_text};
+use crate::graph_screen::hints::{fit_place_footer, place_close, place_footer_text};
 use crate::keymap::ActionId;
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};

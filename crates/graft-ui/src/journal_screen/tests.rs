@@ -91,6 +91,7 @@ fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
         box_open: false,
         find: None,
         find_prompt: None,
+        esc_cancels: false,
     }
 }
 
@@ -706,3 +707,25 @@ fn footer_cases() -> Vec<(&'static str, JournalView, Vec<&'static str>)> {
 
 mod replaced;
 mod source_column;
+
+/// m8/59 Major A: while a write runs, `Esc` stops it before J sees the key
+/// (graft's `update/keys.rs`, design note choice 4). The bar must say so:
+/// `J close` and `esc cancels`, never `J/esc close` — on a ready list and
+/// while the read is out alike.
+#[test]
+fn while_a_write_runs_the_bar_says_esc_cancels_it() {
+    let keys = Keymap::shipped();
+    for status in [JournalStatus::Ready, JournalStatus::Loading] {
+        let mut view = view(mock_rows(), status.clone());
+        view.esc_cancels = true;
+        let bar = footer_row(&view, 120, keys);
+        assert!(bar.contains("J close"), "{status:?}: {bar}");
+        assert!(bar.contains("esc cancels"), "{status:?}: {bar}");
+        assert!(!bar.contains("J/esc"), "{status:?}: {bar}");
+
+        view.esc_cancels = false;
+        let bar = footer_row(&view, 120, keys);
+        assert!(bar.contains("J/esc close"), "{status:?}: {bar}");
+        assert!(!bar.contains("cancels"), "{status:?}: {bar}");
+    }
+}

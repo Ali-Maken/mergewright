@@ -17,7 +17,7 @@ mod stop;
 use place_footer::PlaceFooter;
 #[cfg(test)]
 pub(crate) use place_footer::shed_footer;
-pub(crate) use place_footer::{fit_place_footer, place_footer_text};
+pub(crate) use place_footer::{fit_place_footer, place_close, place_footer_text};
 pub use stop::{StopWording, fit_status_line, stopped_row, stopped_row_before_keys};
 
 /// One rung's worth of bar: one hint placed at a rung — added at its bare

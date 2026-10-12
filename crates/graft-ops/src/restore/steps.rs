@@ -121,27 +121,55 @@ fn update_ref(
 }
 
 /// Put `HEAD` back where it pointed.
+///
+/// The move is logged with the subject `git checkout` writes, `checkout:
+/// moving from <from> to <to>`: it is a switch, so the journal's list claims
+/// it for this undo or redo exactly as it claims a switch's
+/// (`journal_list::owners`), and the shell's `git checkout -` / `@{-1}` see
+/// it. With no `-m`, git logged an empty subject that nothing claimed, drawn
+/// in J as a blank outside row (m8/59 Major B).
 fn set_head(
     ctx: &mut Context<'_>,
     head: &HeadRef,
     commands: &mut Vec<String>,
 ) -> Result<(), RestoreError> {
+    let from = crate::facts::head_ref(ctx.repo).map_err(RestoreError::Facts)?;
+    let message = format!(
+        "checkout: moving from {} to {}",
+        checkout_name(&from),
+        checkout_name(head)
+    );
     let args = match head {
         // An unborn branch is the same command as a born one: the branch ref
         // itself is put back (or left deleted) by its own `UpdateRef`.
         HeadRef::Branch(name) | HeadRef::Unborn(name) => vec![
             GitArg::Flag("symbolic-ref"),
+            GitArg::Flag("-m"),
+            GitArg::Word(message),
             GitArg::Ref(b"HEAD".to_vec()),
             GitArg::Ref(name.as_bytes().to_vec()),
         ],
         HeadRef::Detached(id) => vec![
             GitArg::Flag("update-ref"),
             GitArg::Flag("--no-deref"),
+            GitArg::Flag("-m"),
+            GitArg::Word(message),
             GitArg::Ref(b"HEAD".to_vec()),
             GitArg::Oid(*id),
         ],
     };
     run(ctx, args, None, commands).map(|_output| ())
+}
+
+/// `HEAD` as a `checkout:` subject names it: a branch's short name, a
+/// detached `HEAD` as its full hex id (what `journal_list::owners` reads).
+fn checkout_name(head: &HeadRef) -> String {
+    match head {
+        HeadRef::Branch(full) | HeadRef::Unborn(full) => {
+            full.strip_prefix("refs/heads/").unwrap_or(full).to_owned()
+        }
+        HeadRef::Detached(id) => id.to_string(),
+    }
 }
 
 /// Put the scoped paths back the way the recorded index state holds them,

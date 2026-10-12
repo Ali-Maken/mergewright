@@ -87,6 +87,22 @@ fn man_page_names_the_config_folder_in_force() {
     assert!(page.starts_with(".TH MWR 1"));
 }
 
+/// The NAME line carries the product's name, so `man -k mergewright` and
+/// `apropos` find the command (usability walk m8, m7; pass-3 Need).
+#[test]
+fn man_page_name_line_names_the_product() {
+    let page = man_page(FLAGS, defaults(), CONFIG_KEYS);
+    let name = page
+        .lines()
+        .skip_while(|line| *line != ".SH NAME")
+        .nth(1)
+        .expect("a NAME line");
+    assert_eq!(
+        name,
+        "mwr \\- Mergewright, a terminal Git client for the daily work"
+    );
+}
+
 #[test]
 fn man_page_is_ascii_and_names_every_action_flag_and_key() {
     let page = man_page(FLAGS, defaults(), CONFIG_KEYS);

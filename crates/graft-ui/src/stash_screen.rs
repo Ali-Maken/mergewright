@@ -17,7 +17,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::detail::{FileListView, FileRowKind};
 use crate::fit::fit;
-use crate::graph_screen::hints::place_footer_text;
+use crate::graph_screen::hints::{place_close, place_footer_text};
 use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::text_input::{FieldView, FieldWidget};
@@ -124,8 +124,15 @@ impl StashScreen<'_> {
             );
         }
         let keys = self.keys;
-        // `S` and `esc` both close: one clause, both keys (`S/esc close`).
-        let close: &[&str] = &["stash.close", "app.back"];
+        // `S` and `esc` both close: one clause, both keys (`S/esc close`) —
+        // except while a write runs, when `esc` stops it and `S` alone
+        // closes (`esc cancels` … `S close`, m8/59 Major A).
+        let (cancels, close) = place_close(
+            keys,
+            ActionId("stash.close"),
+            "close",
+            self.view.esc_cancels,
+        );
         let parts: &[(&[&str], &str)] = match self.view.status {
             StashStatus::Ready => &[
                 (&["stash.apply"], "apply"),
@@ -136,18 +143,18 @@ impl StashScreen<'_> {
                 // Ready is the only status with one selected (m8/11e G1).
                 (&["stash.branch"], "branch"),
                 (&["stash.preview"], "files"),
-                (close, "close"),
             ],
             StashStatus::Loading | StashStatus::Empty | StashStatus::Failed(_) => {
-                &[(&["stash.save"], "save"), (close, "close")]
+                &[(&["stash.save"], "save")]
             }
         };
-        let clauses: Vec<String> = parts
-            .iter()
-            .filter_map(|(ids, verb)| {
+        let clauses: Vec<String> = cancels
+            .into_iter()
+            .chain(parts.iter().filter_map(|(ids, verb)| {
                 let ids: Vec<ActionId> = ids.iter().map(|id| ActionId(id)).collect();
                 keys.key_verb(&ids, verb)
-            })
+            }))
+            .chain(close)
             .collect();
         place_footer_text(&clauses, keys, usize::from(width))
     }

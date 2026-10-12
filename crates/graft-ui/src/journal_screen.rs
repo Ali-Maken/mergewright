@@ -17,7 +17,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
 use crate::fit::fit;
-use crate::graph_screen::hints::place_footer_text;
+use crate::graph_screen::hints::{place_close, place_footer_text};
 use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
@@ -248,13 +248,20 @@ impl JournalScreen<'_> {
     /// last; the doorway is the fitting rule's to add.
     fn footer_clauses(&self) -> Vec<String> {
         let keys = self.keys;
-        // `J` and `esc` both close: one hint, both keys (`J/esc close`).
-        let close = keys.key_verb(&[ActionId("journal.close"), ActionId("app.back")], "close");
+        // `J` and `esc` both close: one hint, both keys (`J/esc close`) —
+        // except while a write runs, when `esc` stops it and `J` alone
+        // closes (`esc cancels` … `J close`, m8/59 Major A).
+        let (cancels, close) = place_close(
+            keys,
+            ActionId("journal.close"),
+            "close",
+            self.view.esc_cancels,
+        );
         let JournalStatus::Ready = self.view.status else {
-            return close.into_iter().collect();
+            return cancels.into_iter().chain(close).collect();
         };
         let row = self.view.rows.get(self.view.selected);
-        let mut parts: Vec<String> = Vec::new();
+        let mut parts: Vec<String> = cancels.into_iter().collect();
         if let Some(enter) = &self.view.enter_words {
             parts.extend(keys.key_verb(&[ActionId("journal.revert")], enter));
         }
