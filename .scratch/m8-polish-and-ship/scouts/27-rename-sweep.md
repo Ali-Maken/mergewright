@@ -1,7 +1,7 @@
 # Scout 27 — rename names sweep (HEAD 8076b8d3)
 
 ## Binary / app name
-- No `[[bin]]` in `crates/graft/Cargo.toml`; binary name comes from package `name = "graft"` (:2). Only `[[bin]]` in the workspace is `graft-capabilities/Cargo.toml:22` (gen-capabilities). Adding `[[bin]] name="trib"` turns `CARGO_BIN_EXE_graft` into `CARGO_BIN_EXE_mwr`: **18 uses in 15 files**.
+- No `[[bin]]` in `crates/graft/Cargo.toml`; binary name comes from package `name = "graft"` (:2). Only `[[bin]]` in the workspace is `graft-capabilities/Cargo.toml:22` (gen-capabilities). Adding `[[bin]] name="trib"` turns `CARGO_BIN_EXE_graft` into `CARGO_BIN_EXE_trib`: **18 uses in 15 files**.
 - `APP_NAME = "graft"` at `graft-ui/src/graph_screen/header.rs:20`; used `empty_state/draw.rs:15,26`; test `header.rs:223`.
 - Usage string `cli/flags.rs:123` (`usage: graft [<path>]`). `repository = ".../graft"` `crates/graft/Cargo.toml:12`; `include = ["../../docs/man/graft.1"]` :123.
 - Man page: `cli/man.rs` :20 (`.TH GRAFT`), :22, :45, :53, :60, :65, :71, :90, :97, :101–105, :109, :111, :126, :199–200; env names :85, :89. Committed `docs/man/graft.1`, pinned by `cli/docs_tests.rs:17,60,66` (include_str path) and MAP.md:935. Config paths at :97/:101/:105/:199 are **wrong today** (26 moved them to `tributary/`).

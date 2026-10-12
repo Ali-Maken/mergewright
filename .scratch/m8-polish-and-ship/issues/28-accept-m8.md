@@ -70,7 +70,7 @@ trace. Report: paths only, plus the one-line verdict per promise clause.
       like" line; a test fails when a capture under `docs/shots/m8*` is missing from it (as M6's
       `contact_sheet_captions_cover_every_m6_capture`).
 - [x] Tour walked to done with `trib` (test named); seven §9 tasks reachable (tests named).
-      `tour_walk::the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home` (`CARGO_BIN_EXE_mwr`, `pty.rs:229`);
+      `tour_walk::the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home` (`CARGO_BIN_EXE_trib`, `pty.rs:229`);
       `m8_walk::teaches::{stage_a_hunk_is_found_in_the_changes_pane, commit_is_on_the_bar,
       stash_and_bring_back_are_found, create_a_branch_is_found, merge_is_found_on_a_branch_row,
       resolve_is_on_the_stop_banner_bar, push_is_found}`.

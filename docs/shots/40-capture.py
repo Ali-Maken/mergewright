@@ -16,7 +16,7 @@ from mwr_sandbox import sandbox_env  # noqa: E402
 repo, cols, rows, keys, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
 CELL_W, CELL_H = 17, 37
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
-binary = os.path.join(root, "target", "release", "graft")
+binary = os.path.join(root, "target", "release", "mwr")
 
 # Forced to the pixel tier by a temp config folder (was target/40/cfg, which
 # lived outside temp and was never checked in).

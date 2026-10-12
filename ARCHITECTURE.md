@@ -231,7 +231,8 @@ on the frame thread.
 Every package is named with a `graft-` prefix — `graft-core`, `graft-graph`,
 `graft-git`, `graft-ops`, `graft-term`, `graft-ui` — because a bare package
 called `core` collides with Rust's built-in `core`. `app` is the binary, and
-its package is simply `graft`. This page uses the short names throughout; the
+its package is `mergewright` (dir `crates/graft`, lib `graft`, bin `mwr`;
+ADR-0057 §9); the crates keep `graft-*`. This page uses the short names throughout; the
 prefix exists only in `Cargo.toml` and in `use` paths (`graft_core::…`).
 
 `app` is a library (`crates/graft/src/lib.rs`) with a thin binary

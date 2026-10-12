@@ -44,7 +44,7 @@ Needs: 26 merged (`graft_core::on_disk::OnDiskNames::New.dir()`). First of 27a �
 
 ## Scope
 In: `[[bin]]`, `COMMAND`, `APP_NAME`, usage/version/stderr/crash words, crash dir, backup identity (+ example),
-`CARGO_BIN_EXE_graft` → `CARGO_BIN_EXE_mwr` (18 uses, 15 files), man.rs + `docs/man/trib.1` + `docs_tests.rs:17,60,66`,
+`CARGO_BIN_EXE_graft` → `CARGO_BIN_EXE_trib` (18 uses, 15 files), man.rs + `docs/man/trib.1` + `docs_tests.rs:17,60,66`,
 Cargo.toml :12/:123, plan.txt, binary paths in scripts, TestBackend captures, the drift script, MAP lines for all of
 these, 26's `no_old_dir_literal` allow-list entries this fixes.
 Out: env names (27b); README/TESTING.md/script words (27c); pty captures (27d); crate/package names; history docs.
@@ -67,7 +67,7 @@ apart. Last line: `changed <n> · name-only <m> · drift-files <k> · png <p>`.
 
 ## Acceptance (each box: the test named at tick time)
 - [x] `cargo metadata --no-deps --format-version 1`: package `graft` has exactly one bin target, `trib` (quoted in — `rename_names::the_binary_file_is_the_command`
-      NOTES); `rename_names::the_binary_file_is_the_command` — `env!("CARGO_BIN_EXE_mwr")` file name == `cli::COMMAND`.
+      NOTES); `rename_names::the_binary_file_is_the_command` — `env!("CARGO_BIN_EXE_trib")` file name == `cli::COMMAND`.
 - [x] `trib --version`, `trib --help` (usage line), `trib --generate-man | head -5` output quoted in NOTES; pinned by — `cli::tests::version_and_usage_lines_start_with_the_command`
       `cli::tests` (version line, usage line start with `COMMAND`).
 - [x] `cli::docs_tests::committed_man_page_is_the_generated_one` reads `docs/man/trib.1`; new — `cli::docs_tests::committed_man_page_is_the_generated_one`, `man_page_names_the_config_folder_in_force`
