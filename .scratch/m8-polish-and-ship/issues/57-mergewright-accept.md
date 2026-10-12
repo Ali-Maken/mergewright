@@ -104,3 +104,7 @@ workspace-wide; then `scripts/m8-accept.sh`. All output to files; summary lines 
 
 ## Size
 One context, ~60k tokens.
+
+## Added by the conductor (review 53, 2026-10-12)
+- Re-run `scripts/release-local.sh` after 55; the archive's README/CHANGELOG name Mergewright (quote `tar xOf … | grep`).
+  Local only: no tag, push or release.

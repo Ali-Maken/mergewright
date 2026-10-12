@@ -1216,7 +1216,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/m5-walk-merge-keys-15s | `m5_walk::every_scenario::merge_resolved_with_the_keys` measured 15.2 s / 15.3 s (21b-3), over PROMPT 7.1 fast-tier 10 s bound; cause unverified. | **unverified** | M8 |
 | M8/sleep-guard-after-run | graft-git `tests/stop.rs:131`: sleep guard taken after a fallible `.expect` (21b-3 proposal); cause unverified. | **unverified** | M8 |
 | M8/checkout-words-carry-scratch-path | 21b-3 proposal: checkout words may carry a scratch path (`--prefix`); unverified. | **unverified** | M8 |
-| M8/31-dist-plan-hand-edited-workflow | release.yml hand-edited to `workflow_dispatch` only (codename rule); `dist plan` may refuse a hand-edited CI file — fix would be `allow-dirty=["ci"]` in root Cargo.toml. Not run (dist not installed in worktree). 27 re-arms on rename. | **unverified** | M8 |
 | M8/21b6-stale-allows | 21b-6: "remove an allow that no longer fires" not checked per allow (140 allows given reasons; none tested for still firing). | **unverified** | M8 |
 | M8/37-map-format-contradiction | Question → planner: 37 check (a) forces listing `pub` items in private modules, contradicting the MAP format point 4. Test-only pub items listed as-is (`Mailmap::from_bytes`, `TipStats`, `stops_hooks_first`). | **unverified** | M8 |
 | M8/37-map-lines-unjudged | 37: library MAP lines mostly drafted by forks; 4 spot-checked against source, 4 held; the rest not judged one by one. | **unverified** | M8 |
@@ -1269,7 +1268,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/hangup-shot-unsorted | Question: `quit_waits/hangup.rs:320` may shoot before sorting settles (19e audit). | **unverified** | M8 |
 | M8/20c-mark-resolved-not-seen-red | `a_conflict_row_says_mark_resolved` written with the code, never seen failing. | **unverified** | M8 |
 | M8/20d-tests-not-seen-red | 20d: only the cycle test seen red; other new tests written after the fix. | **unverified** | M8 |
-| M8/24-brew-style | Generated formula: `brew style` 3 offences; man page → pkgshare not man1. dist 0.33 templates compiled in (`templates.rs:11`). Question for the stop: patch formula after dist, custom publish job, or fork dist? | **broken** | M8 |
 | M8/24-linux-56-red | Linux fast tier after 30: 6204/6207. Still red: partial_fetch (reflog path; capture-seam design call), cherry_pick (git 2.47 dies on SIGTERM; Apple git surviving unverified), outside_repo launch/open (one-row offset, not investigated). See ticket 30. | **broken** | M8 |
 | M8/24-git-floor | Question for the stop: git 2.38 fails 10/26 matrix tests (2.40 forecast gate, `chain.rs:31`); 2.40/2.56 pass 26/26. Raise floor to 2.40, or keep? | **unverified** | M8 |
 | M8/30-captures-changed | 30 re-shot 16 captures (header, initials, radar ⓘ) after pty walks stopped inheriting host tier hints; judge by eye at the stop; m7 contact sheet not re-assembled. | **unverified** | M8 |
@@ -1337,7 +1335,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/usab-q2-picker-enter-current | Decided (user 2026-10-11, "close the picker"): `⏎` on the current branch closes the picker (docs/reviews/m8-usability.md:159). Spec pending (planner). | **broken** | M8 |
 | M8/28-perf-quiet-run | 28 acceptance perf box (docs/perf/m8-accept.txt: J1 tail, J3, RSS vs budgets) not run; needs `scripts/m8-accept.sh --perf` on a quiet machine, with the release perf run. | **unverified** | M8 close |
 | M8/28-j2-wheel-tail | No held-wheel heavy test exists, so J2's wheel tail can't be measured or quoted (28 NOTES). | **unverified** | post-M8 |
-| M8/28-release-docs-stale | docs/release/ files predate the trib rename; build.txt records `brew style: FAILED` (28 NOTES). | **broken** | M8 stop (with naming) |
 | M8/28-help-hunk-search | Question: `?` searching "hunk" finds nothing (28 NOTES). | **question** | post-M8 |
 | M8/46-j-no-ascii | J draws `✗`/`⇢` in every tier; nothing in J switches to ASCII (scout 46; `journal_screen/pieces.rs:66`). | **broken** (ASCII tier) | post-M8 |
 | M8/47-q2-prior-art | Q2 prior-art row names no other tool's `⏎`-on-current behaviour (VS Code, lazygit, Sublime Merge unchecked; review g1 m8). | **unverified** | post-M8 |
@@ -1348,5 +1345,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/49-current-command-inline | `Generation::CURRENT.command()` spelled inline in three crates (review 49 m6); readability only. | **broken** (readability) | post-M8 |
 | M8/50-tour-header-letters | Question: tour header `workar…` → `workri…` after 50; letters may show through a gap. Pre-existing per builder; no line found (rule 7: question). | **question** | 56 recaptures |
 | M8/53-formula-four-checksums | A host build makes 1 of 4 archives; the styled formula uses zero sha256 placeholders for 3 targets. A formula with four real checksums is unverified (53 NOTES). | **unverified** | first release |
-| M8/53-installer-env-names | Question: dist's shell installer reads `MERGEWRIGHT_*`, not `MWR_*` (53 NOTES). | **question** | first release |
-| M8/53-unexplained-flakes | 53's first full run had 4 failures, names not captured; second run green. Cause unknown (rule 1: not evidence of health). | **unverified** | watch in gates |
+| M8/53-unexplained-flakes | 53's first full run had 4 unnamed failures; builder 52 ran `pkill -f cargo-nextest` at that time (52 report) — likely cause, unconfirmed. Main gates green after. | **unverified** | watch in gates |

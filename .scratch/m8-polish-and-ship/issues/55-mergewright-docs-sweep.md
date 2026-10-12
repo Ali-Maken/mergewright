@@ -82,3 +82,9 @@ One context, ~40k tokens.
 - Minors: a helper in `tour/tests.rs` (ratchet +47 back down); `tour.rs:64` comment claims older folders clean up but
   `build.rs:71` always uses CURRENT — say what is true; when both caches exist, say so once; `tour_walk.rs` prefix
   literals from the table.
+
+## Added by the conductor (review 53, 2026-10-12)
+- **Major:** `.github/workflows/release.yml:41-44` guard comment says keep the workflow disarmed "until the rename has
+  landed"; the rename has landed. The real gate is the trademark search (ADR-0057 §1) and the user's say. Reword the
+  comment to name that gate. Do not arm, run or dispatch anything.
+- The release archive's README/CHANGELOG still say Tributary/Graft: sweep them here (57 re-runs `release-local.sh`).
