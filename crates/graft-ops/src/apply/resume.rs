@@ -128,11 +128,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     // another job or window does not close it as interrupted the moment git
     // is done (m8-polish-and-ship/58). It re-reads the journal, so the
     // entry looked up next is the file's, not a stale copy's.
-    ctx.journal.claim().map_err(|error| ApplyError::Journal {
-        error,
-        after: None,
-        kept: None,
-    })?;
+    ctx.journal.claim().map_err(ApplyError::journal)?;
     let (kind, entry) = match resume_target(ctx, &how)? {
         Target::Live { kind, entry } => (kind, *entry),
         Target::ShellMerge(params) => return apply(ctx, &Operation::FinishMerge(params)),

@@ -58,6 +58,7 @@ fn j_after_a_push() -> AppState {
     state.journal.entries = Loading::Ready(Arc::new(JournalRead {
         entries: vec![commit, push],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));

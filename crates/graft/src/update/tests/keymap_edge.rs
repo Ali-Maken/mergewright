@@ -221,6 +221,7 @@ fn three_rows(mut state: AppState) -> AppState {
         state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
             entries,
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         }));

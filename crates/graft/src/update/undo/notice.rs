@@ -52,7 +52,8 @@ pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<St
     // `is_interrupted` says yes to both. Only git's own state tells them
     // apart, and the last journal read asked it: an operation standing right
     // there, with a banner two rows above saying so, was never interrupted
-    // (m5/09 seam A).
+    // (m5/09 seam A). Nor was one the read held: an operation was writing
+    // the journal as it ran, and that entry is its own, running now (58r).
     let mut interrupted = read
         .entries
         .iter()
@@ -60,6 +61,7 @@ pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<St
             entry.is_interrupted()
                 && !undone.contains(&entry.id)
                 && !state.live_entries.contains(&entry.id)
+                && !read.held.contains(&entry.id)
         })
         .map(|entry| interrupted_words(state, entry));
     let (description, clause) = interrupted.next()?;

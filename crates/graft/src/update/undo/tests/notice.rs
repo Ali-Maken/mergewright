@@ -16,6 +16,7 @@ fn read(interrupted: &[&str], unreadable: &[&str]) -> JournalState {
         entries: Loading::Ready(Arc::new(JournalRead {
             entries,
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         })),
@@ -77,6 +78,30 @@ fn the_notice_names_the_interrupted_entry_until_it_has_been_seen() {
     assert!(notice.contains("J to inspect"), "{notice}");
 
     state.journal.notice_seen = true;
+    assert_eq!(interrupted_notice(&state), None);
+}
+
+/// m8-polish-and-ship/58r: a read that ran while an operation was writing
+/// its entry holds that entry `Pending` and says it could not judge it. The
+/// running operation is not announced as interrupted.
+#[test]
+fn a_running_operations_entry_is_not_announced_as_interrupted() {
+    let mut running = torn_entry(0, "push main to origin");
+    running.status = graft_core::journal::EntryStatus::Pending;
+    let id = running.id.clone();
+    let state = AppState {
+        journal: JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![running],
+                unreadable: Vec::new(),
+                held: vec![id],
+                live: Vec::new(),
+                interrupted_edits: Vec::new(),
+            })),
+            ..JournalState::default()
+        },
+        ..AppState::default()
+    };
     assert_eq!(interrupted_notice(&state), None);
 }
 

@@ -7,7 +7,7 @@
 //! come from `next_undo`/`next_redo`/`in_force_all` so the browser and the
 //! key can never disagree.
 
-use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use graft_core::journal::{EntryId, EntryStatus, JournalEntry, OperationKind};
 use graft_ops::journal_list::{Fate, HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan};
 use graft_term::sanitize::{sanitize, sanitize_line};
 use graft_ui::journal_screen::{
@@ -18,7 +18,7 @@ use crate::update::AppState;
 use crate::update::detail::Loading;
 
 mod summary;
-use summary::{failure, short, summary};
+use summary::{Progress, failure, short, summary};
 
 /// Milliseconds in a second, for the entries' `at_unix_ms`.
 const MILLIS: i64 = 1_000;
@@ -113,6 +113,23 @@ fn entries(state: &AppState) -> &[JournalEntry] {
     }
 }
 
+/// Whether entry `id` has finished, as the last journal read found it, or
+/// is still open: git standing part-way through it, or an operation writing
+/// it (58r).
+fn read_progress(state: &AppState, id: &EntryId) -> Progress {
+    let held = match &state.journal.entries {
+        Loading::Ready(read) => read.held.contains(id),
+        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => false,
+    };
+    if state.live_entries.contains(id) {
+        Progress::Live
+    } else if held {
+        Progress::Running
+    } else {
+        Progress::Settled
+    }
+}
+
 /// The list's rows, newest first, `✗` rows right after their event.
 fn rows_for(list: &JournalList, state: &AppState, now_seconds: i64) -> Vec<JournalRowView> {
     let entries = entries(state);
@@ -184,12 +201,13 @@ fn graft_row(
     now_seconds: i64,
 ) -> JournalRowView {
     let entry = &entries[index];
-    // Live first, and instead of every other mark: git is part-way
-    // through this very entry. `interrupted` would be a lie about a
+    // Open first, and instead of every other mark: git is part-way
+    // through this very entry, or an operation was writing it when the
+    // journal was read (58r). `interrupted` would be a lie about a
     // process that is alive, and `← u` would offer to undo an
     // operation that has not finished happening (m5/09 seam A).
-    let is_live = state.live_entries.contains(&entry.id);
-    let mark = if is_live {
+    let progress = read_progress(state, &entry.id);
+    let mark = if progress != Progress::Settled {
         RowMark::None
     } else if Some(&entry.id) == marks.next_undo {
         RowMark::NextUndo
@@ -219,10 +237,10 @@ fn graft_row(
     JournalRowView {
         age: sanitize(&age(entry.at_unix_ms, now_seconds)),
         description: sanitize(&entry.description),
-        summary: sanitize(&summary(entry, is_live, &state.keymap)),
+        summary: sanitize(&summary(entry, progress, &state.keymap)),
         mark,
         commands: entry.commands.iter().map(|line| sanitize(line)).collect(),
-        failure: failure(entry, is_live).map(|line| sanitize(&line)),
+        failure: failure(entry, progress).map(|line| sanitize(&line)),
         // `None` is "not recorded" (any other kind, a line from before
         // ADR-0062), not a failure: there is simply no list to draw.
         moved: entry.fetched_refs.as_ref().map_or_else(Vec::new, |moved| {
@@ -302,7 +320,7 @@ fn enter_words(list: &JournalList, state: &AppState, index: usize) -> Option<Str
             let entries = entries(state);
             let marks = Marks::of(entries);
             let entry = entries.iter().find(|entry| &entry.id == id)?;
-            if state.live_entries.contains(id) {
+            if read_progress(state, id) != Progress::Settled {
                 return None;
             }
             // A step Mergewright doesn't undo (a fetch, a push): `⏎` has nothing

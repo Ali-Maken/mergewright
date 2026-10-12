@@ -23,10 +23,10 @@ use std::sync::Mutex;
 use graft_core::journal::EntryStatus;
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
-use graft_ops::apply::{Recovered, recover_interrupted};
-use graft_ops::operation::{Operation, RebaseParams, Source, Tip};
+use graft_ops::apply::{ApplyError, Recovered, Resume, recover_interrupted, resume};
+use graft_ops::operation::{FastForward, MergeParams, Operation, RebaseParams, Source, Tip};
 
-use crate::support::{NOW, Never, TempRepo, context, journal_for, run_with_stop};
+use crate::support::{NOW, Never, TempRepo, context, journal_for, run_with_stop, try_run};
 
 fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
@@ -102,7 +102,13 @@ fn a_journal_read_mid_rebase_leaves_the_running_entry_one_outcome() {
 
     let recovered = reader.ran.lock().unwrap().take();
     let recovered = recovered.expect("the read ran inside the window: git done, outcome unwritten");
-    applied.expect("the rebase lands");
+    let applied = applied.expect("the rebase lands");
+    assert_eq!(
+        recovered.held,
+        vec![applied.entry.id.clone()],
+        "the read could not tell the running entry from a dead one: it is held, not interrupted"
+    );
+    assert!(recovered.live.is_empty(), "git had finished: nothing live");
     let handle = repo.open();
     let journal = graft_ops::journal::Journal::open_as(
         &graft_ops::journal::journal_path(&handle).expect("the journal path resolves"),
@@ -120,4 +126,119 @@ fn a_journal_read_mid_rebase_leaves_the_running_entry_one_outcome() {
         "the read closed an entry whose writer is still running: {:?}",
         recovered.closed
     );
+}
+
+/// Review 58, Minor 2: the same read, from inside a resume — `c` on a
+/// rebase stopped on a conflict, the read landing after git has finished
+/// the continue and before the outcome line is written. `resume` takes the
+/// writer's lock before git moves, so the read holds the entry and closes
+/// nothing.
+#[test]
+fn a_journal_read_mid_resume_leaves_the_resumed_entry_one_outcome() {
+    let repo = conflicting();
+    repo.git(&["switch", "-q", "feature"]);
+    let old_tip = id(&repo, "feature");
+    let op = Operation::Rebase(RebaseParams::new(
+        Tip {
+            name: "refs/heads/feature".to_owned(),
+            oid: old_tip,
+        },
+        Source::Branch("main".to_owned()),
+        id(&repo, "main"),
+    ));
+    let stopped = match try_run(&repo, &op, NOW) {
+        Err(ApplyError::Conflicted { entry, .. }) => *entry,
+        other => panic!("expected the rebase to stop on a conflict, got {other:?}"),
+    };
+    repo.write("shared.txt", b"both lines\n");
+    repo.git(&["add", "shared.txt"]);
+
+    let reader = ReaderMidway {
+        repo: &repo,
+        old_tip,
+        ran: Mutex::new(None),
+    };
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let mut ctx = context(&handle, &mut journal, NOW + 10, &reader);
+    let applied = resume(&mut ctx, Resume::Continue);
+    drop(ctx);
+    drop(journal);
+
+    let recovered = reader.ran.lock().unwrap().take();
+    let recovered = recovered.expect("the read ran inside the window: git done, outcome unwritten");
+    let applied = applied.expect("the rebase lands");
+    assert_eq!(applied.entry.id, stopped.id, "the stopped entry, finished");
+    assert!(
+        recovered.closed.is_empty(),
+        "the read closed an entry its resume is still finishing: {:?}",
+        recovered.closed
+    );
+    assert_eq!(recovered.held, vec![stopped.id.clone()], "held, not judged");
+    let journal = graft_ops::journal::Journal::open_as(
+        &graft_ops::journal::journal_path(&handle).expect("the journal path resolves"),
+        handle.on_disk_names(),
+    )
+    .expect("the journal still reads after a read raced the resume");
+    let statuses: Vec<&EntryStatus> = journal.entries().iter().map(|e| &e.status).collect();
+    assert_eq!(
+        statuses,
+        [&EntryStatus::Committed],
+        "one entry, one outcome"
+    );
+}
+
+/// `main` and `feature` each change `shared.txt`'s one line; `main` checked
+/// out, so merging `feature` stops on that file.
+fn conflicting() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("shared.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "feature"]);
+    repo.write("shared.txt", b"main's line\n");
+    repo.commit_all("two on main");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("shared.txt", b"feature's line\n");
+    repo.commit_all("one on feature");
+    repo.git(&["switch", "-q", "main"]);
+    repo
+}
+
+/// m8-polish-and-ship/58r: a read that finds the journal held by a writer
+/// still asks git what is live. A merge standing on a conflict is not
+/// interrupted because some other job — a push, a fetch — happens to be
+/// writing its own entry at the moment of the read.
+#[test]
+fn a_busy_read_keeps_a_standing_conflict_live() {
+    let repo = conflicting();
+    let op = Operation::Merge(MergeParams {
+        source: Source::Branch("feature".to_owned()),
+        into: Tip {
+            name: "refs/heads/main".to_owned(),
+            oid: id(&repo, "main"),
+        },
+        source_tip: id(&repo, "feature"),
+        ff: FastForward::Never,
+    });
+    let stopped = match try_run(&repo, &op, NOW) {
+        Err(ApplyError::Conflicted { entry, .. }) => *entry,
+        other => panic!("expected the merge to stop on a conflict, got {other:?}"),
+    };
+
+    // Another job is part-way through its own entry: it holds the writer's
+    // lock for the whole of its run.
+    let handle = repo.open();
+    let mut writer = journal_for(&handle);
+    writer.claim().expect("the writer takes its lock");
+
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
+    let recovered = recover_interrupted(&mut ctx).expect("the read runs");
+    assert_eq!(
+        recovered.live,
+        vec![stopped.id.clone()],
+        "git says the merge is standing: the busy read says so too"
+    );
+    assert!(recovered.closed.is_empty(), "a busy read closes nothing");
 }

@@ -194,6 +194,7 @@ fn merging(journal: Option<Vec<EntryId>>) -> AppState {
             Loading::Ready(Arc::new(JournalRead {
                 entries: Vec::new(),
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: live.clone(),
                 interrupted_edits: Vec::new(),
             })),
@@ -359,6 +360,7 @@ fn after_a_push() -> AppState {
     pushed.journal.entries = Loading::Ready(Arc::new(JournalRead {
         entries: vec![commit, push],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));

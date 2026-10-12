@@ -61,6 +61,7 @@ fn state_with_two() -> AppState {
             entry(2, OperationKind::Commit, "commit \"x\""),
         ],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -267,6 +268,7 @@ fn enter_on_an_undo_row_refuses_rather_than_reverting_somewhere_else() {
             entry(4, OperationKind::Stage, "stage src/b.rs"),
         ],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -308,6 +310,7 @@ fn enter_on_the_next_redo_row_is_still_capital_u() {
             undo_of_b,
         ],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));

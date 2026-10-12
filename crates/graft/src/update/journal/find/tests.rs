@@ -107,6 +107,7 @@ fn journal() -> JournalState {
         entries: Loading::Ready(Arc::new(JournalRead {
             entries: vec![discard],
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         })),

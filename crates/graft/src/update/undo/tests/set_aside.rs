@@ -22,6 +22,7 @@ fn relaunch_after_a_kill_names_the_stash_the_edits_are_in() {
         entries: Loading::Ready(Arc::new(JournalRead {
             entries: vec![entry],
             unreadable: Vec::new(),
+            held: Vec::new(),
             live: Vec::new(),
             interrupted_edits: Vec::new(),
         })),
@@ -80,6 +81,7 @@ fn the_notice_words_where_recovery_found_the_edits() {
             entries: Loading::Ready(Arc::new(JournalRead {
                 entries: vec![entry.clone()],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             })),
@@ -193,6 +195,7 @@ fn with_edits(
             entries: Loading::Ready(Arc::new(JournalRead {
                 entries: vec![entry.clone()],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             })),
@@ -371,6 +374,7 @@ fn the_notice_repicks_on_resize() {
             entries: Loading::Ready(Arc::new(JournalRead {
                 entries: vec![entry],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             })),
@@ -418,6 +422,7 @@ fn at_80_the_notice_keeps_j_to_inspect_whole() {
             entries: Loading::Ready(Arc::new(JournalRead {
                 entries: vec![entry],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             })),

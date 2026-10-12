@@ -992,6 +992,7 @@ fn after_a_push() -> AppState {
             ),
         ],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -1191,6 +1192,7 @@ fn repush_after_a_two_commit_push_sends_the_first_commit() {
             ),
         ],
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -1311,6 +1313,7 @@ fn an_entry_the_push_did_not_send_is_not_explained() {
     state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
         entries,
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));
@@ -1345,6 +1348,7 @@ fn with_journal(state: &AppState, entries: Vec<JournalEntry>) -> AppState {
     next.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
         entries,
         unreadable: Vec::new(),
+        held: Vec::new(),
         live: Vec::new(),
         interrupted_edits: Vec::new(),
     }));

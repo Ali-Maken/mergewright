@@ -845,6 +845,7 @@ fn clash_over(
             entries: Loading::Ready(Arc::new(JournalRead {
                 entries: vec![entry],
                 unreadable: Vec::new(),
+                held: Vec::new(),
                 live: Vec::new(),
                 interrupted_edits: Vec::new(),
             })),
