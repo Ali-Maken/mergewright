@@ -2,7 +2,7 @@
 
 Status: ready. Supersedes 27d's remaining boxes (27d stays parked as the record of the classify pass).
 Blocked by: 46, 47, 48, 49, 50, 51, 52
-Build with: _(blank: brownfield, ADR-0035)_. Planner expects **Sonnet** after the scout: runs existing writers; its
+Build with: **Sonnet** (set by the conductor after the scout). Planner expected Sonnet: runs existing writers; its
 judgement is bounded by the drift script and two stop rules.
 Scout first: one page mapping each M8 capture in the re-shoot set to its writer (`file · writer command`), and
 listing captures with no writer. 27d found 209 of 244 with no writer by filename, mostly pre-M8, which §12 now
@@ -67,3 +67,14 @@ capture whole.
 
 ## Size
 One context, ~40k tokens if the set is ≤ 60 files; over 60 → split by writer, report first.
+
+## Added by the conductor (scout 56, 2026-10-12)
+Scout: `.scratch/m8-polish-and-ship/scouts/56-recaptures.md`. Build with set to **Sonnet** (the planner's expectation).
+- The live log is `docs/log/m8.md`; M8 start f5080f50 (its line 27).
+- 18 of the 21 old-name M8 files are TestBackend captures (`check_shot`): do not hand-edit; one `MWR_UPDATE_SHOTS=1`
+  run then a plain run; what still shows an old name after that is a code-name use or a defect — list which, per file.
+- `scripts/shot-drift.py` counts name-only changes only for `graft`: make it read every earlier generation (graft,
+  tributary, trib) so renames don't show as drift. Test it.
+- No writer for `21c-journal-partial-fetch` (80x24, 120x40) and `doorway-marked-140x40`: leave them as records, list in
+  NOTES; the conductor files a gap.
+- **Never kill processes you did not start.**

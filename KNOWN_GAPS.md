@@ -1346,3 +1346,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/50-tour-header-letters | Question: tour header `workar…` → `workri…` after 50; letters may show through a gap. Pre-existing per builder; no line found (rule 7: question). | **question** | 56 recaptures |
 | M8/53-formula-four-checksums | A host build makes 1 of 4 archives; the styled formula uses zero sha256 placeholders for 3 targets. A formula with four real checksums is unverified (53 NOTES). | **unverified** | first release |
 | M8/53-unexplained-flakes | 53's first full run had 4 unnamed failures; builder 52 ran `pkill -f cargo-nextest` at that time (52 report) — likely cause, unconfirmed. Main gates green after. | **unverified** | watch in gates |
+| M8/56-writerless-captures | No writer for `21c-journal-partial-fetch` (80x24, 120x40) and `doorway-marked-140x40`; they keep old names as records (scout 56). | **broken** (cannot regenerate) | post-M8 |
