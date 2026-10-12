@@ -1,0 +1,3 @@
+docs/shots/m8-tour-187x50.txt:3: ◇ workripractice · /private/tmp/graft-capture/tour-187x50-XXXXXX/practice-tmp/mergewright-practice-1609459200/work · a throwaway repo, not yours · main                
+docs/shots/m8-quit-waits-80x24.txt:26:=== then `y`: Graft waits for git ===
+docs/shots/m8/doorway-journal-120x36.txt:3:# (crates/graft/src/update/tests.rs, capture_the_keys_doorway_for_docs_shots).
