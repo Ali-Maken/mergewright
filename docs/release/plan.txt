@@ -1,27 +1,24 @@
-# dist plan (cargo-dist 0.33.0), scripts/release-local.sh, 2026-10-09
- WARN A Homebrew tap was specified but the Homebrew publish job is disabled
-  consider adding "homebrew" to publish-jobs in Cargo.toml
+# dist plan (cargo-dist 0.33.0), scripts/release-local.sh, 2026-10-12
 announcing v0.1.0
-  graft 0.1.0
+  mergewright 0.1.0
     source.tar.gz
       [checksum] source.tar.gz.sha256
-    graft-installer.sh
-    graft.rb
+    mergewright-installer.sh
     sha256.sum
-    graft-aarch64-apple-darwin.tar.xz
-      [bin] graft
-      [misc] CHANGELOG.md, README.md, graft.1
-      [checksum] graft-aarch64-apple-darwin.tar.xz.sha256
-    graft-aarch64-unknown-linux-gnu.tar.xz
-      [bin] graft
-      [misc] CHANGELOG.md, README.md, graft.1
-      [checksum] graft-aarch64-unknown-linux-gnu.tar.xz.sha256
-    graft-x86_64-apple-darwin.tar.xz
-      [bin] graft
-      [misc] CHANGELOG.md, README.md, graft.1
-      [checksum] graft-x86_64-apple-darwin.tar.xz.sha256
-    graft-x86_64-unknown-linux-gnu.tar.xz
-      [bin] graft
-      [misc] CHANGELOG.md, README.md, graft.1
-      [checksum] graft-x86_64-unknown-linux-gnu.tar.xz.sha256
+    mergewright-aarch64-apple-darwin.tar.xz
+      [bin] mwr
+      [misc] CHANGELOG.md, README.md, mwr.1
+      [checksum] mergewright-aarch64-apple-darwin.tar.xz.sha256
+    mergewright-aarch64-unknown-linux-gnu.tar.xz
+      [bin] mwr
+      [misc] CHANGELOG.md, README.md, mwr.1
+      [checksum] mergewright-aarch64-unknown-linux-gnu.tar.xz.sha256
+    mergewright-x86_64-apple-darwin.tar.xz
+      [bin] mwr
+      [misc] CHANGELOG.md, README.md, mwr.1
+      [checksum] mergewright-x86_64-apple-darwin.tar.xz.sha256
+    mergewright-x86_64-unknown-linux-gnu.tar.xz
+      [bin] mwr
+      [misc] CHANGELOG.md, README.md, mwr.1
+      [checksum] mergewright-x86_64-unknown-linux-gnu.tar.xz.sha256
 

@@ -10,3 +10,6 @@ target-g*/
 
 # Release tools installed per worktree (m8-polish-and-ship/24: `dist`).
 .tools/
+# The formula scripts/release-local.sh renders (m8-polish-and-ship/53); the
+# template under packaging/homebrew/ is what is committed.
+.scratch/m8-polish-and-ship/mergewright.rb

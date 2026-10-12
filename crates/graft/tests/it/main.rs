@@ -98,6 +98,7 @@ mod radar_bookkeeping;
 mod radar_not_checked;
 mod rebase_stop_forecast;
 mod refresh_race;
+mod release_names;
 mod remote_by_key;
 mod rename_docs;
 mod rename_names;
