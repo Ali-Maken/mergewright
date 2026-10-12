@@ -367,7 +367,11 @@ impl Drop for ScratchDir {
         if let Err(why) = std::fs::remove_dir_all(&self.path)
             && why.kind() != std::io::ErrorKind::NotFound
         {
-            eprintln!("trib: scratch {} survived: {why}", self.path.display());
+            eprintln!(
+                "{}: scratch {} survived: {why}",
+                graft_core::on_disk::Generation::CURRENT.command(),
+                self.path.display()
+            );
         }
     }
 }

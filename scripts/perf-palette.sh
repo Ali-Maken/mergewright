@@ -31,12 +31,12 @@
 #              every entry one blob, written with `update-index --index-info`;
 #              no worktree files: every entry is marked skip-worktree so the
 #              status is clean. Built under $SCRATCH if none is there.
-# Needs the release binary: `cargo build --release -p graft`.
+# Needs the release binary: `cargo build --release -p mergewright`.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 SCRATCH=${SCRATCH:-$TARGET/perf-palette}
-BIN=$TARGET/release/trib
+BIN=$TARGET/release/mwr
 [ -x "$BIN" ] || { echo "no release binary at $BIN" >&2; exit 1; }
 WHICH=${1:-all}
 case "$WHICH" in

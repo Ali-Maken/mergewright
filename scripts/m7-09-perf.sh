@@ -19,13 +19,13 @@ trap 'rm -rf "$TRACE"' EXIT
 machine_state_begin "$OUT"
 
 run() {
-  cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --features heavy-tests \
+  cargo test --release --manifest-path "$ROOT/Cargo.toml" -p mergewright --features heavy-tests \
     --test it -- --nocapture --test-threads=1 --exact "$1" 2>/dev/null | grep '^m7-09b'
 }
 
 LOAD_BEFORE=$(sysctl -n vm.loadavg)
 # Build first, so the build's load is not in the numbers.
-cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --features heavy-tests --test it --no-run 2>/dev/null
+cargo test --release --manifest-path "$ROOT/Cargo.toml" -p mergewright --features heavy-tests --test it --no-run 2>/dev/null
 LINES=$(run m7_walk::amend_into::perf::perf_dependents_check)
 SPAWNS=$(GIT_TRACE2_PERF="$TRACE" run m7_walk::amend_into::perf::perf_dependents_spawns)
 LOAD_AFTER=$(sysctl -n vm.loadavg)

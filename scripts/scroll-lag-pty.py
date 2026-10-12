@@ -59,7 +59,7 @@ import threading
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from trib_sandbox import sandbox_env  # noqa: E402
+from mwr_sandbox import sandbox_env  # noqa: E402
 
 BEGIN = b"\x1b[?2026h"
 QUIET = 1.5

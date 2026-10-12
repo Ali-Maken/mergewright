@@ -14,10 +14,10 @@ The browsable, filterable version of this same data is `docs/generated/capabilit
 
 | Status | Count | Share | |
 |---|---:|---:|---|
-| works | 107 | 86.3% | `##################################` |
+| works | 108 | 87.1% | `##################################` |
 | partial | 11 | 8.9% | `###` |
 | unverified | 1 | 0.8% | `` |
-| broken | 5 | 4.0% | `#` |
+| broken | 4 | 3.2% | `#` |
 
 **24 of the 124** otherwise-`works`/`partial` capabilities carry at least one explicitly unverified aspect (colour, a real terminal, a real network peer — the sort of thing a captured character grid can never settle). Full list: [§ Unverified aspects](#unverified-aspects).
 
@@ -86,7 +86,7 @@ The browsable, filterable version of this same data is `docs/generated/capabilit
 - **M1-23** A fixed gallery walks 23 real and synthetic repository shapes end to end, with a capture of each — `works` ⚠ — [docs/capabilities/m1-the-graph.md#m1-23-a-fixed-gallery-walks-23-real-and-synthetic-repository-shapes-end-to-end-with-a-capture-of-each](docs/capabilities/m1-the-graph.md#m1-23-a-fixed-gallery-walks-23-real-and-synthetic-repository-shapes-end-to-end-with-a-capture-of-each)
 - **M1-30** The manual terminal checklist and the checkpoint script give the user a single, repeatable way to judge the milestone — `works` ⚠ — [docs/capabilities/m1-the-graph.md#m1-30-the-manual-terminal-checklist-and-the-checkpoint-script-give-the-user-a-single-repeatable-way-to-judge-the-milestone](docs/capabilities/m1-the-graph.md#m1-30-the-manual-terminal-checklist-and-the-checkpoint-script-give-the-user-a-single-repeatable-way-to-judge-the-milestone)
 
-### hints-and-ui (9 capabilities, 4 works)
+### hints-and-ui (9 capabilities, 5 works)
 
 - **M4-18** The footer hints `f`/`p`/`P` when there's room — `broken` — [docs/capabilities/m4-remotes.md#m4-18-the-footer-hints-fpp-when-theres-room](docs/capabilities/m4-remotes.md#m4-18-the-footer-hints-fpp-when-theres-room)
 - **M4-24** Cosmetic gaps in the push/lease boxes and narrow-width journal rows — `broken` — [docs/capabilities/m4-remotes.md#m4-24-cosmetic-gaps-in-the-pushlease-boxes-and-narrow-width-journal-rows](docs/capabilities/m4-remotes.md#m4-24-cosmetic-gaps-in-the-pushlease-boxes-and-narrow-width-journal-rows)
@@ -96,7 +96,7 @@ The browsable, filterable version of this same data is `docs/generated/capabilit
 - **M5-19** The hint bar always shows the three most relevant keys for where you are, at common widths, and never advertises a key that does nothing — `works` — [docs/capabilities/m5-history-and-ghost-preview.md#m5-19-the-hint-bar-always-shows-the-three-most-relevant-keys-for-where-you-are-at-common-widths-and-never-advertises-a-key-that-does-nothing](docs/capabilities/m5-history-and-ghost-preview.md#m5-19-the-hint-bar-always-shows-the-three-most-relevant-keys-for-where-you-are-at-common-widths-and-never-advertises-a-key-that-does-nothing)
 - **M5-20** The `.` menu is a doorway to every key the width rule dropped, not a dead end — `works` — [docs/capabilities/m5-history-and-ghost-preview.md#m5-20-the--menu-is-a-doorway-to-every-key-the-width-rule-dropped-not-a-dead-end](docs/capabilities/m5-history-and-ghost-preview.md#m5-20-the--menu-is-a-doorway-to-every-key-the-width-rule-dropped-not-a-dead-end)
 - **M5-21** A failure or sticky status line never loses the key that clears it, however narrow the terminal — `works` — [docs/capabilities/m5-history-and-ghost-preview.md#m5-21-a-failure-or-sticky-status-line-never-loses-the-key-that-clears-it-however-narrow-the-terminal](docs/capabilities/m5-history-and-ghost-preview.md#m5-21-a-failure-or-sticky-status-line-never-loses-the-key-that-clears-it-however-narrow-the-terminal)
-- **M5-22** Below 100 columns with a pane open, the doorway to every key still shows — the bar itself does not have to — `broken` — [docs/capabilities/m5-history-and-ghost-preview.md#m5-22-below-100-columns-with-a-pane-open-the-doorway-to-every-key-still-shows--the-bar-itself-does-not-have-to](docs/capabilities/m5-history-and-ghost-preview.md#m5-22-below-100-columns-with-a-pane-open-the-doorway-to-every-key-still-shows--the-bar-itself-does-not-have-to)
+- **M5-22** Below 100 columns with a pane open, the doorway to every key still shows — the bar itself does not have to — `works` — [docs/capabilities/m5-history-and-ghost-preview.md#m5-22-below-100-columns-with-a-pane-open-the-doorway-to-every-key-still-shows--the-bar-itself-does-not-have-to](docs/capabilities/m5-history-and-ghost-preview.md#m5-22-below-100-columns-with-a-pane-open-the-doorway-to-every-key-still-shows--the-bar-itself-does-not-have-to)
 
 ### history (17 capabilities, 15 works)
 

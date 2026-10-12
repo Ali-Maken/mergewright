@@ -15,7 +15,7 @@ use super::{CONFIG_KEYS, FLAGS, Invocation, man_page, parse, usage, version};
 use crate::config::{self, Config, KEYS_SUSPEND, SCHEMA};
 use graft_core::on_disk::CURRENT_DIR;
 
-const MAN_PAGE: &str = include_str!("../../../../docs/man/trib.1");
+const MAN_PAGE: &str = include_str!("../../../../docs/man/mwr.1");
 const README: &str = include_str!("../../../../README.md");
 
 fn parsed(word: &str) -> Invocation {
@@ -58,13 +58,13 @@ fn help_is_usage_of_flags() {
     }
 }
 
-/// The committed `docs/man/trib.1` is what `--generate-man` prints today.
+/// The committed `docs/man/mwr.1` is what `--generate-man` prints today.
 #[test]
 fn committed_man_page_is_the_generated_one() {
     let generated = man_page(FLAGS, defaults(), CONFIG_KEYS);
     assert!(
         MAN_PAGE == generated,
-        "docs/man/trib.1 is stale: run `cargo run -q -p graft -- --generate-man > docs/man/trib.1`"
+        "docs/man/mwr.1 is stale: run `cargo run -q -p mergewright -- --generate-man > docs/man/mwr.1`"
     );
 }
 
@@ -84,7 +84,7 @@ fn man_page_names_the_config_folder_in_force() {
     }
     assert!(!page.contains("/graft/"), "old folder named");
     assert!(!page.contains("/graft\n") && !page.contains("/graft."));
-    assert!(page.starts_with(".TH TRIB 1"));
+    assert!(page.starts_with(".TH MWR 1"));
 }
 
 #[test]

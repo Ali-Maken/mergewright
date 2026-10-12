@@ -13,8 +13,8 @@
 #   scripts/m1-checkpoint.sh foxtrot       # a merge whose first parent leaves main
 #   scripts/m1-checkpoint.sh octopus       # one merge, four parents
 #
-# Every scenario but `list` ends by handing control to `cargo run -p graft --`,
-# so `q` quits it the same way as any other Tributary session. `-p graft` is
+# Every scenario but `list` ends by handing control to `cargo run -p mergewright --`,
+# so `q` quits it the same way as any other Tributary session. `-p mergewright` is
 # required at the workspace root now that `graft-fixtures` also builds a
 # binary (its corpus-report `main.rs`) — bare `cargo run --` is ambiguous
 # there (KNOWN_GAPS.md, m1-the-graph/28).
@@ -58,8 +58,8 @@ open_shape() {
 	fi
 
 	printf '\n%s\n  %s\n\nlook at: %s\n\n' "$shape" "$path" "$look" >&2
-	printf 'running: cargo run -p graft -- %s\n\n' "$path" >&2
-	exec cargo run -p graft -- "$path"
+	printf 'running: cargo run -p mergewright -- %s\n\n' "$path" >&2
+	exec cargo run -p mergewright -- "$path"
 }
 
 open_git_git() {
@@ -97,8 +97,8 @@ current clone) and no curve reaches the \`⋮\` rail. TESTING.md's "git-git"
 gallery stop and its "Pixel/Unicode tier" pass conditions say the rest.
 
 LOOK
-	printf 'running: cargo run -p graft -- %s\n\n' "$path" >&2
-	exec cargo run -p graft -- "$path"
+	printf 'running: cargo run -p mergewright -- %s\n\n' "$path" >&2
+	exec cargo run -p mergewright -- "$path"
 }
 
 list_scenarios() {

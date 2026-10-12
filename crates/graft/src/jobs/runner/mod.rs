@@ -52,7 +52,7 @@ pub struct JobRunner<S: JobEvents> {
     /// The binary git runs as its askpass helper. `None` means Graft's own
     /// (`current_exe`), which is right for the shipped binary and wrong
     /// under `cargo test`, where `current_exe` is the test binary: the
-    /// integration tests point this at `CARGO_BIN_EXE_trib`.
+    /// integration tests point this at `CARGO_BIN_EXE_mwr`.
     askpass_helper: Option<std::path::PathBuf>,
     /// The clock every journal entry this runner writes is stamped from
     /// (`crate::session::Clock`). `Wall` for the shipped binary; a capture
@@ -130,7 +130,7 @@ impl<S: JobEvents> JobRunner<S> {
     ///
     /// For the integration tests: under `cargo test` `current_exe` is the
     /// test binary, which has no askpass mode, so the tests point this at
-    /// `CARGO_BIN_EXE_trib`. The shipped binary never calls it.
+    /// `CARGO_BIN_EXE_mwr`. The shipped binary never calls it.
     #[must_use]
     pub fn with_askpass_helper(mut self, helper: std::path::PathBuf) -> Self {
         self.askpass_helper = Some(helper);

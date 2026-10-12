@@ -1,4 +1,4 @@
-"""m1-the-graph/39 captures: drive target/release/graft in a pty, render the
+"""m1-the-graph/39 captures: drive target/release/mwr in a pty, render the
 final frame with pyte, write it straight to a file. Never prints the frame.
 
 usage: python3 docs/shots/39-capture.py <repo> <cols> <rows> <keys> <out> <note>
@@ -9,7 +9,7 @@ import os, pty, select, sys, time
 import pyte
 # Every Graft launch goes through sandbox_env (m8/22b): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from trib_sandbox import sandbox_env  # noqa: E402
+from mwr_sandbox import sandbox_env  # noqa: E402
 
 repo, cols, rows, keys, out, note = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6]
 binary = os.path.join(os.path.dirname(__file__), "..", "..", "target", "release", "graft")

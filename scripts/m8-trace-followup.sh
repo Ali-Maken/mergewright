@@ -12,14 +12,14 @@
 # Prints `<label>` then the pty's SUMMARY and m8-trace-summary.sh's lines;
 # the caller appends them to docs/perf/m8-trace-followup.txt.
 #
-# Needs the release binary (`cargo build --release -p graft`).
+# Needs the release binary (`cargo build --release -p mergewright`).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 TARGET=${CARGO_TARGET_DIR:-$ROOT/target}
 LABEL=${1:?usage: m8-trace-followup.sh <label> [repo]}
 SRC=${2:-$(ls -dt "$TARGET"/fixtures/team-17700-* 2>/dev/null | head -1)}
 [ -n "$SRC" ] || { echo "no repo given and no MONOREPO fixture under $TARGET/fixtures" >&2; exit 1; }
-BIN=$TARGET/release/trib
+BIN=$TARGET/release/mwr
 [ -x "$BIN" ] || { echo "no release binary at $BIN" >&2; exit 1; }
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

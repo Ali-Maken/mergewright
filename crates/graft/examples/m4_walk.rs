@@ -3,12 +3,12 @@
 //! (m4-remotes/07).
 //!
 //! ```sh
-//! cargo run -p graft --example m4_walk                              # every scenario
-//! cargo run -p graft --example m4_walk -- --only push-plain         # one
-//! cargo run -p graft --example m4_walk -- --list                    # the names
-//! cargo run -p graft --example m4_walk -- --stems                   # capture stems
-//! cargo run -p graft --example m4_walk -- --capture push-plain      # one scenario, live, for the pty script
-//! cargo run -p graft --example m4_walk -- --matrix                  # docs/shots/35-coverage-matrix.txt
+//! cargo run -p mergewright --example m4_walk                              # every scenario
+//! cargo run -p mergewright --example m4_walk -- --only push-plain         # one
+//! cargo run -p mergewright --example m4_walk -- --list                    # the names
+//! cargo run -p mergewright --example m4_walk -- --stems                   # capture stems
+//! cargo run -p mergewright --example m4_walk -- --capture push-plain      # one scenario, live, for the pty script
+//! cargo run -p mergewright --example m4_walk -- --matrix                  # docs/shots/35-coverage-matrix.txt
 //! ```
 //!
 //! Each scenario builds a real remote — a bare over `file://`, smart HTTP

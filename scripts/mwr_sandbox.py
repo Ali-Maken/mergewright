@@ -1,8 +1,8 @@
 """The environment every script launches Tributary with (m8/22, gap M8/pty-scripts-real-recents).
 
-Tributary writes `<config>/tributary/recent` on every open, and reads `config.toml` from
+Tributary writes `<config>/mergewright/recent` on every open, and reads `config.toml` from
 the same folder. A script that execs Tributary with the caller's environment edits
-the user's real `~/.config/tributary/recent`. `sandbox_env` returns an environment
+the user's real `~/.config/mergewright/recent`. `sandbox_env` returns an environment
 whose `XDG_CONFIG_HOME` is a temporary folder, and refuses (raises) when the
 result would still point at the real config folder.
 
@@ -29,13 +29,13 @@ def check_sandboxed(env):
     """Raise unless `env`'s config folder is a temp folder, not the user's real one."""
     xdg = env.get("XDG_CONFIG_HOME")
     if not xdg:
-        raise RuntimeError("trib_sandbox: XDG_CONFIG_HOME unset; Tributary would write ~/.config/tributary/recent")
+        raise RuntimeError("mwr_sandbox: XDG_CONFIG_HOME unset; Tributary would write ~/.config/mergewright/recent")
     path = os.path.realpath(xdg)
     if path in (real_config_home(os.environ), os.path.realpath(os.path.join(os.path.expanduser("~"), ".config"))):
-        raise RuntimeError(f"trib_sandbox: {path} is the real config folder")
+        raise RuntimeError(f"mwr_sandbox: {path} is the real config folder")
     temp = os.path.realpath(tempfile.gettempdir())
     if not (path.startswith(temp + os.sep) or path.startswith("/private/tmp/") or path.startswith("/tmp/")):
-        raise RuntimeError(f"trib_sandbox: {path} is not under a temp folder")
+        raise RuntimeError(f"mwr_sandbox: {path} is not under a temp folder")
     return env
 
 
@@ -50,10 +50,10 @@ def scratch_root(scenario):
 
 
 def seed_first_launch_done(config_home):
-    """Write `<config_home>/tributary/launches` = `done` (m8/18d): a walk sees
+    """Write `<config_home>/mergewright/launches` = `done` (m8/18d): a walk sees
     every screen as he does after his first palette open, so the
     first-launch line never changes an existing capture. Kept if present."""
-    folder = os.path.join(config_home, "tributary")
+    folder = os.path.join(config_home, "mergewright")
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, "launches")
     if not os.path.exists(path):
@@ -72,7 +72,7 @@ def sandbox_env(config_home=None, base=None, first_launch=False, **overrides):
 
     `launches` is seeded `done` unless `first_launch` (m8/18d)."""
     if "XDG_CONFIG_HOME" in overrides:
-        raise ValueError("trib_sandbox: pass the config folder as config_home, not XDG_CONFIG_HOME=")
+        raise ValueError("mwr_sandbox: pass the config folder as config_home, not XDG_CONFIG_HOME=")
     if config_home is None:
         config_home = tempfile.mkdtemp(prefix="graft-script-config-")
     env = dict(os.environ if base is None else base)

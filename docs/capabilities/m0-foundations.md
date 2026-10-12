@@ -67,7 +67,7 @@ unverified_aspect: tier detection on every real terminal but one Ghostty session
 ```
 
 - **How:** automatic at startup; also runnable standalone via
-  `cargo run -p graft --example capability_probe`.
+  `cargo run -p mergewright --example capability_probe`.
 - **Behaviour:** reads cheap environment hints first (`$TERM`,
   `$TERM_PROGRAM`, `$COLORTERM`, `$KITTY_WINDOW_ID`, `$TMUX`, `$SSH_TTY`,
   `$NO_COLOR`), never trusted alone. Then sends active queries together and

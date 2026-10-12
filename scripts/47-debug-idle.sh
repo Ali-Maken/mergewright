@@ -30,7 +30,7 @@ else
   HASH=$(git -C "$SRC" rev-parse --short HEAD)
 fi
 LOG="$WORK/$HASH.txt"
-( cd "$SRC" && cargo test --release --features graft/heavy-tests -p graft --test it --no-run ) >"$LOG.build" 2>&1 \
+( cd "$SRC" && cargo test --release --features graft/heavy-tests -p mergewright --test it --no-run ) >"$LOG.build" 2>&1 \
   || { echo "SUMMARY idle rev=$HASH build=FAILED ($LOG.build)" | tee -a "$OUT"; exit 1; }
 BIN=$(grep -oE '\(target/[^)]*it-[0-9a-f]+\)|\([^)]*/deps/it-[0-9a-f]+\)' "$LOG.build" | tail -1 | tr -d '()')
 case "$BIN" in /*) ;; *) BIN="$CARGO_TARGET_DIR/${BIN#target/}";; esac

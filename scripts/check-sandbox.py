@@ -30,7 +30,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
-from trib_sandbox import check_sandboxed, sandbox_env  # noqa: E402
+from mwr_sandbox import check_sandboxed, sandbox_env  # noqa: E402
 
 # Programs that are not Tributary and never open a Tributary config.
 SAFE_PROGRAMS = {"git", "ps", "vmmap", "shellcheck", "python3", "python", "kill", "true"}
@@ -184,8 +184,8 @@ def guard_failures():
     env = sandbox_env()
     if not os.path.isdir(env["XDG_CONFIG_HOME"]):
         failures.append("sandbox_env gave no temp folder")
-    # m8/18d: the folder is seeded with `tributary/launches` = `done`.
-    seeded = os.path.join(env["XDG_CONFIG_HOME"], "tributary", "launches")
+    # m8/18d: the folder is seeded with `mergewright/launches` = `done`.
+    seeded = os.path.join(env["XDG_CONFIG_HOME"], "mergewright", "launches")
     if not os.path.isfile(seeded) or open(seeded).read() != "done\n":
         failures.append("sandbox_env did not seed launches = done")
     shutil.rmtree(env["XDG_CONFIG_HOME"])

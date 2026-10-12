@@ -263,7 +263,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
     assert_staged_are_the_merges_own(&repo);
     let text = std::fs::read_to_string(&said).expect("stderr");
     assert!(
-        text.contains("the merge is paused \u{b7} trib here offers continue or abort"),
+        text.contains("the merge is paused \u{b7} mwr here offers continue or abort"),
         "{text}"
     );
     assert_no_crash(&isolated);
@@ -289,7 +289,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
 /// section: his edit is in the stash, not the tree, and `c` or `a` puts it
 /// back. Colour unverified; looks-right is the user's.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo nextest run -p graft
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo nextest run -p mergewright
 /// --test it quit_waits::hangup::a_hangup_then_a_second_hangup_leaves_the_merge_paused`.
 fn capture_the_relaunch(repo: &Path) {
     use crate::preview::FORK_NOW;

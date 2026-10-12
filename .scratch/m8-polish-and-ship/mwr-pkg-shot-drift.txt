@@ -1,0 +1,5 @@
+docs/shots/37-pty-drive.py:5
+docs/shots/39-capture.py:12
+docs/shots/40-capture.py:14
+docs/shots/m8-quit-stopped-merge-relaunch-80x24.txt:2
+changed 4 · name-only 3 · drift-files 4 · png 0

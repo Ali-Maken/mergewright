@@ -35,7 +35,7 @@ import termios
 import pyte
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from trib_sandbox import sandbox_env  # noqa: E402
+from mwr_sandbox import sandbox_env  # noqa: E402
 
 CTRL_P = b"\x10"
 ESC = b"\x1b"

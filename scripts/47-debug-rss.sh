@@ -27,9 +27,9 @@ else
   git -C "$SRC" checkout -q --detach "$REV" || exit 1
   HASH=$(git -C "$SRC" rev-parse --short HEAD)
 fi
-( cd "$SRC" && cargo build --release -q -p graft --bin trib ) >"$WORK/rss-$HASH.build" 2>&1 \
+( cd "$SRC" && cargo build --release -q -p mergewright --bin mwr ) >"$WORK/rss-$HASH.build" 2>&1 \
   || { echo "SUMMARY rss rev=$HASH build=FAILED" | tee -a "$OUT"; exit 1; }
-BIN="$CARGO_TARGET_DIR/release/trib"
+BIN="$CARGO_TARGET_DIR/release/mwr"
 FIXTURE=$(ls -dt "$ROOT"/target/fixtures/team-17700-* | head -1)
 REPO="$WORK/repo"
 for profile in ${PROFILES:-text kitty}; do

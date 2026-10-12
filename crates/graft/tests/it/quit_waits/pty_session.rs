@@ -96,7 +96,7 @@ impl Session {
         rustix::io::fcntl_setfd(&pty.master, rustix::io::FdFlags::CLOEXEC)
             .expect("the master is close-on-exec");
         let mut command = session_command(
-            Path::new(env!("CARGO_BIN_EXE_trib")),
+            Path::new(env!("CARGO_BIN_EXE_mwr")),
             &[repo.as_os_str().to_owned()],
             pty.slave,
         );

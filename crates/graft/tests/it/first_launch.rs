@@ -14,7 +14,7 @@ use crate::pty::{Isolated, Pty};
 fn headless_never_counts() {
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::Linear);
     let isolated = Isolated::first_launch();
-    let output = Command::new(env!("CARGO_BIN_EXE_trib"))
+    let output = Command::new(env!("CARGO_BIN_EXE_mwr"))
         .arg(&dir)
         .env("XDG_CONFIG_HOME", isolated.config())
         .env("HOME", isolated.home())

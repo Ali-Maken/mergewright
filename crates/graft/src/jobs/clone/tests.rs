@@ -146,7 +146,7 @@ const USER: &str = "tester";
 const PASSWORD: &str = "correct-horse-battery-staple";
 
 /// Graft's own binary, which git runs as the askpass helper. A unit test
-/// has no `CARGO_BIN_EXE_trib` (Cargo sets it for integration tests only),
+/// has no `CARGO_BIN_EXE_mwr` (Cargo sets it for integration tests only),
 /// so it is found where Cargo puts it: beside this test binary's `deps/`.
 /// Cargo builds it whenever the package's integration tests are built, as
 /// every workspace-wide gate does.

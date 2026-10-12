@@ -7,9 +7,9 @@
 //! ways, so each exit path can be watched from outside:
 //!
 //! ```text
-//! cargo run -p graft --example terminal_probe -- quit    # normal drop
-//! cargo run -p graft --example terminal_probe -- panic   # panic hook, then drop
-//! cargo run -p graft --example terminal_probe -- hang    # sit still until signalled
+//! cargo run -p mergewright --example terminal_probe -- quit    # normal drop
+//! cargo run -p mergewright --example terminal_probe -- panic   # panic hook, then drop
+//! cargo run -p mergewright --example terminal_probe -- hang    # sit still until signalled
 //! ```
 //!
 //! After `quit` or `panic` the shell must behave normally (echo on, Ctrl+C

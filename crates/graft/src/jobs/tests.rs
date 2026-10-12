@@ -1177,7 +1177,7 @@ fn a_forced_job_is_waited_for_its_answer_up_to_its_bound() {
             unanswered.at,
             "u"
         ),
-        "trib: stopped rebase onto main after 60 s \u{b7} trib here shows where git left it"
+        "mwr: stopped rebase onto main after 60 s \u{b7} mwr here shows where git left it"
     );
 }
 

@@ -15,7 +15,7 @@
 #      holds every M8 journey walk (WALKS in tests/it/m8_walk/mod.rs, held
 #      to the note's fence by every_m8_journey_id_has_a_walk), the §9
 #      "teaches itself" tests (m8_walk::teaches), the tour walked to
-#      `practice done ✓` with the `trib` binary (tour_walk), and every
+#      `practice done ✓` with the `mwr` binary (tour_walk), and every
 #      capture under docs/shots compared with what the code draws
 #      (check_shot; TRIB_UPDATE_SHOTS unset), the look re-shoots included.
 #   2. (--perf only) the heavy tier's held-key runs in release: held `j` at
@@ -60,7 +60,7 @@ if $perf; then
   # No held-wheel heavy test exists: J2's stop is held in the fast tier
   # (m8_walk::journeys::wheel_flick, headless), its release tail unmeasured.
   FILTER='test(/held_j_stops_on_release_/) | test(/g_after_idle/) | test(/budgets_hold_at_pixel_/)'
-  cargo nextest run --release -p graft --features heavy-tests --no-fail-fast \
+  cargo nextest run --release -p mergewright --features heavy-tests --no-fail-fast \
     --no-capture -E "$FILTER" > "$ACCEPT/perf.txt" 2>&1
   prc=$?
   pline=$(grep -E '^ +Summary ' "$ACCEPT/perf.txt" | tail -1 | sed -E 's/^ +//')

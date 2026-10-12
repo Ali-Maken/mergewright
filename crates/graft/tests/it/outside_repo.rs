@@ -20,7 +20,7 @@ const ALT_SCREEN: &[u8] = b"\x1b[?1049h";
 const PROBE_FIRST: &[u8] = b"\x1b_Gi=31,";
 
 /// A journey's inputs, counted as the note's fence counts them: each key
-/// one, and launching Graft one more where the row's keys start at `trib`
+/// one, and launching Graft one more where the row's keys start at `mwr`
 /// (`open-*`); `init-here` starts on the empty state (`i y`).
 pub(crate) fn assert_within_the_note(id: &str, launch: bool, keys: &[&[u8]]) {
     let taken = usize::from(launch) + keys.len();
@@ -107,7 +107,7 @@ fn newest_recent(isolated: &Isolated) -> PathBuf {
     PathBuf::from(first.split_once('\t').expect("secs\\tpath").1)
 }
 
-/// J14 `open-recent-outside` = 2: `trib ⏎` from a folder that is no
+/// J14 `open-recent-outside` = 2: `mwr ⏎` from a folder that is no
 /// repository opens yesterday's repo at HEAD — and the terminal is taken
 /// over once for both places: one alternate screen, one probe.
 #[test]
@@ -146,7 +146,7 @@ fn open_recent_outside_opens_the_newest_at_head_on_one_terminal() {
     );
 }
 
-/// J14 `open-second-recent` = 3: `trib j ⏎`.
+/// J14 `open-second-recent` = 3: `mwr j ⏎`.
 #[test]
 fn open_second_recent_is_j_then_enter() {
     let tree = Tree::new();

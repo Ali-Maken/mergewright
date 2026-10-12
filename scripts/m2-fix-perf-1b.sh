@@ -28,7 +28,7 @@ run() { # name, then the command
 
 run fast-tier cargo test --quiet
 run heavy-tier cargo test --features heavy-tests -- --test-threads=2
-run release-perf cargo test --release -p graft --features heavy-tests --test it -- \
+run release-perf cargo test --release -p mergewright --features heavy-tests --test it -- \
   frames:: heavy::budgets_hold --test-threads=1 --nocapture
 grep -h '^frames: ' "$raw/release-perf.log" | grep -v ' trigger=' >> "$out"
 echo "(full logs: $raw, untracked)" >> "$out"

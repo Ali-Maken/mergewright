@@ -2,7 +2,7 @@
 //! and the name prompt refuses a second write inside itself — captured
 //! against a real repository and a real remote.
 //!
-//! Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it status_under_a_box`.
+//! Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it status_under_a_box`.
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"

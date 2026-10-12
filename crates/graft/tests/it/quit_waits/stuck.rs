@@ -285,8 +285,8 @@ fn stop_now_mid_merge_leaves_it_paused() {
     assert_eq!(forced.at, Some(StoppedAt::Paused(InProgress::Merge)));
     assert_eq!(
         exit_line_for(forced),
-        "trib: stopped merge main into feature after 10 s \u{b7} the merge is paused \u{b7} \
-         trib here offers continue or abort"
+        "mwr: stopped merge main into feature after 10 s \u{b7} the merge is paused \u{b7} \
+         mwr here offers continue or abort"
     );
 
     let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD"))
@@ -482,7 +482,7 @@ fn stop_now_mid_rebase_with_edits_set_aside() {
     assert_eq!(
         exit_line_for(forced),
         format!(
-            "trib: stopped {} after 10 s \u{b7} the rebase is paused \u{b7} trib here offers \
+            "mwr: stopped {} after 10 s \u{b7} the rebase is paused \u{b7} mwr here offers \
              continue or abort",
             forced.what
         )

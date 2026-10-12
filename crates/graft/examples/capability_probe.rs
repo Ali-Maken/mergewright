@@ -8,7 +8,7 @@
 //! what came back:
 //!
 //! ```text
-//! cargo run -p graft --example capability_probe
+//! cargo run -p mergewright --example capability_probe
 //! ```
 //!
 //! Run it in each terminal on the checklist, and inside tmux and over SSH.
