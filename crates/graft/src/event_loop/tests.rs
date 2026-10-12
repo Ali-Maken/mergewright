@@ -1220,7 +1220,7 @@ fn the_status_screen_reaches_the_terminal() {
     // The backend skips blank cells and moves the cursor instead, so the
     // screen arrives as words rather than as whole lines.
     let bytes = recorder.written();
-    for word in ["Tributary", "Repository", "opening", "Rendering", "quit"] {
+    for word in ["Mergewright", "Repository", "opening", "Rendering", "quit"] {
         assert!(bytes.contains(word), "{word:?} never reached the terminal");
     }
 }

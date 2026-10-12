@@ -23,7 +23,7 @@
 "                                                                                                                        "
 "       ╭ Delete notes.md? ───────────────────────────────────────────────────────────────────────────╮                  "
 "       │ Deletes the file from the working tree.                                                     │                  "
-"       │ Tributary keeps a backup first, so `u` can undo it afterwards.                              │                  "
+"       │ Mergewright keeps a backup first, so `u` can undo it afterwards.                            │                  "
 "       │                                                                                             │                  "
 "       │ git clean -f -- notes.md                                                                    │                  "
 "       │                                                                                             │                  "

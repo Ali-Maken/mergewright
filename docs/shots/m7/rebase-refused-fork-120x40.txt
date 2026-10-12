@@ -37,4 +37,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- feature-b and feature-c are both built on yours · Tributary moves one line · esc dismiss
+ feature-b and feature-c are both built on yours · Mergewright moves one line · esc dismiss

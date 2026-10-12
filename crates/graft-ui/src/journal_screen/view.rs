@@ -48,7 +48,7 @@ impl RowMark {
 /// Whose row it is (J1's distinctions: glyph, source word, indent).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RowKind {
-    /// `●` — a journal entry: done in Tributary, `u` can undo it.
+    /// `●` — a journal entry: done in Mergewright, `u` can undo it.
     #[default]
     Graft,
     /// `$` — a step the shell took, from git's reflog: `u` never touches it.

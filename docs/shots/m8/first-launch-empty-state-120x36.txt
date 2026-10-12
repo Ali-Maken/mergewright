@@ -1,6 +1,6 @@
 m8-polish-and-ship/18d, from the real binary on a pty: what right looks like — his first launch outside a repository, three recents: the start screen as always, plus `first time? ? keys here · ⌃P anything` on the row just above the `─` rule (the bar row under the rule unchanged). Muted ink: colour unverified (rule 5).
 
- Tributary · no repository here
+ Mergewright · no repository here
  ~/code
 
   o  Open…     i  Init     c  Clone…     t  Practice tour

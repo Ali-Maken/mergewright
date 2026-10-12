@@ -2,7 +2,7 @@
 //! §2.13; m8-polish-and-ship/08).
 //!
 //! ```text
-//!  Tributary · no repository here
+//!  Mergewright · no repository here
 //!  ~/code
 //!
 //!   o  Open…     i  Init     c  Clone…     t  Practice tour

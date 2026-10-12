@@ -15,8 +15,8 @@ use super::stage_tree::ls_tree_entry;
 use super::{SnapshotError, both_trees, commit_trees, move_backup_ref};
 
 /// Why a link of the backup chain was written (m6-conflicts/22). Recorded in
-/// the backup commit's message as its last line, `Tributary-Link: step` or
-/// `Tributary-Link: resume` (`Graft-Link:` before the rename, still read), so
+/// the backup commit's message as its last line, `Mergewright-Link: step` or
+/// `Mergewright-Link: resume` (`Graft-Link:` before the rename, still read), so
 /// the chain is readable without the journal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinkKind {
@@ -58,7 +58,7 @@ impl LinkKind {
 /// ([`LinkKind`]).
 ///
 /// `Ok(None)` when the entry names no backup ref: there is nothing to chain
-/// onto, which is exactly the case of an operation begun outside Tributary.
+/// onto, which is exactly the case of an operation begun outside Mergewright.
 ///
 /// # Errors
 /// [`SnapshotError`] — the stop, or a `git` that would not run. Nothing is

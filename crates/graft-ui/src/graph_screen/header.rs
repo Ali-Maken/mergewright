@@ -15,9 +15,9 @@ use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
 /// The product's name, said where the app names itself (the empty state, the
-/// status screen) and never in a repository's header. One line to change
-/// when the real name is chosen (ADR-0057: Tributary is the working name).
-pub const APP_NAME: &str = "Tributary";
+/// status screen) and never in a repository's header. Read from the names
+/// table, so a rename is a flip of `Generation::CURRENT` (ADR-0057).
+pub const APP_NAME: &str = graft_core::on_disk::Generation::CURRENT.title();
 
 /// Everything the header row says, as plain text the caller has already
 /// sanitised.

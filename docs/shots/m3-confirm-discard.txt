@@ -23,7 +23,7 @@
 "                                                                                                                        "
 "       ╭ Discard this line of src/api/routes.rs? ────────────────────────────────────────────────────╮                  "
 "       │ 1 added / 0 removed lines go back to how they were.                                         │                  "
-"       │ Tributary keeps a backup first, so `u` can undo it afterwards.                              │                  "
+"       │ Mergewright keeps a backup first, so `u` can undo it afterwards.                            │                  "
 "       │                                                                                             │                  "
 "       │ git apply -R -                                                                              │                  "
 "       │                                                                                             │                  "

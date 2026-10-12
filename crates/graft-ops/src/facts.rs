@@ -55,7 +55,7 @@ pub enum FactsError {
     /// A ref name that is not UTF-8. The journal records ref names as text,
     /// so one that is not text cannot be recorded — and a restore that
     /// silently mangled a name would aim at the wrong ref.
-    #[error("the ref name {0} is not UTF-8; Tributary cannot journal it")]
+    #[error("the ref name {0} is not UTF-8; Mergewright cannot journal it")]
     NonUtf8Ref(String),
     /// An unmerged path's file could not be read for conflict markers.
     #[error("reading {path} for conflict markers: {source}")]

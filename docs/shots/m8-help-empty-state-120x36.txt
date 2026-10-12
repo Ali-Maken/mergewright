@@ -1,4 +1,4 @@
- Tributary · no repository here
+ Mergewright · no repository here
  ~/code     ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
             │ ›                                                                                            │
   o  Open…  │ HERE                                                                                         │

@@ -203,7 +203,7 @@ fn inside_live_operation(
 /// step it just ran (the same limitation the stop itself has — the plan's
 /// own lines do not reach disk either until `resume` closes the entry).
 ///
-/// `None` is an operation begun outside Tributary: there is no entry of Graft's
+/// `None` is an operation begun outside Mergewright: there is no entry of Graft's
 /// to record the step on. Nothing is dropped that was ever ours — git's own
 /// state is the whole record of that operation, and the step is reported to
 /// the caller on the returned `Applied`.

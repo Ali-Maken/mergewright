@@ -117,7 +117,7 @@ fn a_merge_begun_in_the_shell_lands_on_the_banner() {
     );
     let reason = crate::view::rows::stopped_line(&state).expect("a stop is standing");
     assert!(
-        reason.full().as_str().contains("begun outside Tributary"),
+        reason.full().as_str().contains("begun outside Mergewright"),
         "{reason:?}"
     );
     // A journal that never heard of it changes nothing.
@@ -156,7 +156,7 @@ fn a_previous_runs_merge_still_lands_the_same_way() {
         Some("merge still in progress from a previous run · 2 files conflicted".to_owned())
     );
 
-    // Git's word first: it lands as begun outside Tributary, and the journal's
+    // Git's word first: it lands as begun outside Mergewright, and the journal's
     // live entry, arriving second, says whose it really is.
     let (state, _) = update(&launched(), working_tree_read(&["a.rs"]));
     landed_on(&state, "a.rs");

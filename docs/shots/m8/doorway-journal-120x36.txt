@@ -13,7 +13,7 @@ JOURNAL · what happened in this repo, newest first
   $  outside Graft  57y ago   committed "D" on main                                                                     
   $  outside Graft  57y ago   switch from spike to main                                                                 
   ●  Graft          57y ago   commit "x"                                   the index · backup saved                 ← u 
-  a branch deleted outside Tributary and never checked out leaves no trace here                                         
+  a branch deleted outside Mergewright and never checked out leaves no trace here                                       
                                                                                                                         
                                                                                                                         
                                                                                                                         

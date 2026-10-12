@@ -121,6 +121,17 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "done in Graft: {can}",
         "legend names that column",
     ),
+    // Perf examples (50): run by hand to measure, never drawn to the user.
+    (
+        "graft-git/examples/stash_only_cost.rs",
+        "Graft Perf",
+        "perf fixture's author identity",
+    ),
+    (
+        "graft-ops/examples/snapshot_cost.rs",
+        "graft",
+        "perf example's temp prefix and scratch folder",
+    ),
     // Messages written into git (stash and backup commits): left until a
     // reader audit renames them with their readers (27a NOTES).
     (
@@ -201,21 +212,30 @@ fn literals(path: &Path) -> Vec<(usize, String)> {
     found
 }
 
-/// `graft` as a whole word, any case: not `graft_core`, not `TRIB_X`,
-/// not `graft-ui`'s path segment when joined by `_`.
-fn says_old_name(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    let bytes = lower.as_bytes();
-    let word = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
-    lower.match_indices("graft").any(|(at, _)| {
+/// `word` as a whole word, case-sensitive: `_` and alphanumerics bound it,
+/// so `graft_core`, `TRIB_X` and `grafted` do not match.
+fn says_word(text: &str, word: &str) -> bool {
+    let bytes = text.as_bytes();
+    let inside = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
+    text.match_indices(word).any(|(at, _)| {
         let before = at.checked_sub(1).map(|i| bytes[i]);
-        let after = bytes.get(at + 5).copied();
-        !before.is_some_and(word) && !after.is_some_and(word)
+        let after = bytes.get(at + word.len()).copied();
+        !before.is_some_and(inside) && !after.is_some_and(inside)
     })
 }
 
-/// No string literal in any crate's production source says `graft` but the
-/// allowed files: the user reads `mwr` or Tributary everywhere.
+/// The earlier generation `text` names, if any: its title (`Graft`,
+/// `Tributary`) or its command (`graft`, `trib`) as a whole word, read from
+/// the names table so a later rename needs no edit here.
+fn says_old_name(text: &str) -> Option<Generation> {
+    Generation::CURRENT
+        .older()
+        .find(|old| says_word(text, old.title()) || says_word(text, old.command()))
+}
+
+/// No string literal in any crate's production source names an earlier
+/// generation but the allowed files: the user reads `mwr` or Mergewright
+/// everywhere (50).
 #[test]
 fn no_old_name_in_user_visible_strings() {
     let crates = crates_dir();
@@ -226,9 +246,11 @@ fn no_old_name_in_user_visible_strings() {
         .collect();
     dirs.sort();
     for krate in dirs {
-        let src = krate.join("src");
-        if src.is_dir() {
-            production_files(&src, &mut files);
+        for part in ["src", "examples"] {
+            let dir = krate.join(part);
+            if dir.is_dir() {
+                production_files(&dir, &mut files);
+            }
         }
     }
     let mut found = Vec::new();
@@ -247,7 +269,7 @@ fn no_old_name_in_user_visible_strings() {
             }
             // `include_str!`/`env!` paths name crate folders, not the app.
             let path_like = literal.contains("crates/graft") || literal.starts_with("../");
-            if says_old_name(&literal) && !path_like {
+            if says_old_name(&literal).is_some() && !path_like {
                 found.push(format!("{shown}:{line}: \"{literal}\""));
             }
         }
@@ -261,11 +283,18 @@ fn no_old_name_in_user_visible_strings() {
 
 #[test]
 fn the_word_test_reads_words_only() {
-    assert!(says_old_name("graft crashed"));
-    assert!(says_old_name("usage: Graft"));
-    assert!(!says_old_name("graft_core"));
-    assert!(!says_old_name("TRIB_PERF_TRACE"));
-    assert!(!says_old_name("grafted"));
+    assert_eq!(says_old_name("graft crashed"), Some(Generation::Graft));
+    assert_eq!(says_old_name("usage: Graft"), Some(Generation::Graft));
+    assert_eq!(
+        says_old_name("Tributary cannot read this"),
+        Some(Generation::Tributary)
+    );
+    assert_eq!(says_old_name("trib: stopped"), Some(Generation::Tributary));
+    assert_eq!(says_old_name("graft_core"), None);
+    assert_eq!(says_old_name("TRIB_PERF_TRACE"), None);
+    assert_eq!(says_old_name("grafted"), None);
+    assert_eq!(says_old_name("tributary-ish attribute"), None);
+    assert_eq!(says_old_name("Mergewright · mwr"), None);
 }
 
 /// README.md and `scripts/**` name the command and the app, not the old

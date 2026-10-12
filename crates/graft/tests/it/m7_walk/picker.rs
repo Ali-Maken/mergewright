@@ -640,7 +640,7 @@ fn take_refused_on_a_merge() {
     let state = walk.press(&state, KeyCode::Char('o'), "o");
     assert!(state.preview.is_none(), "no preview box");
     let words = format!(
-        "{} is a merge \u{b7} taking a merge isn't in Tributary yet",
+        "{} is a merge \u{b7} taking a merge isn't in Mergewright yet",
         &merge[..7]
     );
     assert_eq!(
@@ -660,7 +660,7 @@ fn take_refused_on_a_merge() {
                 "take-refused-merge-120x40.txt",
                 "take_refused_on_a_merge",
                 "`o` on a merge commit — the status line `<sha7> is a merge ·\n\
-                 # taking a merge isn't in Tributary yet`; no preview box."
+                 # taking a merge isn't in Mergewright yet`; no preview box."
             )
         ),
     );

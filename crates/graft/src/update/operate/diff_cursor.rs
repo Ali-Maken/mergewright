@@ -265,9 +265,9 @@ pub fn stage_at_diff_cursor(
 fn backup_words(keys: &graft_ui::keymap::Keymap) -> String {
     match keys.spell_keys(&[graft_ui::keymap::ActionId("app.undo")]) {
         Some(undo) => {
-            format!("Tributary keeps a backup first, so `{undo}` can undo it afterwards.")
+            format!("Mergewright keeps a backup first, so `{undo}` can undo it afterwards.")
         }
-        None => "Tributary keeps a backup first.".to_owned(),
+        None => "Mergewright keeps a backup first.".to_owned(),
     }
 }
 

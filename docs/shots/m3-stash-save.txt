@@ -15,7 +15,7 @@
 "Stash the working tree                                                                                                  "
 "▸message token work                                                                                                     "
 "  ( ) all incl. untracked   (•) staged only   (tab)                                                                     "
-"  Tributary journals it, so u takes the stash back.                                                                     "
+"  Mergewright journals it, so u takes the stash back.                                                                   "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "

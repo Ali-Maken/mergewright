@@ -1172,7 +1172,7 @@ fn interrupted_entry_without_live_state_is_still_closed() {
     drop(state);
     app.close();
 
-    // The merge ended outside Tributary, so the journal's `Pending` line is now
+    // The merge ended outside Mergewright, so the journal's `Pending` line is now
     // torn rather than live. Nothing about the journal file changed.
     git(repo, &["merge", "--abort"]);
     assert!(

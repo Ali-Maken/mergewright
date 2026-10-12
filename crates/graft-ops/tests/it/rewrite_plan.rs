@@ -223,7 +223,7 @@ fn a_fork_is_refused_naming_both() {
     let refusal = refused(plan_of(&repo, &RewriteRequest::Open { from }));
     assert_eq!(
         refusal.explain(&crate::support::Letters),
-        "feature-b and feature-c are both built on yours · Tributary moves one line"
+        "feature-b and feature-c are both built on yours · Mergewright moves one line"
     );
 }
 

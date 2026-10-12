@@ -49,7 +49,7 @@ pub use graft_core::on_disk::ASKPASS_SOCKET_VAR;
 
 /// The command the user types, and the word every message that means the
 /// command uses: usage, `--version`, the stderr prefix, the crash text, the
-/// man page's NAME. Where prose means the app, the name is `Tributary`
+/// man page's NAME. Where prose means the app, the name is `Mergewright`
 /// (`graft_ui`'s `APP_NAME`); this is the binary's name.
 pub const COMMAND: &str = graft_core::on_disk::Generation::CURRENT.command();
 
@@ -61,11 +61,11 @@ pub enum CliError {
     #[error("unknown option `{0}`\n\n{usage}", usage = usage(FLAGS))]
     UnknownOption(String),
     /// More than one path. Graft opens one repository.
-    #[error("Tributary opens one repository\n\n{usage}", usage = usage(FLAGS))]
+    #[error("Mergewright opens one repository\n\n{usage}", usage = usage(FLAGS))]
     TooManyPaths,
     /// No path was given and the current directory could not be read — it has
     /// been deleted, or its permissions changed, under the running shell.
-    #[error("cannot tell which directory Tributary was started in: {0}")]
+    #[error("cannot tell which directory Mergewright was started in: {0}")]
     NoWorkingDirectory(#[source] io::Error),
 }
 
@@ -259,7 +259,7 @@ usage: mwr [<path>]
         let two = parse_words(&["/a", "/b"]).expect_err("one repository");
         assert_eq!(
             two.to_string(),
-            format!("Tributary opens one repository\n\n{USAGE_BEFORE_FLAGS}")
+            format!("Mergewright opens one repository\n\n{USAGE_BEFORE_FLAGS}")
         );
     }
 

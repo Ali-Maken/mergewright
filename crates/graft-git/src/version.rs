@@ -111,7 +111,7 @@ pub enum SystemGit {
     TooOld {
         /// What is installed.
         found: GitVersion,
-        /// What Tributary needs.
+        /// What Mergewright needs.
         minimum: GitVersion,
     },
 }
