@@ -1347,4 +1347,3 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/48r-kept-aside-journal-blocks-move | If a backup named by a kept-aside journal is gone (by hand), every open stays on old names (`KeptOld`); nothing lost, move never happens. Proposal: `check_journals` skips `older-version/` (48r NOTES). | **broken** (low odds) | post-M8 |
 | M8/49-current-command-inline | `Generation::CURRENT.command()` spelled inline in three crates (review 49 m6); readability only. | **broken** (readability) | post-M8 |
 | M8/50-tour-header-letters | Question: tour header `workar…` → `workri…` after 50; letters may show through a gap. Pre-existing per builder; no line found (rule 7: question). | **question** | 56 recaptures |
-| M8/50-practice-temp-prefix | `tributary-practice-` tour folder prefix (tour.rs:62) — routed to 51 (review 50 M1). | **broken** (wording) | 51 |

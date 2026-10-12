@@ -73,3 +73,12 @@ workspace-wide.
 
 ## Size
 One context, ~40k tokens.
+
+## Added by the conductor (review 51, 2026-10-12)
+`docs/reviews/m8-mergewright-51.md`:
+- **Major 1:** the git-git cache moved to `mergewright/`, readers did not: `graft gallery.rs:677` defaults to
+  `graft/git-git.git` (its doc says it follows the script), `m1-checkpoint.sh:78`, `TESTING.md:595`. Take the path from
+  the table where code reads it; test that the gallery default equals the script's path (red first).
+- Minors: a helper in `tour/tests.rs` (ratchet +47 back down); `tour.rs:64` comment claims older folders clean up but
+  `build.rs:71` always uses CURRENT — say what is true; when both caches exist, say so once; `tour_walk.rs` prefix
+  literals from the table.
