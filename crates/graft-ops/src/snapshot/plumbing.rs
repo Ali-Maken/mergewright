@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use graft_core::journal::IndexState;
 use graft_core::oid::Oid;
+use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -289,9 +290,10 @@ pub(super) fn mktree(
 /// The author and committer every backup commit carries: the app, not the
 /// user, so a backup never passes for the user's own work. Nothing reads it
 /// back; it is only what `git log` shows on a backup ref.
-pub const BACKUP_AUTHOR_NAME: &str = "tributary";
-/// See [`BACKUP_AUTHOR_NAME`].
-pub const BACKUP_AUTHOR_EMAIL: &str = "tributary@backup";
+/// The current generation's dir (ADR-0057, 2026-10-11 §1).
+pub const BACKUP_AUTHOR_NAME: &str = Generation::CURRENT.dir();
+/// See [`BACKUP_AUTHOR_NAME`]: `<dir>@backup`.
+pub const BACKUP_AUTHOR_EMAIL: &str = Generation::CURRENT.backup_email();
 
 pub(super) fn commit_tree(
     repo: &RepoHandle,

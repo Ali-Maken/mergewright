@@ -640,23 +640,24 @@ fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
 
 /// Puts the rename's marker where every open looks for it.
 fn write_marker(common_dir: &Path) {
-    let dir = common_dir.join(OnDiskNames::New.dir());
+    let dir = common_dir.join(Generation::CURRENT.dir());
     std::fs::create_dir_all(&dir).expect("the marker's dir can be made");
-    std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker can be written");
+    let marker = dir.join(graft_core::on_disk::MIGRATED_MARKER);
+    std::fs::write(marker, "clean\n").expect("the marker can be written");
 }
 
 #[test]
 fn no_marker_reads_old_names_from_every_opener() {
     let fixture = Fixture::with_two_commits();
     let shared = SharedRepo::open(fixture.root()).expect("opens");
-    assert_eq!(shared.on_disk_names(), OnDiskNames::Old);
-    assert_eq!(shared.handle().on_disk_names(), OnDiskNames::Old);
+    assert_eq!(shared.on_disk_names(), Generation::Graft);
+    assert_eq!(shared.handle().on_disk_names(), Generation::Graft);
     assert_eq!(
         shared.handle_with_object_cache(0).on_disk_names(),
-        OnDiskNames::Old
+        Generation::Graft
     );
     let handle = RepoHandle::open(fixture.root()).expect("opens");
-    assert_eq!(handle.on_disk_names(), OnDiskNames::Old);
+    assert_eq!(handle.on_disk_names(), Generation::Graft);
 }
 
 #[test]
@@ -670,19 +671,19 @@ fn the_marker_in_the_common_dir_reads_new_names_in_every_worktree() {
         let shared = SharedRepo::open(&path).expect("opens");
         assert_eq!(
             shared.on_disk_names(),
-            OnDiskNames::New,
+            Generation::CURRENT,
             "{}",
             path.display()
         );
-        assert_eq!(shared.handle().on_disk_names(), OnDiskNames::New);
+        assert_eq!(shared.handle().on_disk_names(), Generation::CURRENT);
         assert_eq!(
             shared.handle_with_object_cache(0).on_disk_names(),
-            OnDiskNames::New
+            Generation::CURRENT
         );
         let handle = RepoHandle::open(&path).expect("opens");
         assert_eq!(
             handle.on_disk_names(),
-            OnDiskNames::New,
+            Generation::CURRENT,
             "{}",
             path.display()
         );
@@ -699,5 +700,5 @@ fn a_marker_in_a_linked_worktrees_own_dir_does_not_count() {
     write_marker(linked.git_dir());
 
     let reopened = RepoHandle::open(&fixture.root().join("linked")).expect("opens");
-    assert_eq!(reopened.on_disk_names(), OnDiskNames::Old);
+    assert_eq!(reopened.on_disk_names(), Generation::Graft);
 }

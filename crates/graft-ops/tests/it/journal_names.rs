@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+use graft_core::on_disk::{Generation, MIGRATED_MARKER};
 use graft_ops::journal::journal_path;
 use graft_ops::operation::{Operation, Target};
 
@@ -30,7 +30,7 @@ fn edited(repo: TempRepo) -> TempRepo {
 
 #[test]
 fn no_marker_writes_the_old_names() {
-    let repo = edited(TempRepo::init_old_names());
+    let repo = edited(TempRepo::init_on(Generation::Graft));
     let entry = stage_a(&repo);
 
     let backup = entry.backup_ref.expect("a stage takes a backup");
@@ -50,8 +50,8 @@ fn no_marker_writes_the_old_names() {
 
 #[test]
 fn the_marker_writes_the_new_names_and_u_still_restores() {
-    let repo = edited(TempRepo::init_old_names());
-    let marker_dir = repo.path().join(".git").join(OnDiskNames::New.dir());
+    let repo = edited(TempRepo::init_on(Generation::Graft));
+    let marker_dir = repo.path().join(".git").join(Generation::CURRENT.dir());
     std::fs::create_dir_all(&marker_dir).expect("makes the dir");
     std::fs::write(marker_dir.join(MIGRATED_MARKER), "clean\n").expect("writes");
     let index_before = repo.git(&["ls-files", "-s"]);

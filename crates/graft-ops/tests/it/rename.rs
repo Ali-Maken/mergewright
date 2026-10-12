@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 use graft_core::journal::{JournalEntry, OperationKind};
 use graft_core::oid::Oid;
-use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+use graft_core::on_disk::{Generation, MIGRATED_MARKER};
 use graft_git::commit_graph::{self, Offer};
 use graft_git::file_lock::FileLock;
 use graft_ops::operation::{BranchCreateParams, OnEdits, Operation, Target};
@@ -68,7 +68,7 @@ fn stage_edit(repo: &TempRepo, text: &str, at: i64) {
 /// stages (each with a backup under `refs/graft/backup/main/`) after
 /// `branches` branch creates (none), all journaled under `.git/graft/`.
 fn old_repo(branches: usize, backups: usize) -> TempRepo {
-    let repo = TempRepo::init_old_names();
+    let repo = TempRepo::init_on(Generation::Graft);
     repo.write("a.rs", b"one\n");
     repo.commit_all("one");
     let head = Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("a commit id");
@@ -101,12 +101,15 @@ fn marker(repo: &TempRepo) -> Option<String> {
 /// newest's backup read under the new prefix.
 fn the_journal_reads_the_move(repo: &TempRepo, files: usize, newest: &JournalEntry) {
     let handle = repo.open();
-    assert_eq!(handle.on_disk_names(), OnDiskNames::New);
+    assert_eq!(handle.on_disk_names(), Generation::CURRENT);
     let entries = journal_for(&handle).entries().to_vec();
     assert_eq!(entries.len(), 21, "the 20 and the move");
     let moved = entries.last().expect("the move");
     assert_eq!(moved.kind, OperationKind::Migrate);
-    assert_eq!(moved.description, graft_ops::rename::description(3, files));
+    assert_eq!(
+        moved.description,
+        graft_ops::rename::description(Generation::CURRENT, 3, files)
+    );
     assert_eq!(
         entries[19].backup_ref,
         newest
@@ -147,7 +150,7 @@ fn old_repo_moves_and_undo_still_restores() {
     };
     assert_eq!((refs, not_journaled), (3, None));
     assert!(files >= 1, "the journal at least: {files}");
-    assert_eq!(settled.names, OnDiskNames::New);
+    assert_eq!(settled.names, Generation::CURRENT);
     assert!(settled.hold.is_none());
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
     assert_eq!(refs_under(&repo, "refs/tributary/"), as_new(&old));
@@ -177,7 +180,7 @@ fn read_back_mismatch_keeps_old() {
     assert_eq!(refs_under(&repo, "refs/graft/"), old, "nothing old deleted");
     assert_eq!(repo.read(".git/graft/undo-journal.jsonl"), journal);
     assert_eq!(marker(&repo), None, "no switch");
-    assert_eq!(repo.open().on_disk_names(), OnDiskNames::Old);
+    assert_eq!(repo.open().on_disk_names(), Generation::Graft);
 
     // The relaunch moves it: the ref the failed attempt left at another
     // value is the move's own scratch, overwritten.
@@ -250,7 +253,7 @@ fn switched_marker_cleans_leftovers() {
             kept_aside: None
         }
     );
-    assert_eq!(settled.names, OnDiskNames::New);
+    assert_eq!(settled.names, Generation::CURRENT);
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
     assert_eq!(
         refs_under(&repo, "refs/tributary/"),
@@ -285,7 +288,7 @@ fn old_names_hold_blocks_migration() {
 
     let blocked = settle(&repo);
     assert_eq!(blocked.outcome, SettleOutcome::KeptOld(MigrateError::Busy));
-    assert_eq!(blocked.names, OnDiskNames::Old);
+    assert_eq!(blocked.names, Generation::Graft);
     assert!(
         blocked.hold.is_some(),
         "this run holds it too, for its life"
@@ -318,7 +321,7 @@ fn decline_read_from_new_dir() {
     ));
 
     let handle = repo.open();
-    assert_eq!(handle.on_disk_names(), OnDiskNames::New);
+    assert_eq!(handle.on_disk_names(), Generation::CURRENT);
     assert_eq!(
         commit_graph::offer_state(&handle).expect("reads"),
         Offer::Declined

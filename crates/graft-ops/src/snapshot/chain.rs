@@ -4,7 +4,7 @@
 
 use graft_core::journal::{IndexState, JournalEntry};
 use graft_core::oid::Oid;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, Stop};
 
@@ -35,7 +35,7 @@ impl LinkKind {
     /// names the repository is using: the reader takes both, forever, so
     /// nothing depends on which one a commit carries (ADR-0057, Amendment).
     pub(super) fn trailer(self) -> String {
-        let key = OnDiskNames::New.link_trailer();
+        let key = Generation::CURRENT.link_trailer();
         match self {
             LinkKind::Step => format!("{key} step"),
             LinkKind::Resume => format!("{key} resume"),
@@ -249,16 +249,15 @@ fn parent_and_link(
 }
 
 /// The kind a backup commit's message records: its last non-empty line, when
-/// that is a `Tributary-Link:` or `Graft-Link:` line (either key, whatever
-/// names are in force: backup commits are immutable); [`LinkKind::Step`]
+/// that is any generation's `<Title>-Link:` line (every key, whatever names
+/// are in force: backup commits are immutable); [`LinkKind::Step`]
 /// when there is none (a link written before the kind was, or the
 /// pre-operation snapshot).
 pub(super) fn link_of(commit: Oid, message: &str) -> Result<LinkKind, SnapshotError> {
     let last = message.lines().rev().find(|line| !line.trim().is_empty());
     let Some((line, value)) = last.and_then(|line| {
-        OnDiskNames::ALL
-            .iter()
-            .find_map(|names| line.strip_prefix(names.link_trailer()))
+        Generation::of_trailer(line)
+            .and_then(|written| line.strip_prefix(written.link_trailer()))
             .map(|value| (line, value))
     }) else {
         return Ok(LinkKind::Step);

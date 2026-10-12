@@ -49,7 +49,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, IndexState, Touches};
 use graft_core::oid::Oid;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
 
@@ -170,7 +170,7 @@ pub fn scope(touches: &Touches) -> SnapshotScope {
 /// `<prefix>backup/<worktree>/<ulid>` — shared across worktrees by git,
 /// namespaced per worktree by us (ADR-0010). `<prefix>` is the repository's
 /// names in force: `refs/graft/` or `refs/tributary/` (ADR-0057, Amendment).
-pub fn backup_ref_name(names: OnDiskNames, worktree: &str, id: &EntryId) -> String {
+pub fn backup_ref_name(names: Generation, worktree: &str, id: &EntryId) -> String {
     format!("{}backup/{worktree}/{id}", names.ref_prefix())
 }
 

@@ -68,11 +68,11 @@ fn committed_man_page_is_the_generated_one() {
 }
 
 /// The FILES and ENVIRONMENT paths name the folder the app uses today
-/// (`OnDiskNames::New`), never the old `graft/` one.
+/// (`Generation::CURRENT`), never the old `graft/` one.
 #[test]
 fn man_page_names_the_config_folder_in_force() {
     let page = man_page(FLAGS, defaults(), CONFIG_KEYS);
-    let dir = graft_core::on_disk::OnDiskNames::New.dir();
+    let dir = graft_core::on_disk::Generation::CURRENT.dir();
     for path in [
         format!("$XDG_CONFIG_HOME/{dir}/config.toml"),
         format!("$XDG_CONFIG_HOME/{dir}/recent"),

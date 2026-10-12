@@ -1,30 +1,34 @@
-//! A journal's ref names read under the names in force: the journal's
+//! A journal's ref names read under the generation in force: the journal's
 //! bytes are never rewritten; every reader maps at read.
 
 use std::borrow::Cow;
 
 use graft_core::journal::JournalEntry;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
-/// `name` as the names in force spell it: under the new names, a ref the
-/// journal recorded under the old prefix is now under the new one. The
-/// journal's bytes are never rewritten; every reader maps at read.
+/// `name` as the generation in force spells it: a ref the journal recorded
+/// under any generation older than `in_force` is now under `in_force`'s
+/// prefix. A newer generation's name, or anyone else's, reads as written.
+/// The journal's bytes are never rewritten; every reader maps at read.
 #[must_use]
-pub fn map_ref(name: &str, names: OnDiskNames) -> Cow<'_, str> {
-    let (old, new) = (OnDiskNames::Old.ref_prefix(), OnDiskNames::New.ref_prefix());
-    match (names, name.strip_prefix(old)) {
-        (OnDiskNames::New, Some(rest)) => Cow::Owned(format!("{new}{rest}")),
-        _ => Cow::Borrowed(name),
+pub fn map_ref(name: &str, in_force: Generation) -> Cow<'_, str> {
+    let rest = Generation::of_ref(name)
+        .filter(|written| *written < in_force)
+        .and_then(|written| name.strip_prefix(written.ref_prefix()));
+    match rest {
+        Some(rest) => Cow::Owned(format!("{}{rest}", in_force.ref_prefix())),
+        None => Cow::Borrowed(name),
     }
 }
 
 /// Every ref name an entry holds, through [`map_ref`]: the backup ref, the
 /// touched refs, the before/after maps and a fetch's moved refs.
-pub fn map_entry(entry: &mut JournalEntry, names: OnDiskNames) {
-    if names == OnDiskNames::Old {
+pub fn map_entry(entry: &mut JournalEntry, in_force: Generation) {
+    if in_force.older().next().is_none() {
+        // Nothing older to map from.
         return;
     }
-    let map = |name: &String| map_ref(name, names).into_owned();
+    let map = |name: &String| map_ref(name, in_force).into_owned();
     if let Some(backup) = entry.backup_ref.as_mut() {
         *backup = map(backup);
     }
@@ -50,8 +54,8 @@ pub fn map_entry(entry: &mut JournalEntry, names: OnDiskNames) {
 }
 
 /// [`map_entry`] over a whole journal.
-pub fn map_entries(entries: &mut [JournalEntry], names: OnDiskNames) {
+pub fn map_entries(entries: &mut [JournalEntry], in_force: Generation) {
     for entry in entries {
-        map_entry(entry, names);
+        map_entry(entry, in_force);
     }
 }

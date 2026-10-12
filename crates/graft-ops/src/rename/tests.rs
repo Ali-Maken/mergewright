@@ -3,7 +3,7 @@
 //! repositories in `tests/it/rename.rs`.
 
 use graft_core::journal::OperationKind;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use super::{description, map_entries, map_ref};
 use crate::journal::parse;
@@ -13,16 +13,36 @@ use crate::journal::tests::committed;
 fn an_old_prefix_reads_under_the_new_names_only() {
     let old = "refs/graft/backup/main/01HF7YAT000000000000000000";
     assert_eq!(
-        map_ref(old, OnDiskNames::New),
+        map_ref(old, Generation::CURRENT),
         "refs/tributary/backup/main/01HF7YAT000000000000000000"
     );
     assert_eq!(
-        map_ref(old, OnDiskNames::Old),
+        map_ref(old, Generation::Graft),
         old,
         "old names read as written"
     );
     for untouched in ["refs/heads/graft/x", "refs/heads/main", "refs/graftish/a"] {
-        assert_eq!(map_ref(untouched, OnDiskNames::New), untouched);
+        assert_eq!(map_ref(untouched, Generation::CURRENT), untouched);
+    }
+}
+
+/// Every generation older than the one in force maps to it; the one in
+/// force and any newer one read as written (a newer one is a failed move's
+/// scratch, never his). Literals: the known-good spellings.
+#[test]
+fn every_older_generation_maps_to_the_one_in_force() {
+    use Generation::{Graft, Mergewright, Tributary};
+    let rest = "backup/main/01HF7YAT000000000000000000";
+    let at = |dir: &str| format!("refs/{dir}/{rest}");
+    for (name, in_force, read) in [
+        (at("graft"), Mergewright, at("mergewright")),
+        (at("tributary"), Mergewright, at("mergewright")),
+        (at("mergewright"), Mergewright, at("mergewright")),
+        (at("graft"), Tributary, at("tributary")),
+        (at("mergewright"), Tributary, at("mergewright")),
+        (at("tributary"), Graft, at("tributary")),
+    ] {
+        assert_eq!(map_ref(&name, in_force), read, "{name} under {in_force:?}");
     }
 }
 
@@ -35,7 +55,7 @@ fn the_m5_golden_reads_its_backups_under_the_new_prefix() {
     let golden = include_bytes!("../../tests/it/goldens/m5-journal.jsonl");
     let mut entries = parse(golden).unwrap().entries;
     let as_written = entries.clone();
-    map_entries(&mut entries, OnDiskNames::New);
+    map_entries(&mut entries, Generation::CURRENT);
 
     assert_eq!(entries.len(), 3);
     for (mapped, written) in entries.iter().zip(&as_written) {
@@ -70,7 +90,7 @@ fn every_ref_field_of_an_entry_is_mapped() {
     entry.refs_before.insert(old_backup.clone(), None);
     entry.refs_after.insert(old_backup.clone(), None);
     let mut entries = vec![entry];
-    map_entries(&mut entries, OnDiskNames::New);
+    map_entries(&mut entries, Generation::CURRENT);
     let [entry] = entries.as_slice() else {
         panic!()
     };
@@ -83,6 +103,16 @@ fn every_ref_field_of_an_entry_is_mapped() {
 
 #[test]
 fn the_entry_words_count_what_moved() {
-    assert_eq!(description(3, 12), "rename to Tributary (3 refs, 12 files)");
-    assert_eq!(description(1, 1), "rename to Tributary (1 ref, 1 file)");
+    assert_eq!(
+        description(Generation::Tributary, 3, 12),
+        "rename to Tributary (3 refs, 12 files)"
+    );
+    assert_eq!(
+        description(Generation::Tributary, 1, 1),
+        "rename to Tributary (1 ref, 1 file)"
+    );
+    assert_eq!(
+        description(Generation::Mergewright, 2, 0),
+        "rename to Mergewright (2 refs, 0 files)"
+    );
 }

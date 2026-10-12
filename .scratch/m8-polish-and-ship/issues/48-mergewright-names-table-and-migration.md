@@ -1,6 +1,6 @@
 # Mergewright 1: one table of every name, and one move from whatever is in force
 
-Status: ready
+Status: Part A done; Part B ready
 Blocked by: 46, 47
 Build with:
 - Part A: **Fable (signature)**. The generation table is the interface every later rename ticket calls, and every
@@ -113,13 +113,16 @@ pub const BACKUP_AUTHOR_EMAIL: &str; // "<CURRENT.dir()>@backup", built by the e
 ```
 
 ## Part A (commit 1, no behaviour change; `CURRENT = Tributary`)
-- [ ] Table spells every row: `on_disk::tests::every_generation_spells_its_names`
-- [ ] Table order: `on_disk::tests::generations_are_oldest_first_and_current_is_last_reachable`
-- [ ] `generation_of_ref`, `generation_of_trailer`, `generation_of_message` each read all three spellings:
+- [x] Table spells every row: `on_disk::tests::every_generation_spells_its_names`
+- [x] Table order: `on_disk::tests::generations_are_oldest_first_and_current_is_last_reachable`
+- [x] `generation_of_ref`, `generation_of_trailer`, `generation_of_message` each read all three spellings
+      (as `Generation::of_ref`/`of_trailer`/`of_message`, see Deviations):
       `on_disk::tests::each_spelling_reads_back_its_generation`
-- [ ] `is_graft_internal` is true under all three prefixes: `ref_name::tests::every_prefix_internal`
-- [ ] No `OnDiskNames`, `::New` or `::Old` left (grep quoted in NOTES), and the former `Old` sites are listed
-- [ ] Workspace suite green, with only the order-asserting tests changed (named in NOTES)
+- [x] `is_graft_internal` is true under all three prefixes: `ref_name::tests::every_prefix_internal`
+- [x] No `OnDiskNames`, `::New` or `::Old` left (grep quoted in NOTES), and the former `Old` sites are listed
+- [x] Workspace suite green, with only the order-asserting tests changed (named in NOTES): `cargo nextest run`
+      6391 tests, 6390 passed + `file_size` ratchet fixed and re-run (838/838 in graft-ops it + file_size);
+      `cargo test --doc` green
 
 ## Part B (commit 2: Mergewright in force)
 All in `graft-ops/tests/it/rename/generations.rs` unless stated. Truth comes from git (`for-each-ref`, `fsck`) and the
@@ -192,3 +195,73 @@ workspace-wide, after each Part.
 
 ## Size
 A ~40k, B ~60k. Two contexts, two commits at the A/B seam.
+
+## NOTES
+
+### Part A (commit 1, `CURRENT = Tributary`)
+Two builders: the first was paused near the end of Part A (user paused the session); the second finished it. No compaction
+in the second. Scout: none new; the ticket's named scout (`scouts/26-rename-on-disk.md`) and 26/26r NOTES stood, plus
+the first builder's uncommitted diff, read whole.
+
+**Grep (no `OnDiskNames`, `::New`, `::Old` left):**
+`grep -rnE 'OnDiskNames|Names::(New|Old)|init_old_names' crates | wc -l` → `0`.
+
+**Deviations**
+- `generation_of_ref/_trailer/_message` are associated fns `Generation::of_ref/of_trailer/of_message`, not free fns:
+  graft-core exports no free fn (ADR-0007, `tests::core_has_no_free_functions`). Same behaviour, same callers.
+- Added `Generation::backup_email()` (`<dir>@backup`, spelled per row: a `const` cannot join strings).
+- `graft-git::repo::names_in_force(common_dir) -> io::Result<Generation>` (new `repo/names.rs`): newest marked
+  generation up to `CURRENT`, else Graft. Read at open and again by the move under its lock. With `CURRENT =
+  Tributary` it is the old one-marker read.
+- Early Part B groundwork, behaviour unchanged while one generation is older than `CURRENT`:
+  `settle_strays(repo, from)`, `settle_older_strays` (runs `settle_strays` per older generation, each with its own pass
+  number — **not yet §5's one pass across generations**), `older_names_present`, `trees::{old_trees,new_without_old}`
+  and `refs::{list_both,carry_or_set_aside}` take `from`; `migrate_config_dir(root, from)`; `settle_folder` passes
+  `CURRENT.older().next()` (newest earlier only).
+- `description(to: Generation, refs, files)` per Signatures; callers pass `Generation::CURRENT`.
+- `TempRepo::init_old_names()` → `TempRepo::init_on(Generation)` (marker `clean` when `has_marker()`; refs are the
+  caller's). `init()` = `init_on(CURRENT)`; old call sites use `init_on(Generation::Graft)`.
+
+**`Migrate` row words: stored**, not built at read (`rename/record.rs` `append`: `description: description(..)`
+written into the entry). So no `migrated_to` field; an old row keeps "rename to Tributary" as written.
+
+**Former `Old` sites → new form**
+- `on_disk.rs` `ALL` → `GENERATIONS` (oldest first); match arms → per-row spellings.
+- `ref_name.rs` `is_graft_internal`: `ALL` → `GENERATIONS` (reader of every generation).
+- `snapshot/chain.rs` trailer reader: `ALL.find_map` → `Generation::of_trailer` (every generation); writer → `CURRENT`.
+- `rename/map.rs` `map_ref`: `Old`→`New` strip → every generation older than `in_force` → `in_force`; `map_entry`
+  early-out `names == Old` → `in_force.older().next().is_none()`.
+- `rename.rs` `copy_everything`: `refs::list(repo, Old)` → `names_in_force(common)` (`from`); `stay_old` →
+  `repo.on_disk_names()`.
+- `rename/refs.rs` `list_both`, `carry_or_set_aside` strip: `Old` → `from`.
+- `rename/strays.rs` `old_names_present`: `Old.dir()` → `from.dir()`.
+- `rename/trees.rs` `old_trees`, `new_without_old`: `Old.dir()` → `from.dir()`.
+- `graft-git repo/mod.rs` `names_in`: `Ok(false) => Old` → `names_in_force` (no marker → `Graft`).
+- `graft config/folder.rs` `migrate_config_dir`: `Old.dir()` → `from`; `config/load.rs` `settle_folder`: `Old` →
+  `from` (= `CURRENT.older().next()`).
+- Tests: `Old` → `Generation::Graft` in graft-git `repo/tests.rs`, `it/commit_graph.rs`; graft-ops
+  `snapshot/tests.rs`, `rename/tests.rs`, `it/rename.rs`, `it/rename/{more,review}.rs`, `it/journal_names.rs`;
+  graft `config/folder/tests.rs`, `it/finish.rs`; allow-list text in `it/rename_{names,opens}.rs` (allow-list now the
+  `on_disk` table + its tests).
+
+**Tests changed because they asserted `ALL`'s order or the two-row shape:** `on_disk::tests::each_set_spells_its_own_names`
+and `the_prefix_is_the_dir_under_refs` (replaced by the three table tests); `ref_name::tests::both_prefixes_internal` →
+`every_prefix_internal`; `rename::tests::the_entry_words_count_what_moved` (new `to` arg, Mergewright row added). Every
+other test edit is the type rename only.
+
+**Touches checked:** compiler (type rename lists every site); grep above; `file_size` ratchet (`over_400.txt`
+`repo/tests.rs` 703→704; `it/support.rs` held at 459); MAP.md lines for graft-core, graft-git, graft-ops; captures:
+none drifted (full nextest green). graft-fixtures `settled` unchanged (still `tributary` = `CURRENT` in A).
+
+### Handoff to Part B
+Start from this commit. Exact next steps:
+1. Flip `Generation::CURRENT` to `Mergewright`; build; the compiler and tests then show what assumed one older gen.
+2. `graft-fixtures/src/settled.rs`: literal `tributary` → `mergewright` (crate can't depend on graft-core;
+   `graft/tests/it/rename_status.rs` pins the two) + its MAP line.
+3. Strays: replace `settle_older_strays`' per-generation passes with §5's one pass; kept-aside ref path must become
+   `refs/mergewright/older-version/<n>/<gen dir>/<rest>` (now `<CURRENT prefix>older-version/<pass>/<rest>`,
+   `rename/refs.rs:164`).
+4. Scratch (marker-less newer generation) removal; locks over every existing generation; `Busy` words.
+5. Config: `settle_folder` moves only `CURRENT.older().next()`; older folders need the 26r byte rule.
+6. Test literals: e.g. `rename/tests.rs` still spells `"refs/tributary/backup/main/x"`; extend `no_old_dir_literal`.
+Gotchas: `file_size` ratchet — `it/support.rs` is at its 459 cap; new tests go in `it/rename/generations.rs`.

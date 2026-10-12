@@ -283,8 +283,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `OldNamesHold` (struct) — a shared lock a run on the old names keeps for its life.
 - `MigrateError` (enum) — `Busy`, `Refs`, `Files`, `ReadBack`; `Display` is the status row's words.
 - `LOCK_FILE` (const) — `"lock"`.
-- `map_ref` / `map_entry` / `map_entries` (fn) — a journal's old ref names read under the new names.
-- `description` (fn) — the `Migrate` entry's words, `rename to Tributary (N refs, M files)`.
+- `map_ref` / `map_entry` / `map_entries` (fn) — `(…, in_force: Generation)`: a journal's ref names from every generation older than `in_force` read under `in_force`'s prefix; newer ones as written.
+- `description(to, refs, files)` (fn) — the `Migrate` entry's words, `rename to <to.title()> (N refs, M files)`; stored in the entry at write.
 
 ## restore
 - `RestoreError` (enum) — `RefMoved`, `StashGone`, `Run`, `Facts`, `Snapshot`, `Journal`, `AfterState`, `Cancelled`, `MergeState`, `WriteRaw { path, source, tried }`, …; `explain`.
@@ -316,17 +316,17 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `scope` (fn) — `Full` whenever the operation touches the index or the working tree.
 - `Snapshot` (struct) — `index: IndexState`, `worktree_tree`, `worktree_raw`, `commit`.
 - `index_state` (fn) — the staged state as a tree, from a copy of the index: `Merged`, or the stage tree when unmerged.
-- `LinkKind` (enum) — `Step` or `Resume`, the backup commit's last line `Tributary-Link: step|resume`; `Graft-Link:` still read; no line reads as `Step`.
+- `LinkKind` (enum) — `Step` or `Resume`, the backup commit's last line `<CURRENT title>-Link: step|resume`; every generation's key read; no line reads as `Step`.
 - `StageEntry` (struct) / `stage_entries` (fn) — one path's `(mode, oid, stage)` triples in an `IndexState`, in stage order.
 - `recorded_index_state` (fn) — the `IndexState` a backup commit records, from its subtree name; `None` past the backups.
 - `backup_chain` (fn) — a backup ref's recorded states with their `LinkKind`, newest first.
 - `current_step_chain` (fn) — `backup_chain` cut at the first `Resume` link: the current step only.
 - `index_paths_changed` (fn) — `(repo, from, to, stop, commands)`: paths whose index entries differ between two recorded states.
 - `worktree_tree` (fn) — tracked and untracked working-tree content as one tree, from the index copy.
-- `BACKUP_AUTHOR_NAME` / `BACKUP_AUTHOR_EMAIL` (consts) — `tributary` / `tributary@backup`: author and committer of every backup commit.
+- `BACKUP_AUTHOR_NAME` / `BACKUP_AUTHOR_EMAIL` (consts) — `Generation::CURRENT.dir()` / `.backup_email()`: author and committer of every backup commit.
 - `raw_record` (fn) — the bytes git would not give back, as a `raw/` tree (ADR-0052). Kept public for an example; forbidden to app.
 - `take` (fn) — a full backup commit: index and worktree trees, `raw/`, parents. Kept public for an example and a test; forbidden to app.
-- `backup_ref_name` (fn) — `(OnDiskNames, worktree, id)` → `<ref_prefix>backup/<worktree>/<ulid>`.
+- `backup_ref_name` (fn) — `(Generation, worktree, id)` → `<ref_prefix>backup/<worktree>/<ulid>`.
 - `SnapshotError` (enum) — `Run`, `Io`, `Read`, `NotAnOid`, `UnknownLink { commit, printed }` (a link value this build does not know), `CheckOut`, `Stopped`, …
 
 ## submodule

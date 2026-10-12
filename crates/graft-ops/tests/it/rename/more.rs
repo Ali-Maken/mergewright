@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use graft_core::oid::Oid;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_ops::apply::{ApplyError, Resume, resume};
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{FactsScope, Operation};
@@ -82,7 +82,7 @@ fn every_worktree_moves_in_one_pass() {
         }
     }
     let linked = repo.open_at("linked");
-    assert_eq!(linked.on_disk_names(), OnDiskNames::New);
+    assert_eq!(linked.on_disk_names(), Generation::CURRENT);
     assert_eq!(
         journal_for(&linked).entries().len(),
         2,
@@ -145,7 +145,7 @@ fn id(repo: &TempRepo, rev: &str) -> Oid {
 
 #[test]
 fn saved_rewrite_plan_survives() {
-    let repo = TempRepo::init_old_names();
+    let repo = TempRepo::init_on(Generation::Graft);
     repo.write("m1.txt", b"m1\n");
     repo.commit_all("m1");
     repo.git(&["switch", "-q", "-c", "feature"]);

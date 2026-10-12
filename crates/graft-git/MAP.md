@@ -206,7 +206,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RepoHandle` (struct) — an open repository, cheap to hold within a thread.
 - `RepoHandle::open` (fn) — open the repository at `path`.
 - `RepoHandle::git_dir` / `common_dir` / `workdir` / `is_bare` (fn) — repository locations and bareness.
-- `RepoHandle::on_disk_names` (fn) — `-> OnDiskNames`: read once at open from `<common_dir>/tributary/migrated` (one stat, no spawn); `New` if it exists, else `Old`; an unreadable stat is `OpenError::Io`.
+- `names_in_force` (fn) — `(common_dir) -> io::Result<Generation>`: the newest generation up to `CURRENT` whose `<common_dir>/<dir>/migrated` exists, else `Graft`; stats only, no spawn; read now, not cached.
+- `RepoHandle::on_disk_names` (fn) — `-> Generation`: `names_in_force` read once at open; an unreadable stat is `OpenError::Io`.
 - `RepoHandle::mailmap` / `head` (fn) — the resolved `.mailmap`; where `HEAD` points.
 - `RepoHandle::git_path` (fn) — `git rev-parse --git-path`, made absolute.
 - `RepoHandle::worktree_name` (fn) — `"main"` or the linked worktree's name.

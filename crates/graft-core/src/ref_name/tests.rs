@@ -140,12 +140,14 @@ fn debug_escapes_what_it_prints() {
 }
 
 #[test]
-fn both_prefixes_internal() {
-    // Both namespaces are the app's own: a repository mid-way through the
-    // rename (ADR-0057, Amendment) must show neither in the graph.
+fn every_prefix_internal() {
+    // Every generation's namespace is the app's own: a repository mid-way
+    // through a rename (ADR-0057, Amendments) must show none in the graph.
+    // Literals, not the table: the known-good spelling of each generation.
     for name in [
         "refs/graft/backup/main/01J0",
         "refs/tributary/backup/main/01J0",
+        "refs/mergewright/backup/main/01J0",
     ] {
         let name = RefName::new(name).expect("valid");
         assert!(name.is_graft_internal(), "{name:?} is the app's own");
@@ -153,7 +155,9 @@ fn both_prefixes_internal() {
     for name in [
         "refs/heads/graft",
         "refs/heads/tributary/x",
+        "refs/heads/mergewright",
         "refs/graftx/y",
+        "refs/mergewrightx/y",
         "refs/stash",
     ] {
         let name = RefName::new(name).expect("valid");

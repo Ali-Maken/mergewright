@@ -16,7 +16,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_git::file_lock::FileLock;
 use graft_ops::rename::KEPT_ASIDE_DIR;
 
@@ -54,36 +54,39 @@ pub(crate) enum ConfigDirMoved {
 
 /// The names the config folder uses this run, decided once by `load`; the
 /// new names when nothing decided them (tests, the gallery).
-static NAMES: OnceLock<OnDiskNames> = OnceLock::new();
+static NAMES: OnceLock<Generation> = OnceLock::new();
 
-/// The config folder's names in force: `tributary`, or `graft` when the
-/// move failed this run.
-pub(crate) fn config_names() -> OnDiskNames {
-    NAMES.get().copied().unwrap_or(OnDiskNames::New)
+/// The config folder's names in force: `CURRENT`'s, or the earlier
+/// generation's when the move failed this run.
+pub(crate) fn config_names() -> Generation {
+    NAMES.get().copied().unwrap_or(Generation::CURRENT)
 }
 
 /// Decide the names for the rest of the run. The first decision stands: a
 /// second `load` in one process finds the move already done.
-pub(super) fn decide(names: OnDiskNames) {
+pub(super) fn decide(names: Generation) {
     NAMES.get_or_init(|| names);
 }
 
-/// Move `<config_root>/graft` to `<config_root>/tributary`, as the module
-/// says, under an flock on `<config_root>/tributary.lock` so two launches
+/// Move `<config_root>/<from>` to `<config_root>/<CURRENT>`, as the module
+/// says, under an flock on `<config_root>/<CURRENT>.lock` so two launches
 /// never move it under each other (review m8-26 Minor 4).
 ///
 /// # Errors
 /// Anything the lock, the copy, the read-back or the rename hit; when the
 /// new folder did not exist yet, the old one is then untouched and still
 /// the one in use.
-pub(crate) fn migrate_config_dir(config_root: &Path) -> Result<ConfigDirMoved, io::Error> {
-    let old = config_root.join(OnDiskNames::Old.dir());
-    let new = config_root.join(OnDiskNames::New.dir());
+pub(crate) fn migrate_config_dir(
+    config_root: &Path,
+    from: Generation,
+) -> Result<ConfigDirMoved, io::Error> {
+    let old = config_root.join(from.dir());
+    let new = config_root.join(Generation::CURRENT.dir());
     // The common case — moved long ago — takes no lock and writes nothing.
     if !exists(&old)? {
         return Ok(ConfigDirMoved::Nothing);
     }
-    let _lock = lock_alone(&config_root.join(format!("{}.lock", OnDiskNames::New.dir())))?;
+    let _lock = lock_alone(&config_root.join(format!("{}.lock", Generation::CURRENT.dir())))?;
     // Another launch may have moved it while this one waited.
     if !exists(&old)? {
         return Ok(ConfigDirMoved::Nothing);
@@ -91,7 +94,7 @@ pub(crate) fn migrate_config_dir(config_root: &Path) -> Result<ConfigDirMoved, i
     if exists(&new)? {
         return settle_both(&old, &new);
     }
-    let staging = config_root.join(format!("{}.moving", OnDiskNames::New.dir()));
+    let staging = config_root.join(format!("{}.moving", Generation::CURRENT.dir()));
     if exists(&staging)? {
         // Left by a move that died before its rename: never in use.
         fs::remove_dir_all(&staging)?;

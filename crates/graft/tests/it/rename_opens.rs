@@ -113,11 +113,11 @@ fn every_open_settles_first() {
 /// Where the old name may still be spelled in code, and why.
 const ALLOWED: &[(&str, &str)] = &[(
     "graft-core/src/on_disk.rs",
-    "the one place both names live (`OnDiskNames::Old`)",
+    "the one place every generation's names live (the `Generation` table)",
 )];
 
 /// No production code spells an old on-disk path but the allowed files:
-/// every path goes through `OnDiskNames` (or `config_names`), so the move
+/// every path goes through `Generation` (or `config_names`), so the move
 /// and the names in force can never disagree.
 #[test]
 fn no_old_dir_literal() {
