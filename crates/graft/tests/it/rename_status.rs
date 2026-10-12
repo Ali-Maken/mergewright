@@ -8,7 +8,7 @@ use std::process::Command;
 
 use graft::rename::words;
 use graft::repos::RepoStore;
-use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+use graft_core::on_disk::{Generation, MIGRATED_MARKER};
 use graft_ops::rename::{LOCK_FILE, MigrateError, SettleOutcome};
 
 fn git(repo: &std::path::Path, args: &[&str]) -> String {
@@ -39,7 +39,7 @@ fn kept_old_words() {
     } else {
         repo.join(common)
     };
-    let new_dir = common.join(OnDiskNames::New.dir());
+    let new_dir = common.join(Generation::CURRENT.dir());
     // The corpus is built already moved (`graft-fixtures` corpus.rs
     // `names_settled`, which spells the names itself): pinned here.
     let marker = new_dir.join(MIGRATED_MARKER);

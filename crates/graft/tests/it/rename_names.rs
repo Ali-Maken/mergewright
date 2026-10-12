@@ -28,7 +28,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     (
         "graft-core/src/on_disk.rs",
         "",
-        "`OnDiskNames::Old`: read to migrate (26)",
+        "the `Generation` table: every generation's names (26, 48)",
     ),
     (
         "graft-fixtures/",
@@ -299,13 +299,17 @@ fn pty_walk_scripts(root: &Path) -> Vec<PathBuf> {
 /// No environment name keeps the old prefix (m8-polish-and-ship/27b): every
 /// file under `crates/` (MAP.md files included) and `scripts/`, the pty-walk
 /// scripts, and ARCHITECTURE.md, read as bytes so no file is skipped as not
-/// text. The old names are read nowhere, so the allow-list is empty.
+/// text. The old names are read nowhere; the allow-list is the generation
+/// table and its tests, which spell every generation's prefix once
+/// (ADR-0057, 2026-10-11 §2).
 #[test]
 fn no_old_env_name() {
     let root = crates_dir().parent().expect("repo root").to_path_buf();
     let old = concat!("GRAFT", "_").as_bytes();
+    let table = crates_dir().join("graft-core/src/on_disk");
     let mut files = Vec::new();
     every_file(&crates_dir(), &mut files);
+    files.retain(|file| file.with_extension("") != table && !file.starts_with(&table));
     every_file(&root.join("scripts"), &mut files);
     files.extend(pty_walk_scripts(&root));
     files.push(root.join("ARCHITECTURE.md"));

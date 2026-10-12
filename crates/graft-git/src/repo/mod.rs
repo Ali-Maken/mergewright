@@ -19,16 +19,19 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use graft_core::oid::Oid;
-use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+use graft_core::on_disk::Generation;
 use graft_core::ref_name::RefName;
 
 use crate::run::{GitArg, GitInvocation, RunError};
 
+mod names;
 mod peel;
 mod refs;
 mod shared;
 mod types;
 
+use names::names_in;
+pub use names::names_in_force;
 pub use shared::SharedRepo;
 pub use types::{RefEntry, RefSnapshot, RefTarget, RefsError, TipStats, TipsError};
 
@@ -69,31 +72,7 @@ impl KnownCommits for () {
 pub struct RepoHandle {
     repo: gix::Repository,
     /// Which on-disk names this repository uses, read once at open.
-    names: OnDiskNames,
-}
-
-/// Which on-disk names the repository whose common dir is `common_dir` is
-/// using: [`OnDiskNames::New`] once the rename's marker exists, else
-/// [`OnDiskNames::Old`] (ADR-0057, Amendment §4). One `stat`, no spawn.
-///
-/// The marker lives in the common dir, never a worktree's own: the refs are
-/// shared, so the names are one state per repository.
-///
-/// # Errors
-/// [`OpenError::Io`] when the marker's existence cannot be told — guessing
-/// would risk reading one set of names while the repository uses the other.
-fn names_in(common_dir: &Path, opened_from: &Path) -> Result<OnDiskNames, OpenError> {
-    let marker = common_dir
-        .join(OnDiskNames::New.dir())
-        .join(MIGRATED_MARKER);
-    match marker.try_exists() {
-        Ok(true) => Ok(OnDiskNames::New),
-        Ok(false) => Ok(OnDiskNames::Old),
-        Err(source) => Err(OpenError::Io {
-            path: opened_from.to_path_buf(),
-            source,
-        }),
-    }
+    names: Generation,
 }
 
 impl RepoHandle {
@@ -126,12 +105,12 @@ impl RepoHandle {
         }
     }
 
-    /// Which on-disk names this repository uses — the ref prefix, the dir
-    /// under `.git`, the backup trailer (ADR-0057, Amendment §4). Read once
-    /// at open from the marker in the common dir; every reader and writer of
-    /// those names takes them from here.
+    /// Which generation's names this repository uses — the ref prefix, the
+    /// dir under `.git` (ADR-0057, Amendments §4 and 2026-10-11 §3). Read
+    /// once at open from the markers in the common dir; every reader of
+    /// those names in force takes them from here.
     #[must_use]
-    pub fn on_disk_names(&self) -> OnDiskNames {
+    pub fn on_disk_names(&self) -> Generation {
         self.names
     }
 

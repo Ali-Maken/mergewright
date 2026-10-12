@@ -171,7 +171,7 @@ fn run_the_fixture_editor(repo: &Path, message: &str) -> String {
     let editor = String::from_utf8_lossy(&asked.stdout).trim().to_owned();
     let app_dir = repo
         .join(".git")
-        .join(graft_core::on_disk::OnDiskNames::Old.dir());
+        .join(graft_core::on_disk::Generation::Graft.dir());
     graft::event_loop::outside::edit_message_in(&app_dir, message, |file| {
         let status =
             graft::event_loop::outside::editor_command(&editor, file, None, Some(repo)).status();

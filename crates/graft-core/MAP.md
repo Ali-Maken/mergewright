@@ -85,10 +85,14 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 - `Oid::from_sha1` (fn) — `([u8; 20]) -> Self`: infallible wrap of a SHA-1 digest.
 
 ## on_disk
-- `OnDiskNames` (enum) — `New` / `Old`: which on-disk names a repository uses (ADR-0057, Amendment). `ALL` (const) both, new first.
-- `OnDiskNames::ref_prefix` / `dir` / `link_trailer` (fn) — `refs/tributary/`|`refs/graft/`; `tributary`|`graft`; `Tributary-Link:`|`Graft-Link:`.
+- `Generation` (enum) — `Graft` / `Tributary` / `Mergewright`, oldest first (derived `Ord`): one row per name the app shipped under (ADR-0057, Amendment 2026-10-11 §2).
+- `Generation::CURRENT` / `GENERATIONS` (const) — the names this build writes (`Tributary` for now); every generation, oldest first.
+- `Generation::dir` / `title` / `command` / `env_prefix` / `ref_prefix` / `link_trailer` / `backup_email` (const fn) — the row's spellings: `mergewright`, `Mergewright`, `mwr`, `MWR_`, `refs/mergewright/`, …
+- `Generation::has_marker` (const fn) — false for `Graft` only: with no marker present, Graft is in force.
+- `Generation::older` (fn) — the generations released before this one, newest first.
+- `Generation::of_ref` / `of_trailer` / `of_message` (fn) — which generation spelled a ref (by prefix), a trailer line (by key) or a git message (`<dir>:` or `<dir> `); `None` for anyone else's.
 - `ASKPASS_SOCKET_VAR` (const) — `TRIB_ASKPASS_SOCKET`, its one definition: set on askpass children by graft-git, re-exported by `graft::cli`.
-- `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/tributary/`: its existence puts `New` in force.
+- `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/<dir>/` of each generation with `has_marker`: the newest one present (up to `CURRENT`) is in force.
 
 ## raster
 - `RasterFrame` (struct) — the pixel renderer's strip: size in pixels and cells, premultiplied RGBA `pixels`.
@@ -96,4 +100,4 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 
 ## ref_name
 - `RefName` (struct) — a git ref's full name, validated.
-- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_graft_internal` (true under either `OnDiskNames::ref_prefix`, `refs/graft/` or `refs/tributary/`, always).
+- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_graft_internal` (true under any `Generation::ref_prefix`, whichever is in force).

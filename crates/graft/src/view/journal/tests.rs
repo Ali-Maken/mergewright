@@ -581,7 +581,7 @@ fn migrate_row_words() {
     let mut migrate = entry(
         2,
         OperationKind::Migrate,
-        &graft_ops::rename::description(3, 12),
+        &graft_ops::rename::description(graft_core::on_disk::Generation::CURRENT, 3, 12),
     );
     migrate.touches.index = false;
     migrate.index_before = None;

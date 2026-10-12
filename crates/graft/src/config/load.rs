@@ -11,7 +11,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use super::folder::{ConfigDirMoved, config_names, decide, migrate_config_dir};
 use super::types::Config;
@@ -215,21 +215,23 @@ pub(super) fn config_home(read: impl Fn(&str) -> Option<OsString>) -> Option<Pat
 }
 
 /// `config.toml` in the app's folder under `config_home`, by `names`.
-fn config_file(config_home: &Path, names: OnDiskNames) -> PathBuf {
+fn config_file(config_home: &Path, names: Generation) -> PathBuf {
     config_home.join(names.dir()).join("config.toml")
 }
 
 /// The config folder's move under `config_home`, the way [`load`] makes it
 /// (ticket 26): the names to use for the rest of the run, and what to say.
 /// No config home, nothing to move — the new names, unused.
-pub(super) fn settle_folder(config_home: Option<&Path>) -> (OnDiskNames, Option<ConfigWarning>) {
-    let Some(home) = config_home else {
-        return (OnDiskNames::New, None);
+pub(super) fn settle_folder(config_home: Option<&Path>) -> (Generation, Option<ConfigWarning>) {
+    // The move's source: the generation released just before `CURRENT`.
+    // ADR-0057 2026-10-11 §8 (every earlier folder) is not built yet.
+    let (Some(home), Some(from)) = (config_home, Generation::CURRENT.older().next()) else {
+        return (Generation::CURRENT, None);
     };
-    match migrate_config_dir(home) {
-        Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => (OnDiskNames::New, None),
+    match migrate_config_dir(home, from) {
+        Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => (Generation::CURRENT, None),
         Ok(ConfigDirMoved::OlderWrote { old, kept_aside }) => (
-            OnDiskNames::New,
+            Generation::CURRENT,
             Some(ConfigWarning::ConfigFolder {
                 words: match kept_aside {
                     Some(aside) => format!(
@@ -242,13 +244,13 @@ pub(super) fn settle_folder(config_home: Option<&Path>) -> (OnDiskNames, Option<
             }),
         ),
         Ok(ConfigDirMoved::OldLeft { old, why }) => (
-            OnDiskNames::New,
+            Generation::CURRENT,
             Some(ConfigWarning::ConfigFolder {
                 words: format!("moved; {} could not be removed: {why}", old.display()),
             }),
         ),
         Err(error) => (
-            OnDiskNames::Old,
+            from,
             Some(ConfigWarning::ConfigFolder {
                 words: format!("not moved to its new name, the old one stays in use: {error}"),
             }),
@@ -260,7 +262,7 @@ pub(super) fn settle_folder(config_home: Option<&Path>) -> (OnDiskNames, Option<
 /// returned rather than decided for the process — what a test drives.
 pub(super) fn load_settling(
     read: impl Fn(&str) -> Option<OsString>,
-) -> Result<(OnDiskNames, Loaded), ConfigError> {
+) -> Result<(Generation, Loaded), ConfigError> {
     let home = config_home(read);
     let (names, moved) = settle_folder(home.as_deref());
     let mut loaded = load_at(home.map(|home| config_file(&home, names)))?;

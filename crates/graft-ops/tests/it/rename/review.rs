@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use graft_core::journal::OperationKind;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_ops::rename::{KEPT_ASIDE_DIR, MigrateError, SettleOutcome, settle_names};
 
 use super::{as_new, marker, old_repo, refs_under, settle, shim, stage_edit};
@@ -294,7 +294,7 @@ fn a_differing_stray_ref_is_kept_aside() {
         "theirs kept, not deleted"
     );
     assert_eq!(refs_under(&repo, "refs/graft/"), BTreeMap::new());
-    assert_eq!(repo.open().on_disk_names(), OnDiskNames::New);
+    assert_eq!(repo.open().on_disk_names(), Generation::CURRENT);
 }
 
 #[test]

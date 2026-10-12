@@ -17,7 +17,7 @@ use std::panic::{self, AssertUnwindSafe, PanicHookInfo};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use crate::cli::COMMAND;
 use crate::terminal::TerminalRestorer;
@@ -170,10 +170,10 @@ fn report_dir() -> Option<PathBuf> {
 }
 
 /// The reports' folder inside a state home: the app's folder in force, one
-/// source with the config folder (`OnDiskNames::New`). Reports written under
+/// source with the config folder (`Generation::CURRENT`). Reports written under
 /// the old name before the rename are left where they are.
 fn report_dir_under(state_home: &Path) -> PathBuf {
-    state_home.join(OnDiskNames::New.dir())
+    state_home.join(Generation::CURRENT.dir())
 }
 
 fn non_empty(variable: &str) -> Option<String> {

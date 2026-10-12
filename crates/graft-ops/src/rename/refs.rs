@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use graft_core::oid::Oid;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation};
 
@@ -20,21 +20,21 @@ fn refused(error: &impl std::fmt::Display) -> MigrateError {
     }
 }
 
-/// Every ref under `names`' prefix — one `for-each-ref`.
-pub(super) fn list(repo: &RepoHandle, names: OnDiskNames) -> Result<Listed, MigrateError> {
-    list_under(repo, &[names.ref_prefix()])
+/// Every ref under `generation`'s prefix — one `for-each-ref`.
+pub(super) fn list(repo: &RepoHandle, generation: Generation) -> Result<Listed, MigrateError> {
+    list_under(repo, &[generation.ref_prefix()])
 }
 
-/// Every ref under either prefix, old then new — one `for-each-ref` naming
-/// both, the stray pass's first spawn.
-pub(super) fn list_both(repo: &RepoHandle) -> Result<(Listed, Listed), MigrateError> {
-    let both = list_under(
-        repo,
-        &[OnDiskNames::Old.ref_prefix(), OnDiskNames::New.ref_prefix()],
-    )?;
+/// Every ref under `from`'s prefix and under `CURRENT`'s, in that order —
+/// one `for-each-ref` naming both, the stray pass's first spawn.
+pub(super) fn list_both(
+    repo: &RepoHandle,
+    from: Generation,
+) -> Result<(Listed, Listed), MigrateError> {
+    let both = list_under(repo, &[from.ref_prefix(), Generation::CURRENT.ref_prefix()])?;
     let (old, new) = both
         .into_iter()
-        .partition(|(name, _)| name.starts_with(OnDiskNames::Old.ref_prefix()));
+        .partition(|(name, _)| name.starts_with(from.ref_prefix()));
     Ok((old, new))
 }
 
@@ -75,10 +75,10 @@ pub(super) fn mirror_and_read_back(
     repo: &RepoHandle,
     old: &Listed,
 ) -> Result<(String, Listed), MigrateError> {
-    let new = list(repo, OnDiskNames::New)?;
+    let new = list(repo, Generation::CURRENT)?;
     let wanted: Listed = old
         .iter()
-        .map(|(name, oid)| (map_ref(name, OnDiskNames::New).into_owned(), *oid))
+        .map(|(name, oid)| (map_ref(name, Generation::CURRENT).into_owned(), *oid))
         .collect();
     let mut lines = String::new();
     for (name, oid) in &wanted {
@@ -97,7 +97,7 @@ pub(super) fn mirror_and_read_back(
         return Ok((String::new(), new));
     }
     let command = transaction(repo, lines)?;
-    let back = list(repo, OnDiskNames::New)?;
+    let back = list(repo, Generation::CURRENT)?;
     if let Some(name) = wanted
         .iter()
         .find(|(name, oid)| back.get(*name) != Some(oid))
@@ -113,13 +113,14 @@ pub(super) fn mirror_and_read_back(
 /// after: each old ref with no new one is created under the new name; one
 /// whose new ref holds the same value is only deleted; one whose new ref
 /// holds another is moved to `refs/<new>/older-version/<pass>/<rest>`. The
-/// old ref is deleted at its listed value in every case. How many were set
-/// aside.
+/// old ref is deleted at its listed value in every case. `old` is under
+/// `from`'s prefix, `new` under `CURRENT`'s. How many were set aside.
 pub(super) fn carry_or_set_aside(
     repo: &RepoHandle,
     old: &Listed,
     new: &Listed,
     pass: usize,
+    from: Generation,
 ) -> Result<usize, MigrateError> {
     if old.is_empty() {
         return Ok(0);
@@ -128,13 +129,11 @@ pub(super) fn carry_or_set_aside(
     let mut targets = Listed::new();
     let mut aside = 0;
     for (name, oid) in old {
-        let wanted = map_ref(name, OnDiskNames::New).into_owned();
+        let wanted = map_ref(name, Generation::CURRENT).into_owned();
         match new.get(&wanted) {
             Some(held) if held == oid => {}
             Some(_) => {
-                let rest = name
-                    .strip_prefix(OnDiskNames::Old.ref_prefix())
-                    .unwrap_or(name);
+                let rest = name.strip_prefix(from.ref_prefix()).unwrap_or(name);
                 let kept = format!("{}{rest}", kept_aside_prefix(pass));
                 lines.push_str(&format!("create {kept} {oid}\n"));
                 targets.insert(kept, *oid);
@@ -148,7 +147,7 @@ pub(super) fn carry_or_set_aside(
         lines.push_str(&format!("delete {name} {oid}\n"));
     }
     transaction(repo, lines)?;
-    let (old_back, new_back) = list_both(repo)?;
+    let (old_back, new_back) = list_both(repo, from)?;
     let gone = old
         .keys()
         .find(|name| old_back.get(*name) == old.get(*name));
@@ -164,7 +163,10 @@ pub(super) fn carry_or_set_aside(
 
 /// `refs/<new>/older-version/<pass>/`.
 pub(super) fn kept_aside_prefix(pass: usize) -> String {
-    format!("{}{KEPT_ASIDE_DIR}/{pass}/", OnDiskNames::New.ref_prefix())
+    format!(
+        "{}{KEPT_ASIDE_DIR}/{pass}/",
+        Generation::CURRENT.ref_prefix()
+    )
 }
 
 /// One `update-ref --stdin`: every line applies, or none does.

@@ -18,7 +18,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use super::MigrateError;
 
@@ -51,15 +51,16 @@ fn parents(common: &Path) -> Result<Vec<PathBuf>, MigrateError> {
     Ok(parents)
 }
 
-/// Every old folder of the repository whose common dir is `common`:
-/// `<common>/graft` (the main worktree's `git-path graft` too) and
-/// `<common>/worktrees/*/graft` (each linked worktree's `git_dir`'s and
+/// Every folder of `from`'s in the repository whose common dir is
+/// `common`, each paired with `CURRENT`'s beside it: `<common>/<from>`
+/// (the main worktree's `git-path <from>` too) and
+/// `<common>/worktrees/*/<from>` (each linked worktree's `git_dir`'s and
 /// `git-path`'s), each once. Reads the folders, spawns nothing.
-pub(super) fn old_trees(common: &Path) -> Result<Vec<Tree>, MigrateError> {
+pub(super) fn old_trees(common: &Path, from: Generation) -> Result<Vec<Tree>, MigrateError> {
     let mut seen = BTreeSet::new();
     let mut trees = Vec::new();
     for parent in parents(common)? {
-        let folder = parent.join(OnDiskNames::Old.dir());
+        let folder = parent.join(from.dir());
         match fs::symlink_metadata(&folder) {
             Ok(meta) if meta.is_dir() => {}
             Ok(_) => {
@@ -76,7 +77,7 @@ pub(super) fn old_trees(common: &Path) -> Result<Vec<Tree>, MigrateError> {
             .map_err(|error| MigrateError::files(&folder, &error))?;
         if seen.insert(canonical) {
             trees.push(Tree {
-                new: parent.join(OnDiskNames::New.dir()),
+                new: parent.join(Generation::CURRENT.dir()),
                 old: folder,
             });
         }
@@ -84,14 +85,14 @@ pub(super) fn old_trees(common: &Path) -> Result<Vec<Tree>, MigrateError> {
     Ok(trees)
 }
 
-/// Every new folder with no old one beside it — scratch a failed earlier
-/// move left, emptied by [`mirror`] like any other extra.
-pub(super) fn new_without_old(common: &Path) -> Result<Vec<Tree>, MigrateError> {
+/// Every `CURRENT` folder with no `from` one beside it — scratch a failed
+/// earlier move left, emptied by [`mirror`] like any other extra.
+pub(super) fn new_without_old(common: &Path, from: Generation) -> Result<Vec<Tree>, MigrateError> {
     let mut trees = Vec::new();
     for parent in parents(common)? {
         let (old, new) = (
-            parent.join(OnDiskNames::Old.dir()),
-            parent.join(OnDiskNames::New.dir()),
+            parent.join(from.dir()),
+            parent.join(Generation::CURRENT.dir()),
         );
         if exists(&new)? && !exists(&old)? {
             trees.push(Tree { old, new });

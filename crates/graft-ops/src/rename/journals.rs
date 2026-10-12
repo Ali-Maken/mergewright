@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use super::trees::JOURNAL_FILE;
 use super::{MigrateError, map_entries, refs::Listed};
@@ -27,7 +27,7 @@ pub(super) fn check_journals(copied: &[PathBuf], new_refs: &Listed) -> Result<()
             // the move on it for good.
             Err(_) => continue,
         };
-        map_entries(&mut entries, OnDiskNames::New);
+        map_entries(&mut entries, Generation::CURRENT);
         for backup in entries.iter().filter_map(|entry| entry.backup_ref.as_ref()) {
             if !new_refs.contains_key(backup) {
                 return Err(MigrateError::ReadBack {

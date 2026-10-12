@@ -7,20 +7,22 @@ use std::hash::{BuildHasher, RandomState};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use graft_core::journal::{EntryId, EntryStatus, JournalEntry, OperationKind, Touches};
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 
 use crate::facts;
 use crate::journal::{Journal, journal_path_in};
 
 /// The entry's words, which J shows as its row:
-/// `rename to Tributary (3 refs, 12 files)`.
+/// `rename to <to.title()> (3 refs, 12 files)`. Stored in the entry when it
+/// is written, so an old row keeps the target it named.
 #[must_use]
-pub fn description(refs: usize, files: usize) -> String {
+pub fn description(to: Generation, refs: usize, files: usize) -> String {
     let plural =
         |n: usize, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
     format!(
-        "rename to Tributary ({}, {})",
+        "rename to {} ({}, {})",
+        to.title(),
         plural(refs, "ref", "refs"),
         plural(files, "file", "files")
     )
@@ -34,7 +36,7 @@ pub(super) fn append(
     files: usize,
     command: &str,
 ) -> Result<(), String> {
-    let path = journal_path_in(repo, OnDiskNames::New).map_err(|error| error.to_string())?;
+    let path = journal_path_in(repo, Generation::CURRENT).map_err(|error| error.to_string())?;
     let mut journal = Journal::open(&path).map_err(|error| error.to_string())?;
     let head = facts::head_ref(repo).map_err(|error| error.to_string())?;
     let now_unix_ms = SystemTime::now()
@@ -45,7 +47,7 @@ pub(super) fn append(
         id: EntryId::new(now_unix_ms, random_tail()),
         at_unix_ms: now_unix_ms,
         kind: OperationKind::Migrate,
-        description: description(refs, files),
+        description: description(Generation::CURRENT, refs, files),
         status: EntryStatus::Pending,
         touches: Touches::default(),
         head_after: Some(head.clone()),

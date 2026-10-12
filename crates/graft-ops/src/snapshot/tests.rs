@@ -2,7 +2,7 @@
 //! that spawns `git` is in `tests/it/`.
 
 use super::*;
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 fn touches(refs: &[&str], index: bool, worktree: bool) -> Touches {
     Touches {
@@ -36,11 +36,11 @@ fn a_ref_only_operation_takes_no_snapshot() {
 fn the_backup_ref_is_namespaced_by_worktree_and_named_by_entry() {
     let id = EntryId::new(1_700_000_000_000, [7; 10]);
     assert_eq!(
-        backup_ref_name(OnDiskNames::Old, "main", &id),
+        backup_ref_name(Generation::Graft, "main", &id),
         format!("refs/graft/backup/main/{id}")
     );
     assert_eq!(
-        backup_ref_name(OnDiskNames::Old, "feature", &id),
+        backup_ref_name(Generation::Graft, "feature", &id),
         format!("refs/graft/backup/feature/{id}")
     );
 }
@@ -76,7 +76,7 @@ fn old_link_trailer_reads() {
 fn the_backup_ref_takes_the_prefix_in_force() {
     let id = EntryId::new(1_700_000_000_000, [7; 10]);
     assert_eq!(
-        backup_ref_name(OnDiskNames::New, "main", &id),
+        backup_ref_name(Generation::CURRENT, "main", &id),
         format!("refs/tributary/backup/main/{id}")
     );
 }

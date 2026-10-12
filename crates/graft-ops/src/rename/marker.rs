@@ -6,7 +6,7 @@ use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+use graft_core::on_disk::{Generation, MIGRATED_MARKER};
 
 use super::MigrateError;
 
@@ -27,7 +27,7 @@ impl Marker {
 }
 
 fn path(common: &Path) -> PathBuf {
-    common.join(OnDiskNames::New.dir()).join(MIGRATED_MARKER)
+    common.join(Generation::CURRENT.dir()).join(MIGRATED_MARKER)
 }
 
 /// The marker, `None` when there is none. One read, no spawn.

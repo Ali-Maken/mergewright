@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use graft_core::journal::JournalEntry;
-use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+use graft_core::on_disk::{Generation, MIGRATED_MARKER};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::version::GitVersion;
@@ -41,23 +41,23 @@ impl TempRepo {
     /// global-config knobs that would otherwise reach in (signing, CRLF
     /// translation) turned off locally, where local wins.
     ///
-    /// Already on the new on-disk names (marker `clean`, ticket 26): the
-    /// app settles every repository before anything else touches it, so the
-    /// suite runs where every repository the app works on ends up.
+    /// On `CURRENT`'s names (marker `clean`, ticket 26), where the app
+    /// leaves every repository it settles.
     pub fn init() -> TempRepo {
-        let repo = TempRepo::init_old_names();
-        let dir = repo.path.join(".git").join(OnDiskNames::New.dir());
-        std::fs::create_dir_all(&dir).expect("the names dir is made");
-        std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker writes");
-        repo
+        TempRepo::init_on(Generation::CURRENT)
     }
 
-    /// [`init`](Self::init) as a build before the rename left it: no
-    /// marker, so the old names are in force until something settles them.
-    pub fn init_old_names() -> TempRepo {
+    /// [`init`](Self::init) as a build of `generation` left it: its marker
+    /// (`clean`) when it [has one](Generation::has_marker); refs are the caller's.
+    pub fn init_on(generation: Generation) -> TempRepo {
         let repo = TempRepo::scratch();
         repo.git(&["init", "-q", "-b", "main", "."]);
         repo.harden(Path::new("."));
+        if generation.has_marker() {
+            let dir = repo.path.join(".git").join(generation.dir());
+            std::fs::create_dir_all(&dir).expect("the names dir is made");
+            std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker writes");
+        }
         repo
     }
 

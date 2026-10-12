@@ -4,7 +4,7 @@
 use std::fmt;
 use std::path::Path;
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use super::{OpenError, RepoHandle, names_in};
 
@@ -28,7 +28,7 @@ pub struct SharedRepo {
     object_cache_bytes: usize,
     /// Which on-disk names the repository uses, read once at open and
     /// handed to every handle (ADR-0057, Amendment §4).
-    names: OnDiskNames,
+    names: Generation,
 }
 
 impl SharedRepo {
@@ -67,7 +67,7 @@ impl SharedRepo {
     /// Which on-disk names the repository uses. See
     /// [`RepoHandle::on_disk_names`].
     #[must_use]
-    pub fn on_disk_names(&self) -> OnDiskNames {
+    pub fn on_disk_names(&self) -> Generation {
         self.names
     }
 

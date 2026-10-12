@@ -14,7 +14,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, EntryStatus, JournalEntry};
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 use graft_git::run::RunError;
 
@@ -89,7 +89,7 @@ impl Journal {
     /// refs are now under the new one. The file's bytes are never rewritten.
     /// Every production reader opens through here, with the repository's
     /// names in force.
-    pub fn open_as(path: &Path, names: OnDiskNames) -> Result<Journal, JournalError> {
+    pub fn open_as(path: &Path, names: Generation) -> Result<Journal, JournalError> {
         let mut journal = Journal::open(path)?;
         crate::rename::map_entries(&mut journal.entries, names);
         Ok(journal)
@@ -252,7 +252,7 @@ pub fn journal_path(repo: &RepoHandle) -> Result<PathBuf, RunError> {
 /// [`journal_path`] under `names` rather than the handle's: the rename
 /// writes its entry into the new journal while its handle still reads the
 /// old names (`crate::rename`).
-pub fn journal_path_in(repo: &RepoHandle, names: OnDiskNames) -> Result<PathBuf, RunError> {
+pub fn journal_path_in(repo: &RepoHandle, names: Generation) -> Result<PathBuf, RunError> {
     let dir = names.dir();
     repo.git_path(Path::new(&format!("{dir}/{FILE_NAME}")))
 }

@@ -223,17 +223,17 @@ mod tests {
     /// names in force (ADR-0057, Amendment): the marker switches them.
     #[test]
     fn plans_live_under_the_names_in_force() {
-        use graft_core::on_disk::{MIGRATED_MARKER, OnDiskNames};
+        use graft_core::on_disk::{Generation, MIGRATED_MARKER};
 
         let copy = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Linear);
         // The corpus is built moved; without its marker it is a repository
         // no build of the app has opened.
-        let marker = copy.path().join(".git").join(OnDiskNames::New.dir());
+        let marker = copy.path().join(".git").join(Generation::CURRENT.dir());
         std::fs::remove_file(marker.join(MIGRATED_MARKER)).expect("the fixture's marker goes");
         let repo = RepoHandle::open(copy.path()).expect("opens");
         assert_eq!(root(&repo), repo.git_dir().join("graft").join("rewrite"));
 
-        let marker_dir = repo.common_dir().join(OnDiskNames::New.dir());
+        let marker_dir = repo.common_dir().join(Generation::CURRENT.dir());
         std::fs::create_dir_all(&marker_dir).expect("makes the dir");
         std::fs::write(marker_dir.join(MIGRATED_MARKER), "clean\n").expect("writes");
         let repo = RepoHandle::open(copy.path()).expect("opens");

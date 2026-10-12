@@ -10,7 +10,7 @@
 use graft_ui::keymap::{Binding, ContextId, KeyChord, KeyCode};
 use graft_ui::theme::Token;
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 
 use super::COMMAND;
 use super::config_keys::{ConfigKeyDoc, is_pattern};
@@ -128,7 +128,7 @@ const FILES: &[(&str, &str)] = &[
 fn fill(words: &str) -> String {
     words
         .replace("{cmd}", COMMAND)
-        .replace("{dir}", OnDiskNames::New.dir())
+        .replace("{dir}", Generation::CURRENT.dir())
 }
 
 fn section(out: &mut String, name: &str) {

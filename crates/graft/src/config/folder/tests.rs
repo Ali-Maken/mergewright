@@ -6,7 +6,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
 
-use graft_core::on_disk::OnDiskNames;
+use graft_core::on_disk::Generation;
 use tempfile::TempDir;
 
 use super::{ConfigDirMoved, migrate_config_dir};
@@ -37,7 +37,7 @@ fn config_dir_moves_before_first_load() {
 
     let (names, loaded) = load_settling(xdg(home)).expect("it loads");
 
-    assert_eq!(names, OnDiskNames::New);
+    assert_eq!(names, Generation::CURRENT);
     assert_eq!(
         loaded.path.as_deref(),
         Some(home.join("tributary/config.toml").as_path()),
@@ -61,7 +61,7 @@ fn config_dir_moves_before_first_load() {
 
     // The next launch finds nothing to move and says nothing.
     let (names, again) = load_settling(xdg(home)).expect("it loads again");
-    assert_eq!(names, OnDiskNames::New);
+    assert_eq!(names, Generation::CURRENT);
     assert!(again.warnings.is_empty(), "{:?}", again.warnings);
 }
 
@@ -80,7 +80,7 @@ fn both_present_files_carry_or_go_aside() {
 
     let (names, loaded) = load_settling(xdg(home)).expect("it loads");
 
-    assert_eq!(names, OnDiskNames::New, "the new folder is kept");
+    assert_eq!(names, Generation::CURRENT, "the new folder is kept");
     assert_eq!(loaded.config.ui.theme, ThemeChoice::Dark, "and read");
     let aside = new.join("older-version/1");
     assert_eq!(
@@ -130,7 +130,7 @@ fn two_launches_move_the_config_once() {
         old_folder(&home);
         let outcomes: Vec<_> = std::thread::scope(|scope| {
             let runs: Vec<_> = (0..2)
-                .map(|_| scope.spawn(|| migrate_config_dir(&home)))
+                .map(|_| scope.spawn(|| migrate_config_dir(&home, Generation::Graft)))
                 .collect();
             runs.into_iter()
                 .map(|run| run.join().expect("no panic").expect("moves"))
@@ -160,7 +160,7 @@ fn a_failed_old_folder_removal_says_why() {
     // A symlink is never settled, so the old folder cannot be removed.
     std::os::unix::fs::symlink("recent", home.join("graft/link")).expect("a symlink");
 
-    let outcome = migrate_config_dir(home).expect("settles");
+    let outcome = migrate_config_dir(home, Generation::Graft).expect("settles");
 
     let ConfigDirMoved::OldLeft { old, why } = &outcome else {
         panic!("{outcome:?}");
@@ -197,7 +197,7 @@ fn config_dir_moves_env_override_untouched() {
     };
     let (names, loaded) = load_settling(read).expect("it loads");
 
-    assert_eq!(names, OnDiskNames::New);
+    assert_eq!(names, Generation::CURRENT);
     assert!(
         xdg_home.join("tributary/config.toml").is_file(),
         "the home in force moved"
@@ -220,7 +220,7 @@ fn a_move_that_fails_keeps_the_old_folder_and_says_so() {
 
     let (names, loaded) = load_settling(xdg(home)).expect("it loads");
 
-    assert_eq!(names, OnDiskNames::Old, "the old folder stays in use");
+    assert_eq!(names, Generation::Graft, "the old folder stays in use");
     assert_eq!(
         loaded.path.as_deref(),
         Some(home.join("graft/config.toml").as_path())
