@@ -96,25 +96,33 @@ inherits = "release"
 lto = "thin"
 
 # Release config for `dist` (axodotdev, v0.33; docs/research/install-docs.md
-# §2). Four targets (ADR-0005: macOS and Linux only), a curl installer and a
-# Homebrew formula. `<owner>` is filled in at publishing.
+# §2). Four targets (ADR-0005: macOS and Linux only) and the curl installer.
+# `<owner>` is filled in at publishing.
+#
+# The Homebrew formula is not dist's: its template is compiled in and puts the
+# man page in `pkgshare` (ADR-0057 amendment §11). Ours is
+# `packaging/homebrew/mergewright.rb.in`, filled from dist's manifest by
+# `scripts/formula.py`; so no `homebrew` installer and no `tap` here.
 #
 # `publish-jobs = []`: dist publishes nothing — no tap push, no release —
-# until a person has run the trademark search and renamed (ADR-0057 §1).
-# Today it runs `dist plan` and `dist build` locally only; the workflow it
-# generated (.github/workflows/release.yml) is committed and never pushed.
+# until a person has run the trademark search (ADR-0057 §1). Today it runs
+# `dist plan` and `dist build` locally only; the workflow it generated
+# (.github/workflows/release.yml) is committed and never pushed.
 [workspace.metadata.dist]
 cargo-dist-version = "0.33.0"
 ci = "github"
-installers = ["shell", "homebrew"]
+installers = ["shell"]
 targets = [
     "aarch64-apple-darwin",
     "x86_64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnu",
 ]
-tap = "<owner>/homebrew-tap"
 publish-jobs = []
+# release.yml is hand-edited to `workflow_dispatch` only (its "Disarmed"
+# block), so it no longer matches what `dist generate` would write; without
+# this `dist plan` refuses to run.
+allow-dirty = ["ci"]
 # `~/.cargo/bin`, where `cargo install` puts it, so both ways of installing
 # land in the same place.
 install-path = "CARGO_HOME"

@@ -33,23 +33,23 @@ cut to 110 columns; a character grid, so it carries no colour):
 ## Install
 
 **None of these work yet: they are for after the first release**, which waits
-for the rename (ADR-0057). The commands will carry the release name; `<owner>`
-is the account the release is published from.
+for the trademark search (ADR-0057). `<owner>` is the account the release is
+published from.
 
 ```sh
-brew install <owner>/tap/trib                      # Homebrew tap
-curl -LsSf https://github.com/<owner>/<repo>/releases/latest/download/trib-installer.sh | sh
+brew install <owner>/tap/mergewright               # Homebrew tap
+curl -LsSf https://github.com/<owner>/mergewright/releases/latest/download/mergewright-installer.sh | sh
 ```
 
 From a checkout of this repository, today (needs stable Rust, MSRV 1.88, and
-`git` 2.38 or newer on `PATH`):
+`git` 2.38 or newer on `PATH`). It installs the `mwr` command:
 
 ```sh
 cargo install --locked --path crates/graft
 ```
 
 Then `man ./docs/man/mwr.1` reads the manual: every flag, every key in every
-place, every config key, the environment and the files Tributary writes.
+place, every config key, the environment and the files Mergewright writes.
 
 ## First run
 

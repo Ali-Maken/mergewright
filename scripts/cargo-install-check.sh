@@ -3,7 +3,8 @@
 # README's "from a checkout" install, checked the way a newcomer meets it
 # (m8-polish-and-ship/24): a fresh clone of the committed tree, an empty
 # CARGO_HOME (no registry cache, no installed tools), then
-# `cargo install --locked --path crates/graft` and the installed binary run.
+# `cargo install --locked --path crates/graft` (package `mergewright`) and the
+# installed binary, `mwr`, run.
 # Everything lives in a temporary folder, removed on exit; nothing touches
 # the real ~/.cargo.
 #
@@ -39,7 +40,7 @@ took=$(($(date +%s) - start))
     grep -E '^ *(Installed|Installing|error)' "$tmp/install.log" | sed "s|/private$tmp/||g; s|$tmp/||g; s/^ */    /"
     if [ "$verdict" = ok ]; then
         echo "installed: $(cd "$tmp/cargo-home/bin" && ls -1 | tr '\n' ' ')"
-        echo "trib --version: $("$tmp/cargo-home/bin/trib" --version)"
+        echo "mwr --version: $("$tmp/cargo-home/bin/mwr" --version)"
     else
         tail -20 "$tmp/install.log" | sed "s|$tmp/||g; s/^/    /"
     fi

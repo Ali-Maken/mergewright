@@ -83,7 +83,7 @@ fi
 # ── 4. install facts, quoted ────────────────────────────────────────────────
 out "4 install (quoted from docs/release/, dated in each file's first line):"
 {
-  echo "    plan targets: $(grep -cE '^    graft-[a-z0-9_]+-[a-z-]+\.tar\.xz$' docs/release/plan.txt) archives · $(head -1 docs/release/plan.txt)"
+  echo "    plan targets: $(grep -cE '^    mergewright-[a-z0-9_]+-[a-z-]+\.tar\.xz$' docs/release/plan.txt) archives · $(head -1 docs/release/plan.txt)"
   echo "    host archive: $(grep -m1 -E '\.1$' docs/release/build.txt | sed -E 's/^ +//') (man page in the archive)"
   echo "    formula style: $(grep -m1 -E '^brew style' docs/release/build.txt)"
   echo "    cargo install: $(grep -m1 -E '^install:' docs/release/cargo-install.txt)"

@@ -5,12 +5,12 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
-# What the release tools (dist's Homebrew formula and installer) print about
+# What the release tools (dist's installer, our Homebrew formula) print about
 # it. `<owner>` is the account the release is published from, filled in at
 # publishing (ADR-0057: nothing is published until the trademark search).
 description = "Terminal Git client that shows the shape of history"
-repository = "https://github.com/<owner>/tributary"
-homepage = "https://github.com/<owner>/tributary"
+repository = "https://github.com/<owner>/mergewright"
+homepage = "https://github.com/<owner>/mergewright"
 # The workspace has four binaries in four crates, so plain `cargo run` could
 # not tell which one was meant and refused — the first thing the user hit
 # when he tried to open his own app (m5-history-and-ghost-preview/33).

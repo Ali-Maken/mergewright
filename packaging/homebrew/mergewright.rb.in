@@ -1,0 +1,43 @@
+# The Homebrew formula for Mergewright (ADR-0057 amendment §11). Ours, not
+# dist's: dist 0.33 compiles its formula template in and puts the man page in
+# pkgshare. `scripts/formula.py <dist-manifest.json> <out.rb>` fills each
+# @...@ from dist's manifest and drops these comment lines; the names are the
+# table's (`Generation::CURRENT`), pinned by
+# `release_names::formula_template_names_the_table`.
+class Mergewright < Formula
+  desc "Terminal Git client that shows the shape of history"
+  homepage "@HOMEPAGE@"
+  version "@VERSION@"
+  license "MIT"
+
+  on_macos do
+    on_arm do
+      url "@URL:mergewright-aarch64-apple-darwin.tar.xz@"
+      sha256 "@SHA256:mergewright-aarch64-apple-darwin.tar.xz@"
+    end
+    on_intel do
+      url "@URL:mergewright-x86_64-apple-darwin.tar.xz@"
+      sha256 "@SHA256:mergewright-x86_64-apple-darwin.tar.xz@"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "@URL:mergewright-aarch64-unknown-linux-gnu.tar.xz@"
+      sha256 "@SHA256:mergewright-aarch64-unknown-linux-gnu.tar.xz@"
+    end
+    on_intel do
+      url "@URL:mergewright-x86_64-unknown-linux-gnu.tar.xz@"
+      sha256 "@SHA256:mergewright-x86_64-unknown-linux-gnu.tar.xz@"
+    end
+  end
+
+  def install
+    bin.install "mwr"
+    man1.install "mwr.1"
+  end
+
+  test do
+    assert_equal "mwr #{version}", shell_output("#{bin}/mwr --version").strip
+  end
+end
