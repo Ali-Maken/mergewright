@@ -108,3 +108,13 @@ One context, ~60k tokens.
 ## Added by the conductor (review 53, 2026-10-12)
 - Re-run `scripts/release-local.sh` after 55; the archive's README/CHANGELOG name Mergewright (quote `tar xOf … | grep`).
   Local only: no tag, push or release.
+
+## Added by the conductor (56 report, 2026-10-12)
+- 56's old-name box does not hold for one capture: `crates/graft/tests/it/quit_waits.rs:186` writes the label
+  "Graft waits for git" into `m8-quit-waits-80x24.txt` (and so into the contact sheet). Change the label to the product
+  name (from the table), regenerate the capture, then assemble the contact sheet. Code comments that say "Graft" are
+  the codename and stay.
+- 56 counts: m8 6 · live-doc 0 · record 241 · code-name 199 · sheet 4; re-shot 0 (writers already current). 25 rows
+  linked only from M1–M7 TESTING.md checklists were marked record (conductor accepts).
+- Question for the walk: `m8-tour` line 3 reads `workripractice` (gap M8/50-tour-header-letters). Find the line
+  (rule 7) or keep it a question.

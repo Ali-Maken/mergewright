@@ -1346,7 +1346,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/50-tour-header-letters | Question: tour header `workar…` → `workri…` after 50; letters may show through a gap. Pre-existing per builder; no line found (rule 7: question). | **question** | 56 recaptures |
 | M8/53-formula-four-checksums | A host build makes 1 of 4 archives; the styled formula uses zero sha256 placeholders for 3 targets. A formula with four real checksums is unverified (53 NOTES). | **unverified** | first release |
 | M8/53-unexplained-flakes | 53's first full run had 4 unnamed failures; builder 52 ran `pkill -f cargo-nextest` at that time (52 report) — likely cause, unconfirmed. Main gates green after. | **unverified** | watch in gates |
-| M8/56-writerless-captures | No writer for `21c-journal-partial-fetch` (80x24, 120x40) and `doorway-marked-140x40`; they keep old names as records (scout 56). | **broken** (cannot regenerate) | post-M8 |
+| M8/56-writerless-captures | No writer for `21c-journal-partial-fetch` (80x24, 120x40), `doorway-marked-140x40`, `m8-proto-3a/3c`; they keep old names as records (scout 56). | **broken** (cannot regenerate) | post-M8 |
 | M8/52-j-legend-narrow | J legend at 80 cols drops the `✗` clause while `✗` rows show; between 120 and 137 cols `⇢` rows have no legend clause (review 52). For his eye. | **broken** (layout) | post-M8 |
 | M8/52-test1-never-red | Set-aside-across-generations test never seen red; its loop passes with zero assertions if `older()` is empty (review 52, test :55). | **unverified** | post-M8 |
 | M8/52-review-minors | review 52 minors: MAP.md:454 `source_word` under palette; `no_old_message_literal` lets a hard-coded `"mergewright:"` writer through (rename_names.rs:242); m7 captions TSV and m3-08 captures stale. | **broken** (minor) | post-M8 |
+| M8/55-clone-git-git-unrun | clone-git-git.sh new message + rmdir only passed `bash -n`, never run (55 NOTES). | **unverified** | post-M8 |
+| M8/56-flake-outside-repo | `outside_repo::launch_and_open_land_alike` failed once then passed on rerun in 56's run; cause unknown. | **unverified** | watch in gates |
