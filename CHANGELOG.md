@@ -3,8 +3,8 @@
 Notable changes, per milestone. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-There are no released versions yet: Mergewright is unreleased. Entries below
-the first name the app by what it was called at the time.
+There are no released versions yet: Mergewright is unreleased. Entries after the
+newest name the app as it was called then.
 
 ## [Unreleased]
 

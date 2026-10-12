@@ -1381,7 +1381,7 @@ the 22 alone take 4.6 s under nextest, and add 2–4 s to the whole tier). Every
 ends with `git fsck --no-dangling` saying nothing but notices, exactly one
 `refs/mergewright/backup/<worktree>/<id>` ref per journal entry that took a backup,
 and **no backup commit drawn in the history window** — every row's subject is
-the user's, never a `graft <ulid> …` (m3-07 review, C1; the check is
+the user's, never any generation's `<dir> <ulid> …` (current `mergewright`) (m3-07 review, C1; the check is
 `no_bookkeeping_in_the_graph`, run after every scenario).
 
 The walk's own `git` runs under `graft_fixtures::git::run_isolated`, and each
@@ -1783,6 +1783,8 @@ at the next refresh.
 ### Per breakpoint
 
 What each capture shows; 120x40 is `not run` (the script takes two sizes).
+
+pre-M8 captures read the name of their time (ADR-0057 §12).
 
 | View | 80x24 | 120x40 | 160x48 |
 |---|---|---|---|
@@ -3292,8 +3294,8 @@ from `docs/release/*.txt`; (5) `5 journeys: <n> in the fence · missing a walk: 
 One walk alone: `cargo nextest run --workspace -E 'test(/<test>$/)'`. Each reads its count from the note's fence
 (`docs/design-notes/m8-polish-and-ship.md` :213–246, 31 ids) through `m8_walk::within_the_note` and fails one key over
 (`m8_walk::one_key_over_the_note_fails`); `m8_walk::every_m8_journey_id_has_a_walk` holds `WALKS` to the fence.
-**colour: unverified (rule 5)** for every row: the checks read words, glyphs and rows, never colour. Captures keep the
-app's name, Mergewright (`mwr`): they are re-shot by m8 56 (`mergewright-recaptures`).
+**colour: unverified (rule 5)** for every row: the checks read words, glyphs and rows, never colour. M8 captures carry the
+app's name, except the two throwaway prototypes `m8-proto-3a/3c` (records).
 
 ### Journeys (the fence, 31 ids) — what right looks like on your machine
 
