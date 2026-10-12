@@ -26,6 +26,7 @@
 
 use graft_core::journal::{EntryStatus, JournalEntry, PutBack, PutBackWhy};
 use graft_core::oid::Oid;
+use graft_core::on_disk::MESSAGE_TAG;
 use graft_git::run::{GitArg, GitInvocation, RunError};
 
 use crate::facts::FactsError;
@@ -52,7 +53,7 @@ pub(super) use put_back::tracked_changed;
 
 /// The message `S` is created and listed under (ADR-0045 §4 step 3).
 pub(super) fn words(description: &str) -> String {
-    format!("graft: your edits, set aside for {description}")
+    format!("{MESSAGE_TAG}: your edits, set aside for {description}")
 }
 
 /// The set-aside stash an entry carries, if it carries one.

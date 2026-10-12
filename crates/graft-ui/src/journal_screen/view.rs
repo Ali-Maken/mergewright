@@ -65,6 +65,19 @@ pub enum RowKind {
     Deleted,
 }
 
+/// A row's word in the source column (ADR-0057 §10): `Graft` rows name the
+/// product from the names table, `Outside` rows say `outside` — no product
+/// word, so no later rename cuts it to fit. The `✗`/`⇢` rows draw no source
+/// word: their own text stands where it would be.
+#[must_use]
+pub fn source_word(kind: RowKind) -> &'static str {
+    match kind {
+        RowKind::Graft => graft_core::on_disk::Generation::CURRENT.title(),
+        RowKind::Outside => "outside",
+        RowKind::Lost | RowKind::LostEdit | RowKind::Replaced | RowKind::Deleted => "",
+    }
+}
+
 /// One row, as the browser draws it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JournalRowView {

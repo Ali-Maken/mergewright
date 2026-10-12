@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 
 use graft_core::oid::Oid;
+use graft_core::on_disk::MESSAGE_TAG;
 use graft_core::ref_name::RefName;
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
@@ -148,7 +149,7 @@ pub(super) fn absorb(
         repo,
         head.oid,
         &every_placed,
-        "graft: absorb's index base",
+        &format!("{MESSAGE_TAG}: absorb's index base"),
         stop,
     )?;
     Ok(RewriteParams {

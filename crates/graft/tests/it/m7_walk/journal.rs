@@ -325,7 +325,7 @@ fn journey_14(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> Ap
     assert!(
         frame
             .iter()
-            .any(|row| row.contains("●  Graft") && row.contains("put main back")),
+            .any(|row| row.contains("●  Mergewright") && row.contains("put main back")),
         "the put-back's own ● row:\n{body}"
     );
     assert!(

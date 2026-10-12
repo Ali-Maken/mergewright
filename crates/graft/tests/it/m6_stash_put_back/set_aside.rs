@@ -726,7 +726,7 @@ fn aborting_a_stopped_rebase_puts_the_edits_back() {
 
 /// Touches (ticket 74): a rebase stopped with the edits aside. With the
 /// resolver shut the stop line ends `· edits aside`; `S` lists the
-/// set-aside as `graft: your edits, set aside for …`; `J` names the entry as
+/// set-aside as `mergewright: your edits, set aside for …`; `J` names the entry as
 /// the rebase, not as a stash.
 #[test]
 fn a_stop_with_edits_aside_shows_in_the_stop_line_s_and_j() {
@@ -762,7 +762,7 @@ fn a_stop_with_edits_aside_shows_in_the_stop_line_s_and_j() {
     let stash = crate::stash_clash::overlay_open(&app, state);
     let drawn = frame_at(&stash, 120, 40, None).join("\n");
     assert!(
-        drawn.contains("graft: your edits, set aside for"),
+        drawn.contains("mergewright: your edits, set aside for"),
         "{drawn}"
     );
 

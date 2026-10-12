@@ -113,8 +113,8 @@
 752 crates/graft-ui/src/graph_screen/render.rs
 3110 crates/graft-ui/src/graph_screen/tests.rs
 548 crates/graft-ui/src/history/tests.rs
-459 crates/graft-ui/src/journal_screen.rs
-706 crates/graft-ui/src/journal_screen/tests.rs
+460 crates/graft-ui/src/journal_screen.rs
+708 crates/graft-ui/src/journal_screen/tests.rs
 513 crates/graft-ui/src/keymap/table.rs
 658 crates/graft-ui/src/preview_box/tests.rs
 639 crates/graft-ui/src/rewrite_editor/tests.rs
@@ -243,7 +243,7 @@
 507 crates/graft/tests/it/journal_put_back.rs
 759 crates/graft/tests/it/journal_screen.rs
 514 crates/graft/tests/it/land_on_result.rs
-1819 crates/graft/tests/it/m3_walk.rs
+1821 crates/graft/tests/it/m3_walk.rs
 434 crates/graft/tests/it/m4_walk/push.rs
 1355 crates/graft/tests/it/m5_walk/conflict_journeys.rs
 672 crates/graft/tests/it/m5_walk/conflicts.rs

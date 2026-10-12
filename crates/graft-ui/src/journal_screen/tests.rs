@@ -328,8 +328,8 @@ fn at_180_every_column_is_drawn() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.selected = 2;
     let grid = draw(&view, 187, 14);
-    assert!(grid[1].contains("●  Graft"), "{grid:?}");
-    assert!(grid[2].contains("$  outside Graft"), "{grid:?}");
+    assert!(grid[1].contains("●  Mergewright"), "{grid:?}");
+    assert!(grid[2].contains("$  outside "), "{grid:?}");
     assert!(
         grid[2].contains("git: \"reset: moving to HEAD~1\""),
         "{grid:?}"
@@ -350,7 +350,7 @@ fn at_140_the_selected_shell_rows_subject_is_under_it() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.selected = 1;
     let grid = draw(&view, 140, 14);
-    assert!(grid[2].contains("outside Graft"), "{grid:?}");
+    assert!(grid[2].contains("$  outside "), "{grid:?}");
     assert!(!grid[2].contains("git:"), "{grid:?}");
     assert!(
         grid[3]
@@ -369,11 +369,12 @@ fn at_140_the_selected_shell_rows_subject_is_under_it() {
 fn under_120_there_is_no_source_word() {
     let view = view(mock_rows(), JournalStatus::Ready);
     let grid = draw(&view, 100, 14);
-    assert!(!grid[1].contains("Graft"), "{grid:?}");
-    assert!(!grid[2].contains("outside Graft"), "{grid:?}");
+    assert!(!grid[1].contains("Mergewright"), "{grid:?}");
+    assert!(!grid[2].contains("outside"), "{grid:?}");
     assert!(grid[2].contains("$  5m ago"), "{grid:?}");
     assert!(
-        grid.iter().any(|line| line.starts_with("● done in Graft")),
+        grid.iter()
+            .any(|line| line.starts_with("● done in Mergewright")),
         "{grid:?}"
     );
 }
@@ -400,7 +401,7 @@ fn at_24_rows_the_frame_stays_and_the_rows_scroll() {
     let grid = draw(&view, 187, 24);
     assert!(grid[0].starts_with("JOURNAL"), "{grid:?}");
     assert!(grid[23].starts_with("⏎ revert to before this"), "{grid:?}");
-    assert!(grid[22].starts_with("● done in Graft"), "{grid:?}");
+    assert!(grid[22].starts_with("● done in Mergewright"), "{grid:?}");
     assert_eq!(grid[21], "nothing to undo", "{grid:?}");
     assert!(
         grid[20].starts_with("▸ ") && grid[20].contains("stage file29"),
@@ -413,7 +414,7 @@ fn at_24_rows_the_frame_stays_and_the_rows_scroll() {
 fn no_status_row_when_nothing_is_wrong() {
     let view = view(mock_rows(), JournalStatus::Ready);
     let grid = draw(&view, 187, 14);
-    assert!(grid[12].starts_with("● done in Graft"), "{grid:?}");
+    assert!(grid[12].starts_with("● done in Mergewright"), "{grid:?}");
     assert!(
         grid[11].is_empty() || grid[11].contains(NO_TRACE),
         "{grid:?}"
@@ -704,3 +705,4 @@ fn footer_cases() -> Vec<(&'static str, JournalView, Vec<&'static str>)> {
 }
 
 mod replaced;
+mod source_column;

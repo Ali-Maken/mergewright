@@ -2,6 +2,7 @@
 //! input to step 6's apply ([`super::put_back`]).
 
 use graft_core::oid::Oid;
+use graft_core::on_disk::MESSAGE_TAG;
 use graft_git::run::RunError;
 
 use crate::objects::{commit_tree, printed_oid, resolve};
@@ -38,12 +39,18 @@ pub(super) fn from_index_base(
     }
     let index_tree = tree(&format!("{stash}^2^{{tree}}"))?;
     let work_tree = tree(&format!("{stash}^{{tree}}"))?;
-    let index = commit(ctx, index_tree, &[base], "graft: index", commands)?;
+    let index = commit(
+        ctx,
+        index_tree,
+        &[base],
+        &format!("{MESSAGE_TAG}: index"),
+        commands,
+    )?;
     let rebuilt = commit(
         ctx,
         work_tree,
         &[base, index],
-        "graft: your edits, put back with the index",
+        &format!("{MESSAGE_TAG}: your edits, put back with the index"),
         commands,
     )?;
     Ok(Some(rebuilt))

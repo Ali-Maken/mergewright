@@ -1,0 +1,34 @@
+# Ticket m8/52: captures regenerated (MWR_UPDATE_SHOTS=1), what drifted.
+# Every changed line was checked to contain one of the kinds below (grep for changed lines
+# matching none of Graft|Mergewright|outside|leaves no trace|graft: your|mergewright: your: empty).
+# added deleted file : kinds
+
+8 8 docs/shots/m3-journal-160x48.txt : footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+2 2 docs/shots/m3-journal-80x24.txt : footnote drops "here"; legend names Mergewright
+8 8 docs/shots/m3-journal-expanded.txt : footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+1 1 docs/shots/m7/30c-relaunch-edits-back-120x40.txt : stash message graft:→mergewright: (and its stash sha)
+1 1 docs/shots/m7/30c-relaunch-edits-back-80x24.txt : stash message graft:→mergewright: (and its stash sha)
+2 2 docs/shots/m7/journal-100x30.txt : footnote drops "here"; legend names Mergewright
+13 13 docs/shots/m7/journal-140x40.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+13 13 docs/shots/m7/journal-187x24.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+13 13 docs/shots/m7/journal-187x50.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+14 14 docs/shots/m7/journal-after-put-back-120x40.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+9 9 docs/shots/m7/journal-after-squash-187x44.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+13 13 docs/shots/m7/journal-expanded-120x40.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+13 13 docs/shots/m7/journal-find-187x50.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+15 15 docs/shots/m7/put-back-edit-preview-187x50.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+5 5 docs/shots/m7/put-back-preview-187x50.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright
+15 15 docs/shots/m7/put-back-staged-preview-187x50.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+1 1 docs/shots/m8-hangup-relaunch-120x40.txt : stash message graft:→mergewright: (and its stash sha)
+4 4 docs/shots/m8-q1-journal-replaced-ui-187x30.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+2 2 docs/shots/m8-q1-journal-replaced-ui-80x24.txt : footnote drops "here"; legend names Mergewright
+8 8 docs/shots/m8/21c-journal-partial-fetch-120x40.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+4 4 docs/shots/m8/21c-journal-partial-fetch-80x24.txt : footnote drops "here"; legend names Mergewright
+6 6 docs/shots/m8/doorway-journal-120x36.txt : $ source word "outside Graft"→"outside"; footnote drops "here"; legend names Mergewright; ● source word Graft→Mergewright
+
+# New, for his eye: docs/shots/m8-mergewright-journal-187x30.txt, -80x24.txt.
+# Not regenerated (not compared by the fast tier): docs/shots/m3-08-journal-after-unstage-{80x24,160x48}.txt
+#   (m3_walk pty walk, heavy tier; already stale since ticket 50: `outside Graft ... no trace here`),
+#   docs/shots/m8-contact-sheet-{2,3}.txt (assembled at the milestone acceptance).
+# At 80 columns the legend now cuts after `u never…` (it cut after `✗ a…` with `Graft`).
+# At 130 columns (the design mock) the legend's `⇢` clause no longer fits; it shows at 187.

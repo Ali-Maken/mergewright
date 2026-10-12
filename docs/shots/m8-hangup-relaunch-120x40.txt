@@ -3,7 +3,7 @@
  ◆ api  ~/code/api · feature                                                                                    MERGING
 
 ▸ ◌      Uncommitted changes (2 staged)
-    ■    [stash@{0}] On feature: graft: your edits, set aside for merge main into feature               GT now  5168508
+    ■    [stash@{0}] On feature: mergewright: your edits, set aside for merge main into feature         GT now  86c0155
     ◆    [◆ feature] finish the feature                                                                 GF now  8d6cd28
     ●    start the feature                                                                              GF 2m   52f3b96
   ● │    [main] main moves again                                                                        GF 3m   45fa51d

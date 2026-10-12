@@ -280,7 +280,7 @@ fn a_hangup_then_a_second_hangup_leaves_the_merge_paused() {
 /// What right looks like (`m8-hangup-relaunch-120x40.txt`, 13g; 19d-a3):
 /// nothing in the shell — the terminal had closed. The next launch:
 /// `MERGING` at the top; under `Uncommitted changes (2 staged)` a stash row,
-/// `[stash@{0}] On feature: graft: your edits, set aside for merge main into
+/// `[stash@{0}] On feature: mergewright: your edits, set aside for merge main into
 /// feature`, dated `now` — his edit to `base.txt`, set aside by the merge
 /// (ADR-0045 §4) and waiting there while it is paused; the banner `merge
 /// still in progress from a previous run · edits aside · c finish  a
