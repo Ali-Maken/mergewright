@@ -1703,7 +1703,7 @@ fn capture_header(
 
 /// Writes the banner captures for `docs/shots/`.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it conflict_interim::capture_banner_for_docs_shots`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it conflict_interim::capture_banner_for_docs_shots`.
 #[test]
 fn capture_banner_for_docs_shots() {
     // Enough behind the frame that the banner's two rows land on content:
@@ -1803,7 +1803,7 @@ fn capture_banner_for_docs_shots() {
 /// first, so `merge stopped` still fits before the other six. Colour
 /// unverified.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it conflict_interim::capture_banner_bar_with_q`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it conflict_interim::capture_banner_bar_with_q`.
 #[test]
 fn capture_banner_bar_with_q() {
     let scratch = about_to_conflict();

@@ -804,7 +804,7 @@ status: works
 unverified_aspect: whether each gallery stop reads correctly by eye — explicitly left to the user, not yet done
 ```
 
-- **How:** `cargo run -p graft --example gallery` (`]`/`[` to step,
+- **How:** `cargo run -p mergewright --example gallery` (`]`/`[` to step,
   `q` to quit, `--list` to print every stop, `--matrix` for a coverage
   table, `--start <name>` to jump to one stop). Not compiled into the
   shipped binary.

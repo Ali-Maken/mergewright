@@ -14,7 +14,7 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHECK = os.path.join(HERE, "check-sandbox.py")
-PRE = "import os, pty, subprocess, sys\nfrom trib_sandbox import sandbox_env, check_sandboxed\nBIN = sys.argv[1]\n"
+PRE = "import os, pty, subprocess, sys\nfrom mwr_sandbox import sandbox_env, check_sandboxed\nBIN = sys.argv[1]\n"
 
 # Each bad body launches BIN on line 4 (after PRE's three lines).
 BAD = {
@@ -31,7 +31,7 @@ BAD = {
     "subprocess-run": "subprocess.run([BIN, '.'])",
     "subprocess-popen-env": "subprocess.Popen([BIN], env=os.environ)",
     "subprocess-check-output": "subprocess.check_output([BIN])",
-    "subprocess-literal-trib": "subprocess.run(['target/debug/trib', '.'])",
+    "subprocess-literal-mwr": "subprocess.run(['target/debug/mwr', '.'])",
     "from-import-alias": "from subprocess import run as go\ngo([BIN])",
     "module-alias": "import subprocess as sp\nsp.call([BIN])",
     "empty-waiver": "subprocess.run([BIN])  # sandbox-ok:",

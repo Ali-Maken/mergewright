@@ -1,10 +1,10 @@
-# graft — map
+# graft — map (package `mergewright`, lib `graft`, bin `mwr`)
 The application (ARCHITECTURE.md `app` layer), the only crate that may see every other one: event loop, `AppState`, the pure `update`, the job runner, config, and the view models `ui` draws.
 A map of modules: one `##` heading per module to depth 2, path from the crate root; a purpose line; the items other top-level modules enter through. `main.rs` is the thin binary over `lib.rs`.
 Tests: `tests/it` (one binary, with the pty harness); `examples/` holds the terminal probes, the gallery, the budgets and the milestone walks.
 ## cli
 The command line: one optional path and the flags; askpass mode when git asks for a credential. Hand-parsed.
-- `COMMAND` (const) — `"trib"`, the binary's name: usage, `--version`, stderr prefix, crash text, man page.
+- `COMMAND` (const) — `Generation::CURRENT.command()` (`"mwr"`), the binary's name: usage, `--version`, stderr prefix, crash text, man page.
 ## cli::config_keys
 Every config key as the man page and README describe it, paired both ways with the loader's own list.
 ## cli::flags

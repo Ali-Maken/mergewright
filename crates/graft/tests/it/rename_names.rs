@@ -1,18 +1,32 @@
-//! The command is `trib`, the app says Tributary (m8-polish-and-ship/27a):
-//! the binary's file name, no old name left in a string the user can read,
-//! and no script running a stale `graft` binary.
+//! The package and the command follow the names table (m8-polish-and-ship/27a,
+//! 49): the binary's file name, no old name left in a string the user can
+//! read, no script running an earlier generation's binary, and no live file
+//! naming the old package.
 
 #![allow(clippy::expect_used, reason = "a failing test should panic")]
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use graft_core::on_disk::Generation;
+
 use crate::rename_opens::{crates_dir, production_files};
+
+/// The package is the current generation's dir name and the binary its
+/// command: `mergewright` and `mwr` (49).
+#[test]
+fn package_and_bin_follow_the_table() {
+    assert_eq!(env!("CARGO_PKG_NAME"), Generation::CURRENT.dir());
+    let binary = Path::new(env!("CARGO_BIN_EXE_mwr"));
+    let name = binary.file_stem().and_then(|name| name.to_str());
+    assert_eq!(name, Some(graft::cli::COMMAND));
+    assert_eq!(graft::cli::COMMAND, Generation::CURRENT.command());
+}
 
 /// The binary Cargo builds is named after the command every message uses.
 #[test]
 fn the_binary_file_is_the_command() {
-    let binary = Path::new(env!("CARGO_BIN_EXE_trib"));
+    let binary = Path::new(env!("CARGO_BIN_EXE_mwr"));
     let name = binary
         .file_stem()
         .and_then(|name| name.to_str())
@@ -201,7 +215,7 @@ fn says_old_name(text: &str) -> bool {
 }
 
 /// No string literal in any crate's production source says `graft` but the
-/// allowed files: the user reads `trib` or Tributary everywhere.
+/// allowed files: the user reads `mwr` or Tributary everywhere.
 #[test]
 fn no_old_name_in_user_visible_strings() {
     let crates = crates_dir();
@@ -269,11 +283,13 @@ fn every_file(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// `text` starts with the old binary's name as a whole word: `graft`, not
-/// `graft-fixtures` or `graft_sandbox`.
+/// `text` starts with an earlier generation's command as a whole word
+/// (`graft`, `trib`), not a longer name such as `graft-fixtures`.
 fn names_old_binary(text: &str) -> bool {
-    text.strip_prefix("graft").is_some_and(|rest| {
-        !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_' || c == '-')
+    Generation::CURRENT.older().any(|earlier| {
+        text.strip_prefix(earlier.command()).is_some_and(|rest| {
+            !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_' || c == '-')
+        })
     })
 }
 
@@ -327,14 +343,15 @@ fn no_old_env_name() {
     assert!(found.is_empty(), "old env names in:\n{}", found.join("\n"));
 }
 
-/// Scripts run the `trib` binary: a stale `target/*/graft` from an earlier
-/// build would otherwise run old code without failing.
+/// Scripts run the current binary: a stale `target/*/trib` or `graft` from
+/// an earlier build would otherwise run old code without failing.
 #[test]
 fn scripts_run_the_command() {
     let root = crates_dir().parent().expect("repo root").to_path_buf();
     let mut files = Vec::new();
     every_file(&root.join("scripts"), &mut files);
     files.extend(pty_walk_scripts(&root));
+    files.extend(shot_scripts(&root));
     let mut found = Vec::new();
     for file in &files {
         let Ok(text) = fs::read_to_string(file) else {
@@ -374,4 +391,61 @@ fn scripts_run_the_command() {
 fn user_docs_and_scripts_name_the_command() {
     let found = crate::rename_docs::old_name_lines();
     assert!(found.is_empty(), "the old name:\n{}", found.join("\n"));
+}
+
+/// `docs/shots/*.py`: the capture drivers kept beside their captures.
+fn shot_scripts(root: &Path) -> Vec<PathBuf> {
+    fs::read_dir(root.join("docs/shots"))
+        .expect("docs/shots reads")
+        .map(|entry| entry.expect("a dir entry").path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "py"))
+        .collect()
+}
+
+/// No live file names the old package: `cargo … -p` with the old name stopped working
+/// when the package became `mergewright` (49). Records keep it and are not
+/// swept: `docs/log/`, `docs/reviews/`, `docs/adr/`, `docs/gaps/`,
+/// `docs/perf/`, `docs/design-notes/`, past `docs/shots/` captures,
+/// `.scratch/*/issues/`, KNOWN_GAPS.md and CHANGELOG.md say what was run
+/// then; `.claude/agents/` is the user's.
+#[test]
+fn no_old_package_spec() {
+    let root = crates_dir().parent().expect("repo root").to_path_buf();
+    let mut files = Vec::new();
+    every_file(&crates_dir(), &mut files);
+    every_file(&root.join("scripts"), &mut files);
+    every_file(&root.join("docs/capabilities"), &mut files);
+    files.extend(pty_walk_scripts(&root));
+    files.extend(shot_scripts(&root));
+    for doc in [
+        "README.md",
+        "TESTING.md",
+        "CAPABILITIES.md",
+        "docs/generated/capabilities.html",
+        ".config/nextest.toml",
+    ] {
+        files.push(root.join(doc));
+    }
+    // Built at run time so this file does not match itself.
+    let pkg = Generation::Graft.dir();
+    let whole = [format!("-p {pkg}"), format!("--package {pkg}")];
+    let anywhere = [format!("package({pkg})"), format!("binary_id({pkg}::")];
+    let mut found = Vec::new();
+    for file in &files {
+        let Ok(text) = fs::read_to_string(file) else {
+            continue; // not text: no command line in it
+        };
+        for (at, line) in text.lines().enumerate() {
+            let whole_word = whole.iter().any(|spec| {
+                line.match_indices(spec.as_str()).any(|(i, _)| {
+                    !line[i + spec.len()..]
+                        .starts_with(|c: char| c.is_alphanumeric() || c == '_' || c == '-')
+                })
+            });
+            if whole_word || anywhere.iter().any(|spec| line.contains(spec.as_str())) {
+                found.push(format!("{}:{}: {}", file.display(), at + 1, line.trim()));
+            }
+        }
+    }
+    assert!(found.is_empty(), "the old package:\n{}", found.join("\n"));
 }

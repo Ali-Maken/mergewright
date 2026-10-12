@@ -62,7 +62,7 @@ log "# load before: $(uptime | sed 's/.*load averages*: //')"
 
 TESTS=(cargo test --release --features heavy-tests --test it)
 if ! "${TESTS[@]}" --no-run --quiet >"$WORK/build.txt" 2>&1 \
-  || ! cargo build --release -q -p graft --bin trib >>"$WORK/build.txt" 2>&1; then
+  || ! cargo build --release -q -p mergewright --bin mwr >>"$WORK/build.txt" 2>&1; then
   miss "build failed: $WORK/build.txt"
   exit 1
 fi
@@ -215,7 +215,7 @@ else
   # Tributary writes .git/tributary/ in what it opens; the cache is sealed read-only.
   rm -rf "$REPO" && cp -R "$FIXTURE" "$REPO" && chmod -R u+w "$REPO"
 fi
-BIN=$TARGET/release/trib
+BIN=$TARGET/release/mwr
 pty() { # label profile deflate rate [extra env...]
   local label=$1 profile=$2 deflate=$3 rate=$4
   shift 4

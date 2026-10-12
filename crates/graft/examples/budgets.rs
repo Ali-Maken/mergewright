@@ -3,7 +3,7 @@
 //! (TESTING.md "Getting `git/git`"):
 //!
 //! ```sh
-//! cargo run --release -p graft --example budgets -- "$(scripts/clone-git-git.sh --where)"
+//! cargo run --release -p mergewright --example budgets -- "$(scripts/clone-git-git.sh --where)"
 //! ```
 //!
 //! Run it alone: the peak RSS is this process's, and the timings are wall

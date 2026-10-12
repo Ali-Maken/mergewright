@@ -96,7 +96,11 @@ impl Drop for TempIndex {
         if let Err(why) = std::fs::remove_file(&self.path)
             && why.kind() != std::io::ErrorKind::NotFound
         {
-            eprintln!("trib: temp index {} survived: {why}", self.path.display());
+            eprintln!(
+                "{}: temp index {} survived: {why}",
+                graft_core::on_disk::Generation::CURRENT.command(),
+                self.path.display()
+            );
         }
     }
 }

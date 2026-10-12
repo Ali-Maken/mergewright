@@ -63,8 +63,8 @@ git -C "$WT" apply "$ROOT/scripts/m7-12-no-idle-advance.patch" || {
 
 build() { # dir
   (cd "$1" &&
-    cargo test --release --quiet -p graft --features heavy-tests --test it --no-run &&
-    cargo build --release --quiet -p graft --example budgets) 2>"$WORK/build.err" || {
+    cargo test --release --quiet -p mergewright --features heavy-tests --test it --no-run &&
+    cargo build --release --quiet -p mergewright --example budgets) 2>"$WORK/build.err" || {
     echo "release build in $1 failed:" >&2
     tail -20 "$WORK/build.err" >&2
     exit 1
@@ -107,7 +107,7 @@ for n in 1 2 3; do
   for side in before after; do
     dir=$ROOT
     [ "$side" = before ] && dir=$WT
-    step "$side" g_after_idle "$dir" cargo test --release --quiet -p graft --features heavy-tests --test it \
+    step "$side" g_after_idle "$dir" cargo test --release --quiet -p mergewright --features heavy-tests --test it \
       -- "$G_TEST" --exact --test-threads=1 --nocapture
   done
 done
@@ -126,8 +126,8 @@ for n in 1 2; do
     step "$side" budgets_G "$dir" target/release/examples/budgets "$GITGIT"
   done
 done
-step after heavy_debug "$ROOT" cargo test -p graft --features heavy-tests --test it -- heavy:: --test-threads=2
-step after heavy_release_budgets "$ROOT" cargo test --release -p graft --features heavy-tests --test it \
+step after heavy_debug "$ROOT" cargo test -p mergewright --features heavy-tests --test it -- heavy:: --test-threads=2
+step after heavy_release_budgets "$ROOT" cargo test --release -p mergewright --features heavy-tests --test it \
   -- heavy::budgets_hold --test-threads=1 --nocapture
 
 {

@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 OUT=docs/shots/m1-memory-curve.txt
 [ "${1:-}" = "--repo" ] && OUT=target/56/$3.txt
 machine_state_begin "$OUT"
-cargo build --release -p graft --example budgets
+cargo build --release -p mergewright --example budgets
 
 cell() { # cell <repo> <label> <out>
   local repo=$1 label=$2 out=$3

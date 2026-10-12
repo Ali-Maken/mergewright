@@ -1,8 +1,8 @@
-//! `trib --generate-man`: the man page, in roff, written from the same
+//! `mwr --generate-man`: the man page, in roff, written from the same
 //! tables the program runs on (m8-polish-and-ship/23) — the flags from
 //! [`FLAGS`](super::FLAGS), the keys from `graft_ui::keymap::defaults()`,
 //! the config from [`CONFIG_KEYS`](super::CONFIG_KEYS). The committed copy,
-//! `docs/man/trib.1`, is compared with this output by a test.
+//! `docs/man/mwr.1`, is compared with this output by a test.
 //!
 //! The output is plain ASCII: every other character is written as a roff
 //! `\[uXXXX]` escape, which mandoc and groff both read.

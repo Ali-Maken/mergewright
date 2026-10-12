@@ -78,7 +78,7 @@ impl Served {
 }
 
 fn graft_binary() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_trib"))
+    PathBuf::from(env!("CARGO_BIN_EXE_mwr"))
 }
 
 fn rev(repo: &Path, name: &str) -> String {

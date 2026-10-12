@@ -36,13 +36,13 @@ const EXPECTED_EDGES: &[(&str, &str)] = &[
     ("graft-ui", "graft-core"),
     ("graft-ui", "graft-graph"),
     ("graft-ui", "graft-term"),
-    // `graft` is `app`: the only crate allowed to see every other crate.
-    ("graft", "graft-core"),
-    ("graft", "graft-graph"),
-    ("graft", "graft-git"),
-    ("graft", "graft-ops"),
-    ("graft", "graft-term"),
-    ("graft", "graft-ui"),
+    // `mergewright` (crates/graft) is `app`: the only crate allowed to see every other crate.
+    ("mergewright", "graft-core"),
+    ("mergewright", "graft-graph"),
+    ("mergewright", "graft-git"),
+    ("mergewright", "graft-ops"),
+    ("mergewright", "graft-term"),
+    ("mergewright", "graft-ui"),
 ];
 
 type Edge = (String, String);

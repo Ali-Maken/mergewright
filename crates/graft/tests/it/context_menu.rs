@@ -497,7 +497,7 @@ fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
 /// (m5-history-and-ghost-preview/13).
 ///
 /// To regenerate after a deliberate change: `TRIB_UPDATE_SHOTS=1 cargo test
-/// -p graft --test it context_menu::capture_context_menu_for_docs_shots`, then
+/// -p mergewright --test it context_menu::capture_context_menu_for_docs_shots`, then
 /// look at the diff before committing it. That run is **red** — see
 /// [`graft_fixtures::capture`].
 #[test]

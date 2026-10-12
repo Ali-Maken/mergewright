@@ -206,7 +206,7 @@ million](#frames-at-a-million)).
 ```sh
 # Time budgets fail only here: input to frame (frames::, four tests) and
 # first paint (heavy::budgets_hold_*, the 50k-refs one included).
-cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
+cargo test --release -p mergewright --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
 ```
 
 **Held keys** (m7-power-tools/42): `scripts/fix-scroll-held-key.sh` runs
@@ -495,7 +495,7 @@ m1-the-graph/80) instead: both standing commands above build `heavy-tests`
 alone, so the two 1M tests are never even compiled into them.
 
 ```sh
-cargo test --release -p graft --features heavy-1m --test it -- scrolling_the_1m_commit_graph_fixture --test-threads=1 --nocapture
+cargo test --release -p mergewright --features heavy-1m --test it -- scrolling_the_1m_commit_graph_fixture --test-threads=1 --nocapture
 ```
 
 What right looks like: p99 ≤ 16 ms at both tiers on the 1M small
@@ -605,7 +605,7 @@ it.
 Open it with:
 
 ```sh
-cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"
+cargo run -p mergewright -- "$(scripts/clone-git-git.sh --where)"
 ```
 
 **The Linux kernel** is manual-tier only and stays that way (PROMPT.md
@@ -632,7 +632,7 @@ never been run says **not run**, never "pass".
 
 ### What to do in each terminal
 
-1. `cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"` — a real,
+1. `cargo run -p mergewright -- "$(scripts/clone-git-git.sh --where)"` — a real,
    merge-heavy history at a size where mistakes show.
 2. Let the first screen paint. Scroll with `j`/`k` for a few screens, then
    to the end.
@@ -720,7 +720,7 @@ This is the only thing that moves iTerm2 or Sixel above Unicode in ADR-0016's
 order. Run it per terminal, answer yes or no, and give the reason.
 
 1. Same repository, same window, same font size, no resizing between runs.
-2. `graph.renderer = "unicode"` in the config, `cargo run -p graft -- <repo>`. Look at
+2. `graph.renderer = "unicode"` in the config, `cargo run -p mergewright -- <repo>`. Look at
    it. Scroll a few screens.
 3. Change to `graph.renderer = "pixel"`, run again, look at the same screens.
 4. Answer: **is the pixel version better to look at, and does it lose
@@ -749,9 +749,9 @@ terminal.
 
 1. In VS Code settings, set `terminal.integrated.enableImages` to `true` and
    restart the terminal (the setting does not apply to open ones).
-2. `cargo run -p graft --example capability_probe` in that terminal. Record
+2. `cargo run -p mergewright --example capability_probe` in that terminal. Record
    the `sixel` line and the `protocol` line verbatim.
-3. `graph.renderer = "pixel"` in the config, then `cargo run -p graft -- <repo>`.
+3. `graph.renderer = "pixel"` in the config, then `cargo run -p mergewright -- <repo>`.
    Scroll a few screens, resize the window, quit with `q`.
 
 | Question | Answer | Evidence |
@@ -786,25 +786,25 @@ REPO="$(scripts/clone-git-git.sh --where)"
 # a) passthrough on: expect `tier Pixel`, `tmux Passthrough { version: "3.x" }`,
 #    a pixel graph.
 tmux -L trib -f /dev/null new-session \; set -g allow-passthrough on
-cargo run -p graft --example capability_probe
-cargo run -p graft -- "$REPO"
+cargo run -p mergewright --example capability_probe
+cargo run -p mergewright -- "$REPO"
 # b) still inside, split and run in the right-hand pane: pixels must land in
 #    that pane, not at the window's left edge. Ctrl-b %, then:
-cargo run -p graft -- "$REPO"
+cargo run -p mergewright -- "$REPO"
 # c) passthrough off (tmux's default): expect `tier Unicode`,
 #    `tmux PassthroughSilent { .. }`, a clean Unicode graph, no stray bytes.
 tmux kill-server -L trib; tmux -L trib -f /dev/null new-session
-cargo run -p graft -- "$REPO"
+cargo run -p mergewright -- "$REPO"
 
 # tmux (inside a Unicode terminal): Zed or VS Code terminal, passthrough on.
 # Expect `tier Unicode` and a Unicode graph — never ASCII.
 tmux -L trib -f /dev/null new-session \; set -g allow-passthrough on
-cargo run -p graft -- "$REPO"
+cargo run -p mergewright -- "$REPO"
 
 # SSH: needs a host with Rust and a Tributary checkout (ssh localhost works:
 # System Settings > General > Sharing > Remote Login). Expect `ssh true`,
 # `budget 500ms`, and the tier the local terminal would get.
-ssh -t HOST 'cd ~/path/to/checkout && cargo run -p graft --example capability_probe && cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"'
+ssh -t HOST 'cd ~/path/to/checkout && cargo run -p mergewright --example capability_probe && cargo run -p mergewright -- "$(scripts/clone-git-git.sh --where)"'
 
 # SSH inside tmux: start tmux (passthrough on) locally, then the SSH line
 # inside it. Expect `tier Pixel` only if the report says `tmux Passthrough`.
@@ -870,10 +870,10 @@ obvious at a glance**; the gallery is how a person checks that promise, one
 repository at a time, with a stated finding per stop.
 
 ```sh
-cargo run -p graft --example gallery                      # first stop
-cargo run -p graft --example gallery -- --start foxtrot-merge
-cargo run -p graft --example gallery -- --list            # the 24 stops
-cargo run -p graft --example gallery -- --matrix          # coverage matrix
+cargo run -p mergewright --example gallery                      # first stop
+cargo run -p mergewright --example gallery -- --start foxtrot-merge
+cargo run -p mergewright --example gallery -- --list            # the 24 stops
+cargo run -p mergewright --example gallery -- --matrix          # coverage matrix
 ```
 
 `]` next stop, `[` previous, `q` quit. Every graph key works inside it:
@@ -1111,7 +1111,7 @@ Press `F3` at any stop: the text right of the graph must not move.
 
 ### Per terminal: walk the gallery
 
-Procedure, in each terminal of the checklist above: `cargo run -p graft
+Procedure, in each terminal of the checklist above: `cargo run -p mergewright
 --example gallery`, then `]` through all 24 stops, checking each against its
 entry; at stops 3, 5, 6 and 18 also press `Space`, `1`, `F` (`Esc` to leave)
 and `H` as the entry says; at stop 24 press `F3` three times and scroll.
@@ -1145,11 +1145,11 @@ that, one stop at a time, each stop a repository plus the keys the harness
 presses before its first frame.
 
 ```sh
-cargo run -p graft --example gallery -- --group details                 # stop 1
-cargo run -p graft --example gallery -- --group details --start foxtrot-merge
-cargo run -p graft --example gallery -- --list                          # both groups
-cargo run -p graft --example gallery -- --stems                         # capture stems
-cargo run -p graft --example gallery -- --matrix                        # both tables
+cargo run -p mergewright --example gallery -- --group details                 # stop 1
+cargo run -p mergewright --example gallery -- --group details --start foxtrot-merge
+cargo run -p mergewright --example gallery -- --list                          # both groups
+cargo run -p mergewright --example gallery -- --stems                         # capture stems
+cargo run -p mergewright --example gallery -- --matrix                        # both tables
 ```
 
 `]` next stop, `[` previous, `q` quit; the stop's keys are already pressed
@@ -1348,7 +1348,7 @@ Stop 1 at three sizes (`m2-01-feature-branches-enter-*`):
 
 ### Per terminal: walk the details group
 
-Two lines added to the M1 procedure above: `cargo run -p graft --example
+Two lines added to the M1 procedure above: `cargo run -p mergewright --example
 gallery -- --group details`, then `]` through the 19 stops at ≥ 160 columns,
 checking each against its entry; at stop 10 wait for the subject row to
 settle on `· evil merge`; in a dirty checkout of Tributary itself press `k`,
@@ -1367,11 +1367,11 @@ real `git`, and then **the repository read back by running git**
 bytes) — never by trusting the app's own state.
 
 ```sh
-cargo run -p graft --example m3_walk                        # every scenario, one line each
-cargo run -p graft --example m3_walk -- --only stash-drop   # one
-cargo run -p graft --example m3_walk -- --list              # the names
-cargo run -p graft --example m3_walk -- --stems             # capture stems, keys, expected text
-cargo run -p graft --example m3_walk -- --matrix            # rewrites docs/shots/35-coverage-matrix.txt (all three tables)
+cargo run -p mergewright --example m3_walk                        # every scenario, one line each
+cargo run -p mergewright --example m3_walk -- --only stash-drop   # one
+cargo run -p mergewright --example m3_walk -- --list              # the names
+cargo run -p mergewright --example m3_walk -- --stems             # capture stems, keys, expected text
+cargo run -p mergewright --example m3_walk -- --matrix            # rewrites docs/shots/35-coverage-matrix.txt (all three tables)
 ```
 
 `ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most),
@@ -1394,7 +1394,7 @@ three on.
 Captures: `docs/shots/m3-<nn>-<what>-<WxH>.txt`, nine visual results at
 80x24 and 160x48, Unicode tier
 (`.scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py <WxH>`, after
-`cargo build -p graft --example m3_walk`). The script runs
+`cargo build -p mergewright --example m3_walk`). The script runs
 `m3_walk --capture <scenario>`, which scripts the state and opens the real
 loop with the capture's keys as the harness prelude; the prelude now waits
 for a write in flight, a journal or stash read and the editor's prefill
@@ -1543,7 +1543,7 @@ Every capture exists at 80x24 and 160x48; 120x40 was not captured.
 
 ### Per terminal: walk the working tree group
 
-Run `cargo run -p graft --example m3_walk` (all `ok`), then in a scratch
+Run `cargo run -p mergewright --example m3_walk` (all `ok`), then in a scratch
 checkout of your own: stage a file and a hunk, commit, amend, stash and pop,
 discard an edit, and press `u` after each, checking the entry above for what
 right looks like. Record the result here, naming the scenario that failed if
@@ -1578,11 +1578,11 @@ HEAD`, `ls-files -s`, file bytes, `.git/index` bytes, the journal file) —
 never from `AppState`.
 
 ```sh
-cargo run -p graft --example m4_walk                              # every scenario, one line each
-cargo run -p graft --example m4_walk -- --only push-plain         # one
-cargo run -p graft --example m4_walk -- --list                    # the names
-cargo run -p graft --example m4_walk -- --stems                   # capture stems, keys, expected text
-cargo run -p graft --example m4_walk -- --matrix                  # rewrites docs/shots/35-coverage-matrix.txt (all four tables)
+cargo run -p mergewright --example m4_walk                              # every scenario, one line each
+cargo run -p mergewright --example m4_walk -- --only push-plain         # one
+cargo run -p mergewright --example m4_walk -- --list                    # the names
+cargo run -p mergewright --example m4_walk -- --stems                   # capture stems, keys, expected text
+cargo run -p mergewright --example m4_walk -- --matrix                  # rewrites docs/shots/35-coverage-matrix.txt (all four tables)
 ```
 
 `ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most:
@@ -1606,7 +1606,7 @@ expects to see itself.
 
 Captures: `docs/shots/m4-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, Unicode tier (`.scratch/m4-remotes/pty-walk-m4.py <WxH>`
-after `cargo build -p graft --example m4_walk`, `TRIB_TARGET` naming the
+after `cargo build -p mergewright --example m4_walk`, `TRIB_TARGET` naming the
 target directory). The script runs `m4_walk --capture <scenario>`, which
 builds the remote, runs the scenario's headless prefix, then opens the real
 loop on the work clone with the capture's keys as the harness prelude (an
@@ -1797,7 +1797,7 @@ What each capture shows; 120x40 is `not run` (the script takes two sizes).
 
 ### Per terminal: walk the remotes group
 
-Run `cargo run -p graft --example m4_walk` (all `ok`), then in a clone of
+Run `cargo run -p mergewright --example m4_walk` (all `ok`), then in a clone of
 your own with a real remote: `f`, `p`, `P` on a branch that is ahead, `P`
 after a teammate pushed (expect the rejection, then the lease box), and a
 push to an HTTPS remote with no credential helper (expect Tributary's own
@@ -1818,8 +1818,8 @@ The reviewer's, not the builder's (ADR-0021): figures `not run` here.
 
 ```sh
 cargo test --features heavy-tests -- --test-threads=2                # the heavy tier — not run
-cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture   # release perf — not run
-cargo run --release -p graft --example m4_walk                       # the walk under release — not run
+cargo test --release -p mergewright --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture   # release perf — not run
+cargo run --release -p mergewright --example m4_walk                       # the walk under release — not run
 ```
 
 **Times I left:** every remote-related reach for the shell during daily use
@@ -1849,11 +1849,11 @@ files that changed. `every_scenario::ghost_equals_git_is_the_only_claim_check`
 greps the scenario files so no scenario judges the plan any other way.
 
 ```sh
-cargo run -p graft --example m5_walk                              # every scenario, one line each
-cargo run -p graft --example m5_walk -- --only rebase-two-commits-ghost-equals-git   # one
-cargo run -p graft --example m5_walk -- --list                    # the names
-cargo run -p graft --example m5_walk -- --stems                   # capture stems, keys, expected text
-cargo run -p graft --example m5_walk -- --matrix                  # rewrites docs/shots/35-coverage-matrix.txt (all five tables)
+cargo run -p mergewright --example m5_walk                              # every scenario, one line each
+cargo run -p mergewright --example m5_walk -- --only rebase-two-commits-ghost-equals-git   # one
+cargo run -p mergewright --example m5_walk -- --list                    # the names
+cargo run -p mergewright --example m5_walk -- --stems                   # capture stems, keys, expected text
+cargo run -p mergewright --example m5_walk -- --matrix                  # rewrites docs/shots/35-coverage-matrix.txt (all five tables)
 ```
 
 `ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most:
@@ -1907,7 +1907,7 @@ Captures: `docs/shots/m5-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, the banner also at 120x40, the too-small preview at
 38x10 only, Unicode tier
 (`.scratch/m5-history-and-ghost-preview/pty-walk-m5.py <WxH>` after
-`cargo build -p graft --example m5_walk`, `TRIB_TARGET` naming the target
+`cargo build -p mergewright --example m5_walk`, `TRIB_TARGET` naming the target
 directory). The script runs `m5_walk --capture <scenario>`, which builds
 the scratch, runs the scenario's headless prefix (the time machine's three
 stages), then opens the real loop with the capture's keys as the harness
@@ -2237,7 +2237,7 @@ What each capture shows; 120x40 is `not run` except for the banner.
 
 ### Per terminal: walk the history group
 
-Run `cargo run -p graft --example m5_walk` (expect `49 ok, 0 failed`), then
+Run `cargo run -p mergewright --example m5_walk` (expect `49 ok, 0 failed`), then
 in a clone of your own: `r` on a branch
 row, look at the ghost rows and the box, `Esc`; `m` on a branch that
 conflicts, confirm, resolve in your editor, `c`; `.` on a commit, `Reset …
@@ -2257,7 +2257,7 @@ The reviewer's, not the builder's (ADR-0021): figures `not run` here.
 
 ```sh
 cargo test --features heavy-tests -- --test-threads=2                # the heavy tier — not run
-cargo run --release -p graft --example m5_walk                       # the walk under release — not run
+cargo run --release -p mergewright --example m5_walk                       # the walk under release — not run
 ```
 
 **Times I left:** every reach for the shell during a merge, rebase, pick,
@@ -2287,11 +2287,11 @@ checkout --ours|--theirs` on a fresh copy of the same fixture
 (`truth::side_bytes`), never a string typed into the test.
 
 ```sh
-cargo run -p graft --example m5_walk                              # every scenario, M5's and M6's
-cargo run -p graft --example m5_walk -- --only kill-9-mid-rebase-then-relaunch   # one
-cargo run -p graft --example m5_walk -- --list                    # the names (M6's are the last 19)
-cargo run -p graft --example m5_walk -- --matrix                  # also writes .scratch/m6-conflicts/matrix.txt
-cargo nextest run -p graft --test it m5_walk::every_scenario      # the fast tier's one test per scenario
+cargo run -p mergewright --example m5_walk                              # every scenario, M5's and M6's
+cargo run -p mergewright --example m5_walk -- --only kill-9-mid-rebase-then-relaunch   # one
+cargo run -p mergewright --example m5_walk -- --list                    # the names (M6's are the last 19)
+cargo run -p mergewright --example m5_walk -- --matrix                  # also writes .scratch/m6-conflicts/matrix.txt
+cargo nextest run -p mergewright --test it m5_walk::every_scenario      # the fast tier's one test per scenario
 ```
 
 **All 19 pass** (2026-09-23, after fixes F1, F2, F4, F6–F8 and the
@@ -2301,7 +2301,7 @@ fast-tier time is in `docs/perf/m6-07.txt` (the ticket's bar is 60 s).
 
 Captures: `docs/shots/m6/m6-<nn>-<what>-<WxH>.txt` at 120x40 and 80x24,
 Unicode tier, from `.scratch/m6-conflicts/pty-walk-m6.py <WxH>` (build
-`-p graft --example m5_walk --bin trib` and `-p graft-fixtures --bin
+`-p mergewright --example m5_walk --bin mwr` and `-p graft-fixtures --bin
 graft-fixtures` first; `TRIB_TARGET` names the target directory;
 `TRIB_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
 the **real `trib` binary** relaunched after the script sends the capture
@@ -2510,9 +2510,9 @@ event the landing is asserted from the **drawn frame**, from the state where
 a frame cannot say it, and from git.
 
 ```sh
-cargo nextest run -p graft --test it m5_walk::every_scenario::journey      # one test per journey
-cargo nextest run -p graft --test it journey_counts_match_the_note         # ids both ways, whole = parts; prints the route table
-cargo run -p graft --example m5_walk -- --only two-files-in-order          # one, by name
+cargo nextest run -p mergewright --test it m5_walk::every_scenario::journey      # one test per journey
+cargo nextest run -p mergewright --test it journey_counts_match_the_note         # ids both ways, whole = parts; prints the route table
+cargo run -p mergewright --example m5_walk -- --only two-files-in-order          # one, by name
 ```
 
 Fixtures (`m5_walk/fixture.rs`): **one-file** — `shared.txt`, one block;
@@ -2878,7 +2878,7 @@ Critical 1) and `a_failure_still_names_the_key_that_clears_it`.
 
 Captures: `docs/shots/m5-hints-{branch,plain,uncommitted,changes}-{80x24,
 120x40,160x48}.txt` come from that app path
-(`cargo test -p graft --test it hint_bar::capture_hint_bar_for_docs_shots -- --ignored --nocapture`);
+(`cargo test -p mergewright --test it hint_bar::capture_hint_bar_for_docs_shots -- --ignored --nocapture`);
 `m5-hints-marked-*` stays a hand-built `GraphScreen` fixture
 (`cargo test -p graft-ui graph_screen::tests::capture_hint_bar_for_docs_shots -- --ignored --nocapture`),
 because a Mistake Radar marker needs a corpus built to trip it. Every
@@ -3203,9 +3203,9 @@ He runs it once per terminal, on his work repo, from the Tributary checkout:
 
 ```sh
 # Ghostty, full screen
-TRIB_PERF_TRACE=$HOME/trib-trace-ghostty.txt cargo run --release -p graft -- <his repo>
+TRIB_PERF_TRACE=$HOME/trib-trace-ghostty.txt cargo run --release -p mergewright -- <his repo>
 # Zed's terminal
-TRIB_PERF_TRACE=$HOME/trib-trace-zed.txt cargo run --release -p graft -- <his repo>
+TRIB_PERF_TRACE=$HOME/trib-trace-zed.txt cargo run --release -p mergewright -- <his repo>
 ```
 
 Then: scroll the way that felt laggy (hold `j` ~3 s, let go; a wheel flick), quit with `q`, send the two files.

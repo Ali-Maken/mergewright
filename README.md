@@ -71,7 +71,7 @@ trib ../api        # or any other
 `trib --help` prints it:
 
 ```text
-usage: trib [<path>]
+usage: mwr [<path>]
 
   <path>    the repository to open (default: the current directory)
 
@@ -182,7 +182,7 @@ cargo test --doc
 ```
 
 `docs/man/trib.1` is generated; a test fails when it is stale. Regenerate it
-with `cargo run -q -p graft -- --generate-man > docs/man/trib.1`.
+with `cargo run -q -p mergewright -- --generate-man > docs/man/trib.1`.
 
 ## Licence
 

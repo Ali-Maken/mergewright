@@ -1,5 +1,5 @@
 [package]
-name = "graft"
+name = "mergewright"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -15,13 +15,18 @@ homepage = "https://github.com/<owner>/tributary"
 # not tell which one was meant and refused — the first thing the user hit
 # when he tried to open his own app (m5-history-and-ghost-preview/33).
 # `cargo run -- <repo>` now runs Graft.
-default-run = "trib"
+default-run = "mwr"
 
-# The command is `trib` (ADR-0057). Package and library stay `graft`
-# (`main.rs` uses `graft::…`); an explicit bin target on `src/main.rs` stops
-# Cargo inferring a `graft` binary as well.
+# The package is `mergewright`, the command `mwr` (ADR-0057 amendment
+# 2026-10-11). The library stays `graft` (code uses `graft::…`) and the dir
+# stays `crates/graft`; an explicit bin target on `src/main.rs` stops Cargo
+# inferring a `mergewright` binary as well.
+[lib]
+name = "graft"
+path = "src/lib.rs"
+
 [[bin]]
-name = "trib"
+name = "mwr"
 path = "src/main.rs"
 
 # `app` is the only crate allowed to see every other crate (ARCHITECTURE.md).
@@ -127,4 +132,4 @@ workspace = true
 # (m8-polish-and-ship/24); the path is from this crate's folder.
 [package.metadata.dist]
 dist = true
-include = ["../../docs/man/trib.1"]
+include = ["../../docs/man/mwr.1"]

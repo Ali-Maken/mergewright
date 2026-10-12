@@ -2,12 +2,12 @@
 //! before you confirm" (m5-history-and-ghost-preview/11).
 //!
 //! ```sh
-//! cargo run -p graft --example m5_walk                                          # every scenario
-//! cargo run -p graft --example m5_walk -- --only rebase-two-commits-ghost-equals-git   # one
-//! cargo run -p graft --example m5_walk -- --list                                # the names
-//! cargo run -p graft --example m5_walk -- --stems                               # capture stems
-//! cargo run -p graft --example m5_walk -- --capture merge-no-ff-ghost-equals-git   # one scenario, live, for the pty script
-//! cargo run -p graft --example m5_walk -- --matrix                              # docs/shots/35-coverage-matrix.txt, .scratch/m6-conflicts/matrix.txt
+//! cargo run -p mergewright --example m5_walk                                          # every scenario
+//! cargo run -p mergewright --example m5_walk -- --only rebase-two-commits-ghost-equals-git   # one
+//! cargo run -p mergewright --example m5_walk -- --list                                # the names
+//! cargo run -p mergewright --example m5_walk -- --stems                               # capture stems
+//! cargo run -p mergewright --example m5_walk -- --capture merge-no-ff-ghost-equals-git   # one scenario, live, for the pty script
+//! cargo run -p mergewright --example m5_walk -- --matrix                              # docs/shots/35-coverage-matrix.txt, .scratch/m6-conflicts/matrix.txt
 //! ```
 //!
 //! Each scenario copies a corpus shape to scratch, scripts a history into

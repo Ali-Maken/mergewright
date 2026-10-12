@@ -3,13 +3,13 @@
 //! "Graph gallery" section. Dev-only; nothing here is in the shipped binary.
 //!
 //! ```sh
-//! cargo run -p graft --example gallery            # start at the first stop
-//! cargo run -p graft --example gallery -- --start foxtrot-merge
-//! cargo run -p graft --example gallery -- --list   # the stops, in order
-//! cargo run -p graft --example gallery -- --matrix # coverage matrix, also
+//! cargo run -p mergewright --example gallery            # start at the first stop
+//! cargo run -p mergewright --example gallery -- --start foxtrot-merge
+//! cargo run -p mergewright --example gallery -- --list   # the stops, in order
+//! cargo run -p mergewright --example gallery -- --matrix # coverage matrix, also
 //!                                                  # written to docs/shots/
-//! cargo run -p graft --example gallery -- --group details          # M2's stops
-//! cargo run -p graft --example gallery -- --stems  # details capture stems
+//! cargo run -p mergewright --example gallery -- --group details          # M2's stops
+//! cargo run -p mergewright --example gallery -- --stems  # details capture stems
 //! ```
 //!
 //! Inside: `]` next repository, `[` previous, `q` quit; every graph key and

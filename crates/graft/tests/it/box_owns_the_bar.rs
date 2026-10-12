@@ -1,7 +1,7 @@
 //! m6-conflicts/69: while a box is open, the bottom row is the box's keys,
 //! never a status from before it — captured against real repositories.
 //!
-//! Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it box_owns_the_bar`.
+//! Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it box_owns_the_bar`.
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"

@@ -51,7 +51,7 @@ out "1 nextest: ${line:-no summary (build failed?)} · rc=$rc · $ACCEPT/nextest
 [ "$rc" -eq 0 ] || failed=1
 
 # ── 2. pty walks, compare mode ──────────────────────────────────────────────
-cargo build -q -p graft --example m3_walk --example m4_walk --example m5_walk --bin trib \
+cargo build -q -p mergewright --example m3_walk --example m4_walk --example m5_walk --bin mwr \
   > "$ACCEPT/pty-build.txt" 2>&1 \
   && cargo build -q -p graft-fixtures --bin graft-fixtures >> "$ACCEPT/pty-build.txt" 2>&1
 if [ $? -ne 0 ]; then

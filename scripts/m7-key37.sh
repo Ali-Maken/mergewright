@@ -62,7 +62,7 @@ git -C "$WT" apply "$ROOT/scripts/m7-key37.patch" || {
   echo "patch did not apply at $M1" >&2
   exit 1
 }
-(cd "$WT" && cargo test --release --quiet -p graft --features heavy-tests --test it --no-run) \
+(cd "$WT" && cargo test --release --quiet -p mergewright --features heavy-tests --test it --no-run) \
   2>"$WORK/build.err" || {
   echo "release build at $M1 failed:" >&2
   tail -20 "$WORK/build.err" >&2
@@ -83,10 +83,10 @@ run() {
     busy before
   } >>"$WORK/runs.txt"
   if [ "$mode" = spin ]; then
-    (cd "$WT" && KEY37_SPIN=1 cargo test --release --quiet -p graft --features heavy-tests --test it \
+    (cd "$WT" && KEY37_SPIN=1 cargo test --release --quiet -p mergewright --features heavy-tests --test it \
       -- "$TEST" --exact --test-threads=1 --nocapture) >"$WORK/run.out" 2>&1
   else
-    (cd "$WT" && cargo test --release --quiet -p graft --features heavy-tests --test it \
+    (cd "$WT" && cargo test --release --quiet -p mergewright --features heavy-tests --test it \
       -- "$TEST" --exact --test-threads=1 --nocapture) >"$WORK/run.out" 2>&1
   fi
   status=$?

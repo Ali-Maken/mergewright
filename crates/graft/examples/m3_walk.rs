@@ -2,12 +2,12 @@
 //! (m3-working-tree-undo-and-stash/07).
 //!
 //! ```sh
-//! cargo run -p graft --example m3_walk                       # every scenario
-//! cargo run -p graft --example m3_walk -- --only stash-drop  # one
-//! cargo run -p graft --example m3_walk -- --list             # the names
-//! cargo run -p graft --example m3_walk -- --stems            # capture stems
-//! cargo run -p graft --example m3_walk -- --capture commit   # one scenario, live, for the pty script
-//! cargo run -p graft --example m3_walk -- --matrix           # docs/shots/35-coverage-matrix.txt
+//! cargo run -p mergewright --example m3_walk                       # every scenario
+//! cargo run -p mergewright --example m3_walk -- --only stash-drop  # one
+//! cargo run -p mergewright --example m3_walk -- --list             # the names
+//! cargo run -p mergewright --example m3_walk -- --stems            # capture stems
+//! cargo run -p mergewright --example m3_walk -- --capture commit   # one scenario, live, for the pty script
+//! cargo run -p mergewright --example m3_walk -- --matrix           # docs/shots/35-coverage-matrix.txt
 //! ```
 //!
 //! Each scenario copies a corpus shape into a scratch directory, scripts a

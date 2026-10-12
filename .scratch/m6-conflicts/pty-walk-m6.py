@@ -24,7 +24,7 @@ show colour**. The user judges these by eye.
 
 Usage: python3 .scratch/m6-conflicts/pty-walk-m6.py <COLSxROWS> [<scenario> ...]
 Build first, and point TRIB_TARGET at the directory holding the binaries:
-    cargo build -q -p graft --example m5_walk --bin trib
+    cargo build -q -p mergewright --example m5_walk --bin mwr
     cargo build -q -p graft-fixtures --bin graft-fixtures
     TRIB_TARGET=target python3 .scratch/m6-conflicts/pty-walk-m6.py 120x40
 The ticket's sizes: 120x40 and 80x24.
@@ -37,7 +37,7 @@ SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 TARGET = os.environ.get("TRIB_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m5_walk"
-GRAFT = f"{TARGET}/debug/trib"
+GRAFT = f"{TARGET}/debug/mwr"
 FIXTURES = os.environ.get("TRIB_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
@@ -61,7 +61,7 @@ COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from trib_sandbox import check_sandboxed, sandbox_env, scratch_root  # noqa: E402
+from mwr_sandbox import check_sandboxed, sandbox_env, scratch_root  # noqa: E402
 config_home = tempfile.mkdtemp(prefix="graft-walk-m6-")
 os.makedirs(os.path.join(config_home, "graft"))
 with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:

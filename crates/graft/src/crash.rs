@@ -400,7 +400,11 @@ mod tests {
     fn reports_go_to_the_current_folder_and_name_the_command() {
         assert!(report_dir_under(Path::new("/state")).ends_with(CURRENT_DIR));
         let first = report("m", "l", "b", &Timestamp::from_unix_seconds(0));
-        let expected = format!("trib {} panicked\n", env!("CARGO_PKG_VERSION"));
+        let expected = format!(
+            "{} {} panicked\n",
+            crate::cli::COMMAND,
+            env!("CARGO_PKG_VERSION")
+        );
         assert!(first.starts_with(&expected), "{first}");
     }
 
@@ -460,7 +464,7 @@ mod tests {
 
         assert_eq!(
             String::from_utf8(out).unwrap(),
-            "trib crashed. Report: /state/crash.log\n"
+            "mwr crashed. Report: /state/crash.log\n"
         );
     }
 

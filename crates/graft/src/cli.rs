@@ -51,7 +51,7 @@ pub use graft_core::on_disk::ASKPASS_SOCKET_VAR;
 /// command uses: usage, `--version`, the stderr prefix, the crash text, the
 /// man page's NAME. Where prose means the app, the name is `Tributary`
 /// (`graft_ui`'s `APP_NAME`); this is the binary's name.
-pub const COMMAND: &str = "trib";
+pub const COMMAND: &str = graft_core::on_disk::Generation::CURRENT.command();
 
 /// What the arguments could not be made sense of.
 #[derive(Debug, thiserror::Error)]
@@ -99,7 +99,7 @@ pub fn askpass(socket: Option<OsString>, arguments: &[OsString]) -> Option<Invoc
     }
 }
 
-/// What `--version` prints: `trib <crate version>`, the version the
+/// What `--version` prints: `mwr <crate version>`, the version the
 /// release archive and the formula carry.
 #[must_use]
 pub fn version() -> String {
@@ -195,7 +195,7 @@ mod tests {
         let error = parse_words(&["--theme=dark"]).expect_err("Graft has no --theme");
 
         assert!(matches!(error, CliError::UnknownOption(ref option) if option == "--theme=dark"));
-        assert!(error.to_string().contains("usage: trib"));
+        assert!(error.to_string().contains("usage: mwr"));
     }
 
     #[test]
@@ -236,7 +236,7 @@ mod tests {
     /// `FLAGS` changed nothing else he sees. `--help`'s row reads "print the
     /// usage" since review m8-hygiene-release m7: "this" read as the man page.
     const USAGE_BEFORE_FLAGS: &str = "\
-usage: trib [<path>]
+usage: mwr [<path>]
 
   <path>    the repository to open (default: the current directory)
 
@@ -305,8 +305,8 @@ usage: trib [<path>]
 
     #[test]
     fn version_and_usage_lines_start_with_the_command() {
-        assert_eq!(COMMAND, "trib");
-        assert!(version().starts_with("trib "), "{}", version());
-        assert!(usage(FLAGS).starts_with("usage: trib "), "{}", usage(FLAGS));
+        assert_eq!(COMMAND, "mwr");
+        assert!(version().starts_with("mwr "), "{}", version());
+        assert!(usage(FLAGS).starts_with("usage: mwr "), "{}", usage(FLAGS));
     }
 }

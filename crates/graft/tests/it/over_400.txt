@@ -126,7 +126,7 @@
 829 crates/graft-ui/src/theme/tests.rs
 883 crates/graft-ui/tests/pane_boundaries.rs
 555 crates/graft/src/config/tests.rs
-536 crates/graft/src/crash.rs
+540 crates/graft/src/crash.rs
 1012 crates/graft/src/empty_state/tests.rs
 625 crates/graft/src/event_loop/outside.rs
 521 crates/graft/src/event_loop/outside/tests.rs
@@ -273,6 +273,7 @@
 401 crates/graft/tests/it/quit_waits/hangup.rs
 550 crates/graft/tests/it/quit_waits/stuck.rs
 1262 crates/graft/tests/it/remote_by_key.rs
+451 crates/graft/tests/it/rename_names.rs
 424 crates/graft/tests/it/resolver/editor_words.rs
 717 crates/graft/tests/it/resolver/file_list.rs
 1397 crates/graft/tests/it/resolver/shell_begun.rs

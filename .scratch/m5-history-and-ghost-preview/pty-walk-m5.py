@@ -37,7 +37,7 @@ judges these by eye.
 Usage: python3 pty-walk-m5.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build both binaries first, and point
 TRIB_TARGET at the directory that holds them:
-    cargo build -q -p graft --example m5_walk
+    cargo build -q -p mergewright --example m5_walk
     cargo build -q -p graft-fixtures --bin graft-fixtures
     TRIB_TARGET=target python3 .scratch/m5-history-and-ghost-preview/pty-walk-m5.py 80x24
 The ticket's sizes: 80x24 and 160x48 for every capture, 120x40 for the
@@ -87,7 +87,7 @@ DRAWN_TOO = {"m5-11-diverged-pull-sticky": "the teammate's commit"}
 
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
-from trib_sandbox import sandbox_env, scratch_root  # noqa: E402
+from mwr_sandbox import sandbox_env, scratch_root  # noqa: E402
 config_home = tempfile.mkdtemp(prefix="graft-walk-m5-")
 os.makedirs(os.path.join(config_home, "graft"))
 with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:

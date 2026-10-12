@@ -91,7 +91,7 @@ fn a_bad_graft_now_refuses_to_launch() {
     assert_eq!(status.code(), Some(2), "stderr: {stderr}");
     assert_eq!(
         stderr,
-        "trib: TRIB_NOW must be whole seconds since 1970, got 1.5\n"
+        "mwr: TRIB_NOW must be whole seconds since 1970, got 1.5\n"
     );
     assert_eq!(
         crate::pty::count(&output, b"\x1b[?1049h"),

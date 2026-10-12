@@ -106,7 +106,7 @@ fn askpass_log(fixture: &Fixture) -> Result<Vec<u8>, String> {
 /// started with, and the one child that could carry a credential is this
 /// one.
 fn askpass_wrapper(fixture: &Fixture) -> Result<PathBuf, String> {
-    let real = match option_env!("CARGO_BIN_EXE_trib") {
+    let real = match option_env!("CARGO_BIN_EXE_mwr") {
         Some(graft) => PathBuf::from(graft),
         None => std::env::current_exe().map_err(|why| format!("current_exe: {why}"))?,
     };

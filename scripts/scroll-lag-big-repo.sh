@@ -31,7 +31,7 @@ trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 ROOT=$PWD
 
-cargo build --release --quiet --bin trib 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }
+cargo build --release --quiet --bin mwr 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }
 cargo test --release --features heavy-tests --no-run --quiet 2>"$WORK/build.err" || { tail -20 "$WORK/build.err" >&2; exit 1; }
 
 {
@@ -72,7 +72,7 @@ for tier in unicode pixel; do
     label="tier=$tier size=$size"
     rm -f "$WORK/trace.txt"
     TRIB_REAL_REPO="$REPO" TRIB_REAL_TIER=$tier TRIB_REAL_SIZE=$size TRIB_FRAME_TRACE="$WORK/trace.txt" \
-      cargo test --release --features heavy-tests --quiet -p graft --test it -- --ignored --exact \
+      cargo test --release --features heavy-tests --quiet -p mergewright --test it -- --ignored --exact \
       frames::a_real_repository_keeps_input_to_frame_under_16_ms --nocapture \
       >"$WORK/out.txt" 2>&1
     echo "# inproc $label exit $?" >>"$OUT"
@@ -81,7 +81,7 @@ for tier in unicode pixel; do
 done
 
 pty() { # profile cols rows wait [rate]
-  PROFILE=$1 RATE=${5:-} python3 scripts/scroll-lag-pty.py "$ROOT/target/release/trib" "$REPO" "$2" "$3" "$4" 0.033 3 pty >>"$OUT"
+  PROFILE=$1 RATE=${5:-} python3 scripts/scroll-lag-pty.py "$ROOT/target/release/mwr" "$REPO" "$2" "$3" "$4" 0.033 3 pty >>"$OUT"
 }
 for profile in text kitty; do
   for size in "120 40" "200 50"; do

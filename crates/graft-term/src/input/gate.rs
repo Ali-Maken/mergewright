@@ -128,7 +128,10 @@ impl Gate {
             // Deliberately not fatal, and not silent: the reader wakes on the
             // next byte anyway, so the only cost is that a key typed *before*
             // the first one after resume stays in the buffer a moment longer.
-            eprintln!("trib: could not wake the input reader: {error}");
+            eprintln!(
+                "{}: could not wake the input reader: {error}",
+                graft_core::on_disk::Generation::CURRENT.command()
+            );
         }
     }
 

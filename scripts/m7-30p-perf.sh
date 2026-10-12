@@ -26,7 +26,7 @@ machine_state_begin "$OUT"
 FEATURES=heavy-tests
 FILTER=frames::journal_find
 
-cargo test --release --features "$FEATURES" -p graft --test it --no-run --quiet 2>"$WORK/build.err" || {
+cargo test --release --features "$FEATURES" -p mergewright --test it --no-run --quiet 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
@@ -34,7 +34,7 @@ cargo test --release --features "$FEATURES" -p graft --test it --no-run --quiet 
 
 for n in 1 2 3; do
   t0=$SECONDS
-  cargo test --release --features "$FEATURES" -p graft --test it --quiet -- "$FILTER" --nocapture --test-threads=1 \
+  cargo test --release --features "$FEATURES" -p mergewright --test it --quiet -- "$FILTER" --nocapture --test-threads=1 \
     >"$WORK/run$n.out" 2>&1
   status=$?
   echo "run$n exit $status, $((SECONDS - t0))s" >>"$WORK/runs.txt"

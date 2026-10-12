@@ -146,7 +146,7 @@ fn ctrl_c_mid_merge_boxes_and_never_cancels() {
 /// quitting when it finishes · esc stays`. The write is real and running:
 /// its answer is simply not pumped between the keys. Colour unverified.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_waits`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it quit_waits::capture_quit_waits`.
 #[test]
 fn capture_quit_waits() {
     use crate::preview::FORK_NOW;
@@ -203,7 +203,7 @@ fn capture_quit_waits() {
 /// place of the loop's 10 s (`STOP_OFFER_AFTER`), so no time passes. Colour
 /// unverified.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_quit_stop_now`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it quit_waits::capture_quit_stop_now`.
 #[test]
 fn capture_quit_stop_now() {
     use crate::preview::FORK_NOW;
@@ -249,8 +249,8 @@ fn capture_quit_stop_now() {
 
 /// What right looks like (`m8-quit-stopped-merge-relaunch-80x24.txt`, 13c–
 /// 13d): the caption is the one line the shell got when the stop box's `y`
-/// stopped a merge stuck in its `pre-merge-commit` hook — `trib: stopped
-/// merge main into feature after 10 s · the merge is paused · trib here
+/// stopped a merge stuck in its `pre-merge-commit` hook — `mwr: stopped
+/// merge main into feature after 10 s · the merge is paused · mwr here
 /// offers continue or abort` (the 10 s is the injected offer's). Below it,
 /// the next launch at 80x24, as drawn today (graft-ui untouched): `MERGING`
 /// at the top, the `Detail` tab of the narrow layout on the uncommitted
@@ -265,7 +265,7 @@ fn capture_quit_stop_now() {
 /// the graph tab, not here (NOTES 19d-a3). Colour unverified; looks-right
 /// is the user's.
 ///
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p graft --test it quit_waits::capture_relaunch_after_a_stopped_merge`.
+/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it quit_waits::capture_relaunch_after_a_stopped_merge`.
 #[test]
 fn capture_relaunch_after_a_stopped_merge() {
     use crate::preview::FORK_NOW;
