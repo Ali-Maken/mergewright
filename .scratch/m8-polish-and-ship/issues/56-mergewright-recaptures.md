@@ -1,6 +1,6 @@
 # Mergewright 8: M8's pty captures re-shot under the final name (27d unparked)
 
-Status: ready. Supersedes 27d's remaining boxes (27d stays parked as the record of the classify pass).
+Status: partial (2026-10-12): all boxes but the old-name box, which holds one writer-side defect (quit_waits.rs:186). Supersedes 27d's remaining boxes (27d stays parked as the record of the classify pass).
 Blocked by: 46, 47, 48, 49, 50, 51, 52
 Build with: **Sonnet** (set by the conductor after the scout). Planner expected Sonnet: runs existing writers; its
 judgement is bounded by the drift script and two stop rules.
@@ -42,16 +42,20 @@ editing writers or walks; TestBackend captures (their tickets regenerated them);
 None.
 
 ## Acceptance (each box: the evidence named at tick time)
-- [ ] `mwr-recapture-set.txt` committed; counts `m8 <a> · live-doc <b> · record <c> · code-name <d>` in NOTES;
-      reviewer samples ≥10 `record` rows against git dates.
-- [ ] Each `m8`/`live-doc` file re-shot by its writer: NOTES table `capture · writer command · result`.
+- [x] `mwr-recapture-set.txt` committed; counts `m8 <a> · live-doc <b> · record <c> · code-name <d>` in NOTES;
+      reviewer samples ≥10 `record` rows against git dates. — evidence: the file + counts in NOTES.
+- [x] Each `m8`/`live-doc` file re-shot by its writer: NOTES table `capture · writer command · result`. — evidence:
+      `MWR_UPDATE_SHOTS=1 cargo nextest run --workspace --no-fail-fast` 6421 passed, then plain run.
 - [ ] After: `rg -l` for every earlier generation's title, command and env prefix over the re-shot files returns only
-      code-name matches (output to file, count quoted).
-- [ ] `scripts/shot-drift.py --base <set start> --out .scratch/m8-polish-and-ship/mwr-recapture-drift.txt` summary
-      quoted; drift files listed for the user's eye (rule 6), or stop rule 2.
-- [ ] Writers that couldn't run: listed with the error's first line (stop rule 1), for a KNOWN_GAPS row.
-- [ ] `find docs/shots -size +200k` empty (quoted). Colour unverified (rule 5).
-- [ ] KNOWN_GAPS `M8/27d-shots-old-name`: the conductor's line for it in NOTES (closed, or narrowed to the writers
+      code-name matches (output to file, count quoted). — **NOT held**: 3 lines, 2 code-name, 1 defect
+      (quit_waits.rs:186 label, writer-side, out of scope). See NOTES.
+- [x] `scripts/shot-drift.py --base <set start> --out .scratch/m8-polish-and-ship/mwr-recapture-drift.txt` summary
+      quoted; drift files listed for the user's eye (rule 6), or stop rule 2. — evidence: run quoted in NOTES;
+      `python3 scripts/shot-drift-test.py` ok.
+- [x] Writers that couldn't run: listed with the error's first line (stop rule 1), for a KNOWN_GAPS row. — NOTES list
+      (none failed; five have no writer).
+- [x] `find docs/shots -size +200k` empty (quoted). Colour unverified (rule 5). — evidence: command output empty.
+- [x] (NOTES line) KNOWN_GAPS `M8/27d-shots-old-name`: the conductor's line for it in NOTES (closed, or narrowed to the writers
       that couldn't run).
 
 ## Touches
@@ -78,3 +82,52 @@ Scout: `.scratch/m8-polish-and-ship/scouts/56-recaptures.md`. Build with set to 
 - No writer for `21c-journal-partial-fetch` (80x24, 120x40) and `doorway-marked-140x40`: leave them as records, list in
   NOTES; the conductor files a gap.
 - **Never kill processes you did not start.**
+
+## NOTES (builder 56, 2026-10-12)
+Scout used: `.scratch/m8-polish-and-ship/scouts/56-recaptures.md`. No compaction.
+
+**Counts** (`mwr-recapture-set.txt`, the 450 rows of `27-shots-left.txt` that still exist):
+`m8 6 · live-doc 0 · record 241 · code-name 199` (+ `sheet 4`: m8 contact sheets 1–3 and captions.tsv, assembled).
+- Deviation, for the conductor: 25 rows first classed `live-doc` are linked **only from past-milestone TESTING.md
+  checklists** (M1–M7 sections, e.g. TESTING.md:1108, 1332, 2771–3004), not from a doc showing the app today →
+  reclassed `record`. README's one shot link (m8/fork-follows-banner-187x44) is not in the left list. Re-shooting
+  them meant running pre-M8, pre-sandbox pty scripts (`.scratch/m1-the-graph/`) against a header M8 replaced:
+  certain non-name drift. Overrule if "TESTING.md instruction lines" meant these.
+
+**Re-shoot table** (all six are `Captures::check`/`check_shot` writers):
+| capture | writer command | result |
+|---|---|---|
+| m8-tour-187x50 | `MWR_UPDATE_SHOTS=1 cargo nextest run --workspace` (tour_walk.rs) | unchanged; old name only in temp prefix `/private/tmp/graft-capture/` (code-name) |
+| m8-quit-waits-80x24 | same (quit_waits.rs) | unchanged; **defect**: label `Graft waits for git` is written by crates/graft/tests/it/quit_waits.rs:186 — writer edit out of scope |
+| m8-q1-journal-replaced-ui-80x24, -187x30 | same (graft-ui journal_screen/tests/replaced.rs) | unchanged, no old name |
+| m8-hangup-relaunch-120x40 | same (quit_waits/hangup.rs) | unchanged, no old name |
+| m8/doorway-journal-120x36 | same (update/tests/doorway.rs) | unchanged; header names `crates/graft/src/update/tests.rs` (code-name; also stale path) |
+
+Update run: 6421 passed, 16 skipped; `git status` showed no docs/shots change → every TestBackend writer was
+already current. A first fail-fast run failed once in `outside_repo::launch_and_open_land_alike` ("fatal: could not
+parse HEAD", tests/it/app_harness.rs:84); passed on rerun. Flake, cause not found (another builder's cargo beside).
+
+**Old names after**: `grep -niE 'graft|tributary|\btrib\b'` over the six → `mwr-recapture-oldnames.txt`, 3 lines
+(temp prefix, crate path, the quit_waits.rs:186 defect).
+
+**Drift**: `shot-drift.py` now counts graft, tributary and `\btrib\b` as earlier names. Test
+`scripts/shot-drift-test.py` (wired into check-scripts.sh): ok; against the old regex it fails
+(`name-only 1 · drift-files 3`). Run `--base HEAD`: `changed 0 · name-only 0 · drift-files 0 · png 0`. Nothing new
+for the user's eye from this ticket.
+
+**No writer (stop rule 1, none errored)**: m8/21c-journal-partial-fetch-80x24 and -120x40 (scout: none by name);
+m8-proto-3a-empty, m8-proto-3c-clone-prompt (throwaway prototype); m8/doorway-marked-140x40 (scout; not in list).
+
+**Size**: `find docs/shots -size +200k` → empty. Colour unverified (rule 5).
+
+**Question** (textual): m8-tour-187x50.txt line 3 reads `◇ workripractice ·` — two words with no gap? Not checked.
+
+**KNOWN_GAPS `M8/27d-shots-old-name`** — conductor's line: narrow to (a) quit_waits.rs:186 label: writer edit +
+re-shoot; (b) the no-writer files above; (c) pre-M8 captures are records by §12.
+
+Touches: docs/shots none changed (git status); scripts/shot-drift.py, scripts/shot-drift-test.py (new),
+scripts/check-scripts.sh (ran the test); crates/graft/tests/it/rename_docs.rs: one ALLOWED_FILES row for
+shot-drift-test.py (it plants old names on purpose; `rename_names::user_docs_and_scripts_name_the_command` failed
+without it — caught by the plain nextest run); TESTING.md captions not edited; no production code.
+
+**Conductor heads-up (55: m7 journal captures say Graft)**: not so on this branch (base 80d49c74). `grep -lE 'Graft|● *graft' docs/shots/m7/*journal*` → none; `docs/shots/m7/journal-187x50.txt` has 5 `Mergewright` lines (re-shot by 52's TestBackend run). No writer by filename under crates/ (`grep -rln journal-187x50 crates` → none), so nothing to re-run. If 55 saw Graft in a different file, name it.

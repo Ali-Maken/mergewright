@@ -19,6 +19,10 @@ const ALLOWED_FILES: &[(&str, &str)] = &[
         "scripts/shot-drift.py",
         "finds the old name in captures, so it spells it",
     ),
+    (
+        "scripts/shot-drift-test.py",
+        "plants each earlier name in a capture for shot-drift.py to find",
+    ),
 ];
 
 /// `(text right before the word, text right after it, reason)`: a match is

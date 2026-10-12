@@ -5,8 +5,8 @@
 
 For each text file under docs/shots/ changed since <rev> (working tree
 included), the changed lines are paired: difflib's `replace` blocks of equal
-size, line by line. A pair is *name-only* when the old line says graft (any
-case) — the new name may move the rest of the line along with it. Anything
+size, line by line. A pair is *name-only* when the old line says an earlier
+generation's name (graft, tributary or trib; any case) — the new name may move the rest of the line along with it. Anything
 else (an unpaired line, or an old line without the word) is *drift*,
 written as `path:line` (the new file's line). PNGs are listed apart: they
 cannot be paired by line. Last line:
@@ -19,7 +19,8 @@ import re
 import subprocess
 import sys
 
-OLD = re.compile(r"(?i)graft")
+# Every earlier generation of the product name: Graft, then Tributary/trib.
+OLD = re.compile(r"(?i)graft|tributary|\btrib\b")
 
 
 def git(*args):

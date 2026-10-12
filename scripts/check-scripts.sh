@@ -8,4 +8,5 @@ command -v shellcheck >/dev/null || { echo "check-scripts: shellcheck not instal
 find scripts -name '*.sh' -print0 | xargs -0 shellcheck -x -P scripts -S warning
 python3 scripts/check-sandbox.py
 python3 scripts/check-sandbox-test.py
+python3 scripts/shot-drift-test.py
 echo "check-scripts: ok"
