@@ -45,31 +45,41 @@ fn the_backup_ref_is_namespaced_by_worktree_and_named_by_entry() {
     );
 }
 
+/// Backup commits are immutable: a chain written under any generation's
+/// names keeps its `<Title>-Link:` lines forever, so every generation's key
+/// reads; only `CURRENT`'s is written (ADR-0057, Amendment 2026-10-11 §1).
 #[test]
-fn old_link_trailer_reads() {
-    // Backup commits are immutable: a chain written before the rename keeps
-    // its `Graft-Link:` lines forever, so both spellings read; only the new
-    // one is written (ADR-0057, Amendment, Consequences).
+fn every_generations_trailer_reads() {
     let commit = Oid::from_hex("0123456789abcdef0123456789abcdef01234567").expect("an oid");
-    for (message, kind) in [
-        ("graft x\n\nGraft-Link: resume", LinkKind::Resume),
-        ("graft x\n\nGraft-Link: step\n", LinkKind::Step),
-        ("x\n\nTributary-Link: resume", LinkKind::Resume),
-        ("x\n\nTributary-Link: step", LinkKind::Step),
-        ("x step within: merge feature", LinkKind::Step),
-    ] {
-        assert_eq!(
-            chain::link_of(commit, message).expect("reads"),
-            kind,
-            "{message:?}"
-        );
+    for generation in Generation::GENERATIONS {
+        let key = generation.link_trailer();
+        for (message, kind) in [
+            (format!("x\n\n{key} resume"), LinkKind::Resume),
+            (format!("x\n\n{key} step\n"), LinkKind::Step),
+        ] {
+            assert_eq!(
+                chain::link_of(commit, &message).expect("reads"),
+                kind,
+                "{message:?}"
+            );
+        }
+        assert!(matches!(
+            chain::link_of(commit, &format!("x\n\n{key} sideways")),
+            Err(SnapshotError::UnknownLink { .. })
+        ));
     }
-    assert!(matches!(
-        chain::link_of(commit, "x\n\nTributary-Link: sideways"),
-        Err(SnapshotError::UnknownLink { .. })
-    ));
-    assert_eq!(LinkKind::Step.trailer(), "Tributary-Link: step");
-    assert_eq!(LinkKind::Resume.trailer(), "Tributary-Link: resume");
+    assert_eq!(
+        chain::link_of(commit, "x step within: merge feature").expect("reads"),
+        LinkKind::Step,
+        "no trailer at all reads as a step"
+    );
+    // The writer and the backup identity: the known-good spellings, pinned.
+    assert_eq!(LinkKind::Step.trailer(), "Mergewright-Link: step");
+    assert_eq!(LinkKind::Resume.trailer(), "Mergewright-Link: resume");
+    assert_eq!(
+        (BACKUP_AUTHOR_NAME, BACKUP_AUTHOR_EMAIL),
+        ("mergewright", "mergewright@backup")
+    );
 }
 
 #[test]
@@ -77,6 +87,6 @@ fn the_backup_ref_takes_the_prefix_in_force() {
     let id = EntryId::new(1_700_000_000_000, [7; 10]);
     assert_eq!(
         backup_ref_name(Generation::CURRENT, "main", &id),
-        format!("refs/tributary/backup/main/{id}")
+        format!("{}backup/main/{id}", Generation::CURRENT.ref_prefix())
     );
 }

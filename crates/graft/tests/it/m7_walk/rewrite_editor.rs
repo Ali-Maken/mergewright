@@ -13,6 +13,7 @@ use graft_core::event::{KeyCode, KeyPress, Modifiers};
 
 use super::rebase_line::{fork_repo, frame, git, open, within};
 use crate::app_harness::App;
+use graft_core::on_disk::CURRENT_DIR;
 
 /// `subject` (with `body`, if any) committed as a change to `file`.
 fn commit(repo: &Path, file: &str, subject: &str, body: &str, hour: u8) {
@@ -308,9 +309,10 @@ fn rewrite_look_and_leave_writes_nothing() {
     );
     // The app makes the journal file at some point after opening (empty);
     // what counts is that no entry was written.
-    let journal =
-        graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
-            .unwrap_or_else(|why| panic!("the journal is readable: {why}"));
+    let journal = graft_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .unwrap_or_else(|why| panic!("the journal is readable: {why}"));
     assert!(
         journal.entries().is_empty(),
         "journal: {:?}",

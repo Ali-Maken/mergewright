@@ -492,7 +492,7 @@ Clear the field (credential.clear)
 .B backspace, delete, left, right, home, end
 Edit the typed text (credential.edit_text)
 .SH CONFIGURATION
-$XDG_CONFIG_HOME/tributary/config.toml, in TOML. Every key is optional. An
+$XDG_CONFIG_HOME/mergewright/config.toml, in TOML. Every key is optional. An
 unknown key is a warning, not an error; a value a key does not take stops trib
 with the line and column.
 .SS [ui]
@@ -608,11 +608,11 @@ ours, theirs, open, ours-tint, theirs-tint, open-tint.
 .SH ENVIRONMENT
 .TP
 .B XDG_CONFIG_HOME
-Where the config folder is: $XDG_CONFIG_HOME/tributary. Ignored unless absolute;
-unset, $HOME/.config is used.
+Where the config folder is: $XDG_CONFIG_HOME/mergewright. Ignored unless
+absolute; unset, $HOME/.config is used.
 .TP
 .B XDG_STATE_HOME
-Where crash reports go: $XDG_STATE_HOME/tributary. Unset or empty,
+Where crash reports go: $XDG_STATE_HOME/mergewright. Unset or empty,
 $HOME/.local/state is used.
 .TP
 .B HOME
@@ -636,20 +636,20 @@ Set by trib for the git it runs, so that git can ask trib for a password. Not
 for setting by hand.
 .SH FILES
 .TP
-.B $XDG_CONFIG_HOME/tributary/config.toml
+.B $XDG_CONFIG_HOME/mergewright/config.toml
 The config file; see CONFIGURATION. No file is the normal case.
 .TP
-.B $XDG_CONFIG_HOME/tributary/recent
+.B $XDG_CONFIG_HOME/mergewright/recent
 The repositories opened recently, offered when trib starts outside one.
 .TP
-.B $XDG_CONFIG_HOME/tributary/launches
+.B $XDG_CONFIG_HOME/mergewright/launches
 Launches counted, so the line saying where help is shows on the first five, or
 until you first open the command palette.
 .TP
-.B $XDG_STATE_HOME/tributary/
+.B $XDG_STATE_HOME/mergewright/
 Crash reports.
 .TP
-.B <git directory>/tributary/
+.B <git directory>/mergewright/
 Per repository: the undo journal (undo-journal.jsonl), the pane layout, a paused
 rewrite's plan, the message file ctrl+e opens in your editor, and whether you
 declined the commit-graph offer.

@@ -25,17 +25,39 @@ pub(super) fn list(repo: &RepoHandle, generation: Generation) -> Result<Listed, 
     list_under(repo, &[generation.ref_prefix()])
 }
 
-/// Every ref under `from`'s prefix and under `CURRENT`'s, in that order —
-/// one `for-each-ref` naming both, the stray pass's first spawn.
+/// Every ref under each of `froms`' prefixes, then every ref under
+/// `CURRENT`'s — one `for-each-ref` naming them all, the stray pass's first
+/// spawn.
 pub(super) fn list_both(
     repo: &RepoHandle,
-    from: Generation,
+    froms: &[Generation],
 ) -> Result<(Listed, Listed), MigrateError> {
-    let both = list_under(repo, &[from.ref_prefix(), Generation::CURRENT.ref_prefix()])?;
-    let (old, new) = both
+    let mut prefixes: Vec<&str> = froms.iter().map(|from| from.ref_prefix()).collect();
+    prefixes.push(Generation::CURRENT.ref_prefix());
+    let all = list_under(repo, &prefixes)?;
+    let (new, old) = all
         .into_iter()
-        .partition(|(name, _)| name.starts_with(from.ref_prefix()));
+        .partition(|(name, _)| name.starts_with(Generation::CURRENT.ref_prefix()));
     Ok((old, new))
+}
+
+/// Every ref under `scratch`'s prefixes deleted at the value listed, in
+/// one transaction, then listed again: none may be left.
+pub(super) fn delete_all(repo: &RepoHandle, scratch: &[Generation]) -> Result<(), MigrateError> {
+    let prefixes: Vec<&str> = scratch.iter().map(|from| from.ref_prefix()).collect();
+    let listed = list_under(repo, &prefixes)?;
+    if listed.is_empty() {
+        return Ok(());
+    }
+    let mut lines = String::new();
+    for (name, oid) in &listed {
+        lines.push_str(&format!("delete {name} {oid}\n"));
+    }
+    transaction(repo, lines)?;
+    match list_under(repo, &prefixes)?.into_keys().next() {
+        Some(left) => Err(MigrateError::ReadBack { what: left }),
+        None => Ok(()),
+    }
 }
 
 fn list_under(repo: &RepoHandle, prefixes: &[&str]) -> Result<Listed, MigrateError> {
@@ -112,15 +134,17 @@ pub(super) fn mirror_and_read_back(
 /// The stray pass's refs, after the switch, in one transaction read back
 /// after: each old ref with no new one is created under the new name; one
 /// whose new ref holds the same value is only deleted; one whose new ref
-/// holds another is moved to `refs/<new>/older-version/<pass>/<rest>`. The
-/// old ref is deleted at its listed value in every case. `old` is under
-/// `from`'s prefix, `new` under `CURRENT`'s. How many were set aside.
+/// holds another is moved to `<CURRENT prefix>older-version/<pass>/<its
+/// generation's dir>/<rest>`, so two generations' refs with the same rest
+/// never collide. The old ref is deleted at its listed value in every
+/// case. `old` is under `froms`' prefixes, `new` under `CURRENT`'s. How
+/// many were set aside.
 pub(super) fn carry_or_set_aside(
     repo: &RepoHandle,
     old: &Listed,
     new: &Listed,
     pass: usize,
-    from: Generation,
+    froms: &[Generation],
 ) -> Result<usize, MigrateError> {
     if old.is_empty() {
         return Ok(0);
@@ -133,8 +157,14 @@ pub(super) fn carry_or_set_aside(
         match new.get(&wanted) {
             Some(held) if held == oid => {}
             Some(_) => {
-                let rest = name.strip_prefix(from.ref_prefix()).unwrap_or(name);
-                let kept = format!("{}{rest}", kept_aside_prefix(pass));
+                let kept = match Generation::of_ref(name) {
+                    Some(from) => {
+                        let rest = name.strip_prefix(from.ref_prefix()).unwrap_or(name);
+                        format!("{}{}/{rest}", kept_aside_prefix(pass), from.dir())
+                    }
+                    // Listed under one of `froms`' prefixes, so never here.
+                    None => format!("{}{name}", kept_aside_prefix(pass)),
+                };
                 lines.push_str(&format!("create {kept} {oid}\n"));
                 targets.insert(kept, *oid);
                 aside += 1;
@@ -147,7 +177,7 @@ pub(super) fn carry_or_set_aside(
         lines.push_str(&format!("delete {name} {oid}\n"));
     }
     transaction(repo, lines)?;
-    let (old_back, new_back) = list_both(repo, from)?;
+    let (old_back, new_back) = list_both(repo, froms)?;
     let gone = old
         .keys()
         .find(|name| old_back.get(*name) == old.get(*name));
@@ -161,7 +191,7 @@ pub(super) fn carry_or_set_aside(
     Ok(aside)
 }
 
-/// `refs/<new>/older-version/<pass>/`.
+/// `<CURRENT prefix>older-version/<pass>/`.
 pub(super) fn kept_aside_prefix(pass: usize) -> String {
     format!(
         "{}{KEPT_ASIDE_DIR}/{pass}/",

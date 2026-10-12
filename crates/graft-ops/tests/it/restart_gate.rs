@@ -21,6 +21,7 @@ use graft_ops::operation::{
 use crate::conflict_fixtures::{graft_merge_stops, graft_stage};
 use crate::conflict_ops::{stopped_merge, unmerged_lines};
 use crate::support::{NOW, Never, TempRepo, git_version, try_run};
+use graft_core::on_disk::CURRENT_DIR;
 
 pub(crate) type Gate = Result<Result<RestartPlan, Refusal>, RestartReadError>;
 
@@ -82,7 +83,7 @@ fn untouched(repo: &TempRepo) -> Untouched {
     let path = journal_path(&repo.open()).expect("the journal path resolves");
     Untouched {
         journal: std::fs::read(path).ok(),
-        backups: repo.git(&["for-each-ref", "refs/tributary/backup/"]),
+        backups: repo.git(&["for-each-ref", &format!("refs/{CURRENT_DIR}/backup/")]),
         status: repo.git(&["status", "--porcelain=v1"]),
     }
 }

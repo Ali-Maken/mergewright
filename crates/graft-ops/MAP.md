@@ -276,12 +276,12 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `plan_revert_to` (fn) — `(entries, target)`: the time machine's picture, from the same `InversePlan`s `revert_to` runs.
 
 ## rename
-- `settle_names` (fn) — `(&RepoHandle) -> Settled`: the one-time move from the old on-disk names to the new, run on every open before any job.
+- `settle_names` (fn) — `(&RepoHandle) -> Settled`: the one-time move from whichever generation is in force straight to `Generation::CURRENT`'s names (scratch of a newer failed move removed, every earlier generation given one stray pass), run on every open before any job.
 - `Settled` (struct) — `names` in force, `outcome`, `hold: Option<OldNamesHold>`.
 - `SettleOutcome` (enum) — `Done`, `Migrated`, `CleanedUp`, `OlderWrote`, `KeptOld(MigrateError)`, `LeftOld(MigrateError)`.
-- `KEPT_ASIDE_DIR` (const) — `"older-version"`: where stray old files are kept.
+- `KEPT_ASIDE_DIR` (const) — `"older-version"`: where differing strays are kept — files at `<common>/<current>/older-version/<n>/<path>`, refs at `refs/<current>/older-version/<n>/<generation dir>/<rest>`.
 - `OldNamesHold` (struct) — a shared lock a run on the old names keeps for its life.
-- `MigrateError` (enum) — `Busy`, `Refs`, `Files`, `ReadBack`; `Display` is the status row's words.
+- `MigrateError` (enum) — `Busy` (`another <CURRENT.title()> window is open on this repository`; any generation's lock held), `Refs`, `Files`, `ReadBack`; `Display` is the status row's words.
 - `LOCK_FILE` (const) — `"lock"`.
 - `map_ref` / `map_entry` / `map_entries` (fn) — `(…, in_force: Generation)`: a journal's ref names from every generation older than `in_force` read under `in_force`'s prefix; newer ones as written.
 - `description(to, refs, files)` (fn) — the `Migrate` entry's words, `rename to <to.title()> (N refs, M files)`; stored in the entry at write.

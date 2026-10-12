@@ -14,7 +14,10 @@ fn an_old_prefix_reads_under_the_new_names_only() {
     let old = "refs/graft/backup/main/01HF7YAT000000000000000000";
     assert_eq!(
         map_ref(old, Generation::CURRENT),
-        "refs/tributary/backup/main/01HF7YAT000000000000000000"
+        format!(
+            "{}backup/main/01HF7YAT000000000000000000",
+            Generation::CURRENT.ref_prefix()
+        )
     );
     assert_eq!(
         map_ref(old, Generation::Graft),
@@ -60,12 +63,13 @@ fn the_m5_golden_reads_its_backups_under_the_new_prefix() {
     assert_eq!(entries.len(), 3);
     for (mapped, written) in entries.iter().zip(&as_written) {
         let backup = mapped.backup_ref.as_deref().unwrap();
+        let current = Generation::CURRENT.ref_prefix();
         assert!(
-            backup.starts_with("refs/tributary/backup/main/"),
+            backup.starts_with(&format!("{current}backup/main/")),
             "{backup}"
         );
         assert_eq!(
-            Some(backup.replacen("refs/tributary/", "refs/graft/", 1)),
+            Some(backup.replacen(current, Generation::Graft.ref_prefix(), 1)),
             written.backup_ref
         );
         assert_eq!(
@@ -83,7 +87,7 @@ fn the_m5_golden_reads_its_backups_under_the_new_prefix() {
 
 #[test]
 fn every_ref_field_of_an_entry_is_mapped() {
-    let old_backup = "refs/graft/backup/main/x".to_owned();
+    let old_backup = format!("{}backup/main/x", Generation::Graft.ref_prefix());
     let mut entry = committed(10, OperationKind::Commit, 1, 2);
     entry.backup_ref = Some(old_backup.clone());
     entry.touches.refs.push(old_backup.clone());
@@ -94,7 +98,7 @@ fn every_ref_field_of_an_entry_is_mapped() {
     let [entry] = entries.as_slice() else {
         panic!()
     };
-    let new = "refs/tributary/backup/main/x".to_owned();
+    let new = format!("{}backup/main/x", Generation::CURRENT.ref_prefix());
     assert_eq!(entry.backup_ref.as_ref(), Some(&new));
     assert!(entry.touches.refs.contains(&new));
     assert!(entry.refs_before.contains_key(&new) && entry.refs_after.contains_key(&new));

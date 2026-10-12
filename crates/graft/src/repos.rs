@@ -339,6 +339,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use graft_core::on_disk::CURRENT_DIR;
     use graft_fixtures::Shape;
 
     use super::*;
@@ -536,11 +537,11 @@ mod tests {
         let copy = graft_fixtures::copy_into_temp(Shape::Linear);
         let store = RepoStore::new(copy.path().to_path_buf(), None);
         let common = store.common_dir().expect("opens");
-        assert_eq!(store.app_dir().expect("opens"), common.join("tributary"));
+        assert_eq!(store.app_dir().expect("opens"), common.join(CURRENT_DIR));
         assert_eq!(store.opens(), 1, "the settle's reopen is not a second open");
         assert_eq!(store.rename_words(), None, "nothing to say");
         assert_eq!(
-            std::fs::read_to_string(common.join("tributary").join(MIGRATED_MARKER))
+            std::fs::read_to_string(common.join(CURRENT_DIR).join(MIGRATED_MARKER))
                 .expect("the marker is written"),
             "clean\n"
         );

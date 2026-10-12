@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use graft_core::event::{KeyCode, KeyPress};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// Repository truth, entirely from git and the file system.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -127,7 +128,7 @@ pub fn git_truth(repo: &Path) -> Result<RepoTruth, String> {
         .map(|s| s.trim().to_owned());
     let refs = run_git(repo, &["for-each-ref", "--format=%(refname) %(objectname)"])?
         .lines()
-        .filter(|line| !line.starts_with("refs/tributary/"))
+        .filter(|line| !line.starts_with(&format!("refs/{CURRENT_DIR}/")))
         .filter_map(|line| {
             line.split_once(' ')
                 .map(|(name, oid)| (name.to_owned(), oid.to_owned()))

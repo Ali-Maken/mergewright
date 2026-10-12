@@ -15,6 +15,7 @@
 use graft_core::event::{KeyCode, KeyPress};
 
 use crate::app_harness::{App, changes_pane, cursor_to, git, git_as_graft};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// Bytes no editor would write and no diff would survive: a NUL and a byte
 /// that is not valid UTF-8. If undo reconstructs the file through any text
@@ -46,7 +47,7 @@ fn journal(repo: &std::path::Path) -> Vec<graft_core::journal::JournalEntry> {
 
 /// Where a repository's journal lives.
 fn journal_path(repo: &std::path::Path) -> std::path::PathBuf {
-    repo.join(".git/tributary/undo-journal.jsonl")
+    repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"))
 }
 
 /// Discard an untracked file, then `u`: the file comes back byte for byte,

@@ -1,6 +1,6 @@
 # Mergewright 1: one table of every name, and one move from whatever is in force
 
-Status: Part A done; Part B ready
+Status: done (Part A and Part B)
 Blocked by: 46, 47
 Build with:
 - Part A: **Fable (signature)**. The generation table is the interface every later rename ticket calls, and every
@@ -127,48 +127,52 @@ pub const BACKUP_AUTHOR_EMAIL: &str; // "<CURRENT.dir()>@backup", built by the e
 ## Part B (commit 2: Mergewright in force)
 All in `graft-ops/tests/it/rename/generations.rs` unless stated. Truth comes from git (`for-each-ref`, `fsck`) and the
 journal reader, never from the code under test.
-- [ ] **Graft → Mergewright direct.** 3 backups and a 20-entry journal under Graft names. After open: refs under
+- [x] **Graft → Mergewright direct.** 3 backups and a 20-entry journal under Graft names. After open: refs under
       `refs/mergewright/`, none under `refs/graft/` or `refs/tributary/`; no `tributary` dir anywhere; the journal has
       the 20 entries and one `Migrate`; `u` restores the newest real operation byte-exactly; `fsck` clean.
       Test: `graft_repo_moves_straight_to_mergewright`
-- [ ] **Tributary `clean` → Mergewright.** The journal has the 20, `rename to Tributary`, then the moves made under
+- [x] **Tributary `clean` → Mergewright.** The journal has the 20, `rename to Tributary`, then the moves made under
       Tributary, then `rename to Mergewright`. The J words for both rows are pinned.
       Test: `tributary_repo_moves_and_both_rename_rows_read`
-- [ ] **Tributary `switched` with Graft leftovers.**
+- [x] **Tributary `switched` with Graft leftovers.**
       - A Graft journal that is a prefix of the new one is deleted.
       - A Graft ref at the same oid is deleted.
       - A Graft ref at another oid lands at `refs/mergewright/older-version/1/graft/<rest>`.
       - Outcome `Migrated { kept_aside: Some }`.
       Test: `switched_tributary_with_graft_leftovers`
-- [ ] **Scratch.** A Graft repo holding `refs/tributary/x` and `.git/tributary/{lock,undo-journal.jsonl}` with no
+- [x] **Scratch.** A Graft repo holding `refs/tributary/x` and `.git/tributary/{lock,undo-journal.jsonl}` with no
       tributary marker. After the move both are gone, nothing is kept aside, and the outcome words carry no "older
       version". Test: `marker_less_newer_generation_is_scratch`
-- [ ] **Locks.** A shared hold on `<common>/tributary/lock` makes the move `Busy` and leaves Graft in force. With the
+- [x] **Locks.** A shared hold on `<common>/tributary/lock` makes the move `Busy` and leaves Graft in force. With the
       hold dropped, the next settle migrates. The same holds for a shared hold on `<common>/mergewright/lock`.
       Test: `any_generations_lock_blocks_the_move`
-- [ ] **Strays on `clean`.**
+- [x] **Strays on `clean`.**
       - A Tributary build writes `<common>/tributary/layout` and a Graft build writes `refs/graft/y` after `clean`.
       - Result: `OlderWrote` covering both.
       - The second settle is `Done` with zero spawns.
       Test: `older_generations_writing_after_clean`
-- [ ] **Zero spawns.** `clean` with empty Graft and Tributary dirs gives zero spawns: `clean_marker_spawns_nothing`
+- [x] **Zero spawns.** `clean` with empty Graft and Tributary dirs gives zero spawns: `clean_marker_spawns_nothing`
       (extended to both generations)
-- [ ] **Trailers.** Chains with `Graft-Link:` and `Tributary-Link:` read their kinds, and a new link writes
+- [x] **Trailers.** Chains with `Graft-Link:` and `Tributary-Link:` read their kinds, and a new link writes
       `Mergewright-Link:`. Test: `graft-ops snapshot::tests::every_generations_trailer_reads`
-- [ ] **Journal mapping.** The golden `m5-journal.jsonl` stays byte-identical and reads its backups under
+- [x] **Journal mapping.** The golden `m5-journal.jsonl` stays byte-identical and reads its backups under
       `refs/mergewright/`. Test: `rename/tests::the_m5_golden_reads_its_backups_under_the_new_prefix`
-- [ ] **Old `Migrate` entry.** A golden Tributary-era `Migrate` line reads `rename to Tributary (…)`. NOTES says
+- [x] **Old `Migrate` entry.** A golden Tributary-era `Migrate` line reads `rename to Tributary (…)`. NOTES says
       whether the words were stored or built. Test: `graft view/journal/tests::an_old_migrate_row_keeps_its_target`
-- [ ] **Config folder.** With `graft/` alone, `tributary/` alone, and both present (`graft/` differing): one
+- [x] **Config folder.** With `graft/` alone, `tributary/` alone, and both present (`graft/` differing): one
       `mergewright/`; older files that differ kept aside under `mergewright/older-version/<n>/`; warned on that
       launch only. Test: `graft config::folder::tests::every_earlier_folder_moves_once`
-- [ ] **Status words.** Every outcome's status words come from the table, and the `Busy` words are pinned. Test:
+- [x] **Status words.** Every outcome's status words come from the table, and the `Busy` words are pinned. Test:
       `graft/tests/it/rename_status.rs::every_outcome_has_its_words_or_none`
-- [ ] All 26 and 26r tests stay green, re-pointed at `CURRENT`, with the list in NOTES. No test literal spells
+- [x] All 26 and 26r tests stay green, re-pointed at `CURRENT`, with the list in NOTES. No test literal spells
       `tributary` or `mergewright` where the table can.
       Test: `graft/tests/it/rename_opens.rs::no_old_dir_literal`, extended to every generation's dir and prefix,
-      allow-list being `on_disk.rs` only
-- [ ] `git fsck` is clean after each scenario above (asserted inside each test)
+      allow-list being `on_disk.rs` only.
+      Deviation: `graft-fixtures/src/settled.rs` is allow-listed too (it may not depend on graft-core;
+      `rename_status.rs` pins its marker path to the table). Test literals left: Tributary-era data in
+      `generations.rs` and the hand-written expectations in `rename/tests.rs` and `on_disk/tests.rs`, by design.
+- [x] `git fsck` is clean after each scenario above (asserted inside each test): `fsck_is_clean` in every
+      `generations.rs` test, directly or through `undo_puts_back`
 
 ## Touches
 - **graft-core**: `on_disk`, `ref_name`, journal (`migrated_to` only if built at read) + MAP.
@@ -265,3 +269,70 @@ Start from this commit. Exact next steps:
 5. Config: `settle_folder` moves only `CURRENT.older().next()`; older folders need the 26r byte rule.
 6. Test literals: e.g. `rename/tests.rs` still spells `"refs/tributary/backup/main/x"`; extend `no_old_dir_literal`.
 Gotchas: `file_size` ratchet — `it/support.rs` is at its 459 cap; new tests go in `it/rename/generations.rs`.
+
+### Part B (commit 2, `CURRENT = Mergewright`)
+**Compacted mid-ticket** (one compaction, during the failing-test fix-up). Nothing remains open from the Part B list;
+everything below was re-checked after the compaction by the full gates.
+
+**What changed:**
+- `graft-ops/src/rename.rs`: `migrate` always writes `switched`, journals unless nothing moved, then
+  `scratch::after_the_switch(was)`, then `clean`. `clean_up` finds `was` via `scratch::was_in_force`.
+- New `rename/locks.rs` (`lock_alone`: CURRENT's lock plus every earlier generation's lock that exists, each `try`).
+- New `rename/scratch.rs`:
+  - generations newer than `was` with no marker are removed unread (refs in one transaction, read back; folders whole);
+  - the rest get one stray pass;
+  - each generation's `lock` / `migrated` / `migrated.tmp` is never copied, compared or kept, and is removed marker-last.
+- `rename/refs.rs`: kept-aside refs land at `refs/<current>/older-version/<n>/<gen dir>/<rest>`.
+- Config: `settle_folder` walks `CURRENT.older()` newest first. The first present folder moves; older folders take the
+  26r byte rule.
+- `graft-core`: new `CURRENT_DIR` const, so test paths can be inlined (`.git/{CURRENT_DIR}/…`). Without it, rustfmt
+  wrapped the 46-character path and pushed about 30 over-400 files further over.
+- `graft-fixtures/settled.rs`: the marker is now at `.git/mergewright/migrated`, and the cached fixtures rebuild.
+- `docs/man/trib.1` regenerated. The diff is the config, state and repo dir paths only (`tributary` → `mergewright`).
+
+**Old `Migrate` words are stored, not built.** The description is written at append time, so a Tributary-era row
+reads `rename to Tributary (…)` with no `migrated_to` field. Proven by `an_old_migrate_row_keeps_its_target`, which
+parses a golden two-line JSONL.
+
+**26/26r tests re-pointed at `CURRENT`** (all green). The literal `tributary` was replaced by the table:
+- graft-ops:
+  - `it/rename.rs` (9 tests);
+  - `it/rename/more.rs` (4);
+  - `it/rename/review.rs` (8; `a_differing_stray_ref_is_kept_aside` now expects `older-version/1/graft/x`);
+  - `src/rename/tests.rs` (5);
+  - `it/journal_names.rs`.
+- graft:
+  - `config/folder/tests.rs` (8, plus `each_earlier_folder_alone_moves` and `every_earlier_folder_moves_once`);
+  - `it/rename_status.rs` (2);
+  - `it/rename_opens.rs` (2).
+- About 55 other test files spelled `.git/tributary` or `refs/tributary` and now use `CURRENT_DIR` or `ref_prefix()`.
+
+**Other test changes:**
+- `support::state_of` now leaves out backup refs under every generation's prefix, not just CURRENT and Graft.
+- `snapshot_raw` and `conflict_set` now expect the identity and trailer from the table.
+- `migrate_row_words` now expects `rename to Mergewright`.
+
+**Touches checked:**
+- Compiler and full nextest: 6400 tests, all pass.
+- `no_old_dir_literal` now checks every generation's dir.
+- MAP.md: graft-core (`CURRENT_DIR`, CURRENT row), graft-ops `## rename` (`settle_names`, `KEPT_ASIDE_DIR` shapes,
+  `Busy` words), graft `config` / `config::folder`, graft-fixtures.
+- `file_size` ratchet:
+  - `over_400.txt` recounted;
+  - growth is the one `use … CURRENT_DIR;` line plus some format calls that now wrap;
+  - `generations.rs` was split (`generations/setup.rs`) so no new file joins the list;
+  - `remove_machinery` moved from `trees.rs` to `scratch.rs` to keep `trees.rs` under 400.
+- Captures: none drifted. No `docs/shots` file changed, and the capture tests are green.
+- Undo: `migrate_is_transparent_to_undo` is green.
+
+**Residual, not edited:**
+- `scripts/trib_sandbox.py` still seeds `<config>/tributary/launches`, per Touches.
+- `graft-ops/src/tour.rs` `PRACTICE_PREFIX = "tributary-practice-"` is the tour's temp-folder name, not an on-disk
+  repo name. It is out of this ticket's table, and it belongs to `mergewright-package-and-command`.
+
+**Unverified:**
+- Real two-build runs: a Tributary binary and this one open at once on one repository. Locks are covered only by
+  in-process `FileLock` holds.
+- The old-names `stat` check treats a leftover earlier-generation `lock` file as "names present". After an older build
+  ran, the next `clean` open therefore runs one stray pass, which spawns git, and that pass removes the lock. This is
+  intended by §5, but no test pins the spawn count for that case.

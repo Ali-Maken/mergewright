@@ -23,6 +23,7 @@ use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use graft_core::on_disk::CURRENT_DIR;
 use nix::pty::{Winsize, openpty};
 
 /// How long a wait may take before the test fails, naming what it waited for.
@@ -88,7 +89,7 @@ impl Isolated {
 
     /// The first-launch count's file (m8/18d).
     pub fn launches_file(&self) -> PathBuf {
-        self.config().join("tributary").join("launches")
+        self.config().join(CURRENT_DIR).join("launches")
     }
 
     /// The root, canonical: on macOS the temp dir is under a `/var` that is
@@ -113,7 +114,7 @@ impl Isolated {
 
     /// The recent list's file.
     pub fn recent_file(&self) -> PathBuf {
-        self.config().join("tributary").join("recent")
+        self.config().join(CURRENT_DIR).join("recent")
     }
 
     /// Write the recent list: `(unix secs, path)`, newest first.

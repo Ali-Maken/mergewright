@@ -28,6 +28,7 @@ use graft_ops::operation::{
 };
 
 use crate::support::{NOW, Never, TempRepo, context, journal_for};
+use graft_core::on_disk::CURRENT_DIR;
 
 // ── the stopped span ────────────────────────────────────────────────────
 
@@ -105,10 +106,13 @@ fn resolve(path: &str, side: Side, how: UnmergedHow) -> Operation {
 }
 
 fn journal_lines(repo: &TempRepo) -> usize {
-    std::fs::read_to_string(repo.path().join(".git/tributary/undo-journal.jsonl"))
-        .expect("the journal reads")
-        .lines()
-        .count()
+    std::fs::read_to_string(
+        repo.path()
+            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal reads")
+    .lines()
+    .count()
 }
 
 fn entries(repo: &TempRepo) -> Vec<JournalEntry> {

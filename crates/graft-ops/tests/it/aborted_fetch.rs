@@ -29,6 +29,7 @@ use graft_ops::operation::{CommitParams, FetchParams, Operation, PullParams, Tar
 use graft_ops::undo::{Step, plan_revert_to, plan_undo};
 
 use crate::support::{NOW, Never, context, journal_for};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// A remote that is configured but has nothing behind it: git's fetch of it
 /// fails with `does not appear to be a git repository`.
@@ -241,7 +242,7 @@ fn old_prefix_ref_not_fetched() {
     git(&remote, remote.work(), &["fetch", "-q", "origin"]);
     for spec in [
         "+refs/heads/*:refs/graft/fetched/*",
-        "+refs/heads/*:refs/tributary/fetched/*",
+        &format!("+refs/heads/*:refs/{CURRENT_DIR}/fetched/*"),
     ] {
         git(
             &remote,
@@ -261,16 +262,18 @@ fn old_prefix_ref_not_fetched() {
 
     // git wrote under both namespaces...
     assert_eq!(ref_value(&remote, "refs/graft/fetched/feat"), Some(tip));
-    assert_eq!(ref_value(&remote, "refs/tributary/fetched/feat"), Some(tip));
+    assert_eq!(
+        ref_value(&remote, &format!("refs/{CURRENT_DIR}/fetched/feat")),
+        Some(tip)
+    );
     // ...and neither is a fetch's doing to the journal.
     let fetched = applied
         .entry
         .fetched_refs
         .expect("a fetch records its moves");
     assert!(
-        fetched
-            .keys()
-            .all(|name| !name.starts_with("refs/graft/") && !name.starts_with("refs/tributary/")),
+        fetched.keys().all(|name| !name.starts_with("refs/graft/")
+            && !name.starts_with(&format!("refs/{CURRENT_DIR}/"))),
         "{fetched:?}"
     );
     assert!(

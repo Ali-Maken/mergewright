@@ -18,6 +18,7 @@ use crate::captures::{check_shot, frame, without_invented_id};
 use crate::remote_by_key::{
     confirm, finish, local, plain, ready, rejected_then_diverged, rev, run,
 };
+use graft_core::on_disk::CURRENT_DIR;
 
 /// The duplicate probe has answered for the repository as it is now.
 fn duplicates_landed(app: &App, state: AppState) -> AppState {
@@ -89,11 +90,12 @@ fn stash_then_rebase(remote: &LocalRemote) -> (App, AppState, String, String) {
     assert!(
         holders
             .lines()
-            .any(|name| name.starts_with("refs/tributary/backup/"))
+            .any(|name| name.starts_with(&format!("refs/{CURRENT_DIR}/backup/")))
             && holders.lines().any(|name| name == "refs/stash")
             && holders
                 .lines()
-                .all(|name| name.starts_with("refs/tributary/") || name == "refs/stash"),
+                .all(|name| name.starts_with(&format!("refs/{CURRENT_DIR}/"))
+                    || name == "refs/stash"),
         "ours lives on only in Graft's backups and the stash: {holders}"
     );
     (app, state, stash, rebased)

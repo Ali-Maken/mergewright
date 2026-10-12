@@ -58,19 +58,18 @@ fn kept_old_words() {
 
     assert_eq!(
         store.rename_words().as_deref(),
-        Some("rename: still using the old names \u{b7} another trib is open on this repository")
+        Some(
+            "rename: still using the old names \u{b7} another Mergewright window is open on this repository"
+        )
     );
-    assert_eq!(store.app_dir().expect("opens"), common.join("graft"));
     assert_eq!(
-        git(
-            repo,
-            &[
-                "for-each-ref",
-                "--format=%(refname)",
-                "refs/graft/",
-                "refs/tributary/"
-            ]
-        ),
+        store.app_dir().expect("opens"),
+        common.join(Generation::Graft.dir())
+    );
+    let mut args = vec!["for-each-ref", "--format=%(refname)"];
+    args.extend(Generation::GENERATIONS.map(Generation::ref_prefix));
+    assert_eq!(
+        git(repo, &args),
         "refs/graft/backup/main/1",
         "nothing moved, nothing lost"
     );
@@ -84,20 +83,35 @@ fn kept_old_words() {
 fn every_outcome_has_its_words_or_none() {
     let root = std::path::Path::new("/work/api");
     let said = |outcome: SettleOutcome| words(&outcome, root);
+    let backup = format!("{}backup/main/1", Generation::CURRENT.ref_prefix());
     let read_back = MigrateError::ReadBack {
-        what: "refs/tributary/backup/main/1".to_owned(),
+        what: backup.clone(),
     };
     assert_eq!(
-        said(SettleOutcome::KeptOld(read_back.clone())).as_deref(),
+        said(SettleOutcome::KeptOld(read_back.clone())),
+        Some(format!(
+            "rename: still using the old names \u{b7} {backup} read back different"
+        ))
+    );
+    assert_eq!(
+        said(SettleOutcome::LeftOld(read_back)),
+        Some(format!(
+            "rename: old names left behind \u{b7} {backup} read back different"
+        ))
+    );
+    // The one product word, from the table; the words pinned.
+    assert_eq!(
+        said(SettleOutcome::KeptOld(MigrateError::Busy)).as_deref(),
         Some(
-            "rename: still using the old names \u{b7} refs/tributary/backup/main/1 read back different"
+            "rename: still using the old names \u{b7} another Mergewright window is open on this repository"
         )
     );
     assert_eq!(
-        said(SettleOutcome::LeftOld(read_back)).as_deref(),
-        Some(
-            "rename: old names left behind \u{b7} refs/tributary/backup/main/1 read back different"
-        )
+        said(SettleOutcome::LeftOld(MigrateError::Busy)),
+        Some(format!(
+            "rename: old names left behind \u{b7} another {} window is open on this repository",
+            Generation::CURRENT.title()
+        ))
     );
     assert_eq!(
         said(SettleOutcome::Migrated {
@@ -132,9 +146,17 @@ fn every_outcome_has_its_words_or_none() {
 /// writes, kept aside or not.
 fn older_version_words(root: &std::path::Path) {
     let said = |outcome: SettleOutcome| words(&outcome, root);
-    let kept = || Some(PathBuf::from("/work/api/.git/tributary/older-version/1"));
+    let kept = || {
+        Some(PathBuf::from(format!(
+            "/work/api/.git/{}/older-version/1",
+            Generation::CURRENT.dir()
+        )))
+    };
     let older = "rename: an older version wrote under the old names \u{b7} close it";
-    let older_kept = format!("{older}; kept in .git/tributary/older-version/1");
+    let older_kept = format!(
+        "{older}; kept in .git/{}/older-version/1",
+        Generation::CURRENT.dir()
+    );
     for outcome in [
         SettleOutcome::OlderWrote {
             refs: 1,

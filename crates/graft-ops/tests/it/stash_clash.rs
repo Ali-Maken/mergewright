@@ -22,6 +22,7 @@ use crate::support::{
     NOW, Never, TempRepo, journal_for, run, run_undo, stash_list, state_of, try_run,
 };
 use crate::unmerged_index::about_to_pop_a_conflict;
+use graft_core::on_disk::CURRENT_DIR;
 
 /// The stash list as commit ids, newest first.
 fn stash_commits(repo: &TempRepo) -> Vec<String> {
@@ -96,7 +97,7 @@ fn a_pop_that_clashes_answers_clashed_and_keeps_the_stash() {
     // The pin (acceptance 2): `finish` records the stage tree as it stands.
     // Nothing touched the index since, so reading it now must agree.
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     let now = snapshot::index_state(&handle, &scratch, &Never).expect("the index reads");
     assert!(now.is_unmerged(), "the pop left the index unmerged");
     assert_eq!(written.index_after, Some(now));
@@ -317,7 +318,7 @@ fn stashes_now(repo: &TempRepo) -> Vec<(Oid, usize)> {
 /// `index_state`.
 fn index_now(repo: &TempRepo) -> graft_core::journal::IndexState {
     let handle = repo.open();
-    let scratch = repo.path().join(".git/tributary");
+    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
     snapshot::index_state(&handle, &scratch, &Never).expect("the index reads")
 }
 

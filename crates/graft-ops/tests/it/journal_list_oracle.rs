@@ -27,6 +27,7 @@ use graft_ops::journal_list::{
 use graft_ops::operation::{Operation, ResetMode, ResetParams, ResetTarget, Tip};
 
 use crate::support::{Never, TempRepo, git_version, journal_for, run};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// The shell's clock for a scenario: fixed seconds, well before now, so
 /// every step has its own second and Graft's steps (stamped now) come after.
@@ -303,7 +304,11 @@ fn a_stash_held_commit_is_not_lost() {
 fn a_graft_backup_ref_does_not_hold() {
     let repo = a_to_d();
     let reset = graft_reset(&repo);
-    let graft_refs = repo.git(&["for-each-ref", "--format=%(refname)", "refs/tributary/"]);
+    let graft_refs = repo.git(&[
+        "for-each-ref",
+        "--format=%(refname)",
+        &format!("refs/{CURRENT_DIR}/"),
+    ]);
     assert!(!graft_refs.is_empty(), "the reset made a backup ref");
 
     let list = the_list(&repo);

@@ -24,6 +24,7 @@ use graft_ops::operation::{Operation, RecoverParams, RecoverTarget, Target};
 use graft_ops::restore::RestoreError;
 
 use crate::support::{NOW, Never, TempRepo, journal_for, run, run_redo, run_undo, try_run};
+use graft_core::on_disk::CURRENT_DIR;
 
 const PATH: &str = "src/a.rs";
 const COMMITTED: &[u8] = b"pub fn a() -> u32 {\n    1\n}\n";
@@ -378,8 +379,10 @@ fn a_journal_failure_after_a_failed_raw_step_keeps_its_words() {
     repo.git(&[
         "config",
         "filter.breaks-journal.smudge",
-        "j=$(git rev-parse --git-path tributary/undo-journal.jsonl); \
-         if grep -q 'put back your edit' \"$j\" 2>/dev/null; then rm -f \"$j\" && mkdir \"$j\"; fi; cat",
+        &format!(
+            "j=$(git rev-parse --git-path {CURRENT_DIR}/undo-journal.jsonl); \
+             if grep -q 'put back your edit' \"$j\" 2>/dev/null; then rm -f \"$j\" && mkdir \"$j\"; fi; cat"
+        ),
     ]);
 
     let error = match try_run(&repo, &op, NOW + 2) {

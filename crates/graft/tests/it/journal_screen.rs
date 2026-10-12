@@ -16,6 +16,7 @@ use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
 
 use crate::app_harness::App;
 use crate::m7_walk::journal::{drawn, lost_work, opened, selected_row, text};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// J's rows from the bottom: the bar, the legend, the status row.
 const BAR: usize = 1;
@@ -647,7 +648,7 @@ fn r_s_s_y(app: &App, state: &AppState, repo: &std::path::Path, before: &str) ->
             "--format=%(refname)",
             "--contains",
             before,
-            "refs/tributary/backup/",
+            &format!("refs/{CURRENT_DIR}/backup/"),
         ],
         0,
     );

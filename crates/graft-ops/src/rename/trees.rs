@@ -35,7 +35,7 @@ pub(super) struct Tree {
 
 /// Every folder that may hold the app's files: the common dir and each
 /// `<common>/worktrees/*`.
-fn parents(common: &Path) -> Result<Vec<PathBuf>, MigrateError> {
+pub(super) fn parents(common: &Path) -> Result<Vec<PathBuf>, MigrateError> {
     let mut parents = vec![common.to_path_buf()];
     let worktrees = common.join("worktrees");
     match fs::read_dir(&worktrees) {
@@ -110,14 +110,21 @@ fn exists(path: &Path) -> Result<bool, MigrateError> {
 }
 
 /// Make `tree.new` an exact copy of `tree.old` (absent counts as empty):
-/// every old file written to the same place under `tree.new` and read
-/// back, every new file with no old counterpart deleted except `keep`, then
-/// every folder that gained or lost an entry synced. The new paths of the
-/// files copied.
-pub(super) fn mirror(tree: &Tree, keep: &[PathBuf]) -> Result<Vec<PathBuf>, MigrateError> {
+/// every old file but `skip` written to the same place under `tree.new`
+/// and read back, every new file with no old counterpart deleted except
+/// `keep`, then every folder that gained or lost an entry synced. The new
+/// paths of the files copied.
+pub(super) fn mirror(
+    tree: &Tree,
+    keep: &[PathBuf],
+    skip: &[PathBuf],
+) -> Result<Vec<PathBuf>, MigrateError> {
     let mut copied = Vec::new();
     if exists(&tree.old)? {
         walk(&tree.old, &mut |old| {
+            if skip.iter().any(|skipped| skipped == old) {
+                return Ok(());
+            }
             let new = tree.new.join(relative(old, &tree.old)?);
             let bytes = fs::read(old).map_err(|error| MigrateError::files(old, &error))?;
             write_read_back(&new, &bytes)?;
@@ -129,7 +136,8 @@ pub(super) fn mirror(tree: &Tree, keep: &[PathBuf]) -> Result<Vec<PathBuf>, Migr
     if exists(&tree.new)? {
         walk(&tree.new, &mut |new| {
             let old = tree.old.join(relative(new, &tree.new)?);
-            if !keep.iter().any(|kept| kept == new) && !exists(&old)? {
+            let copied_from = exists(&old)? && !skip.contains(&old);
+            if !keep.iter().any(|kept| kept == new) && !copied_from {
                 extras.push(new.to_path_buf());
             }
             Ok(())
@@ -181,15 +189,20 @@ fn sync_dirs(dirs: &BTreeSet<PathBuf>) -> Result<(), MigrateError> {
 /// an older build that opens by path afterwards makes a new old file for
 /// the next pass to find — then deleted when equal to its new copy, copied
 /// forward when it has none, and left in `pass` when it differs. Then the
-/// old folder's empty folders go. Files handled, and how many stayed.
+/// old folder's empty folders go. `skip` (a generation's own lock and
+/// marker) is left for [`super::scratch::remove_machinery`]. Files handled, and how many
+/// stayed.
 pub(super) fn set_aside(
     common: &Path,
     tree: &Tree,
     pass: &Path,
+    skip: &[PathBuf],
 ) -> Result<(usize, usize), MigrateError> {
     let mut olds = Vec::new();
     walk(&tree.old, &mut |old| {
-        olds.push(old.to_path_buf());
+        if !skip.iter().any(|skipped| skipped == old) {
+            olds.push(old.to_path_buf());
+        }
         Ok(())
     })?;
     let mut kept = 0;
@@ -279,7 +292,7 @@ fn remove_empty_below(folder: &Path) -> Result<(), MigrateError> {
 }
 
 /// [`remove_empty_below`], then `folder` itself if it is empty now.
-fn remove_empty(folder: &Path) -> Result<(), MigrateError> {
+pub(super) fn remove_empty(folder: &Path) -> Result<(), MigrateError> {
     if !exists(folder)? {
         return Ok(());
     }
@@ -335,7 +348,7 @@ fn write_read_back(new: &Path, bytes: &[u8]) -> Result<(), MigrateError> {
         fs::create_dir_all(folder).map_err(|error| MigrateError::files(folder, &error))?;
     }
     let mut name = new.file_name().unwrap_or_default().to_os_string();
-    name.push(".tributary-tmp");
+    name.push(format!(".{}-tmp", Generation::CURRENT.dir()));
     let temporary = new.with_file_name(name);
     fs::write(&temporary, bytes)
         .and_then(|()| File::open(&temporary)?.sync_all())
@@ -363,17 +376,17 @@ mod tests {
     fn every_created_dir_is_synced() {
         let stop = Path::new("/r/.git");
         let files = [
-            PathBuf::from("/r/.git/tributary/rewrite/id/plan.json"),
-            PathBuf::from("/r/.git/tributary/layout"),
+            PathBuf::from("/r/.git/app/rewrite/id/plan.json"),
+            PathBuf::from("/r/.git/app/layout"),
         ];
         let dirs: Vec<PathBuf> = dirs_to_sync(stop, &files).into_iter().collect();
         assert_eq!(
             dirs,
             [
                 "/r/.git",
-                "/r/.git/tributary",
-                "/r/.git/tributary/rewrite",
-                "/r/.git/tributary/rewrite/id",
+                "/r/.git/app",
+                "/r/.git/app/rewrite",
+                "/r/.git/app/rewrite/id",
             ]
             .map(PathBuf::from)
         );

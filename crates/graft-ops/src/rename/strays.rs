@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 use graft_core::on_disk::Generation;
 use graft_git::repo::RepoHandle;
 
+use super::scratch::{machinery, remove_machinery};
 use super::{KEPT_ASIDE_DIR, MigrateError, refs, trees};
 
 /// What one stray pass did.
@@ -31,13 +32,22 @@ pub(crate) struct Strays {
     pub kept_aside: Option<PathBuf>,
 }
 
-/// Carry or set aside everything under `from`'s names. The refs are listed
-/// first, in one `for-each-ref` naming both prefixes (the pass number must
-/// be unused by refs and folders alike); then every old folder's files;
-/// then the refs, in one transaction.
-pub(crate) fn settle_strays(repo: &RepoHandle, from: Generation) -> Result<Strays, MigrateError> {
+/// Carry or set aside everything under `froms`' names, in one pass
+/// (ADR-0057, 2026-10-11 §5). The refs are listed first, in one
+/// `for-each-ref` naming every prefix (the pass number must be unused by
+/// refs and folders alike); then every old folder's files; then the refs,
+/// in one transaction; last, each generation's own lock and marker
+/// (`machinery`) — the marker last of all, so a pass cut short leaves the
+/// marker that says which generation the move came from.
+pub(crate) fn settle_strays(
+    repo: &RepoHandle,
+    froms: &[Generation],
+) -> Result<Strays, MigrateError> {
+    if froms.is_empty() {
+        return Ok(Strays::default());
+    }
     let common = repo.common_dir();
-    let (old_refs, new_refs) = refs::list_both(repo, from)?;
+    let (old_refs, new_refs) = refs::list_both(repo, froms)?;
     let kept_dir = common.join(Generation::CURRENT.dir()).join(KEPT_ASIDE_DIR);
     let mut pass = 1;
     let pass_dir = loop {
@@ -54,11 +64,20 @@ pub(crate) fn settle_strays(repo: &RepoHandle, from: Generation) -> Result<Stray
         pass += 1;
     };
     let mut files = 0;
-    for tree in trees::old_trees(common, from)? {
-        files += trees::set_aside(common, &tree, &pass_dir)?.0;
+    for &from in froms {
+        let skip = machinery(common, from);
+        for tree in trees::old_trees(common, from)? {
+            files += trees::set_aside(common, &tree, &pass_dir, &skip)?.0;
+        }
     }
     let files_kept = trees::finish_pass(&pass_dir)?;
-    let refs_kept = refs::carry_or_set_aside(repo, &old_refs, &new_refs, pass, from)?;
+    let refs_kept = refs::carry_or_set_aside(repo, &old_refs, &new_refs, pass, froms)?;
+    for &from in froms {
+        // git leaves `refs/<dir>/` itself behind once its last loose ref
+        // is deleted; empty, it would still read as that generation's.
+        trees::remove_empty(&common.join("refs").join(from.dir()))?;
+        remove_machinery(&common.join(from.dir()), &machinery(common, from))?;
+    }
     let kept_aside = if files_kept {
         Some(pass_dir)
     } else if refs_kept > 0 {
@@ -71,22 +90,6 @@ pub(crate) fn settle_strays(repo: &RepoHandle, from: Generation) -> Result<Stray
         files,
         kept_aside,
     })
-}
-
-/// [`settle_strays`] over every generation older than `CURRENT`, newest
-/// first: what a `switched` clean-up or a `clean` open finds. Each
-/// generation takes its own pass number, and `kept_aside` names the first
-/// that kept anything. Not yet ADR-0057 2026-10-11 §5's one pass across
-/// generations; with one generation older than `CURRENT` the two agree.
-pub(crate) fn settle_older_strays(repo: &RepoHandle) -> Result<Strays, MigrateError> {
-    let mut all = Strays::default();
-    for from in Generation::CURRENT.older() {
-        let one = settle_strays(repo, from)?;
-        all.refs += one.refs;
-        all.files += one.files;
-        all.kept_aside = all.kept_aside.or(one.kept_aside);
-    }
-    Ok(all)
 }
 
 /// [`old_names_present`] for any generation older than `CURRENT`.

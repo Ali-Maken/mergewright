@@ -12,6 +12,7 @@ use graft_ops::journal::journal_path;
 use graft_ops::operation::{Operation, Target};
 
 use crate::support::{NOW, TempRepo, run, run_undo};
+use graft_core::on_disk::CURRENT_DIR;
 
 fn stage_a(repo: &TempRepo) -> graft_core::journal::JournalEntry {
     run(
@@ -60,7 +61,7 @@ fn the_marker_writes_the_new_names_and_u_still_restores() {
 
     let backup = entry.backup_ref.clone().expect("a stage takes a backup");
     assert!(
-        backup.starts_with("refs/tributary/backup/main/"),
+        backup.starts_with(&format!("refs/{CURRENT_DIR}/backup/main/")),
         "{backup}"
     );
     assert_eq!(
@@ -74,7 +75,7 @@ fn the_marker_writes_the_new_names_and_u_still_restores() {
     );
     let journal = journal_path(&repo.open()).expect("resolves");
     assert!(
-        journal.ends_with(".git/tributary/undo-journal.jsonl"),
+        journal.ends_with(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
         "{}",
         journal.display()
     );

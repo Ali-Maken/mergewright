@@ -111,10 +111,16 @@ fn every_open_settles_first() {
 }
 
 /// Where the old name may still be spelled in code, and why.
-const ALLOWED: &[(&str, &str)] = &[(
-    "graft-core/src/on_disk.rs",
-    "the one place every generation's names live (the `Generation` table)",
-)];
+const ALLOWED: &[(&str, &str)] = &[
+    (
+        "graft-core/src/on_disk.rs",
+        "the one place every generation's names live (the `Generation` table)",
+    ),
+    (
+        "graft-fixtures/src/settled.rs",
+        "may not depend on graft-core; `rename_status.rs` pins its marker to the table",
+    ),
+];
 
 /// No production code spells an old on-disk path but the allowed files:
 /// every path goes through `Generation` (or `config_names`), so the move
@@ -133,7 +139,22 @@ fn no_old_dir_literal() {
             production_files(&src, &mut files);
         }
     }
-    let found: Vec<String> = hits(&files, &["\"graft\"", "\"graft/", "/graft\"", "/graft/"])
+    // Every generation's folder name, the one in force included: each path
+    // is built from the table, never spelled (ticket 48 Part B).
+    let needles: Vec<String> = graft_core::on_disk::Generation::GENERATIONS
+        .iter()
+        .flat_map(|generation| {
+            let dir = generation.dir();
+            [
+                format!("\"{dir}\""),
+                format!("\"{dir}/"),
+                format!("/{dir}\""),
+                format!("/{dir}/"),
+            ]
+        })
+        .collect();
+    let needles: Vec<&str> = needles.iter().map(String::as_str).collect();
+    let found: Vec<String> = hits(&files, &needles)
         .into_iter()
         .filter(|hit| {
             !ALLOWED

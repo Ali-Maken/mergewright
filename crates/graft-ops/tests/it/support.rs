@@ -282,9 +282,13 @@ pub fn state_of(repo: &TempRepo) -> RepoState {
     let refs = repo
         .git(&["for-each-ref", "--format=%(refname) %(objectname)"])
         .lines()
-        // Under either name: a repository on the old names (ticket 26) has
-        // its backups under the old prefix until it is moved.
-        .filter(|line| !line.starts_with("refs/tributary/") && !line.starts_with("refs/graft/"))
+        // Under any generation's name: a repository on earlier names
+        // (tickets 26, 48) has its backups under their prefix until moved.
+        .filter(|line| {
+            !graft_core::on_disk::Generation::GENERATIONS
+                .iter()
+                .any(|generation| line.starts_with(generation.ref_prefix()))
+        })
         .collect::<Vec<_>>()
         .join("\n");
     let index = repo.git(&["ls-files", "-s"]);

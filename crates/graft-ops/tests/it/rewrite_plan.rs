@@ -22,6 +22,7 @@ use graft_ops::rewrite::{
 };
 
 use crate::support::{Never, TempRepo, git_version};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// A `Stop` that always stops.
 struct Always;
@@ -627,7 +628,7 @@ fn progress_names_the_branch_of_the_step() {
     // an older one left mid-rewrite).
     let dir = repo
         .path()
-        .join(".git/tributary/rewrite/1700000000000-0000");
+        .join(format!(".git/{CURRENT_DIR}/rewrite/1700000000000-0000"));
     std::fs::create_dir_all(&dir).expect("the plan dir is made");
     let plan_json = format!(
         r#"{{"home":"refs/heads/feature-a","line":[["refs/heads/feature-a","{}"],["refs/heads/feature-b","{}"],["refs/heads/feature-c","{}"]],"onto":"{}"}}"#,

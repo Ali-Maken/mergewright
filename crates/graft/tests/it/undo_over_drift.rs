@@ -23,6 +23,7 @@ use crate::m6_stash_put_back::{main_and_fix, planned, rev};
 use crate::preview::{FORK_NOW, dated_commit, opened};
 use crate::remote_by_key::ready;
 use crate::repo_truth::blob_of;
+use graft_core::on_disk::CURRENT_DIR;
 
 /// The edit made after the checkout: the drift the box names.
 pub(crate) const EDIT: &str = "edited after the checkout\n";
@@ -220,11 +221,12 @@ fn undo_over_drift_then_undo_again() {
     assert_eq!(read(path, "fix.txt"), None);
 
     // Where the edit went: the undo entry's own backup holds its blob.
-    let entries =
-        graft_ops::journal::Journal::open(&path.join(".git/tributary/undo-journal.jsonl"))
-            .expect("the journal the writes just made is readable")
-            .entries()
-            .to_vec();
+    let entries = graft_ops::journal::Journal::open(
+        &path.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the writes just made is readable")
+    .entries()
+    .to_vec();
     let backup = entries
         .last()
         .and_then(|entry| entry.backup_ref.clone())

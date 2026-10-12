@@ -19,6 +19,7 @@ use graft::update::AppState;
 use graft_core::event::KeyCode;
 
 use crate::app_harness::{App, git, git_as_graft};
+use graft_core::on_disk::CURRENT_DIR;
 
 /// [`forked`]'s first commit, Unix seconds; one minute per commit after it.
 ///
@@ -393,7 +394,7 @@ fn m_again_merges_through_the_real_path() {
 
 /// The journal, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
-    graft_ops::journal::Journal::open(&repo.join(".git/tributary/undo-journal.jsonl"))
+    graft_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
         .expect("the journal the writes just made is readable")
         .entries()
         .to_vec()
