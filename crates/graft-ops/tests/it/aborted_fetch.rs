@@ -234,7 +234,7 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
 
 /// Both of the app's namespaces are its own, whichever names are in force
 /// (ADR-0057, Amendment): a leftover `refs/graft/` ref, or a
-/// `refs/tributary/` one, is never counted as fetched, even when a refspec
+/// one under any later generation's prefix (`Generation::ref_prefix`), is never counted as fetched, even when a refspec
 /// makes the fetch write there.
 #[test]
 fn old_prefix_ref_not_fetched() {

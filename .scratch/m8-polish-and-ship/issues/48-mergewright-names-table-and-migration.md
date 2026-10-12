@@ -161,13 +161,15 @@ journal reader, never from the code under test.
       whether the words were stored or built. Test: `graft view/journal/tests::an_old_migrate_row_keeps_its_target`
 - [x] **Config folder.** With `graft/` alone, `tributary/` alone, and both present (`graft/` differing): one
       `mergewright/`; older files that differ kept aside under `mergewright/older-version/<n>/`; warned on that
-      launch only. Test: `graft config::folder::tests::every_earlier_folder_moves_once`
+      launch only. Tests: `graft config::folder::tests::each_earlier_folder_alone_moves` (each alone) and
+      `graft config::folder::tests::every_earlier_folder_moves_once` (both present). (Reworded in 48r, review Minor 6.)
 - [x] **Status words.** Every outcome's status words come from the table, and the `Busy` words are pinned. Test:
       `graft/tests/it/rename_status.rs::every_outcome_has_its_words_or_none`
 - [x] All 26 and 26r tests stay green, re-pointed at `CURRENT`, with the list in NOTES. No test literal spells
       `tributary` or `mergewright` where the table can.
       Test: `graft/tests/it/rename_opens.rs::no_old_dir_literal`, extended to every generation's dir and prefix,
-      allow-list being `on_disk.rs` only.
+      allow-list being `on_disk.rs` only. It scans **production** files only (it skips `tests/`, `tests.rs`,
+      `*_tests.rs`); test literals were checked by grep, not by that test. (Reworded in 48r, review Minor 6.)
       Deviation: `graft-fixtures/src/settled.rs` is allow-listed too (it may not depend on graft-core;
       `rename_status.rs` pins its marker path to the table). Test literals left: Tributary-era data in
       `generations.rs` and the hand-written expectations in `rename/tests.rs` and `on_disk/tests.rs`, by design.

@@ -15,7 +15,8 @@
 //! The order, which is the whole of this module's correctness:
 //!
 //! 1. lock `CURRENT`'s `<common_dir>/<dir>/lock` and every earlier
-//!    generation's that exists, each alone (`try`, never wait; `locks`);
+//!    generation's that moves names, made if missing, each alone (`try`,
+//!    never wait; `locks`);
 //! 2. make the new refs an exact copy of the old in one `update-ref
 //!    --stdin` — before the switch the new names are the move's own
 //!    scratch, so a stale one is overwritten and an extra one deleted;
@@ -23,8 +24,9 @@
 //! 4. make every new folder an exact copy of its old one, file by file,
 //!    each copy read back, a copied journal's backups checked, every folder
 //!    touched synced; a generation's lock and marker are never copied;
-//! 5. write the marker `switched` — **the switch**: from here the new names
-//!    are in force for every opener;
+//! 5. write the marker `switched <source dir>` — **the switch**: from here
+//!    the new names are in force for every opener, and the clean-up knows
+//!    the source without inferring it;
 //! 6. append the `Migrate` entry to the opening worktree's new journal;
 //! 7. remove a failed earlier move's scratch, a generation newer than the
 //!    old one with no marker, unread (`scratch`);
@@ -32,7 +34,8 @@
 //!    generation: each ref and file deleted when its new copy holds the
 //!    same, carried when it has none, and kept aside in `older-version/<n>/`
 //!    when it differs — an older build wrote it after step 4;
-//! 9. write the marker `clean`.
+//! 9. write the marker `clean`; release the locks, then remove each
+//!    earlier generation's lock file.
 //!
 //! A failure before 5 leaves the old names in force with nothing old
 //! deleted, and the next attempt starts from the old names again. A
@@ -61,6 +64,7 @@ mod map;
 mod marker;
 mod record;
 mod refs;
+mod reopen;
 mod scratch;
 mod strays;
 mod trees;
@@ -69,8 +73,9 @@ use locks::{Alone, lock_alone};
 pub use map::{map_entries, map_entry, map_ref};
 use marker::Marker;
 pub use record::description;
-use scratch::{after_the_switch, machinery, was_in_force};
-use strays::{Strays, older_names_present, settle_strays};
+use reopen::{clean_up, older_wrote};
+use scratch::{after_the_switch, machinery};
+use strays::older_names_present;
 
 /// The lock file, in `<common_dir>/<Generation::CURRENT.dir()>/` (and in
 /// each earlier generation's folder, as its builds made it).
@@ -198,14 +203,14 @@ pub fn settle_names(repo: &RepoHandle) -> Settled {
         Ok(Some(Marker::Clean)) => match older_names_present(repo) {
             Ok(false) => new_names(SettleOutcome::Done),
             Ok(true) => match lock_alone(common) {
-                Ok(Some(alone)) => older_wrote(repo, &alone),
+                Ok(Some(alone)) => older_wrote(repo, alone),
                 Ok(None) => new_names(SettleOutcome::LeftOld(MigrateError::Busy)),
                 Err(error) => new_names(SettleOutcome::LeftOld(error)),
             },
             Err(error) => new_names(SettleOutcome::LeftOld(error)),
         },
-        Ok(Some(Marker::Switched)) => match lock_alone(common) {
-            Ok(Some(alone)) => clean_up(repo, &alone),
+        Ok(Some(Marker::Switched(was))) => match lock_alone(common) {
+            Ok(Some(alone)) => clean_up(repo, alone, was),
             Ok(None) => new_names(SettleOutcome::LeftOld(MigrateError::Busy)),
             Err(error) => new_names(SettleOutcome::LeftOld(error)),
         },
@@ -231,30 +236,44 @@ fn new_names(outcome: SettleOutcome) -> Settled {
 /// Stay on the old names for this run: take `CURRENT`'s lock shared
 /// (waiting out a move in progress), then read the marker again — a move
 /// that finished while this waited puts the new names in force after all.
+/// The names stayed on are read from disk again, not taken from the
+/// handle: an older build may have moved them since it opened (review
+/// m8-48 Minor 4).
 fn stay_old(repo: &RepoHandle, why: MigrateError) -> Settled {
-    let (common, in_force) = (repo.common_dir(), repo.on_disk_names());
+    let common = repo.common_dir();
     let path = common.join(Generation::CURRENT.dir()).join(LOCK_FILE);
+    let kept_old = |names, words: String| Settled {
+        names,
+        outcome: SettleOutcome::KeptOld(MigrateError::Files {
+            path: path.clone(),
+            words,
+        }),
+        hold: None,
+    };
     let hold = match FileLock::shared(&path) {
         Ok(lock) => lock,
         // Still nothing moved, and nothing now keeps another window from
         // moving the names under this run: both go on the status row.
         Err(error) => {
-            return Settled {
-                names: in_force,
-                outcome: SettleOutcome::KeptOld(MigrateError::Files {
-                    path,
-                    words: format!("{why}; the lock could not be held either: {error}"),
-                }),
-                hold: None,
-            };
+            return kept_old(
+                repo.on_disk_names(),
+                format!("{why}; the lock could not be held either: {error}"),
+            );
         }
     };
     match marker::read(common) {
         Ok(Some(_)) => new_names(SettleOutcome::Done),
-        Ok(None) => Settled {
-            names: in_force,
-            outcome: SettleOutcome::KeptOld(why),
-            hold: Some(OldNamesHold { _lock: hold }),
+        Ok(None) => match names_in_force(common) {
+            Ok(names) => Settled {
+                names,
+                outcome: SettleOutcome::KeptOld(why),
+                hold: Some(OldNamesHold { _lock: hold }),
+            },
+            // The handle's answer is the best left; both go on the row.
+            Err(error) => kept_old(
+                repo.on_disk_names(),
+                format!("{why}; the names in force could not be read: {error}"),
+            ),
         },
         Err(error) => new_names(SettleOutcome::LeftOld(error)),
     }
@@ -268,7 +287,7 @@ fn migrate(repo: &RepoHandle, alone: Alone) -> Settled {
     match marker::read(common) {
         Ok(None) => {}
         Ok(Some(Marker::Clean)) => return new_names(SettleOutcome::Done),
-        Ok(Some(Marker::Switched)) => return clean_up(repo, &alone),
+        Ok(Some(Marker::Switched(was))) => return clean_up(repo, alone, was),
         Err(error) => return new_names(SettleOutcome::LeftOld(error)),
     }
     let copied = match copy_everything(repo) {
@@ -278,7 +297,7 @@ fn migrate(repo: &RepoHandle, alone: Alone) -> Settled {
             return stay_old(repo, why);
         }
     };
-    if let Err(why) = marker::write(common, Marker::Switched) {
+    if let Err(why) = marker::write(common, Marker::Switched(Some(copied.from))) {
         drop(alone);
         return stay_old(repo, why);
     }
@@ -290,11 +309,14 @@ fn migrate(repo: &RepoHandle, alone: Alone) -> Settled {
     } else {
         record::append(repo, copied.refs, copied.files, &copied.command).err()
     };
-    let strays = match after_the_switch(repo, copied.from) {
+    let strays = match after_the_switch(repo, Some(copied.from)) {
         Ok(strays) => strays,
         Err(why) => return new_names(SettleOutcome::LeftOld(why)),
     };
     if let Err(why) = marker::write(common, Marker::Clean) {
+        return new_names(SettleOutcome::LeftOld(why));
+    }
+    if let Err(why) = alone.release() {
         return new_names(SettleOutcome::LeftOld(why));
     }
     if unused && strays.kept_aside.is_none() {
@@ -347,53 +369,6 @@ fn copy_everything(repo: &RepoHandle) -> Result<Copied, MigrateError> {
         files,
         command,
     })
-}
-
-/// The marker reads `clean`, yet something is under an earlier
-/// generation's names again: an older build wrote it. One stray pass over
-/// every earlier generation carries or keeps it.
-fn older_wrote(repo: &RepoHandle, _alone: &Alone) -> Settled {
-    let earlier: Vec<Generation> = Generation::CURRENT.older().collect();
-    match settle_strays(repo, &earlier) {
-        Ok(Strays {
-            refs: 0, files: 0, ..
-        }) => new_names(SettleOutcome::Done),
-        Ok(Strays {
-            refs,
-            files,
-            kept_aside,
-        }) => new_names(SettleOutcome::OlderWrote {
-            refs,
-            files,
-            kept_aside,
-        }),
-        Err(why) => new_names(SettleOutcome::LeftOld(why)),
-    }
-}
-
-/// The marker reads `switched`: steps 7–8 over what the switched move
-/// left, then `clean`.
-fn clean_up(repo: &RepoHandle, _alone: &Alone) -> Settled {
-    match clean_up_steps(repo) {
-        Ok(Strays {
-            refs,
-            files,
-            kept_aside,
-        }) => new_names(SettleOutcome::CleanedUp {
-            refs,
-            files,
-            kept_aside,
-        }),
-        Err(why) => new_names(SettleOutcome::LeftOld(why)),
-    }
-}
-
-/// [`clean_up`]'s steps.
-fn clean_up_steps(repo: &RepoHandle) -> Result<Strays, MigrateError> {
-    let was = was_in_force(repo.common_dir())?;
-    let strays = after_the_switch(repo, was)?;
-    marker::write(repo.common_dir(), Marker::Clean)?;
-    Ok(strays)
 }
 
 #[cfg(test)]

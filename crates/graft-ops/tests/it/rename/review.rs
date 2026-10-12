@@ -13,7 +13,7 @@ use super::{as_new, marker, old_repo, refs_under, settle, shim, stage_edit};
 use crate::support::{NOW, TempRepo};
 use graft_core::on_disk::CURRENT_DIR;
 
-/// `.git/tributary/older-version/<n>/<path>`.
+/// `.git/<CURRENT dir>/older-version/<n>/<path>`.
 fn kept(n: usize, path: &str) -> String {
     format!(
         ".git/{}/{KEPT_ASIDE_DIR}/{n}/{path}",

@@ -1,6 +1,12 @@
-//! The marker, `<common_dir>/<CURRENT dir>/migrated`: absent (earlier names), or one
-//! line, `switched` (new names in force, old leftovers maybe on disk) or
-//! `clean` (moved, nothing old left).
+//! The marker, `<common_dir>/<CURRENT dir>/migrated`: absent (earlier
+//! names), or one line, `switched <source dir>` (new names in force, moved
+//! from that generation, old leftovers maybe on disk) or `clean` (moved,
+//! nothing old left).
+//!
+//! The source is recorded, never inferred from which earlier markers are
+//! left (review m8-48 Major 1): the stray pass removes those markers, so a
+//! pass cut short would otherwise read a newer generation as scratch and
+//! remove what an older build wrote there unread.
 
 use std::fs::{self, File};
 use std::io::{self, Write};
@@ -13,15 +19,32 @@ use super::MigrateError;
 /// What the marker says.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Marker {
-    Switched,
+    /// Switched from this generation. `None` for a bare `switched`, which
+    /// ticket 48's builds wrote before the source was recorded: the source
+    /// is then unknown, and no generation is taken for scratch.
+    Switched(Option<Generation>),
     Clean,
 }
 
 impl Marker {
-    fn line(self) -> &'static str {
+    fn line(self) -> String {
         match self {
-            Marker::Switched => "switched\n",
-            Marker::Clean => "clean\n",
+            Marker::Switched(Some(from)) => format!("switched {}\n", from.dir()),
+            Marker::Switched(None) => "switched\n".to_owned(),
+            Marker::Clean => "clean\n".to_owned(),
+        }
+    }
+
+    /// The marker `line` spells, if it is one.
+    fn parse(line: &str) -> Option<Self> {
+        match line.split_once(' ') {
+            None if line == "switched" => Some(Marker::Switched(None)),
+            None if line == "clean" => Some(Marker::Clean),
+            Some(("switched", dir)) => Generation::CURRENT
+                .older()
+                .find(|generation| generation.dir() == dir)
+                .map(|from| Marker::Switched(Some(from))),
+            _ => None,
         }
     }
 }
@@ -34,12 +57,11 @@ fn path(common: &Path) -> PathBuf {
 pub(super) fn read(common: &Path) -> Result<Option<Marker>, MigrateError> {
     let path = path(common);
     match fs::read_to_string(&path) {
-        Ok(text) => match text.trim() {
-            "switched" => Ok(Some(Marker::Switched)),
-            "clean" => Ok(Some(Marker::Clean)),
-            other => Err(MigrateError::Files {
+        Ok(text) => match Marker::parse(text.trim()) {
+            Some(marker) => Ok(Some(marker)),
+            None => Err(MigrateError::Files {
                 path,
-                words: format!("unknown marker {other:?}"),
+                words: format!("unknown marker {:?}", text.trim()),
             }),
         },
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),

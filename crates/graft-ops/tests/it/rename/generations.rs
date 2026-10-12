@@ -20,7 +20,9 @@ use graft_ops::rename::{
 use super::{old_repo, shim, stage_edit};
 use crate::support::{NOW, journal_for, run, state_of};
 
+mod minors;
 mod setup;
+mod windows;
 
 use setup::{
     JOURNAL, as_tributary, folders_named, fsck_is_clean, in_dir, loose_commit, marker_of,

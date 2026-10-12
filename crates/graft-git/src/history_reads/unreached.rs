@@ -24,7 +24,7 @@
 //! **Held** is exactly: `refs/heads/*`, `refs/tags/*` (git peels an
 //! annotated tag itself), `refs/remotes/*`, every stash entry, and `HEAD`
 //! (which only adds anything when detached). Never the app's own refs
-//! (`refs/graft/**`, `refs/tributary/**`): a commit only Graft's own backup
+//! (under any generation's `Generation::ref_prefix`): a commit only Graft's own backup
 //! keeps is lost to the person using it.
 
 use std::collections::{HashMap, HashSet};

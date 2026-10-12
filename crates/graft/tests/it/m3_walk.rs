@@ -204,7 +204,7 @@ fn drive_app(repo: &Path, steps: &[Step], marks: &mut Marks) -> Result<(), Strin
 /// Nothing Graft wrote for itself is drawn as history (m3-07 review, C1).
 ///
 /// Every undoable write leaves a backup chain under
-/// `refs/tributary/backup/<worktree>/<ulid>`, kept indefinitely by design. They
+/// `<prefix in force>backup/<worktree>/<ulid>` (`Generation::ref_prefix`), kept indefinitely by design. They
 /// used to seed the history walk, which put two commits titled
 /// `graft <ulid> …` **above `HEAD`** per operation, forever — so a day's
 /// staging buried the branch the graph is about, and
@@ -361,7 +361,7 @@ fn focus_gained(app: &App, state: &AppState) -> Result<AppState, String> {
     }))
 }
 
-/// One `refs/tributary/backup/…` ref per journal entry whose operation took a
+/// One `<prefix in force>backup/…` ref per journal entry whose operation took a
 /// backup (touches the index or the worktree, or pins an object).
 fn backups_match_journal(repo: &Path) -> Result<(), String> {
     let path = git_path(repo, &format!("{CURRENT_DIR}/undo-journal.jsonl"))?;

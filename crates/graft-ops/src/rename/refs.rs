@@ -136,8 +136,9 @@ pub(super) fn mirror_and_read_back(
 /// whose new ref holds the same value is only deleted; one whose new ref
 /// holds another is moved to `<CURRENT prefix>older-version/<pass>/<its
 /// generation's dir>/<rest>`, so two generations' refs with the same rest
-/// never collide. The old ref is deleted at its listed value in every
-/// case. `old` is under `froms`' prefixes, `new` under `CURRENT`'s. How
+/// never collide. A ref this pass carries counts as the new one for an
+/// older generation's ref of the same rest. The old ref is deleted at its
+/// listed value in every case. `old` is under `froms`' prefixes, `new` under `CURRENT`'s. How
 /// many were set aside.
 pub(super) fn carry_or_set_aside(
     repo: &RepoHandle,
@@ -152,9 +153,17 @@ pub(super) fn carry_or_set_aside(
     let mut lines = String::new();
     let mut targets = Listed::new();
     let mut aside = 0;
-    for (name, oid) in old {
+    // Newest generation first (`froms`' order), so when two generations
+    // hold a ref with the same rest, the newer's is carried and the older
+    // meets it as a new ref already there: one update per name, never two
+    // (git refuses the whole transaction then; review m8-48 Minor 2).
+    let mut ordered: Vec<(&String, &Oid)> = old.iter().collect();
+    ordered.sort_by_key(|(name, _)| {
+        Generation::of_ref(name).and_then(|of| froms.iter().position(|from| *from == of))
+    });
+    for (name, oid) in ordered {
         let wanted = map_ref(name, Generation::CURRENT).into_owned();
-        match new.get(&wanted) {
+        match new.get(&wanted).or_else(|| targets.get(&wanted)) {
             Some(held) if held == oid => {}
             Some(_) => {
                 let kept = match Generation::of_ref(name) {

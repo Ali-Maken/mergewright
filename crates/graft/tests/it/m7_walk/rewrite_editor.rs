@@ -82,7 +82,7 @@ pub(super) fn subjects(repo: &Path, range: &str) -> Vec<String> {
 }
 
 /// Every branch and where it points. The engine's own safety refs
-/// (`refs/tributary/backup/…`, written by each rewrite) are not his refs.
+/// (`<prefix in force>backup/…`, `Generation::ref_prefix`, written by each rewrite) are not his refs.
 pub(super) fn every_ref(repo: &Path) -> String {
     git(
         repo,
