@@ -91,7 +91,7 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 - `Generation::has_marker` (const fn) — false for `Graft` only: with no marker present, Graft is in force.
 - `Generation::older` (fn) — the generations released before this one, newest first.
 - `Generation::of_ref` / `of_trailer` / `of_message` (fn) — which generation spelled a ref (by prefix), a trailer line (by key) or a git message (`<dir>:` or `<dir> `); `None` for anyone else's.
-- `ASKPASS_SOCKET_VAR` (const) — `TRIB_ASKPASS_SOCKET`, its one definition: set on askpass children by graft-git, re-exported by `graft::cli`.
+- `ASKPASS_SOCKET_VAR` (const) — `MWR_ASKPASS_SOCKET`, its one definition: set on askpass children by graft-git, re-exported by `graft::cli`.
 - `CURRENT_DIR` (const) — `Generation::CURRENT.dir()`, short enough to inline in a path (`.git/{CURRENT_DIR}/...`).
 - `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/<dir>/` of each generation with `has_marker`: the newest one present (up to `CURRENT`) is in force.
 

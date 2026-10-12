@@ -6,7 +6,7 @@
 //!   the p99 and prints the max, so one outlier among 420 keys is recorded,
 //!   not a failure (`KNOWN_GAPS.md`: "the frame gate asserts on the max").
 //! - [`FrameTrace`]: per-key phase lines, written only when
-//!   `TRIB_FRAME_TRACE=<file>` is set (`scripts/m7-perf-key.sh` sets it).
+//!   `MWR_FRAME_TRACE=<file>` is set (`scripts/m7-perf-key.sh` sets it).
 //! - [`WriteClock`]: time spent writing to the in-memory terminal, taken only
 //!   while tracing.
 
@@ -32,7 +32,7 @@ use graft::update::AppEvent;
 use graft_core::event::{Event, KeyCode, KeyPress};
 
 /// The environment variable naming the trace file.
-pub const TRACE_VAR: &str = "TRIB_FRAME_TRACE";
+pub const TRACE_VAR: &str = "MWR_FRAME_TRACE";
 
 /// One scroll's input-to-frame numbers and its verdict.
 #[derive(Debug, PartialEq, Eq)]

@@ -70,7 +70,7 @@ diff -ruN a/crates/graft/src/memstats.rs b/crates/graft/src/memstats.rs
 +++ b/crates/graft/src/memstats.rs	2026-10-02 22:16:20
 @@ -0,0 +1,53 @@
 +//! MEASUREMENT ONLY (scripts/scroll-pixel-memory.patch, m8 04): counts large
-+//! allocations and appends one line per pixel frame to `TRIB_MEM_STATS`.
++//! allocations and appends one line per pixel frame to `MWR_MEM_STATS`.
 +//! Never committed to the source tree; the script applies it to a scratch
 +//! worktree.
 +
@@ -104,7 +104,7 @@ diff -ruN a/crates/graft/src/memstats.rs b/crates/graft/src/memstats.rs
 +
 +/// Append `fields` after the elapsed time and the allocation counters.
 +pub fn line(fields: &str) {
-+    let Some(path) = std::env::var_os("TRIB_MEM_STATS") else {
++    let Some(path) = std::env::var_os("MWR_MEM_STATS") else {
 +        return;
 +    };
 +    let ms = START.get().map_or(0, |start| start.elapsed().as_millis());

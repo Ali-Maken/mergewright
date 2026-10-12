@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# m8-polish-and-ship/05 (G-trace follow-up): the builder's TRIB_PERF_TRACE run
+# m8-polish-and-ship/05 (G-trace follow-up): the builder's MWR_PERF_TRACE run
 # at the shape of his Ghostty run (docs/perf/m8-trace-2026-10-08-ghostty.txt:
 # Pixel tier over Kitty graphics, 222x70, his 17x37 cell), through a real pty
 # that answers the probe like Ghostty (scroll-lag-pty.py PROFILE=kitty,
@@ -28,7 +28,7 @@ REPO=$WORK/repo
 cp -R "$SRC" "$REPO" && chmod -R u+w "$REPO"
 TRACE=$WORK/trace.txt
 
-line=$(PROFILE=kitty DEFLATE=yes SCROLL_LAG_DUMP=$WORK/stream.bin TRIB_PERF_TRACE=$TRACE python3 "$ROOT/scripts/scroll-lag-pty.py" \
+line=$(PROFILE=kitty DEFLATE=yes SCROLL_LAG_DUMP=$WORK/stream.bin MWR_PERF_TRACE=$TRACE python3 "$ROOT/scripts/scroll-lag-pty.py" \
   "$BIN" "$REPO" 222 70 5 0.033 1.65 m8-trace-followup 2>"$WORK/pty.err" | grep SUMMARY || true)
 [ -n "$line" ] || { echo "the pty run printed no SUMMARY:" >&2; cat "$WORK/pty.err" >&2; exit 1; }
 

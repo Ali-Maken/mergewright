@@ -213,7 +213,7 @@ fn literals(path: &Path) -> Vec<(usize, String)> {
 }
 
 /// `word` as a whole word, case-sensitive: `_` and alphanumerics bound it,
-/// so `graft_core`, `TRIB_X` and `grafted` do not match.
+/// so `graft_core`, `MWR_X` and `grafted` do not match.
 fn says_word(text: &str, word: &str) -> bool {
     let bytes = text.as_bytes();
     let inside = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
@@ -225,12 +225,13 @@ fn says_word(text: &str, word: &str) -> bool {
 }
 
 /// The earlier generation `text` names, if any: its title (`Graft`,
-/// `Tributary`) or its command (`graft`, `trib`) as a whole word, read from
+/// `Tributary`), its dir (`tributary`, as in a folder prefix; 51) or its
+/// command (`graft`, `trib`) as a whole word, read from
 /// the names table so a later rename needs no edit here.
 fn says_old_name(text: &str) -> Option<Generation> {
-    Generation::CURRENT
-        .older()
-        .find(|old| says_word(text, old.title()) || says_word(text, old.command()))
+    Generation::CURRENT.older().find(|old| {
+        says_word(text, old.title()) || says_word(text, old.command()) || says_word(text, old.dir())
+    })
 }
 
 /// No string literal in any crate's production source names an earlier
@@ -291,9 +292,13 @@ fn the_word_test_reads_words_only() {
     );
     assert_eq!(says_old_name("trib: stopped"), Some(Generation::Tributary));
     assert_eq!(says_old_name("graft_core"), None);
-    assert_eq!(says_old_name("TRIB_PERF_TRACE"), None);
+    assert_eq!(says_old_name("MWR_PERF_TRACE"), None);
     assert_eq!(says_old_name("grafted"), None);
-    assert_eq!(says_old_name("tributary-ish attribute"), None);
+    assert_eq!(says_old_name("tributary_ish attribute"), None);
+    assert_eq!(
+        says_old_name("tributary-practice-"),
+        Some(Generation::Tributary)
+    );
     assert_eq!(says_old_name("Mergewright · mwr"), None);
 }
 

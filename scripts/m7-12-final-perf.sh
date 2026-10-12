@@ -3,7 +3,7 @@
 #
 #   before  this HEAD in a throwaway worktree with
 #           scripts/m7-12-no-idle-advance.patch applied, every command run
-#           with TRIB_FRAME_NO_IDLE_ADVANCE=1: the history worker waits for
+#           with MWR_FRAME_NO_IDLE_ADVANCE=1: the history worker waits for
 #           the next request, as before m7/12b, and never says `LaidOut`.
 #   after   this checkout as it is.
 #
@@ -89,7 +89,7 @@ step() { # side name dir command...
     busy
   } >>"$WORK/log.txt"
   if [ "$side" = before ]; then
-    (cd "$dir" && TRIB_FRAME_NO_IDLE_ADVANCE=1 "$@") >"$WORK/step.out" 2>&1
+    (cd "$dir" && MWR_FRAME_NO_IDLE_ADVANCE=1 "$@") >"$WORK/step.out" 2>&1
   else
     (cd "$dir" && "$@") >"$WORK/step.out" 2>&1
   fi
@@ -134,7 +134,7 @@ step after heavy_release_budgets "$ROOT" cargo test --release -p mergewright --f
   echo
   echo
   echo "# ===== m7-power-tools/12e final: idle advance before/after — $(date -u +%FT%TZ)"
-  echo "# HEAD $(git rev-parse --short HEAD)$(git diff --quiet HEAD -- crates || echo ' +uncommitted'); before = HEAD + scripts/m7-12-no-idle-advance.patch, TRIB_FRAME_NO_IDLE_ADVANCE=1"
+  echo "# HEAD $(git rev-parse --short HEAD)$(git diff --quiet HEAD -- crates || echo ' +uncommitted'); before = HEAD + scripts/m7-12-no-idle-advance.patch, MWR_FRAME_NO_IDLE_ADVANCE=1"
   echo "# $(sysctl -n machdep.cpu.brand_string 2>/dev/null || uname -m), $(sysctl -n hw.ncpu 2>/dev/null) cpus, $(uname -sr), $(rustc --version)"
   echo "# git/git: $(git --git-dir="$GITGIT" rev-list --count --all 2>/dev/null) commits, commit-graph $([ -f "$GITGIT/objects/info/commit-graph" ] && echo present || echo absent)"
   python3 - "$WORK/log.txt" <<'PY'

@@ -1,7 +1,7 @@
 //! **Test-only.** The askpass helper half, standing in for Graft's own binary
 //! in askpass mode (M4 group 05b) so `graft-ops`'s integration tests can
 //! prove git → helper → `AskPass` → git end to end today. It does exactly
-//! what the app's mode will: read `TRIB_ASKPASS_SOCKET`, ask over it with
+//! what the app's mode will: read `MWR_ASKPASS_SOCKET`, ask over it with
 //! git's prompt (`argv[1]`), print the answer. Nothing ships it.
 
 use std::io::Write;
@@ -12,7 +12,7 @@ use graft_git::run::askpass::respond;
 
 fn main() -> ExitCode {
     let Some(socket) = std::env::var_os(graft_core::on_disk::ASKPASS_SOCKET_VAR) else {
-        eprintln!("askpass_test_helper: TRIB_ASKPASS_SOCKET is not set");
+        eprintln!("askpass_test_helper: MWR_ASKPASS_SOCKET is not set");
         return ExitCode::FAILURE;
     };
     // git always passes the prompt; with none, asking with an empty prompt

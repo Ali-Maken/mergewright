@@ -392,7 +392,7 @@ fn capture_m8_bar_head_row_100x30() {
 
 /// The captures under `docs/shots/`, from this same real path — the user
 /// judges the bar by eye at 80 and 120 columns (CLAUDE.md rule 6).
-/// Regenerate on purpose: `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it hint_bar::capture_hint_bar_for_docs_shots`.
+/// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it hint_bar::capture_hint_bar_for_docs_shots`.
 #[test]
 #[allow(
     clippy::too_many_lines,

@@ -50,7 +50,6 @@ cargo install --locked --path crates/graft
 
 Then `man ./docs/man/mwr.1` reads the manual: every flag, every key in every
 place, every config key, the environment and the files Tributary writes.
-`GRAFT_*` environment variables are no longer read: each is now `TRIB_*`.
 
 ## First run
 

@@ -855,10 +855,10 @@ const FF_PUT_BACK_SPAWNS: &[&str] = &["stash create", "merge-base", "merge-tree"
 
 /// A `git` first on the child's `PATH`: logs its argv, runs the real one.
 const SPAWN_LOG_SHIM: &str = "#!/bin/sh\n\
-    printf '%s\\n' \"$*\" >> \"$TRIB_SPAWN_LOG\"\n\
-    exec \"$TRIB_SPAWN_REAL_GIT\" \"$@\"\n";
-const CHILD_REPO: &str = "TRIB_SPAWN_CHILD_REPO";
-const SPAWN_LOG: &str = "TRIB_SPAWN_LOG";
+    printf '%s\\n' \"$*\" >> \"$MWR_SPAWN_LOG\"\n\
+    exec \"$MWR_SPAWN_REAL_GIT\" \"$@\"\n";
+const CHILD_REPO: &str = "MWR_SPAWN_CHILD_REPO";
+const SPAWN_LOG: &str = "MWR_SPAWN_LOG";
 /// Written by the child just before it asks for the preview.
 const MARK: &str = "-- the preview --";
 
@@ -915,7 +915,7 @@ fn spawned_by_the_preview(repo: &TempRepo) -> Vec<String> {
             "--test-threads=1",
         ])
         .env("PATH", path)
-        .env("TRIB_SPAWN_REAL_GIT", real_git())
+        .env("MWR_SPAWN_REAL_GIT", real_git())
         .env(SPAWN_LOG, &log)
         .env(CHILD_REPO, repo.path())
         .stdout(std::process::Stdio::null())
@@ -946,7 +946,7 @@ fn rev_in(repo: &Path, rev: &str) -> Oid {
 }
 
 /// The child's half: the merge of `feature` into `main` previewed in
-/// `$TRIB_SPAWN_CHILD_REPO`, the mark written to `$TRIB_SPAWN_LOG` just
+/// `$MWR_SPAWN_CHILD_REPO`, the mark written to `$MWR_SPAWN_LOG` just
 /// before. Does nothing when run on its own.
 #[test]
 #[ignore = "the child of the spawn count; runs only under spawned_by_the_preview"]

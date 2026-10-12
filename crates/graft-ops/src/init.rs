@@ -99,7 +99,7 @@ mod tests {
             ])
             .env("GIT_DIR", &elsewhere)
             .env("GIT_WORK_TREE", dir.path())
-            .env("TRIB_INIT_TARGET", &target)
+            .env("MWR_INIT_TARGET", &target)
             .status()
             .expect("the child test runs");
 
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     #[ignore = "run only as the child of a_stray_git_dir_in_the_environment_does_not_redirect_it"]
     fn child_inits_target_from_env() {
-        let Some(target) = std::env::var_os("TRIB_INIT_TARGET") else {
+        let Some(target) = std::env::var_os("MWR_INIT_TARGET") else {
             return;
         };
         assert!(

@@ -189,7 +189,7 @@ fn asks_through_the_pool_and_clones() {
         ])
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_CONFIG_GLOBAL", empty_config.path())
-        .env("TRIB_CLONE_JOB_CHILD", "1")
+        .env("MWR_CLONE_JOB_CHILD", "1")
         .output()
         .expect("the child test runs");
     let said = String::from_utf8_lossy(&output.stdout);
@@ -209,7 +209,7 @@ fn asks_through_the_pool_and_clones() {
 #[test]
 #[ignore = "run only as the child of asks_through_the_pool_and_clones"]
 fn child_asks_through_the_pool_and_clones() {
-    if std::env::var_os("TRIB_CLONE_JOB_CHILD").is_none() {
+    if std::env::var_os("MWR_CLONE_JOB_CHILD").is_none() {
         return;
     }
     let remote = local();

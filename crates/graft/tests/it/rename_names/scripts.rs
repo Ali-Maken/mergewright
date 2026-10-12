@@ -112,33 +112,37 @@ fn shot_scripts(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// No environment name keeps the old prefix (m8-polish-and-ship/27b): every
+/// No environment name keeps an earlier generation's prefix (27b, 51): every
 /// file under `crates/` (MAP.md files included) and `scripts/`, the pty-walk
-/// scripts, and ARCHITECTURE.md, read as bytes so no file is skipped as not
-/// text. The old names are read nowhere; the allow-list is the generation
-/// table and its tests, which spell every generation's prefix once
-/// (ADR-0057, 2026-10-11 §2).
+/// and shot scripts, ARCHITECTURE.md and README.md, read as bytes so no file
+/// is skipped as not text. The old names are read nowhere; the allow-list is
+/// the generation table and its tests (one entry: `graft-core/src/on_disk`),
+/// which spell every generation's prefix once (ADR-0057, 2026-10-11 §2).
+/// TESTING.md is not swept: its dated records keep the names they ran under.
 #[test]
 fn no_old_env_name() {
     let root = crates_dir().parent().expect("repo root").to_path_buf();
-    let old = concat!("GRAFT", "_").as_bytes();
     let table = crates_dir().join("graft-core/src/on_disk");
     let mut files = Vec::new();
     every_file(&crates_dir(), &mut files);
     files.retain(|file| file.with_extension("") != table && !file.starts_with(&table));
     every_file(&root.join("scripts"), &mut files);
     files.extend(pty_walk_scripts(&root));
+    files.extend(shot_scripts(&root));
     files.push(root.join("ARCHITECTURE.md"));
+    files.push(root.join("README.md"));
     assert!(files.len() > 100, "only {} files swept", files.len());
     let found: Vec<String> = files
         .iter()
-        .filter(|file| {
-            fs::read(file)
-                .unwrap_or_else(|e| panic!("{} reads: {e}", file.display()))
-                .windows(old.len())
-                .any(|w| w == old)
+        .flat_map(|file| {
+            let bytes = fs::read(file).unwrap_or_else(|e| panic!("{} reads: {e}", file.display()));
+            Generation::CURRENT
+                .older()
+                .map(Generation::env_prefix)
+                .filter(|old| bytes.windows(old.len()).any(|w| w == old.as_bytes()))
+                .map(|old| format!("{} ({old})", file.display()))
+                .collect::<Vec<_>>()
         })
-        .map(|file| file.display().to_string())
         .collect();
     assert!(found.is_empty(), "old env names in:\n{}", found.join("\n"));
 }

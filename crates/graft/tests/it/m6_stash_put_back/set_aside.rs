@@ -1127,7 +1127,7 @@ const STAGING_NOT_KEPT_HEADER: &str = "\
 const SHIM: &str = include_str!("../../../../graft-ops/tests/it/git_shim.sh");
 
 #[cfg(unix)]
-const KILL_CHILD_REPO: &str = "TRIB_K4_CHILD_REPO";
+const KILL_CHILD_REPO: &str = "MWR_K4_CHILD_REPO";
 
 /// K4's child: `git switch fix` from `main` over the staged edit, run the
 /// way the app's job runs it (`jobs/operate.rs` `in_context`), under the
@@ -1196,9 +1196,9 @@ fn killed_before_the_drop(path: &Path) {
             "--test-threads=1",
         ])
         .env("PATH", child_path)
-        .env("TRIB_SHIM_REAL_GIT", real_git)
-        .env("TRIB_SHIM_ON", "drop")
-        .env("TRIB_SHIM_DO", "kill")
+        .env("MWR_SHIM_REAL_GIT", real_git)
+        .env("MWR_SHIM_ON", "drop")
+        .env("MWR_SHIM_DO", "kill")
         .env("GIT_AUTHOR_DATE", &when)
         .env("GIT_COMMITTER_DATE", &when)
         .env(KILL_CHILD_REPO, path)

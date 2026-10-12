@@ -60,7 +60,7 @@ pub enum TerminalChange {
 /// window, a deadline) is not covered and does not need to be.
 ///
 /// The shipped binary passes two clocks: the drawn clock is `Wall`, or
-/// `Fixed` when `TRIB_NOW` pins it ([`launch_clock`]); the journal's stamps
+/// `Fixed` when `MWR_NOW` pins it ([`launch_clock`]); the journal's stamps
 /// are always `Wall`. `Fixed` is also what a caller that
 /// cannot tolerate drift asks for instead: a snapshot test, the gallery
 /// viewing a corpus stop at `graft_fixtures::CORPUS_NOW` so its capture
@@ -118,7 +118,7 @@ impl Clock {
 /// variable must never write false history into a real repository
 /// (m8/19e §R1). For reproducible pty runs and captures; the pty harness
 /// sets it by default.
-pub(crate) const NOW_VAR: &str = "TRIB_NOW";
+pub(crate) const NOW_VAR: &str = "MWR_NOW";
 
 /// What [`NOW_VAR`]'s value asks for: unset → `Wall`; whole seconds →
 /// `Fixed`; anything else → the words of the refusal (unsanitised; the

@@ -265,7 +265,7 @@ fn drawn(state: &AppState) -> Vec<String> {
 }
 
 /// Every fact in `sees` holds on the drawn frame. A failure names the fact
-/// and the frame's bottom row; with `TRIB_WALK_FRAMES=<dir>` the whole
+/// and the frame's bottom row; with `MWR_WALK_FRAMES=<dir>` the whole
 /// frame is written there too, so a failing run can be read without
 /// printing it.
 pub fn frame_sees(state: &AppState, sees: &[Sees]) -> Result<(), String> {
@@ -299,10 +299,10 @@ pub fn frame_sees(state: &AppState, sees: &[Sees]) -> Result<(), String> {
     Ok(())
 }
 
-/// With `TRIB_WALK_FRAMES` set, write the frame to a fresh file there and
+/// With `MWR_WALK_FRAMES` set, write the frame to a fresh file there and
 /// say where.
 fn dump(frame: &[String]) -> String {
-    let Some(dir) = std::env::var_os("TRIB_WALK_FRAMES") else {
+    let Some(dir) = std::env::var_os("MWR_WALK_FRAMES") else {
         return String::new();
     };
     let dir = std::path::PathBuf::from(dir);

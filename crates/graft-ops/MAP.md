@@ -343,7 +343,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 
 ## tour
 - `PracticeRepo` (struct) — only `build_practice_repo` makes one; `root()`, `work()` (what the app opens).
-- `PRACTICE_MARKER` / `PRACTICE_PREFIX` (consts) — `.practice`, `tributary-practice-`.
+- `PRACTICE_MARKER` (const) — `.practice`.
+- `practice_prefix(Generation)` (fn) — `<dir>-practice-`; new roots use CURRENT (`mergewright-practice-`), removal accepts every generation's.
 - `TourError` (enum) — `TempDir`, `Git`, `NotPractice`, `Outside`, `Remove`, `Journal`, `Left`; `explain`.
 - `PracticeAt` (enum) — `Now { now_unix_secs }` or `Fixed { first_unix_secs }` (reproducible oids and path).
 - `build_practice_repo` (fn) — `(under, at)`: seven commits, a remote, `feature`, `clash`; created fresh, marker first.

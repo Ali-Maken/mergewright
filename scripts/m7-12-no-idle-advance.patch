@@ -8,7 +8,7 @@ index 0d54a939..8410d176 100644
          }
 +        // m7-12e "before" build only (scripts/m7-12-final-perf.sh): no idle
 +        // advance, the worker waits for the next request as before m7/12b.
-+        if std::env::var_os("TRIB_FRAME_NO_IDLE_ADVANCE").is_some() {
++        if std::env::var_os("MWR_FRAME_NO_IDLE_ADVANCE").is_some() {
 +            return Ok(match requests.recv() {
 +                Ok(first) => Next::Asked(Box::new(requests.try_iter().last().unwrap_or(first))),
 +                Err(_) => Next::Ended(Ended::Cancelled),

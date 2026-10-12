@@ -12,7 +12,7 @@
 #   1. cargo nextest, filtered to the M7 walks (m7_walk::*, which holds every
 #      journey walk, every_m7_journey_id_has_a_walk and the promise
 #      scenarios), journey_counts_match_the_note and the hint-bar tests.
-#   2. Every m3–m6 pty walk in compare mode (TRIB_UPDATE_SHOTS unset), each
+#   2. Every m3–m6 pty walk in compare mode (MWR_UPDATE_SHOTS unset), each
 #      at every size its captures exist at. M7 has no pty walk: its captures
 #      are drawn in-process and compared by step 1's tests (check_shot).
 #      A failing run's log (it names the file, the first differing line and
@@ -80,7 +80,7 @@ else
       scenarios=$(awk -F'\t' -v s="$size" '$1 == s { print $2 }' "$ACCEPT/pty-$m-plan.tsv" | sort -u | tr '\n' ' ')
       log="$ACCEPT/pty-$m-$size.txt"
       # shellcheck disable=SC2086 # the scenario names are words
-      env -u TRIB_UPDATE_SHOTS TRIB_TARGET="$TARGET" python3 "$script" "$size" $scenarios > "$log" 2>&1
+      env -u MWR_UPDATE_SHOTS MWR_TARGET="$TARGET" python3 "$script" "$size" $scenarios > "$log" 2>&1
       prc=$?
       pty_runs=$((pty_runs + 1))
       if [ "$prc" -ne 0 ]; then

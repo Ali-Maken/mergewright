@@ -114,7 +114,7 @@ impl Session {
             .env("GIT_COMMITTER_DATE", &git_date)
             .env_remove("GIT_DIR")
             .env_remove("GIT_WORK_TREE")
-            .env_remove("TRIB_TRACE");
+            .env_remove("MWR_TRACE");
         if let Stderr::File(path) = stderr {
             command
                 .stderr(Stdio::from(File::create(path).expect("a stderr file")))
@@ -137,11 +137,11 @@ impl Session {
 /// The program [`session_exec_entry`] execs; its arguments are in
 /// `<this>_ARG_<n>`, their count in `<this>_ARGC`. Never in libtest's argv,
 /// which libtest would read as filters.
-pub(crate) const SESSION_EXEC_VAR: &str = "TRIB_IT_SESSION_EXEC";
+pub(crate) const SESSION_EXEC_VAR: &str = "MWR_IT_SESSION_EXEC";
 
 /// Set when the caller gave the child its own stderr (a file): fd 2 is then
 /// kept rather than pointed at the pty.
-const KEEP_STDERR_VAR: &str = "TRIB_IT_SESSION_EXEC_KEEP_STDERR";
+const KEEP_STDERR_VAR: &str = "MWR_IT_SESSION_EXEC_KEEP_STDERR";
 
 fn argc_var() -> String {
     format!("{SESSION_EXEC_VAR}_ARGC")

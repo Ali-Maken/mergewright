@@ -11,7 +11,7 @@
 //! merge sets it aside and puts it back staged (19d §R1, §R2).
 //!
 //! Reproducible: the practice repository's dates come from
-//! `TRIB_PRACTICE_EPOCH` = `graft_fixtures::git::FIXED_DATE`'s instant, and
+//! `MWR_PRACTICE_EPOCH` = `graft_fixtures::git::FIXED_DATE`'s instant, and
 //! the commits he makes in the tour from `GIT_AUTHOR_DATE` /
 //! `GIT_COMMITTER_DATE` an hour after it (no Graft commit or merge sets
 //! those itself: grep, 19c-c NOTES). `TMPDIR` is a fresh folder under
@@ -93,7 +93,7 @@ fn capture_root(scenario: &str, random: usize) -> (tempfile::TempDir, PathBuf) {
 
 /// `root/practice-tmp`, made: a capture's `TMPDIR`. The header cuts the
 /// practice path from the left, and this fixed name is what the cut leaves
-/// in sight of `/tributary-practice-…` — not the root's random suffix.
+/// in sight of `/mergewright-practice-…` — not the root's random suffix.
 fn tour_tmp(root: &Path) -> PathBuf {
     let tmp = root.join("practice-tmp");
     std::fs::create_dir(&tmp).expect("practice-tmp");
@@ -147,7 +147,7 @@ fn env(tmp: &OsString) -> Vec<(&'static str, OsString)> {
     let his = format!("{} +0000", EPOCH + 3_600);
     vec![
         ("TMPDIR", tmp.clone()),
-        ("TRIB_PRACTICE_EPOCH", EPOCH.to_string().into()),
+        ("MWR_PRACTICE_EPOCH", EPOCH.to_string().into()),
         ("GIT_AUTHOR_DATE", his.clone().into()),
         ("GIT_COMMITTER_DATE", his.into()),
     ]
@@ -208,7 +208,7 @@ fn his_repo(root: &Path) -> PathBuf {
     path
 }
 
-/// The `tributary-practice-*` folders under `tmp`.
+/// The `mergewright-practice-*` folders under `tmp`.
 fn practice_folders(tmp: &Path) -> Vec<String> {
     std::fs::read_dir(tmp)
         .expect("tmp readable")
@@ -219,7 +219,7 @@ fn practice_folders(tmp: &Path) -> Vec<String> {
                 .to_string_lossy()
                 .into_owned()
         })
-        .filter(|name| name.starts_with("tributary-practice-"))
+        .filter(|name| name.starts_with("mergewright-practice-"))
         .collect()
 }
 
@@ -272,7 +272,8 @@ fn with(done: &[usize]) -> [bool; 8] {
 
 /// The practice repository's work tree under `tmp`.
 fn work_under(tmp: &Path) -> PathBuf {
-    tmp.join(format!("tributary-practice-{EPOCH}")).join("work")
+    tmp.join(format!("mergewright-practice-{EPOCH}"))
+        .join("work")
 }
 
 /// The card on task `n` (0-based) with `done` ticked: its title and its
@@ -780,7 +781,7 @@ fn step1_from_his_repo(shots: &mut graft_fixtures::Captures) {
         &root,
         "m8-tour-step1-120x36.txt",
         "`⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the \
-         left (`…-step1-XXXXXX/practice-tmp/tributary-practice-1609459200/work`, the run's random \
+         left (`…-step1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work`, the run's random \
          folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, \
          `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the \
          top row opens your changes · space stages the change under the cursor` (at 120 columns \

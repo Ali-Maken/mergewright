@@ -1,4 +1,4 @@
-//! The binary's askpass mode (m4-remotes/06): with `TRIB_ASKPASS_SOCKET`
+//! The binary's askpass mode (m4-remotes/06): with `MWR_ASKPASS_SOCKET`
 //! set and one argument, `graft` asks the running Graft over the socket,
 //! prints the answer for git and exits — 0 answered, 1 cancelled, 2 anything
 //! else — without touching the terminal.

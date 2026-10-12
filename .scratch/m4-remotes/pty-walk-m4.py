@@ -13,7 +13,7 @@ screen, then — depending on the capture's `when` — for the screen to stop
 changing (`settled`) or not at all (`appears`, for a progress footer that
 is gone a second later), asserts the frame against docs/shots/<stem>-<WxH>.txt
 through `graft-fixtures capture` (redacted; rewritten only under
-TRIB_UPDATE_SHOTS=1, and a run that rewrites one is red anyway), and ends
+MWR_UPDATE_SHOTS=1, and a run that rewrites one is red anyway), and ends
 the run with SIGTERM.
 
 Redaction (m6-conflicts/63): this script used to write the frame itself, so
@@ -37,7 +37,7 @@ Usage: python3 pty-walk-m4.py <COLSxROWS> [<scenario> ...]
 target directory that holds it:
     cargo build -q -p mergewright --example m4_walk
     cargo build -q -p graft-fixtures --bin graft-fixtures
-    TRIB_TARGET=target python3 .scratch/m4-remotes/pty-walk-m4.py 80x24
+    MWR_TARGET=target python3 .scratch/m4-remotes/pty-walk-m4.py 80x24
 """
 import fcntl, os, pty, re, select, signal, struct, subprocess, sys, tempfile, termios, time
 
@@ -45,9 +45,9 @@ import pyte
 
 SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
-TARGET = os.environ.get("TRIB_TARGET", "target")
+TARGET = os.environ.get("MWR_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m4_walk"
-FIXTURES = os.environ.get("TRIB_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+FIXTURES = os.environ.get("MWR_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
@@ -116,7 +116,7 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = sandbox_env(config_home, TRIB_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color",
+            env = sandbox_env(config_home, MWR_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color",
                        GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             os.execve(BIN, [BIN, "--capture", scenario], env)
@@ -211,7 +211,7 @@ def write_capture(stem, scenario, keys, frame, notes):
     if size > SOFT_CAP:
         notes.append(f"{size} bytes, over the 8 KB the ticket wants")
     # The same writer as pty-walk-m5.py/-m6.py: redacts, compares, and
-    # rewrites the file only under TRIB_UPDATE_SHOTS=1.
+    # rewrites the file only under MWR_UPDATE_SHOTS=1.
     checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: graft-fixtures, not Graft
                              capture_output=True)
     if checked.returncode != 0:

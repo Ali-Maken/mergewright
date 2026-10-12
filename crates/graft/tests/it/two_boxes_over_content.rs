@@ -214,7 +214,7 @@ fn section(out: &mut String, label: &str, drawn: &[String]) {
 /// `docs/shots/m5-ui-credential-over-graph-*.txt`: the two boxes, at 80x24
 /// and 160x48, each standing on a 200-commit graph. Run by hand to
 /// regenerate:
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --test it two_boxes_over_content`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it two_boxes_over_content`.
 #[test]
 fn capture_two_boxes_over_real_content_for_docs_shots() {
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {

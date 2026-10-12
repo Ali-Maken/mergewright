@@ -46,7 +46,7 @@ pass=0
 for n in $(seq 1 "$RUNS"); do
   start=$(date +%s)
   # As cargo runs it: from the package's folder, never regenerating captures.
-  if (cd crates/graft && env -u TRIB_UPDATE_SHOTS "$BIN" "$TEST" --exact >"$WORK/run-$n.out" 2>&1); then
+  if (cd crates/graft && env -u MWR_UPDATE_SHOTS "$BIN" "$TEST" --exact >"$WORK/run-$n.out" 2>&1); then
     pass=$((pass + 1))
     verdict=pass
   else

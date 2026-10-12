@@ -50,7 +50,7 @@ impl Scratch {
 /// `<root>/graft-<prefix>-<n>`, `n` counting this process's scratches in
 /// order, so the same walk draws the same path every time. Unset — every
 /// test — a scratch is a fresh random temp dir as before.
-pub const FIXED_ROOT_VAR: &str = "TRIB_SCRATCH_ROOT";
+pub const FIXED_ROOT_VAR: &str = "MWR_SCRATCH_ROOT";
 
 fn fixed_root() -> Option<std::path::PathBuf> {
     std::env::var_os(FIXED_ROOT_VAR)

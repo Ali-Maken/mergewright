@@ -24,7 +24,7 @@ Three checks, per capture:
 Captures are **asserted, not written**: each frame goes to
 `graft-fixtures capture <path>`, the same mechanism every Rust-drawn capture
 uses (m5-history-and-ghost-preview/40, 41). A drifted capture fails the run;
-TRIB_UPDATE_SHOTS=1 rewrites it and the run is red anyway, so a changed
+MWR_UPDATE_SHOTS=1 rewrites it and the run is red anyway, so a changed
 capture cannot reach a commit unlooked-at. That binary also redacts the
 machine's own home, scratch paths and ephemeral ports out of the frame
 before it compares or writes, so nothing here names whoever ran it.
@@ -36,10 +36,10 @@ judges these by eye.
 
 Usage: python3 pty-walk-m5.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build both binaries first, and point
-TRIB_TARGET at the directory that holds them:
+MWR_TARGET at the directory that holds them:
     cargo build -q -p mergewright --example m5_walk
     cargo build -q -p graft-fixtures --bin graft-fixtures
-    TRIB_TARGET=target python3 .scratch/m5-history-and-ghost-preview/pty-walk-m5.py 80x24
+    MWR_TARGET=target python3 .scratch/m5-history-and-ghost-preview/pty-walk-m5.py 80x24
 The ticket's sizes: 80x24 and 160x48 for every capture, 120x40 for the
 banner as well, 38x10 for the too-small preview only.
 """
@@ -49,11 +49,11 @@ import pyte
 
 SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
-TARGET = os.environ.get("TRIB_TARGET", "target")
+TARGET = os.environ.get("MWR_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m5_walk"
 # Captures are asserted, not written, and the one mechanism that does it
 # lives in Rust (m5-history-and-ghost-preview/41).
-FIXTURES = os.environ.get("TRIB_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+FIXTURES = os.environ.get("MWR_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
@@ -142,7 +142,7 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = sandbox_env(config_home, TRIB_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color")
+            env = sandbox_env(config_home, MWR_SCRATCH_ROOT=scratch_root(scenario), TERM="xterm-256color")
             env.pop("TERM_PROGRAM", None)
             os.execve(BIN, [BIN, "--capture", scenario], env)
         os.close(slave)
@@ -258,7 +258,7 @@ def check_capture(stem, scenario, keys, frame, notes):
     (m5-history-and-ghost-preview/40, 41): the committed file is **compared**
     to what the app drew, the machine's own paths and ports are redacted out
     of the drawn frame before anything is compared or written, and the file is
-    rewritten only under TRIB_UPDATE_SHOTS=1 — a run that rewrites one is red
+    rewritten only under MWR_UPDATE_SHOTS=1 — a run that rewrites one is red
     anyway, so a changed capture cannot reach a commit unlooked-at. This
     script does not write to docs/shots/ itself; it asks the binary to.
     """

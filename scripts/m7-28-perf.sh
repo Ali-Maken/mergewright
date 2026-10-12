@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/docs/perf/m7-28.txt"
 machine_state_begin "$OUT"
-export TRIB_M728_FILES=${1:-20000}
+export MWR_M728_FILES=${1:-20000}
 
 LINES=$(cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft-ops \
   --features heavy-tests --test it -- --ignored --nocapture --test-threads=1 \

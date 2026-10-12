@@ -1431,7 +1431,7 @@ fn the_evil_marker_paints_on_the_graph_row_with_the_pane_closed() {
 /// Regenerates `docs/shots/m2-evil-merge.txt` (m2-details-and-diffs/14).
 ///
 /// Asserted on every run; regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_evil_merge`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_evil_merge`.
 #[test]
 fn capture_m2_evil_merge() {
     use crate::update::detail::Loading;
@@ -1485,7 +1485,7 @@ fn capture_m2_evil_merge() {
 /// Regenerates `docs/shots/m2-force-push.txt` (m2-details-and-diffs/15).
 ///
 /// Asserted on every run; regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_force_push`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_force_push`.
 /// The state `capture_m2_force_push` draws: three synthetic commits, `main`
 /// on the middle one tracking `origin/main`, and the force-push verdict a
 /// rewritten remote would give — injected, because a capture runs no `git`.
@@ -1542,7 +1542,7 @@ fn force_push_state() -> (AppState, Oid) {
 /// Regenerates `docs/shots/m2-duplicate-commit.txt` (m2-details-and-diffs/16).
 ///
 /// Asserted on every run; regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_duplicate_commit`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_duplicate_commit`.
 /// The state `capture_m2_duplicate_commit` draws: three synthetic commits,
 /// with the middle one (0202020) carrying a `DuplicateCommit` finding whose
 /// copy is the tip (0303030) — the finding a real duplicates probe would
@@ -1916,7 +1916,7 @@ fn strip_narrows_the_graph_column_without_moving_the_trailing_columns() {
 /// Regenerates `docs/shots/m2-map-view.txt` (m2-details-and-diffs/19).
 ///
 /// Asserted on every run; regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_map_view`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_map_view`.
 #[test]
 #[allow(
     clippy::too_many_lines,
@@ -2009,7 +2009,7 @@ fn capture_m2_map_view() {
 /// Regenerates `docs/shots/m2-map-view-loading.txt` (m2-details-and-diffs/19).
 ///
 /// Asserted on every run; regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_map_view_loading`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_map_view_loading`.
 #[test]
 fn capture_m2_map_view_loading() {
     let mut state = AppState {
@@ -2117,7 +2117,7 @@ fn strip_capture_state() -> AppState {
 /// Regenerates `docs/shots/m2-overview-strip.txt` (m2-details-and-diffs/20).
 ///
 /// Asserted on every run; regenerate on purpose with
-/// `TRIB_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_overview_strip`.
+/// `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --lib capture_m2_overview_strip`.
 #[test]
 fn capture_m2_overview_strip() {
     let state = strip_capture_state();

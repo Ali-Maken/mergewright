@@ -1,7 +1,7 @@
 //! The captures m6-conflicts/12 ends with: where the app lands the user
 //! after each event of a live operation, drawn from real repositories over
 //! the real job pool. Each file is checked against what the code draws
-//! (`TRIB_UPDATE_SHOTS=1` rewrites it). 187x50 is the user's own terminal.
+//! (`MWR_UPDATE_SHOTS=1` rewrites it). 187x50 is the user's own terminal.
 //!
 //! Colour — the focused banner's reverse video — is not in a character
 //! grid: it ships **unverified** (CLAUDE.md rule 5).

@@ -37,7 +37,7 @@ pub enum Invocation {
     /// `prompt` to the running Graft listening on `socket`, print its answer
     /// for git, exit — never touching the terminal the running Graft owns.
     Askpass {
-        /// The running Graft's socket, from `TRIB_ASKPASS_SOCKET`.
+        /// The running Graft's socket, from `MWR_ASKPASS_SOCKET`.
         socket: PathBuf,
         /// git's question, its one argument (`Password for '…':`).
         prompt: String,

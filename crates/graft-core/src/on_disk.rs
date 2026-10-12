@@ -170,7 +170,7 @@ impl Generation {
 /// note m4, choice 2: an argument cannot ride in `GIT_ASKPASS` reliably).
 /// Here with the other on-disk names (ADR-0057 section 2) so the crate that
 /// sets it and the binary that reads it share one definition.
-pub const ASKPASS_SOCKET_VAR: &str = "TRIB_ASKPASS_SOCKET";
+pub const ASKPASS_SOCKET_VAR: &str = "MWR_ASKPASS_SOCKET";
 
 /// The marker file whose existence puts a generation with
 /// [`Generation::has_marker`] in force. It lives in

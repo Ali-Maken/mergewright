@@ -1,5 +1,5 @@
 //! The frame trace the shipped binary writes when asked (m8-polish-and-ship
-//! G-trace): `TRIB_PERF_TRACE=<file>` makes every drawn frame append one
+//! G-trace): `MWR_PERF_TRACE=<file>` makes every drawn frame append one
 //! line of numbers saying where its time went, so a run on the user's own
 //! repository, in his own terminal, can be read without guessing.
 //!
@@ -24,7 +24,7 @@
 //! writer is wrapped in [`Metered`], which counts the bytes and the time
 //! spent in the writes that reach the terminal.
 //!
-//! The test-only `TRIB_FRAME_TRACE` (`tests/it/frame_trace.rs`) is a
+//! The test-only `MWR_FRAME_TRACE` (`tests/it/frame_trace.rs`) is a
 //! different thing — per-key phases inside the perf harness — and is left as
 //! it is.
 
@@ -44,8 +44,8 @@ use crate::event_loop::Wake;
 use crate::update::{AppEvent, AppState};
 
 /// The variable that turns the trace on. Renamed in G-rename
-/// (`TRIB_PERF_TRACE`).
-pub(crate) const VAR: &str = "TRIB_PERF_TRACE";
+/// (`MWR_PERF_TRACE`).
+pub(crate) const VAR: &str = "MWR_PERF_TRACE";
 
 /// One drawn frame, as the trace line says it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -104,7 +104,7 @@ pub(crate) struct FrameTrace {
 }
 
 impl FrameTrace {
-    /// The trace `TRIB_PERF_TRACE` names, created (truncated) now.
+    /// The trace `MWR_PERF_TRACE` names, created (truncated) now.
     /// `Ok(None)` when the variable is unset or empty; an `Err` when the
     /// file cannot be created, which the loop shows and runs on without.
     pub(crate) fn from_env() -> io::Result<Option<FrameTrace>> {

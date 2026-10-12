@@ -6,7 +6,7 @@
 //!
 //! Elsewhere: each task ticked by doing it, `tour_tasks.rs` (19c-b); the
 //! captures and `P` under a macOS-length `TMPDIR`, `tour_walk.rs` (19c-c).
-//! `TRIB_PRACTICE_EPOCH` fixes the practice repository's dates (19c-a), so
+//! `MWR_PRACTICE_EPOCH` fixes the practice repository's dates (19c-a), so
 //! its ids and order are the same every build.
 #![allow(
     clippy::expect_used,
@@ -170,7 +170,7 @@ fn t_on_the_empty_state_starts_the_tour_and_esc_comes_back() {
     assert_within_the_note("start-tour-empty-state", false, &[b"t"]);
     let made = left_in(&tmp);
     assert_eq!(made.len(), 1, "one practice folder: {made:?}");
-    assert!(made[0].starts_with("tributary-practice-"), "{made:?}");
+    assert!(made[0].starts_with("mergewright-practice-"), "{made:?}");
     assert!(screen.has("stage a change"), "{}", screen.text());
 
     nothing_else_takes_esc(&pty);

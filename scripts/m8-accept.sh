@@ -17,7 +17,7 @@
 #      "teaches itself" tests (m8_walk::teaches), the tour walked to
 #      `practice done ✓` with the `mwr` binary (tour_walk), and every
 #      capture under docs/shots compared with what the code draws
-#      (check_shot; TRIB_UPDATE_SHOTS unset), the look re-shoots included.
+#      (check_shot; MWR_UPDATE_SHOTS unset), the look re-shoots included.
 #   2. (--perf only) the heavy tier's held-key runs in release: held `j` at
 #      Unicode and Pixel (raw and deflate), `G` after idle
 #      (frames::after_idle::g_after_idle), RSS after held `j` at Pixel
@@ -49,7 +49,7 @@ out() { echo "$1" | tee -a "$SUMMARY"; }
 } > "$SUMMARY"
 
 # ── 1. the fast tier: walks, teaches, tour, captures ────────────────────────
-env -u TRIB_UPDATE_SHOTS cargo nextest run --workspace --no-fail-fast > "$ACCEPT/nextest.txt" 2>&1
+env -u MWR_UPDATE_SHOTS cargo nextest run --workspace --no-fail-fast > "$ACCEPT/nextest.txt" 2>&1
 rc=$?
 line=$(grep -E '^ +Summary ' "$ACCEPT/nextest.txt" | tail -1 | sed -E 's/^ +//')
 out "1 fast tier: ${line:-no summary (build failed?)} · rc=$rc · $ACCEPT/nextest.txt"

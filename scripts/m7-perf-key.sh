@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # m7-power-tools/04: where a slow key's time goes. Release `frames::` tests,
 # 3 plain runs and one run per control, each key's phases traced
-# (TRIB_FRAME_TRACE). Writes docs/perf/m7-04-slow-key.txt (or $1).
+# (MWR_FRAME_TRACE). Writes docs/perf/m7-04-slow-key.txt (or $1).
 #
 #   plain  the scroll, then 5 keys each after a 600 ms idle pause
 #   a      control A: the same keys with no idle pause
@@ -58,7 +58,7 @@ run() { # label control
   if [ -n "$CANNED" ]; then
     canned "$label" >"$WORK/$label.out" 2>&1
   else
-    TRIB_FRAME_TRACE="$WORK/trace.txt" TRIB_FRAME_RUN="$label" TRIB_FRAME_CONTROL="$control" \
+    MWR_FRAME_TRACE="$WORK/trace.txt" MWR_FRAME_RUN="$label" MWR_FRAME_CONTROL="$control" \
       cargo test --release --features "$FEATURES" --quiet -- frames:: frame_trace:: --nocapture --test-threads=1 \
       >"$WORK/$label.out" 2>&1
   fi
