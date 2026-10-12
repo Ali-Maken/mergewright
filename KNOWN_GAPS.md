@@ -1345,3 +1345,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/48-two-builds-one-repo | Two real builds open on one repo at once during the Mergewright move: not exercised outside tests (48 Part B NOTES). | **unverified** | post-M8 |
 | M8/48-old-lock-stray-pass | A leftover old-generation lock file triggers one stray pass (spawns git); no test covers it (48 Part B NOTES). | **unverified** | post-M8 |
 | M8/48r-kept-aside-journal-blocks-move | If a backup named by a kept-aside journal is gone (by hand), every open stays on old names (`KeptOld`); nothing lost, move never happens. Proposal: `check_journals` skips `older-version/` (48r NOTES). | **broken** (low odds) | post-M8 |
+| M8/49-current-command-inline | `Generation::CURRENT.command()` spelled inline in three crates (review 49 m6); readability only. | **broken** (readability) | post-M8 |
