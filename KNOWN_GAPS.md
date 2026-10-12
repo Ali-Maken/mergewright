@@ -1355,3 +1355,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M8/55-changelog-m6-m8 | `CHANGELOG.md` has no M6, M7 or M8 entry; it ships in the release archive (review 55-56 Minor 5). | **broken** (doc incomplete) | before first public release |
 | M8/55-shots-left-unsorted | Review 51 Minor 4 (unsorted `27-shots-left.txt` output) not done by 55, no reason given (review 55-56 Minor 6). | **unverified** | post-M8 |
 | M8/56r-signing-config-unrun | `shot-drift-test.py` under a global config with `commit.gpgsign=true` not run (harness blocked setting `GIT_CONFIG_GLOBAL` for the builder). Code sets `GIT_CONFIG_GLOBAL=os.devnull`, `GIT_CONFIG_NOSYSTEM=1` per call. | **unverified** | post-M8 |
+| M8/58-two-windows-flock | Journal `flock` fix (58) tested in one process; two real `mwr` windows on one repo not run. | **unverified** | post-M8 |
+| M8/58-corrupt-journal-refused | A journal already holding two outcomes for one entry (`graft-ops/src/journal.rs:116`) is still refused whole; J and `u` stay blocked until fixed by hand. Which outcome wins is a design choice, not built. | **question** | post-M8 |
