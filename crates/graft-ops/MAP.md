@@ -31,7 +31,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `restart_gate` (fn) — `d`'s gate as a read: `Result<Result<RestartPlan, Refusal>, RestartReadError>`, asking what `apply(RestartConflict)` would.
 - `RestartPlan` (struct) — `source: StageSource`, `kind: RestartKind`.
 - `RestartReadError` (enum) — a read `restart_gate` needed failed.
-- `recover_interrupted` (fn) — at launch, closes every `Pending` entry a previous run left as `interrupted`; leaves ones git says are still under way.
+- `recover_interrupted` (fn) — closes every `Pending` entry a dead run left as `interrupted`; leaves ones git says are still under way, and closes nothing while another `Journal` holds the writer's lock.
 - `Recovered` (struct) — `live`, `closed`, `unreadable: Vec<(EntryId, FactsError)>`, `plans_left`, the set-aside edits found: what recovery did.
 - `came_back_from_index` (fn) — `(repo, stash, worktree_before)`: staged-new files he had deleted that a set-aside put-back checked out again.
 - `came_back_words` (fn) — `(paths) -> Option<String>`: the note naming those files.
@@ -114,6 +114,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Journal::unresolved` (fn) — entries with no outcome line: a process that died between the two.
 - `Journal::hold_commands` (fn) — keep a stopped operation's command lines on the held entry until its outcome line.
 - `Journal::mark_interrupted` (fn) — close a `Pending` entry as interrupted, recording the state read now.
+- `Journal::claim` (fn) — take the writer's shared lock (`flock` on the journal file) and re-read; `append_pending` and `resume` take it; held until drop.
+- `Journal::alone` / `Alone` (fn, struct) — the journal held exclusively and re-read, or `None` while a writer holds it: recovery's gate.
 - `journal_path` (fn) — `git rev-parse --git-path <dir>/undo-journal.jsonl`: per worktree (ADR-0010).
 - `journal_path_in` (fn) — `journal_path` under names given rather than the handle's.
 

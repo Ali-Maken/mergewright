@@ -8,6 +8,17 @@
 //!
 //! Every append is `O_APPEND` plus `fsync`: the line is on disk before the
 //! operation it describes starts. Nothing here spawns `git`.
+//!
+//! **Who may close a `Pending` entry.** Its own writer, with an outcome; or
+//! recovery, as `interrupted`, once that writer is gone. Recovery tells the
+//! two apart with an advisory lock on the journal file itself
+//! ([`FileLock`]): a writer holds it shared from its first `Pending` line
+//! (or, resuming, from before it touches git) until it drops the
+//! [`Journal`]; recovery closes anything only while it holds it alone. The
+//! kernel drops a dead process's lock, so a crashed run's entries are still
+//! recovered, and two `Journal`s in one process contend exactly as two
+//! processes do — `J`'s read job and a running operation's job included
+//! (m8-polish-and-ship/58).
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -15,6 +26,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, EntryStatus, JournalEntry};
 use graft_core::on_disk::Generation;
+use graft_git::file_lock::FileLock;
 use graft_git::repo::RepoHandle;
 use graft_git::run::RunError;
 
@@ -35,12 +47,27 @@ use graft_core::journal::INTERRUPTED;
 ///
 /// The entries are kept in memory so the undo/redo cursor (`next_undo`,
 /// `next_redo`) can be read without re-parsing; every append updates both the
-/// file and that copy, so they never disagree.
+/// file and that copy, so they never disagree. The copy is read again from
+/// the file whenever this `Journal` takes the lock (module docs): another
+/// `Journal` may have appended between the open and the lock.
 #[derive(Debug)]
 pub struct Journal {
     path: PathBuf,
     entries: Vec<JournalEntry>,
     torn_tail: Option<usize>,
+    /// The names in force the entries were read under ([`Journal::open_as`]),
+    /// so a re-read maps them the same way.
+    names: Option<Generation>,
+    /// The writer's shared lock, held from [`Journal::claim`] until drop.
+    writing: Option<FileLock>,
+}
+
+/// The journal held alone, by [`Journal::alone`]: no other `Journal`, in
+/// this process or any other, is part-way through writing an entry while it
+/// is held. Dropping it lets writers in again.
+#[derive(Debug)]
+pub struct Alone {
+    _held: FileLock,
 }
 
 impl Journal {
@@ -80,6 +107,8 @@ impl Journal {
             path: path.to_path_buf(),
             entries: parsed.entries,
             torn_tail: parsed.torn_tail,
+            names: None,
+            writing: None,
         })
     }
 
@@ -92,7 +121,59 @@ impl Journal {
     pub fn open_as(path: &Path, names: Generation) -> Result<Journal, JournalError> {
         let mut journal = Journal::open(path)?;
         crate::rename::map_entries(&mut journal.entries, names);
+        journal.names = Some(names);
         Ok(journal)
+    }
+
+    /// Take the writer's lock, shared with other writers, before this
+    /// `Journal` writes an entry's first line or acts on a `Pending` entry
+    /// it did not open itself (a resume). Waits — a kernel wait, not a poll
+    /// — while recovery holds the journal [`alone`](Journal::alone), then
+    /// reads the file again, so the copy is current as of the lock: an entry
+    /// recovery closed just before is seen closed, never closed twice.
+    ///
+    /// Held until this `Journal` drops. Taking it again is a no-op.
+    pub fn claim(&mut self) -> Result<(), JournalError> {
+        if self.writing.is_some() {
+            return Ok(());
+        }
+        let held = FileLock::shared(&self.path)?;
+        self.reread()?;
+        self.writing = Some(held);
+        Ok(())
+    }
+
+    /// The journal alone, or `None` while any other `Journal` holds the
+    /// writer's lock — some operation, in this process or another, has an
+    /// entry it is still writing. On success the copy is read again from the
+    /// file, so it holds every outcome a writer appended before letting go.
+    ///
+    /// This `Journal`'s own writer's lock is let go first: asking for the
+    /// journal alone says this `Journal` is not part-way through an entry.
+    pub fn alone(&mut self) -> Result<Option<Alone>, JournalError> {
+        self.writing = None;
+        let Some(held) = FileLock::try_exclusive(&self.path)? else {
+            return Ok(None);
+        };
+        self.reread()?;
+        Ok(Some(Alone { _held: held }))
+    }
+
+    /// Replace the held copy with the file as it stands, mapped under the
+    /// same names as at open.
+    ///
+    /// Reads only — unlike [`open`](Journal::open) it never cuts a torn
+    /// tail: under a shared lock another writer may be part-way through its
+    /// own append, and that line is unfinished, not wreckage. `open` already
+    /// cut any a crash left.
+    fn reread(&mut self) -> Result<(), JournalError> {
+        let bytes = std::fs::read(&self.path)?;
+        let mut entries = parse(&bytes)?.entries;
+        if let Some(names) = self.names {
+            crate::rename::map_entries(&mut entries, names);
+        }
+        self.entries = entries;
+        Ok(())
     }
 
     /// The journal file's path.
@@ -117,8 +198,11 @@ impl Journal {
     /// Write an entry's `Pending` line and remember it.
     ///
     /// Returns `DuplicatePending` rather than writing a second opening line
-    /// for an id the file already holds.
+    /// for an id the file already holds. Takes the writer's lock first
+    /// ([`Journal::claim`]), so recovery leaves this entry alone until this
+    /// `Journal` drops.
     pub fn append_pending(&mut self, entry: &JournalEntry) -> Result<(), JournalError> {
+        self.claim()?;
         if self.entries.iter().any(|held| held.id == entry.id) {
             return Err(JournalError::DuplicatePending(entry.id.clone()));
         }
@@ -256,3 +340,6 @@ pub fn journal_path_in(repo: &RepoHandle, names: Generation) -> Result<PathBuf, 
     let dir = names.dir();
     repo.git_path(Path::new(&format!("{dir}/{FILE_NAME}")))
 }
+
+#[cfg(test)]
+mod tests;
