@@ -4,9 +4,9 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M8 stop, 2026-10-11 — waiting on the user.** All M8 work merged and gated (c13c459c, 6350/6350) except 27d (parked until the name is chosen). Close run: release perf 21/21 after harness fix; heavy held_key fixed (3 raw-Kitty fails = M7/46); 05 draw tail = CPU clock (gap). AUTHORSHIP regenerated. Live log: `docs/log/m8.md`. **Next (user):** judge captures by eye; answer usability Q1/Q2; naming discussion (unparks 27d, protected lines, release docs); held items in the stop report.
+**Current step:** **M8 stop (Mergewright set), 2026-10-12 — waiting on the user.** Rename to Mergewright/`mwr` done: tickets 46–59 merged and gated (5caee901+, 6445/6445). Local release build ok (`mwr 0.1.0`, nothing published). Usability walk done (`docs/reviews/m8-mergewright-usability.md`), its Majors fixed (59). AUTHORSHIP regenerated. Live log: `docs/log/m8.md`. **Next (user):** judge captures by eye; trademark search before anything public; post-M8 gaps.
 
-**Running now:** builder 11e (doorway footers); builder 10l (resolve refusal words); scout 05 (report kept). Next: debugger stop-now flake, 15, 12b, 18, 19, 20, 23–27, reviews owed, 28 acceptance. **05 (Ghostty lag) deferred by the user until the rest is built**, then milestone stop.
+**Running now:** nothing.
 
 **Batched for the user at the M6 stop:** the 11 items in `.scratch/m6-conflicts/user-batch.md` (supersedes the earlier (1)–(8) list; checked against the build 2026-09-24).
 
