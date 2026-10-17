@@ -1,6 +1,7 @@
 # clash-reads — what the merge preview, the incoming list, the pick undo and the look need from git
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — brownfield; conductor sets after the scout)
 Needs: none
 

@@ -1,6 +1,7 @@
 # roles-and-route — what colour a lane is, and what a branch was built on
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: Fable (signature) — every graph pane (rows, connectors, pixel tier, branch pane) draws from these types; a wrong shape is structural.
 Needs: none
 

@@ -3,8 +3,8 @@
 Source of truth: ADR-0063 and the three accepted mocks `prototypes/ease-mocks/mergewright-{main,commit,merge}-screen.html`
 (read for visible text and key handlers only). **Build to the mocks** (ADR-0063 Consequences): every behaviour below is an
 acceptance line; every departure is in **Questions for the user**, not decided here. Colour is never promised (rule 5).
-**Pass 1 of 2**: this note, the interface-first specs and the acceptance spec. Pass 2 writes the brownfield UI specs after
-their scouts and his answers.
+**Pass 2 done** (2026-10-17): 13 specs in `.scratch/ease-pass/issues/`; Q1–13 answered "all a"; Q14 open (build proceeds
+on its recommendation, one-line change if he picks b).
 
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
@@ -63,7 +63,9 @@ open-folded-merge    1     space                         SM 1 click
   cursor on the first clash (0 keys). 3 `o` → block shrinks; file solved, stays on screen. 4 `y` → review "Nothing
   committed yet". 5 `y` → **lands** on the graph, cursor on the merge commit (folded), `✓ Merged …`. Clean merge: step 2
   lands there directly. Refused (in the way, ADR-0049) → the preview says why, nothing written (today's).
-- **Teammate's status:** move to his row (navigation) → the right pane answers four questions; 0 extra keys.
+- **Pause:** `esc` on the clash screen → graph, banner focused (Q7 a); `⏎` → first open clash, picks kept.
+- **Teammate's status:** move to his row (navigation) → the right pane answers four questions; 0 extra keys. Switch to his
+  branch: `C ⏎` (Q1 a).
 
 ## Mock behaviours → specs (acceptance lines)
 Slugs: **R** roles-and-route · **V** ease-vocabulary · **W** commit-what-goes-in · **K** clash-reads · **P** resolver-picks
@@ -79,7 +81,7 @@ message dimmed on other rows (G) · G7 muted labels after the message: `↑1 to 
 branch and its upstream are one name (G) · G8 who = first name, own `you` bold; age `23h 9d 2w`; no SHA column, no badges
 (G) · G9 cursor row's second line `<who> · <N hours> ago · made on <branch>[ · <label>][ · merged N from <b>][ · also in
 A, B] · <sha7>`, lanes continue through it; every row the cursor rests on gets it (ADR-0063 rule; the mock skipped opened
-rows) (G X) · G10 header `on <branch>`, `lanes drawn: N of M`, `K merged branches folded` (F G; Q11) · G11 lanes only for
+rows) (G X) · G10 header `on <branch>`, `lanes drawn: N of M`, `K merged branches folded` (F G; Q11, Q14) · G11 lanes only for
 branches with a commit in view (F) · G12 right pane: heading + `(you're here)`; four marked lines `! ✓ ·`; `built on`
 route trunk first ` ─◆ ` (R B) · G13 bar per row kind (G V; Q1 Q2 Q11) · G14 `#` colour off, shapes stay (V G; Q3).
 
@@ -107,6 +109,15 @@ edit by hand: mock gap → today's `$EDITOR` at the cursor block (§2.6) · M14 
 +a −d`, one sample with `from yours/from theirs` (Fr K) · M18 commit lands on the merge commit folded `▸ N commits from
 <from>`, `✓ Merged …`, bar `u undo the merge · P push · space show the N commits inside` (Fr F) · M19 `u` undoes it (today).
 
+**Mock gaps decided in pass 2** (not departures: the mocks are silent; each follows an existing rule or precedent):
+tags on rows → muted label `tag <name>` beside `<branch> is here` (G7 family); drag source → that label and the branch
+column (§2.15 kept); uncommitted row's second line `not committed yet · N files · on <branch>` (G9 "every row"); a commit
+option turned on from `?` → its word in the commit header while on, nothing when off (CLAUDE.md status rule); amend `a`
+→ the same commit screen, message prefilled, staged files in (one screen, consistency); the review's message field →
+whatever the merge mock shows, else git's `MERGE_MSG` (Fr scout checks); `lanes drawn` / `folded` words shown only while
+something is dropped / folded (status rule); merge preview without buttons only for `m` — other previews keep theirs
+(flag for the usability walk).
+
 ADR-0063 departures checked against `docs/design/02-keymap.md`: (1) `⏎` commits from the subject — **already the spec and
 build** (§2.10 :494, P16; `crates/graft-ui/MAP.md:235`), not a departure. (2) `y` finish — resolver is modal, `y` unbound
 there (§2.6 table); one confirm key (§2.3b) → take; `c` kept as alias, not on the bar. (3)(4)(5) follow the mocks; DESIGN
@@ -120,13 +131,19 @@ Pass-1 signatures (exact in the specs): **graft-graph `role`** — `enum LaneRol
 `role(BranchIdentity) -> LaneRole`), `fn made_on(&Row) -> Option<BranchIdentity>`; caller: app `view::entries`/`strips`.
 **graft-ops `branch_status`** — `Candidate`, `CandidateKind`, `Apart`, pure `choose_base`, `route`, `branch_status ->
 BranchStatus { route, pushed, merged, behind, who }`; caller: app job behind the right pane and the route. **graft-ui**
-— theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap contexts `CommitFiles`, `Incoming`, `MergeLook` and
-action ids (V). **graft-ops** — `CommitParams.include: Include`, `Chosen`, `Take`, `FileChoice`, `first_choice`,
-`looks_like_secrets` (W). **graft-git** — `merge_forecast -> MergeForecast { changed, clashes: Vec<ClashForecast> }`,
-`CommitSummary.when`, `ConflictFile::reopen`, pure `line_origins` (K). **graft-ops + app** — `Resume` variants carry
-`solved: Vec<PathBuf>`, `FinishMergeParams.solved`, `finish_preview(repo, solved, stop)`; app `Picks`, `next_open_in_file`,
-`next_open` (P). Pass 2 adds: `merge_name` recovers `Merged PR <n>: …` as `PR <n>` (F, Q13), view models
-(`BranchPaneView`, commit screen view, `GraphEntry` cells, review/look views).
+— theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap contexts `CommitFiles`, `Incoming`, `MergeLook`, action
+ids and every bar's `HintContext` (V owns `hints.rs` for the pass). **graft-ops** — `CommitParams.include: Include` (amend
+too), `Chosen`, `Part`, `FileChoice`, `first_choice`, `looks_like_secrets` (W). **graft-git** — `merge_forecast ->
+MergeForecast { changed, clashes: Vec<ClashForecast> }`, `CommitSummary.when`, `ConflictFile::reopen`, pure `line_origins`
+(K). **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`, `FinishMergeParams.solved`,
+`finish_preview(repo, solved, stop)`; app `Picks` (+`seal`), `next_open_in_file`, `next_open` (P).
+Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `FoldWalk::admit`, `Fold::open_columns`,
+`merge_name` `PR <n>` (F); raster `Stroke::of(LaneRole)`, `PlainStrip.roles`, `rasterise_continuation` (X). **graft-ui**
+`lane_glyph`/`join_glyph`, `GraphEntry` cells `BranchCell`/`WhoCell`/`RowLabel`/`SecondLine` (badges, SHA, chip removed),
+`Theme::colourless` (G); `branch_pane::{BranchPaneView, PaneLine, Mark, pane_width}` (B); `CommitScreenView`,
+`SUBJECT_LIMIT = 72` (S); `MergeParts`, `IncomingList` (Mp); resolver `Mark`, `ListTail`, inline only (L); `ReviewView`,
+`LookView`, `MergeLook` (Fr). **graft app** `lane_roles`, `commit_rows`, `AppState.{route, colours_off}` (G); `StatusKey`,
+`candidates`, picker `open_on` (B); `TallRow` (X); `Draft`, `include_of` (S); `jobs::finish::look_read` (Fr).
 
 ## Hard-to-reverse choices
 1. **What "made on" and "built on" mean.** Options: new attribution pass inside the layout engine; or lane identity for
@@ -134,7 +151,8 @@ action ids (V). **graft-ops** — `CommitParams.include: Include`, `Chosen`, `Ta
    branch-only commits (merge-base), ties trunk → integration → other; read lazily per focus, cached per tips.
 2. **Fold by default as a streaming inclusion predicate** (first-parent closure of trunk, HEAD, integration and refs not
    reachable from trunk; two bitsets filled as the topo walk emits) vs a precomputed fold set. **Rec: predicate** — keeps
-   first paint and scroll budgets; fits `Inclusion`/`Included` (§3.6 last bullet).
+   first paint and scroll budgets; fits `Inclusion`/`Included` (§3.6 last bullet). Needs children-before-parents in the
+   provisional order — F's scout checks; if not, it comes back as a question.
 3. **When a merge's solved files are staged.** At each file's last pick (lazygit) or once, at the review's `y`. **Rec: at
    `y`, one write** — `u` stays a disk-only reopen in every merge, shell-begun included; the review reads a scratch index;
    relaunch treats an unmerged file with no markers as solved. Rebase, cherry-pick, revert, stash keep `⏎` staging (Q12).
@@ -144,11 +162,12 @@ DESIGN edits the accepted mocks imply (go to him as Proposed changes): `02-keyma
 preview `⏎`, Q6), §2.6 (advance in file, `n` open clashes, `y` review, `u` pick undo, no `⏎` for merges, P11 auto-open
 dropped), §2.6a (`u` inside the resolver), §2.6b (review replaces the summary for merges: `⏎` look, `u`, no inline diff),
 §2.10 (`⇥` subject → body → files; counter 72, was 50; options Q8). `01-view-mockups` §1.0/§1.1–1.3 (branch, who, age
-columns; no SHA/badges; right pane), §1.5 (inline at every width ≥100; three-pane and kept headers retired), §1.13 (banner
-words `merging <from> into <into>`). `03-graph-layout` §3.4 (colour by role), §3.5 (`+N lanes` → `lanes drawn: N of M`,
-drop columns with no node in view). PROMPT §1.3 fold default. Mine: (a) "built on" by merge-base distance can name a
-different base than the team thinks after a rebase onto a sibling — accepted, the route is shown, not acted on. (b) The
-mocks give `⏎` two meanings in file lists: commit (commit screen) vs look (review); kept as accepted, flagged for the walk.
+columns; no SHA/badges; right pane), §1.5 (inline at every width ≥100; three-pane and kept headers retired), §1.7 (merge
+preview without buttons), §1.13 (banner words `merging <from> into <into>`). `03-graph-layout` §3.4 (colour by role),
+§3.5 (`+N lanes` → `lanes drawn: N of M`, drop columns with no node in view). PROMPT §1.3 fold default. Mine: (a) "built
+on" by merge-base distance can name a different base than the team thinks after a rebase onto a sibling — accepted, the
+route is shown, not acted on. (b) The mocks give `⏎` two meanings in file lists: commit (commit screen) vs look (review);
+kept as accepted, flagged for the walk.
 
 ## New UI
 Graph (≥120 cols, as mock): `graph | branch 20 | message | who 6 | age 4` + `│` + branch pane 36. 100–119: pane 30, branch
@@ -157,7 +176,8 @@ names; rest grey. `⏎` opens the detail pane as today (§1.1–1.3); while open
 `reading…` muted per line; a failed read `can't tell: <reason>` in that line only; a row on no branch → `<sha7> · not on a
 branch`. Commit screen: full frame under the header: message box (subject 1, body 3), summary line, `files 44 | diff`;
 <100 files only. Clash screen: list column 30 at ≥100 (strip below, today's); file pane as mock; sides stack below 100
-(today's). Review and look: boxes as mock, full frame. Captures go to `docs/shots/ease-pass/`, named after the mock.
+(today's). Review and look: boxes as mock, full frame. Captures go to `docs/shots/ease-pass/`, named after the mock
+(`main-…`, `commit-…`, `merge-…`); the contact sheet puts each beside its mock path.
 
 ## Genuinely risky tickets
 - **roles-and-route** — signature: every graph pane draws from it; Fable (signature).
@@ -168,11 +188,11 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
   (gate: trace, not eye). Neither is Fable: correctness is checkable by tests/trace.
 
 ## Questions for the user
-**Answered 2026-10-17 by the user: "all a"** — every question takes option (a). Blocked specs are unblocked.
+**Answered 2026-10-17 by the user: "all a"** — Q1–13 take option (a). Close calls he flagged: 2, 9 (`docs/field-notes.md:112`).
 1. On a teammate's row the bar says `C switch to <branch>`; today `C` opens the branch list. (a) list opens on that branch, `⏎` switches (2 keys) · (b) `C` switches at once. **Rec a.**
 2. On a teammate's row the bar says `x compare with yours`; today `x` marks a row and a second `x` on another row compares. (a) keep today's, bar says `x compare` · (b) one `x` compares his branch with yours. **Rec a.**
 3. `#` turns colours off (lines keep their shapes). (a) `#` does it, whole screen, until you quit · (b) only from `⌃P`. **Rec a.**
-4. In Ghostty (smooth curves): the new line styles and the cursor row's second line move every picture below it on each `j`/`k`. (a) build both, then measure lag · (b) styles yes, second line shown in the bottom bar in Ghostty · (c) Ghostty draws the plain-character graph. **Rec a.**
+4. In Ghostty (smooth curves): the new line styles and the cursor row's second line move every picture below it on each `j`/`k`. (a) build both, then measure lag · (b) styles yes, second line shown in the bottom bar in Ghostty · (c) Ghostty draws the plain-character graph. **Rec a.** → X measures (`scripts/ease-pixel-lag.sh` → `docs/perf/ease-pixel.txt`, plus a command for his own Ghostty); the numbers come back to him with (b)/(c) still open before anything is cut.
 5. Merge preview: today the would-be merge is also drawn faint in the graph above the box; the mock shows only the box. (a) keep the faint rows · (b) box only. **Rec a.**
 6. Merge preview `⏎`: mock lists the incoming commits; today `⏎` presses the highlighted button (Cancel) and the box has `[ Cancel ] [ Confirm ]`. (a) as mock, no buttons, `y`/`esc` on the bar · (b) keep buttons. **Rec a.**
 7. `esc` on the clash screen ("pause, come back later"): (a) graph with the merge bar on top already selected, `⏎` back to the first open clash · (b) plain graph as the mock, `⇥ ⏎` to come back. **Rec a.**
@@ -183,6 +203,15 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
 12. Clashes in a rebase, cherry-pick or stash put-back (not in the mocks). (a) same new look, advance and `u`; finishing stays `⏎` file done, `c` go on · (b) leave them on today's screen this pass. **Rec a.**
 13. Your work repo's merges read `Merged PR 16021: …` and don't name the branch; once that branch is deleted, the folded row can't say `from sara/fix-toc` as the mock does. (a) `▸ 4 commits from PR 16021` · (b) `▸ 4 commits`. **Rec a.**
 
+**Open (pass 2):**
+14. Top line, after your answer to 11: today's top line already names your branch (`◆ reports ~/work/reports · wallet-release`). Adding the mock's words would name it twice (`… · wallet-release … on wallet-release  lanes drawn: 5 of 8`). (a) add only `lanes drawn: 5 of 8 · 3 merged branches folded` at the right end · (b) add `on wallet-release` too, as the mock. **Rec a.** F builds (a); (b) is a one-line change.
+
 ## Groups and waves (≤2 cargo builders)
-W1 R ‖ K · W2 V ‖ W · W3 P ‖ F · W4 G ‖ S · W5 B ‖ Mp · W6 L ‖ Fr · W7 X · W8 A. V and every pass-2 UI group wait for
-his answers. Brownfield groups get a scout first (ADR-0035); `Build with` blank on those.
+W1 R ‖ K · W2 V ‖ W · W3 P ‖ F · W4 G ‖ S · W5 B ‖ Mp · W6 L ‖ Fr · W7 X **alone** (its lag script must run on a quiet
+machine) · W8 A. Every pass-2 group is brownfield: scout first (ADR-0035), `Build with` blank.
+Same-crate pairs (graft app in W3–W6, graft-ui in W4–W6) use disjoint files (ADR-0051). Shared registries: **V owns
+`graft-ui/src/graph_screen/hints.rs`** for the pass (later groups pick a `HintContext`, never edit lists). `update/state.rs`,
+`update/events.rs`, `jobs/kinds.rs`: the first-named group of each pair owns them; the second adds only at the end of an
+enum/struct and names the lines in its report, for the conductor's merge.
+Dependency order: R, K, V, W (no needs) → P (K, V) · F (none) → G (R, V, F) · S (W, V) → B (R, G, V) · Mp (K, V) → L (P, V)
+· Fr (P, K, V, F) → X (R, G, F, V) → A (all).
