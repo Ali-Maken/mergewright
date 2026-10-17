@@ -17,7 +17,7 @@ use graft_ops::rewrite::{EditStop, RewriteRequest, TodoAction, edit_stop, plan};
 
 use crate::support::{NOW, Never, TempRepo, git_version, try_run};
 
-fn id(repo: &TempRepo, rev: &str) -> Oid {
+pub(super) fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a commit id")
 }
 
@@ -72,7 +72,7 @@ fn git_writes_rebase_merge_amend_at_an_edit_stop() {
     assert!(!amend.exists(), "--continue removes it");
 }
 
-fn facts(repo: &TempRepo) -> RepoFacts {
+pub(super) fn facts(repo: &TempRepo) -> RepoFacts {
     read_facts(&repo.open(), git_version(), &Never, &FactsScope::default())
         .unwrap_or_else(|why| panic!("the facts read: {}", why.explain()))
 }
@@ -190,7 +190,7 @@ fn edit_stop_is_none_at_a_conflict_stop() {
 
 /// A `line()` of `rewrite_run`, cut to one branch: `main` then `feature`
 /// with two commits on it.
-fn feature() -> TempRepo {
+pub(super) fn feature() -> TempRepo {
     let repo = TempRepo::init();
     repo.write("m1.txt", b"m1\n");
     repo.commit_all("m1");

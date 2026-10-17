@@ -15,6 +15,7 @@ mod checkout_hook_fails;
 mod cherry_pick;
 mod clone;
 mod commit_chosen;
+mod commit_chosen_scratch;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;

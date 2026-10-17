@@ -142,6 +142,11 @@ impl Journal {
         Ok(())
     }
 
+    /// This `Journal` holds the writer's lock ([`Journal::claim`]).
+    pub(crate) fn claimed(&self) -> bool {
+        self.writing.is_some()
+    }
+
     /// The journal alone, or `None` while any other `Journal` holds the
     /// writer's lock — some operation, in this process or another, has an
     /// entry it is still writing. On success the copy is read again from the

@@ -10,7 +10,8 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 
 use super::SnapshotError;
-use super::plumbing::{self, TempIndex, commit_tree, mktree, update_ref};
+use super::TempIndex;
+use super::plumbing::{self, commit_tree, mktree, update_ref};
 /// Join the trees into one backup commit, without touching any ref.
 ///
 /// `take` uses it for the before-snapshot; the protocol uses it again for the

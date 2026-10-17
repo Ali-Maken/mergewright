@@ -31,8 +31,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `restart_gate` (fn) — `d`'s gate as a read: `Result<Result<RestartPlan, Refusal>, RestartReadError>`, asking what `apply(RestartConflict)` would.
 - `RestartPlan` (struct) — `source: StageSource`, `kind: RestartKind`.
 - `RestartReadError` (enum) — a read `restart_gate` needed failed.
-- `recover_interrupted` (fn) — closes every `Pending` entry a dead run left as `interrupted`, bar git's live one; while a writer holds the journal, closes nothing and lists the rest as `held`.
-- `Recovered` (struct) — `live`, `held` (undecided: a writer held the journal), `closed`, `unreadable: Vec<(EntryId, FactsError)>`, `plans_left`, the set-aside edits found: what recovery did.
+- `recover_interrupted` (fn) — closes every `Pending` entry a dead run left as `interrupted`, bar git's live one, and sweeps `commit-index*` copies; while a writer holds the journal, closes and sweeps nothing and lists the rest as `held`.
+- `Recovered` (struct) — `live`, `held` (undecided: a writer held the journal), `closed`, `unreadable: Vec<(EntryId, FactsError)>`, `plans_left`, `scratch_left`, the set-aside edits found: what recovery did.
 - `came_back_from_index` (fn) — `(repo, stash, worktree_before)`: staged-new files he had deleted that a set-aside put-back checked out again.
 - `came_back_words` (fn) — `(paths) -> Option<String>`: the note naming those files.
 

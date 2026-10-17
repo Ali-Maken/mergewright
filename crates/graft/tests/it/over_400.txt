@@ -15,7 +15,7 @@
 419 crates/graft-git/src/history/divergence.rs
 1004 crates/graft-git/src/history/tests.rs
 704 crates/graft-git/src/repo/tests.rs
-684 crates/graft-git/src/run.rs
+690 crates/graft-git/src/run.rs
 420 crates/graft-git/src/run/askpass.rs
 482 crates/graft-git/src/run/askpass/tests.rs
 699 crates/graft-git/src/status/tests.rs
@@ -43,6 +43,7 @@
 432 crates/graft-ops/src/apply/remote/tests.rs
 403 crates/graft-ops/src/apply/restart.rs
 408 crates/graft-ops/src/journal.rs
+404 crates/graft-ops/src/journal/file.rs
 807 crates/graft-ops/src/journal/tests.rs
 1078 crates/graft-ops/src/mistake_radar/probes.rs
 709 crates/graft-ops/src/mistake_radar/rules.rs

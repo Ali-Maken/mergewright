@@ -10,7 +10,8 @@ use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, Stop};
 
-use super::plumbing::{TempIndex, path_of, run_git_logged, split_nul, stopped, write_tree};
+use super::TempIndex;
+use super::plumbing::{path_of, run_git_logged, split_nul, stopped, write_tree};
 use super::{SnapshotError, StageEntry};
 
 /// The stage tree of an unmerged index copy (decision 1).

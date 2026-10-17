@@ -35,6 +35,7 @@ mod index_paths;
 mod plumbing;
 mod raw;
 mod stage_tree;
+mod temp_index;
 
 pub(crate) use chain::chain_backup;
 pub use chain::{LinkKind, backup_chain, current_step_chain, recorded_index_state};
@@ -54,9 +55,10 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
 
 use commit::commit_joined;
-pub(crate) use plumbing::{TempIndex, c_quoted, path_of};
 use plumbing::{add_all, mktree, try_write_tree, update_ref, write_tree};
+pub(crate) use plumbing::{c_quoted, path_of};
 use stage_tree::{stage_tree, tree_stage_entries};
+pub(crate) use temp_index::TempIndex;
 
 /// How much of the repository a snapshot has to cover before one operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

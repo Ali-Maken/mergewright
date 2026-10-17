@@ -48,6 +48,7 @@ use graft_git::version::GitVersion;
 use crate::facts;
 use crate::journal::{Journal, JournalError};
 use crate::operation::{Invocation, Operation, RepoFacts};
+use crate::snapshot::TempIndex;
 
 pub use error::{AfterState, ApplyError, EditsAt, RawStepOf, askpass_words};
 pub use recover::{Recovered, recover_interrupted};
@@ -154,6 +155,11 @@ pub struct Context<'a> {
     /// ADR-0047 §4) — the default branch never follows. [`Context::open`]
     /// leaves it `None`, git's guess; the app sets it.
     pub default_branch: Option<RefName>,
+    /// Where this context's plan copies the index for its `Scratch` lines:
+    /// `<scratch>/commit-index-<pid>-<n>`, named once per context so the
+    /// Command Log and the run name the same file, and no other window's
+    /// run can take it (review ease-pass-04, Major 1).
+    scratch_index: PathBuf,
 }
 
 impl<'a> Context<'a> {
@@ -176,6 +182,7 @@ impl<'a> Context<'a> {
             })?
             .to_path_buf();
         let worktree = repo.worktree_name();
+        let scratch_index = scratch.join(TempIndex::unique_name(run::SCRATCH_INDEX));
         Ok(Context {
             repo,
             git,
@@ -187,6 +194,7 @@ impl<'a> Context<'a> {
             stop,
             remote: None,
             default_branch: None,
+            scratch_index,
         })
     }
 
@@ -224,6 +232,11 @@ impl<'a> Context<'a> {
     /// The directory the journal and the temporary index copies live in.
     pub(crate) fn scratch(&self) -> &Path {
         &self.scratch
+    }
+
+    /// This context's scratch index, for a plan's `Scratch` lines.
+    pub(crate) fn scratch_index(&self) -> &Path {
+        &self.scratch_index
     }
 }
 

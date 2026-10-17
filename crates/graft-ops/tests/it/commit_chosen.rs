@@ -14,7 +14,7 @@ use crate::support::{
     NOW, Never, TempRepo, context, journal_for, run, run_undo, state_of, try_run,
 };
 
-fn whole(path: &str) -> Chosen {
+pub(super) fn whole(path: &str) -> Chosen {
     Chosen {
         path: PathBuf::from(path),
         part: Part::Whole,
@@ -38,12 +38,12 @@ fn params(message: &str, include: Include) -> CommitParams {
     }
 }
 
-fn commit_of(files: Vec<Chosen>) -> Operation {
+pub(super) fn commit_of(files: Vec<Chosen>) -> Operation {
     Operation::Commit(params("chosen\n", Include::Chosen(files)))
 }
 
 /// `a.rs`, `b.rs`, `gone.rs` committed twice over, so `HEAD` has a parent.
-fn repo() -> TempRepo {
+pub(super) fn repo() -> TempRepo {
     let repo = TempRepo::init();
     for name in ["a.rs", "b.rs", "gone.rs"] {
         repo.write(name, b"one\n");
@@ -55,7 +55,7 @@ fn repo() -> TempRepo {
 }
 
 /// `a.rs` partly staged (`a2` staged, `a3` on disk), `b.rs` staged whole.
-fn partly_staged(repo: &TempRepo) {
+pub(super) fn partly_staged(repo: &TempRepo) {
     repo.write("a.rs", b"a2\n");
     repo.git(&["add", "a.rs"]);
     repo.write("a.rs", b"a3\n");
@@ -63,7 +63,7 @@ fn partly_staged(repo: &TempRepo) {
     repo.git(&["add", "b.rs"]);
 }
 
-fn at_head(repo: &TempRepo, path: &str) -> String {
+pub(super) fn at_head(repo: &TempRepo, path: &str) -> String {
     repo.git(&["show", &format!("HEAD:{path}")])
 }
 
@@ -72,7 +72,7 @@ fn staged_line(repo: &TempRepo, path: &str) -> String {
 }
 
 /// The names dir, where the scratch index is made.
-fn names_dir(repo: &TempRepo) -> PathBuf {
+pub(super) fn names_dir(repo: &TempRepo) -> PathBuf {
     let path = journal_path(&repo.open()).expect("the journal path resolves");
     let path = if path.is_absolute() {
         path
@@ -84,17 +84,30 @@ fn names_dir(repo: &TempRepo) -> PathBuf {
         .to_path_buf()
 }
 
-fn no_scratch_left(repo: &TempRepo) {
-    let left = names_dir(repo).join("commit-index");
-    assert!(
-        !left.exists(),
-        "the scratch index was left at {}",
-        left.display()
-    );
+/// The names dir's scratch index copies, `commit-index` and
+/// `commit-index-<pid>-<n>`.
+pub(super) fn scratch_copies(repo: &TempRepo) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(names_dir(repo))
+        .expect("the names dir lists")
+        .map(|entry| {
+            entry
+                .expect("an entry")
+                .file_name()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .filter(|name| name.starts_with("commit-index"))
+        .collect();
+    names.sort();
+    names
+}
+
+pub(super) fn no_scratch_left(repo: &TempRepo) {
+    assert_eq!(scratch_copies(repo), Vec::<String>::new());
 }
 
 /// A hook in a directory under `.git`, so it never shows in the status.
-fn hook(repo: &TempRepo, name: &str, body: &str) {
+pub(super) fn hook(repo: &TempRepo, name: &str, body: &str) {
     let hooks = repo.path().join(".git").join("test-hooks");
     std::fs::create_dir_all(&hooks).expect("the hooks directory");
     let file = hooks.join(name);
@@ -283,29 +296,20 @@ fn the_command_log_names_the_scratch_index_it_ran_on() {
 
     let entry = run(&repo, &commit_of(vec![whole("a.rs")]), NOW);
 
-    let scratch = names_dir(&repo).join("commit-index");
+    // This run's own name: `commit-index-<pid>-<n>` (review ease-pass-04, M1).
+    let scratch = names_dir(&repo).join(format!("commit-index-{}-", std::process::id()));
     let commit_line = entry
         .commands
         .iter()
         .find(|line| line.contains("commit -F -"))
         .expect("the commit line is logged");
-    assert_eq!(
-        commit_line,
-        &format!("GIT_INDEX_FILE={} git commit -F -", scratch.display())
-    );
+    let named = commit_line
+        .strip_prefix(&format!("GIT_INDEX_FILE={}", scratch.display()))
+        .and_then(|rest| rest.split_once(' '))
+        .expect("the line names this run's scratch index");
+    assert!(named.0.parse::<u64>().is_ok(), "{commit_line}");
+    assert_eq!(named.1, "git commit -F -");
     assert_eq!(entry.status, EntryStatus::Committed);
-}
-
-#[test]
-fn a_leftover_scratch_index_is_overwritten() {
-    let repo = repo();
-    partly_staged(&repo);
-    std::fs::write(names_dir(&repo).join("commit-index"), b"junk").expect("a leftover");
-
-    run(&repo, &commit_of(vec![whole("a.rs")]), NOW);
-
-    assert_eq!(at_head(&repo, "a.rs"), "a3");
-    no_scratch_left(&repo);
 }
 
 #[test]
