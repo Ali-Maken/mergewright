@@ -1,11 +1,11 @@
 # ease-acceptance — walk the three mocks in the real app
 
-Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r)
-Blocked by: all of 01–13, plus 01r
+Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17)
+Blocked by: all of 01–13, plus 01r and 03b
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
-commit-what-goes-in, clash-reads, resolver-picks, graph-fold-and-lanes, graph-rows, branch-pane,
-pixel-roles-and-tall-row, commit-screen, merge-preview, clash-screen-look, finish-review-and-look.
+ease-vocabulary-rest (03b), commit-what-goes-in, clash-reads, resolver-picks, graph-fold-and-lanes, graph-rows,
+branch-pane, pixel-roles-and-tall-row, commit-screen, merge-preview, clash-screen-look, finish-review-and-look.
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Promise, Journeys (including the `journeys` fence), Mock behaviours (G1–G14,
@@ -54,8 +54,10 @@ In:
     the report; **don't judge it** (the results go to him).
   - Q5: ghost rows drawn above the merge preview box.
   - Q6: the merge preview has no `[ Cancel ]`/`[ Confirm ]`; `⏎` opens the incoming list.
-  - Q7: `esc` on the clash screen → graph, banner focused; `⏎` → first open clash. Journey `pause-and-resume`, 2 keys.
-  - Q8: no option row on the commit screen; `⌃S` adds a sign-off.
+  - Q7: `esc` on the clash screen → graph, banner focused, bar leads `⏎ back to the clashes`; `⏎` → first open clash.
+    Journey `pause-and-resume`, 2 keys.
+  - Q8: no option row on the commit screen; `⌃S` adds a sign-off; `⌃P` from the commit screen lists amend, skip hooks
+    and allow empty spelled `—`, and choosing skip hooks shows `· skipping hooks` in the header.
   - Q9: `u` after a commit → edits uncommitted, and the next `c` shows the old message.
   - Q10: opening a folded merge → its rows on their own lane joining the merge.
   - Q11: the top line keeps today's frame and ends with `lanes drawn: N of M`; the bar end is today's.

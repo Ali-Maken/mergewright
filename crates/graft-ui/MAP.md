@@ -607,7 +607,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `on_selection` (fn) — `fg` as drawn on this theme's `selection` fill, at this terminal's depth — what every widget calls for text it draws on the cursor row.
 - `TOKEN_COUNT` (const) — 22: PROMPT.md §5's twelve, the six conflict roles, the four graph roles.
 - `LANE_COUNT` (const) — number of lane hues; lanes beyond reuse them.
-- `Token` (enum) — a chrome colour role; ends with the conflict roles `Ours`, `Theirs`, `Open`, `OursTint`, `TheirsTint`, `OpenTint` (named by pane position, ADR-0044 §1), then the graph roles `RoleThis`, `RoleUnder`, `RoleTrunk`, `RoleOther` (ease pass, ADR-0063; `role-other` has no contrast floor).
+- `Token` (enum) — a chrome colour role; ends with the conflict roles `Ours`, `Theirs`, `Open`, `OursTint`, `TheirsTint`, `OpenTint` (ADR-0044 §1), then the graph roles `RoleThis`, `RoleUnder`, `RoleTrunk`, `RoleOther` (ADR-0063).
 - `ALL` (const) — every token, in PROMPT.md §5's order.
 - `name` (fn) — The token's name as PROMPT.md §5 and the config file spell it.
 - `ThemeKind` (enum) — dark, light, or high contrast (override only).
