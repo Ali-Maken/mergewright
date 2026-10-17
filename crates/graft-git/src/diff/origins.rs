@@ -1,8 +1,6 @@
 //! Where a merge result's new lines came from: yours, theirs, or both —
 //! the read-only look's "from yours / from theirs" sample.
 
-use std::collections::HashSet;
-
 use super::{FileDiff, LineKind};
 
 /// Which side a result line came in from.
@@ -28,20 +26,36 @@ pub struct LineOrigin {
 /// Diffs are base→result, base→yours, base→theirs; `line` is 1-based in the
 /// result.
 ///
-/// Every line the result adds over the base is matched **by its text**
-/// against the lines each side adds over the base: in yours' added lines
-/// only → [`Origin::Yours`], theirs' only → [`Origin::Theirs`], both →
-/// [`Origin::Both`]. A result line neither side added (a hand edit, say)
-/// and every line the result keeps from the base are not listed. Text, not
-/// position: a side's line numbers do not survive the merge, its text
-/// does. Result order; a binary diff has no lines and lists nothing.
+/// Every line the result adds over the base is matched against the lines
+/// each side adds over the base, **in order**: the longest run of each
+/// side's added lines that appears, in the same order, among the result's
+/// added lines. Claimed by yours only → [`Origin::Yours`], theirs only →
+/// [`Origin::Theirs`], both → [`Origin::Both`]. Each side's line is claimed
+/// once, where its order puts it, so a common text — a blank line, a lone
+/// `}` — is not claimed wherever it appears. A side's line numbers do not
+/// survive the merge, its text and order do. A result line no side claims
+/// (a hand edit, say) and every line the result keeps from the base are not
+/// listed. Result order; a binary diff has no lines and lists nothing.
+///
+/// A side too large to align (over 4 M result × side line pairs)
+/// claims nothing: no attribution rather than a wrong one.
 #[must_use]
 pub fn line_origins(result: &FileDiff, yours: &FileDiff, theirs: &FileDiff) -> Vec<LineOrigin> {
-    let yours = added_texts(yours);
-    let theirs = added_texts(theirs);
-    added_lines(result)
-        .filter_map(|(line, text)| {
-            let origin = match (yours.contains(text), theirs.contains(text)) {
+    let result: Vec<(u32, &[u8])> = added_lines(result).collect();
+    let texts: Vec<&[u8]> = result.iter().map(|&(_, text)| text).collect();
+    let by_yours = claimed(
+        &texts,
+        &added_lines(yours).map(|(_, t)| t).collect::<Vec<_>>(),
+    );
+    let by_theirs = claimed(
+        &texts,
+        &added_lines(theirs).map(|(_, t)| t).collect::<Vec<_>>(),
+    );
+    result
+        .iter()
+        .enumerate()
+        .filter_map(|(at, &(line, _))| {
+            let origin = match (by_yours[at], by_theirs[at]) {
                 (true, true) => Origin::Both,
                 (true, false) => Origin::Yours,
                 (false, true) => Origin::Theirs,
@@ -52,6 +66,43 @@ pub fn line_origins(result: &FileDiff, yours: &FileDiff, theirs: &FileDiff) -> V
         .collect()
 }
 
+/// The most result × side cells [`line_origins`] aligns: 4 M cells, 16 MiB.
+const ALIGN_CAP: usize = 4_000_000;
+
+/// Which of `result`'s lines a longest common subsequence with `side`
+/// claims, earliest result line first among equal choices.
+fn claimed(result: &[&[u8]], side: &[&[u8]]) -> Vec<bool> {
+    let mut claimed = vec![false; result.len()];
+    let width = side.len() + 1;
+    if (result.len() + 1).saturating_mul(width) > ALIGN_CAP {
+        return claimed;
+    }
+    // `run[i * width + j]`: the longest common run of `result[i..]`, `side[j..]`.
+    let mut run = vec![0u32; (result.len() + 1) * width];
+    for i in (0..result.len()).rev() {
+        for j in (0..side.len()).rev() {
+            run[i * width + j] = if result[i] == side[j] {
+                run[(i + 1) * width + j + 1] + 1
+            } else {
+                run[(i + 1) * width + j].max(run[i * width + j + 1])
+            };
+        }
+    }
+    let (mut i, mut j) = (0, 0);
+    while i < result.len() && j < side.len() {
+        if result[i] == side[j] && run[i * width + j] == run[(i + 1) * width + j + 1] + 1 {
+            claimed[i] = true;
+            i += 1;
+            j += 1;
+        } else if run[(i + 1) * width + j] >= run[i * width + j + 1] {
+            i += 1;
+        } else {
+            j += 1;
+        }
+    }
+    claimed
+}
+
 /// Each added line's new-side number and text.
 fn added_lines(diff: &FileDiff) -> impl Iterator<Item = (u32, &[u8])> {
     diff.hunks
@@ -59,10 +110,6 @@ fn added_lines(diff: &FileDiff) -> impl Iterator<Item = (u32, &[u8])> {
         .flat_map(|hunk| &hunk.lines)
         .filter(|line| line.kind == LineKind::Added)
         .filter_map(|line| Some((line.new_no?, line.text.as_slice())))
-}
-
-fn added_texts(diff: &FileDiff) -> HashSet<&[u8]> {
-    added_lines(diff).map(|(_, text)| text).collect()
 }
 
 #[cfg(test)]
@@ -157,6 +204,34 @@ mod tests {
                     line: 4,
                     origin: Origin::Theirs
                 },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_common_text_is_claimed_where_its_side_put_it_not_wherever_it_appears() {
+        // Yours added a function and a blank line; theirs another function.
+        // Both end in a lone `}`, so `}` alone says nothing of its side.
+        let yours = diff(&[(Added, "fn a() {"), (Added, "}"), (Added, "")]);
+        let theirs = diff(&[(Added, "fn b() {"), (Added, "}")]);
+        let result = diff(&[
+            (Added, "fn a() {"), // 1: yours
+            (Added, "}"),        // 2: yours' `}`, not theirs'
+            (Added, ""),         // 3: yours' blank line
+            (Added, "fn b() {"), // 4: theirs
+            (Added, "}"),        // 5: theirs' `}`
+            (Added, ""),         // 6: typed by hand — not listed
+            (Added, "}"),        // 7: typed by hand — not listed
+        ]);
+        let origin = |line, origin| LineOrigin { line, origin };
+        assert_eq!(
+            line_origins(&result, &yours, &theirs),
+            vec![
+                origin(1, Origin::Yours),
+                origin(2, Origin::Yours),
+                origin(3, Origin::Yours),
+                origin(4, Origin::Theirs),
+                origin(5, Origin::Theirs),
             ]
         );
     }

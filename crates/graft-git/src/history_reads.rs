@@ -22,15 +22,17 @@ use crate::version::GitVersion;
 
 mod compare;
 mod forecast;
+mod merge_check;
 mod unreached;
 
 pub use compare::{
     CompareSpan, LineEntry, StashOnly, commits_from, compare_span, count_between, entry_into,
     only_in_stash,
 };
-pub use forecast::{
-    ClashForecast, Forecast, MergeCheck, MergeForecast, MergeStep, UNRELATED, forecast_merge,
-    merge_forecast, merge_tree_step,
+pub use forecast::{Forecast, MergeStep, forecast_merge, merge_tree_step};
+pub use merge_check::{
+    ClashForecast, MergeCheck, MergeForecast, UNRELATED, changed_paths, changed_paths_until,
+    merge_forecast,
 };
 pub use unreached::{LostRun, Unreached, unreached};
 
@@ -290,40 +292,6 @@ pub struct ParseError {
     pub line: usize,
     /// What was expected there.
     pub what: &'static str,
-}
-
-/// The paths `from` and `to` differ on, capped at `cap`.
-///
-/// `git diff-tree -r --name-only -z <from> <to>`.
-///
-/// # Errors
-/// [`RunError`] from the runner: git missing, or either id naming no commit
-/// in this repository. Never stopped: this is a single small spawn.
-pub fn changed_paths(
-    repo: &RepoHandle,
-    from: Oid,
-    to: Oid,
-    cap: usize,
-) -> Result<(Vec<PathBuf>, bool), RunError> {
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("diff-tree"),
-            GitArg::Flag("-r"),
-            GitArg::Flag("--name-only"),
-            GitArg::Flag("-z"),
-            GitArg::Oid(from),
-            GitArg::Oid(to),
-        ])
-        .run(&())?;
-
-    let mut paths: Vec<&[u8]> = output
-        .stdout
-        .split(|&b| b == 0)
-        .filter(|path| !path.is_empty())
-        .collect();
-    let capped = paths.len() > cap;
-    paths.truncate(cap);
-    Ok((paths.into_iter().map(bytes_to_pathbuf).collect(), capped))
 }
 
 /// The 1-indexed line number of the first line that opens a conflict block in

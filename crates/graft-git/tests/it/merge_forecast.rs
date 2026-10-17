@@ -186,3 +186,17 @@ fn a_raised_stop_is_stopped() {
         Err(RunError::Stopped)
     ));
 }
+
+/// The diff-tree read `merge_forecast` runs after merge-tree takes the stop
+/// too, so a stop raised mid-forecast never lets it run to completion.
+#[test]
+fn changed_paths_with_a_raised_stop_is_stopped() {
+    let scratch = scratch();
+    let dir = scratch.path();
+    let (ours, theirs) = split(dir, &[], &[("new.txt", Some("new\n"))]);
+    let stop = AtomicBool::new(true);
+    assert!(matches!(
+        graft_git::history_reads::changed_paths_until(&open(dir), ours, theirs, 50, &stop),
+        Err(RunError::Stopped)
+    ));
+}

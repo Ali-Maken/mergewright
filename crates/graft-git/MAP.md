@@ -115,7 +115,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `pairs` (fn) — `&Hunk -> Vec<Pair>`; side-by-side pairing of removed/added runs.
 - `Origin` (enum) — `Yours`, `Theirs`, `Both`; which side a result line came in from.
 - `LineOrigin` (struct) — `line` (1-based in the result), `origin`.
-- `line_origins` (fn) — `(result, yours, theirs: &FileDiff) -> Vec<LineOrigin>`; pure, base→each diffs, matched by added-line text.
+- `line_origins` (fn) — `(result, yours, theirs: &FileDiff) -> Vec<LineOrigin>`; pure, base→each diffs, each side's added lines aligned in order (LCS), so a common text (blank, `}`) is claimed once, where its side put it.
 - `DiffSpec` (enum) — which two sides to diff: a commit, the index, the working tree.
 - `DiffOptions` (struct) — `context`, `ignore_whitespace`.
 - `DiffError` (enum) — `Run`, `Parse`, `TooLarge`, `NoHead`.
@@ -170,7 +170,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `replayed_commits` (fn) — the commits `git rebase <onto>` will actually replay from a branch.
 - `parse_rev_list` (fn) — `&[u8] -> Result<Vec<CommitSummary>, ParseError>`; pure rev-list reader.
 - `ParseError` (struct) — `line`, `what`.
-- `changed_paths` (fn) — `diff-tree -r --name-only` between two commits, capped.
+- `changed_paths` (fn) — `diff-tree -r --name-only` between two commits, capped. Never stopped.
+- `changed_paths_until` (fn) — `changed_paths` taking a `stop`; what `merge_forecast` runs.
 - `first_marker_line` (fn) — `&Path -> io::Result<Option<usize>>`; first line opening a conflict block.
 - `CompareSpan` (enum) — how a tip relates to a base: since a split point, or unrelated.
 - `compare_span` (fn) — `(repo, base, tip, stop) -> Result<CompareSpan, RunError>`.
