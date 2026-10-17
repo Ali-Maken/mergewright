@@ -60,3 +60,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - builder-sonnet 03r (1e320e4f, merged 105faacc): 8/9; OpenedMerge bar; ease.rs renamed; ratchets down (lanes.rs, keymap split); +3 role contrast floors. Left: commit.toggle labels (editor_tests.rs pins) → gap. skills: none · 84 tools
 - gates after 03r (105faacc): fmt ok, clippy 0, nextest 6613/6613, doc ok; worktree removed. builder-opus-xhigh 05r dispatched (Q19 open: build bar hint as (a), one-line change).
 - user Q19: ok → (a) add '← → clashes' bar hint; sent to 05r builder.
+- builder-opus 06d (dda0a592, NOT merged): partial 6/7; Row.drawn_parents + is_merge, history::parents, head_commit keep, preview resident_slice on drawn parents; AppState.repository boxed. 6605/6634 — 29 fail, all from baseline 47, named in ticket NOTES for 06e/06f. Box 4 open (take_refused_on_a_merge capture only). Unverified shell_begun, tour. COMPACTED. skills: implement · 303 tools → 06e on this branch.
