@@ -233,7 +233,7 @@ pub(super) fn commit(
             return;
         }
         // Nothing to compare against: git's own message, as the line says.
-        Loading::Failed(_) => Resume::Continue,
+        Loading::Failed(_) => Resume::Continue { solved: Vec::new() },
         Loading::Ready(summary) => {
             if finish.subject.text().trim().is_empty() {
                 finish.notice = Some((
@@ -248,10 +248,11 @@ pub(super) fn commit(
             }
             let message = compose(finish.subject.text(), &finish.body.text());
             if message.trim_end() == String::from_utf8_lossy(&summary.message).trim_end() {
-                Resume::Continue
+                Resume::Continue { solved: Vec::new() }
             } else {
                 Resume::ContinueWith {
                     message: message.into_bytes(),
+                    solved: Vec::new(),
                 }
             }
         }

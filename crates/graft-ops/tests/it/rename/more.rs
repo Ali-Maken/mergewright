@@ -195,7 +195,7 @@ fn saved_rewrite_plan_survives() {
     let handle = repo.open();
     let mut journal = journal_for(&handle);
     let mut ctx = context(&handle, &mut journal, NOW + 3, &Never);
-    let finished = resume(&mut ctx, Resume::Continue)
+    let finished = resume(&mut ctx, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("c continues: {}", why.explain(&crate::support::Letters)));
     assert_eq!(finished.entry.id, entry, "the paused rewrite resumed");
     assert!(!repo.exists(".git/rebase-merge"));

@@ -219,7 +219,8 @@ fn c_on_an_octopus_merge_names_its_refusal() {
     let before = merge_files(&repo);
     let entries = journal_for(&repo.open()).entries().len();
 
-    let why = run_resume(&repo, Resume::Continue, NOW + 1).expect_err("refused");
+    let why =
+        run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 1).expect_err("refused");
     assert!(
         matches!(
             why,

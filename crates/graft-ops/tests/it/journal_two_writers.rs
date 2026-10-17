@@ -161,7 +161,7 @@ fn a_journal_read_mid_resume_leaves_the_resumed_entry_one_outcome() {
     let handle = repo.open();
     let mut journal = journal_for(&handle);
     let mut ctx = context(&handle, &mut journal, NOW + 10, &reader);
-    let applied = resume(&mut ctx, Resume::Continue);
+    let applied = resume(&mut ctx, Resume::Continue { solved: Vec::new() });
     drop(ctx);
     drop(journal);
 

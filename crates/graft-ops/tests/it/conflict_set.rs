@@ -206,7 +206,7 @@ fn at_step_two() -> TempRepo {
     assert_eq!(conflict_set(&repo).paths, paths(&["a.txt"]), "step 1");
     repo.write("a.txt", b"1\nboth\n3\n");
     graft_stage(&repo, "a.txt", NOW + 1);
-    let stopped = run_resume(&repo, Resume::Continue, NOW + 2);
+    let stopped = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 2);
     assert!(
         matches!(stopped, Err(ApplyError::Conflicted { .. })),
         "step 2 stops: {stopped:?}"

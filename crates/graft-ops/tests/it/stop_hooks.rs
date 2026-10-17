@@ -605,7 +605,8 @@ fn a_paused_merge_continues_to_the_merge_git_would_have_made() {
     let handle = repo.open();
     let mut journal = journal_for(&handle);
     let mut ctx = context(&handle, &mut journal, NOW + 1, &Never);
-    let continued = resume(&mut ctx, Resume::Continue).unwrap_or_else(|why| panic!("{why}"));
+    let continued = resume(&mut ctx, Resume::Continue { solved: Vec::new() })
+        .unwrap_or_else(|why| panic!("{why}"));
     try_run(&twin, &merge_feature(&twin), NOW).unwrap_or_else(|why| panic!("{why}"));
 
     assert_eq!(continued.entry.status, EntryStatus::Committed);
@@ -781,7 +782,7 @@ fn a_continue_stopped_in_its_post_commit_hook_has_landed() {
     let mut journal = journal_for(&handle);
     let stop = StopOnceRunning(again.running());
     let mut ctx = context(&handle, &mut journal, NOW + 1, &stop);
-    let continued = resume(&mut ctx, Resume::Continue);
+    let continued = resume(&mut ctx, Resume::Continue { solved: Vec::new() });
 
     let Ok(Applied {
         entry: closed,
@@ -818,7 +819,7 @@ fn a_finish_merge_stopped_in_its_hook_leaves_the_merge_paused() {
     let mut journal = journal_for(&handle);
     let stop = StopOnceRunning(hooked.running());
     let mut ctx = context(&handle, &mut journal, NOW, &stop);
-    let finished = resume(&mut ctx, Resume::Continue);
+    let finished = resume(&mut ctx, Resume::Continue { solved: Vec::new() });
 
     let Err(error) = finished else {
         panic!("a stopped finish does not commit");
@@ -878,7 +879,7 @@ fn a_resume_stopped_in_its_hook_stays_paused() {
     let mut journal = journal_for(&handle);
     let stop = StopOnceRunning(again.running());
     let mut ctx = context(&handle, &mut journal, NOW + 1, &stop);
-    let resumed = resume(&mut ctx, Resume::Continue);
+    let resumed = resume(&mut ctx, Resume::Continue { solved: Vec::new() });
 
     let Err(error) = resumed else {
         panic!("a stopped resume does not commit");
@@ -901,7 +902,7 @@ fn a_resume_stopped_in_its_hook_stays_paused() {
     again.assert_gone();
 
     again.remove("pre-commit");
-    let continued = resume_with(&repo, Resume::Continue, NOW + 2)
+    let continued = resume_with(&repo, Resume::Continue { solved: Vec::new() }, NOW + 2)
         .unwrap_or_else(|why| panic!("c continues: {why}"));
     assert_eq!(continued.entry.id, entry.id, "the paused entry is closed");
     assert_eq!(continued.entry.status, EntryStatus::Committed);

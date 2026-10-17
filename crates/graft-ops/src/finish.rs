@@ -14,11 +14,12 @@ use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
 use graft_git::diff::{DiffError, DiffOptions, DiffSpec, FileStatus, list_files};
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, RunError};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
 use crate::conflict::{ConflictSetError, conflicts_of, merge_msg};
 use crate::facts::{self, FactsError};
+use crate::snapshot::{SnapshotError, TempIndex};
 
 /// One screen of what a merge will commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -122,6 +123,9 @@ pub enum SummaryError {
     /// The staged diff could not be read.
     #[error("{0}")]
     Diff(#[from] DiffError),
+    /// The review's copy of the index could not be made or removed.
+    #[error("the review's copy of the index: {0}")]
+    Scratch(#[from] SnapshotError),
 }
 
 impl From<FactsError> for SummaryError {
@@ -137,18 +141,122 @@ impl From<FactsError> for SummaryError {
 /// [`SummaryError::StillUnmerged`] while any path is unmerged; the read's
 /// own failure otherwise.
 pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError> {
-    // No caller-supplied stop: every read here is one short `git` call.
-    let stop = &();
+    summary_of(repo, &[], &())
+}
+
+/// The review's facts as if `solved` were staged: a scratch index, never the
+/// real one (ease-pass/05b, hard choice 3).
+///
+/// The real index is copied to a temporary file beside the journal,
+/// `git add -- <solved>` runs on the copy (`GIT_INDEX_FILE`, the snapshot
+/// plumbing's route), and each resolved file's result is read from it. The
+/// copy is removed on every path out. With nothing in `solved` this is
+/// [`finish_summary`], with no copy made.
+///
+/// `by_git` is read from the real index: it leaves out every path the merge
+/// conflicted on, and `solved` are exactly such paths, so staging them on
+/// the copy changes nothing it lists.
+///
+/// # Errors
+/// [`SummaryError::NotMerging`] unless git has a merge in progress;
+/// [`SummaryError::StillUnmerged`] counting the unmerged paths not in
+/// `solved`; [`SummaryError::Scratch`] when the copy could not be made or
+/// removed; the read's own failure otherwise.
+pub fn finish_preview(
+    repo: &RepoHandle,
+    solved: &[PathBuf],
+    stop: &dyn Stop,
+) -> Result<FinishSummary, SummaryError> {
+    summary_of(repo, solved, stop)
+}
+
+/// [`finish_summary`] and [`finish_preview`]: one body.
+fn summary_of(
+    repo: &RepoHandle,
+    solved: &[PathBuf],
+    stop: &dyn Stop,
+) -> Result<FinishSummary, SummaryError> {
     let in_progress = state::in_progress(repo).map_err(FactsError::State)?;
     if in_progress != Some(InProgress::Merge) {
         return Err(SummaryError::NotMerging);
     }
     let status = graft_git::status::read(repo, stop).map_err(FactsError::from)?;
-    let count = status.entries.iter().filter(|entry| entry.unmerged).count();
+    let unmerged: Vec<PathBuf> = status
+        .entries
+        .iter()
+        .filter(|entry| entry.unmerged)
+        .map(|entry| entry.path.clone())
+        .collect();
+    let count = unmerged
+        .iter()
+        .filter(|path| !solved.contains(path))
+        .count();
     if count > 0 {
         return Err(SummaryError::StillUnmerged { count });
     }
-    let set = conflicts_of(repo, in_progress, &status)?;
+    // Only the solved paths git still calls unmerged need the copy: one
+    // staged already reads the same from the real index.
+    let to_stage: Vec<PathBuf> = unmerged;
+    let copy = if to_stage.is_empty() {
+        None
+    } else {
+        Some(review_index(repo, &to_stage, stop)?)
+    };
+    let index = copy.as_ref().map(TempIndex::path);
+    let summary = summary_on(repo, in_progress, &status, index, stop);
+    match copy {
+        // Removed before the summary is returned, so a copy that would not
+        // go is said rather than left behind in silence.
+        Some(copy) => {
+            let removed = copy.remove();
+            let summary = summary?;
+            removed.map_err(|why| SummaryError::Scratch(SnapshotError::Io(why)))?;
+            Ok(summary)
+        }
+        None => summary,
+    }
+}
+
+/// A copy of the real index with `paths` staged on it: `GIT_INDEX_FILE`
+/// set, nothing written to `.git/index`. Beside the journal, under a name
+/// no other run takes; [`TempIndex`] removes it on every path.
+fn review_index(
+    repo: &RepoHandle,
+    paths: &[PathBuf],
+    stop: &dyn Stop,
+) -> Result<TempIndex, SummaryError> {
+    let journal = crate::journal::journal_path(repo)?;
+    let scratch = journal.parent().ok_or_else(|| {
+        SummaryError::Scratch(SnapshotError::Io(io::Error::other(
+            "the journal has no directory to copy the index into",
+        )))
+    })?;
+    std::fs::create_dir_all(scratch)?;
+    let copy = TempIndex::copied_as(
+        repo,
+        scratch.join(TempIndex::unique_name("tmp-review-index")),
+        stop,
+    )?;
+    let Some(add) = crate::operation::stage_solved_args(paths) else {
+        return Ok(copy);
+    };
+    GitInvocation::new(repo)
+        .env("GIT_INDEX_FILE", copy.path())
+        .args(add)
+        .run(stop)?;
+    Ok(copy)
+}
+
+/// The summary's reads, with each resolved file's result read from `index`
+/// when given (the review's copy), else from the real index.
+fn summary_on(
+    repo: &RepoHandle,
+    in_progress: Option<InProgress>,
+    status: &graft_git::status::WorkingTreeStatus,
+    index: Option<&Path>,
+    stop: &dyn Stop,
+) -> Result<FinishSummary, SummaryError> {
+    let set = conflicts_of(repo, in_progress, status)?;
     let prepared = merge_msg::read(repo)?;
     let into = match facts::head_ref(repo)? {
         HeadRef::Branch(name) | HeadRef::Unborn(name) => short_branch(&name),
@@ -164,7 +272,7 @@ pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError> 
     Ok(FinishSummary {
         into,
         from,
-        by_you: results(repo, &set.paths)?,
+        by_you: results(repo, &set.paths, index)?,
         by_git: changed_by_git(repo, &set.paths)?,
         message,
         recorded: set.recorded,
@@ -206,11 +314,15 @@ fn changed_by_git(repo: &RepoHandle, conflicted: &[PathBuf]) -> Result<Vec<ByGit
 }
 
 /// Each conflicted path's staged blob against `HEAD`'s and `MERGE_HEAD`'s.
-fn results(repo: &RepoHandle, paths: &[PathBuf]) -> Result<Vec<ByYou>, SummaryError> {
+fn results(
+    repo: &RepoHandle,
+    paths: &[PathBuf],
+    index: Option<&Path>,
+) -> Result<Vec<ByYou>, SummaryError> {
     if paths.is_empty() {
         return Ok(Vec::new());
     }
-    let staged = staged_blobs(repo, paths)?;
+    let staged = staged_blobs(repo, paths, index)?;
     let ours = tree_blobs(repo, "HEAD", paths)?;
     let theirs = tree_blobs(repo, "MERGE_HEAD", paths)?;
     Ok(paths
@@ -227,8 +339,13 @@ fn results(repo: &RepoHandle, paths: &[PathBuf]) -> Result<Vec<ByYou>, SummaryEr
         .collect())
 }
 
-/// `ls-files -s`: each path's stage-0 blob in the index.
-fn staged_blobs(repo: &RepoHandle, paths: &[PathBuf]) -> Result<HashMap<PathBuf, Oid>, RunError> {
+/// `ls-files -s`: each path's stage-0 blob in the index — `index`, the
+/// review's copy, when given.
+fn staged_blobs(
+    repo: &RepoHandle,
+    paths: &[PathBuf],
+    index: Option<&Path>,
+) -> Result<HashMap<PathBuf, Oid>, RunError> {
     let mut args = vec![
         GitArg::Flag("--literal-pathspecs"),
         GitArg::Flag("ls-files"),
@@ -237,7 +354,11 @@ fn staged_blobs(repo: &RepoHandle, paths: &[PathBuf]) -> Result<HashMap<PathBuf,
         GitArg::Separator,
     ];
     args.extend(paths.iter().map(|path| GitArg::Path(bytes_of(path))));
-    let output = GitInvocation::new(repo).args(args).run(&())?;
+    let mut invocation = GitInvocation::new(repo).args(args);
+    if let Some(index) = index {
+        invocation = invocation.env("GIT_INDEX_FILE", index);
+    }
+    let output = invocation.run(&())?;
     // `<mode> <oid> <stage>\t<path>`
     records(&output.stdout, |fields| match fields {
         [_, _, b"0"] => Some(1),

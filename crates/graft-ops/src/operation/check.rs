@@ -33,13 +33,27 @@ impl Operation {
                 // is one of the merge's two ends, and a merge stopped on a
                 // conflict is exactly what it ends.
                 Self::ResolveWholeFile(_) | Self::RestartConflict(_) | Self::AbortMerge(_) => true,
+                // A merge's finish stages its solved files itself
+                // (ease-pass/05b): every unmerged path must be one of them.
+                Self::FinishMerge(params) => {
+                    unmerged.iter().all(|path| params.solved.contains(path))
+                }
                 _ => false,
             };
             if !resolving {
-                return Err(Refusal::Unmerged { paths: unmerged });
+                let open = match self {
+                    Self::FinishMerge(params) => unmerged
+                        .into_iter()
+                        .filter(|path| !params.solved.contains(path))
+                        .collect(),
+                    _ => unmerged,
+                };
+                return Err(Refusal::Unmerged { paths: open });
             }
-            if let Self::Stage(Target::Paths(paths)) = self {
-                history::markers_in(paths, facts)?;
+            match self {
+                Self::Stage(Target::Paths(paths)) => history::markers_in(paths, facts)?,
+                Self::FinishMerge(params) => history::markers_in(&params.solved, facts)?,
+                _ => {}
             }
         }
         // Finishing or aborting the merge is what the in-progress state

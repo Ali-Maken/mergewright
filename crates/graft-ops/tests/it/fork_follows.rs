@@ -643,7 +643,7 @@ fn a_stop_resumed_after_relaunch_finishes_the_section() {
     let recovered = recover_interrupted(&mut ctx)
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(recovered.live.len(), 1, "the stopped rewrite is live");
-    let applied = resume(&mut ctx, Resume::Continue)
+    let applied = resume(&mut ctx, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);

@@ -590,7 +590,7 @@ fn absorb_stopped_then_continued_as_planned_keeps_the_stay() {
     let before = state_of(&repo);
     absorb_stopped_at_f3(&repo);
 
-    let applied = resume_with(&repo, Resume::Continue, NOW + 1)
+    let applied = resume_with(&repo, Resume::Continue { solved: Vec::new() }, NOW + 1)
         .unwrap_or_else(|why| panic!("continue: {}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
@@ -621,10 +621,11 @@ fn absorb_stopped_then_continued_elsewhere_says_the_staging_went() {
     repo.write("a.txt", b"a1 amended\na2\na3\na4\na5\n");
     repo.git(&["commit", "-q", "--amend", "--no-edit", "-a"]);
 
-    let (applied, unread) = match resume_with(&repo, Resume::Continue, NOW + 1) {
-        Err(ApplyError::AfterState { applied, unread }) => (*applied, unread),
-        other => panic!("the staging should not all come back: {other:?}"),
-    };
+    let (applied, unread) =
+        match resume_with(&repo, Resume::Continue { solved: Vec::new() }, NOW + 1) {
+            Err(ApplyError::AfterState { applied, unread }) => (*applied, unread),
+            other => panic!("the staging should not all come back: {other:?}"),
+        };
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     let [AfterState::StagingNotKept { paths }] = unread.as_slice() else {

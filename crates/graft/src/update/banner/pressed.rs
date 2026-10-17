@@ -88,7 +88,12 @@ pub(crate) fn continue_pressed(
         });
         return;
     }
-    resume(state, commands, Resume::Continue, next_id);
+    resume(
+        state,
+        commands,
+        Resume::Continue { solved: Vec::new() },
+        next_id,
+    );
 }
 
 /// `git <kind> --continue` came back from the shell hand-over (07c). One

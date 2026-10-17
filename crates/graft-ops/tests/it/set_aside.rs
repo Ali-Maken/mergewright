@@ -914,12 +914,16 @@ fn stopped_with_edits_aside(repo: &TempRepo, op: &Operation) -> JournalEntry {
 /// final `--skip`. Each resume reads a freshly opened journal.
 #[test]
 fn a_rebase_that_stops_keeps_the_edits_aside_until_it_ends() {
-    for how in [Resume::Continue, Resume::Abort, Resume::Skip] {
+    for how in [
+        Resume::Continue { solved: Vec::new() },
+        Resume::Abort,
+        Resume::Skip,
+    ] {
         let (repo, op) = stopping_rebase();
         let original = id(&repo, "refs/heads/feature");
         let entry = stopped_with_edits_aside(&repo, &op);
 
-        if how == Resume::Continue {
+        if matches!(how, Resume::Continue { .. }) {
             repo.write("shared.txt", b"resolved\n");
             repo.git(&["add", "shared.txt"]);
         }

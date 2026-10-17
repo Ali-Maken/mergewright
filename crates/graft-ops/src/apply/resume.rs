@@ -9,10 +9,10 @@
 use std::path::PathBuf;
 
 use graft_core::journal::JournalEntry;
-use graft_git::run::{GitArg, RunError, Stop};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
-use crate::operation::{Operation, Refusal};
+use crate::operation::{Operation, Refusal, stage_solved_args};
 use crate::snapshot;
 
 mod close;
@@ -25,7 +25,7 @@ pub(crate) use live::{live_entry, live_entry_facts};
 // `apply`'s tests read its stop mark (m8-polish-and-ship/13c).
 pub(super) use rewrite::resume_invocation;
 use rewrite::stopped_on_edit;
-use shell::{Target, refuse_unmerged, shell_merge};
+use shell::{Target, shell_merge, solved_of, unmerged_to_stage};
 
 use super::engine::{go_home, plan_of, remove};
 use super::stopped::{self, Left, StoppedAt, where_stopped};
@@ -36,9 +36,15 @@ use super::{Applied, ApplyError, Context, apply, as_apply_error};
 /// Not `Copy` since m6-conflicts/09: `ContinueWith` carries the message.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Resume {
-    /// `--continue`: every unmerged path must be staged first. A merge
-    /// commits with git's own message, untouched.
-    Continue,
+    /// `--continue`: every unmerged path must be staged first, or named in
+    /// `solved`. A merge commits with git's own message, untouched.
+    Continue {
+        /// A merge's files the resolver calls solved (ease-pass/05b): still
+        /// unmerged, every clash picked. Staged here, inside the finishing
+        /// operation, just before git commits — never earlier. Empty for
+        /// every other kind and every other caller.
+        solved: Vec<PathBuf>,
+    },
     /// A merge finished with the message the user edited: `git commit
     /// --cleanup=whitespace -F -`, the message on stdin (m6-conflicts/09,
     /// Amendment 2 hard choice 3; `whitespace` since m6-conflicts/22). git's `MERGE_MSG` is never written — git
@@ -50,6 +56,8 @@ pub enum Resume {
         /// were removed once, when `finish_summary` read `MERGE_MSG`, so a
         /// `#` line here is the user's (`#123 fixes login`) and lands.
         message: Vec<u8>,
+        /// As [`Resume::Continue`]'s.
+        solved: Vec<PathBuf>,
     },
     /// `--skip`: drop the commit being replayed (rebase, cherry-pick,
     /// revert). A merge has nothing to skip.
@@ -129,8 +137,8 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     // is done (m8-polish-and-ship/58). It re-reads the journal, so the
     // entry looked up next is the file's, not a stale copy's.
     ctx.journal.claim().map_err(ApplyError::journal)?;
-    let (kind, entry) = match resume_target(ctx, &how)? {
-        Target::Live { kind, entry } => (kind, *entry),
+    let (kind, entry, stage) = match resume_target(ctx, &how)? {
+        Target::Live { kind, entry, stage } => (kind, *entry, stage),
         Target::ShellMerge(params) => return apply(ctx, &Operation::FinishMerge(params)),
         Target::ShellAbort(params) => return apply(ctx, &Operation::AbortMerge(params)),
     };
@@ -148,6 +156,22 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         _ => None,
     };
     let mut commands = entry.commands.clone();
+    // A merge's solved files, staged inside the span, after the backup and
+    // just before git commits (ease-pass/05b, hard choice 3): `u` after the
+    // finish puts the stage back with the commit.
+    if let Some(add) = stage_solved_args(&stage) {
+        commands.push(graft_git::run::command_line(&add));
+        if let Err(error) = GitInvocation::new(ctx.repo).args(add).run(ctx.stop) {
+            ctx.journal.hold_commands(&entry.id, commands.clone());
+            let mut entry = entry;
+            entry.commands = commands;
+            return Err(ApplyError::ResumeFailed {
+                entry: Box::new(entry),
+                kind,
+                error,
+            });
+        }
+    }
     commands.push(graft_git::run::command_line(&args));
     let plan_dir = plan.as_ref().map(|(dir, _)| dir.as_path());
     let ran = resume_invocation(ctx.repo, kind, args, plan_dir, message).run(ctx.stop);
@@ -198,7 +222,7 @@ fn resume_args(kind: InProgress, how: Resume) -> (Vec<GitArg>, Option<Vec<u8>>) 
     let flag = |flag| vec![GitArg::Flag(kind.name()), GitArg::Flag(flag)];
     match how {
         // `resume_target` has refused every kind but a merge.
-        Resume::ContinueWith { message } => (
+        Resume::ContinueWith { message, .. } => (
             vec![
                 GitArg::Flag("commit"),
                 GitArg::Flag("--cleanup=whitespace"),
@@ -207,7 +231,7 @@ fn resume_args(kind: InProgress, how: Resume) -> (Vec<GitArg>, Option<Vec<u8>>) 
             ],
             Some(message),
         ),
-        Resume::Continue => (flag("--continue"), None),
+        Resume::Continue { .. } => (flag("--continue"), None),
         Resume::Skip => (flag("--skip"), None),
         Resume::Abort => (flag("--abort"), None),
     }
@@ -262,24 +286,35 @@ fn resume_target(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> 
     if matches!(how, Resume::ContinueWith { .. }) && kind != InProgress::Merge {
         return Err(ApplyError::Refused(Refusal::MessageNotHere { kind }));
     }
-    let continuing = matches!(how, Resume::Continue | Resume::ContinueWith { .. });
+    let continuing = matches!(how, Resume::Continue { .. } | Resume::ContinueWith { .. });
     let Some(entry) = live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?.cloned() else {
         return match (kind, how) {
-            (InProgress::Merge, Resume::Continue | Resume::ContinueWith { .. } | Resume::Abort) => {
-                shell_merge(ctx, how)
-            }
+            (
+                InProgress::Merge,
+                Resume::Continue { .. } | Resume::ContinueWith { .. } | Resume::Abort,
+            ) => shell_merge(ctx, how),
             _ => Err(ApplyError::Refused(Refusal::NotInProgress)),
         };
     };
     if *how == Resume::Skip && kind == InProgress::Merge {
         return Err(ApplyError::Refused(Refusal::CannotSkip(kind)));
     }
-    if continuing {
-        refuse_unmerged(ctx)?;
-    }
+    // Only a merge stages solved files: any other kind's `solved` is empty
+    // by contract, and is ignored rather than staged if it is not.
+    let solved = if kind == InProgress::Merge {
+        solved_of(how)
+    } else {
+        &[]
+    };
+    let stage = if continuing {
+        unmerged_to_stage(ctx, solved)?
+    } else {
+        Vec::new()
+    };
     Ok(Target::Live {
         kind,
         entry: Box::new(entry),
+        stage,
     })
 }
 

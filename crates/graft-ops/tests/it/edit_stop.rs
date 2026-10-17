@@ -344,8 +344,11 @@ fn an_amend_inside_graft_s_rewrite_folds_and_c_still_continues_it() {
     let handle = repo.open();
     let mut journal = crate::support::journal_for(&handle);
     let mut ctx = crate::support::context(&handle, &mut journal, NOW + 3, &Never);
-    let finished = graft_ops::apply::resume(&mut ctx, graft_ops::apply::Resume::Continue)
-        .unwrap_or_else(|why| panic!("c continues: {}", why.explain(&crate::support::Letters)));
+    let finished = graft_ops::apply::resume(
+        &mut ctx,
+        graft_ops::apply::Resume::Continue { solved: Vec::new() },
+    )
+    .unwrap_or_else(|why| panic!("c continues: {}", why.explain(&crate::support::Letters)));
     assert_eq!(finished.entry.id, entry, "the live entry was the one found");
     assert!(!repo.path().join(".git/rebase-merge").exists());
     assert_eq!(repo.git(&["show", "HEAD~1:a1.txt"]), "a1 amended");

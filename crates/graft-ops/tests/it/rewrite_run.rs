@@ -188,7 +188,7 @@ fn an_r_line_that_stops_continues_home() {
     assert_eq!(head(&repo), "detached", "stopped inside the line");
     resolve(&repo);
 
-    let applied = resume_with(&repo, Resume::Continue)
+    let applied = resume_with(&repo, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
@@ -306,7 +306,7 @@ fn r_drops_the_squash_merged_commits() {
 
     repo.write("shared.txt", b"m\nb\n");
     repo.git(&["add", "shared.txt"]);
-    let applied = resume_with(&repo, Resume::Continue)
+    let applied = resume_with(&repo, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(
@@ -575,7 +575,7 @@ fn a_stopped_line_continues_home_with_every_branch_moved() {
     stopped(&repo, &line_onto_main(&repo));
     resolve(&repo);
 
-    let applied = resume_with(&repo, Resume::Continue)
+    let applied = resume_with(&repo, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
@@ -611,7 +611,7 @@ fn kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan() {
     assert_eq!(in_progress(&repo), Some(InProgress::Rebase));
     resolve(&repo);
 
-    let applied = resume(&mut ctx, Resume::Continue)
+    let applied = resume(&mut ctx, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.id, entry.id);
@@ -654,7 +654,7 @@ fn an_edit_row_stops_and_the_resume_takes_the_line_home() {
     // Amended at the stop, as he would in the shell or the app.
     repo.write("a1.txt", b"a1 amended\n");
     repo.git(&["commit", "-q", "--amend", "--no-edit", "-a"]);
-    let applied = resume_with(&repo, Resume::Continue)
+    let applied = resume_with(&repo, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
@@ -736,7 +736,7 @@ fn a_resume_never_turns_his_update_refs_config_on() {
     stopped(&repo, &line_onto_main(&repo));
     resolve(&repo);
 
-    resume_with(&repo, Resume::Continue)
+    resume_with(&repo, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     assert_eq!(id(&repo, "lower"), lower, "lower stays");

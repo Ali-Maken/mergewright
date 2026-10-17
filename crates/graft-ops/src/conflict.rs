@@ -28,10 +28,12 @@ use crate::operation::Refusal;
 mod done;
 pub(crate) mod merge_msg;
 mod set;
+mod state;
 
 pub use done::{DoneFile, open_done};
 pub(crate) use set::conflicts_of;
 pub use set::{ConflictSet, ConflictSetError, operation_conflicts};
+pub use state::{FileState, file_state};
 
 /// What the resolver got when it opened a path.
 #[derive(Clone, Debug)]

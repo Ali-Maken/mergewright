@@ -33,9 +33,8 @@ impl<S: JobEvents> JobRunner<S> {
         let sink = self.sink.clone();
         let clock = self.clock;
         let description = match what {
-            graft_ops::apply::Resume::Continue | graft_ops::apply::Resume::ContinueWith { .. } => {
-                "continue"
-            }
+            graft_ops::apply::Resume::Continue { .. }
+            | graft_ops::apply::Resume::ContinueWith { .. } => "continue",
             graft_ops::apply::Resume::Skip => "skip",
             graft_ops::apply::Resume::Abort => "abort",
         };

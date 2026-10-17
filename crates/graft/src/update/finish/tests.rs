@@ -185,7 +185,10 @@ fn a_rebase_c_still_continues_directly() {
     state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
     assert!(state.finish.is_none());
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
 }
 
 #[test]
@@ -221,7 +224,10 @@ fn unread_summary_has_no_names() {
 fn y_commits_with_gits_message_when_unedited() {
     let state = opened();
     let (state, commands) = press(&state, plain(KeyCode::Char('y')));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
     assert_eq!(finish(&state).committing, state.operating);
     assert!(state.operating.is_some());
 }
@@ -235,6 +241,7 @@ fn an_edited_subject_commits_continue_with() {
     assert_eq!(
         resumes(&commands),
         vec![&Resume::ContinueWith {
+            solved: Vec::new(),
             message: b"Merge branch 'feature' at last".to_vec()
         }]
     );
@@ -284,7 +291,10 @@ fn an_unreadable_summary_commits_with_gits_message() {
         ),
     );
     let (_, commands) = press(&state, plain(KeyCode::Char('y')));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
 }
 
 #[test]
@@ -745,7 +755,10 @@ fn y_in_the_file_list_commits_and_enter_toggles_the_diff() {
     assert_eq!(finish(&hidden).expanded, None, "⏎ again hides it");
 
     let (state, commands) = press(&state, plain(KeyCode::Char('y')));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
     assert_eq!(finish(&state).committing, state.operating);
     assert!(state.operating.is_some());
 }
@@ -766,7 +779,10 @@ fn y_in_the_subject_is_typed_text() {
 fn enter_in_the_subject_still_commits() {
     let state = key(&opened(), KeyCode::Tab);
     let (_, commands) = press(&state, plain(KeyCode::Enter));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
 }
 
 #[test]
