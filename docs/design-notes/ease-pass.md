@@ -14,7 +14,8 @@ commit options listed in `⌃P`/`?` from the commit editor; spec `03b-ease-vocab
 **P and F fitted to their scouts** (2026-10-17): P split into 05 (picks, Opus) + 05b (stage at `y`, review, pause; Fable);
 F split into 06 (fold) + 06b (lanes on screen, header) + 06c (seek reveals a folded commit). Hard choices 2 and 3
 amended below; Q16, Q17 opened (build on today's behaviour until answered). 07, 09, 11–14 updated. No accepted
-behaviour changed.
+behaviour changed. **Fold rule settled** (2026-10-18): "merged" = merged into any shown line, as built (Hard choice 2);
+search counts folded hits and says so (06c). No accepted behaviour changed.
 
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
@@ -140,7 +141,9 @@ then the merge mock's `m merge <b> into yours`; names in bars are the last path 
 pick each (in a merge `O`/`T` take all and go on, `⌃O`/`⌃T` take all and stay); a sync merge (nothing hidden) draws no
 `▸`; fold counts asked at rest, the number absent until it lands, `?` if it fails; header `K` counts folded merges in
 view; a commit hidden by the default fold is revealed by any route that goes to it (06c), one hidden by a view he chose
-(`1`) keeps "not in this view".
+(`1`) keeps "not in this view". **2026-10-18:** search counts every walked hit, folded ones included; while any count is
+folded its footer adds `· N in folded merges` (status rule: shown only when >0); `n`/`N` reach each in walk order, which
+is row order once opened, revealing as they go (06c).
 
 ADR-0063 departures checked against `docs/design/02-keymap.md`: (1) `⏎` commits from the subject — **already the spec and
 build** (§2.10 :494, P16; `crates/graft-ui/MAP.md:235`), not a departure. (2) `y` finish — resolver is modal, `y` unbound
@@ -197,8 +200,9 @@ opened, opened_mut, force_shown}`, streaming `FoldWalk::{admit -> Admit, take_la
    under this one (CONTEXT "Dependent branch"); "merged" only when a trunk/integration line holds it, or an ordinary base
    that sat under it took it in by a merge; a branch with no commits of its own says so. Recorded parents stay rejected
    (ADR-0032; `stacked-branches.md` §4).
-2. **Fold by default as a streaming inclusion predicate** (first-parent closure of trunk, HEAD, integration and refs not
-   reachable from trunk; two bitsets filled as the topo walk emits) vs a precomputed fold set. **Rec: predicate** — keeps
+2. **Fold by default as a streaming inclusion predicate** (first-parent closure of trunk, HEAD, integration and every
+   other ref tip that no shown merge reaches through a second parent; two bitsets filled as the topo walk emits) vs a
+   precomputed fold set. **Rec: predicate** — keeps
    first paint and scroll budgets; fits `Inclusion`/`Included` (§3.6 last bullet). **Amended after F's scout:** the
    provisional order (no commit-graph) is date order and a backward clock can emit a parent before its child
    (`simple.rs:12-21`). So: **shown wins and only grows**; a hidden verdict a late child contradicts is repaired through
@@ -206,6 +210,14 @@ opened, opened_mut, force_shown}`, streaming `FoldWalk::{admit -> Admit, take_la
    tip emitted before its merge stays shown — extra rows, never missing ones); promotion re-walks in topo order and is
    exact. Rejected: unfolded until promotion (every launch without a commit-graph would jump); "promotion fixes it"
    alone (a commit on his own branch missing is a wrong picture — his rule, ADR-0008 amendment).
+   **Settled 2026-10-18 — what "merged" means for the fold:** merged into **any shown line**, not only trunk. Options:
+   (a) as built — a ref tip folds when a shown merge reaches it through a second parent; (b) keep every ref tip not
+   reachable from trunk. **(a)**: the main mock folds `pay-571`…`pay-307` into `integration`'s merges (its rows
+   115–118) while `integration` is "not merged into development" (pane, its line 193) — (b) would draw each of those
+   lanes; lane count is his complaint (`:101`, `:102`). So a teammate's branch merged into another's unfinished branch
+   folds under that merge, tail naming it; a base merged into its dependent to catch up folds too, and **shows again
+   with its lane the moment it gets a commit the merge didn't take** (no merge reaches its tip then). HEAD's and
+   integration branches never fold (keep tips). The right pane's "merged" stays 01r's (into its base): both say true things.
 3. **When a merge's solved files are staged.** At each file's last pick (lazygit) or once, at the review's `y`. **Rec: at
    `y`, one write** — `u` stays a disk-only reopen in every merge, shell-begun included; the review reads a scratch index;
    relaunch treats an unmerged file with no markers as solved. Rebase, cherry-pick, revert, stash keep `⏎` staging (Q12).
