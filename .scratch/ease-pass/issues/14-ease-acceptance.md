@@ -1,15 +1,17 @@
 # ease-acceptance — walk the three mocks in the real app
 
-Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17)
-Blocked by: all of 01–13, plus 01r and 03b
+Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17)
+Blocked by: all of 01–13, plus 01r, 03b, 05b, 06b, 06c
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
-ease-vocabulary-rest (03b), commit-what-goes-in, clash-reads, resolver-picks, graph-fold-and-lanes, graph-rows,
-branch-pane, pixel-roles-and-tall-row, commit-screen, merge-preview, clash-screen-look, finish-review-and-look.
+ease-vocabulary-rest (03b), commit-what-goes-in, clash-reads, resolver-picks, merge-review-at-y (05b),
+graph-fold-and-lanes, lanes-on-screen-and-header (06b), fold-seek-reveal (06c), graph-rows, branch-pane,
+pixel-roles-and-tall-row, commit-screen, merge-preview, clash-screen-look, finish-review-and-look.
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Promise, Journeys (including the `journeys` fence), Mock behaviours (G1–G14,
-  C1–C15, M1–M19), New UI, Questions (1–13 answered a; 14 and 15 as answered by then).
+  C1–C15, M1–M19), New UI, Hard-to-reverse choices 2 and 3 (as amended 2026-10-17), Questions (1–13 answered a;
+  14–17 as answered by then).
 - `.scratch/ease-pass/issues/01r-roles-and-route-fixes.md`: "The rules, corrected" (R1–R3, Known limits).
 - Each pass-2 spec's Acceptance captures list (file names only).
 - `TESTING.md`: the M8 acceptance section only, for its form. `scripts/m8-accept.sh` usage line;
@@ -21,7 +23,8 @@ In:
 - `scripts/ease-accept.sh`: one command. It builds a fixture repo shaped like the mocks, walks every journey and every
   behaviour line in a pty, writes captures, and prints one summary line per scenario. The mock-shaped repo has:
   - `main ← wallet-release ← sara/fix-toc`, and teammates' branches by other authors;
-  - PR-style merges `Merged PR <n>: …` with the branch deleted, plus a named merge;
+  - PR-style merges `Merged PR <n>: …` with the branch deleted, plus a named merge, plus a sync merge (main into a
+    feature branch);
   - a tag, and a branch 1 ahead of its upstream;
   - a new `.env` plus 3 modified files;
   - a merge where one file clashes in 1 place, and another where files clash in 3 places across 2 files;
@@ -45,6 +48,13 @@ In:
   - `g12_teammate_sync_is_not_a_merge`: the merged line reads `not merged`, never `merged into bob/x`;
   - `g12_dependent_before_the_move`: run on a copy of `team` taken before wallet-release's extra commit. The `built on`
     line reads `main ─◆ develop ─◆ wallet-release ─◆ sara/fix-toc`.
+- **Fold checks** (06, 06c), each named `fold_…`, text only:
+  - `fold_sync_merge_has_no_mark`: the sync merge's row carries no `▸`;
+  - `fold_reveal_parent`: detail pane on a folded PR merge, follow parent 2 → the row reads `▾ …`, cursor on parent 2;
+  - `fold_same_without_commit_graph`: the mock repo with `.git/objects/info/commit-graph` removed — once the view
+    has promoted (wait on the promotion event, not a sleep), the rows' text equals the commit-graph run's.
+- **Picks in a shell-begun merge** (05, 05b), named `picks_shell_merge`: `git merge` in the shell, launch → banner
+  focused; `⏎ o u o y y` → merged; `git ls-files -u` non-empty until the last `y`.
 - One assertion per answered question, named `q<N>_…`:
   - Q1: `C` on a teammate's row → picker on that branch; `⏎` switches. 2 keys.
   - Q2: the bar on a teammate's row has `x compare`; `x x` across two rows still compares.
@@ -63,7 +73,10 @@ In:
   - Q11: the top line keeps today's frame and ends with `lanes drawn: N of M`; the bar end is today's.
   - Q12: a rebase clash uses the marks and advance; `⏎` stages the file; `c` goes on.
   - Q13: a PR merge's folded row reads `▸ N commits from PR <n>`.
+  - Q14: as answered. Under (a) the top line names the branch once.
   - Q15: as answered. Under (a) it is `g12_sibling_never_built_on` above.
+  - Q16: as answered. Under (a) `o` on a taken clash → `t` replaces it, and `u` brings `o`'s take back.
+  - Q17: as answered. Under (b) a rebase stop lands on the graph with the banner focused; under (a) on the first clash.
 - Captures:
   - every file the pass-2 specs list under `docs/shots/ease-pass/`, re-taken by the walk at their widths (120, 100,
     90);
@@ -76,7 +89,8 @@ In:
   - "cursor row has a second line starting with the author's name and ending with a 7-char hash";
   - "`lanes drawn: 5 of 8` at the top line's right end";
   - "`.env` listed under Staying out with `!`";
-  - "`built on` line on sara never names `ali/x`".
+  - "`built on` line on sara never names `ali/x`";
+  - "the sync merge's row has no `▸`".
 
   Every line where colour carries meaning says **colour: unverified** (rule 5).
 
@@ -103,8 +117,8 @@ capture into the report.
 - [ ] `scripts/ease-accept.sh` exits 0 and prints 9 journey lines with walked/allowed counts, including exactly
   `commit-all-subject 3/3` and `merge-one-clash 5/5`.
 - [ ] A deliberately padded walk (one extra key) of each of those two fails `within_the_note` (negative test).
-- [ ] Every behaviour ID G1–G14, C1–C15, M1–M19 has a passing test named with the ID. The three `g12_…` assertions and
-  every `q1`–`q13` assertion (plus `q15` as answered) pass. NOTES lists IDs → test names.
+- [ ] Every behaviour ID G1–G14, C1–C15, M1–M19 has a passing test named with the ID. The three `g12_…`, the three
+  `fold_…`, `picks_shell_merge` and every `q1`–`q17` assertion (as answered) pass. NOTES lists IDs → test names.
 - [ ] Every capture under `docs/shots/ease-pass/` is ≤200 KB. The captions file has one line per capture with its mock
   path. The contact sheet assembles with no `NOT RECORDED`.
 - [ ] The `TESTING.md` section is present, with one entry per capture and colour marked unverified.

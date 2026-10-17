@@ -11,6 +11,10 @@ rules corrected — they now say only what git can prove; spec `01r-roles-and-ro
 **03b** (2026-10-17, after V came back 5/10): hint verbs become `Cow<'static, str>`; names and counts ride as fields of
 new `HintContext` variants; a key's row and its bar land with its handler (`#` → G, `y` → P, review/look bars → Fr);
 commit options listed in `⌃P`/`?` from the commit editor; spec `03b-ease-vocabulary-rest.md`; 05, 07, 08, 10–12, 14 updated.
+**P and F fitted to their scouts** (2026-10-17): P split into 05 (picks, Opus) + 05b (stage at `y`, review, pause; Fable);
+F split into 06 (fold) + 06b (lanes on screen, header) + 06c (seek reveals a folded commit). Hard choices 2 and 3
+amended below; Q16, Q17 opened (build on today's behaviour until answered). 07, 09, 11–14 updated. No accepted
+behaviour changed.
 
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
@@ -68,15 +72,21 @@ open-folded-merge    1     space                         SM 1 click
 - **Merge-one-clash:** graph, cursor on `integration`'s row. 1 `m` → preview. 2 `y` → stop **lands** on the clash screen,
   cursor on the first clash (0 keys). 3 `o` → block shrinks; file solved, stays on screen. 4 `y` → review "Nothing
   committed yet". 5 `y` → **lands** on the graph, cursor on the merge commit (folded), `✓ Merged …`. Clean merge: step 2
-  lands there directly. Refused (in the way, ADR-0049) → the preview says why, nothing written (today's).
-- **Pause:** `esc` on the clash screen → graph, banner focused (Q7 a); `⏎` → first open clash, picks kept.
+  lands there directly. Refused (in the way, ADR-0049) → the preview says why, nothing written (today's). Hook refuses at
+  step 5 → stays on the review with the failure (05b).
+- **Pause:** `esc` on the clash screen → graph, banner focused (Q7 a); `⏎` → first open clash, picks kept. A relaunch
+  mid-merge lands in the same paused place (picks don't survive it; files solved before it still read solved).
+- **Going to a commit inside a folded merge** (detail parent link, search hit, `J` put-back, palette, Map): the merge
+  opens and the cursor lands on it, 0 extra keys (06c).
 - **Teammate's status:** move to his row (navigation) → the right pane answers four questions; 0 extra keys. Switch to his
   branch: `C ⏎` (Q1 a).
 
 ## Mock behaviours → specs (acceptance lines)
 Slugs: **R** roles-and-route (+ **Rr** its fixes, 01r) · **V** ease-vocabulary (+ **Vr** its rest, 03b) · **W** commit-what-goes-in · **K** clash-reads · **P** resolver-picks
-(pass 1); **F** graph-fold-and-lanes · **G** graph-rows · **B** branch-pane · **X** pixel-roles-and-tall-row · **S**
+(+ **Pb** merge-review-at-y, 05b) (pass 1); **F** graph-fold-and-lanes (+ **Fb** lanes-on-screen-and-header, 06b; **Fc**
+fold-seek-reveal, 06c) · **G** graph-rows · **B** branch-pane · **X** pixel-roles-and-tall-row · **S**
 commit-screen · **Mp** merge-preview · **L** clash-screen-look · **Fr** finish-review-and-look (pass 2); **A** acceptance.
+Below, "P" covers P and Pb, "F" covers F, Fb and Fc.
 
 Graph (main mock): G1 colour = role vs cursor row's branch — `┃` this, `│` built on, `║` trunk, `┊` grey other; moves with
 `j/k` (R G X) · G2 connectors `╯ ╮` with `━ ─ ═ ┄` in the joining branch's role (G X) · G3 `●` commit, `◉` merge (G) · G4
@@ -125,7 +135,11 @@ something is dropped / folded (status rule); merge preview without buttons only 
 (flag for the usability walk). **01r:** right-pane words for states the mock never shows (merged, no commits of its own,
 unrelated branch) — in 09, mock style. **03b:** a teammate's row carries both mocks' words — main's `C switch` / `x compare`,
 then the merge mock's `m merge <b> into yours`; names in bars are the last path segment; `?` in the commit subject types
-`?` (options from `⌃P` there, `?` from the file list).
+`?` (options from `⌃P` there, `?` from the file list). **P/F scouts:** `O`/`T`, `⌃O`/`⌃T` keep §2.6's meanings, one
+pick each (in a merge `O`/`T` take all and go on, `⌃O`/`⌃T` take all and stay); a sync merge (nothing hidden) draws no
+`▸`; fold counts asked at rest, the number absent until it lands, `?` if it fails; header `K` counts folded merges in
+view; a commit hidden by the default fold is revealed by any route that goes to it (06c), one hidden by a view he chose
+(`1`) keeps "not in this view".
 
 ADR-0063 departures checked against `docs/design/02-keymap.md`: (1) `⏎` commits from the subject — **already the spec and
 build** (§2.10 :494, P16; `crates/graft-ui/MAP.md:235`), not a departure. (2) `y` finish — resolver is modal, `y` unbound
@@ -145,7 +159,7 @@ Merged { MainLine, Into, NotYet { into: Option<String> }, NothingToMerge }, behi
 Authors { first, others, last }, NoOwnCommits } }`, all reads through `count_between`/`commits_between`/`compare_span`/
 `entry_into` (stop, `RunError`); rules in 01r ("built on" and "merged" only where git proves them); caller: app job
 behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap:
-new ids `graph.colours_off` `#` (row lands with G's handler), `resolver.review` `y` (with P's), keyless `commit.toggle_{amend,no_verify,allow_empty}`; **no new
+new ids `graph.colours_off` `#` (row lands with G's handler), `resolver.review` `y` (with Pb's), keyless `commit.toggle_{amend,no_verify,allow_empty}`; **no new
 `ContextId`** (incoming list ⊂ `Preview`, look ⊂ `Finish`, commit files a focus of `CommitEditor`); `n`/`esc`/`u`/`c`/review
 `⏎` keep `resolver.next_block`/`app.back`/`app.undo`/`resolver.finish`/`finish.toggle_diff`, their handlers change (P, Fr);
 merge-preview `⏎` stays hard-matched, branched by kind (Mp); hints: `Hint.verb: Cow<'static, str>`, new variants
@@ -156,16 +170,22 @@ variants gain no fields; commit-screen and preview footers stay screen code (S, 
 `first_choice`, `looks_like_secrets`, `Refusal::NothingChosen`, `Invocation.index: IndexFile { Real, Scratch }` (the
 executor runs `Scratch` lines on a copy of the real index; undo unchanged — it already restores HEAD and index) (W). **graft-git** — `merge_forecast(repo, git, ours, theirs, stop) -> MergeCheck {
 Checked(MergeForecast { changed, changed_capped, clashes: Vec<ClashForecast> }), NotCheckable(reason) }`,
-`ConflictFile::reopen` (existing `NoSuchBlock`), pure `line_origins` (K); `CommitSummary` unchanged — the incoming list's
+`ConflictFile::reopen` (already exists; `NoSuchBlock`), pure `line_origins` (K); `CommitSummary` unchanged — the incoming list's
 age is the existing `author.when`; `entry_into(repo, onto, line, stop) -> Result<Option<LineEntry { commit, parents }>,
-RunError>` — where a tip entered a line's first-parent chain (Rr). **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`,
-`FinishMergeParams.solved`, `finish_preview(repo, solved, stop)`; app `Picks` (+`seal`), `next_open_in_file`, `next_open` (P).
-Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `FoldWalk::admit`, `Fold::open_columns`,
-`merge_name` `PR <n>` (F); raster `Stroke::of(LaneRole)`, `PlainStrip.roles`, `rasterise_continuation` (X). **graft-ui**
-`lane_glyph`/`join_glyph`, `GraphEntry` cells `BranchCell`/`WhoCell`/`RowLabel`/`SecondLine` (badges, SHA, chip removed),
+RunError>` — where a tip entered a line's first-parent chain (Rr). **graft-ops + app** — `Restore { block, before:
+Option<Take> }`, `apply_untake` (P); `Resume` variants carry `solved: Vec<PathBuf>` (`Continue` was a unit variant),
+`FinishMergeParams.solved`, `finish_preview(repo, solved, stop)`, `FileState { Open { open }, Solved, Done }`,
+`file_state(&Opened, unmerged)` (Pb); app `Pick { path, blocks: Vec<Restore> }`, `Picks` (+`seal`, `clear`),
+`next_open_in_file`, `next_open` (P).
+Pass 2: **graft-graph** `OpenedMerges` (not `Opened`: graft-ops has `conflict::Opened`), `Inclusion::{folded_by_default,
+opened, opened_mut, force_shown}`, streaming `FoldWalk::{admit -> Admit, take_late, folds, behind}`, `Fold::open_columns`
+(Fb), `Included::whereabouts -> Whereabouts` (Fc), `merge_name` `PR <n>` (F); raster `Stroke::of(LaneRole)`,
+`PlainStrip.roles`, `rasterise_continuation` (X). **graft-ui** `FoldMark { open, count: FoldCount, from }` (F),
+`header_tail` (Fb), `lane_glyph`/`join_glyph`, `GraphEntry` cells `BranchCell`/`WhoCell`/`RowLabel`/`SecondLine` (badges, SHA, chip removed),
 `Theme::colourless` (G); `branch_pane::{BranchPaneView, PaneLine, Mark, pane_width}` (B); `CommitScreenView`,
 `SUBJECT_LIMIT = 72` (S); `MergeParts`, `IncomingList` (Mp); resolver `Mark`, `ListTail`, inline only (L); `ReviewView`,
-`LookView`, `MergeLook` widget (Fr). **graft app** `lane_roles`, `commit_rows`, `AppState.{route, colours_off}` (G); `StatusKey`,
+`LookView`, `MergeLook` widget (Fr). **graft app** `InsideMerge { merge, label }` (F; not `OpenedFrom`: the resolver has
+`OpenedFrom::{Banner, Pane}`), `lane_roles`, `commit_rows`, `AppState.{route, colours_off}` (G); `StatusKey`,
 `candidates`, `identity_of`, picker `open_on` (B); `TallRow` (X); `Draft`, `include_of` (S); `jobs::finish::look_read` (Fr).
 
 ## Hard-to-reverse choices
@@ -178,11 +198,20 @@ Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `Fol
    (ADR-0032; `stacked-branches.md` §4).
 2. **Fold by default as a streaming inclusion predicate** (first-parent closure of trunk, HEAD, integration and refs not
    reachable from trunk; two bitsets filled as the topo walk emits) vs a precomputed fold set. **Rec: predicate** — keeps
-   first paint and scroll budgets; fits `Inclusion`/`Included` (§3.6 last bullet). Needs children-before-parents in the
-   provisional order — F's scout checks; if not, it comes back as a question.
+   first paint and scroll budgets; fits `Inclusion`/`Included` (§3.6 last bullet). **Amended after F's scout:** the
+   provisional order (no commit-graph) is date order and a backward clock can emit a parent before its child
+   (`simple.rs:12-21`). So: **shown wins and only grows**; a hidden verdict a late child contradicts is repaired through
+   the same `reinclude` path `space` uses (force-shown set); the one error left before promotion is benign (a merged
+   tip emitted before its merge stays shown — extra rows, never missing ones); promotion re-walks in topo order and is
+   exact. Rejected: unfolded until promotion (every launch without a commit-graph would jump); "promotion fixes it"
+   alone (a commit on his own branch missing is a wrong picture — his rule, ADR-0008 amendment).
 3. **When a merge's solved files are staged.** At each file's last pick (lazygit) or once, at the review's `y`. **Rec: at
    `y`, one write** — `u` stays a disk-only reopen in every merge, shell-begun included; the review reads a scratch index;
    relaunch treats an unmerged file with no markers as solved. Rebase, cherry-pick, revert, stash keep `⏎` staging (Q12).
+   **Amended after P's scout:** a pick needs no backup in either merge origin — git's stages 1–3 stay in the index until
+   `y`, so the conflict can always be rebuilt; "solved" is the resolver's classification (a marker document with 0 open
+   blocks), never "no markers" — a binary or delete/modify conflict has none and stays open. One finish path: `solved`
+   rides on `Resume` into `FinishMerge` for shell-begun merges (`resume.rs:100-105`, `shell.rs:59`).
 
 ## Where I'd differ from DESIGN.md
 DESIGN edits the accepted mocks imply (go to him as Proposed changes): `02-keymap` §2.3 (`#`, fold default), §2.3b (merge
@@ -196,6 +225,8 @@ on" names an ordinary (non-integration) branch only while it lies wholly under t
 pane names the integration branch or trunk instead — true, less specific. Git can't tell a moved base from a sibling
 (review 01 M1); the alternative, guessing, named teammates' branches wrongly. Open question to him (Q15). (b) The mocks
 give `⏎` two meanings in file lists: commit (commit screen) vs look (review); kept as accepted, flagged for the walk.
+(c) §2.6a says every stop with clashes opens the resolver; the code lands on the banner, and only merges change here
+(Q17).
 
 ## New UI
 Graph (≥120 cols, as mock): `graph | branch 20 | message | who 6 | age 4` + `│` + branch pane 36. 100–119: pane 30, branch
@@ -210,11 +241,12 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
 ## Genuinely risky tickets
 - **roles-and-route** — signature: every graph pane draws from it; Fable (signature). **01r** continues it on Fable
   (signature): the corrected rules can't be judged from the diff — four wrong rules passed every tick.
-- **resolver-picks** — the pick stack, staging at `y`, shell-begun merges, relaunch with solved-unstaged files: a wrong
-  approach is structural and index states can't be judged from the diff. Passes all three Fable tests (approach decided
-  here). **Planner recommends Fable**; `Build with` left to the conductor after the scout.
-- graph-fold-and-lanes is in the layout-engine area (`builder-opus-xhigh`); pixel-roles-and-tall-row carries the lag risk
-  (gate: trace, not eye). Neither is Fable: correctness is checkable by tests/trace.
+- **merge-review-at-y (05b)** — staging at `y`, both merge origins, relaunch with solved-unstaged files: a wrong approach
+  is structural and index states can't be judged from the diff. Passes all three Fable tests (approach decided here).
+  **Fable.** Its half, **resolver-picks (05)**, is bytes on disk checked by fixture → Opus.
+- graph-fold-and-lanes (06, 06b, 06c) is in the layout-engine area (`builder-opus-xhigh`): the late-repair and promotion
+  rules are checked by property tests over date-skewed histories. pixel-roles-and-tall-row carries the lag risk (gate:
+  trace, not eye). Neither is Fable: correctness is checkable by tests/trace.
 - commit-what-goes-in now changes the executor (`IndexFile::Scratch`); Opus per its scout — every index state is checked
   by fixture (`git ls-files -s`), so not Fable.
 
@@ -235,20 +267,26 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
 13. Your work repo's merges read `Merged PR 16021: …` and don't name the branch; once that branch is deleted, the folded row can't say `from sara/fix-toc` as the mock does. (a) `▸ 4 commits from PR 16021` · (b) `▸ 4 commits`. **Rec a.**
 
 **Open (pass 2):**
-14. Top line, after your answer to 11: today's top line already names your branch (`◆ reports ~/work/reports · wallet-release`). Adding the mock's words would name it twice (`… · wallet-release … on wallet-release  lanes drawn: 5 of 8`). (a) add only `lanes drawn: 5 of 8 · 3 merged branches folded` at the right end · (b) add `on wallet-release` too, as the mock. **Rec a.** F builds (a); (b) is a one-line change.
+14. Top line, after your answer to 11: today's top line already names your branch (`◆ reports ~/work/reports · wallet-release`). Adding the mock's words would name it twice (`… · wallet-release … on wallet-release  lanes drawn: 5 of 8`). (a) add only `lanes drawn: 5 of 8 · 3 merged branches folded` at the right end · (b) add `on wallet-release` too, as the mock. **Rec a.** Fb builds (a); (b) is a one-line change.
 
 **Open (01r):**
 15. A teammate cuts `sara/fix-toc` from your `wallet-release`, then you commit more on `wallet-release`. Git can't tell from then on whether sara was built on yours or the other way round. (a) the right pane says sara is built on `integration` (true, but doesn't name yours); amber goes on `integration` · (b) let you mark `wallet-release` as a long-lived branch once (like `develop`), so it's always named. **Rec a** now; (b) is a later setting, no rule change. 01r builds (a).
 
+**Open (P scout):**
+16. On a clash you already took, pressing `o`, `t` or `b` again: (a) replaces your pick, as today — `u` then brings the earlier pick back · (b) as the mock: nothing happens, it says `already taken · u undoes it`. **Rec a**: changing your mind about an earlier clash is 1 key, not "undo every pick since". P builds (a); (b) is a one-line change.
+17. A rebase or cherry-pick that stops on clashes: (a) lands on the first clash, as a merge now does · (b) lands on the graph with the rebase bar selected, as today (`⏎` opens the clashes). **Rec a** (same as a merge; one key fewer). Pb builds (b) until you answer — it is what you use today; (a) is a one-line change.
+
 ## Groups and waves (≤2 cargo builders)
-W1 R ‖ K · W2 V ‖ W · W2b Vr (03b; ‖ F allowed — disjoint files) · W3 P ‖ F · W4 G ‖ S · W5 B ‖ Mp · W6 L ‖ Fr · W7 X **alone** (its lag script must run on a quiet
-machine) · W8 A. Every pass-2 group is brownfield: scout first (ADR-0035), `Build with` blank.
+W1 R ‖ K · W2 V ‖ W · W2b Vr (03b; ‖ F allowed — disjoint files) · W3 P ‖ F · W3b Pb ‖ Fb · W3c Fc ‖ S · W4 G ‖ Mp ·
+W5 B · W6 L ‖ Fr · W7 X **alone** (its lag script must run on a quiet machine) · W8 A. Every pass-2 group is
+brownfield: scout first (ADR-0035), `Build with` blank until then (P, Pb, F, Fb, Fc set after their scouts).
 Same-crate pairs (graft app in W3–W6, graft-ui in W4–W6) use disjoint files (ADR-0051). Shared registries: **V and Vr own
 the hints files** (`graft-ui/src/graph_screen/hints*`) for the pass; later groups pick a `HintContext`, and three named
-exceptions edit them: P (the merge all-solved arm), Fr (the `Review` states), G (retiring `BranchRow`/`PlainRow` if unpicked).
+exceptions edit them: Pb (the merge all-solved arm), Fr (the `Review` states), G (retiring `BranchRow`/`PlainRow` if unpicked).
 `update/state.rs`, `update/events.rs`, `jobs/kinds.rs`: the first-named group of each pair owns them; the second adds only
 at the end of an enum/struct and names the lines in its report, for the conductor's merge.
 W2 crate sets: V graft-ui only; W graft-ops plus six `CommitParams` literals in graft (compile fix, `Include::Staged`) — disjoint.
 Vr: graft-ui hints files + graft `update::palette`, `update::commit_editor` (option dispatch only), sweep tests.
-Dependency order: R, K, V, W (no needs) → Rr (R; graft-git + graft-ops, before B) → Vr (V; before P, G, S, L, Fr) → P (K, V, Vr) · F (none) → G (R, V, Vr, F) · S (W, V, Vr) → B (R, Rr, G, V) · Mp (K, V) → L (P, V, Vr)
-· Fr (P, K, V, Vr, F) → X (R, G, F, V) → A (all).
+Dependency order: R, K, V, W (no needs) → Rr (R; graft-git + graft-ops, before B) → Vr (V; before P, G, S, L, Fr) → P (K, V, Vr)
+→ Pb (P) · F (none) → Fb (F), Fc (F) → G (R, V, Vr, F, Fb) · S (W, V, Vr) → B (R, Rr, G, V) · Mp (K, V) → L (P, Pb, V, Vr)
+· Fr (Pb, K, V, Vr, F) → X (R, G, F, Fb, V) → A (all).
