@@ -81,9 +81,16 @@ fn a_folded_merge_menu_reverts_with_a_mainline() {
     refs_at(&mut state, tip, None);
     crate::update::context_menu::open_for_history_row(&mut state, 1);
     let open = state.context_menu.expect("the menu opened");
-    let labels: Vec<&str> = open.menu.items.iter().map(|item| item.label.as_str()).collect();
+    let labels: Vec<&str> = open
+        .menu
+        .items
+        .iter()
+        .map(|item| item.label.as_str())
+        .collect();
     assert!(
-        labels.iter().any(|label| label.starts_with("Revert") && label.ends_with("-m 1")),
+        labels
+            .iter()
+            .any(|label| label.starts_with("Revert") && label.ends_with("-m 1")),
         "{labels:?}"
     );
 }
@@ -94,6 +101,39 @@ fn a_folded_merge_shows_both_parents_in_the_detail_pane() {
     state.detail.spec = Some(DetailSpec::Commit(merge));
     let view = crate::view::detail_view(&state);
     assert_eq!(view.header.parents.len(), 2);
+}
+
+/// The radar treats it as a merge: the evil-merge line is offered.
+#[test]
+fn a_folded_merge_gets_the_evil_merge_radar_line() {
+    let (mut state, merge) = folded_merge_on_screen(JobId::new(66), 1);
+    state.detail.spec = Some(DetailSpec::Commit(merge));
+    let view = crate::view::detail_view(&state);
+    assert!(
+        view.header
+            .radar
+            .iter()
+            .any(|line| matches!(line, graft_ui::detail::RadarLine::EvilUnchecked)),
+        "{:?}",
+        view.header.radar
+    );
+}
+
+/// `o` on a folded merge is refused as a merge, not offered as a pick.
+#[test]
+fn o_on_a_folded_merge_is_refused_as_a_merge() {
+    let (mut state, merge) = folded_merge_on_screen(JobId::new(67), 1);
+    let tip = plain(&state);
+    refs_at(&mut state, tip, None);
+    let (next, commands) = update(&state, key(KeyCode::Char('o')));
+    assert!(next.preview.is_none(), "{commands:?}");
+    let short = merge.to_string()[..7].to_owned();
+    assert!(
+        matches!(&next.status, Status::Sticky { reason, .. }
+            if reason.starts_with(&format!("{short} is a merge"))),
+        "{:?}",
+        next.status
+    );
 }
 
 /// A stash entry keeps today's output: its first parent only.

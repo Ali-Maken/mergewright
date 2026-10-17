@@ -338,7 +338,12 @@ fn row_entry<'a>(
         .take(badges_that_fit(state.size.columns))
         .collect();
     let subject = String::from_utf8_lossy(row.commit.subject());
-    let marker = super::radar::marker_for(state, row.commit.id, crate::history::parents::of(row, state.refs.as_deref()), &subject);
+    let marker = super::radar::marker_for(
+        state,
+        row.commit.id,
+        crate::history::parents::of(row, state.refs.as_deref()),
+        &subject,
+    );
     if marker.is_some() {
         // Sticky: once a finding has been seen this session, the marker
         // column keeps drawing even after the row that earned it scrolls

@@ -62,7 +62,7 @@ fn sort_answered(took: Duration) -> AppState {
     let mut repository = facts("/code/api", "main");
     repository.commit_graph = CommitGraphFact::Absent { declined: false };
     state.system_git = Some(supported());
-    state.repository = Some(repository);
+    state.repository = Some(Box::new(repository));
     let (state, _) = update(
         &state,
         AppEvent::Produced(
@@ -128,7 +128,7 @@ fn a_stopped_sort_gets_no_offer() {
     let mut repository = facts("/code/api", "main");
     repository.commit_graph = CommitGraphFact::Absent { declined: false };
     state.system_git = Some(supported());
-    state.repository = Some(repository);
+    state.repository = Some(Box::new(repository));
     let (stopped, _) = update(&state, key(KeyCode::Escape));
     let (late, _) = update(
         &stopped,

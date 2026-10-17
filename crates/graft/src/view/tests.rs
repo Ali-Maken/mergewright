@@ -45,14 +45,14 @@ fn open(head: Head) -> AppState {
     AppState {
         screen: Screen::Status,
         repo_path: std::path::PathBuf::from("/code/api"),
-        repository: Some(RepositoryFacts {
+        repository: Some(Box::new(RepositoryFacts {
             path: std::path::PathBuf::from("/code/api"),
             bare: false,
             head,
             head_commit: None,
             mailmap: graft_git::mailmap::Mailmap::default(),
             commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
-        }),
+        })),
         ..AppState::default()
     }
 }
@@ -2605,14 +2605,14 @@ fn commit_editor_state(columns: u16, rows: u16) -> AppState {
     let mut state = changes_pane_state(columns, rows);
     // A branch for the title row: the count and the branch are the two facts
     // the title carries, and a fixture without one would capture half of it.
-    state.repository = Some(RepositoryFacts {
+    state.repository = Some(Box::new(RepositoryFacts {
         path: std::path::PathBuf::from("/code/api"),
         bare: false,
         head: Head::Branch(b"main".to_vec()),
         head_commit: None,
         mailmap: graft_git::mailmap::Mailmap::default(),
         commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
-    });
+    }));
     // The detail pane stays open behind the editor, which is the point of
     // hard choice 4 in the design note.
     let (mut state, _) = update(

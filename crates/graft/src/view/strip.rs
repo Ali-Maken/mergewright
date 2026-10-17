@@ -51,9 +51,12 @@ pub fn strip_marks(state: &AppState) -> StripMarks {
             // whole message was being decoded here for a rule that only
             // reads the first line.
             let subject = String::from_utf8_lossy(row.commit.subject());
-            if let Some(marker) =
-                super::radar::marker_for(state, row.commit.id, crate::history::parents::of(row, state.refs.as_deref()), &subject)
-            {
+            if let Some(marker) = super::radar::marker_for(
+                state,
+                row.commit.id,
+                crate::history::parents::of(row, state.refs.as_deref()),
+                &subject,
+            ) {
                 marks.push((at, StripMark::Radar(marker.severity)));
             }
             if Some(row.commit.id) == head {

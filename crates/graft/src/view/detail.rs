@@ -135,7 +135,12 @@ fn commit_header(state: &AppState, oid: Oid) -> DetailHeader {
         .cloned()
         .unwrap_or_default();
     let subject_text = String::from_utf8_lossy(commit.subject());
-    let radar = super::radar::radar_lines_for(state, oid, crate::history::parents::of(row, state.refs.as_deref()), &subject_text);
+    let radar = super::radar::radar_lines_for(
+        state,
+        oid,
+        crate::history::parents::of(row, state.refs.as_deref()),
+        &subject_text,
+    );
     DetailHeader {
         subject: Subject::Commit {
             sha: sanitize_line(&sha),

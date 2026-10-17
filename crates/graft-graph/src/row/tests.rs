@@ -81,8 +81,16 @@ fn a_merge_on_hand_is_named_without_a_read_and_one_above_the_batch_with_one() {
     assert_eq!(names.reads(), 0);
     let row = Row::assemble(on_hand, commits[0].clone(), &names, &id_of).expect("gathered");
     assert_eq!(row.lanes[1], Some(BranchIdentity::of_name(b"topic")));
-    assert_eq!(row.drawn_parents, vec![oid(9)], "drawn parents are the shape's");
-    assert_eq!(row.commit.parents, vec![oid(9), oid(8)], "the commit keeps its own");
+    assert_eq!(
+        row.drawn_parents,
+        vec![oid(9)],
+        "drawn parents are the shape's"
+    );
+    assert_eq!(
+        row.commit.parents,
+        vec![oid(9), oid(8)],
+        "the commit keeps its own"
+    );
     assert!(row.is_merge());
 
     let names = MergeNames::gather(

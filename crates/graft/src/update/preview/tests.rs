@@ -62,6 +62,11 @@ fn row(id: u8, parents: &[u8]) -> Row {
 
 /// A screen big enough for the box, with three resident rows.
 fn on_screen() -> AppState {
+    on_screen_with(vec![row(3, &[2]), row(2, &[1]), row(1, &[0])])
+}
+
+/// [`on_screen`] with `rows` resident instead.
+fn on_screen_with(rows: Vec<Row>) -> AppState {
     let (state, _) = crate::update::opening(
         std::path::PathBuf::from("/tmp/graft-preview-tests"),
         Size {
@@ -84,8 +89,8 @@ fn on_screen() -> AppState {
     let window = Window {
         request: asked,
         first: 0,
-        rows: vec![row(3, &[2]), row(2, &[1]), row(1, &[0])].into(),
-        laid_out: 3,
+        laid_out: rows.len(),
+        rows: rows.into(),
         done: true,
         promoted: false,
         fold: [].into(),
@@ -225,6 +230,22 @@ fn labels(view: &PreviewBox) -> Vec<String> {
 // ── opening and refusing ────────────────────────────────────────────────
 
 /// A preview is modal: it claims every key, so nothing behind it moves.
+/// The preview pictures what the screen draws: a row whose second parent
+/// the view does not draw (a stash entry's index commit, a folded merge's
+/// side) goes into the slice without it, not as a lane leaving the picture
+/// (ease-pass 06d).
+#[test]
+fn the_slice_takes_the_parents_the_screen_draws() {
+    let mut stash = row(3, &[2, 9]);
+    stash.drawn_parents = vec![oid(2)];
+    let state = on_screen_with(vec![stash, row(2, &[1]), row(1, &[0])]);
+
+    let (_, resident) = resident_slice(&state, 10);
+
+    let parents: Vec<&[Oid]> = resident.iter().map(|commit| &commit.parents[..]).collect();
+    assert_eq!(parents, [&[oid(2)][..], &[oid(1)], &[oid(0)]]);
+}
+
 #[test]
 fn an_open_preview_claims_the_keys_behind_it() {
     let (mut state, _) = opened_with(a_plan());

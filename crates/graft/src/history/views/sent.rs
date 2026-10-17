@@ -139,3 +139,6 @@ impl<S: CommitSource> Views<'_, S> {
         refreshed
     }
 }
+
+#[cfg(test)]
+mod tests;

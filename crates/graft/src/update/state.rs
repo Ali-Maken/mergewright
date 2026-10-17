@@ -59,8 +59,10 @@ pub struct AppState {
     /// first frame.
     pub repo_path: PathBuf,
     /// What the repository turned out to be, once the job that opened it has
-    /// answered. `None` until then, which is the first frame.
-    pub repository: Option<RepositoryFacts>,
+    /// answered. `None` until then, which is the first frame. Boxed: kept
+    /// inline it put `AppState` past 8 KiB (ease-pass 06d's `head_commit`),
+    /// and every state the tests line up in an array would be on the stack.
+    pub repository: Option<Box<RepositoryFacts>>,
     /// An opening was asked beside a walk and has not answered: the walk's
     /// first request waits for its `HEAD` (ease-pass 06 D2).
     pub facts_pending: bool,

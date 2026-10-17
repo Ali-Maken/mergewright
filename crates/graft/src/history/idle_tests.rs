@@ -378,3 +378,5 @@ fn serve_lays_out_to_the_end_between_requests() {
         "nothing after the second answer"
     );
 }
+
+mod folded_tests;

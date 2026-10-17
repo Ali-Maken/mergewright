@@ -43,7 +43,12 @@ fn requests(commands: &[Command]) -> Vec<RowRequest> {
 }
 
 fn kept(request: &RowRequest) -> BTreeSet<Oid> {
-    request.view.inclusion.keep().expect("folding by default").clone()
+    request
+        .view
+        .inclusion
+        .keep()
+        .expect("folding by default")
+        .clone()
 }
 
 /// A launch whose walk has started before the opening answered: the walk
@@ -65,8 +70,17 @@ fn launched() -> (AppState, JobId, JobId) {
         })
         .expect("the refs are asked");
     let (state, commands) = update(&state, AppEvent::Started(walk, Task::ReadHistory));
-    assert_eq!(requests(&commands), Vec::new(), "the first request waits for HEAD");
-    assert!(state.history.as_ref().is_some_and(|history| history.head_pending));
+    assert_eq!(
+        requests(&commands),
+        Vec::new(),
+        "the first request waits for HEAD"
+    );
+    assert!(
+        state
+            .history
+            .as_ref()
+            .is_some_and(|history| history.head_pending)
+    );
     (state, walk, refs)
 }
 
@@ -77,7 +91,12 @@ fn the_first_request_waits_for_the_opening_and_keeps_head() {
     let asked = requests(&commands);
     assert_eq!(asked.len(), 1, "{commands:?}");
     assert_eq!(kept(&asked[0]), BTreeSet::from([oid(7)]));
-    assert!(state.history.as_ref().is_some_and(|history| !history.head_pending));
+    assert!(
+        state
+            .history
+            .as_ref()
+            .is_some_and(|history| !history.head_pending)
+    );
 }
 
 /// An unborn branch (or an unreadable `HEAD`, which the facts say) keeps
@@ -95,7 +114,7 @@ fn an_opening_with_no_head_commit_still_releases_the_first_request() {
 fn a_failed_opening_still_releases_the_first_request() {
     let (mut state, _, _) = launched();
     // Not the launch's own failure, which quits: a refresh's.
-    state.repository = Some(facts("/code/api", "main"));
+    state.repository = Some(Box::new(facts("/code/api", "main")));
     let event = AppEvent::Produced(JobId::new(1), Product::Repository(Err("gone".to_owned())));
     let (_, commands) = update(&state, event);
     assert_eq!(requests(&commands).len(), 1, "{commands:?}");
@@ -149,5 +168,8 @@ fn switching_to_a_merged_branch_shows_its_tip() {
     let asked = requests(&commands);
     assert_eq!(asked.len(), 1, "{commands:?}");
     assert_eq!(kept(&asked[0]), BTreeSet::from([oid(9)]));
-    assert_eq!(state.history.as_ref().map(|history| history.phase.clone()), Some(Phase::Streaming));
+    assert_eq!(
+        state.history.as_ref().map(|history| history.phase.clone()),
+        Some(Phase::Streaming)
+    );
 }

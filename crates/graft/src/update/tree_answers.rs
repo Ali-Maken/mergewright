@@ -37,7 +37,11 @@ pub(super) fn repository_answer(
 /// A walk whose first request waited for it asks now, with `HEAD` kept;
 /// a walk already asking re-lays out only if `HEAD` really moved
 /// (ease-pass 06 D2).
-fn head_known(next: &mut AppState, commands: &mut Vec<Command>, head: Option<graft_core::oid::Oid>) {
+fn head_known(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    head: Option<graft_core::oid::Oid>,
+) {
     let height = next.graph_rows();
     let Some(history) = next.history.as_mut() else {
         return;
@@ -61,7 +65,7 @@ fn head_known(next: &mut AppState, commands: &mut Vec<Command>, head: Option<gra
 
 /// The repository opened, or re-opened on a refresh.
 pub(super) fn repository_opened(next: &mut AppState, facts: RepositoryFacts) {
-    next.repository = Some(facts);
+    next.repository = Some(Box::new(facts));
     // A read failure from last time has been superseded by a repository
     // that opened. Nothing else is: a write's `Sticky` failure stays until
     // `Esc` (PROMPT.md §3), and the refresh that very failure asked for is

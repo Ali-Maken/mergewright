@@ -45,7 +45,8 @@ proptest! {
 #[test]
 fn a_folded_merge_and_a_first_parent_merge_are_merges() {
     let walk = merged_topic();
-    let folded = Inclusion::folded_by_default(Vec::new(), crate::inclusion::OpenedMerges::default());
+    let folded =
+        Inclusion::folded_by_default(Vec::new(), crate::inclusion::OpenedMerges::default());
     for (follow, inclusion) in [
         (Follow::AllParents, folded),
         (Follow::FirstParent, Inclusion::default()),
@@ -54,7 +55,10 @@ fn a_folded_merge_and_a_first_parent_merge_are_merges() {
         let view_seeds = source.seeds().clone();
         let mut streamed = StreamingLayout::new(source, view_seeds, small());
         let rows = all_rows_as_read(&mut streamed);
-        let merge = rows.iter().find(|row| row.commit.id == oid(1)).expect("the merge is shown");
+        let merge = rows
+            .iter()
+            .find(|row| row.commit.id == oid(1))
+            .expect("the merge is shown");
         assert_eq!(merge.commit.parents, vec![oid(2), oid(3)], "{follow:?}");
         assert_eq!(merge.drawn_parents, vec![oid(2)], "{follow:?}");
         assert!(merge.is_merge(), "{follow:?}");

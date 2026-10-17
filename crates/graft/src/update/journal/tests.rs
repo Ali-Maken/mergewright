@@ -136,14 +136,14 @@ fn escape_closes_it_and_cancels_a_read_that_was_only_refreshing_the_list() {
 #[test]
 fn esc_on_a_pending_journal_read_does_not_rerequest() {
     let mut state = AppState {
-        repository: Some(crate::repository::RepositoryFacts {
+        repository: Some(Box::new(crate::repository::RepositoryFacts {
             path: std::path::PathBuf::from("/code/api"),
             bare: false,
             head: crate::repository::Head::Branch(b"refs/heads/main".to_vec()),
             head_commit: None,
             mailmap: graft_git::mailmap::Mailmap::default(),
             commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
-        }),
+        })),
         ..AppState::default()
     };
     press(&mut state, KeyCode::Char('J'));
