@@ -1,6 +1,6 @@
 # roles-and-route fixes — "built on" and "merged" say only what git can prove
 
-Status: ready
+Status: done
 Blocked by: 01-roles-and-route (merged `862d40d2`)
 Build with: Fable (signature). Why: it rewrites the rules and changes the public types (`Who`, `Merged`,
 `choose_base`) that the right pane and every lane colour read. A wrong rule can't be judged from the diff or a green
@@ -133,49 +133,121 @@ Fixtures are fast-tier scratch repos. Every **red-first** test is committed fail
 with that commit's hash in NOTES, then made green. Each tick names its test.
 
 Red first:
-- [ ] **M1 tie** `sibling_is_not_built_on`. Repo: `main m1 m2`; `wallet-release w1 w2` off m2; `sara/fix-toc s1 s2` off
+- [x] **M1 tie** `sibling_is_not_built_on`. Repo: `main m1 m2`; `wallet-release w1 w2` off m2; `sara/fix-toc s1 s2` off
   w2; `ali/x t1` off w2; then `w3` on wallet. `route(sara)` never contains `ali/x`. With wallet `Other` it is `[main]`;
   with wallet `Integration`, `[wallet-release, main]`.
-- [ ] **M1 step 2** `a_bases_base_is_never_its_sibling`. Same repo, wallet `Integration`: `route(sara)[1]` is `main`.
-- [ ] **M1 reverse** `a_moved_base_is_not_built_on_its_dependent`. Wallet `Other`, with w3: `route(wallet-release)` is
+- [x] **M1 step 2** `a_bases_base_is_never_its_sibling`. Same repo, wallet `Integration`: `route(sara)[1]` is `main`.
+- [x] **M1 reverse** `a_moved_base_is_not_built_on_its_dependent`. Wallet `Other`, with w3: `route(wallet-release)` is
   `[main]`.
-- [ ] **M1 child** `a_branch_cut_from_an_older_commit_is_not_the_base`. Repo `main ← sara s1 s2`, plus `bob/x x1` cut
+- [x] **M1 child** `a_branch_cut_from_an_older_commit_is_not_the_base`. Repo `main ← sara s1 s2`, plus `bob/x x1` cut
   from sara@s1 and not merged: `route(sara)` is `[main]`.
-- [ ] **M2** `merged_into_main_not_into_a_later_branch`. `sara s1` merged `--no-ff` into main; `bob/y y1` cut from main
+- [x] **M2** `merged_into_main_not_into_a_later_branch`. `sara s1` merged `--no-ff` into main; `bob/y y1` cut from main
   right after; then main gets m2 m3 m4: `merged` is `Into("refs/heads/main")`.
-- [ ] **M3** `a_teammate_syncing_does_not_merge_the_base`. Repo `main ← sara`; `bob/x x1` cut from sara@s1; sara adds
+- [x] **M3** `a_teammate_syncing_does_not_merge_the_base`. Repo `main ← sara`; `bob/x x1` cut from sara@s1; sara adds
   s2; bob runs `git merge sara`: sara's `merged` is `NotYet { into: Some("refs/heads/main") }`.
-- [ ] **M4 merged** `who_of_a_merged_branch_is_its_own_authors`. Replaces `who_of_a_branch_with_no_base`; NOTES names
+- [x] **M4 merged** `who_of_a_merged_branch_is_its_own_authors`. Replaces `who_of_a_branch_with_no_base`; NOTES names
   the deleted expectation. sara (author Sara) is merged into main, where Alice and Bea have commits: `who` is
   `Authors { first: ["Sara"], others: 0, .. }`.
-- [ ] **M4 via integration** `who_ignores_the_integration_branchs_own_work`. sara is merged into `wallet-release`
+- [x] **M4 via integration** `who_ignores_the_integration_branchs_own_work`. sara is merged into `wallet-release`
   (`Integration`, Wendy's w1 w2), and main doesn't hold it: `who` names only Sara.
-- [ ] **M4 fresh** `a_fresh_branch_is_on_its_line`. `foo` is made at main@m2, then main gets m3 m4. Expect: `route` =
+- [x] **M4 fresh** `a_fresh_branch_is_on_its_line`. `foo` is made at main@m2, then main gets m3 m4. Expect: `route` =
   `[main]`, `behind` = `Behind { base: main, count: 2 }`, `merged` = `NothingToMerge`, `who` = `NoOwnCommits`. At equal
   tips, `behind` = `UpToDate { base: main }`.
-- [ ] **Orphan** `an_unrelated_branch_has_no_base`. `gh-pages` shares no history: `route` = `[]`, `behind` = `NoBase`,
+- [x] **Orphan** `an_unrelated_branch_has_no_base`. `gh-pages` shares no history: `route` = `[]`, `behind` = `NoBase`,
   `merged` = `NotYet { into: None }`.
 
 Regression (green before and after):
-- [ ] `a_dependent_on_an_unmoved_branch_is_built_on_it`. Wallet `Other`, no w3: `route(sara)` =
+- [x] `a_dependent_on_an_unmoved_branch_is_built_on_it`. Wallet `Other`, no w3: `route(sara)` =
   `[wallet-release, main]`.
-- [ ] `merged_into_an_unmoved_ordinary_base`. Wallet `Other` and unmoved, and it merges sara `--no-ff`:
+- [x] `merged_into_an_unmoved_ordinary_base`. Wallet `Other` and unmoved, and it merges sara `--no-ff`:
   `Into(wallet-release)`.
-- [ ] The 01 tests pass. Any whose expectation changes is listed in NOTES with the rule that changed it.
+- [x] The 01 tests pass. Any whose expectation changes is listed in NOTES with the rule that changed it.
+  Verified by: the whole `branch_status::` set (37 tests, all green) inside the workspace `cargo nextest run`
+  (6515/6515); changed expectations in NOTES.
 
 Reads and minors:
-- [ ] `entry_into`:
-  - a direct `--no-ff` merge → that merge;
-  - a fast-forward → the commit whose `parents[0] == onto`;
+- [x] `entry_into` (graft-git `tests/it/entry_into.rs`):
+  - a direct `--no-ff` merge → that merge; `a_direct_merge_is_the_entry`
+  - a fast-forward → the commit whose `parents[0] == onto`; `a_fast_forward_enters_at_the_commit_on_top`
   - transitive (sara → wallet → main, both `--no-ff`) → main's merge of wallet;
-  - `line == onto` → `None`;
-  - `line` not holding `onto` → `None`;
-  - a stopped `Stop` → `Err(RunError::Stopped)`.
-- [ ] `choose_base` proptest updated: the result is never an `Other` with `base_only > 0`, never above `at_most`, and
-  otherwise has the minimum `branch_only`.
-- [ ] **Minor 1** `stop_mid_walk`: a `Stop` that trips after N checks (N = 1, 3, 10) makes `route` and `branch_status`
+    `a_transitive_merge_enters_at_the_lines_own_merge`
+  - `line == onto` → `None`; `none_when_the_line_is_the_commit_or_does_not_hold_it`
+  - `line` not holding `onto` → `None`; same test (diverged, and line an ancestor of onto)
+  - a stopped `Stop` → `Err(RunError::Stopped)`. `entry_into_honours_stop`
+- [x] `choose_base` proptest updated: the result is never an `Other` with `base_only > 0`, never above `at_most`, and
+  otherwise has the minimum `branch_only`. `choose_base_picks_the_nearest` (now also draws `at_most`).
+- [x] **Minor 1** `stop_mid_walk`: a `Stop` that trips after N checks (N = 1, 3, 10) makes `route` and `branch_status`
   return `Err(RunError::Stopped)`. A large N lets both complete.
-- [ ] MAP.md: `## branch_status`, one line per rule; `## history_reads`, `entry_into` and `LineEntry`.
+- [x] MAP.md: `## branch_status`, one line per rule; `## history_reads`, `entry_into` and `LineEntry`.
+  No test: a doc. Checked by reading both sections after the last edit; no line over 240 bytes in either section.
+
+## NOTES (builder, 2026-10-17)
+
+**Commits.** `21db35ee` entry_into (graft-git). `9297164b` **red commit**: the red-first tests, with the types moved to
+the 01r shapes but the rules still `862d40d2`'s (`choose_base`'s `at_most` unused there). Then the fix commit.
+Observed red at `9297164b` (nextest, 11 failed of 35 `branch_status::` tests: the 10 red-first plus the proptest):
+- `sibling_is_not_built_on`: left `["refs/heads/ali/x", "refs/heads/wallet-release", "refs/heads/main"]`, right `[main]`
+- `a_bases_base_is_never_its_sibling`: left `Some("refs/heads/ali/x")`, right `Some("refs/heads/main")`
+- `a_moved_base_is_not_built_on_its_dependent`: left `[ali/x, sara/fix-toc, main]`, right `[main]`
+- `a_branch_cut_from_an_older_commit_is_not_the_base`: left `[bob/x, main]`, right `[main]`
+- `merged_into_main_not_into_a_later_branch`: left `Into("refs/heads/bob/y")`
+- `a_teammate_syncing_does_not_merge_the_base`: left `Into("refs/heads/bob/x")`
+- `who_of_a_merged_branch_is_its_own_authors`: left `(["Bea Brandt", "Alice Ames"], ..)`, right `(["Bea Brandt"], ..)`
+- `who_ignores_the_integration_branchs_own_work`: left `(["Sara Sahin", "Wendy Wu"], ..)`
+- `a_fresh_branch_is_on_its_line`: route `[]`, right `[main]`
+- `an_unrelated_branch_has_no_base`: route `[main]`, right `[]`
+The two regression tests and `stop_mid_walk` were green there, as the spec expects.
+
+**Changed 01 expectations.**
+- `who_of_a_branch_with_no_base` deleted; it expected `first == ["Bea Brandt", "Alice Ames"]` (Alice only made main's
+  `m1`). Replaced by `who_of_a_merged_branch_is_its_own_authors` (R3 merged row).
+- `route_does_not_cycle`: 01 had `a`, `a-twin`, `b` as `Other`, expecting `[b]`. Under R1 an `Other` with commits of
+  its own is never a base, so that fixture's route is `[]`. Kinds now `Integration` so the cycle is still possible
+  (each twin sits on the other's line, R2); expectation `[a-twin, b]`.
+- `merged_into_its_base_after_a_merge_commit`, `a_branch_stacked_on_top_is_not_a_merge`: `NotYet { into }` now
+  `Some(..)` (type change only). `who_*` tests read `Who::Authors` / `Who::Everyone` (type change only).
+- Route tests moved from `tests.rs` to `tests/route.rs` (tests.rs went over 400 lines after fmt), unchanged.
+
+**Decisions not in the spec.**
+- R2 case 2: an ordinary holder whose entry's first parent **equals** B's tip does not count (it was built straight on
+  B, then merged something else). The spec says "an ancestor of B.tip"; B's tip is its own ancestor in git's sense,
+  and counting it would call B merged. Test: `a_branch_on_the_tip_that_merges_something_else_has_not_merged_it`;
+  mutation-checked (removing the guard turns that test red; observed).
+- R1 unrelated check runs only for a pick with `base_only > 0`: a candidate with none of its own lies under the
+  walker, so it shares history. Costs `compare_span`'s two spawns (merge-base + count) per such pick.
+- Extra test `who_of_a_branch_merged_through_integration_reads_the_nearest_entry` (sara → wallet → main): `merged` is
+  `Into(main)`, `Who` is Sara only, read from wallet's entry. Not mutation-checked; reasoned only.
+- `entry_into` reports a walk past the runner's 64 MiB output cap as `Unparsable`, never a partial answer. A holder the
+  counts say holds B with no entry is also `Unparsable` (git contradicting itself), not a silent fallback.
+
+**Spawns per `branch_status` call (non-trunk), for B's cache.** N = candidates at a tip other than B's, d = route
+length. Upstream: 2 if set. Step 1: 2N counts; footing case 1: 1 `entry_into` (0 at an equal tip), +1 when the
+nearest long-lived holder is another branch and B is merged; case 2 (only when case 1 found no holder): per `Other`
+holder 1 `entry_into` + 1 count when its entry is a merge, + k(k−1) counts among the k that count. Each route step
+after the first: 2·(N − walked) counts + 0–1 `entry_into`. Each R1 pick with `base_only > 0`: 2 (`compare_span`).
+`Who`: 1 rev-list, 0 for `NoOwnCommits`. Typical stacked branch, 4 candidates, d = 2: about 8 + 6 + 2–4 + 1 ≈ 17–20.
+Not measured; counted from the code.
+
+**Known limits** (correct by these rules; for the conductor to add to KNOWN_GAPS, as the spec says):
+- An ordinary base that moved on after B was cut no longer qualifies; B reads as built on its integration branch or
+  the trunk (true, but it doesn't name the teammate's branch). Q15, option (a), as specced.
+- A backup ref left inside B's own line reads as B's base.
+- A branch fast-forwarded into integration reads "nothing to merge".
+- Squash and rebase merges read `NotYet`.
+- A teammate cut from an older commit of B **with no commits of his own**, who then merges B `--no-ff`, counts as
+  merging B (his entry's first parent is that older B commit). Found while writing R2 case 2; reasoned, untested.
+
+**Touches.** `grep -rn "branch_status|choose_base|BranchStatus" crates --include='*.rs'` outside
+`graft-ops/src/branch_status*`: only `graft-ops/src/lib.rs` (the `pub mod`) and a doc comment in
+`graft-graph/src/role.rs:7`. `Who` in `crates/graft/src/update/place/rows.rs:26` is blame's own `Who`, not this one.
+No caller in `crates/graft`. `LineEntry` / `entry_into`: no clash in the workspace before this ticket (grep).
+graft-git `tests/it/main.rs` gained one `mod entry_into;` line. No screen, capture, key, journal or undo change.
+`walk_unheld` in `compare.rs` now shares a `parse_parents` helper with `entry_into`; its tests stay green.
+
+**Scout.** None new: the 01 scout and the review pinned the code facts, and the conductor's brief named them. I read
+the files I changed directly.
+
+**Compaction.** None.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, workspace-wide.
