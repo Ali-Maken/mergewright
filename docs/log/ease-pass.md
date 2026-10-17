@@ -16,3 +16,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - scout 01: made_on — Row.lanes is Option<BranchIdentity> (row.rs:45), LaneIdentity only on RowShape; ahead_behind no stop, WalkError (divergence.rs:52); merge_base no stop (compare_span does); counts usize not u32; of_name &[u8]. Unconfirmed: Candidate.name full vs short. · 11 tools
 - scout 02 · 10 tools. Both → planner-fable spec-only fix (01, 02 + dependents).
 - planner-fable spec fix: 01 full ref names, usize, count_between/commits_between, made_on from Row.lanes; 02 merge_forecast &GitVersion, unrelated = not checkable, Build with Opus; 05/07/09/10 + note Interfaces updated; merged rule replaced (stacked branches not merged).
+- ease-pass start 9cb03ce8. W1: 01 builder-fable ‖ 02 builder-opus.
