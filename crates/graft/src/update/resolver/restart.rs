@@ -180,7 +180,10 @@ pub fn restart_landed(
     if let Some(open) = state.resolver.as_mut() {
         open.restarting = None;
     }
-    // Conflicted afresh: nothing chosen before describes it now.
+    // Conflicted afresh: nothing chosen before describes it now — its picks
+    // included, dropped here so the re-read does not word his own start
+    // over as `changed since your picks` (ticket ease-pass/05r).
     crate::update::finish::forget(state, &path);
+    state.picks.seal(&path);
     reopen(state, commands, path, from, next_id);
 }

@@ -89,6 +89,7 @@ pub(super) const BASE: &[HintKey] = &[key("resolver.base")];
 pub(super) const START_OVER: &[HintKey] = &[key("resolver.start_over")];
 pub(super) const NEXT_BLOCK: &[HintKey] = &[key("resolver.next_block")];
 pub(super) const PREV_BLOCK: &[HintKey] = &[key("resolver.prev_block")];
+pub(super) const STEP_CLASHES: &[HintKey] = &[key("resolver.step_prev"), key("resolver.step_next")];
 pub(super) const RESOLVER_FINISH: &[HintKey] = &[key("resolver.finish")];
 pub(super) const MARK_DONE: &[HintKey] = &[key("resolver.mark_done")];
 pub(super) const RESOLVER_EDIT: &[HintKey] = &[key("resolver.edit")];

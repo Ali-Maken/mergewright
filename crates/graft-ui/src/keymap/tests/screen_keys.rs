@@ -26,6 +26,32 @@ fn the_clash_screen_keys_resolve_to_their_ids() {
     assert_eq!(at(KeyChord::key('y')), None, "y is unbound in Resolver");
 }
 
+/// `←`/`→` and `h`/`l` step between the clashes of the file on screen
+/// (ticket ease-pass/05r, review ease-pass-05 M1): §2.2's movement keys,
+/// the arrows spelled first so the bar reads `←/→ clashes` (Q19 a).
+#[test]
+fn the_arrows_step_between_clashes_in_the_resolver() {
+    let at = |chord| acting(ContextId::Resolver, chord);
+    assert_eq!(
+        at(KeyChord::plain(KeyCode::Left)),
+        Some("resolver.step_prev")
+    );
+    assert_eq!(at(KeyChord::key('h')), Some("resolver.step_prev"));
+    assert_eq!(
+        at(KeyChord::plain(KeyCode::Right)),
+        Some("resolver.step_next")
+    );
+    assert_eq!(at(KeyChord::key('l')), Some("resolver.step_next"));
+    let keys = Keymap::shipped();
+    assert_eq!(
+        keys.spell_keys(&[
+            ActionId("resolver.step_prev"),
+            ActionId("resolver.step_next")
+        ]),
+        Some("←/→".to_owned())
+    );
+}
+
 /// `#` is unbound on the graph and everything that falls through to it.
 #[test]
 fn hash_is_free_on_the_graph() {

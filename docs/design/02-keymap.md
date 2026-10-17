@@ -68,8 +68,9 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   active, so this isn't a hidden mode. These do:
   - The **conflict resolver** (§2.6) binds `o`/`t`/`b` to ours/theirs/both
     per block, `B` to show/hide BASE, `d` to start the file over, `e` to
-    `$EDITOR` (no inline editor is built, ADR-0042), `n`/`N` to
-    next/previous block, `j`/`k` between files, `c` to finish (full list and
+    `$EDITOR` (no inline editor is built, ADR-0042), `n` to
+    the first open clash, `N` to the previous block, `←`/`→` between
+    clashes in the file, `j`/`k` between files, `c` to finish (full list and
     the finish summary: §2.6, §2.6b; for a merge the summary also opens by
     itself when the last file is done, P11). None of the graph pane's global bindings
     (`p` pull, `r` rebase, `f` fetch, `M` Map, `n`/`N` search) are live
@@ -349,8 +350,8 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
 | `d` on a file marked done | Start it over, as before `Enter`: box `Start <file> over`, line `your choices in <file> are dropped`, `y` confirms. Where the stages were not kept: `git can't bring back the conflict in <file>: <reason>` (Times I left :109) |
 | `d` | Start this file over, behind a confirm box — not undoable while the operation is open (the box says so). A file with conflict markers: `git checkout --merge`. A file one side deleted or added whole (`UD`/`DU`/`AU`/`UA`), in an operation begun in Graft: its conflict stages and the surviving side's file come back, the box saying `the choice comes back: keep or delete` (approved 2026-09-24). Offered only where it can act (ops' gate); still refused in a merge begun in the shell |
-| `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts this way` (P2; wording approved 2026-09-24). On a done file, `n`/`N` cross straight to the next file not done (ticket 17 D6). |
-| `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G` (`Home`/`End` as `g`/`G`; conductor 2026-09-24: they scroll today, kept), the wheel |
+| `n` / `N` | `n`: the first open clash from the top, across files (Decided below). `N`: previous block, taken ones included; at the file's first block, cross to the previous file; past the start, wrap to the first open block (`wrapped · 2 still open`), else `no open clashes left` (with `· ←/→ step through them` when the file holds a taken block) (P2; ticket 05r). On a done file, `N` crosses straight to the next file not done (ticket 17 D6). |
+| `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `N`, `←`/`→`, `PgUp`/`PgDn`, `g`/`G` (`Home`/`End` as `g`/`G`; conductor 2026-09-24: they scroll today, kept), the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open. When every file is done and the summary is not open (after `Esc` from it; a rebase, cherry-pick or revert), the resolver shows the finish row `✓ every file done — c …`, `c` leads the bar, and a click on the row does what `c` does (P8, P11) |
 | `Enter` | Mark this file done and move to the next conflicted file. After the last: a merge → the finish summary opens by itself (P11, approved 2026-09-24); a rebase, cherry-pick or revert → stays on it with the finish row (P8); a stash clash (pop, apply, or edits set aside around a rebase, switch, cherry-pick or fast-forward pull — the last two %s) → closes to the changes pane; a pop or set-aside then drops the stash by commit id, no box, `u` brings it back; an apply keeps it (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
 | `e` | Open `$EDITOR` at the cursor block |
@@ -362,7 +363,8 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | Key | Action |
 |---|---|
 | `o` / `t` / `b` | Take yours / theirs / both, then advance to the next open clash **in this file**; a solved file stays on screen with `✓ Every clash in <file> is solved.` and the next step |
-| `n` | Next **open** clash in the whole merge (was: next block, taken ones included) |
+| `n` | The first **open** clash from the top, across files (the mock's `nextOpen`); was: next block, taken ones included |
+| `←` / `→`, `h` / `l` | Previous / next clash **in this file**, open or taken (§2.2's movement keys; lazygit's `←/→`). Clamped: `first clash in <file>` / `last clash in <file>`; never crosses files. On the bar of a solved file only, as `←/→ clashes` at the end (Q19 a, user 2026-10-17); `?` lists them (planner 2026-10-17, review ease-pass-05 M1, under ADR-0063) |
 | `u` | Undo the last pick: that clash opens again, the cursor on it (also from the review, §2.6b). Resolver-local; see §2.6a |
 | `y` | In a merge, when every clash is solved: the review (§2.6b), `resolver.review`. Not drawn and not answered in a rebase, cherry-pick, revert or stash clash, where `c` goes on as today. Lands in the table with its handler (P) |
 | `c` | Unchanged; in a merge an alias of `y`, not on the bar |

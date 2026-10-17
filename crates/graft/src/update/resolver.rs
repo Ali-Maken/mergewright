@@ -28,6 +28,8 @@
 //!   back (ease-pass 05).
 //! - `walk` — `n`: the first open clash from the top; `N`: the previous
 //!   block, taken or not, then the previous file.
+//! - `step` — `←`/`→`: the previous / next clash in this file, taken or
+//!   not, never another file (ease-pass/05r).
 //! - `scroll` — the window over the document: keys, wheel and click.
 //! - `answers` — the jobs' answers: the opening read, a take, a
 //!   hand-back, and the `⏎` stage landing.
@@ -45,6 +47,7 @@ mod answers;
 mod base;
 mod done;
 mod files;
+mod gate;
 mod geometry;
 mod handover;
 mod leave;
@@ -55,6 +58,7 @@ mod resolved;
 mod restart;
 mod scroll;
 mod settle;
+mod step;
 mod take;
 mod unpick;
 mod walk;
@@ -84,7 +88,7 @@ pub use names::side_names;
 pub(in crate::update) use open::box_open;
 pub(crate) use open::land_on_clash;
 pub use open::open_resolver;
-pub use picks::{BlockAt, Pick, Picks, blocks_of, next_open, next_open_in_file};
+pub use picks::{BlockAt, Pick, Picks, Reread, blocks_of, next_open, next_open_in_file};
 #[cfg(test)]
 pub(crate) use resolved::close_after_last;
 pub use resolved::resolved_advance;
@@ -92,12 +96,14 @@ pub(crate) use resolved::{every_file_done, finish_if_owed, finish_refused_notice
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
 pub use scroll::resolver_mouse;
-pub use unpick::{untake_ended, untaken};
-pub use walk::next_block;
+pub use step::step_in_file;
+pub use unpick::{dropped_words, untake_ended, untaken};
+pub use walk::{next_block, none_open_words};
 pub use whole_file::{WholeFileShape, whole_file_keys};
 
 use base::toggle_base;
 use files::step_file;
+use gate::{busy_refusal, write_refusal};
 use geometry::scrolled_to;
 use handover::{edit_here, mergetool_here};
 use leave::{escape, finish_pressed};
@@ -105,9 +111,9 @@ use open::reopen;
 use resolved::{cancel_owed_finish, mark_resolved};
 use restart::restart_box;
 use scroll::scroll_key;
+use step::clash_keys;
 use take::take_keys;
 use unpick::undo_keys;
-use walk::{first_open, walk_blocks};
 
 /// Where `⏎` opened the resolver from, and so where `Esc` gives the
 /// keyboard back to.
@@ -293,32 +299,6 @@ impl ResolverState {
     }
 }
 
-/// **The one gate for writing this file**: the words a writing key is
-/// refused with while another write on it is in flight, or `None` when it
-/// may go ahead.
-///
-/// Two channels write a conflicted file: a block take is an fs write on
-/// the pool ([`ResolverState::job`]), and `⏎`, a whole-file `o`/`t` and `d`
-/// are git writes (`state.operating`). The pool runs jobs on several
-/// workers, so a take and a `git add` queued together race — the index can
-/// end up holding the old take while the screen and disk show the new one
-/// (m6-04-08 review, Major 2). Every writing key asks here, so the two
-/// channels are serial on this file.
-pub(super) fn write_refusal(state: &AppState) -> Option<&'static str> {
-    if let Some(words) = state.resolver.as_ref().and_then(ResolverState::busy_words) {
-        return Some(words);
-    }
-    // `u`'s untake is an fs write on the pool too. The resolver holds its id
-    // while it runs; this catches a resolver opened since (ease-pass 05).
-    if state.picks.undoing().is_some() {
-        return Some(unpick::UNDO_LANDING);
-    }
-    state
-        .operating
-        .is_some()
-        .then_some("a write is already running")
-}
-
 /// The resolver's keys, while it is open.
 ///
 /// **Modal**: `true` for every key but `Ctrl+C`, which passes so a terminal
@@ -382,8 +362,8 @@ fn act(
             step_file(state, commands, false, next_id);
         }
         KeyCode::Char('B') if plain => toggle_base(state, commands, next_id),
-        KeyCode::Char('n') if plain => first_open(state, commands, next_id),
-        KeyCode::Char('N') if plain => walk_blocks(state, commands, false, next_id),
+        // `n`, `N`, `←`/`→`, `h`/`l`: clash to clash (`step.rs`).
+        _ if clash_keys(state, commands, key, next_id) => {}
         KeyCode::Enter if plain => mark_resolved(state, commands, next_id),
         KeyCode::Char('e') if plain => edit_here(state, commands),
         KeyCode::Char('d') if plain => restart_box(state),

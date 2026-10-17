@@ -11,8 +11,10 @@ use graft_git::conflict::{BlockState, ConflictFile};
 
 use super::done::{done_arrived, done_unreadable};
 use super::files::remember;
+use super::picks::{Reread, blocks_of, next_open_in_file};
 use super::settle::settle_landed;
 use super::take::all_taken;
+use super::unpick::dropped_words;
 use super::{WholeFileShape, next_block, scrolled_to, side_word};
 use crate::update::events::{Command, TakeAt, TakeRequest};
 use crate::update::state::{AppState, Status};
@@ -66,27 +68,48 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     }) else {
         return;
     };
-    // The picks in this file stand only while the bytes are the ones the
-    // last of them wrote: `e`, a mergetool or anything outside that wrote
-    // since leaves every one chosen against a document that is gone.
-    state
-        .picks
-        .reconcile(&path, opened.file.as_ref().map(|file| file.fingerprint));
+    // **Every read of a file lands here** (the opening read, `j`/`k`, `n`,
+    // `e`/`M`'s hand-back, a take's or an untake's re-read), so every one
+    // asks the picks first (ticket ease-pass/05r). They stand only while
+    // the bytes are the ones the newest of them wrote: `e`, a mergetool or
+    // anything outside that wrote since leaves every one chosen against a
+    // document that is gone — dropped, and said (review ease-pass-05 M2).
+    let reread = state.picks.reconcile(&path, opened.file.as_ref());
+    if let Reread::Dropped { .. } = reread {
+        let next = state.picks.last().map(|pick| pick.path.clone());
+        state.status = Status::sticky(dropped_words(&path, next.as_deref(), &keys));
+    }
     let Some(file) = opened.file.clone() else {
         card_arrived(state, opened);
         return;
     };
     let land_last = state.resolver.as_ref().is_some_and(|open| open.land_last);
-    // A fresh read has every block open (a take lives only in memory until
-    // written, and the file on disk has it collapsed), so its first block
-    // is its first open one. `N` crossed here → its last.
-    let fresh = next_block(&file, None, !land_last);
     // `u` undid a pick in this file and opened it: the read found the bytes
     // the untake wrote, so the document is the untake's — every block where
     // it was, taken ones included — and the cursor on the pick's block.
     let landing = state.picks.take_landing(&path, file.fingerprint);
-    let scroll = landing.as_ref().and_then(|(_, block)| *block);
-    let (file, cursor_block) = landing.unwrap_or_else(|| (Arc::new(file), fresh));
+    let (file, cursor_block, scroll) = match (landing, reread) {
+        (Some((file, block)), _) => (file, block, block),
+        // The bytes the newest pick wrote: its document, taken clashes kept
+        // (M1 part 2) — the read has them collapsed into plain text. The
+        // cursor where a fresh read's goes: the first open clash, or with
+        // `N` crossing here the last clash, taken ones included.
+        (None, Reread::Picked(after)) => {
+            let block = if land_last {
+                next_block(&after, None, false)
+            } else {
+                next_open_in_file(&blocks_of(&after)).or_else(|| next_block(&after, None, true))
+            };
+            (after, block, block)
+        }
+        // A fresh read has every block open (a take lives only in memory
+        // until written, and the file on disk has it collapsed), so its
+        // first block is its first open one. `N` crossed here → its last.
+        (None, Reread::NoPicks | Reread::Dropped { .. }) => {
+            let block = next_block(&file, None, !land_last);
+            (Arc::new(file), block, None)
+        }
+    };
     let empty = file.blocks().is_empty();
     let Some(open) = state.resolver.as_mut() else {
         return;

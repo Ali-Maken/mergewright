@@ -133,18 +133,30 @@ impl Picks {
         self.landing = None;
     }
 
-    /// A fresh read of `path` found `on_disk` (`None`: no marker document
-    /// there at all). Drops `path`'s picks when those are not the bytes its
-    /// last pick wrote — someone else wrote the file since, and every pick
-    /// in it was chosen against a document that is gone. `true` when any
-    /// were dropped.
-    pub fn reconcile(&mut self, path: &Path, on_disk: Option<Oid>) -> bool {
-        let last = self.stack.iter().rev().find(|pick| pick.path == path);
-        let stale = last.is_some_and(|pick| Some(pick.after.fingerprint) != on_disk);
-        if stale {
-            self.seal(path);
+    /// What a fresh read of `path` means for its picks (ticket ease-pass/05r,
+    /// review ease-pass-05 M1 part 2 and M2). `read`: the document read,
+    /// `None` when the file is no marker document at all (a whole-file card).
+    ///
+    /// The bytes still the ones the newest pick in the file wrote → that
+    /// pick's `after`, so the taken clashes stay on screen (the read itself
+    /// has them collapsed into plain text). Other bytes → someone else wrote
+    /// the file since, every pick in it was chosen against a document that
+    /// is gone, and they are dropped — said by the caller, never kept: an
+    /// untake over changed bytes would write over his edit.
+    pub fn reconcile(&mut self, path: &Path, read: Option<&ConflictFile>) -> Reread {
+        let Some(newest) = self.stack.iter().rev().find(|pick| pick.path == path) else {
+            return Reread::NoPicks;
+        };
+        match read {
+            Some(read) if read.fingerprint == newest.after.fingerprint => {
+                Reread::Picked(Arc::clone(&newest.after))
+            }
+            _ => {
+                let count = self.in_file(path);
+                self.seal(path);
+                Reread::Dropped { count }
+            }
         }
-        stale
     }
 
     /// The untake in flight, if any.
@@ -198,6 +210,23 @@ impl Picks {
         let landing = self.landing.take_if(|land| land.path == path)?;
         (landing.file.fingerprint == on_disk).then_some((landing.file, landing.block))
     }
+}
+
+/// What a fresh read of a file means for its picks ([`Picks::reconcile`]).
+#[must_use]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Reread {
+    /// No pick in this file: show the read.
+    NoPicks,
+    /// Bytes equal the newest pick's `after`: show that document, taken
+    /// clashes kept.
+    Picked(Arc<ConflictFile>),
+    /// Bytes differ: the file's `count` picks were dropped; say so
+    /// ([`dropped_words`](super::dropped_words)).
+    Dropped {
+        /// How many picks went.
+        count: usize,
+    },
 }
 
 /// One block as `n` and the advance see it: its index, and whether it is

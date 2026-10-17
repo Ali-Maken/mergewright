@@ -33,7 +33,7 @@ pub(super) fn toggle_base(
         }
         return;
     }
-    if let Some(words) = open.busy_words() {
+    if let Some(words) = super::busy_refusal(state) {
         state.status = Status::sticky(words);
         return;
     }

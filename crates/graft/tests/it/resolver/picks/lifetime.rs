@@ -16,7 +16,7 @@ use super::{TWO, bytes, clashing_merge, commit_side, cursor, doc, notice, presse
 use crate::app_harness::{App, git, press_for_commands};
 
 /// git's own word on `path`: its conflict stages, one line each.
-fn stages(repo: &Path, path: &str) -> usize {
+pub(super) fn stages(repo: &Path, path: &str) -> usize {
     git(repo, &["ls-files", "-u", "--", path]).lines().count()
 }
 
@@ -72,7 +72,7 @@ fn picks_outlive_a_closed_resolver_but_not_a_relaunch() {
 /// `feature`'s three commits, one file each, every one clashing with
 /// `main`'s: Graft's rebase stops three times, on `a.txt` (two clashes),
 /// `b.txt`, then `c.txt`.
-fn three_step_feature() -> Scratch {
+pub(super) fn three_step_feature() -> Scratch {
     let scratch = graft_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let all: &[(&str, &[usize])] = &[("a.txt", TWO), ("b.txt", TWO), ("c.txt", TWO)];
@@ -88,7 +88,7 @@ fn three_step_feature() -> Scratch {
 }
 
 /// The stop landed in the resolver on `path`, its read in.
-fn landed_on(app: &App, state: AppState, path: &str) -> AppState {
+pub(super) fn landed_on(app: &App, state: AppState, path: &str) -> AppState {
     app.pump(state, "the stop's resolver", |state| {
         state.operating.is_none()
             && state.resolver.as_ref().is_some_and(|open| {

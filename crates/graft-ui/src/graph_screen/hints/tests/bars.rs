@@ -200,6 +200,30 @@ fn a_clash_bar_names_the_next_file_by_its_last_segment() {
     assert!(!done.contains(" y "), "{done}");
 }
 
+/// A solved file's bar ends with the way back to its clashes, `←/→
+/// clashes` (Q19 a, user 2026-10-17; ticket ease-pass/05r): every clash is
+/// taken, `n` goes on, and the arrows step back through them. A bar over an
+/// open or just-picked clash does not draw it.
+#[test]
+fn a_solved_file_bar_ends_with_the_way_back_to_its_clashes() {
+    let next = || ClashAt::FileSolved {
+        next: graft_term::sanitize("report.rs"),
+    };
+    for roles in [SideRoles::Merge, SideRoles::Rebase] {
+        for at in [next(), ClashAt::AllSolved] {
+            let drawn = bar(&clash(at.clone(), roles), 200);
+            assert!(
+                drawn.ends_with(" · ←/→ clashes"),
+                "{at:?} {roles:?}: {drawn}"
+            );
+        }
+        for at in [ClashAt::Open, ClashAt::Picked] {
+            let drawn = bar(&clash(at.clone(), roles), 200);
+            assert!(!drawn.contains("clashes"), "{at:?} {roles:?}: {drawn}");
+        }
+    }
+}
+
 /// The clash screen's bars, for a merge (M11) and for a rebase (Q12 a).
 #[test]
 fn each_clash_bar_draws_its_words() {
@@ -219,11 +243,11 @@ fn each_clash_bar_draws_its_words() {
         ),
         (
             clash(next(), SideRoles::Merge),
-            " n next file: report.rs · u undo pick · esc pause, come back later",
+            " n next file: report.rs · u undo pick · esc pause, come back later · ←/→ clashes",
         ),
         (
             clash(ClashAt::AllSolved, SideRoles::Merge),
-            " c finish · u undo pick · esc pause, come back later",
+            " c finish · u undo pick · esc pause, come back later · ←/→ clashes",
         ),
         (
             clash(ClashAt::Open, rebase),
@@ -236,11 +260,12 @@ fn each_clash_bar_draws_its_words() {
         ),
         (
             clash(next(), rebase),
-            " ⏎ done · n next file: report.rs · u undo pick · esc pause, come back later",
+            " ⏎ done · n next file: report.rs · u undo pick · esc pause, come back later · \
+             ←/→ clashes",
         ),
         (
             clash(ClashAt::AllSolved, rebase),
-            " ⏎ done · c continue · u undo pick · esc pause, come back later",
+            " ⏎ done · c continue · u undo pick · esc pause, come back later · ←/→ clashes",
         ),
     ];
     for (context, want) in cases {

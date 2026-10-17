@@ -1,6 +1,6 @@
 //! §2.6's conflict-resolver rows, in their place in [`super::defaults`].
 
-use super::{Binding, ENTER, Resolver, b, ctrl, k};
+use super::{Binding, ENTER, LEFT, RIGHT, Resolver, b, ctrl, k};
 
 pub(super) const ROWS: &[Binding] = &[
     // §2.6 Conflict resolver.
@@ -40,6 +40,20 @@ pub(super) const ROWS: &[Binding] = &[
     ),
     b("resolver.next_block", Resolver, &[k('n')], "Next block"),
     b("resolver.prev_block", Resolver, &[k('N')], "Previous block"),
+    // §2.2's movement keys, in this file only (ticket ease-pass/05r): the
+    // arrows first, so the bar and the words spell `←/→` (Q19 a).
+    b(
+        "resolver.step_prev",
+        Resolver,
+        &[LEFT, k('h')],
+        "Previous clash in this file, taken ones included",
+    ),
+    b(
+        "resolver.step_next",
+        Resolver,
+        &[RIGHT, k('l')],
+        "Next clash in this file, taken ones included",
+    ),
     b("resolver.finish", Resolver, &[k('c')], "Finish"),
     b(
         "resolver.mark_done",
