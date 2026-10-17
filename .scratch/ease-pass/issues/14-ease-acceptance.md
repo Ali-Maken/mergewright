@@ -1,17 +1,17 @@
 # ease-acceptance — walk the three mocks in the real app
 
-Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17)
-Blocked by: all of 01–13, plus 01r, 03b, 05b, 06b, 06c
+Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17)
+Blocked by: all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
-ease-vocabulary-rest (03b), commit-what-goes-in, clash-reads, resolver-picks, merge-review-at-y (05b),
+ease-vocabulary-rest (03b), vocabulary-fixes (03r), commit-what-goes-in, clash-reads, resolver-picks, merge-review-at-y (05b),
 graph-fold-and-lanes, lanes-on-screen-and-header (06b), fold-seek-reveal (06c), graph-rows, branch-pane,
 pixel-roles-and-tall-row, commit-screen, merge-preview, clash-screen-look, finish-review-and-look.
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Promise, Journeys (including the `journeys` fence), Mock behaviours (G1–G14,
-  C1–C15, M1–M19), New UI, Hard-to-reverse choices 2 and 3 (as amended 2026-10-17), Questions (1–13 answered a;
-  14–17 as answered by then).
+  C1–C15, M1–M19), New UI, Hard-to-reverse choices 2 and 3 (as amended 2026-10-17), Questions (1–17 answered a; the
+  later answers at :254).
 - `.scratch/ease-pass/issues/01r-roles-and-route-fixes.md`: "The rules, corrected" (R1–R3, Known limits).
 - Each pass-2 spec's Acceptance captures list (file names only).
 - `TESTING.md`: the M8 acceptance section only, for its form. `scripts/m8-accept.sh` usage line;
@@ -39,7 +39,8 @@ In:
   - `commit-all-subject` = **3** (`c`, typed subject, `⏎`), ending with HEAD one commit ahead and the cursor on it;
   - `merge-one-clash` = **5** (`m y o y y`), ending with a two-parent HEAD and the cursor on it.
 - One assertion per behaviour ID (G1–G14, C1–C15, M1–M19), named by the ID in its test name. Text and shape checks
-  only.
+  only. G13 includes the opened merge: cursor on an opened merge row → bar starts `space hide the commits inside · ⏎ open
+  · x compare`; cursor on a row inside it (a live branch) → the teammate bar, no `space` hint.
 - **G12 on `team`**, each a named `g12_…` assertion, text only. The merged and fresh-branch states have no row the
   cursor can rest on (merged rows fold; opened rows take the merge row's branch), so 01r's unit tests cover them and
   this walk doesn't. With the cursor on a sara row:
@@ -65,7 +66,7 @@ In:
   - Q5: ghost rows drawn above the merge preview box.
   - Q6: the merge preview has no `[ Cancel ]`/`[ Confirm ]`; `⏎` opens the incoming list.
   - Q7: `esc` on the clash screen → graph, banner focused, bar leads `⏎ back to the clashes`; `⏎` → first open clash.
-    Journey `pause-and-resume`, 2 keys.
+    Journey `pause-and-resume`, 2 keys — on the merge and on the rebase.
   - Q8: no option row on the commit screen; `⌃S` adds a sign-off; `⌃P` from the commit screen lists amend, skip hooks
     and allow empty spelled `—`, and choosing skip hooks shows `· skipping hooks` in the header.
   - Q9: `u` after a commit → edits uncommitted, and the next `c` shows the old message.
@@ -73,10 +74,13 @@ In:
   - Q11: the top line keeps today's frame and ends with `lanes drawn: N of M`; the bar end is today's.
   - Q12: a rebase clash uses the marks and advance; `⏎` stages the file; `c` goes on.
   - Q13: a PR merge's folded row reads `▸ N commits from PR <n>`.
-  - Q14: as answered. Under (a) the top line names the branch once.
-  - Q15: as answered. Under (a) it is `g12_sibling_never_built_on` above.
-  - Q16: as answered. Under (a) `o` on a taken clash → `t` replaces it, and `u` brings `o`'s take back.
-  - Q17: as answered. Under (b) a rebase stop lands on the graph with the banner focused; under (a) on the first clash.
+  - Q14 (a): the top line names HEAD's branch exactly once (no `on <branch>` added); its right end carries only
+    `lanes drawn: …` / `… merged branches folded`.
+  - Q15 (a): it is `g12_sibling_never_built_on` above.
+  - Q16 (a), the departure from the mock's refusal: `o` on a clash, then `t` on the same clash → it reads `▶ took
+    theirs`, no `already taken` words anywhere on screen; `u` → `◀ kept yours` back.
+  - Q17 (a): the rebase that clashes lands on the clash screen, cursor on its first open clash, 0 keys after the
+    rebase's confirm; a stop with no clash (an `edit` stop) still lands on the graph with the banner focused.
 - Captures:
   - every file the pass-2 specs list under `docs/shots/ease-pass/`, re-taken by the walk at their widths (120, 100,
     90);
@@ -90,7 +94,8 @@ In:
   - "`lanes drawn: 5 of 8` at the top line's right end";
   - "`.env` listed under Staying out with `!`";
   - "`built on` line on sara never names `ali/x`";
-  - "the sync merge's row has no `▸`".
+  - "the sync merge's row has no `▸`";
+  - "on the opened merge row the bar starts `space hide the commits inside`".
 
   Every line where colour carries meaning says **colour: unverified** (rule 5).
 
@@ -118,7 +123,7 @@ capture into the report.
   `commit-all-subject 3/3` and `merge-one-clash 5/5`.
 - [ ] A deliberately padded walk (one extra key) of each of those two fails `within_the_note` (negative test).
 - [ ] Every behaviour ID G1–G14, C1–C15, M1–M19 has a passing test named with the ID. The three `g12_…`, the three
-  `fold_…`, `picks_shell_merge` and every `q1`–`q17` assertion (as answered) pass. NOTES lists IDs → test names.
+  `fold_…`, `picks_shell_merge` and every `q1`–`q17` assertion pass. NOTES lists IDs → test names.
 - [ ] Every capture under `docs/shots/ease-pass/` is ≤200 KB. The captions file has one line per capture with its mock
   path. The contact sheet assembles with no `NOT RECORDED`.
 - [ ] The `TESTING.md` section is present, with one entry per capture and colour marked unverified.

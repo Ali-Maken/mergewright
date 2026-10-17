@@ -1370,3 +1370,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/03-16-colours | At 16 colours built-on and trunk both map to colour 7; shapes (`│` vs `║`) still differ. Colour never verified (rule 5). | **unverified** | not planned |
 | ease/01r-limits | Transitive `Who` not mutation-checked; rev-list spawn counts read, not measured; a teammate with no commits merging `--no-ff` counts as having merged the branch. | **unverified** | ease-pass (B measures) |
 | ease/04-unverified | Crash between commit and index reset (Pending recovery) not exercised; app never shows `scratch_left`/`plans_left`; review 04 minors 2, 5, 6, 7 (`allow_empty`) open. | **unverified** | ease-pass |
+| ease/03-review-minors | Review 03 (docs/reviews/ease-pass-03.md) minors 6 and 7 not in 03r; palette ratchet goes with 06c. | **unverified** | ease-pass |

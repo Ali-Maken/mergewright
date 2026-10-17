@@ -1,21 +1,22 @@
 # commit-screen — type first, `⏎` commits, what goes in vs what stays out
 
-Status: ready (ids and types revised 2026-10-17 after the ease-vocabulary and commit-what-goes-in scouts; option listing and after-commit bar named after 03b, 2026-10-17; this group's own scout not yet run)
+Status: ready (ids and types revised 2026-10-17 after the ease-vocabulary and commit-what-goes-in scouts; option listing and after-commit bar named after 03b, 2026-10-17; review 03 Minor 5's code half added, 2026-10-17; this group's own scout not yet run)
 Blocked by: 04-commit-what-goes-in, 03-ease-vocabulary, 03b-ease-vocabulary-rest
 Build with: (blank — brownfield; conductor sets after the scout)
-Needs: from commit-what-goes-in (graft-ops): `Include`, `Chosen`, `Part`, `FileChoice`, `OutWhy`, `first_choice`, `looks_like_secrets`, `Refusal::NothingChosen`, `CommitParams.include` (one struct for commit **and** amend: `Operation::Commit(CommitParams)` / `Operation::Amend(CommitParams)`; `message: String`). From ease-vocabulary (graft-ui): `commit.toggle_amend`, `commit.toggle_no_verify`, `commit.toggle_allow_empty` (context `CommitEditor`, no default key). From 03b: the three ids listed in `?`/`⌃P` from the commit editor (spelled `—`) and dispatched to today's option toggles; `HintContext::GraphRow { row: RowBar::JustCommitted, verbs }` for the after-commit bar (hint verbs are `Cow<'static, str>`). No new `ContextId`: the file list is a focus inside `CommitEditor`.
+Needs: from commit-what-goes-in (graft-ops): `Include`, `Chosen`, `Part`, `FileChoice`, `OutWhy`, `first_choice`, `looks_like_secrets`, `Refusal::NothingChosen`, `CommitParams.include` (one struct for commit **and** amend: `Operation::Commit(CommitParams)` / `Operation::Amend(CommitParams)`; `message: String`). From ease-vocabulary (graft-ui): `commit.toggle_amend`, `commit.toggle_no_verify`, `commit.toggle_allow_empty` (context `CommitEditor`, no default key; 03r words their descriptions `…: on / off`). From 03b: the three ids listed in `?`/`⌃P` from the commit editor (spelled `—`) and dispatched to today's option toggles (`commit_editor::toggle_from_palette`); `HintContext::GraphRow { row: RowBar::JustCommitted, verbs }` for the after-commit bar (hint verbs are `Cow<'static, str>`). No new `ContextId`: the file list is a focus inside `CommitEditor`.
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Need (commit), Prior art rows "Commit start" → "Secrets file", Journeys commit-* and the Commit-all landing, Mock behaviours C1–C15, New UI (commit screen), Questions 8, 9 (answered a).
 - `docs/design/02-keymap.md` §2.10. `docs/research/commit-stash.md` §1.4–1.5.
 - `crates/graft-ui/MAP.md`: `commit_editor`, `text_input`, `detail` (`DiffView`, `BodyView`), `detail_pane::diff_body`. `crates/graft/MAP.md`: `update::commit_editor`, `update::palette`, `view::commit_editor`, `jobs::commit_message`, `jobs::detail` (one file's diff), `working_tree`, `update::status_read`, `update::undo`, `jobs::operate`.
 - `.scratch/ease-pass/scouts/03-ease-vocabulary.md` (commit editor lines), `.scratch/ease-pass/scouts/04-commit-what-goes-in.md`; `.scratch/ease-pass/issues/03b-ease-vocabulary-rest.md` "Commit options in `?`/`⌃P`" and its NOTES.
+- `docs/reviews/ease-pass-03.md` Minor 5.
 - The commit mock's visible text and key handlers: `prototypes/ease-mocks/mergewright-commit-screen.html`.
 - The scout's file.
 
 ## Scout questions (≤1 page)
 - The editor's state, focus model and option toggles today (`Field::{Amend,SignOff,NoVerify,AllowEmpty}`, `graft-ui/src/commit_editor.rs:41-53`, handled in `graft/src/update/commit_editor.rs`); how `a` (amend) enters it; how a hook failure lands on its status row.
-- **Key routing (same kind of mismatch as V's scout):** how today's option rows take `space` (match on `Field` focus, not an id?) — the file list's `space`/`j`/`k`/`⏎`/`esc` follow the same route. Whether `⏎` in the subject and `⌃S` are action ids or focus-routed matches, and which id `⌃S` has. Where 03b's `commit.toggle_*` dispatch lands in `update::commit_editor`, and where 03b made `?` open the listing from a non-text focus.
+- **Key routing (same kind of mismatch as V's scout):** how today's option rows take `space` (match on `Field` focus, not an id?) — the file list's `space`/`j`/`k`/`⏎`/`esc` follow the same route. Whether `⏎` in the subject and `⌃S` are action ids or focus-routed matches, and which id `⌃S` has. Where 03b's `commit.toggle_*` dispatch lands in `update::commit_editor` (`toggle_from_palette`, and its id → flag map beside `CommitEditor::option_mut`, `commit_editor.rs:252`), and where 03b made `?` open the listing from a non-text focus (`opens_the_palette`, `commit_editor/keys.rs:94,101`).
 - Where the working-tree status the screen needs is already held; which job reads one working file's diff (staged and unstaged).
 - What the commit's success lands on today (cursor, status line) and what `u` after a commit does to the editor's draft (index and HEAD are already restored by today's undo — `graft-ops` `undo.rs:300-335`, scout 04).
 - Whether `CommitEditorView`'s footer (`commit_editor.rs:178 footer_subject`, `:192 footer_other`, `:212 footer(focus)`) is called from anywhere but the editor.
@@ -37,8 +38,9 @@ In (graft-ui `commit_editor` redrawn as the commit screen; graft `update::commit
 - **C15:** `esc` in the subject closes; the draft is kept for the next `c` this run.
 - **Hook fails:** stays on the screen, message kept, the failure on its status row (today's). Hooks now run against a scratch index for a `Chosen` commit (commit-what-goes-in) — the status row words unchanged.
 - **Q8 a — options off screen:** no tick-box row (the `Field::{Amend,SignOff,NoVerify,AllowEmpty}` rows retire). `⌃S` inserts the sign-off as today. Amend, skip hooks, allow empty: 03b already lists `commit.toggle_*` in `⌃P` (every focus) and `?` (non-text focus) and dispatches them to today's toggles — **keep that dispatch** when the `Field` rows retire (the option state moves, the ids keep acting); the files focus is a non-text focus, so `?` there opens the listing. While one is on, the header names it after the push state (`· skipping hooks`), nothing when all are off.
+- **Review 03 Minor 5 (code half), in the same files:** when the option state moves, the id → option map exists **once** — `toggle_from_palette` maps the id to the option and flips it through the same accessor the screen uses (today's duplicate beside `option_mut`, `commit_editor.rs:252`, goes); `opens_the_palette` calls `opener` once (`commit_editor/keys.rs:94,101`).
 - **Amend (`a`)** uses the same screen: header `amending <sha7> <subject>`, message prefilled; staged files go in, others stay out (`Include::Staged` when untouched — a message-only amend stays possible); `space` puts others in (`Include::Chosen`). Same `CommitParams`, `Operation::Amend`.
-Out: what a commit writes (W), keymap rows, hint list words and the palette listing (03, 03b).
+Out: what a commit writes (W), keymap rows and their descriptions, hint list words and the palette listing (03, 03b, 03r).
 
 ## Signatures
 graft-ui `commit_editor`:
@@ -65,7 +67,7 @@ pub fn include_of(choices: &[FileChoice], touched: bool) -> Include;
 `CommitParams.message` is a `String`: the screen joins subject and body as today's `params()` (`graft/src/update/commit_editor.rs:153`) does.
 
 ## Touches
-Every caller and test of `CommitEditorView`/`Field`/`OPTIONS` (retired or kept as the scout finds); `footer_subject`/`footer_other`/`footer` and their snapshots; `params()` (`commit_editor.rs:153`) and the edit-stop amend (`:340`) — W set `include: Include::Staged` there; this group sets the real value at `:153`, `:340` stays `Staged`; 03b's `commit.toggle_*` dispatch (kept, re-pointed at the new option state); `jobs::commit_message` (template, amend message); the after-write status read; `u` and the journal entry words (`commit "<subject>"`, unchanged); the graph top line (`commit(s) to push`); the row-`HintContext` choice site (G's; add only the `JustCommitted` branch); tour card's commit task words (`view::tour`); `?`/`⌃P` listing for `CommitEditor` (03b's tests stay green); graft dead-key and palette sweeps; captures of the commit editor (recaptured); `docs/design/02-keymap.md` §2.10 (V's Proposed edit).
+Every caller and test of `CommitEditorView`/`Field`/`OPTIONS` (retired or kept as the scout finds); `footer_subject`/`footer_other`/`footer` and their snapshots; `params()` (`commit_editor.rs:153`) and the edit-stop amend (`:340`) — W set `include: Include::Staged` there; this group sets the real value at `:153`, `:340` stays `Staged`; 03b's `commit.toggle_*` dispatch (kept, re-pointed at the new option state, one id → option map); `opens_the_palette`; `jobs::commit_message` (template, amend message); the after-write status read; `u` and the journal entry words (`commit "<subject>"`, unchanged); the graph top line (`commit(s) to push`); the row-`HintContext` choice site (G's; add only the `JustCommitted` branch); tour card's commit task words (`view::tour`); `?`/`⌃P` listing for `CommitEditor` (03b's `update::palette::editor_tests` stay green); graft dead-key and palette sweeps; captures of the commit editor (recaptured); `docs/design/02-keymap.md` §2.10 (decided 2026-10-17; nothing to edit).
 
 ## Acceptance
 - [ ] Journey `commit-all-subject`: `c`, type `fix toc`, `⏎` → HEAD has a new commit with all 3 modified files, `.env` not in it; cursor on it; status starts `✓ Committed 3 files to` (state test; pty walk is A's).
@@ -79,6 +81,7 @@ Every caller and test of `CommitEditorView`/`Field`/`OPTIONS` (retired or kept a
 - [ ] Q9: `u` after the commit → HEAD back, edits uncommitted, `c` opens with the old message in the subject.
 - [ ] C15: `esc` with a typed subject, then `c` → subject still there.
 - [ ] Q8: no option row drawn; `⌃S` adds `Signed-off-by:`; `commit.toggle_no_verify` from `⌃P`, and from `?` in the files focus, shows `· skipping hooks` in the header; off → gone; `?` in the subject types `?`.
+- [ ] Minor 5: one id → option map (grep: the three ids appear once in `update::commit_editor` outside tests); choosing each `commit.toggle_*` twice from `⌃P` returns it to off (test per id).
 - [ ] Amend: `a` → header `amending`, message prefilled; `⏎` with nothing touched = message-only amend.
 - [ ] Hook failure: screen stays, message kept, failure on the status row.
 - [ ] Captures next to the commit mock: `docs/shots/ease-pass/commit-open-120.txt`, `commit-secrets-120.txt`, `commit-files-focus-120.txt`, `commit-refused-120.txt`, `commit-90.txt`, `commit-landed-120.txt`; colour unverified. Each tick names its test.
