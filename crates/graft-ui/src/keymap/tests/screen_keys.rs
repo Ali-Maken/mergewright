@@ -1,10 +1,11 @@
 //! The ease pass's vocabulary (ticket ease-pass/03, ADR-0063): the commit
 //! options' keyless rows, and every key the mocks reuse where it was.
 //!
-//! `graph.colours_off` (`#`) and `resolver.review` (`y`) are decided but not
-//! in the table yet: `graft`'s dead-key sweeps
-//! (`update/tests/keymap_edge/sweep.rs`, `update/tests/palette_live.rs`)
-//! refuse a row nothing answers, so each lands with its handler (G, P).
+//! `graph.colours_off` (`#`) is decided but not in the table yet: `graft`'s
+//! dead-key sweeps (`update/tests/keymap_edge/sweep.rs`,
+//! `update/tests/palette_live.rs`) refuse a row nothing answers, so it lands
+//! with its handler (G). `resolver.review` (`y`) landed with its handler
+//! (ease-pass/05b).
 
 use graft_core::event::KeyCode;
 
@@ -15,7 +16,8 @@ fn acting(ctx: ContextId, chord: KeyChord) -> Option<&'static str> {
 }
 
 /// On the clash screen `c`, `n`, `esc` and `u` keep their ids (the mock
-/// changes their words, not their rows), and `y` is free for the review.
+/// changes their words, not their rows), and `y` is the review's
+/// (ease-pass/05b).
 #[test]
 fn the_clash_screen_keys_resolve_to_their_ids() {
     let at = |chord| acting(ContextId::Resolver, chord);
@@ -23,7 +25,7 @@ fn the_clash_screen_keys_resolve_to_their_ids() {
     assert_eq!(at(KeyChord::key('n')), Some("resolver.next_block"));
     assert_eq!(at(KeyChord::plain(KeyCode::Escape)), Some("app.back"));
     assert_eq!(at(KeyChord::key('u')), Some("app.undo"));
-    assert_eq!(at(KeyChord::key('y')), None, "y is unbound in Resolver");
+    assert_eq!(at(KeyChord::key('y')), Some("resolver.review"));
 }
 
 /// `←`/`→` and `h`/`l` step between the clashes of the file on screen

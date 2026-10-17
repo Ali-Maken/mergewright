@@ -1,3 +1,3 @@
- ◆ api  ~/code/api · main                                                                                       MERGING
+ ◆ api  ~/code/api · main                                                                                CHERRY-PICKING
 ⋮
- every file done ✓ · c finishes the merge
+ every file done ✓ · c continues the cherry-pick

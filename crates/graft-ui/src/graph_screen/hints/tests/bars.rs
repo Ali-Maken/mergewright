@@ -247,7 +247,7 @@ fn each_clash_bar_draws_its_words() {
         ),
         (
             clash(ClashAt::AllSolved, SideRoles::Merge),
-            " c finish · u undo pick · esc pause, come back later · ←/→ clashes",
+            " y review the merge · u undo pick · esc pause, come back later · ←/→ clashes",
         ),
         (
             clash(ClashAt::Open, rebase),

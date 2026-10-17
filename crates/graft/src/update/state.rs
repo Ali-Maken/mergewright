@@ -470,9 +470,9 @@ pub struct AppState {
     /// beside the operation, so closing the resolver keeps them; memory
     /// only. Boxed: tests hold `AppState`s in arrays on the stack.
     pub picks: Box<super::resolver::Picks>,
-    /// The finish summary (`c` on a merge, m6-conflicts/19): `None` while
-    /// closed. Modal, and first in [`AppState::graph_overlay`].
-    pub finish: Option<super::finish::FinishState>,
+    /// The finish summary (m6-conflicts/19), `None` while closed; modal, first
+    /// in [`AppState::graph_overlay`]. Boxed for the reason `picks` is.
+    pub finish: Option<Box<super::finish::FinishState>>,
     /// The summary's message as `Esc` left it, `(subject, body)`, when it
     /// was the user's: the next `c` puts it back. Apart from
     /// `commit_draft` (ticket 19 S7). Cleared when the operation ends.

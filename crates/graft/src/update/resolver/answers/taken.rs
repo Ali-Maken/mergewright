@@ -133,6 +133,7 @@ pub(in crate::update::resolver) fn take_landed(
         state.picks.push(pick);
     }
     let keys = Arc::clone(&state.keymap);
+    let merge = super::super::review::open_elsewhere(state);
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -157,7 +158,7 @@ pub(in crate::update::resolver) fn take_landed(
         ));
     }
     let settled = open_left == 0 && open.in_flight.is_none();
-    open.notice = landed_notice(&keys, bulk, settled, &path);
+    open.notice = landed_notice(&keys, bulk, settled, &path, merge);
     // The new document may draw in a different number of rows: the cursor
     // block, wherever the keys put it, is kept on screen — moved as little
     // as it must, never back to the block that landed.
@@ -192,12 +193,16 @@ fn landed_notice(
     bulk: Option<(String, usize)>,
     settled: bool,
     path: &std::path::Path,
+    merge: Option<bool>,
 ) -> Option<(String, bool)> {
     match bulk {
         Some((side, n)) => {
             let blocks = if n == 1 { "block" } else { "blocks" };
             let mut words = format!("took {side} in {n} {blocks}");
-            if settled {
+            // A merge's file needs no marking (ease-pass/05b).
+            if let (true, Some(open_elsewhere)) = (settled, merge) {
+                words = super::super::review::solved_way_on(&words, open_elsewhere, keys);
+            } else if settled {
                 words = keys.after(
                     &words,
                     graft_ui::keymap::ActionId("resolver.mark_done"),
@@ -206,6 +211,6 @@ fn landed_notice(
             }
             Some((words, false))
         }
-        None => settled.then(|| (all_taken(path, keys), false)),
+        None => settled.then(|| (all_taken(path, keys, merge), false)),
     }
 }

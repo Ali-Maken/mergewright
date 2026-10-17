@@ -124,6 +124,48 @@ pub struct FinishState {
     /// The fields came from `finish_draft`: the summary landing must not
     /// overwrite them with git's message.
     pub from_draft: bool,
+    /// The files `y` stages inside the finish (ease-pass/05b): the
+    /// review's read fills it; empty until then.
+    pub solved: Vec<PathBuf>,
+}
+
+/// The review's read (ease-pass/05b): what the merge will commit, and the
+/// files its `y` stages, both from `graft_ops::finish::merge_review`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Reviewed {
+    /// What the merge will commit, as if `solved` were staged.
+    pub summary: Arc<FinishSummary>,
+    /// The unmerged files solved on disk: staged inside the finish.
+    pub solved: Vec<PathBuf>,
+}
+
+impl From<Arc<FinishSummary>> for Reviewed {
+    /// A summary with nothing left to stage: every path already staged.
+    fn from(summary: Arc<FinishSummary>) -> Self {
+        Self {
+            summary,
+            solved: Vec::new(),
+        }
+    }
+}
+
+/// Why the review has nothing to show.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReviewFailed {
+    /// Files still have a clash open: the review closes and says how many
+    /// (ease-pass/05b, banner `c` in a merge).
+    StillOpen {
+        /// How many files.
+        count: usize,
+    },
+    /// The read failed, in `graft_ops`' own words: shown in the review.
+    Failed(String),
+}
+
+impl From<String> for ReviewFailed {
+    fn from(why: String) -> Self {
+        Self::Failed(why)
+    }
 }
 
 /// How [`resume_answered`] handled a `--continue` the summary started.
@@ -154,7 +196,7 @@ pub fn open_finish(
     let draft = state.finish_draft.take();
     let from_draft = draft.is_some();
     let (subject, body) = draft.unwrap_or_default();
-    state.finish = Some(FinishState {
+    state.finish = Some(Box::new(FinishState {
         summary: Loading::Pending(id),
         job: Some(id),
         cursor: 0,
@@ -169,7 +211,8 @@ pub fn open_finish(
         editing: None,
         notice: None,
         from_draft,
-    });
+        solved: Vec::new(),
+    }));
     commands.push(Command::ReadFinishSummary(id));
     true
 }

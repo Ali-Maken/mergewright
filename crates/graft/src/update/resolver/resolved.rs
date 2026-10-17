@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 
 use graft_core::event::KeyCode;
 use graft_core::job::JobId;
-use graft_git::state::InProgress;
 
 use super::files::{RowState, listed_files, reread_set};
 use super::{reopen, write_refusal};
@@ -16,7 +15,8 @@ use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
 /// `⏎`: mark the file resolved, which is `git add` on it — git's own way of
-/// recording a resolution.
+/// recording a resolution. In a merge, nothing is staged: `⏎` on a solved
+/// file goes to the next open clash (ease-pass/05b).
 ///
 /// Refused **in words, without a job**, while any block is still open:
 /// `graft_ops::conflict::mark_resolved_refusal` reads the document the user
@@ -47,6 +47,12 @@ pub(super) fn mark_resolved(
     }
     if let Some(words) = write_refusal(state) {
         state.status = Status::sticky(words);
+        return;
+    }
+    // A merge stages nothing until the review's `y` (ease-pass/05b): a
+    // solved file is solved on disk already, so `⏎` only goes on.
+    if super::review::in_a_merge(state) {
+        super::walk::solved_next(state, commands, next_id);
         return;
     }
     if let Err(busy) = crate::update::operate::launch(
@@ -118,7 +124,11 @@ pub fn resolved_advance(
 /// **Stale by one stage at most**: a path staged by an *earlier* `⏎` whose
 /// refresh has not yet landed would still be offered. Its read then answers
 /// "not conflicted".
+///
+/// In a merge a solved file is as far as it goes before the review's `y`
+/// (ease-pass/05b), so it is skipped too: on to a clash still open.
 fn next_not_done(state: &AppState, done: &Path) -> Option<PathBuf> {
+    let merge = super::review::in_a_merge(state);
     let listed = listed_files(state);
     let at = listed
         .iter()
@@ -129,7 +139,11 @@ fn next_not_done(state: &AppState, done: &Path) -> Option<PathBuf> {
         .cycle()
         .skip(at + 1)
         .take(listed.len())
-        .find(|file| file.path != done && file.state != RowState::Done)
+        .find(|file| {
+            file.path != done
+                && file.state != RowState::Done
+                && !(merge && file.state == RowState::AllTaken)
+        })
         .map(|file| file.path.clone())
 }
 
@@ -222,9 +236,11 @@ fn stay_after_last(
     next_id: &mut impl FnMut() -> JobId,
 ) {
     let opened = reopen(state, commands, done.to_path_buf(), from, next_id);
-    let merge =
-        crate::update::banner::live(state).is_some_and(|detail| detail.kind == InProgress::Merge);
-    let owes = opened && merge;
+    // P11 is dropped for a merge (ease-pass/05b): its review is `y`, and
+    // nothing else owed it. Only a merge whose last open file was a
+    // whole-file card gets here at all — every other merge file stays
+    // unmerged until the review.
+    let owes = false;
     if let Some(open) = state.resolver.as_mut() {
         open.finish_owed = owes;
     }
@@ -246,12 +262,18 @@ fn stay_after_last(
 }
 
 /// `<file> done ✓ · every file done`, and — where no summary is coming —
-/// the key that carries the operation on (m6-conflicts/60).
+/// the key that carries the operation on (m6-conflicts/60). A merge says
+/// `<file> done ✓ · every clash is solved · y reviews the merge`.
 fn last_done(state: &AppState, done: &Path, summary_coming: bool) -> Status {
     let (every, keys) = every_file_done_parts(state);
-    let keys = match keys.filter(|_| !summary_coming) {
-        Some(keys) => format!("{every} · {keys}"),
-        None => every.to_owned(),
+    // A merge's solved files wait, unstaged, for the review (ease-pass/05b).
+    let keys = if super::review::in_a_merge(state) {
+        super::review::reviews_the_merge("every clash is solved", &state.keymap)
+    } else {
+        match keys.filter(|_| !summary_coming) {
+            Some(keys) => format!("{every} · {keys}"),
+            None => every.to_owned(),
+        }
     };
     Status::Done {
         what: format!("{} done", done.display()),
@@ -350,28 +372,6 @@ fn every_file_done_parts(state: &AppState) -> (&'static str, Option<String>) {
         .filter(|_| c_live)
         .and_then(|detail| crate::update::banner::continue_words(detail.kind));
     (EVERY_FILE_DONE, keys)
-}
-
-/// `c`'s refusal as the resolver's notice row says it: the reason, and the
-/// key that marks a file done **here** — `⏎` (§2.6), where the banner's
-/// line names `space`, the key outside (§2.6a).
-///
-/// Spelled from the resolver's own `resolver.mark_done` row: the place is
-/// the open resolver, whose notice row this is, and its footer names the
-/// same row (m8/10j ruling 5). Unbound → the reason alone.
-pub(crate) fn finish_refused_notice(
-    reason: &str,
-    keys: &graft_ui::keymap::Keymap,
-) -> (String, bool) {
-    let marks = keys.key_verb(
-        &[graft_ui::keymap::ActionId("resolver.mark_done")],
-        "marks done",
-    );
-    let words = match marks {
-        Some(marks) => format!("{reason} · {marks}"),
-        None => reason.to_owned(),
-    };
-    (words, false)
 }
 
 /// Put `notice` on the open resolver's notice row; nothing when it is

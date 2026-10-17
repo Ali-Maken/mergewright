@@ -104,15 +104,15 @@ pub(crate) fn line(task: TourTask, keys: &Keymap) -> String {
             row("confirm.yes")
         ),
         // The keys the app answers on this path (19c-b's walk, 19c-c C+1):
-        // `y` on the merge preview lands in the resolver already, and `⏎`
-        // marking the last file done opens the finish preview, whose key is
-        // `y` — not `⏎ opens it … c finishes`.
+        // `y` on the merge preview lands in the resolver already; with the
+        // clash solved, `y` opens the merge's review (ease-pass/05b — a
+        // merge's `⏎` marks nothing), whose `y` finishes.
         TourTask::ResolveConflict => format!(
-            "{} on clash \u{b7} {} stops on its conflict \u{b7} {} takes theirs \u{b7} {} marks it done \u{b7} {} finishes",
+            "{} on clash \u{b7} {} stops on its conflict \u{b7} {} takes theirs \u{b7} {} reviews the merge \u{b7} {} finishes",
             op(OpKey::Merge),
             row("confirm.yes"),
             row("resolver.take_theirs"),
-            row("resolver.mark_done"),
+            row("resolver.review"),
             row("confirm.yes")
         ),
         TourTask::Push => format!("{} sends main to origin", op(OpKey::Push)),

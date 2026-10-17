@@ -3,16 +3,20 @@
 
 use super::keys::close_keeping_draft;
 use super::{
-    AppState, Arc, DiffView, FinishAnswer, FinishSummary, JobId, Loading, Operated, TextArea,
-    TextField, keep_cursor_on_screen, split_message,
+    AppState, Arc, DiffView, FinishAnswer, JobId, Loading, Operated, ReturnTo, ReviewFailed,
+    Reviewed, TextArea, TextField, keep_cursor_on_screen, split_message,
 };
 use crate::update::op_keys::OpKeys;
 
 /// The summary read came back.
+///
+/// A read that found files with a clash still open (ease-pass/05b) closes
+/// the review: the words go where `c` or `y` was pressed — the status line
+/// over the banner, the notice row of the resolver.
 pub(crate) fn summary_landed(
     state: &mut AppState,
     id: JobId,
-    summary: Result<Arc<FinishSummary>, String>,
+    summary: Result<Reviewed, ReviewFailed>,
 ) {
     let Some(finish) = state.finish.as_mut() else {
         return;
@@ -24,7 +28,14 @@ pub(crate) fn summary_landed(
     }
     finish.job = None;
     match summary {
-        Ok(summary) => {
+        Err(ReviewFailed::StillOpen { count }) => {
+            let back_to = finish.return_to;
+            close_keeping_draft(state);
+            still_open(state, back_to, count);
+            return;
+        }
+        Ok(Reviewed { summary, solved }) => {
+            finish.solved = solved;
             // A restored draft is the user's words; so is anything typed
             // while the read ran. Git's message fills only empty fields.
             let untouched = finish.subject.is_empty() && finish.body.is_empty();
@@ -40,9 +51,33 @@ pub(crate) fn summary_landed(
             };
             finish.summary = Loading::Ready(summary);
         }
-        Err(why) => finish.summary = Loading::Failed(why),
+        Err(ReviewFailed::Failed(why)) => finish.summary = Loading::Failed(why),
     }
     keep_cursor_on_screen(state);
+}
+
+/// `count` files still have a clash open: said where the review was asked
+/// for. Over the banner, today's `c` refusal; in the resolver, the way to
+/// the next open clash.
+fn still_open(state: &mut AppState, back_to: ReturnTo, count: usize) {
+    let files = if count == 1 { "file" } else { "files" };
+    match back_to {
+        ReturnTo::Banner => {
+            state.banner_focus = crate::update::banner::banner_view(state).is_some();
+            state.status = crate::update::banner::continue_refused(
+                format!("{count} {files} still conflicted"),
+                crate::update::banner::refused_at(state),
+                &state.keymap,
+            );
+        }
+        ReturnTo::Resolver => {
+            let words = crate::update::resolver::still_open_words(
+                &format!("{count} {files} still open"),
+                &state.keymap,
+            );
+            crate::update::resolver::set_notice(state, (words, false));
+        }
+    }
 }
 
 /// A row's diff came back.

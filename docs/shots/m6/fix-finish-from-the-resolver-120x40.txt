@@ -40,11 +40,13 @@ MERGING
 
 --- after Esc ---
 MERGING
-files · all done ✓   a.txt · done ✓    ▸ b.txt · done ✓
+files   a.txt · ⏎ marks done    ▸ b.txt · ⏎ marks done
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ b.txt · done ✓
-✓ every file done — c review and finish the merge
-  1 main
+▸ b.txt · 1 conflict · 0 open
+all blocks taken · y reviews the merge
+▏ ── conflict 1 of 1 · took yours · main ── t theirs  b both ───────────────────────────────────────────────────────────
+▏ 1 main
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
 
 
 
@@ -76,6 +78,4 @@ files · all done ✓   a.txt · done ✓    ▸ b.txt · done ✓
 
 
 
-
-
- c finish  e edit  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close

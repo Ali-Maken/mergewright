@@ -230,24 +230,33 @@ fn a_start_over_forgets_the_choices() {
 /// `T` on each file until every one is done — the resolver stays on the
 /// last (m6-conflicts/31): `choices` holds both. A merge begun in the shell
 /// is not the app's to commit or abort.
+/// The open document has no clash left open.
+fn solved(open: &graft::update::resolver::ResolverState) -> bool {
+    open.file.as_ref().is_some_and(|file| file.open() == 0)
+}
+
 fn every_file_theirs(app: &App, state: AppState) -> AppState {
     let mut state = crate::conflict_interim::landed_in_the_resolver(app, state);
     let mut guard = 0;
+    // A merge's `T` on a document takes every open block and stages
+    // nothing (ease-pass/05b): the file is solved, not done. On a card it
+    // stages, as a whole-file choice always has.
     while let Some(was) = state
         .resolver
         .as_ref()
-        .filter(|open| open.done.is_none())
+        .filter(|open| open.done.is_none() && !solved(open))
         .map(|open| open.path.clone())
     {
-        assert!(guard < 4, "`T` never reached every file done");
+        assert!(guard < 4, "`T` never solved every file");
         guard += 1;
         state = app.press(&state, KeyPress::plain(KeyCode::Char('T')));
-        state = app.pump(state, "the file done and the next", |state| {
+        state = app.pump(state, "the file solved and the next", |state| {
             state.operating.is_none()
                 && state.resolver.as_ref().is_none_or(|open| {
                     open.job.is_none()
+                        && open.queued.is_empty()
                         && if open.path == was {
-                            open.done.is_some()
+                            open.done.is_some() || solved(open)
                         } else {
                             open.file.is_some() || open.whole_file.is_some()
                         }
@@ -329,6 +338,9 @@ fn choices_and_draft_clear_when_the_merge_ends_outside() {
     let repo = scratch.path();
     let (app, state) = App::open(repo);
     let state = choices_and_a_draft(&app, state);
+    // The solved files are still unmerged until the review's `y`
+    // (ease-pass/05b): finishing in the shell stages them first, as git asks.
+    git(repo, &["add", "-u"]);
     git(repo, &["commit", "-q", "--no-edit"]);
     // The resolver the summary went back to is modal: `Esc` closes it.
     let state = app.key(&state, KeyCode::Escape);

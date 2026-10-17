@@ -1,6 +1,7 @@
 //! `O`/`T` settle a whole file and move on (m6-conflicts/17), against a
 //! real stopped merge: `gone.txt` (a whole-file card) and `notes.txt` (two
-//! blocks).
+//! blocks). A merge stages a marker file at the review's `y`, not here
+//! (ease-pass/05b); a whole-file card's choice still stages.
 
 use super::file_list::gone_and_notes_merge;
 use super::*;
@@ -51,7 +52,7 @@ fn shift(code: char) -> KeyPress {
 }
 
 #[test]
-fn shift_t_takes_theirs_marks_done_and_moves_on() {
+fn shift_t_takes_theirs_and_moves_on_staging_nothing_in_a_merge() {
     let (scratch, app, state) = on_notes();
     let repo = scratch.path().to_owned();
     let want = per_block_theirs(&repo);
@@ -62,10 +63,17 @@ fn shift_t_takes_theirs_marks_done_and_moves_on() {
         want
     );
     let unmerged = git(&repo, &["ls-files", "-u", "--", "notes.txt"]);
-    assert!(unmerged.trim().is_empty(), "still unmerged: {unmerged}");
+    assert!(!unmerged.trim().is_empty(), "notes.txt was staged");
+    let notes = super::file_list::rows(&state)
+        .into_iter()
+        .find(|(path, _)| path == "notes.txt");
     assert_eq!(
-        notice(&state).as_deref(),
-        Some("notes.txt done ✓ · ▸ gone.txt")
+        notes,
+        Some((
+            "notes.txt".to_owned(),
+            graft::update::resolver::RowState::AllTaken
+        )),
+        "solved, waiting for the review"
     );
     drop(state);
     app.close();
@@ -104,8 +112,10 @@ fn every_block_taken(app: &App, state: &AppState) -> AppState {
     state
 }
 
+/// In a merge, `T` with nothing left to take writes nothing and stages
+/// nothing (ease-pass/05b): it goes on, as `⏎` does.
 #[test]
-fn shift_t_with_every_block_taken_only_stages() {
+fn shift_t_with_every_block_taken_only_moves_on() {
     let (scratch, app, state) = on_notes();
     let state = every_block_taken(&app, &state);
     let (_, commands) = press_for_commands(&state, shift('T'));
@@ -119,7 +129,7 @@ fn shift_t_with_every_block_taken_only_stages() {
         .iter()
         .filter(|command| matches!(command, Command::TakeSide(..)))
         .count();
-    assert_eq!((stages, takes), (1, 0), "{commands:?}");
+    assert_eq!((stages, takes), (0, 0), "{commands:?}");
     let by_t = landed_on(&app, app.press(&state, shift('T')), "gone.txt", true);
     app.close();
     drop(scratch);
@@ -158,11 +168,12 @@ fn file_keys_capture() {
         &format!("{}\n", before.join("\n")),
     );
 
-    // (b) After `T`: landed on the `gone.txt` card.
+    // (b) After `T`: landed on the `gone.txt` card, `notes.txt` solved and
+    // not done — a merge stages it at the review's `y` (ease-pass/05b).
     let state = app.press(&state, shift('T'));
     let state = landed_on(&app, state, "gone.txt", true);
-    // `PgUp` changes nothing on a card but clears the Stage's status line,
-    // so the bottom row is the card's bar again (review m6-amend-17 C1).
+    // `PgUp` changes nothing on a card but clears any status line, so the
+    // bottom row is the card's bar (review m6-amend-17 C1).
     let state = app.key(&state, KeyCode::PageUp);
 
     // At 120 the files are a strip; at 200 a side list, wide enough for
@@ -173,17 +184,14 @@ fn file_keys_capture() {
     ] {
         let frame = crate::captures::frame(&state, columns, rows);
         let body = frame.join("\n");
-        assert!(body.contains(done_row), "strip: {body}");
+        assert!(!body.contains(done_row), "strip: {body}");
+        assert!(body.contains("notes.txt"), "strip: {body}");
         assert!(
             frame
                 .iter()
                 .flat_map(|line| line.split('│'))
                 .any(|cell| cell.trim_start().starts_with("▸ gone.txt · modified")),
             "identity row: {body}"
-        );
-        assert!(
-            body.contains("notes.txt done ✓ · ▸ gone.txt"),
-            "notice: {body}"
         );
         let bar = frame.last().expect("a bar");
         assert!(

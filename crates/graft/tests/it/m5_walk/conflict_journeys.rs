@@ -182,8 +182,15 @@ fn c_y() -> Vec<Step> {
     steps
 }
 
-/// The summary open (the last file of a merge opens it on its own,
-/// m6-conflicts/60): `y` → the commit, everything re-read.
+/// Every clash solved: `y` opens the review (ease-pass/05b), and its `y`
+/// commits, everything re-read.
+fn review_then_commit() -> Vec<Step> {
+    let mut steps = vec![key(ch('y'))];
+    steps.extend(y_commit());
+    steps
+}
+
+/// The summary open: `y` → the commit, everything re-read.
 fn y_commit() -> Vec<Step> {
     vec![
         Step::WaitFor(Wait::FinishReady),
@@ -271,28 +278,31 @@ fn resolver_on(state: &AppState, path: &str) -> Result<(), String> {
     })
 }
 
-/// The last file done: the merge's summary opens on its own over the
-/// resolver, the status saying every file is done (m6-conflicts/60; P8,
-/// ticket 31, before it).
+/// Every clash solved and `y` pressed: the review open over the resolver
+/// (ease-pass/05b; the summary opened on its own before, m6-conflicts/60).
 fn every_file_done() -> Vec<Step> {
     vec![
         Step::WaitFor(Wait::FinishReady),
-        Step::See("every file done, the summary open on its own", |state| {
-            check(state.resolver.is_some() && state.finish.is_some(), || {
-                "the summary did not open over the resolver".to_owned()
-            })?;
-            status_containing(state, "every file done")
-        }),
+        Step::See(
+            "every clash solved, the review open over the resolver",
+            |state| {
+                check(state.resolver.is_some() && state.finish.is_some(), || {
+                    "the review did not open over the resolver".to_owned()
+                })
+            },
+        ),
         Step::Frame(
             "the summary, drawn",
             // The summary takes the whole frame: the status is set (above),
             // not drawn while it is open.
             &[Sees::Has("RESOLVED BY YOU")],
         ),
+        // The review stages nothing: the solved text files stay unmerged in
+        // the real index until its `y` (ease-pass/05b, Hard choice 3).
         Step::Shell(|fixture| {
             let unmerged = fixture.git(&["ls-files", "-u"])?;
-            check(unmerged.trim().is_empty(), || {
-                format!("git still lists unmerged entries: {unmerged:?}")
+            check(!unmerged.trim().is_empty(), || {
+                "the review staged the solved files before its y".to_owned()
             })
         }),
     ]
@@ -466,11 +476,30 @@ fn one_file_one_conflict() -> Scenario {
             m_m(),
             vec![route()],
             done_by('O', "shared.txt"),
-            vec![end()],
+            vec![key(ch('y')), end()],
             every_file_done(),
-            vec![Step::Shell(|fixture| is_heads("shared.txt", fixture))],
+            vec![Step::Shell(|fixture| {
+                is_heads_on_disk("shared.txt", fixture)
+            })],
         ],
     )
+}
+
+/// `path` on disk is `HEAD`'s (yours, whole), and — a text file solved in a
+/// merge — still unmerged: the review's `y` stages it (ease-pass/05b).
+fn is_heads_on_disk(path: &str, fixture: &Fixture) -> Result<(), String> {
+    let head = fixture.git(&["show", &format!("HEAD:{path}")])?;
+    let disk = fixture.bytes(path)?;
+    check(disk == head.as_bytes(), || {
+        format!(
+            "{path} is {:?}, HEAD's is {head:?}",
+            String::from_utf8_lossy(&disk)
+        )
+    })?;
+    let unmerged = fixture.git(&["ls-files", "-u", "--", path])?;
+    check(!unmerged.trim().is_empty(), || {
+        format!("{path} was staged before the review's y")
+    })
 }
 
 /// `path` on disk is `HEAD`'s (yours, whole), and staged as that.
@@ -511,7 +540,7 @@ fn three_conflicts_all_theirs() -> Scenario {
             })],
             vec![route()],
             done_by('T', "three.txt"),
-            vec![end()],
+            vec![key(ch('y')), end()],
             every_file_done(),
             vec![Step::Shell(three_is_theirs_block_by_block)],
         ],
@@ -634,20 +663,31 @@ fn two_files_in_order(size: (u16, u16)) -> Scenario {
                 clicks_select(),
                 vec![route()],
                 both_files_done(),
-                vec![end()],
+                vec![key(ch('y')), end()],
                 every_file_done(),
-                // The summary covers the list (m6-conflicts/60): read the
-                // list's states rather than its drawing.
-                vec![Step::See("both files done in the list", |state| {
-                    let listed = graft::update::resolver::listed_files(state);
-                    check(
-                        listed.len() == 2
-                            && listed
-                                .iter()
-                                .all(|file| file.state == graft::update::resolver::RowState::Done),
-                        || format!("the list: {listed:?}"),
-                    )
-                })],
+                // The review covers the list: read the list's states rather
+                // than its drawing. The card is done (staged as it was
+                // chosen); the document solved, staged only by the review's
+                // `y` (ease-pass/05b).
+                vec![Step::See(
+                    "gone.txt done, notes.txt solved in the list",
+                    |state| {
+                        use graft::update::resolver::RowState;
+                        let listed = graft::update::resolver::listed_files(state);
+                        let states: Vec<(String, RowState)> = listed
+                            .iter()
+                            .map(|file| (file.path.display().to_string(), file.state.clone()))
+                            .collect();
+                        check(
+                            states
+                                == [
+                                    ("gone.txt".to_owned(), RowState::Done),
+                                    ("notes.txt".to_owned(), RowState::AllTaken),
+                                ],
+                            || format!("the list: {listed:?}"),
+                        )
+                    },
+                )],
             ],
         )
     }
@@ -673,7 +713,7 @@ fn two_files_out_of_order() -> Scenario {
                 resolver_on(state, "gone.txt")
             })],
             done_by('o', "gone.txt"),
-            vec![end()],
+            vec![key(ch('y')), end()],
             every_file_done(),
         ],
     )
@@ -712,8 +752,9 @@ fn a_finish() -> Scenario {
                 on_feature(),
                 m_m(),
                 both_files_done(),
-                // The start: every file done, the summary open on its own
-                // over the resolver (m6-conflicts/60).
+                // The start: every clash solved, `y` has opened the review
+                // over the resolver (ease-pass/05b).
+                vec![key(ch('y'))],
                 every_file_done(),
                 vec![
                     route(),
@@ -740,7 +781,7 @@ fn shell_merge_resolved_in_the_app() -> Vec<Vec<Step>> {
         launched(),
         vec![key(KeyCode::Enter), Step::WaitFor(Wait::ConflictOpened)],
         both_files_done(),
-        vec![Step::WaitFor(Wait::FinishReady)],
+        vec![key(ch('y')), Step::WaitFor(Wait::FinishReady)],
     ]
 }
 
@@ -1126,7 +1167,7 @@ fn a_whole_one_file() -> Scenario {
             vec![route()],
             m_m(),
             done_by('O', "shared.txt"),
-            y_commit(),
+            review_then_commit(),
             vec![end()],
             merged_landing(),
         ],
@@ -1134,8 +1175,10 @@ fn a_whole_one_file() -> Scenario {
 }
 
 /// J13 (amendment 2026-09-24): `gone.txt` done, the cursor on `notes.txt`'s
-/// last open block — `o ⏎` stages the last file and the summary opens on
-/// its own (m6-conflicts/60), `y` commits.
+/// last open block — `o` solves the last clash, `y` opens the review and
+/// its `y` commits. No `⏎`: a merge stages at the review's `y`
+/// (ease-pass/05b; the stage and the summary opening on its own were
+/// m6-conflicts/60's).
 fn last_block_to_finished() -> Scenario {
     journey(
         "last-block-to-finished",
@@ -1151,11 +1194,9 @@ fn last_block_to_finished() -> Scenario {
                 route(),
                 key(ch('o')),
                 Step::WaitFor(Wait::ConflictOpened),
-                key(KeyCode::Enter),
-                Step::Settle("the last stage"),
                 Step::WaitFor(Wait::ResolvedPath("notes.txt")),
             ],
-            y_commit(),
+            review_then_commit(),
             vec![end()],
             merged_landing(),
         ],
@@ -1171,7 +1212,7 @@ fn a_whole_two_files() -> Scenario {
             vec![route()],
             m_m(),
             both_files_done(),
-            y_commit(),
+            review_then_commit(),
             vec![end()],
             merged_landing(),
         ],
@@ -1190,7 +1231,7 @@ fn b_whole_two_files() -> Scenario {
                 Step::WaitFor(Wait::ConflictOpened),
             ],
             both_files_done(),
-            y_commit(),
+            review_then_commit(),
             vec![end()],
             merged_landing(),
         ],
@@ -1347,7 +1388,7 @@ mod tests {
         let why = within_the_note(&scenario, route.as_ref()).unwrap_err();
         assert!(
             why.starts_with(
-                "one-file-one-conflict: 2 inputs sent, the note's journey-counts allows 1: "
+                "one-file-one-conflict: 3 inputs sent, the note's journey-counts allows 2: "
             ),
             "{why}"
         );

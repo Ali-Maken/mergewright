@@ -1,8 +1,8 @@
 //! `c` in the resolver (m6-conflicts/31, P8): after the last file the
-//! resolver stays, and `c` there finishes a merge through its summary or
-//! continues anything else — refused in words while it cannot. Since
-//! m6-conflicts/60 a merge's summary opens on its own once the last stage
-//! and its reads have landed; `Esc` from it leaves the finish row.
+//! resolver stays, and `c` there continues anything but a merge — refused
+//! in words while it cannot. A merge stages nothing while the user picks
+//! (ease-pass/05b): `y` (or `c`) opens its review once every clash is
+//! solved, and `Esc` from the review is the resolver again.
 
 use std::path::Path;
 
@@ -11,7 +11,7 @@ use graft_core::job::JobId;
 use graft_git::state::InProgress;
 
 use super::file_list::{listing, status};
-use super::words_and_c::{applied, done_read_lands, last_stage_lands, notice, owed_read};
+use super::words_and_c::{applied, done_read_lands, last_stage_lands, notice};
 use super::{open_path, press, sticky};
 use crate::update::finish::ReturnTo;
 use crate::update::{AppEvent, AppState, Command, Product, Status, update};
@@ -30,15 +30,22 @@ pub(super) fn nothing_unmerged() -> Product {
     })))
 }
 
-/// Every file done and read back: the stage landed, the file's done read
-/// landed, and the status read the stage asked for said nothing is
-/// unmerged — so the summary opened on its own (m6-conflicts/60). The
-/// commands of that last answer ride along.
+/// A merge whose other file is done and whose last, `conflicted.rs`, has
+/// every block taken: solved on disk, still unmerged — nothing is staged
+/// until the review's `y` (ease-pass/05b).
+pub(super) fn merge_solved() -> AppState {
+    let mut state = listing(&["gone.txt", "conflicted.rs"], &["conflicted.rs"]);
+    state.banner_focus = false;
+    if let Some(file) = state.resolver.as_mut().and_then(|open| open.file.as_mut()) {
+        std::sync::Arc::make_mut(file).take_all(graft_git::conflict::Take::Theirs);
+    }
+    state
+}
+
+/// Every clash solved and `y` pressed: the review open over the resolver.
+/// The commands `y` sent ride along.
 pub(super) fn every_file_done_sent() -> (AppState, Vec<Command>) {
-    let (landed, commands) = last_stage_lands();
-    let owed = owed_read(&commands);
-    let landed = done_read_lands(&landed, &commands);
-    update(&landed, AppEvent::Produced(owed, nothing_unmerged()))
+    press(&merge_solved(), KeyCode::Char('y'))
 }
 
 /// [`every_file_done_sent`]'s state: the summary open over the resolver.
@@ -46,8 +53,8 @@ fn every_file_done() -> AppState {
     every_file_done_sent().0
 }
 
-/// The summary that opened on its own, closed with `Esc`: the resolver
-/// with the finish row (m6-conflicts/60, J14).
+/// The review `y` opened, closed with `Esc`: the resolver, every clash
+/// solved.
 pub(super) fn finish_row_showing() -> AppState {
     let (state, _) = press(&every_file_done(), KeyCode::Escape);
     assert!(state.finish.is_none(), "Esc closed the summary");
@@ -65,30 +72,6 @@ fn nothing_sent(commands: &[Command]) {
     );
 }
 
-/// Ticket 60's premise, pinned: the status read after the last `Stage` is
-/// asked while that Stage's answer is handled — by `operate::operated`'s
-/// `refresh_scope` (`operate.rs`, `Refresh::WorkingTree`), before
-/// `resolved_advance` runs — so it is owed the moment the owed open is set.
-/// A read asked later would let the open spend on a status from before the
-/// Stage.
-#[test]
-fn the_read_after_the_last_stage_is_owed_when_it_lands() {
-    let (landed, commands) = last_stage_lands();
-    assert!(
-        crate::update::status_read::owed(&landed),
-        "the status read is out when the Stage's answer returns"
-    );
-    let owed = owed_read(&commands);
-    assert_eq!(landed.status_read, Some(owed), "and it is the newest one");
-    assert!(
-        landed
-            .resolver
-            .as_ref()
-            .is_some_and(|open| open.finish_owed),
-        "the owed open is set on the same answer"
-    );
-}
-
 #[test]
 fn c_in_the_resolver_opens_the_summary() {
     let state = finish_row_showing();
@@ -102,58 +85,6 @@ fn c_in_the_resolver_opens_the_summary() {
             .any(|command| matches!(command, Command::ReadFinishSummary(_))),
         "{commands:?}"
     );
-}
-
-/// Rewritten for m6-conflicts/60 (was `the_resolver_stays_after_the_last_file`):
-/// the resolver stays on the last file while the reads are out, the
-/// status line says the file is done and every file is done, and once the
-/// status read lands the summary opens over it on its own.
-#[test]
-fn the_last_file_of_a_merge_opens_the_summary_once_the_reads_land() {
-    let (landed, commands) = last_stage_lands();
-    let open = landed.resolver.as_ref().expect("the resolver stays");
-    assert_eq!(open.path, Path::new("conflicted.rs"), "on the same path");
-    assert!(
-        commands.iter().any(|command| matches!(
-            command,
-            Command::OpenConflict(_, path) if path == Path::new("conflicted.rs")
-        )),
-        "reopened through its read: {commands:?}"
-    );
-    assert!(!landed.banner_focus);
-    assert!(landed.finish.is_none(), "not before the reads land");
-    // The status the stage asked for is out, so the notice says what `c`
-    // would say.
-    assert_eq!(
-        notice(&landed),
-        Some((crate::update::status_read::CHECKING.to_owned(), false))
-    );
-    assert_eq!(
-        landed.status,
-        Status::Done {
-            what: "conflicted.rs done".to_owned(),
-            also: None,
-            keys: Some("every file done".to_owned()),
-        },
-        "the summary is coming, so no key is named"
-    );
-    let (state, commands) = every_file_done_sent();
-    let finish = state.finish.as_ref().expect("the summary opened");
-    assert_eq!(finish.return_to, ReturnTo::Resolver);
-    assert_eq!(finish.focus, crate::update::finish::FinishFocus::Files);
-    assert!(
-        commands
-            .iter()
-            .any(|command| matches!(command, Command::ReadFinishSummary(_))),
-        "{commands:?}"
-    );
-    assert!(state.resolver.is_some(), "the resolver under it");
-    assert!(
-        !state.resolver.as_ref().is_some_and(|open| open.finish_owed),
-        "spent"
-    );
-    assert_eq!(state.status, landed.status, "the status line kept");
-    assert!(!state.banner_focus);
 }
 
 #[test]
@@ -178,7 +109,10 @@ fn c_with_files_open_is_refused_in_words() {
     let (after, commands) = press(&state, KeyCode::Char('c'));
     assert_eq!(
         notice(&after),
-        Some(("1 file still conflicted · ⏎ marks done".to_owned(), false))
+        Some((
+            "2 clashes still open · n goes to the next".to_owned(),
+            false
+        ))
     );
     assert!(after.finish.is_none());
     // The fixture's ambient walk work (an `EvilProbe`) rides along with
@@ -226,7 +160,7 @@ fn c_in_a_rebase_resolver_continues() {
     assert!(after.banner_focus);
 }
 
-/// The summary that opened on its own, with its read answered.
+/// The review `y` opened, with its read answered.
 fn summary_open() -> AppState {
     let (state, commands) = every_file_done_sent();
     let id = commands
@@ -246,7 +180,7 @@ fn summary_open() -> AppState {
     });
     update(
         &state,
-        AppEvent::Produced(id, Product::FinishSummary(Ok(summary))),
+        AppEvent::Produced(id, Product::FinishSummary(Ok(summary.into()))),
     )
     .0
 }
@@ -269,12 +203,15 @@ fn esc_from_the_summary_returns_to_the_resolver() {
             .map(|(subject, _)| subject.as_str()),
         Some("Merge branch 'feature' now")
     );
-    // The next key reaches the resolver: `o` on a done file is refused in
-    // its words.
-    let (after, _) = press(&state, KeyCode::Char('o'));
+    // The next key reaches the resolver: `n` with every clash solved says
+    // where the review is.
+    let (after, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(
-        sticky(&after).0,
-        crate::update::resolver::done_refusal(&state).expect("a done file")
+        notice(&after),
+        Some((
+            "no open clashes left \u{b7} y reviews the merge".to_owned(),
+            false
+        ))
     );
 }
 

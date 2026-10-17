@@ -101,6 +101,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `SummaryError` (enum) — `NotMerging`, `StillUnmerged { count }`, `Facts`, `Run`, `Io`, `Conflicts`, `Diff`, `Scratch`.
 - `finish_summary` (fn) — `(repo)`: merge only, nothing unmerged; reads only.
 - `finish_preview` (fn) — `(repo, solved, stop)`: the summary as if `solved` were staged, read from a temp copy of the index; the real index untouched.
+- `merge_review` (fn) / `MergeReview` (struct) — `(repo, stop)`: every unmerged path sorted by `file_state` on disk; any not solved → `StillUnmerged { count }`; else `finish_preview` over the solved, with them.
 
 ## in_the_way
 - `Blocking` (struct) — `ignored`, `untracked`: files git doesn't keep where a write puts its own, sorted and unique; `is_empty`.

@@ -124,6 +124,7 @@ resolver.mark_done
 resolver.mergetool
 resolver.next_block
 resolver.prev_block
+resolver.review
 resolver.start_over
 resolver.step_next
 resolver.step_prev

@@ -122,7 +122,7 @@ fn a_take_moves_to_the_next_open_block() {
     );
     assert_eq!(
         notice(&state),
-        Some("all blocks taken · ⏎ marks three.txt done")
+        Some("all blocks taken · y reviews the merge")
     );
 }
 
@@ -163,7 +163,7 @@ fn takes_typed_faster_than_the_disk_are_queued_in_order() {
     assert_eq!(cursor(&state), Some(2), "the answers left the cursor alone");
     assert_eq!(
         notice(&state),
-        Some("all blocks taken · ⏎ marks three.txt done")
+        Some("all blocks taken · y reviews the merge")
     );
 }
 

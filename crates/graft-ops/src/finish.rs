@@ -15,11 +15,15 @@ use graft_core::oid::Oid;
 use graft_git::diff::{DiffError, DiffOptions, DiffSpec, FileStatus, list_files};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
-use graft_git::state::{self, InProgress};
+use graft_git::state::InProgress;
 
 use crate::conflict::{ConflictSetError, conflicts_of, merge_msg};
 use crate::facts::{self, FactsError};
-use crate::snapshot::{SnapshotError, TempIndex};
+use crate::snapshot::SnapshotError;
+
+mod review;
+use review::summary_of;
+pub use review::{MergeReview, finish_preview, merge_review};
 
 /// One screen of what a merge will commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -144,109 +148,6 @@ pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError> 
     summary_of(repo, &[], &())
 }
 
-/// The review's facts as if `solved` were staged: a scratch index, never the
-/// real one (ease-pass/05b, hard choice 3).
-///
-/// The real index is copied to a temporary file beside the journal,
-/// `git add -- <solved>` runs on the copy (`GIT_INDEX_FILE`, the snapshot
-/// plumbing's route), and each resolved file's result is read from it. The
-/// copy is removed on every path out. With nothing in `solved` this is
-/// [`finish_summary`], with no copy made.
-///
-/// `by_git` is read from the real index: it leaves out every path the merge
-/// conflicted on, and `solved` are exactly such paths, so staging them on
-/// the copy changes nothing it lists.
-///
-/// # Errors
-/// [`SummaryError::NotMerging`] unless git has a merge in progress;
-/// [`SummaryError::StillUnmerged`] counting the unmerged paths not in
-/// `solved`; [`SummaryError::Scratch`] when the copy could not be made or
-/// removed; the read's own failure otherwise.
-pub fn finish_preview(
-    repo: &RepoHandle,
-    solved: &[PathBuf],
-    stop: &dyn Stop,
-) -> Result<FinishSummary, SummaryError> {
-    summary_of(repo, solved, stop)
-}
-
-/// [`finish_summary`] and [`finish_preview`]: one body.
-fn summary_of(
-    repo: &RepoHandle,
-    solved: &[PathBuf],
-    stop: &dyn Stop,
-) -> Result<FinishSummary, SummaryError> {
-    let in_progress = state::in_progress(repo).map_err(FactsError::State)?;
-    if in_progress != Some(InProgress::Merge) {
-        return Err(SummaryError::NotMerging);
-    }
-    let status = graft_git::status::read(repo, stop).map_err(FactsError::from)?;
-    let unmerged: Vec<PathBuf> = status
-        .entries
-        .iter()
-        .filter(|entry| entry.unmerged)
-        .map(|entry| entry.path.clone())
-        .collect();
-    let count = unmerged
-        .iter()
-        .filter(|path| !solved.contains(path))
-        .count();
-    if count > 0 {
-        return Err(SummaryError::StillUnmerged { count });
-    }
-    // Only the solved paths git still calls unmerged need the copy: one
-    // staged already reads the same from the real index.
-    let to_stage: Vec<PathBuf> = unmerged;
-    let copy = if to_stage.is_empty() {
-        None
-    } else {
-        Some(review_index(repo, &to_stage, stop)?)
-    };
-    let index = copy.as_ref().map(TempIndex::path);
-    let summary = summary_on(repo, in_progress, &status, index, stop);
-    match copy {
-        // Removed before the summary is returned, so a copy that would not
-        // go is said rather than left behind in silence.
-        Some(copy) => {
-            let removed = copy.remove();
-            let summary = summary?;
-            removed.map_err(|why| SummaryError::Scratch(SnapshotError::Io(why)))?;
-            Ok(summary)
-        }
-        None => summary,
-    }
-}
-
-/// A copy of the real index with `paths` staged on it: `GIT_INDEX_FILE`
-/// set, nothing written to `.git/index`. Beside the journal, under a name
-/// no other run takes; [`TempIndex`] removes it on every path.
-fn review_index(
-    repo: &RepoHandle,
-    paths: &[PathBuf],
-    stop: &dyn Stop,
-) -> Result<TempIndex, SummaryError> {
-    let journal = crate::journal::journal_path(repo)?;
-    let scratch = journal.parent().ok_or_else(|| {
-        SummaryError::Scratch(SnapshotError::Io(io::Error::other(
-            "the journal has no directory to copy the index into",
-        )))
-    })?;
-    std::fs::create_dir_all(scratch)?;
-    let copy = TempIndex::copied_as(
-        repo,
-        scratch.join(TempIndex::unique_name("tmp-review-index")),
-        stop,
-    )?;
-    let Some(add) = crate::operation::stage_solved_args(paths) else {
-        return Ok(copy);
-    };
-    GitInvocation::new(repo)
-        .env("GIT_INDEX_FILE", copy.path())
-        .args(add)
-        .run(stop)?;
-    Ok(copy)
-}
-
 /// The summary's reads, with each resolved file's result read from `index`
 /// when given (the review's copy), else from the real index.
 fn summary_on(
@@ -256,7 +157,15 @@ fn summary_on(
     index: Option<&Path>,
     stop: &dyn Stop,
 ) -> Result<FinishSummary, SummaryError> {
-    let set = conflicts_of(repo, in_progress, status)?;
+    let mut set = conflicts_of(repo, in_progress, status)?;
+    // The set lists git's unmerged paths first; a merge's review sees some
+    // staged and some solved but unmerged (ease-pass/05b), so it lists them
+    // in git's own path order, bytes, as the index does.
+    set.paths.sort_by(|a, b| {
+        a.as_os_str()
+            .as_encoded_bytes()
+            .cmp(b.as_os_str().as_encoded_bytes())
+    });
     let prepared = merge_msg::read(repo)?;
     let into = match facts::head_ref(repo)? {
         HeadRef::Branch(name) | HeadRef::Unborn(name) => short_branch(&name),

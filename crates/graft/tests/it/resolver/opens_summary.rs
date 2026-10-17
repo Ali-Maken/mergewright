@@ -1,5 +1,6 @@
-//! The last file of a merge opens the finish summary on its own
-//! (m6-conflicts/60), against real git — and the landings where it must not.
+//! A merge's review opens at the resolver's `y` (ease-pass/05b; it no
+//! longer opens on its own, P11 dropped), against real git — and the
+//! landings where nothing opens.
 
 use super::*;
 use graft::update::finish::{FinishFocus, ReturnTo};
@@ -29,42 +30,50 @@ fn one_block_left(app: &App, state: AppState) -> AppState {
     state
 }
 
-/// The stage, the done read, the status read and the summary's read, all
-/// landed.
-fn summary_landed(app: &App, state: AppState) -> AppState {
-    app.pump(state, "the last stage and the summary", |state| {
+/// The review's read landed.
+fn review_landed(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the review's read", |state| {
         state.operating.is_none()
             && state.status_read.is_none()
             && state.finish.as_ref().is_some_and(|open| open.job.is_none())
     })
 }
 
-/// J13: `o ⏎` on the last block of the last file lands on the summary —
-/// over the resolver, the file lists focused, the cursor on the first row
-/// git combined on its own, the status saying every file is done.
+/// `o y` on the last block of the last file of a shell-begun merge: `o`
+/// solves it and stages nothing, the notice offers `y`, and `y` lands on the
+/// review — over the resolver, the file lists focused, the cursor on the
+/// first row git combined on its own — with the real index untouched
+/// (ease-pass/05b; was J13's `o ⏎`, the summary opening on its own).
 #[test]
-fn the_last_file_of_a_shell_merge_opens_the_summary() {
+fn y_on_a_solved_shell_merge_opens_the_review_over_the_resolver() {
     let scratch = file_list::gone_notes_and_readme_merge();
     let (app, state) = opened_on(&scratch);
     let state = one_block_left(&app, state);
     let state = app.key(&state, KeyCode::Char('o'));
     let state = settled(&app, state);
+    assert!(state.finish.is_none(), "nothing opens on its own");
+    assert_eq!(still_unmerged(scratch.path()).trim(), "notes.txt");
     let before = crate::captures::frame(&state, 187, 50);
-    let state = app.key(&state, KeyCode::Enter);
-    assert!(state.operating.is_some(), "⏎ staged: {:?}", state.status);
-    let state = summary_landed(&app, state);
+    assert!(
+        before
+            .iter()
+            .any(|row| row.contains("· y reviews the merge")),
+        "{}",
+        before.join("\n")
+    );
+    let state = app.key(&state, KeyCode::Char('y'));
+    assert!(state.operating.is_none(), "y wrote: {:?}", state.status);
+    let state = review_landed(&app, state);
 
-    let finish = state.finish.as_ref().expect("the summary");
+    let finish = state.finish.as_ref().expect("the review");
     assert_eq!(finish.return_to, ReturnTo::Resolver);
     assert_eq!(finish.focus, FinishFocus::Files);
     assert!(state.resolver.is_some(), "the resolver stays under it");
-    assert!(
-        matches!(&state.status, Status::Done { what, also: None, keys: Some(keys) }
-            if what == "notes.txt done" && keys == "every file done"),
-        "{:?}",
-        state.status
+    assert_eq!(
+        still_unmerged(scratch.path()).trim(),
+        "notes.txt",
+        "the review staged nothing"
     );
-    assert_eq!(still_unmerged(scratch.path()), "", "and git agrees");
     let after = crate::captures::frame(&state, 187, 50);
     let body = after.join("\n");
     assert!(
@@ -79,35 +88,37 @@ fn the_last_file_of_a_shell_merge_opens_the_summary() {
     // The summary takes the whole frame, the bottom row included: the
     // status is set (above) but not drawn while it is open.
     let shot = format!(
-        "{}\n--- after ⏎ ---\n{}",
+        "{}\n--- after y ---\n{}",
         before.join("\n"),
         after.join("\n")
     );
     crate::captures::check_shot("m6/fix-last-file-opens-summary-187x50.txt", &shot);
+    let state = esc_back_to_the_resolver(&app, &state);
+    drop(state);
+    app.close();
+    drop(scratch);
+}
 
-    // `Esc` from it: the finish row, `c finish` leading the bar.
-    let state = app.key(&state, KeyCode::Escape);
-    assert!(state.finish.is_none(), "Esc closed the summary");
+/// `Esc` from the review: the resolver unchanged, its notice still offering
+/// `y` — no finish row, since git still calls `notes.txt` unmerged.
+fn esc_back_to_the_resolver(app: &App, state: &AppState) -> AppState {
+    let state = app.key(state, KeyCode::Escape);
+    assert!(state.finish.is_none(), "Esc closed the review");
+    assert!(state.resolver.is_some(), "back on the resolver");
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
     assert!(
         frame
             .iter()
-            .any(|row| row.contains("✓ every file done — c review and finish the merge")),
+            .any(|row| row.contains("· y reviews the merge")),
         "{body}"
     );
     assert!(
-        frame.iter().any(|row| row.contains("files · all done ✓")),
-        "{body}"
-    );
-    assert!(
-        frame.last().is_some_and(|row| row.starts_with(" c finish")),
+        !frame.iter().any(|row| row.contains("every file done")),
         "{body}"
     );
     crate::captures::check_shot("m6/fix-finish-row-120x40.txt", &body);
-    drop(state);
-    app.close();
-    drop(scratch);
+    state
 }
 
 /// After `y` and `u`, the merge is back and resolved: the banner has the

@@ -267,8 +267,11 @@ pub(crate) fn on_gone_card(scratch: &Scratch) -> (App, AppState) {
     (app, state)
 }
 
-/// From [`on_gone_card`]: `shared.rs` taken and marked done with `⏎`, the
-/// resolver landed back on `gone.txt`'s card.
+/// From [`on_gone_card`]: `shared.rs` taken, then marked resolved with
+/// `space` in the changes pane — in a merge the resolver stages a marker
+/// file only at the review's `y` (ease-pass/05b), and `space` is the app's
+/// other stage, the one that keeps the conflict's sides for a start-over —
+/// and the resolver back on `gone.txt`'s card.
 pub(crate) fn shared_done(app: &App, state: &AppState) -> AppState {
     let state = click_file(app, state, "shared.rs");
     let state = app.pump(state, "shared.rs", |state| {
@@ -280,14 +283,23 @@ pub(crate) fn shared_done(app: &App, state: &AppState) -> AppState {
     let state = app.key(&state, KeyCode::Char('o'));
     let state = settled(app, state);
     assert_eq!(open(&state).file.as_ref().expect("a document").open(), 0);
+    let mut state = app.key(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none(), "Esc closed the resolver");
+    while state.banner_focus {
+        state = app.key(&state, KeyCode::Tab);
+    }
+    let state = crate::conflict_interim::open_changes_pane(app, state);
+    let state = crate::conflict_interim::mark_resolved(app, state, "shared.rs");
+    let state = crate::app_harness::cursor_to(app, state, "gone.txt");
     let state = app.key(&state, KeyCode::Enter);
-    app.pump(state, "shared.rs staged, on to gone.txt", |state| {
+    app.pump(state, "back on gone.txt, shared.rs done", |state| {
         state.operating.is_none()
             && state.status_read.is_none()
-            && state
-                .resolver
-                .as_ref()
-                .is_some_and(|open| open.path == Path::new("gone.txt") && open.whole_file.is_some())
+            && state.resolver.as_ref().is_some_and(|open| {
+                open.path == Path::new("gone.txt")
+                    && open.whole_file.is_some()
+                    && open.set_job.is_none()
+            })
             && rows(state)
                 .iter()
                 .any(|(path, row)| path == "shared.rs" && *row == RowState::Done)

@@ -14,7 +14,9 @@ use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_ops::apply::{ApplyError, Resume};
-use graft_ops::finish::{ByGit, ByYou, Change, ResultIs, SummaryError, finish_preview};
+use graft_ops::finish::{
+    ByGit, ByYou, Change, ResultIs, SummaryError, finish_preview, merge_review,
+};
 use graft_ops::operation::Refusal;
 
 use crate::conflict_fixtures::{graft_merge_stops, id, paths, run_resume, two_file_conflict};
@@ -103,6 +105,23 @@ fn the_review_reads_solved_files_from_a_copy_and_leaves_the_real_index_alone() {
     );
 }
 
+/// One file staged already (a whole-file choice, or the shell), one solved
+/// and still unmerged: the review lists them in git's path order, as it
+/// did when every file was staged before it opened.
+#[test]
+fn the_review_lists_staged_and_solved_files_in_path_order() {
+    let repo = two_file_conflict();
+    graft_merge_stops(&repo);
+    solve_both(&repo);
+    repo.git(&["add", "a.txt"]);
+
+    let summary =
+        finish_preview(&repo.open(), &paths(&["b.txt"]), &()).unwrap_or_else(|why| panic!("{why}"));
+
+    let listed: Vec<PathBuf> = summary.by_you.into_iter().map(|you| you.path).collect();
+    assert_eq!(listed, paths(&["a.txt", "b.txt"]));
+}
+
 #[test]
 fn the_review_counts_only_the_unmerged_files_not_named_solved() {
     let repo = two_file_conflict();
@@ -113,6 +132,28 @@ fn the_review_counts_only_the_unmerged_files_not_named_solved() {
         matches!(why, SummaryError::StillUnmerged { count: 1 }),
         "{why:?}"
     );
+    assert!(review_copies(&repo).is_empty());
+}
+
+/// What the review reads with nothing named: every unmerged file sorted by
+/// its bytes on disk — a file with no clash left is solved, one with a clash
+/// still open is counted — so a relaunch or the banner's `c` needs no picks
+/// in memory.
+#[test]
+fn the_merge_review_sorts_unmerged_files_by_what_is_on_disk() {
+    let repo = two_file_conflict();
+    graft_merge_stops(&repo);
+    repo.write("a.txt", b"1\nF\n3\n");
+    let why = merge_review(&repo.open(), &()).expect_err("b.txt is open");
+    assert!(
+        matches!(why, SummaryError::StillUnmerged { count: 1 }),
+        "{why:?}"
+    );
+
+    repo.write("b.txt", b"M\nF\n");
+    let review = merge_review(&repo.open(), &()).unwrap_or_else(|why| panic!("{why}"));
+    assert_eq!(review.solved, paths(&["a.txt", "b.txt"]));
+    assert_eq!(review.summary.by_you.len(), 2);
     assert!(review_copies(&repo).is_empty());
 }
 

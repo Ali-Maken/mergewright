@@ -237,8 +237,10 @@ fn enter_refuses_while_open() {
     drop(scratch);
 }
 
+/// In a merge `⏎` on a solved file stages nothing and goes on to the next
+/// open clash (ease-pass/05b): the review's `y` stages it.
 #[test]
-fn enter_stages_and_advances() {
+fn enter_in_a_merge_advances_and_stages_nothing() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let state = resolver_on(&app, state, "three.txt");
     // Take all three, then mark it resolved.
@@ -255,19 +257,20 @@ fn enter_stages_and_advances() {
     );
 
     let state = app.key(&state, KeyCode::Enter);
-    assert!(state.operating.is_some(), "`⏎` queued the stage");
-    let state = app.pump(state, "the stage and the next file", |state| {
-        state.operating.is_none()
-            && state
-                .resolver
-                .as_ref()
-                .is_none_or(|open| open.path != Path::new("three.txt"))
+    assert!(state.operating.is_none(), "`⏎` in a merge queued a write");
+    let state = app.pump(state, "the next file", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_none_or(|open| open.path != Path::new("three.txt"))
     });
+    let unmerged = crate::app_harness::git(scratch.path(), &["ls-files", "-u", "--", "three.txt"]);
+    assert!(!unmerged.trim().is_empty(), "three.txt was staged");
 
     assert_eq!(
         open(&state).path,
-        Path::new("zdiff3.txt"),
-        "on to the next conflicted file"
+        Path::new("added-by-them.txt"),
+        "on to the first open clash from the top (ease-pass 05)"
     );
 
     drop(state);

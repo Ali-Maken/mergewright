@@ -363,7 +363,8 @@ fn a_restart_git_cannot_do_is_refused_in_words() {
     drop(scratch);
 }
 
-/// Every file done, the summary closed with `Esc`: the finish row shows.
+/// Every file done (the last a whole-file card, staged): the finish row
+/// shows, no summary opened on its own (ease-pass/05b).
 /// Then `shared.rs` opened from the list and `d y`: a file is open again,
 /// so the finish row is gone (m7-power-tools/17).
 #[test]
@@ -372,11 +373,18 @@ fn restart_after_the_last_file_hides_the_finish_row() {
     let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
     let (app, state) = on_gone_card(&scratch);
     let state = shared_done(&app, &state);
+    // No summary opens on its own (P11 dropped for a merge, ease-pass/05b):
+    // the last stage lands on the finish row.
     let state = app.key(&state, KeyCode::Char('o'));
-    let state = app.pump(state, "gone.txt kept, the summary", |state| {
-        state.operating.is_none() && state.finish.is_some()
+    let state = app.pump(state, "gone.txt kept, every file done", |state| {
+        state.operating.is_none()
+            && state.status_read.is_none()
+            && state
+                .resolver
+                .as_ref()
+                .is_some_and(|open| open.job.is_none() && open.done.is_some())
     });
-    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.finish.is_none(), "nothing opened on its own");
     let body = crate::captures::frame(&state, 120, 40).join("\n");
     assert!(body.contains(FINISH), "{body}");
 

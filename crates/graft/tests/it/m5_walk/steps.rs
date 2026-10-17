@@ -111,7 +111,14 @@ pub enum Wait {
     /// running — and git agrees: `ls-files -u -- <path>` prints nothing
     /// (m6-conflicts/07). Named `ResolvedPath` rather than the ticket's
     /// `Resolved(path)` because [`Wait::Resolved`] (every path) is M5's.
+    /// In a merge, solved: the resolver idle, and the path either staged
+    /// (a whole-file card) or still unmerged with no clash open on disk —
+    /// a merge stages only at the review's `y` (ease-pass/05b).
     ResolvedPath(&'static str),
+    /// A merge's `c` opened the review and its read found a file still
+    /// open: the review closed, `c`'s refusal on the status line
+    /// (ease-pass/05b).
+    ReviewRefused,
     /// The inverse: the app's re-read lists this path as unmerged again,
     /// nothing is running — and git agrees, `ls-files -u -- <path>` prints
     /// its stages (m6-conflicts/07, an undone resolution).

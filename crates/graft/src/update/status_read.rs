@@ -60,11 +60,11 @@ pub(super) fn answered(state: &mut AppState, id: JobId) -> bool {
 /// resolver is open after the last file (m6-conflicts/31): a notice still
 /// saying [`CHECKING`] gives way — to the finish row when every file is
 /// done (m6-conflicts/60: the row says `c` in its own words), or to `c`'s
-/// refusal in the notice's words.
+/// refusal in the notice's words — in a merge, to the clashes still open
+/// (ease-pass/05b, `resolver::notice_once_checked`).
 pub(super) fn settle(state: &mut AppState) {
     if notice_checking(state) {
-        let verdict = super::banner::continue_refusal(state)
-            .map(|reason| super::resolver::finish_refused_notice(&reason, &state.keymap));
+        let verdict = super::resolver::notice_once_checked(state);
         if let Some(open) = state.resolver.as_mut() {
             open.notice = verdict;
         }

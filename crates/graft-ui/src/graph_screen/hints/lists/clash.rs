@@ -3,7 +3,8 @@
 //!
 //! Every key here acts today, in the resolver: `o`/`t`/`b`/`e` pick,
 //! `u` is `app.undo`, `n` is `resolver.next_block`, `⏎` marks the file done,
-//! `c` finishes or goes on, and `esc` (`app.back`) leaves the screen. Three
+//! `c` goes on, `y` (`resolver.review`) reviews a merge, and `esc`
+//! (`app.back`) leaves the screen. Three
 //! words run ahead of their handlers until P lands: `u undo pick`, `n next
 //! open clash` and `esc pause, come back later` (the ticket names it).
 //!
@@ -13,8 +14,8 @@
 //! (`mergewright-merge-screen.html:150`).
 
 use super::super::keys::{
-    BACK, BOTH, MARK_DONE, NEXT_BLOCK, OURS, RESOLVER_EDIT, RESOLVER_FINISH, STEP_CLASHES, THEIRS,
-    UNDO,
+    BACK, BOTH, MARK_DONE, NEXT_BLOCK, OURS, RESOLVER_EDIT, RESOLVER_FINISH, RESOLVER_REVIEW,
+    STEP_CLASHES, THEIRS, UNDO,
 };
 use super::super::{ClashAt, ClashBar, Hint, bar_name, hint, named};
 use crate::conflict_resolver::SideRoles;
@@ -36,9 +37,17 @@ pub(super) fn clash_list(bar: &ClashBar) -> Vec<Hint> {
             ]);
             list
         }
+        // A merge stages its solved files inside the finish, so the way on
+        // is the review (ease-pass/05b, 03 Handoff).
+        ClashAt::AllSolved if bar.is_merge() => {
+            vec![
+                named(RESOLVER_REVIEW, "review the merge", "review"),
+                undo_pick(),
+            ]
+        }
         ClashAt::AllSolved => {
             let mut list = file_done(bar);
-            list.extend([hint(RESOLVER_FINISH, finish_word(bar)), undo_pick()]);
+            list.extend([hint(RESOLVER_FINISH, "continue"), undo_pick()]);
             list
         }
     };
@@ -100,12 +109,6 @@ fn file_done(bar: &ClashBar) -> Vec<Hint> {
     } else {
         vec![hint(MARK_DONE, "done")]
     }
-}
-
-/// `c`'s word, as today's resolver says it: `finish` in a merge (P points
-/// it at the review later), `continue` elsewhere.
-fn finish_word(bar: &ClashBar) -> &'static str {
-    if bar.is_merge() { "finish" } else { "continue" }
 }
 
 #[cfg(test)]

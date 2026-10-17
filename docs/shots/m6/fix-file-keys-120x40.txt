@@ -1,8 +1,8 @@
 MERGING
-files   ▸ gone.txt · keep or delete    notes.txt · done ✓
+files   ▸ gone.txt · keep or delete    notes.txt · ⏎ marks done
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ gone.txt · modified on yours · main, deleted on theirs · feature
-notes.txt done ✓ · ▸ gone.txt
+▸ gone.txt
 deleted by them · o keeps the file  t deletes it
   1 our plan
 

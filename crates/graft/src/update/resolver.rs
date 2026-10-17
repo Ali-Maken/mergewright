@@ -56,6 +56,7 @@ mod open;
 mod picks;
 mod resolved;
 mod restart;
+mod review;
 mod scroll;
 mod settle;
 mod step;
@@ -92,11 +93,14 @@ pub use picks::{BlockAt, Pick, Picks, Reread, blocks_of, next_open, next_open_in
 #[cfg(test)]
 pub(crate) use resolved::close_after_last;
 pub use resolved::resolved_advance;
-pub(crate) use resolved::{every_file_done, finish_if_owed, finish_refused_notice, set_notice};
+pub(crate) use resolved::{every_file_done, finish_if_owed, set_notice};
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
+pub(crate) use review::finish_refused_notice;
+pub use review::{notice_once_checked, reviews_the_merge, still_open_words};
 pub use scroll::resolver_mouse;
 pub use step::step_in_file;
+pub(crate) use unpick::{NOTHING_TO_UNDO, undo_from_review};
 pub use unpick::{dropped_words, untake_ended, untaken};
 pub use walk::{next_block, none_open_words};
 pub use whole_file::{WholeFileShape, whole_file_keys};
@@ -110,6 +114,7 @@ use leave::{escape, finish_pressed};
 use open::reopen;
 use resolved::{cancel_owed_finish, mark_resolved};
 use restart::restart_box;
+use review::review_keys;
 use scroll::scroll_key;
 use step::clash_keys;
 use take::take_keys;
@@ -368,6 +373,7 @@ fn act(
         KeyCode::Char('e') if plain => edit_here(state, commands),
         KeyCode::Char('d') if plain => restart_box(state),
         KeyCode::Char('M') if plain => mergetool_here(state, commands),
+        _ if review_keys(state, commands, key, next_id) => {}
         KeyCode::Char('c') if plain => finish_pressed(state, commands, next_id),
         _ if undo_keys(state, commands, key, next_id) => {}
         _ if plain => scroll_key(state, key.code),

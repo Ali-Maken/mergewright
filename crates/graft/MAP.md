@@ -112,7 +112,7 @@ The resolver's jobs: open a conflicted path, take one side of one block, put the
 ## jobs::detail
 The detail pane's reads: changed files, one file's diff, which refs contain a commit; view models built here.
 ## jobs::finish
-The finish summary's reads: what the merge about to be committed changes, and one staged file's diff.
+The finish summary's reads: the merge review (`merge_review`: what will land and the files solved on disk, nothing staged), and one file's diff (a solved, still-unmerged file: disk against `HEAD`).
 ## jobs::fold_count
 How many commits a folded merge brought in, behind its `+N`; kept for the session.
 ## jobs::forced
@@ -241,7 +241,7 @@ What flows through `update`: events in, commands out, and the job-runner vocabul
 ## update::facts
 Facts beside the graph arriving (system git, refs, working-tree counts), their read failures, and the name prompt's key claim.
 ## update::finish
-The finish summary: `c` on a fully resolved merge shows what will land; `y` commits it.
+The finish summary, a merge's review: resolver `y`/`c` or banner `c` opens it; `y` stages the solved files and commits; `u` undoes the last pick. `Reviewed`: summary and `solved`; `ReviewFailed`: `StillOpen` closes, `Failed` shows.
 ## update::fold_count
 A folded merge's `+N`: counted once by a job, kept for the session, never recounted.
 ## update::geometry
@@ -285,7 +285,7 @@ Landing on an operation git is part-way through: the banner takes the keyboard a
 ## update::remote
 Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running write, progress and failure lines. `esc_stops_write` (fn): whether `Esc` goes to the running write now; J, stash and Map bars read it.
 ## update::resolver
-The conflict resolver, one conflicted file: `o`/`t`/`b` take a side; `u` puts the last pick back (`Picks`; a re-read keeps or drops them, `Reread`); `n` the first open clash; `←`/`→` this file's clashes; `⏎` done.
+The conflict resolver: `o`/`t`/`b` take a side; `u` undoes a pick (`Picks`, `Reread`); `n`/`←`/`→` step clashes; `⏎` done; `y` the merge's review (`still_open_words`, `reviews_the_merge`, `notice_once_checked`).
 ## update::rewrite_editor
 The rewrite editor (`R`): the branch as rows, the plan and squashed message shown before `y` runs the rewrite.
 ## update::row_tags

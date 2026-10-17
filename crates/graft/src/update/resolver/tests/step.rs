@@ -17,7 +17,8 @@ const LEFT: KeyCode = KeyCode::Left;
 const RIGHT: KeyCode = KeyCode::Right;
 
 /// What `n`/`N` say with nothing open anywhere and a taken clash here.
-const NONE_OPEN_TAKEN: &str = "no open clashes left \u{b7} \u{2190}/\u{2192} step through them";
+/// In a merge, `y` is the way on (ease-pass/05b), taken clashes or not.
+const NONE_OPEN_TAKEN: &str = "no open clashes left \u{b7} y reviews the merge";
 
 fn at(index: usize, open: bool) -> BlockAt {
     BlockAt { index, open }
@@ -226,6 +227,6 @@ fn n_and_shift_n_with_every_clash_taken_point_to_the_arrows() {
 fn n_and_shift_n_with_no_clashes_say_only_none_open() {
     for code in [KeyCode::Char('n'), KeyCode::Char('N')] {
         let (after, _) = press(&no_blocks(), code);
-        assert_eq!(notice(&after), Some("no open clashes left"), "{code:?}");
+        assert_eq!(notice(&after), Some(NONE_OPEN_TAKEN), "{code:?}");
     }
 }

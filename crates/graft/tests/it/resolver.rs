@@ -291,6 +291,30 @@ fn two_file_merge() -> Scratch {
     scratch
 }
 
+/// [`two_file_merge`]'s two branches, `side`'s commit cherry-picked: a
+/// cherry-pick, which still stages each file at `⏎` (ease-pass/05b moved
+/// only a merge's staging to its review).
+fn two_file_cherry_pick() -> Scratch {
+    use crate::app_harness::{git, git_as_graft};
+    let scratch = graft_fixtures::copy_into_temp(Shape::Trivial);
+    let repo = scratch.path();
+    let commit_both = |side: &str| {
+        for name in ["a.txt", "b.txt"] {
+            std::fs::write(repo.join(name), format!("{side}\n")).expect("writable scratch");
+        }
+        git(repo, &["add", "a.txt", "b.txt"]);
+        git_as_graft(repo, &["commit", "-m", side]);
+    };
+    commit_both("base");
+    let home = git(repo, &["rev-parse", "--abbrev-ref", "HEAD"]);
+    git(repo, &["checkout", "-b", "side"]);
+    commit_both("side");
+    git(repo, &["checkout", home.trim()]);
+    commit_both("main");
+    git_stops(repo, &["cherry-pick", "side"]);
+    scratch
+}
+
 /// A `git stash pop` stopped on a conflict in `sample.txt`: unmerged paths
 /// and no operation, so no banner (`KNOWN_GAPS.md` row 229).
 fn stash_pop_conflict() -> Scratch {
@@ -335,7 +359,9 @@ fn opened_on(scratch: &Scratch) -> (App, AppState) {
 }
 
 /// Take ours on every open block of the file on screen, then `⏎`, and wait
-/// for the stage and whatever the resolver does after it.
+/// for the stage and whatever the resolver does after it. In a merge `⏎`
+/// stages nothing (ease-pass/05b): wait for the walk to the next open
+/// clash, or for the words that say none is left.
 fn take_all_and_mark(app: &App, state: AppState) -> AppState {
     let path = open(&state).path.clone();
     let mut state = state;
@@ -344,6 +370,23 @@ fn take_all_and_mark(app: &App, state: AppState) -> AppState {
         state = settled(app, state);
     }
     let state = app.key(&state, KeyCode::Enter);
+    let merge = state
+        .in_progress
+        .as_ref()
+        .is_some_and(|live| live.kind == graft_git::state::InProgress::Merge);
+    if merge {
+        assert!(state.operating.is_none(), "`⏎` in a merge queued a write");
+        return app.pump(state, "the walk on from the solved file", |state| {
+            state.resolver.as_ref().is_some_and(|open| {
+                open.job.is_none()
+                    && (open.path != path
+                        || open
+                            .notice
+                            .as_ref()
+                            .is_some_and(|(words, _)| words.contains("reviews the merge")))
+            })
+        });
+    }
     assert!(
         state.operating.is_some(),
         "`⏎` queued no stage for {}: {:?}",

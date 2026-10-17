@@ -1,15 +1,19 @@
 MERGING
-files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
+files   gone.txt · done ✓    ▸ notes.txt · ⏎ marks done
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ notes.txt · done ✓
-✓ every file done — c review and finish the merge
+▸ notes.txt · 2 conflicts · 0 open
+all blocks taken · y reviews the merge
   1 one
+  ── conflict 1 of 2 · took yours · main ── t theirs  b both ───────────────────────────────────────────────────────────
   2 two from main
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
   3 three
   4 four
   5 five
   6 six
-  7 seven from main
+▏ ── conflict 2 of 2 · took yours · main ── t theirs  b both ───────────────────────────────────────────────────────────
+▏ 7 seven from main
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
 
 
 
@@ -33,8 +37,4 @@ files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
 
 
 
-
-
-
-
- c finish  e edit  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close

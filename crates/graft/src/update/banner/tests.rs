@@ -977,7 +977,19 @@ fn did_a_resume_verb(
     commands: &[Command],
 ) {
     match verb {
-        // Unmerged files: a refusal in words. None: the real `--continue`.
+        // A merge: its review, whose read judges the files on disk
+        // (ease-pass/05b). Otherwise unmerged files: a refusal in words.
+        // None: the real `--continue`.
+        "continue"
+            if before.in_progress.as_ref().map(|detail| detail.kind) == Some(InProgress::Merge) =>
+        {
+            assert!(
+                commands
+                    .iter()
+                    .any(|command| matches!(command, Command::ReadFinishSummary(_))),
+                "`{key} {verb}` reads the merge's review: {commands:?}"
+            );
+        }
         "continue" => match continue_refusal(before) {
             Some(reason) => assert_eq!(
                 after.status,

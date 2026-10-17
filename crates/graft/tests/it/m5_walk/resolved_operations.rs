@@ -107,28 +107,18 @@ fn last_file_resolved(path: &'static str) -> Vec<Step> {
     ]
 }
 
-/// `⏎` on a merge's last conflicted file: the stage, the resolver staying
-/// on it read-only, and the summary opening over it on its own
-/// (m6-conflicts/60) — `y` commits from there.
+/// A merge's last clash solved: nothing staged (ease-pass/05b), and `y`
+/// opens the review over the resolver — its `y` commits from there.
 fn last_merge_file_resolved(path: &'static str) -> Vec<Step> {
     vec![
-        key(KeyCode::Enter),
-        Step::Settle("the stage behind ⏎"),
         Step::WaitFor(Wait::ResolvedPath(path)),
+        key(ch('y')),
         Step::WaitFor(Wait::FinishReady),
-        Step::See(
-            "all resolved, the summary open over the resolver",
-            |state| {
-                check(
-                    state
-                        .resolver
-                        .as_ref()
-                        .is_some_and(|open| open.done.is_some())
-                        && state.finish.is_some(),
-                    || "not the summary over the done file".to_owned(),
-                )
-            },
-        ),
+        Step::See("all solved, the review open over the resolver", |state| {
+            check(state.resolver.is_some() && state.finish.is_some(), || {
+                "not the review over the resolver".to_owned()
+            })
+        }),
     ]
 }
 
@@ -670,8 +660,8 @@ fn u_right_after_continue_is_accepted() -> Scenario {
             take('t'),
             last_merge_file_resolved("shared.txt"),
             vec![
-                // The summary opened on its own; its `y` commits
-                // (m6-conflicts/19, 59, 60).
+                // The review is open; its `y` commits
+                // (m6-conflicts/19, 59; ease-pass/05b).
                 key(ch('y')),
                 Step::Write("the merge commit"),
                 key(ch('u')),

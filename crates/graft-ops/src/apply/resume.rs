@@ -156,22 +156,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         _ => None,
     };
     let mut commands = entry.commands.clone();
-    // A merge's solved files, staged inside the span, after the backup and
-    // just before git commits (ease-pass/05b, hard choice 3): `u` after the
-    // finish puts the stage back with the commit.
-    if let Some(add) = stage_solved_args(&stage) {
-        commands.push(graft_git::run::command_line(&add));
-        if let Err(error) = GitInvocation::new(ctx.repo).args(add).run(ctx.stop) {
-            ctx.journal.hold_commands(&entry.id, commands.clone());
-            let mut entry = entry;
-            entry.commands = commands;
-            return Err(ApplyError::ResumeFailed {
-                entry: Box::new(entry),
-                kind,
-                error,
-            });
-        }
-    }
+    let entry = stage_inside(ctx, entry, kind, &stage, &mut commands)?;
     commands.push(graft_git::run::command_line(&args));
     let plan_dir = plan.as_ref().map(|(dir, _)| dir.as_path());
     let ran = resume_invocation(ctx.repo, kind, args, plan_dir, message).run(ctx.stop);
@@ -215,6 +200,35 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     let index_base = plan.as_ref().and_then(|(_, plan)| plan.index_base);
     let closed = close_resume(ctx, entry, aborting, commands, failure, left, index_base);
     stopped::mark(stopped_at, closed)
+}
+
+/// A merge's solved files, staged inside the span, after the backup and
+/// just before git commits (ease-pass/05b, hard choice 3): `u` after the
+/// finish puts the stage back with the commit. A refused `git add` is the
+/// resume's refusal, the command held on the entry.
+fn stage_inside(
+    ctx: &mut Context<'_>,
+    mut entry: JournalEntry,
+    kind: InProgress,
+    stage: &[PathBuf],
+    commands: &mut Vec<String>,
+) -> Result<JournalEntry, ApplyError> {
+    let Some(add) = stage_solved_args(stage) else {
+        return Ok(entry);
+    };
+    commands.push(graft_git::run::command_line(&add));
+    match GitInvocation::new(ctx.repo).args(add).run(ctx.stop) {
+        Ok(_) => Ok(entry),
+        Err(error) => {
+            ctx.journal.hold_commands(&entry.id, commands.clone());
+            entry.commands.clone_from(commands);
+            Err(ApplyError::ResumeFailed {
+                entry: Box::new(entry),
+                kind,
+                error,
+            })
+        }
+    }
 }
 
 /// The resume's git arguments, and its message on stdin for `ContinueWith`.

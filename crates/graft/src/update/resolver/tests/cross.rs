@@ -13,7 +13,7 @@ use graft_git::status::UnmergedHow;
 use super::advance::{cursor, landed, notice, on, open_path, sent, three};
 use super::{press, sticky, takes};
 use crate::jobs::conflict::{OpenedFile, Opening};
-use crate::update::resolver::none_open_words;
+use crate::update::resolver::reviews_the_merge;
 use crate::update::{AppEvent, AppState, Command, Product, update};
 
 /// `three.txt` alone.
@@ -171,7 +171,7 @@ fn bottom_row(state: &AppState) -> String {
 #[test]
 fn n_past_the_last_block_says_no_open_clashes_left() {
     let state = nothing_open_on_three(&["three.txt"]);
-    let words = none_open_words(true, &state.keymap);
+    let words = reviews_the_merge("no open clashes left", &state.keymap);
     let status_before = state.status.clone();
     let (after, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(cursor(&after), Some(2), "unmoved");
@@ -224,7 +224,7 @@ fn the_no_more_notice_is_gone_after_the_next_move() {
         &nothing_open_on_three(&["a.txt", "three.txt"]),
         KeyCode::Char('n'),
     );
-    let words = none_open_words(true, &said.keymap);
+    let words = reviews_the_merge("no open clashes left", &said.keymap);
     assert_eq!(notice(&said), Some(words.as_str()));
 
     let (moved, _) = press(&said, KeyCode::Char('k'));
@@ -235,17 +235,17 @@ fn the_no_more_notice_is_gone_after_the_next_move() {
     let (took, _) = landed(&taking, &sent(&commands)[0]);
     assert_ne!(notice(&took), Some(words.as_str()), "a take landed");
 
+    // `⏎` in a merge stages nothing (ease-pass/05b): its own words
+    // replace the notice at once.
     let (pressed, _) = press(&said, KeyCode::Enter);
-    let id = pressed
-        .resolver
-        .as_ref()
-        .and_then(|open| open.staging)
-        .expect("`⏎` launched a stage");
-    let (staged, _) = update(
-        &pressed,
-        AppEvent::Produced(id, super::words_and_c::staged("three.txt")),
+    assert!(
+        pressed
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.staging.is_none()),
+        "a merge stages nothing at ⏎"
     );
-    assert_ne!(notice(&staged), Some(words.as_str()), "the stage landed");
+    assert_ne!(notice(&pressed), Some(words.as_str()), "⏎ answered");
 }
 
 /// Rule 3 on a file not yet done: not every file is done, so there is no
@@ -334,25 +334,15 @@ fn the_notice_lifetime_today() {
     let (after, _) = landed(&after, &sent(&commands)[0]);
     assert_eq!(
         notice(&after),
-        Some("all blocks taken · ⏎ marks three.txt done")
+        Some("all blocks taken · y reviews the merge")
     );
 
-    // `⏎`: up while the stage is in flight, gone once it lands.
+    // `⏎` in a merge stages nothing (ease-pass/05b): its own words replace
+    // the notice at once.
     let (pressed, _) = press(&one, KeyCode::Enter);
-    assert_eq!(notice(&pressed), Some("today's notice"), "stage in flight");
-    let id = pressed
-        .resolver
-        .as_ref()
-        .and_then(|open| open.staging)
-        .expect("`⏎` launched a stage");
-    let (landed_state, _) = update(
-        &pressed,
-        AppEvent::Produced(id, super::words_and_c::staged("three.txt")),
-    );
-    assert_ne!(
-        notice(&landed_state),
-        Some("today's notice"),
-        "the stage landed"
+    assert_eq!(
+        notice(&pressed),
+        Some("every clash is solved · y reviews the merge")
     );
 }
 
