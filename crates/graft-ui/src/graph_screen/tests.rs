@@ -2335,8 +2335,8 @@ fn row_at_is_none_off_the_body() {
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
 /// place after `Redo` (63) was already the changes pane's; 116 → 113 in
 /// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner; 119 → 120 in m8/47: `PickerOnCurrent`; 120 → 134 in ease-pass/03b: `GraphRow` per
-/// `RowBar` (120–125), `Clash` per `ClashAt` × op (126–133)).
-const COVERAGE_SLOTS: usize = 135;
+/// `RowBar` (120–125), `Clash` per `ClashAt` × op (126–133); → 136 in 03r).
+const COVERAGE_SLOTS: usize = 136;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2392,18 +2392,17 @@ fn row_slot(base: usize, verbs: RowVerbs) -> usize {
     }
 }
 
-/// The ease pass's bars (03b): a `GraphRow` per row kind, whatever the
-/// name, count or verbs (120–125); a `Clash` per state and op, whatever the
-/// side roles (126–133); the paused banner (134).
+/// The ease pass's bars (03b): `GraphRow` per row kind (120–125), `Clash`
+/// per state and op (126–133), the paused banner per operation (134–135).
 fn ease_slot(context: &HintContext) -> usize {
-    use super::hints::{ClashAt, ClashOp, RowBar};
+    use super::hints::{ClashAt, RowBar};
     match context {
         HintContext::GraphRow { row, .. } => {
             120 + match row {
                 RowBar::Own => 0,
                 RowBar::Elsewhere { .. } => 1,
                 RowBar::FoldedMerge { .. } => 2,
-                RowBar::Opened => 3,
+                RowBar::OpenedMerge => 3,
                 RowBar::JustCommitted => 4,
                 RowBar::JustMerged { .. } => 5,
             }
@@ -2415,8 +2414,9 @@ fn ease_slot(context: &HintContext) -> usize {
                 ClashAt::FileSolved { .. } => 2,
                 ClashAt::AllSolved => 3,
             };
-            126 + 2 * at + usize::from(bar.op != ClashOp::Merge)
+            126 + 2 * at + usize::from(!bar.is_merge())
         }
+        HintContext::BannerPaused { merge } => 134 + usize::from(*merge),
         _ => 134,
     }
 }
@@ -2479,7 +2479,7 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::Rewritable(_) => 112,
         HintContext::PaneOverOverlay { opens } => 18 + usize::from(*opens),
         HintContext::Resolver { .. } => resolver_slot(context),
-        HintContext::GraphRow { .. } | HintContext::Clash(_) | HintContext::BannerPaused => {
+        HintContext::GraphRow { .. } | HintContext::Clash(_) | HintContext::BannerPaused { .. } => {
             ease_slot(context)
         }
         HintContext::ConfirmBox { yes } => confirm_slot(*yes),

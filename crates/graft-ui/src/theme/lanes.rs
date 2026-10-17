@@ -43,7 +43,10 @@
 //! nobody has validated this union, and no human has looked at these twelve on
 //! a real terminal yet. M1's visual pass does that (KNOWN_GAPS.md).
 
-use graft_core::capabilities::Rgb;
+use graft_core::capabilities::{ColorDepth, Rgb};
+use graft_graph::identity::BranchIdentity;
+
+use super::{LANE_COUNT, Theme, Token, TokenColor, conflict, reduce};
 
 /// One hue per lane, in token order: `LANE_HUES[0]` is PROMPT.md §5's
 /// `lane-1`, which CONTEXT.md calls lane index 0 — the default branch.
@@ -67,4 +70,83 @@ pub(super) const LANE_HUES: [Rgb; 12] = [
 
 const fn rgb(red: u8, green: u8, blue: u8) -> Rgb {
     Rgb { red, green, blue }
+}
+
+/// Lane colours, read off a resolved [`Theme`]: by index, by branch
+/// identity, faded, and for a pixel renderer.
+impl Theme {
+    /// The colour for a lane, by its index (CONTEXT.md: lane 0 is the default
+    /// branch, and is PROMPT.md §5's `lane-1`).
+    ///
+    /// A repository can have more concurrent lanes than the palette has hues.
+    /// Lane `LANE_COUNT` reuses lane 0's hue, and so on: reuse is far apart on
+    /// screen, whereas running out of colours would leave a lane with none.
+    /// The graph's own shape and dash redundancy (DESIGN.md §4.6) is what
+    /// separates two lanes sharing a hue.
+    pub fn lane(&self, lane: usize) -> TokenColor {
+        self.lanes[lane % LANE_COUNT]
+    }
+
+    /// A lane's faded hue for cells off the selected thread
+    /// (m8-polish-and-ship/17 item 3): the lane's truecolor hue mixed 45%
+    /// toward `bg`, reduced to this depth. Terminals that ignore SGR 2 show
+    /// no DIM, so at truecolor and 256 colours the fade is the colour itself.
+    /// At 16 colours and with no colour there is no in-between hue to pick:
+    /// the lane's own colour comes back and the caller keeps DIM
+    /// ([`Theme::fades_by_hue`] says which).
+    #[must_use]
+    pub fn lane_muted(&self, lane: usize) -> TokenColor {
+        if !self.fades_by_hue() {
+            return self.lane(lane);
+        }
+        let hue = LANE_HUES[lane % LANE_COUNT];
+        let bg = self.rgb[Token::Bg.index()];
+        reduce(conflict::mix(hue, bg, 0.55), self.depth)
+    }
+
+    /// [`Theme::lane_muted`] for a branch, by identity — the slot
+    /// [`Theme::branch`] reads.
+    #[must_use]
+    pub fn branch_muted(&self, identity: BranchIdentity) -> TokenColor {
+        self.lane_muted(identity.slot(LANE_COUNT))
+    }
+
+    /// Whether off-thread lanes fade by hue ([`Theme::lane_muted`]) rather
+    /// than by DIM: truecolor and 256 colours only.
+    #[must_use]
+    pub fn fades_by_hue(&self) -> bool {
+        matches!(self.depth, ColorDepth::TrueColor | ColorDepth::Palette256)
+    }
+
+    /// Lane hues for a pixel renderer, indexed like [`Theme::branch`]'s slots.
+    ///
+    /// An image is not limited to the terminal's ANSI palette, so these are
+    /// the theme's truecolor hues at any depth — except where colour is off
+    /// (`NO_COLOR`, or a terminal with none): then every lane draws in the
+    /// one muted hue, and shape carries lane identity as it does in text.
+    #[must_use]
+    pub fn raster_lanes(&self) -> Vec<Rgb> {
+        match self.depth {
+            ColorDepth::None => vec![self.raster_muted()],
+            ColorDepth::TrueColor | ColorDepth::Palette256 | ColorDepth::Palette16 => {
+                LANE_HUES.to_vec()
+            }
+        }
+    }
+
+    /// The muted hue (`text-muted`) a pixel renderer draws a `+N` marker in
+    /// when no lane joins it: the theme's truecolor value (his override if
+    /// he gave one), never reduced.
+    #[must_use]
+    pub fn raster_muted(&self) -> Rgb {
+        self.rgb[Token::TextMuted.index()]
+    }
+
+    /// The colour a branch's lane draws in, from its identity alone — never
+    /// from the column it happens to occupy (PROMPT.md §1.2), so a branch
+    /// keeps its colour across scrolls, refreshes and column reuse.
+    #[must_use]
+    pub fn branch(&self, identity: BranchIdentity) -> TokenColor {
+        self.lanes[identity.slot(LANE_COUNT)]
+    }
 }

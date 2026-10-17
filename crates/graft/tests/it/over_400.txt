@@ -108,7 +108,7 @@
 558 crates/graft-ui/src/empty_state/tests.rs
 556 crates/graft-ui/src/finish_summary/tests.rs
 795 crates/graft-ui/src/graph_column/tests.rs
-535 crates/graft-ui/src/graph_screen/hints/context.rs
+489 crates/graft-ui/src/graph_screen/hints/context.rs
 3173 crates/graft-ui/src/graph_screen/hints/tests.rs
 650 crates/graft-ui/src/graph_screen/layout.rs
 573 crates/graft-ui/src/graph_screen/mod.rs
@@ -117,14 +117,13 @@
 548 crates/graft-ui/src/history/tests.rs
 467 crates/graft-ui/src/journal_screen.rs
 731 crates/graft-ui/src/journal_screen/tests.rs
-533 crates/graft-ui/src/keymap/table.rs
+452 crates/graft-ui/src/keymap/table.rs
 658 crates/graft-ui/src/preview_box/tests.rs
 639 crates/graft-ui/src/rewrite_editor/tests.rs
 451 crates/graft-ui/src/stash_screen/tests.rs
 439 crates/graft-ui/src/syntax.rs
 1123 crates/graft-ui/src/text_input.rs
 621 crates/graft-ui/src/text_input/tests.rs
-431 crates/graft-ui/src/theme/mod.rs
 869 crates/graft-ui/src/theme/tests.rs
 883 crates/graft-ui/tests/pane_boundaries.rs
 555 crates/graft/src/config/tests.rs

@@ -117,7 +117,11 @@ pub(super) fn graph_row_list(row: &RowBar) -> Vec<Hint> {
             hint(OPEN, "open"),
             hint(COMPARE, "compare"),
         ],
-        RowBar::Opened => vec![named(FOLD, "hide the commits inside", "hide")],
+        RowBar::OpenedMerge => vec![
+            named(FOLD, "hide the commits inside", "hide"),
+            hint(OPEN, "open"),
+            hint(COMPARE, "compare"),
+        ],
         RowBar::JustCommitted => vec![
             named(UNDO, "undo the commit, your edits come back", "undo"),
             hint(PUSH, "push"),

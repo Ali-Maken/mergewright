@@ -45,8 +45,8 @@ use keys as hint_keys;
 
 pub use catalogue::{every_context, every_hint};
 pub use context::{
-    ClashAt, ClashBar, ClashOp, ConfirmYes, HintContext, LiveC, RowBar, RowVerbs, TabWord,
-    WayToBanner, bar_name,
+    ClashAt, ClashBar, ConfirmYes, HintContext, LiveC, RowBar, RowVerbs, TabWord, WayToBanner,
+    bar_name,
 };
 pub(crate) use doorway::doorway_key;
 pub use doorway::doorway_words;
@@ -127,13 +127,18 @@ pub fn hints_for(
     // side of. So the bar says the one thing that is true there, which is
     // also what that line itself says (m6-conflicts/04). The clash bar
     // (ease-pass/03b) is that same screen until L moves it, so the same
-    // floor holds for it.
-    if matches!(
-        context,
-        HintContext::Resolver { .. } | HintContext::Clash(_)
-    ) && columns < crate::conflict_resolver::MIN_COLUMNS
-    {
-        return spelled(vec![hint(hint_keys::BACK, "close")], keys);
+    // floor holds for it — in its own word: its `esc` pauses at every
+    // width (review ease-pass-03, Minor 1).
+    if columns < crate::conflict_resolver::MIN_COLUMNS {
+        match context {
+            HintContext::Resolver { .. } => {
+                return spelled(vec![hint(hint_keys::BACK, "close")], keys);
+            }
+            HintContext::Clash(_) => {
+                return spelled(vec![hint(hint_keys::BACK, "pause")], keys);
+            }
+            _ => {}
+        }
     }
     // The finish summary has a floor too (`finish_summary::FINISH_MIN`), but
     // in both dimensions, and this is told only the width: the app draws

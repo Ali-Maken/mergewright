@@ -53,7 +53,7 @@ impl Spelled for Hint {
 /// `Clash` (ease-pass/03b) is the resolver's screen until L and shares its
 /// width floor (`hints_for`): below it the bar is `esc close` alone, which
 /// the width sweeps here would read as hints losing ground. Its own tests
-/// are in `tests::ease`.
+/// are in `tests::bars`.
 ///
 /// Taken from `hints::every_context` rather than written out again: this
 /// file's own copy of the list missed `Dragging` for two tickets (m5/31).
@@ -1167,7 +1167,7 @@ fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
 fn doorway_of(context: &HintContext) -> Option<Hint> {
     match context {
         HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Preview
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -2544,7 +2544,7 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
     assert_eq!(keys, ["⏎", "a", "b", "t"]);
 }
 
-mod ease;
+mod bars;
 mod typed_fields;
 
 // --- m8/11b: the doorway is `? keys`, `. actions` an ordinary candidate ---
@@ -2791,7 +2791,7 @@ fn modal_bars_draw_no_doorway() {
             matches!(
                 context,
                 HintContext::Banner { .. }
-                    | HintContext::BannerPaused
+                    | HintContext::BannerPaused { .. }
                     | HintContext::Dragging
                     | HintContext::ConfirmBox { .. }
                     | HintContext::NamePrompt { .. }

@@ -101,9 +101,10 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             conflicted,
             merge: _,
         } => vec![stopped_operation(walk, *skippable, *conflicted)],
-        // A conflicted merge's banner (ease-pass/03b): its `⏎` opens the
-        // resolver today as it will reopen the paused clash screen after P.
-        HintContext::BannerPaused => vec![stopped_operation(walk, false, true)],
+        // A conflicted operation's banner (ease-pass/03b, 03r): its `⏎`
+        // opens the resolver today as it will reopen the paused clash
+        // screen after P.
+        HintContext::BannerPaused { merge: _ } => vec![stopped_operation(walk, false, true)],
         HintContext::ChangesPane {
             unmerged,
             live,
@@ -355,12 +356,8 @@ fn trace_commit(byte: u8) -> graft_git::trace::TraceCommit {
 /// solved file is a document (`o t b e u n ⏎ esc` act there); every clash
 /// solved is the done file after the last one, where `c` acts.
 fn clash_as_resolver(bar: &graft_ui::graph_screen::hints::ClashBar) -> HintContext {
-    use graft_ui::conflict_resolver::SideRoles;
-    use graft_ui::graph_screen::hints::{ClashAt, ClashOp};
-    let roles = match bar.op {
-        ClashOp::Merge => SideRoles::Merge,
-        ClashOp::Other(roles) => roles,
-    };
+    use graft_ui::graph_screen::hints::ClashAt;
+    let roles = bar.roles;
     let all_solved = bar.at == ClashAt::AllSolved;
     HintContext::Resolver {
         base: true,

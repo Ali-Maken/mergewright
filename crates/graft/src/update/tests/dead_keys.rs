@@ -280,7 +280,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Resolver { .. }
         | HintContext::GraphRow { .. }
         | HintContext::Clash(_)
-        | HintContext::BannerPaused => None,
+        | HintContext::BannerPaused { .. } => None,
         // A standing search (m8/15b): the row's form, led by `n N`.
         HintContext::Searching(row) => {
             classified_form(row).map(|row| HintContext::Searching(Box::new(row)))

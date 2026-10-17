@@ -7,18 +7,18 @@
 
 use graft_term::sanitize;
 
-use super::super::{ClashAt, ClashBar, ClashOp, HintContext, RowBar, RowVerbs};
+use super::super::{ClashAt, ClashBar, HintContext, RowBar, RowVerbs};
 use crate::conflict_resolver::SideRoles;
 
-/// Every ease-pass form.
-pub(super) fn ease_forms() -> Vec<HintContext> {
+/// Every bar form.
+pub(super) fn bar_forms() -> Vec<HintContext> {
     let rows = [
         RowBar::Own,
         RowBar::Elsewhere {
             branch: sanitize("sara/fix-toc"),
         },
         RowBar::FoldedMerge { inside: 3 },
-        RowBar::Opened,
+        RowBar::OpenedMerge,
         RowBar::JustCommitted,
         RowBar::JustMerged { inside: 3 },
     ];
@@ -38,8 +38,11 @@ pub(super) fn ease_forms() -> Vec<HintContext> {
         ClashAt::AllSolved,
     ];
     for at in ats {
-        for op in [ClashOp::Merge, ClashOp::Other(SideRoles::Rebase)] {
-            forms.push(HintContext::Clash(ClashBar { at: at.clone(), op }));
+        for roles in [SideRoles::Merge, SideRoles::Rebase] {
+            forms.push(HintContext::Clash(ClashBar {
+                at: at.clone(),
+                roles,
+            }));
         }
     }
     forms

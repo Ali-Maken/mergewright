@@ -3,9 +3,15 @@
 use crate::conflict_resolver::SideRoles;
 use crate::finish_summary::SummaryFocus;
 
-mod ease;
+mod clash_bar;
+mod live_op;
+mod row_bar;
+mod tab_word;
 
-pub use ease::{ClashAt, ClashBar, ClashOp, RowBar, bar_name};
+pub use clash_bar::{ClashAt, ClashBar};
+pub use live_op::{LiveC, WayToBanner};
+pub use row_bar::{RowBar, bar_name};
+pub use tab_word::TabWord;
 
 /// Which of a commit row's own verbs act on the cursor's row
 /// (m7-power-tools/40). `graft` works each out from the check its key runs
@@ -113,11 +119,15 @@ pub enum HintContext {
         /// rather than `c continue` (m6-conflicts/70, n2).
         merge: bool,
     },
-    /// The live merge's banner after `esc pause` left the clash screen
-    /// (ticket ease-pass/03b, Q7 a): a conflicted merge's banner whose `⏎`
-    /// leads `back to the clashes`. `graft` picks it once `esc pause` is
-    /// what the resolver's `esc` does (ticket P); until then `Banner` stays.
-    BannerPaused,
+    /// The live operation's banner after `esc pause` left the clash screen
+    /// (ticket ease-pass/03b, Q7 a; Q17 a: every clash stop lands there, so
+    /// a rebase, cherry-pick or revert pauses too): the conflicted banner,
+    /// its `⏎` leading `back to the clashes`. `graft` picks it once `esc
+    /// pause` is live (ticket 05b).
+    BannerPaused {
+        /// As [`HintContext::Banner`]'s `merge`: `c finish` or `c continue`.
+        merge: bool,
+    },
     /// The Ghost Preview box has focus: its own border draws the footer,
     /// so the main footer's list is empty.
     Preview,
@@ -386,62 +396,6 @@ pub enum HintContext {
     },
     /// The rewrite editor's `r` message field: every key is typed.
     RewriteMessage,
-}
-
-/// Which one press reaches the banner from the graph
-/// ([`HintContext::OperationLive`], m8/20d): the pane cycle forward
-/// (`app.next_pane`) or backward (`app.prev_pane`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum WayToBanner {
-    /// One `⇥`.
-    Forward,
-    /// One `⇧⇥`.
-    Back,
-}
-
-/// What `c` does in the graph or the changes pane while an operation is
-/// live (m6-conflicts/52): the banner's `c` where that acts, else words
-/// that refuse — so its hint says `finish`, `continue`, or nothing.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LiveC {
-    /// A merge: `c finish` opens the finish summary.
-    Finish,
-    /// A rebase, cherry-pick or revert Graft began: `c continue`.
-    Continue,
-    /// A rewrite Graft began, stopped on an `edit` row (m7-power-tools/07b):
-    /// `c continue`, and `a amend it` leads — `a` amends the stopped commit
-    /// with what is staged, keeping its message.
-    ContinueAmends,
-    /// A bisect, or a rebase, cherry-pick or revert the shell began: `c`
-    /// only refuses in words, so no `c` hint.
-    Refuses,
-}
-
-/// Where one `⇥` lands from the changes pane, as its hint names it
-/// (m6-conflicts/70): `⇥ diff`, `⇥ banner` or `⇥ graph`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TabWord {
-    /// The graph: from the diff with no banner drawn.
-    Graph,
-    /// The diff: from the file list.
-    Diff,
-    /// The operation banner: from the diff while an operation is live.
-    Banner,
-}
-
-impl TabWord {
-    /// Every form, for [`crate::graph_screen::hints::every_context`].
-    pub const ALL: [TabWord; 3] = [TabWord::Graph, TabWord::Diff, TabWord::Banner];
-
-    /// The hint's verb: `graph`, `diff` or `banner`.
-    #[must_use]
-    pub fn word(self) -> &'static str {
-        match self {
-            TabWord::Graph => "graph",
-            TabWord::Diff => "diff",
-            TabWord::Banner => "banner",
-        }
-    }
 }
 
 /// The acting button `y` confirms in a confirm box (ADR-0044 §3.1,
