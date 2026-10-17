@@ -1,6 +1,6 @@
 # 08r — every done line leads with its tick
 
-Status: ready (conductor, 2026-10-18, from 08's one open box)
+Status: absorbed by 08s (planner, 2026-10-18; `08s-commit-fixes.md` Decided "M4 + 08r", Acceptance "08r"). Was: ready (conductor, 2026-10-18, from 08's one open box)
 Blocked by: 08-commit-screen (merged)
 Build with: Sonnet — one renderer, captures follow.
 Why: the accepted commit mock draws `✓ Committed 3 files to wallet-release.  u undo · P push` (`prototypes/ease-mocks/mergewright-commit-screen.html:178`). The shared renderer for `Status::Done` puts the tick after `what` today (08 NOTES, box `:84`). Build to the mock (memory `build-to-the-mocks`). Every done line goes through the same renderer, so they all change; one look for one meaning.
