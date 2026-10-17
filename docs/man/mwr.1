@@ -440,6 +440,15 @@ Insert a sign-off trailer (commit.sign_off)
 .TP
 .B ctrl+C
 Insert a co-author trailer (commit.co_author)
+.TP
+.B (none)
+Amend the last commit (commit.toggle_amend)
+.TP
+.B (none)
+Skip the commit hooks (commit.toggle_no_verify)
+.TP
+.B (none)
+Allow an empty commit (commit.toggle_allow_empty)
 .SS Undo journal ([keys.journal])
 .TP
 .B enter
@@ -604,7 +613,8 @@ Values: "#RRGGBB". Default: (the built-in theme).
 .br
 Kinds: dark, light, high-contrast. Tokens: bg, surface, surface-raised,
 selection, border, text, text-muted, accent, added, removed, warning, info,
-ours, theirs, open, ours-tint, theirs-tint, open-tint.
+ours, theirs, open, ours-tint, theirs-tint, open-tint, role-this, role-under,
+role-trunk, role-other.
 .SH ENVIRONMENT
 .TP
 .B XDG_CONFIG_HOME

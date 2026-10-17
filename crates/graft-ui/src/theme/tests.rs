@@ -48,6 +48,10 @@ fn every_token_prompt_md_names_is_present_exactly_once() {
             "ours-tint",
             "theirs-tint",
             "open-tint",
+            "role-this",
+            "role-under",
+            "role-trunk",
+            "role-other",
         ],
         "the token set is PROMPT.md §5's list, in its order \
          (`selection` added m5-history-and-ghost-preview/44)"
@@ -396,6 +400,42 @@ fn readable_tokens_clear_the_contrast_floor_on_every_surface() {
             }
         }
     }
+}
+
+/// Ease pass (ticket ease-pass/03, ADR-0063): the graph's role colours.
+/// `this`, `under` and `trunk` draw lines the eye has to find, so each
+/// clears 3.0:1 against `bg` (WCAG 1.4.11, non-text) in every theme;
+/// `other` is the grey the rest of the graph sinks into and has no floor.
+/// Colour ships unverified (rule 5): this measures the table, not what a
+/// terminal shows.
+#[test]
+fn role_tokens_clear_the_non_text_floor_on_bg() {
+    const FLOOR: f32 = 3.0;
+    const ROLES: [Token; 3] = [Token::RoleThis, Token::RoleUnder, Token::RoleTrunk];
+    for kind in EVERY_THEME {
+        let theme = Theme::new(kind, &terminal(ColorDepth::TrueColor, false));
+        let bg = hue(&theme, Token::Bg);
+        for token in ROLES {
+            let ratio = contrast(hue(&theme, token), bg);
+            assert!(
+                ratio >= FLOOR,
+                "{} on bg is {ratio:.2}:1 in theme {} (floor {FLOOR})",
+                token.name(),
+                kind.name()
+            );
+        }
+    }
+}
+
+/// The dark role colours are the main mock's
+/// (`prototypes/ease-mocks/mergewright-main-screen.html`).
+#[test]
+fn dark_role_tokens_are_the_mocks() {
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    assert_eq!(hue(&theme, Token::RoleThis), rgb(0x7E, 0xD4, 0x9B));
+    assert_eq!(hue(&theme, Token::RoleUnder), rgb(0xE9, 0xB6, 0x5C));
+    assert_eq!(hue(&theme, Token::RoleTrunk), rgb(0x9F, 0xB7, 0xFF));
+    assert_eq!(hue(&theme, Token::RoleOther), rgb(0x4D, 0x56, 0x54));
 }
 
 fn hue(theme: &Theme, token: Token) -> Rgb {

@@ -59,7 +59,10 @@ pub use overrides::contrast_misses;
 ///
 /// Plus the six conflict-resolver roles (ADR-0044 §1): three hues and their
 /// three tints.
-pub const TOKEN_COUNT: usize = 18;
+///
+/// Plus the graph's four role colours (ease pass, ADR-0063): a line's
+/// colour says how it relates to the cursor row's branch.
+pub const TOKEN_COUNT: usize = 22;
 
 /// The number of lane hues. Lanes beyond this reuse them ([`Theme::lane`]).
 pub const LANE_COUNT: usize = 12;
@@ -119,6 +122,16 @@ pub enum Token {
     TheirsTint,
     /// Background of the result placeholder rows of an open block.
     OpenTint,
+    /// The graph's role colours (ease pass, ADR-0063 G1): the cursor row's
+    /// own branch — its line, its name, the route's first stop.
+    RoleThis,
+    /// A branch the cursor row's branch is built on (its route, trunk aside).
+    RoleUnder,
+    /// The trunk: the line branches merge into.
+    RoleTrunk,
+    /// Every other line: the grey the rest of the graph sinks into. Not a
+    /// text colour and held to no contrast floor — being quiet is its job.
+    RoleOther,
 }
 
 impl Token {
@@ -142,6 +155,10 @@ impl Token {
         Token::OursTint,
         Token::TheirsTint,
         Token::OpenTint,
+        Token::RoleThis,
+        Token::RoleUnder,
+        Token::RoleTrunk,
+        Token::RoleOther,
     ];
 
     /// The token's name as PROMPT.md §5 and the config file spell it.
@@ -165,6 +182,10 @@ impl Token {
             Token::OursTint => "ours-tint",
             Token::TheirsTint => "theirs-tint",
             Token::OpenTint => "open-tint",
+            Token::RoleThis => "role-this",
+            Token::RoleUnder => "role-under",
+            Token::RoleTrunk => "role-trunk",
+            Token::RoleOther => "role-other",
         }
     }
 
