@@ -17,6 +17,8 @@ amended below; Q16, Q17 opened (build on today's behaviour until answered). 07, 
 behaviour changed. **Fold rule settled** (2026-10-18): "merged" = merged into any shown line, as built (Hard choice 2);
 search counts folded hits and says so (06c). No accepted behaviour changed.
 
+**Unfolded as a setting** (2026-10-18, his words "a setting like a mode", no key): `[graph] merged_branches = "folded" | "shown"`, default folded; shown = no fold (`Inclusion.fold == None`, legacy `Inclusion.folded` stays retired), `space` inert on the graph, no fold words in header or search, no `space` verb after a merge; bad value → `YOUR CONFIG` problem, falls back to folded (not fatal, unlike other typed `[graph]` keys, README :110-111). Spec 06h.
+
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
 5 keys and never leaves you hunting for the clash — and each screen is the one you tried in the mock.
