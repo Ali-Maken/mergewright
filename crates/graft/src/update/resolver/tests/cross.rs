@@ -13,6 +13,7 @@ use graft_git::status::UnmergedHow;
 use super::advance::{cursor, landed, notice, on, open_path, sent, three};
 use super::{press, sticky, takes};
 use crate::jobs::conflict::{OpenedFile, Opening};
+use crate::update::resolver::none_open_words;
 use crate::update::{AppEvent, AppState, Command, Product, update};
 
 /// `three.txt` alone.
@@ -165,18 +166,18 @@ fn bottom_row(state: &AppState) -> String {
 /// Rule 3 (m6-conflicts/61): past the last block with nothing open anywhere,
 /// `n` (and `N` before the first) says so on the notice row — an info
 /// notice, not a warning — and leaves the status line alone, so the bar
-/// keeps its own hints.
+/// keeps its own hints. The words are `none_open_words`' (ticket
+/// ease-pass/05r): every clash here is taken, so the arrows are named.
 #[test]
-fn n_past_the_last_block_says_no_more_conflicts_this_way() {
-    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
-
+fn n_past_the_last_block_says_no_open_clashes_left() {
     let state = nothing_open_on_three(&["three.txt"]);
+    let words = none_open_words(true, &state.keymap);
     let status_before = state.status.clone();
     let (after, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(cursor(&after), Some(2), "unmoved");
     assert_eq!(
         after.resolver.as_ref().expect("open").notice,
-        Some((NO_MORE_THIS_WAY.to_owned(), false)),
+        Some((words.clone(), false)),
         "an info notice"
     );
     assert_eq!(
@@ -193,23 +194,23 @@ fn n_past_the_last_block_says_no_more_conflicts_this_way() {
     back.resolver.as_mut().expect("open").cursor_block = Some(0);
     let (back, _) = press(&back, KeyCode::Char('N'));
     assert_eq!(cursor(&back), Some(0), "unmoved");
-    assert_eq!(notice(&back), Some(NO_MORE_THIS_WAY));
+    assert_eq!(notice(&back), Some(words.as_str()));
     assert_eq!(back.status, status_before);
 }
 
 /// The words are said once, on the notice row: the bar under the document
 /// does not repeat them, and it still offers `⏎ done`.
 #[test]
-fn no_more_conflicts_is_not_repeated_in_the_bar() {
+fn no_open_clashes_left_is_not_repeated_in_the_bar() {
     let (after, _) = press(&nothing_open_on_three(&["three.txt"]), KeyCode::Char('n'));
     let frame = super::frame_text(&after);
     assert_eq!(
-        frame.matches("no more conflicts").count(),
+        frame.matches("no open clashes left").count(),
         1,
         "once, on the notice row:\n{frame}"
     );
     let bar = bottom_row(&after);
-    assert!(!bar.contains("no more conflicts"), "{bar}");
+    assert!(!bar.contains("no open clashes left"), "{bar}");
     assert!(bar.contains("\u{23ce} done"), "{bar}");
 }
 
@@ -219,13 +220,12 @@ fn no_more_conflicts_is_not_repeated_in_the_bar() {
 /// (`the_notice_lifetime_today`).
 #[test]
 fn the_no_more_notice_is_gone_after_the_next_move() {
-    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
-
     let (said, _) = press(
         &nothing_open_on_three(&["a.txt", "three.txt"]),
         KeyCode::Char('n'),
     );
-    assert_eq!(notice(&said), Some(NO_MORE_THIS_WAY));
+    let words = none_open_words(true, &said.keymap);
+    assert_eq!(notice(&said), Some(words.as_str()));
 
     let (moved, _) = press(&said, KeyCode::Char('k'));
     assert_eq!(open_path(&moved), Path::new("a.txt"));
@@ -233,7 +233,7 @@ fn the_no_more_notice_is_gone_after_the_next_move() {
 
     let (taking, commands) = press(&said, KeyCode::Char('o'));
     let (took, _) = landed(&taking, &sent(&commands)[0]);
-    assert_ne!(notice(&took), Some(NO_MORE_THIS_WAY), "a take landed");
+    assert_ne!(notice(&took), Some(words.as_str()), "a take landed");
 
     let (pressed, _) = press(&said, KeyCode::Enter);
     let id = pressed
@@ -245,17 +245,17 @@ fn the_no_more_notice_is_gone_after_the_next_move() {
         &pressed,
         AppEvent::Produced(id, super::words_and_c::staged("three.txt")),
     );
-    assert_ne!(notice(&staged), Some(NO_MORE_THIS_WAY), "the stage landed");
+    assert_ne!(notice(&staged), Some(words.as_str()), "the stage landed");
 }
 
 /// Rule 3 on a file not yet done: not every file is done, so there is no
 /// finish row, and the notice is what the row draws.
 #[test]
-fn no_more_this_way_shows_before_the_file_is_done() {
+fn no_open_clashes_left_shows_before_the_file_is_done() {
     let (after, _) = press(&nothing_open_on_three(&["three.txt"]), KeyCode::Char('n'));
     assert!(crate::view::resolver::finish_row(&after).is_none());
     let frame = super::frame_text(&after);
-    assert!(frame.contains("no more conflicts this way"), "{frame}");
+    assert!(frame.contains("no open clashes left"), "{frame}");
 }
 
 #[test]

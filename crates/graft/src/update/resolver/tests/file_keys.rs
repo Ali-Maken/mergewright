@@ -25,7 +25,7 @@ fn stages(commands: &[Command]) -> usize {
 
 /// `commands` less the evil-merge probe every event re-asks for, which is
 /// not the key's doing.
-fn acting(commands: &[Command]) -> Vec<&Command> {
+pub(super) fn acting(commands: &[Command]) -> Vec<&Command> {
     commands
         .iter()
         .filter(|command| !matches!(command, Command::EvilProbe(..)))
@@ -288,7 +288,7 @@ fn page_keys_scroll_the_document() {
     }
 }
 
-fn done_on(path: &str, paths: &[&str], unmerged: &[&str]) -> AppState {
+pub(super) fn done_on(path: &str, paths: &[&str], unmerged: &[&str]) -> AppState {
     let mut state = on(path, three(), paths, unmerged);
     let open = state.resolver.as_mut().expect("open");
     open.file = Some(Arc::new(
@@ -316,18 +316,17 @@ fn n_from_a_done_file_crosses_to_the_next_open_file() {
 
 /// `n`/`N` on a done file with nothing left to cross to: rule 3's words, as
 /// the same info notice a document gets (m6-conflicts/61), the status line
-/// untouched.
+/// untouched. A done file shows no taken clash, so no arrows in them
+/// (ticket ease-pass/05r).
 #[test]
-fn n_from_a_done_file_with_nothing_open_says_no_more() {
-    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
-
+fn n_from_a_done_file_with_nothing_open_says_none_open() {
     let state = done_on("a.rs", &["a.rs", "b.rs"], &[]);
     for code in [KeyCode::Char('n'), KeyCode::Char('N')] {
         let (after, commands) = press(&state, code);
         assert!(acting(&commands).is_empty(), "{commands:?}");
         assert_eq!(
             after.resolver.as_ref().expect("open").notice,
-            Some((NO_MORE_THIS_WAY.to_owned(), false)),
+            Some(("no open clashes left".to_owned(), false)),
             "{code:?}"
         );
         assert_eq!(after.status, state.status, "{code:?}");
@@ -340,7 +339,7 @@ fn n_from_a_done_file_with_nothing_open_says_no_more() {
 
 /// Every file done: 60's finish row takes the notice row and already names
 /// the next key, so `n` at the edge draws nothing new — the finish row
-/// stands, and `no more conflicts this way` is not drawn.
+/// stands, and `no open clashes left` is not drawn.
 #[test]
 fn the_finish_row_outranks_no_more_this_way() {
     let state = done_on("a.rs", &["a.rs", "b.rs"], &[]);
@@ -351,4 +350,5 @@ fn the_finish_row_outranks_no_more_this_way() {
     );
     let frame = super::frame_text(&after);
     assert!(!frame.contains("no more conflicts"), "{frame}");
+    assert!(!frame.contains("no open clashes"), "{frame}");
 }

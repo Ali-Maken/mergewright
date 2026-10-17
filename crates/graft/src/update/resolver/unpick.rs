@@ -8,11 +8,13 @@
 //! time, and the write is against the fingerprint the pick left, so an edit
 //! made outside Mergewright since is never written over.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use graft_core::event::KeyPress;
 use graft_core::job::JobId;
 use graft_git::conflict::ConflictFile;
+use graft_ui::keymap::{ActionId, Keymap};
 
 use super::files::remember;
 use super::picks::Pick;
@@ -26,6 +28,30 @@ pub(crate) const NOTHING_TO_UNDO: &str = "nothing to undo here";
 
 /// What a key that would leave the file says while an untake is out.
 pub(super) const UNDO_LANDING: &str = "still undoing the last pick \u{b7} try again in a moment";
+
+/// What the status line says when a fresh read of `path` found other bytes
+/// than its newest pick wrote, so every pick in it was dropped (review
+/// ease-pass-05 M2, ticket ease-pass/05r): `<file> changed since your picks
+/// · u can't undo them now`, then `· next u: <file>` naming `next`, the file
+/// the next `u` reaches. Keys spelled from his keymap; with `u` unbound only
+/// the first clause stands. Said, never kept: an untake over changed bytes
+/// would write over his edit.
+#[must_use]
+pub fn dropped_words(path: &Path, next: Option<&Path>, keys: &Keymap) -> String {
+    let undo = [ActionId("app.undo")];
+    let head = format!("{} changed since your picks", path.display());
+    let clauses = [
+        keys.key_verb(&undo, "can't undo them now"),
+        next.and_then(|next| {
+            keys.spell_keys(&undo)
+                .map(|key| format!("next {key}: {}", next.display()))
+        }),
+    ];
+    std::iter::once(head)
+        .chain(clauses.into_iter().flatten())
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ")
+}
 
 /// `u`: put the last pick back.
 ///
@@ -187,9 +213,12 @@ pub fn untaken(
             }
         }
         Err(UntakeFailure::Failed(why)) => {
-            // Not written, and not stale: the pick still applies, on top.
+            // Not written, and not stale: the pick still applies, on top,
+            // and the next `u` tries it again. Sticky, as the stale words
+            // are: a `Failed` line goes with the next job's answer, before
+            // he has read why `u` did nothing (review ease-pass-05 M3).
             state.picks.put_back(pick);
-            state.status = Status::Failed(format!(
+            state.status = Status::sticky(format!(
                 "could not undo the pick in {}: {why}",
                 path.display()
             ));

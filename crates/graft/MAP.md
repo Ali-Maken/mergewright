@@ -285,7 +285,7 @@ Landing on an operation git is part-way through: the banner takes the keyboard a
 ## update::remote
 Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running write, progress and failure lines. `esc_stops_write` (fn): whether `Esc` goes to the running write now; J, stash and Map bars read it.
 ## update::resolver
-The conflict resolver, modal over one conflicted file: `o`/`t`/`b` take a side and move to the first open block; `u` puts the last pick back (`Picks`, memory only); `n` goes to the first open clash; `⏎` marks it resolved.
+The conflict resolver, one conflicted file: `o`/`t`/`b` take a side; `u` puts the last pick back (`Picks`; a re-read keeps or drops them, `Reread`); `n` the first open clash; `←`/`→` this file's clashes; `⏎` done.
 ## update::rewrite_editor
 The rewrite editor (`R`): the branch as rows, the plan and squashed message shown before `y` runs the rewrite.
 ## update::row_tags

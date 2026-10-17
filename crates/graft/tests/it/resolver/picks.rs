@@ -15,6 +15,9 @@ use super::{git_stops, open, opened_on, resolver_on, settled};
 use crate::app_harness::{App, git, git_as_graft};
 
 mod lifetime;
+mod reread;
+mod steps;
+mod stops;
 
 /// Clashes on lines 2 and 7 of seven.
 const TWO: &[usize] = &[2, 7];
@@ -219,10 +222,11 @@ fn n_goes_to_the_first_open_clash_from_the_top() {
     assert_eq!(on(&state), Path::new("b.txt"));
 
     // From file 2, with file 1 still open: back to file 1's open clash —
-    // read afresh, its taken clash is plain text, so the one left is first.
+    // its taken clash still shown, its pick alive (ticket ease-pass/05r),
+    // so the one left is the second.
     let state = pressed(&app, &state, 'n');
     assert_eq!(on(&state), Path::new("a.txt"));
-    assert_eq!((doc(&state).open(), cursor(&state)), (1, Some(0)));
+    assert_eq!((doc(&state).open(), cursor(&state)), (1, Some(1)));
 
     // a.txt solved: `n` skips it, and b.txt's taken clash.
     let state = pressed(&app, &state, 'o');
@@ -234,7 +238,8 @@ fn n_goes_to_the_first_open_clash_from_the_top() {
     let state = app.key(&state, KeyCode::Char('n'));
     assert_eq!((on(&state), cursor(&state)), (Path::new("b.txt"), Some(1)));
 
-    // Nothing open anywhere: today's words.
+    // Nothing open anywhere, every clash here taken: none is open, and the
+    // keys that reach them (review ease-pass-05 M1).
     let state = pressed(&app, &state, 'o');
     let state = pressed(&app, &state, 'n');
     assert_eq!(on(&state), Path::new("c.txt"));
@@ -242,7 +247,10 @@ fn n_goes_to_the_first_open_clash_from_the_top() {
     let state = settled(&app, state);
     let state = app.key(&state, KeyCode::Char('n'));
     assert_eq!(on(&state), Path::new("c.txt"));
-    assert_eq!(notice(&state), "no more conflicts this way");
+    assert_eq!(
+        notice(&state),
+        "no open clashes left \u{b7} \u{2190}/\u{2192} step through them"
+    );
     drop(state);
     app.close();
 }

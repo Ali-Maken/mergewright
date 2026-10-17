@@ -95,6 +95,13 @@ pub const ROWS: &[(&str, &str, &str)] = &[
         "a write is already running",
         "article",
     ),
+    // Moved out of `resolver.rs` (ticket ease-pass/05r), where it sat after
+    // a `#[cfg(test)]` and so was never scanned.
+    (
+        "graft:update/resolver/gate.rs",
+        "a write is already running",
+        "article",
+    ),
     (
         "graft:update/resolver/handover.rs",
         "a take is still landing · try again in a moment",
