@@ -689,7 +689,8 @@ fn bases(state: &graft::update::AppState) -> (usize, usize) {
 /// `zdiff3.txt` the only file not done (every other path staged by
 /// `setup`): `N` before its one block has no file to cross to, so it wraps to
 /// the block still open; once that is taken, `n` and `N` have nowhere to go
-/// and say what `⏎` does instead (m6-conflicts/15). Nothing is staged.
+/// and say what `⏎` does instead (m6-conflicts/15) — no clash open, and the
+/// keys to the taken one (ease-pass/05r). Nothing is staged.
 fn n_past_the_last_block_says_no_more() -> Scenario {
     Scenario {
         name: "n-past-the-last-block-says-no-more",
@@ -716,7 +717,7 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
                 // Rule 3 is a notice, not the status line (m6-conflicts/61):
                 // the bar keeps `⏎ done`, and the words are said once.
                 Step::See("n with nothing open", |state| {
-                    notice_is(state, "no more conflicts this way")?;
+                    notice_is(state, NONE_OPEN)?;
                     no_status_says_no_more(state)
                 }),
                 key(ch('N')),
@@ -743,15 +744,18 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
             headless: vec![],
             // The only row under CONFLICTS: the first.
             keys: plain(&[open_nth(0), vec![ch('t'), ch('n')]].concat()),
-            on_screen: "no more conflicts this way",
+            on_screen: "no open clashes left",
             when: When::Settled,
         }),
     }
 }
 
+/// What `n` and `N` say with nothing open and `zdiff3.txt`'s clash taken.
+const NONE_OPEN: &str = "no open clashes left \u{b7} \u{2190}/\u{2192} step through them";
+
 /// `N` with nothing open says the same and leaves the resolver on `zdiff3.txt`.
 fn n_back_stays_on_zdiff3(state: &graft::update::AppState) -> Result<(), String> {
-    notice_is(state, "no more conflicts this way")?;
+    notice_is(state, NONE_OPEN)?;
     no_status_says_no_more(state)?;
     let on = state.resolver.as_ref().map(|open| open.path.clone());
     check(
@@ -763,7 +767,7 @@ fn n_back_stays_on_zdiff3(state: &graft::update::AppState) -> Result<(), String>
 /// The status line does not repeat rule 3's words: they are the notice's.
 fn no_status_says_no_more(state: &graft::update::AppState) -> Result<(), String> {
     check(
-        !format!("{:?}", state.status).contains("no more conflicts"),
+        !format!("{:?}", state.status).contains("no open clashes"),
         || format!("the status says it too: {:?}", state.status),
     )
 }
@@ -809,9 +813,10 @@ fn title_counts(state: &graft::update::AppState) -> Option<(usize, usize)> {
 
 /// Start over **before** `⏎` (ticket 07 ruling F3): `three.txt` opened
 /// from its `CONFLICTS` row, `o` on the first block, `Esc` back to the pane,
-/// `⏎` on the row again — still unmerged, the taken block now plain lines,
-/// two blocks left — then `d`, `Start over`. Git's stages come back with the
-/// stop's oids and modes, the file has the stop's three marker blocks, and
+/// `⏎` on the row again — still unmerged, the taken block still shown while
+/// its pick lives (ease-pass/05r), two of three open — then `d`, `Start
+/// over`. Git's stages come back with the stop's oids and modes, the file
+/// has the stop's three marker blocks, and
 /// the title counts all three. Start over **after** `⏎` has no entry point
 /// in the app (a staged path has no `CONFLICTS` row, and `u` is refused
 /// mid-merge, `update/undo.rs:102-108`); its ops half is proven in
@@ -844,10 +849,10 @@ fn start_over_brings_the_markers_back() -> Scenario {
             }),
             Step::Resolve("three.txt"),
             Step::See(
-                "reopened: the taken block is plain lines, two left",
+                "reopened: the taken block still taken, two of three open",
                 |state| {
                     let counts = title_counts(state);
-                    check(counts == Some((2, 2)), || format!("{counts:?} blocks"))
+                    check(counts == Some((2, 3)), || format!("{counts:?} blocks"))
                 },
             ),
             Step::Mark("reopened"),

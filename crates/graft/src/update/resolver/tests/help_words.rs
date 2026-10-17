@@ -48,3 +48,39 @@ fn help_in_a_stash_pop_names_the_sides_as_the_bar_does() {
     assert_eq!(help_label(&state, "resolver.take_ours"), "Take yours");
     assert_eq!(help_label(&state, "resolver.take_theirs"), "Take stashed");
 }
+
+/// Ticket ease-pass/05r: `?` lists `←`/`→` (keymap §2.12), each with its
+/// key and its words.
+#[test]
+fn help_lists_the_arrows_that_step_between_clashes() {
+    let state = super::resolver_on_screen(WALK);
+    let (open, _) = press(&state, KeyCode::Char('?'));
+    let palette = open.palette.as_ref().expect("`?` opens the help");
+    let listed: Vec<(String, Option<String>)> = rows(&open, palette)
+        .into_iter()
+        .flat_map(|(_, rows)| rows)
+        .filter(|(row, _)| {
+            matches!(
+                row.config,
+                Some(ActionId("resolver.step_prev" | "resolver.step_next"))
+            )
+        })
+        .map(|(row, _)| {
+            (
+                row.label.as_str().to_owned(),
+                row.key.as_ref().map(|key| key.0.clone()),
+            )
+        })
+        .collect();
+    let row = |label: &str, key: &str| (label.to_owned(), Some(key.to_owned()));
+    assert_eq!(
+        listed,
+        [
+            row(
+                "Previous clash in this file, taken ones included",
+                "\u{2190}"
+            ),
+            row("Next clash in this file, taken ones included", "\u{2192}"),
+        ]
+    );
+}

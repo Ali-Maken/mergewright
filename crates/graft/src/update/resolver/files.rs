@@ -224,7 +224,7 @@ fn switch_refusal(state: &AppState) -> Option<&'static str> {
         // `open_refusal`'s words: the box's question is about this file.
         return Some("finish the box first");
     }
-    if let Some(words) = open.busy_words() {
+    if let Some(words) = super::busy_refusal(state) {
         return Some(words);
     }
     if open.base_job.is_some() {

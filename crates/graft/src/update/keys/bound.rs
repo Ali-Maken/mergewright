@@ -124,8 +124,10 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("resolver.file_theirs"), // the same
     id("resolver.base"),        // `toggle_base`
     id("resolver.start_over"),  // `restart_box`
-    id("resolver.next_block"),  // `walk_blocks`, forward
-    id("resolver.prev_block"),  // the same, backward
+    id("resolver.next_block"),  // `first_open`: the first open clash
+    id("resolver.prev_block"),  // `walk_blocks`, backward
+    id("resolver.step_prev"),   // `step_clash`, backward, in this file
+    id("resolver.step_next"),   // the same, forward
     id("resolver.mark_done"),   // `mark_resolved`: `git add` on the open file
     id("resolver.finish"),      // `finish_pressed` → `banner::continue_pressed`
     id("resolver.edit"),        // `$EDITOR` on the open file

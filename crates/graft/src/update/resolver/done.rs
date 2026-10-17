@@ -71,16 +71,20 @@ pub fn done_refusal(state: &AppState) -> Option<String> {
 
 /// `act`'s done gate: the keys a done file refuses through [`done_refusal`]
 /// — every one that would take, stage, load a base, hand to a mergetool or
-/// `Ctrl+O`/`Ctrl+T` (m6-conflicts/16) and `O`/`T` (17) included. `d`, `e`,
-/// `Esc`, the scroll keys, `j`/`k` and `n`/`N` act — `n`/`N` cross straight
-/// to the next file (17 D6).
+/// `Ctrl+O`/`Ctrl+T` (m6-conflicts/16) and `O`/`T` (17) included — and
+/// `←`/`→`/`h`/`l`, which have no clashes to step through on a done file
+/// (ease-pass/05r). `d`, `e`, `Esc`, the scroll keys, `j`/`k` and `n`/`N`
+/// act — `n`/`N` cross straight to the next file (17 D6).
 pub(super) fn refuses(key: &KeyPress) -> bool {
     let plain = !key.modifiers.control && !key.modifiers.alt;
     let bulk = key.modifiers.control && !key.modifiers.alt;
     (plain
         && matches!(
             key.code,
-            KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'O' | 'T') | KeyCode::Enter
+            KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'O' | 'T' | 'h' | 'l')
+                | KeyCode::Enter
+                | KeyCode::Left
+                | KeyCode::Right
         ))
         || (bulk && matches!(key.code, KeyCode::Char('o' | 't')))
 }

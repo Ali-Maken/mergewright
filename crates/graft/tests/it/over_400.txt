@@ -191,8 +191,7 @@
 577 crates/graft/src/update/remote.rs
 1549 crates/graft/src/update/remote/tests.rs
 538 crates/graft/src/update/remote/tests/lease.rs
-414 crates/graft/src/update/resolver.rs
-975 crates/graft/src/update/resolver/tests.rs
+977 crates/graft/src/update/resolver/tests.rs
 988 crates/graft/src/update/resolver/tests/file_list.rs
 425 crates/graft/src/update/resolver/tests/opens_itself.rs
 1683 crates/graft/src/update/rewrite_editor/tests.rs
@@ -253,7 +252,7 @@
 518 crates/graft/tests/it/m5_walk/regressions.rs
 458 crates/graft/tests/it/m5_walk/remotes.rs
 894 crates/graft/tests/it/m5_walk/resolved_operations.rs
-1102 crates/graft/tests/it/m5_walk/resolving.rs
+1107 crates/graft/tests/it/m5_walk/resolving.rs
 781 crates/graft/tests/it/m5_walk/run.rs
 953 crates/graft/tests/it/m5_walk/stash_journeys.rs
 617 crates/graft/tests/it/m6_stash_put_back.rs

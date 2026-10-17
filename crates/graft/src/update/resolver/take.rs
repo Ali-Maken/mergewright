@@ -75,12 +75,10 @@ fn take_block(
     // lacks means the cursor and the document disagree: said, never
     // swallowed, and nothing sent (rule 3).
     //
-    // **Question 16 (open), the one place it is decided:** a block already
-    // taken is taken again — its take *replaced* (`ConflictFile::take`), as
-    // before ease-pass 05; the pick its landing pushes remembers the
-    // earlier take, so `u` restores that. Answered "refuse", this is where
-    // a taken block stops with the notice `already taken · u undoes it`
-    // and nothing is sent.
+    // **Question 16 answered (a), 2026-10-17; a refuse answer would branch
+    // here:** a block already taken is taken again — its take *replaced*
+    // (`ConflictFile::take`), as before ease-pass 05; the pick its landing
+    // pushes remembers the earlier take, so `u` restores that.
     let pending = pending.and_then(|mut file| file.take(block, take).map(|()| file));
     let pending = match pending {
         Ok(file) => file,

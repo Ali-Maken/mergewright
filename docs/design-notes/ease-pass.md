@@ -72,7 +72,8 @@ open-folded-merge    1     space                         SM 1 click
 - **Merge-one-clash:** graph, cursor on `integration`'s row. 1 `m` → preview. 2 `y` → stop **lands** on the clash screen,
   cursor on the first clash (0 keys). 3 `o` → block shrinks; file solved, stays on screen. 4 `y` → review "Nothing
   committed yet". 5 `y` → **lands** on the graph, cursor on the merge commit (folded), `✓ Merged …`. Clean merge: step 2
-  lands there directly. Refused (in the way, ADR-0049) → the preview says why, nothing written (today's). Hook refuses at
+  lands there directly. Refused (in the way, ADR-0049) → the box closes and the status line says why and the next step,
+  nothing written (today's, `answer.rs:58`). Hook refuses at
   step 5 → stays on the review with the failure (05b).
 - **Pause:** `esc` on the clash screen → graph, banner focused (Q7 a); `⏎` → first open clash, picks kept. A relaunch
   mid-merge lands in the same paused place (picks don't survive it; files solved before it still read solved).

@@ -701,7 +701,9 @@ mod file_list;
 mod finish_here;
 mod first_open;
 mod opens_itself;
+mod step;
 mod take_all;
+mod undo_ends;
 
 /// m6-conflicts/46: `B` on a file of one block says `1 conflict`.
 #[test]

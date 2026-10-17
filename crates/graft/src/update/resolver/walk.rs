@@ -7,8 +7,10 @@
 //! §2.6, the user's call of 2026-09-24):
 //! 1. another file in the list not done → cross to it;
 //! 2. else this file has an open block → wrap to it;
-//! 3. else `no more conflicts this way`, a notice ([`NO_MORE_THIS_WAY`]);
-//!    the bar keeps offering `⏎ done`.
+//! 3. else nothing is open anywhere: a notice, [`none_open_words`] (`no
+//!    open clashes left`, and `←/→` when this file holds a taken clash,
+//!    ticket ease-pass/05r) — on a whole-file card, which is itself the one
+//!    conflict left, [`NO_MORE_THIS_WAY`]. The bar keeps its own hints.
 //!
 //! Crossing first is what keeps `N` from circling a file that still has an
 //! open block and never leaving it.
@@ -17,6 +19,7 @@ use std::path::PathBuf;
 
 use graft_core::job::JobId;
 use graft_git::conflict::{BlockState, ConflictFile};
+use graft_ui::keymap::{ActionId, Keymap};
 
 use super::files::{RowState, listed_files, select_file};
 use super::picks::{BlockAt, blocks_of, next_open};
@@ -25,10 +28,11 @@ use super::take::pending_file;
 use crate::update::events::Command;
 use crate::update::state::AppState;
 
-/// Rule 3's words: nothing open anywhere this way (m6-conflicts/61). An info
-/// notice on the notice row, never the status line, so the bar keeps its
-/// own hints — `⏎ done` among them. `n` says it too, with nothing open
-/// anywhere (05b gives a merge its own words).
+/// Rule 3's words on a whole-file card: no other conflict this way
+/// (m6-conflicts/61). An info notice on the notice row, never the status
+/// line, so the bar keeps its own hints. A document with nothing open
+/// anywhere says [`none_open_words`] instead (ticket ease-pass/05r): its
+/// clashes are there, taken.
 pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
 
 /// `n` with the cursor already where `n` goes: said, an info notice, so the
@@ -38,11 +42,12 @@ pub(crate) const ON_FIRST_OPEN: &str = "already on the first open clash";
 /// `n`: the first open clash of the whole operation, from the top of the
 /// list (ease-pass 05, the mock's `nextOpen`) — taken blocks and finished
 /// files skipped. In the file on screen the cursor moves to it; another
-/// file is opened, and its fresh read lands on its first block, which a
-/// fresh read always has open (taken blocks are plain text on disk). A
+/// file is opened, and its read lands on its first open block (`answers`:
+/// a fresh read has every block open; one showing its picks, the first
+/// still open). A
 /// whole-file card, or a file not read yet, counts as open: there is a
 /// choice in it to make. Already there: [`ON_FIRST_OPEN`]. Nothing open
-/// anywhere: [`NO_MORE_THIS_WAY`].
+/// anywhere: [`none_open_words`].
 pub(super) fn first_open(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -82,6 +87,7 @@ pub(super) fn first_open(
             (row.path.clone(), blocks)
         })
         .collect();
+    let taken = here.iter().any(|block| !block.open);
     match next_open(&files) {
         Some((index, _)) if listed[index].path != path => {
             cross(state, commands, index, true, next_id);
@@ -90,7 +96,7 @@ pub(super) fn first_open(
         Some(_) if card => say(state, ON_FIRST_OPEN),
         Some((_, block)) if cursor == Some(block) => say(state, ON_FIRST_OPEN),
         Some((_, block)) => move_cursor(state, block, None),
-        None => no_more_conflicts(state),
+        None => none_open(state, taken),
     }
 }
 
@@ -170,20 +176,55 @@ pub(super) fn walk_blocks(
         move_cursor(state, block, Some(format!("wrapped · {left} still open")));
         return;
     }
-    no_more_conflicts(state);
+    match file {
+        // Rule 3 on a document: no other file is left and nothing here is
+        // open — so nothing is open anywhere (review ease-pass-05 M1).
+        Some(file) => none_open(state, file.open() < file.blocks().len()),
+        // On a card the card itself is the one conflict left, open: there
+        // is truly none *this way*, so the m6 words stand there.
+        None => no_more_conflicts(state),
+    }
 }
 
-/// Rule 3: nothing open anywhere — say so on the notice row. The status
-/// line is not touched, so the bar under the document keeps its own hints:
-/// `⏎ done` on a document, the side keys on a card (m6-conflicts/61). Once
-/// every file is done the finish row takes the notice row instead
-/// (`view::resolver::finish_row`), and it already names the next key.
+/// Rule 3 on a whole-file card: no other file to cross to — say so on the
+/// notice row. The status line is not touched, so the bar under the card
+/// keeps its side keys (m6-conflicts/61). A document says
+/// [`none_open_words`] instead: nothing is open anywhere there.
 fn no_more_conflicts(state: &mut AppState) {
     say(state, NO_MORE_THIS_WAY);
 }
 
+/// What `n` and `N` say with no open clash left anywhere (review
+/// ease-pass-05 M1): `no open clashes left`, and — when this file's
+/// document holds a taken clash — the keys that step back through it,
+/// spelled from his keymap (`· ←/→ step through them`; left out when both
+/// are unbound). `taken`: the document on screen holds a taken block.
+#[must_use]
+pub fn none_open_words(taken: bool, keys: &Keymap) -> String {
+    let step = [
+        ActionId("resolver.step_prev"),
+        ActionId("resolver.step_next"),
+    ];
+    match taken
+        .then(|| keys.key_verb(&step, "step through them"))
+        .flatten()
+    {
+        Some(clause) => format!("{NONE_OPEN} \u{b7} {clause}"),
+        None => NONE_OPEN.to_owned(),
+    }
+}
+
+/// The head of [`none_open_words`].
+const NONE_OPEN: &str = "no open clashes left";
+
+/// [`none_open_words`] on the notice row, as information.
+fn none_open(state: &mut AppState, taken: bool) {
+    let words = none_open_words(taken, &state.keymap);
+    say(state, &words);
+}
+
 /// `words` on the notice row, as information.
-fn say(state: &mut AppState, words: &str) {
+pub(super) fn say(state: &mut AppState, words: &str) {
     if let Some(open) = state.resolver.as_mut() {
         open.notice = Some((words.to_owned(), false));
     }
@@ -199,7 +240,9 @@ fn cross_from_done(
 ) {
     match cross_target(state, forward) {
         Some(index) => cross(state, commands, index, forward, next_id),
-        None => no_more_conflicts(state),
+        // Every other file done, and this one too: nothing open anywhere,
+        // and a done file shows no taken blocks to step through.
+        None => none_open(state, false),
     }
 }
 
@@ -217,7 +260,7 @@ fn wrap_target(file: &ConflictFile, forward: bool) -> Option<(usize, usize)> {
 
 /// The cursor onto `block`, scrolled into view, with `notice` under the
 /// title (`None` clears it).
-fn move_cursor(state: &mut AppState, block: usize, notice: Option<String>) {
+pub(super) fn move_cursor(state: &mut AppState, block: usize, notice: Option<String>) {
     let top = scrolled_to(state, block);
     if let Some(open) = state.resolver.as_mut() {
         open.cursor_block = Some(block);

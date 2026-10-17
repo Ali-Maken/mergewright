@@ -13,7 +13,8 @@
 //! (`mergewright-merge-screen.html:150`).
 
 use super::super::keys::{
-    BACK, BOTH, MARK_DONE, NEXT_BLOCK, OURS, RESOLVER_EDIT, RESOLVER_FINISH, THEIRS, UNDO,
+    BACK, BOTH, MARK_DONE, NEXT_BLOCK, OURS, RESOLVER_EDIT, RESOLVER_FINISH, STEP_CLASHES, THEIRS,
+    UNDO,
 };
 use super::super::{ClashAt, ClashBar, Hint, bar_name, hint, named};
 use crate::conflict_resolver::SideRoles;
@@ -43,6 +44,11 @@ pub(super) fn clash_list(bar: &ClashBar) -> Vec<Hint> {
     };
     if !matches!(bar.at, ClashAt::Picked) {
         list.push(named(BACK, "pause, come back later", "pause"));
+    }
+    if matches!(bar.at, ClashAt::FileSolved { .. } | ClashAt::AllSolved) {
+        // The way back to a taken clash, at the end (Q19 a, user
+        // 2026-10-17; ticket ease-pass/05r).
+        list.push(hint(STEP_CLASHES, "clashes"));
     }
     list
 }
