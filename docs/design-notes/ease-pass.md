@@ -8,6 +8,9 @@ on its recommendation, one-line change if he picks b). **V and W fitted to their
 context, existing ids kept with new handlers, bars stay where the code draws them; commit writes through a scratch index
 (executor change in W). No behaviour he accepted changed. **01r** (2026-10-17, after review 01): "built on" and "merged"
 rules corrected — they now say only what git can prove; spec `01r-roles-and-route-fixes.md`; 09 and 14 updated.
+**03b** (2026-10-17, after V came back 5/10): hint verbs become `Cow<'static, str>`; names and counts ride as fields of
+new `HintContext` variants; a key's row and its bar land with its handler (`#` → G, `y` → P, review/look bars → Fr);
+commit options listed in `⌃P`/`?` from the commit editor; spec `03b-ease-vocabulary-rest.md`; 05, 07, 08, 10–12, 14 updated.
 
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
@@ -71,7 +74,7 @@ open-folded-merge    1     space                         SM 1 click
   branch: `C ⏎` (Q1 a).
 
 ## Mock behaviours → specs (acceptance lines)
-Slugs: **R** roles-and-route (+ **Rr** its fixes, 01r) · **V** ease-vocabulary · **W** commit-what-goes-in · **K** clash-reads · **P** resolver-picks
+Slugs: **R** roles-and-route (+ **Rr** its fixes, 01r) · **V** ease-vocabulary (+ **Vr** its rest, 03b) · **W** commit-what-goes-in · **K** clash-reads · **P** resolver-picks
 (pass 1); **F** graph-fold-and-lanes · **G** graph-rows · **B** branch-pane · **X** pixel-roles-and-tall-row · **S**
 commit-screen · **Mp** merge-preview · **L** clash-screen-look · **Fr** finish-review-and-look (pass 2); **A** acceptance.
 
@@ -86,7 +89,7 @@ branch and its upstream are one name (G) · G8 who = first name, own `you` bold;
 A, B] · <sha7>`, lanes continue through it; every row the cursor rests on gets it (ADR-0063 rule; the mock skipped opened
 rows) (G X) · G10 header `on <branch>`, `lanes drawn: N of M`, `K merged branches folded` (F G; Q11, Q14) · G11 lanes only for
 branches with a commit in view (F) · G12 right pane: heading + `(you're here)`; four marked lines `! ✓ ·`; `built on`
-route trunk first ` ─◆ ` (R Rr B) · G13 bar per row kind (G V; Q1 Q2 Q11) · G14 `#` colour off, shapes stay (V G; Q3).
+route trunk first ` ─◆ ` (R Rr B) · G13 bar per row kind (G Vr; Q1 Q2 Q11) · G14 `#` colour off, shapes stay (V G; Q3).
 
 Commit (commit mock): C1 `c` → cursor in message, placeholder `What did you change? (one line)`; header `committing to
 <branch>` + push state (S) · C2 subject bold, `n/72`, warning past 72 (S) · C3 body placeholder `More detail, if it needs
@@ -97,20 +100,20 @@ secrets file`, diff top `! left out: … space puts it in.` (W S) · C8 diff `+`
 and ≥1 file; else bar `type a message first` / `put a file in first` (S) · C10 `↑ ↓` in message move the file cursor (S) ·
 C11 `⇥` message → body → files; body `esc` → message; files `j k`, `space`, `⏎` commit, `esc` → message (S V) · C12 the
 three bars, mock words (S) · C13 landing line and bar `u undo the commit, your edits come back · P push · c commit again`;
-header `1 commit to push` (S) · C14 `u` / `c` after (S; Q9) · C15 `esc` in message: closes, message kept for the next `c`
+header `1 commit to push` (S Vr) · C14 `u` / `c` after (S; Q9) · C15 `esc` in message: closes, message kept for the next `c`
 this run (mock gap; taken from the finish summary's draft-keep, §2.6b) (S).
 
-Merge (merge mock): M1 bar `m merge <b> into yours` (Mp) · M2 preview words, `y merge · esc cancel · ⏎ see the N commits`
+Merge (merge mock): M1 bar `m merge <b> into yours` (Vr G) · M2 preview words, `y merge · esc cancel · ⏎ see the N commits`
 (Mp K; Q5 Q6) · M3 `⏎` incoming list; `esc` back; `y` merge (Mp V) · M4 `esc` cancels (Mp) · M5 stop lands on first clash;
 header `merging <from> into <into>` (P L) · M6 list column `Clashing files` `?`/`✓` `N open`/`done`, `✓ Review the merge y`,
 `Combined by git (N)` (L) · M7 file title, numbered plain lines, open clash `?` + `yours · <into>` | `theirs · <from>`
 unnumbered, cursor clash outlined (L) · M8 taken block shrinks, `◀ ▶ ◆`, `kept yours/took theirs/kept both` (L P) · M9
 advance within file; solved file stays with `✓ Every clash in <f> is solved.` + next hint (P L) · M10 `n` first open clash
-in the merge (P) · M11 the three bars (L V) · M12 `u` last pick back open, cursor on it, also from the review (P) · M13 `e`
+in the merge (P) · M11 the three bars (L Vr P) · M12 `u` last pick back open, cursor on it, also from the review (P) · M13 `e`
 edit by hand: mock gap → today's `$EDITOR` at the cursor block (§2.6) · M14 `esc` pause (Q7) · M15 review words and bar
 (Fr P) · M16 review `esc` → clashes, `y` → review (P) · M17 `⏎` read-only look; combined row: per file `yours +a −d theirs
 +a −d`, one sample with `from yours/from theirs` (Fr K) · M18 commit lands on the merge commit folded `▸ N commits from
-<from>`, `✓ Merged …`, bar `u undo the merge · P push · space show the N commits inside` (Fr F) · M19 `u` undoes it (today).
+<from>`, `✓ Merged …`, bar `u undo the merge · P push · space show the N commits inside` (Fr F Vr) · M19 `u` undoes it (today).
 
 **Mock gaps decided in pass 2** (not departures: the mocks are silent; each follows an existing rule or precedent):
 tags on rows → muted label `tag <name>` beside `<branch> is here` (G7 family); drag source → that label and the branch
@@ -120,7 +123,9 @@ option turned on from `?` → its word in the commit header while on, nothing wh
 whatever the merge mock shows, else git's `MERGE_MSG` (Fr scout checks); `lanes drawn` / `folded` words shown only while
 something is dropped / folded (status rule); merge preview without buttons only for `m` — other previews keep theirs
 (flag for the usability walk). **01r:** right-pane words for states the mock never shows (merged, no commits of its own,
-unrelated branch) — in 09, mock style.
+unrelated branch) — in 09, mock style. **03b:** a teammate's row carries both mocks' words — main's `C switch` / `x compare`,
+then the merge mock's `m merge <b> into yours`; names in bars are the last path segment; `?` in the commit subject types
+`?` (options from `⌃P` there, `?` from the file list).
 
 ADR-0063 departures checked against `docs/design/02-keymap.md`: (1) `⏎` commits from the subject — **already the spec and
 build** (§2.10 :494, P16; `crates/graft-ui/MAP.md:235`), not a departure. (2) `y` finish — resolver is modal, `y` unbound
@@ -140,11 +145,13 @@ Merged { MainLine, Into, NotYet { into: Option<String> }, NothingToMerge }, behi
 Authors { first, others, last }, NoOwnCommits } }`, all reads through `count_between`/`commits_between`/`compare_span`/
 `entry_into` (stop, `RunError`); rules in 01r ("built on" and "merged" only where git proves them); caller: app job
 behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap:
-new ids `graph.colours_off` `#`, `resolver.review` `y`, keyless `commit.toggle_{amend,no_verify,allow_empty}`; **no new
+new ids `graph.colours_off` `#` (row lands with G's handler), `resolver.review` `y` (with P's), keyless `commit.toggle_{amend,no_verify,allow_empty}`; **no new
 `ContextId`** (incoming list ⊂ `Preview`, look ⊂ `Finish`, commit files a focus of `CommitEditor`); `n`/`esc`/`u`/`c`/review
 `⏎` keep `resolver.next_block`/`app.back`/`app.undo`/`resolver.finish`/`finish.toggle_diff`, their handlers change (P, Fr);
-merge-preview `⏎` stays hard-matched, branched by kind (Mp); hint-list states for graph rows, landings, banner, clash
-screen, review, look (V owns `hints.rs`); commit-screen and preview footers stay screen code (S, Mp). **graft-ops** —
+merge-preview `⏎` stays hard-matched, branched by kind (Mp); hints: `Hint.verb: Cow<'static, str>`, new variants
+`HintContext::GraphRow { row: RowBar, verbs }` (`Own`, `Elsewhere { branch }`, `FoldedMerge { inside }`, `Opened`,
+`JustCommitted`, `JustMerged { inside }`) and `Clash(ClashBar { at, op })` (Vr), `Review(ReviewBar)` (Fr); existing
+variants gain no fields; commit-screen and preview footers stay screen code (S, Mp). **graft-ops** —
 `CommitParams.include: Include` (one struct for commit and amend; `message: String`), `Chosen`, `Part`, `FileChoice`,
 `first_choice`, `looks_like_secrets`, `Refusal::NothingChosen`, `Invocation.index: IndexFile { Real, Scratch }` (the
 executor runs `Scratch` lines on a copy of the real index; undo unchanged — it already restores HEAD and index) (W). **graft-git** — `merge_forecast(repo, git, ours, theirs, stop) -> MergeCheck {
@@ -234,12 +241,14 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
 15. A teammate cuts `sara/fix-toc` from your `wallet-release`, then you commit more on `wallet-release`. Git can't tell from then on whether sara was built on yours or the other way round. (a) the right pane says sara is built on `integration` (true, but doesn't name yours); amber goes on `integration` · (b) let you mark `wallet-release` as a long-lived branch once (like `develop`), so it's always named. **Rec a** now; (b) is a later setting, no rule change. 01r builds (a).
 
 ## Groups and waves (≤2 cargo builders)
-W1 R ‖ K · W2 V ‖ W · W3 P ‖ F · W4 G ‖ S · W5 B ‖ Mp · W6 L ‖ Fr · W7 X **alone** (its lag script must run on a quiet
+W1 R ‖ K · W2 V ‖ W · W2b Vr (03b; ‖ F allowed — disjoint files) · W3 P ‖ F · W4 G ‖ S · W5 B ‖ Mp · W6 L ‖ Fr · W7 X **alone** (its lag script must run on a quiet
 machine) · W8 A. Every pass-2 group is brownfield: scout first (ADR-0035), `Build with` blank.
-Same-crate pairs (graft app in W3–W6, graft-ui in W4–W6) use disjoint files (ADR-0051). Shared registries: **V owns
-`graft-ui/src/graph_screen/hints.rs`** for the pass (later groups pick a `HintContext`, never edit lists). `update/state.rs`,
-`update/events.rs`, `jobs/kinds.rs`: the first-named group of each pair owns them; the second adds only at the end of an
-enum/struct and names the lines in its report, for the conductor's merge.
+Same-crate pairs (graft app in W3–W6, graft-ui in W4–W6) use disjoint files (ADR-0051). Shared registries: **V and Vr own
+the hints files** (`graft-ui/src/graph_screen/hints*`) for the pass; later groups pick a `HintContext`, and three named
+exceptions edit them: P (the merge all-solved arm), Fr (the `Review` states), G (retiring `BranchRow`/`PlainRow` if unpicked).
+`update/state.rs`, `update/events.rs`, `jobs/kinds.rs`: the first-named group of each pair owns them; the second adds only
+at the end of an enum/struct and names the lines in its report, for the conductor's merge.
 W2 crate sets: V graft-ui only; W graft-ops plus six `CommitParams` literals in graft (compile fix, `Include::Staged`) — disjoint.
-Dependency order: R, K, V, W (no needs) → Rr (R; graft-git + graft-ops, before B) → P (K, V) · F (none) → G (R, V, F) · S (W, V) → B (R, Rr, G, V) · Mp (K, V) → L (P, V)
-· Fr (P, K, V, F) → X (R, G, F, V) → A (all).
+Vr: graft-ui hints files + graft `update::palette`, `update::commit_editor` (option dispatch only), sweep tests.
+Dependency order: R, K, V, W (no needs) → Rr (R; graft-git + graft-ops, before B) → Vr (V; before P, G, S, L, Fr) → P (K, V, Vr) · F (none) → G (R, V, Vr, F) · S (W, V, Vr) → B (R, Rr, G, V) · Mp (K, V) → L (P, V, Vr)
+· Fr (P, K, V, Vr, F) → X (R, G, F, V) → A (all).
