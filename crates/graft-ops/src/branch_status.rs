@@ -7,7 +7,8 @@
 //! ties going trunk, then integration, then by name. The **route** repeats
 //! that from each base until it reaches the trunk.
 //!
-//! Reads only, every one through `count_between` / `commits_between`, so
+//! Reads only, every one through `count_between` / `commits_between` /
+//! `commits_from`, so
 //! each honours a [`Stop`] and fails with [`RunError`]. Branches are named
 //! by full ref name (`refs/heads/main`); `graft-graph` turns names into lane
 //! identities, not this crate.

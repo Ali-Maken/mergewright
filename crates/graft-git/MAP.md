@@ -175,6 +175,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `CompareSpan` (enum) — how a tip relates to a base: since a split point, or unrelated.
 - `compare_span` (fn) — `(repo, base, tip, stop) -> Result<CompareSpan, RunError>`.
 - `count_between` (fn) — `rev-list --count <include> ^<exclude>`, uncapped.
+- `commits_from` (fn) — `(repo, include, cap, stop) -> Result<Range, RunError>`: `rev-list <include>`, no lower bound, capped as `commits_between`.
 - `StashOnly` (struct) — commits reachable only from stash entries.
 - `only_in_stash` (fn) — `(repo, stashes, cap, stop) -> Result<StashOnly, RunError>`.
 - `Forecast` (enum) — `Clean`, `Conflicts { paths }`, `NotCheckable`; a merge's predicted outcome.

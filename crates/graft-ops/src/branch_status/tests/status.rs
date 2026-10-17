@@ -179,3 +179,70 @@ fn who_four_authors() {
     assert_eq!(first_names(&feature), ["Bea Brandt", "Alice Ames"]);
     assert_eq!(feature.who.others, 2);
 }
+
+#[test]
+fn the_trunk_is_the_main_line() {
+    let repo = stack();
+    let candidates = stack_candidates(&repo);
+    let main = status(&repo, "main", &candidates, None);
+    assert_eq!(main.merged, Merged::MainLine);
+    assert!(main.route.is_empty());
+    assert_eq!(main.behind, Behind::NoBase);
+}
+
+/// The trunk is measured against its upstream.
+#[test]
+fn the_trunk_is_behind_its_upstream() {
+    let repo = stack();
+    repo.git(&["switch", "-q", "-c", "upstream-main", "main"]);
+    repo.commit("u1");
+    repo.commit("u2");
+    let up = upstream(&repo, "main", "upstream-main");
+    let candidates = stack_candidates(&repo);
+    let main = status(&repo, "main", &candidates, Some(&up));
+    assert_eq!(
+        main.behind,
+        Behind::Behind {
+            base: "refs/remotes/origin/main".to_owned(),
+            count: 2
+        }
+    );
+    assert_eq!(main.pushed, Pushed::ToPull(2));
+}
+
+#[test]
+fn who_on_the_trunk_is_everyone() {
+    let (repo, candidates) = feature_by(&[BEA]);
+    repo.git(&["switch", "-q", "main"]);
+    repo.commit_as(CAL, "m2");
+    let candidates = vec![
+        repo.cand("main", CandidateKind::Trunk),
+        candidates[1].clone(),
+    ];
+    let main = status(&repo, "main", &candidates, None);
+    assert!(main.who.everyone);
+    assert!(main.who.first.is_empty());
+    // main's tip, m2: three minutes in (m1, f0, then m2).
+    assert_eq!(main.who.last.seconds, 1_700_000_000 + 180);
+}
+
+/// A branch `main` has taken in has no base: every candidate holds it. Its
+/// `Who` reads its own history from the tip down (m1 by Alice, f0 and f1
+/// by Bea).
+#[test]
+fn who_of_a_branch_with_no_base() {
+    let (repo, _) = feature_by(&[BEA, BEA]);
+    repo.git(&["switch", "-q", "main"]);
+    repo.git(&["merge", "-q", "--no-ff", "-m", "merge feature", "feature"]);
+    let candidates = vec![
+        repo.cand("main", CandidateKind::Trunk),
+        repo.cand("feature", CandidateKind::Other),
+    ];
+    let feature = status(&repo, "feature", &candidates, None);
+    assert!(feature.route.is_empty());
+    assert_eq!(feature.behind, Behind::NoBase);
+    assert_eq!(feature.merged, Merged::Into("refs/heads/main".to_owned()));
+    assert_eq!(first_names(&feature), ["Bea Brandt", "Alice Ames"]);
+    assert_eq!(feature.who.others, 0);
+    assert_eq!(feature.who.last.seconds, 1_700_000_000 + 180);
+}

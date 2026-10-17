@@ -49,7 +49,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Merged` (enum) — `MainLine`, `Into(name)`, `NotYet { into }`; a branch stacked on top is not a merge.
 - `Behind` (enum) — `NoBase`, `UpToDate { base }`, `Behind { base, count }`; the trunk against its upstream.
 - `Who` (struct) — `first` (≤2 author names), `others`, `everyone` (trunk), `last`.
-- `branch_status` (fn) — `(repo, branch, candidates, upstream, stop) -> Result<BranchStatus, RunError>`; reads only. **Fails today for the trunk and a branch with no base** (needs a graft-git read; ease-pass 01 handoff).
+- `branch_status` (fn) — `(repo, branch, candidates, upstream, stop) -> Result<BranchStatus, RunError>`; reads only.
 
 ## clash
 - `Clash` (struct) — `stash`, `why: PutBackWhy`, `paths` (unmerged after): `ApplyError::Clashed`'s payload.

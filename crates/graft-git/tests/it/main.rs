@@ -5,6 +5,7 @@
 
 mod blame;
 mod commit_graph;
+mod commits_from;
 mod compare_and_stash;
 mod corpus;
 mod diff_cases;

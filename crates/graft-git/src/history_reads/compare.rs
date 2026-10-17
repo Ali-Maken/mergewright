@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use graft_core::oid::Oid;
 
+use super::Range;
 use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -83,6 +84,23 @@ pub fn count_between(
             "rev-list --count printed {text:?}, not a count: {why}"
         ))
     })
+}
+
+/// The newest `cap` commits reachable from `include`, with no lower bound
+/// (`rev-list <include>`), oldest first: [`commits_between`](super::commits_between)
+/// without an `exclude`. For a tip's own commit, or the recent history of
+/// a branch nothing else holds apart (ease-pass 01).
+///
+/// # Errors
+/// [`RunError`] from the runner: git missing, stopped, or `include` naming
+/// no commit in this repository.
+pub fn commits_from(
+    repo: &RepoHandle,
+    include: Oid,
+    cap: usize,
+    stop: &dyn Stop,
+) -> Result<Range, RunError> {
+    super::rev_list(repo, cap, vec![GitArg::Oid(include)], stop)
 }
 
 /// [`only_in_stash`]'s answer.

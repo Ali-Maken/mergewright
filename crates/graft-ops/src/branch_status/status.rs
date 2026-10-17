@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use graft_core::commit::Timestamp;
 use graft_core::oid::Oid;
-use graft_git::history_reads::{CommitSummary, Range, commits_between, count_between};
+use graft_git::history_reads::{CommitSummary, commits_between, commits_from, count_between};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
 
@@ -162,7 +162,7 @@ pub fn branch_status(
 
     let own = match route.first() {
         Some(base) => commits_between(repo, base.tip, branch.tip, WHO_CAP, stop)?,
-        None => range_from_tip(repo, branch.tip, WHO_CAP, stop)?,
+        None => commits_from(repo, branch.tip, WHO_CAP, stop)?,
     };
     let who = who_of(&own.commits).ok_or_else(|| listed_nothing(branch))?;
 
@@ -218,7 +218,7 @@ fn trunk_status(
     stop: &dyn Stop,
 ) -> Result<BranchStatus, RunError> {
     let behind = counts.map_or(Behind::NoBase, |c| behind_by(&c.upstream.name, c.pull));
-    let tip = range_from_tip(repo, trunk.tip, 1, stop)?;
+    let tip = commits_from(repo, trunk.tip, 1, stop)?;
     let who = Who {
         first: Vec::new(),
         others: 0,
@@ -338,23 +338,4 @@ fn newest(commits: &[CommitSummary]) -> Option<Timestamp> {
         .iter()
         .map(|c| c.author.when)
         .max_by_key(|when| when.seconds)
-}
-
-/// The newest `cap` commits reachable from `tip`, no lower bound.
-///
-/// **Not built: always fails.** No graft-git read takes a tip alone with a
-/// stop (`commits_between` needs an `exclude`); ease-pass 01's handoff names
-/// the read to add. Until then the trunk's status, and `Who` for a branch
-/// with no base, fail here rather than show a made-up answer.
-fn range_from_tip(
-    _repo: &RepoHandle,
-    _tip: Oid,
-    _cap: usize,
-    _stop: &dyn Stop,
-) -> Result<Range, RunError> {
-    Err(RunError::Unparsable(
-        "the status of a branch with no base cannot be read yet: \
-         no read lists commits from a tip without a lower bound"
-            .to_owned(),
-    ))
 }
