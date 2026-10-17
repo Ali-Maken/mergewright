@@ -28,6 +28,7 @@ pub(crate) fn key(code: KeyCode) -> AppEvent {
 /// merge (row 1) folding a branch behind it, the cursor on row `cursor`.
 pub(crate) fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
     let commit = |byte: u8, parents: Vec<Oid>| Row {
+        drawn_parents: parents.clone(),
         commit: Commit {
             id: Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
             parents,
@@ -106,6 +107,7 @@ pub(super) fn facts(path: &str, branch: &str) -> RepositoryFacts {
         path: PathBuf::from(path),
         bare: false,
         head: Head::Branch(branch.as_bytes().to_vec()),
+        head_commit: None,
         mailmap: graft_git::mailmap::Mailmap::default(),
         commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
     }
@@ -116,6 +118,7 @@ pub(super) fn facts(path: &str, branch: &str) -> RepositoryFacts {
 /// copies of one row.
 pub(crate) fn rows(id: JobId, n: usize) -> AppEvent {
     let row = Row {
+        drawn_parents: Vec::new(),
         commit: Commit {
             id: Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
             parents: Vec::new(),

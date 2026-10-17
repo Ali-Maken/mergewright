@@ -116,7 +116,9 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
         AppEvent::Produced(id, Product::TopologicalOrder(sorted)) => {
             history::sorted(next, commands, id, sorted);
         }
-        AppEvent::Produced(_, Product::Repository(result)) => repository_answer(next, result),
+        AppEvent::Produced(_, Product::Repository(result)) => {
+            repository_answer(next, commands, result);
+        }
         AppEvent::Produced(id, Product::IndexState(read)) => {
             let mut local_jobs = next.local_jobs;
             clash::index_answered(next, commands, id, read, &mut || local_jobs.next_id());

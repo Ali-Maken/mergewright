@@ -49,6 +49,7 @@ pub(in crate::update) fn refresh_key(
     let walk = next_id();
     next.awaiting = Some(walk);
     commands.push(Command::OpenRepository);
+    next.facts_pending = true;
     commands.push(Command::ReadHistory(walk, Order::Topological));
     let refs = next_id();
     next.refs_read.asked(refs);

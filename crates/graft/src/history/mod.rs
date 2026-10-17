@@ -18,6 +18,7 @@
 //! and [`scroll`] moves [`History`] on screen.
 
 mod fold;
+pub mod parents;
 mod scroll;
 mod seeds;
 mod serve;

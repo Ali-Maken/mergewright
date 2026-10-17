@@ -140,6 +140,7 @@ fn esc_on_a_pending_journal_read_does_not_rerequest() {
             path: std::path::PathBuf::from("/code/api"),
             bare: false,
             head: crate::repository::Head::Branch(b"refs/heads/main".to_vec()),
+            head_commit: None,
             mailmap: graft_git::mailmap::Mailmap::default(),
             commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
         }),

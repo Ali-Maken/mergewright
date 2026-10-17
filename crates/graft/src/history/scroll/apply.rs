@@ -182,7 +182,11 @@ impl History {
 
     /// The request that fills a `height`-row viewport where it is now, if the
     /// rows held do not already. For a walk just started, and after a resize.
+    /// Nothing while [`History::head_pending`].
     pub fn show(&mut self, height: usize) -> Option<RowRequest> {
+        if self.head_pending {
+            return None;
+        }
         self.wanted(height.max(1), false)
     }
 

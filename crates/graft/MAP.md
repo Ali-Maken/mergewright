@@ -76,7 +76,7 @@ The first-launch line: for his first launches, until he opens the palette, the s
 - `FirstLaunch` (struct) — whether the line is shown this launch, and the count it reads and writes.
 ## history
 Reading history for the screen: `graft-git`'s walk meets `graft-graph`'s layout here, laid out as it arrives.
-- `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase.
+- `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase; `head_pending` while the first request waits for `HEAD` (ease-pass 06 D2).
 - `Window` (struct) — the laid-out rows the screen currently holds, with each row's `RowFold`.
 - `RowFold` (struct) — `folds`, `inside`: does a merge row fold a branch; the opened merge a row sits inside.
 - `Inside` (struct) — `merge`, `label`: an opened merge and the branch name its subject gives.
@@ -84,6 +84,10 @@ Reading history for the screen: `graft-git`'s walk meets `graft-graph`'s layout 
 - `RowRequest` (struct) — the rows a move needs, sent to the worker.
 - `Phase` (enum) — where the walk is: streaming, complete, and so on.
 - `preview_seeds` (fn) — ghost lanes' colours from the refs, for Ghost Preview.
+## history::parents
+A row's parents for everything but drawing (ease-pass 06 D1).
+- `of` (fn) — `(row, refs) -> &[Oid]`; the real parents, a stash entry's first only.
+- `is_merge` (fn) — `(row, refs) -> bool`; a folded merge is one, a stash entry is not.
 ## history::fold
 Folding by default in the worker: lays out mending the provisional order's repairs, reads each row's fold facts, and finds the merge a folded commit hides behind.
 ## history::scroll
@@ -187,7 +191,7 @@ The repository kept open for the run, lent to jobs one at a time: a handle is no
 - `StoreError` (enum) — why the store could not open or refresh.
 ## repository
 What Graft reads from a repository at startup and keeps.
-- `RepositoryFacts` (struct) — path, bare, `HEAD`, mailmap, commit-graph.
+- `RepositoryFacts` (struct) — path, bare, `HEAD`, `head_commit` (the commit it resolves to), mailmap, commit-graph.
 - `Head` (enum) — where `HEAD` points.
 - `CommitGraphFact` (enum) — present, absent, shallow or unreadable.
 ## search

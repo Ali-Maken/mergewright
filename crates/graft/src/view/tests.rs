@@ -49,6 +49,7 @@ fn open(head: Head) -> AppState {
             path: std::path::PathBuf::from("/code/api"),
             bare: false,
             head,
+            head_commit: None,
             mailmap: graft_git::mailmap::Mailmap::default(),
             commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
         }),
@@ -2608,6 +2609,7 @@ fn commit_editor_state(columns: u16, rows: u16) -> AppState {
         path: std::path::PathBuf::from("/code/api"),
         bare: false,
         head: Head::Branch(b"main".to_vec()),
+        head_commit: None,
         mailmap: graft_git::mailmap::Mailmap::default(),
         commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
     });

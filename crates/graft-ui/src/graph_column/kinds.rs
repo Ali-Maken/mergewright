@@ -37,11 +37,11 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    /// The kind a row's own parents give it. `HEAD`, stash and uncommitted
+    /// The kind a row's drawn parents give it. `HEAD`, stash and uncommitted
     /// are facts about refs, not the graph, so the caller says those.
     #[must_use]
     pub fn of(row: &Row) -> NodeKind {
-        match row.commit.parents.len() {
+        match row.drawn_parents.len() {
             0 => NodeKind::Root,
             1 => NodeKind::Commit,
             _ => NodeKind::Merge,

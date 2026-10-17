@@ -44,6 +44,7 @@ fn who() -> Identity {
 
 fn row(id: u8, parents: &[u8]) -> Row {
     Row {
+        drawn_parents: parents.iter().copied().map(oid).collect(),
         commit: Commit {
             id: oid(id),
             parents: parents.iter().copied().map(oid).collect(),

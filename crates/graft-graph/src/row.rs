@@ -17,8 +17,15 @@ use crate::merge_name::recover_branch_name;
 /// check that a rebuild reproduced them (DESIGN.md §3.6).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Row {
-    /// The commit this row draws.
+    /// The commit as the repository has it: `commit.parents` is every real
+    /// parent under every inclusion (fold, opened merges, first-parent
+    /// view, hidden stashes). Anything that reasons about the commit, or
+    /// builds a git write, reads this (ease-pass 06 D1).
     pub commit: Commit,
+    /// The parents this view draws an edge to, in order — the same ids as
+    /// [`Row::outgoing`]: the real parents trimmed by the fold, the
+    /// first-parent view and hidden stashes. Drawing only.
+    pub drawn_parents: Vec<Oid>,
     /// This commit's own column: the lane it continues, or a freshly opened
     /// one if none was waiting for it.
     pub lane: usize,
@@ -186,19 +193,30 @@ pub enum AssembleError {
 }
 
 impl Row {
-    /// `commit.parents` := the shape's outgoing parents' ids, in order (the
-    /// parents the view shows); `lanes` resolved through `names`.
+    /// Whether the commit is a merge as the repository has it: two or more
+    /// real parents, whatever the view draws. The one answer to "is this a
+    /// merge" outside drawing. A stash entry is a merge to the repository
+    /// too; a row cannot tell one apart (the refs can), so callers that
+    /// must exclude stash entries check the refs as well.
+    #[must_use]
+    pub fn is_merge(&self) -> bool {
+        self.commit.parents.len() >= 2
+    }
+
+    /// `drawn_parents` := the shape's outgoing parents' ids, in order (the
+    /// parents the view shows); `commit` kept as read, every real parent
+    /// included; `lanes` resolved through `names`.
     ///
     /// # Errors
     ///
     /// If a merge lane on the row is missing from `names`.
     pub fn assemble(
         shape: RowShape,
-        mut commit: Commit,
+        commit: Commit,
         names: &MergeNames,
         id_of: &dyn Fn(CommitHandle) -> Oid,
     ) -> Result<Row, AssembleError> {
-        commit.parents = shape
+        let drawn_parents = shape
             .outgoing
             .iter()
             .map(|&(_, parent)| id_of(parent))
@@ -215,6 +233,7 @@ impl Row {
             .collect::<Result<_, _>>()?;
         Ok(Row {
             commit,
+            drawn_parents,
             lane: shape.lane,
             incoming: shape.incoming,
             outgoing,

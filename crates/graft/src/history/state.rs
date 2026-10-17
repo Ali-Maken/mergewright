@@ -281,6 +281,10 @@ pub struct History {
     /// history unasked ([`HistoryUpdate::LaidOut`]); `None` until then. Kept
     /// as heard: nothing is drawn from it yet.
     pub laid_out: Option<usize>,
+    /// The first request waits for `HEAD`'s commit, so the walk starts
+    /// with it kept and a launch lays out once (ease-pass 06 D2): `show`
+    /// asks nothing until the opening or the refs say where `HEAD` is.
+    pub head_pending: bool,
 }
 
 impl History {
@@ -303,6 +307,7 @@ impl History {
             strip_rows: None,
             outstanding: None,
             laid_out: None,
+            head_pending: false,
         }
     }
 }

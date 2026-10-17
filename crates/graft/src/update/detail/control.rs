@@ -128,7 +128,7 @@ pub fn open_explain(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -
         .filter(|row| row.commit.id == oid)
         .map(|row| {
             (
-                row.commit.parents.clone(),
+                crate::history::parents::of(row, state.refs.as_deref()).to_vec(),
                 String::from_utf8_lossy(row.commit.subject()).into_owned(),
             )
         });

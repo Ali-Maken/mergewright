@@ -165,6 +165,7 @@ fn label_entry<'a>(ghost: &graft_graph::row::Row, label: &str) -> GraphEntry<'a>
         // row fresh every frame and nothing else holds it. It keeps the
         // ghost's synthetic id only because a `Row` must have one.
         commit: ghost.commit.clone(),
+        drawn_parents: ghost.drawn_parents.clone(),
         lane: ghost.lane,
         incoming: Vec::new(),
         outgoing: Vec::new(),

@@ -56,7 +56,7 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
         .and_then(|history| history.row_at(row))
     {
         let id = entry.commit.id;
-        let parents = entry.commit.parents.clone();
+        let parents = crate::history::parents::of(entry, next.refs.as_deref()).to_vec();
         let subject = String::from_utf8_lossy(entry.commit.subject()).into_owned();
         let findings = crate::view::radar::findings_for(next, id, &parents, &subject);
         marked = !findings.is_empty();

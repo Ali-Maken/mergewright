@@ -297,6 +297,7 @@ mod tests {
             path: std::path::PathBuf::from("/repo"),
             bare: false,
             head: Head::Branch(b"main".to_vec()),
+            head_commit: None,
             mailmap: graft_git::mailmap::Mailmap::default(),
             commit_graph: CommitGraphFact::Absent { declined: false },
         });

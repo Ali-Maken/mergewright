@@ -159,7 +159,8 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `made_on` (fn) — `made_on(&Row) -> Option<BranchIdentity>`: `row.lanes[row.lane]`; `None` when unnamed or out of range.
 
 ## row
-- `Row` (struct) — one laid-out commit: `commit`, `lane`, `incoming`, `outgoing`, `lanes`, `marker`.
+- `Row` (struct) — one laid-out commit: `commit` (every real parent, under every inclusion), `drawn_parents` (the view's trimmed parents; drawing only), `lane`, `incoming`, `outgoing`, `lanes`, `marker`.
+- `Row::is_merge` (fn) — two or more real parents; the answer outside drawing (stash entries are the caller's to exclude).
 - `Row::assemble` (fn) — `assemble(shape, commit, &MergeNames, id_of) -> Result<Row, AssembleError>`; hydrate a shape.
 - `RowShape` (struct) — a row before hydration, by handle; `Hash` for chunk fingerprints.
 - `MergeNames` (struct) — merge-lane names for one batch; `gather`, `reads`, `resolve`.

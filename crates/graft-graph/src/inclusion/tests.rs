@@ -15,6 +15,7 @@ use crate::row::Row;
 use crate::seeds::BranchSeed;
 
 mod fold_by_default;
+mod real_parents;
 
 /// A walk held in memory, readable by id.
 struct VecSource {
@@ -98,8 +99,21 @@ fn ids(commits: &[Commit]) -> Vec<Oid> {
     commits.iter().map(|commit| commit.id).collect()
 }
 
-/// Lays out to the end, repairs included, and reads every row back.
+/// Lays out to the end, repairs included, and reads every row back as
+/// drawn: `commit.parents` set to `drawn_parents`, which is what a row of
+/// the slice form (laid out from trimmed commits) holds in both.
 fn all_rows(layout: &mut StreamingLayout<Included<VecSource>>) -> Vec<Row> {
+    all_rows_as_read(layout)
+        .into_iter()
+        .map(|mut row| {
+            row.commit.parents.clone_from(&row.drawn_parents);
+            row
+        })
+        .collect()
+}
+
+/// [`all_rows`] with each commit as read: every real parent.
+fn all_rows_as_read(layout: &mut StreamingLayout<Included<VecSource>>) -> Vec<Row> {
     let advance = advance_folded(layout, usize::MAX, &never).expect("in memory");
     assert!(advance.done);
     layout.rows(0..layout.rows_emitted()).expect("in memory")

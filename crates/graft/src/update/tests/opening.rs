@@ -23,6 +23,7 @@ fn every_field_spelled_out() -> AppState {
         },
         repo_path: PathBuf::from("/code/api"),
         repository: Some(facts("/code/api", "main")),
+        facts_pending: true,
         system_git: None,
         commit_graph: CommitGraphOffer::NotNeeded,
         awaiting: None,

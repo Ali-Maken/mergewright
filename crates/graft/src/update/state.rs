@@ -61,6 +61,9 @@ pub struct AppState {
     /// What the repository turned out to be, once the job that opened it has
     /// answered. `None` until then, which is the first frame.
     pub repository: Option<RepositoryFacts>,
+    /// An opening was asked beside a walk and has not answered: the walk's
+    /// first request waits for its `HEAD` (ease-pass 06 D2).
+    pub facts_pending: bool,
     /// What the system `git` turned out to be, once that job has answered.
     pub system_git: Option<GitCheck>,
     /// Where Graft's offer to build a missing commit-graph file is

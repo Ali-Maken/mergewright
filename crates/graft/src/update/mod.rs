@@ -117,6 +117,7 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     };
     let walk = state.local_jobs.next_id();
     state.awaiting = Some(walk);
+    state.facts_pending = true;
     let refs = state.local_jobs.next_id();
     state.refs_read.asked(refs);
     let tree = state.local_jobs.next_id();
