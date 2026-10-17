@@ -4,9 +4,9 @@
 
 mod chords;
 mod clash;
-mod ease;
 mod literals;
 mod rules;
+mod screen_keys;
 mod spelling;
 mod table;
 mod translate;

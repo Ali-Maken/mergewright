@@ -107,6 +107,24 @@ pub const CONTRAST_RULES: &[ContrastRule] = &[
         bg: Token::Bg,
         min: 4.5,
     },
+    // The graph's role lines the eye has to find (ADR-0063): WCAG 1.4.11's
+    // non-text floor, as `role_tokens_clear_the_non_text_floor_on_bg` holds
+    // the built-in tables to. `role-other` is the grey and has none.
+    ContrastRule {
+        fg: Token::RoleThis,
+        bg: Token::Bg,
+        min: 3.0,
+    },
+    ContrastRule {
+        fg: Token::RoleUnder,
+        bg: Token::Bg,
+        min: 3.0,
+    },
+    ContrastRule {
+        fg: Token::RoleTrunk,
+        bg: Token::Bg,
+        min: 3.0,
+    },
 ];
 
 /// The colour the lift heads for on `bg`: white where white contrasts more,

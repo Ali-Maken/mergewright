@@ -1,6 +1,6 @@
 # vocabulary-fixes — the opened merge row's bar as the mock; bar modules named for what they hold; size ratchets back down
 
-Status: ready
+Status: partial (Minor 5 words blocked: needs graft `update/palette/editor_tests.rs`)
 Blocked by: 03b-ease-vocabulary-rest (merged)
 Build with: Sonnet (builder-sonnet) — the decisions are made below and every change is pinned by a hint, sweep or golden test; no structural choice is left to the builder. Scout skipped: review 03 names every line this ticket touches (`docs/reviews/ease-pass-03.md`); conductor may add one.
 Needs: none. Feeds: 05b (`ClashBar { at, roles }`, `BannerPaused { merge }`), 07 (`RowBar::OpenedMerge`, `keymap/tests/screen_keys.rs`), 11 (`ClashBar`, file names shortened in the bar), 12 (where `ReviewBar` goes).
@@ -59,18 +59,29 @@ pub fn bar_name(full: &SanitizedText) -> &str;
 Every `RowBar`/`ClashBar`/`BannerPaused` match in graft-ui (`lists/rows.rs`, `lists/clash.rs`, `lists.rs:315-335`, `catalogue`, `doorway.rs`, `filters.rs`, `hints.rs` floor) and in graft (grep above); hint snapshots (none may change words except the floor's `esc close` → `esc pause` on a `Clash` context — list each `.snap` edited in NOTES); the width sweeps (`hints/tests.rs::all_contexts` keeps `Clash` out as 03b did); `bar_keys::every_key_the_bar_draws_is_answered`; `tests/no_literal_keys.rs`; man page (three description lines differ, nothing else — diff); `tests/keymap_ids.txt` (unchanged); `keymap/clash.rs:21` clash check; theme snapshot `graft_ui__theme__tests__resolved_values.snap` (unchanged — the move is code only); override warnings tests (new rule); graft-ui MAP.md; specs 05b, 07, 11, 12 (already updated for these names).
 
 ## Acceptance
-- [ ] `RowBar::OpenedMerge` at 120 cols draws exactly `space hide the commits inside · ⏎ open · x compare` then the row-bar tail and `. more`; `Opened` no longer exists (compile); every `RowBar`'s whole 120-col bar pinned (`each_row_bar_draws_the_mock_bar_at_120_columns`).
-- [ ] `ClashBar { at: FileSolved { next: "docs/notes.md" }, roles: <merge> }` draws `n next file: notes.md`; `is_merge()` true only for the merge roles; a rebase's roles at `AllSolved` draw no `y` (test names).
-- [ ] `BannerPaused { merge: true }` and `{ merge: false }` both lead `⏎ back to the clashes` and otherwise equal the `Banner { merge, conflicted: true }` lists; the replaced hint is found by `is(OPEN)` (test with `OPEN` moved off index 0).
-- [ ] `Clash` at 40 cols: bar is `esc pause`; the 40-column sentence gone (`lists/clash.rs` doc).
-- [ ] No file named `ease.rs` under `crates/graft-ui/src` (`find`), public paths unchanged (graft compiles with only the three named graft files touched, or blocked as above).
-- [ ] `over_400.txt`: `hints/context.rs` ≤511 (or removed under 400), `theme/mod.rs` ≤410, `keymap/table.rs` ≤513; graft's ratchet test green; no other line raised.
-- [ ] `keymap/tests/screen_keys.rs` holds every test `keymap/tests/ease.rs` held, same names, same assertions (NOTES gives the count); `action_ids_match_the_golden_list` green; man page diff is the three `commit.toggle_*` descriptions only.
-- [ ] A `role-this` override at 1.1:1 warns (`contrast_misses` test).
-- [ ] graft sweeps green: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`, the `screen_for`/`classified_form` sweeps. Each tick names its test.
+- [x] `RowBar::OpenedMerge` at 120 cols draws exactly `space hide the commits inside · ⏎ open · x compare` then the row-bar tail and `. more`; `Opened` no longer exists (compile); every `RowBar`'s whole 120-col bar pinned (`each_row_bar_draws_the_mock_bar_at_120_columns`). — `tests::bars::each_row_bar_draws_the_mock_bar_at_120_columns`, `the_opened_merge_bar_shortens_to_space_hide`
+- [x] `ClashBar { at: FileSolved { next: "docs/notes.md" }, roles: <merge> }` draws `n next file: notes.md`; `is_merge()` true only for the merge roles; a rebase's roles at `AllSolved` draw no `y` (test names). — `a_clash_bar_names_the_next_file_by_its_last_segment`, `a_clash_bar_is_a_merge_only_for_the_merge_roles`
+- [x] `BannerPaused { merge: true }` and `{ merge: false }` both lead `⏎ back to the clashes` and otherwise equal the `Banner { merge, conflicted: true }` lists; the replaced hint is found by `is(OPEN)` (test with `OPEN` moved off index 0). — `the_paused_banner_leads_back_to_the_clashes`, `the_paused_banner_replaces_open_by_identity`
+- [x] `Clash` at 40 cols: bar is `esc pause`; the 40-column sentence gone (`lists/clash.rs` doc). — `a_clash_bar_below_the_resolver_floor_says_only_pause`
+- [x] No file named `ease.rs` under `crates/graft-ui/src` (`find`), public paths unchanged (graft compiles with only the three named graft files touched, or blocked as above). — `find crates/graft-ui/src -name ease.rs` empty; graft compiles, only the three named graft files touched
+- [x] `over_400.txt`: `hints/context.rs` ≤511 (or removed under 400), `theme/mod.rs` ≤410, `keymap/table.rs` ≤513; graft's ratchet test green; no other line raised. — `file_size` ratchet test (graft it): context.rs 489, table.rs 452, theme/mod.rs 355 (line dropped)
+- [ ] `keymap/tests/screen_keys.rs` holds every test `keymap/tests/ease.rs` held, same names, same assertions (NOTES gives the count); `action_ids_match_the_golden_list` green; man page diff is the three `commit.toggle_*` descriptions only. — rename + 6 tests held (git rename, unchanged content), `action_ids_match_the_golden_list` green; man page unchanged because the three descriptions are **not** changed (blocked, NOTES) → left unticked
+- [x] A `role-this` override at 1.1:1 warns (`contrast_misses` test). — `theme::overrides::tests::a_role_this_override_near_bg_misses_its_floor`
+- [x] graft sweeps green: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`, the `screen_for`/`classified_form` sweeps. Each tick names its test. — workspace nextest run (see NOTES)
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 Medium (~50k). Split point: renames, moves and ratchets (Major 3) as their own commit first; bars and minors second.
+
+## NOTES (builder 03r, 2026-10-17)
+- Scout: none — the review names every line; the grep in Scope was the check (hits only in the two named graft test files).
+- **Blocked: Minor 5 words.** `crates/graft/src/update/palette/editor_tests.rs:79-81,98,123` match the three `commit.toggle_*` labels exactly; renaming them fails those tests, and the file is outside this ticket's crate set (06c holds `update::palette`). Labels left as they were; man page unchanged. Next step: change the three labels in `keymap/table/commit_editor.rs` to `…: on / off`, the five strings in `editor_tests.rs`, regenerate `docs/man/mwr.1`. Minor 8 comment done.
+- Whole-bar pins at 120 cols end `u undo · . actions · ? keys` (the bar end drawn whole at this width; `. more` is its short rung) — the ticket's "`. more`" text is the narrow form.
+- `theme/mod.rs` ratchet: moved the lane-colour methods (`lane`, `lane_muted`, `branch_muted`, `fades_by_hue`, `raster_lanes`, `raster_muted`, `branch`) to an `impl Theme` in `theme/lanes.rs`, not the role tokens (they sit inside `Token`'s enum/match; not separable).
+- `keymap/table.rs`: §2.6 resolver and §2.10 commit-editor rows moved to `keymap/table/{resolver,commit_editor}.rs`; `defaults()` joins the five slices once (`LazyLock`) in today's order. `action_ids_match_the_golden_list` holds the order.
+- `CONTRAST_RULES` gains three rules (role-this/under/trunk on bg, 3.0) — `role-other` has no floor.
+- `graph_screen/tests.rs` (graft-ui) edited for the renames: `COVERAGE_SLOTS` 135 → 136 (`BannerPaused` per operation).
+- Snapshots: none edited (no `.snap` changed).
+- Two clashing files with the same last segment read alike in the clash bar — mock-exact; usability-walk question.

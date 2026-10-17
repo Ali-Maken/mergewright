@@ -154,3 +154,21 @@ fn a_ratio_is_floored_so_a_miss_never_reads_as_its_floor() {
     };
     assert_eq!(miss.words(), "selection on bg 2.9:1 — under 3.0");
 }
+
+/// A role colour set near the background (review ease-pass-03, Minor 11):
+/// `role-this` at about 1.1:1 on `bg` misses the 3.0 non-text floor and
+/// says so, as `selection` does.
+#[test]
+fn a_role_this_override_near_bg_misses_its_floor() {
+    let bg = built_in(ThemeKind::Dark, Token::Bg);
+    let near = rgb(
+        bg.red.saturating_add(12),
+        bg.green.saturating_add(12),
+        bg.blue.saturating_add(12),
+    );
+    let ratio = contrast(near, bg);
+    assert!((1.1..1.2).contains(&ratio), "{ratio}");
+    let misses = contrast_misses(ThemeKind::Dark, &[(Token::RoleThis, near)]);
+    let words: Vec<String> = misses.iter().map(ContrastMiss::words).collect();
+    assert_eq!(words, ["role-this on bg 1.1:1 — under 3.0"]);
+}

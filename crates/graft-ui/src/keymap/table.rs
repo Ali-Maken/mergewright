@@ -10,12 +10,17 @@
 //! **Adding a row edits `crates/graft-ui/tests/keymap_ids.txt` in the same
 //! commit. Renaming one breaks his config: keep the old id as an alias.**
 
+use std::sync::LazyLock;
+
 use super::{ActionId, Binding, ContextId, KeyChord, KeyCode};
+
+mod commit_editor;
+mod resolver;
 
 /// Every action, grouped by context in `ContextId::ALL` order.
 #[must_use]
 pub fn defaults() -> &'static [Binding] {
-    DEFAULTS
+    &DEFAULTS
 }
 
 const fn b(
@@ -63,7 +68,23 @@ use ContextId::{
     Graph, History, Journal, Map, Palette, Picker, Preview, Resolver, Rewrite, Stash, Tour,
 };
 
-const DEFAULTS: &[Binding] = &[
+/// The rows in the man page's and `?`'s order: the blocks kept in their own
+/// files sit where they would here.
+static DEFAULTS: LazyLock<Vec<Binding>> = LazyLock::new(|| {
+    [
+        BEFORE_RESOLVER,
+        resolver::ROWS,
+        BANNER_TO_STASH,
+        commit_editor::ROWS,
+        FROM_JOURNAL,
+    ]
+    .iter()
+    .flat_map(|rows| rows.iter())
+    .map(|row| Binding { ..*row })
+    .collect()
+});
+
+const BEFORE_RESOLVER: &[Binding] = &[
     // §2.2 Global.
     b(
         "app.palette",
@@ -285,62 +306,9 @@ const DEFAULTS: &[Binding] = &[
     ),
     b("diff.file_history", Diff, &[k('F')], "This file's history"),
     b("diff.fold_dir", Diff, &[SPACE], "Fold / unfold a directory"),
-    // §2.6 Conflict resolver.
-    b("resolver.take_ours", Resolver, &[k('o')], "Take ours"),
-    b("resolver.take_theirs", Resolver, &[k('t')], "Take theirs"),
-    b("resolver.take_both", Resolver, &[k('b')], "Take both"),
-    b(
-        "resolver.all_ours",
-        Resolver,
-        &[ctrl('o')],
-        "Ours in every block",
-    ),
-    b(
-        "resolver.all_theirs",
-        Resolver,
-        &[ctrl('t')],
-        "Theirs in every block",
-    ),
-    b(
-        "resolver.file_ours",
-        Resolver,
-        &[k('O')],
-        "Ours for the whole file, done",
-    ),
-    b(
-        "resolver.file_theirs",
-        Resolver,
-        &[k('T')],
-        "Theirs for the whole file, done",
-    ),
-    b("resolver.base", Resolver, &[k('B')], "Show / hide BASE"),
-    b(
-        "resolver.start_over",
-        Resolver,
-        &[k('d')],
-        "Start this file over",
-    ),
-    b("resolver.next_block", Resolver, &[k('n')], "Next block"),
-    b("resolver.prev_block", Resolver, &[k('N')], "Previous block"),
-    b("resolver.finish", Resolver, &[k('c')], "Finish"),
-    b(
-        "resolver.mark_done",
-        Resolver,
-        &[ENTER],
-        "Mark this file done",
-    ),
-    b(
-        "resolver.edit",
-        Resolver,
-        &[k('e')],
-        "Open $EDITOR at this block",
-    ),
-    b(
-        "resolver.mergetool",
-        Resolver,
-        &[k('M')],
-        "Launch the mergetool",
-    ),
+];
+
+const BANNER_TO_STASH: &[Binding] = &[
     // §2.6a Operation banner (`⏎` is `app.open`, `q` is `app.quit`).
     b("operation.continue", Banner, &[k('c')], "Continue"),
     b("operation.skip", Banner, &[k('s')], "Skip this commit"),
@@ -431,58 +399,9 @@ const DEFAULTS: &[Binding] = &[
     ),
     b("stash.preview", Stash, &[SPACE], "Preview the diff"),
     b("stash.close", Stash, &[k('S')], "Close the stash list"),
-    // §2.10 Commit message editor (a text field: fixed).
-    b(
-        "commit.commit",
-        CommitEditor,
-        &[KeyChord::ctrl_code(KeyCode::Enter)],
-        "Commit",
-    ),
-    b("commit.next_field", CommitEditor, &[TAB], "Next field"),
-    b(
-        "commit.prev_field",
-        CommitEditor,
-        &[BACKTAB],
-        "Previous field",
-    ),
-    b(
-        "commit.edit_outside",
-        CommitEditor,
-        &[ctrl('e')],
-        "Open $EDITOR instead",
-    ),
-    b(
-        "commit.sign_off",
-        CommitEditor,
-        &[ctrl('s')],
-        "Insert a sign-off trailer",
-    ),
-    b(
-        "commit.co_author",
-        CommitEditor,
-        &[ctrl('C')],
-        "Insert a co-author trailer",
-    ),
-    // Ease pass (Q8 a): the options are off the commit screen, so no key;
-    // `?` and `⌃P` list them while it is open.
-    b(
-        "commit.toggle_amend",
-        CommitEditor,
-        &[],
-        "Amend the last commit",
-    ),
-    b(
-        "commit.toggle_no_verify",
-        CommitEditor,
-        &[],
-        "Skip the commit hooks",
-    ),
-    b(
-        "commit.toggle_allow_empty",
-        CommitEditor,
-        &[],
-        "Allow an empty commit",
-    ),
+];
+
+const FROM_JOURNAL: &[Binding] = &[
     // §2.11 Undo journal browser.
     b(
         "journal.revert",

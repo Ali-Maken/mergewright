@@ -27,7 +27,7 @@ pub(super) fn whole_bar(
         // where the keys are the point (ADR-0058 §4) swallow `?` or type it,
         // so a doorway there would be a dead key.
         HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
@@ -348,7 +348,7 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         && !matches!(
             context,
             HintContext::Banner { .. }
-                | HintContext::BannerPaused
+                | HintContext::BannerPaused { .. }
                 | HintContext::Dragging
                 | HintContext::Picker
                 | HintContext::PickerOnCurrent
