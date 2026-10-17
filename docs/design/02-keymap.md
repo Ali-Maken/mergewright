@@ -277,6 +277,9 @@ whether the write can stop halfway:
 | `H` | Hide / show the stash in the graph (m1/15) |
 | `Enter` (on a graph row) | Open the detail pane on that commit (peek (M1) → open details (M2), ADR-0023, m2-details-and-diffs/10) |
 | `y` | Copy the selected commit's SHA to the clipboard (OSC 52) (ADR-0023, m1/45) |
+| `#` | **Proposed (ADR-0063)** — `graph.colours_off`: colours off / on for the whole screen until you quit; lines keep their shapes (ease pass Q3 a). Lands in the table with its handler (G): an unanswered row fails `graft`'s dead-key sweep |
+
+**Proposed (ADR-0063)** — fold default: merged branches open folded (`▸ N commits from <branch>`); `Space` on a merge opens it (`▾`), `Space` on an opened row closes it and puts the cursor on the merge (PROMPT §1.3 default changes; same key, same meaning as the `Space` row above). `C` stays the branch picker (Q1 a) and `x` stays mark/compare (Q2 a); only the bar's words change (`C switch to <branch>`, `x compare`).
 
 ### 2.3a Map view
 
@@ -296,6 +299,8 @@ whether the write can stop halfway:
 | `R` | In a rebase preview showing `already in main: … · dropped`: open the rewrite editor (§2.7) on that rebase, those commits pre-marked `d`; `p` keeps one, `y` starts, `Esc` back to the graph. Same meaning as §2.3 `R` (opens the rewrite editor, §2.1 UPPERCASE opens a place). Not offered in any other preview (planner, 2026-09-27, scout 05) |
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
+
+**Proposed (ADR-0063)** — the merge preview (`m`) has no buttons: `y` merges, `Esc` cancels, `Enter` lists the incoming commits (`Esc` back to the preview, `y` merges from there). Scoped by preview kind (Q6 a): every other preview keeps its buttons and `Enter` takes the choice under the cursor. No table row: `Enter` stays hard-matched in the preview's handler (Mp).
 
 ### 2.3c Confirm box
 
@@ -352,6 +357,18 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `M` | Launch the configured external mergetool on this file |
 | `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |
 
+**Proposed (ADR-0063)** — the clash screen (ease pass; Q7 a, Q12 a):
+
+| Key | Action |
+|---|---|
+| `o` / `t` / `b` | Take yours / theirs / both, then advance to the next open clash **in this file**; a solved file stays on screen with `✓ Every clash in <file> is solved.` and the next step |
+| `n` | Next **open** clash in the whole merge (was: next block, taken ones included) |
+| `u` | Undo the last pick: that clash opens again, the cursor on it (also from the review, §2.6b). Resolver-local; see §2.6a |
+| `y` | In a merge, when every clash is solved: the review (§2.6b), `resolver.review`. Not drawn and not answered in a rebase, cherry-pick, revert or stash clash, where `c` goes on as today. Lands in the table with its handler (P) |
+| `c` | Unchanged; in a merge an alias of `y`, not on the bar |
+| `Esc` | Pause: back to the graph with the merge's banner selected; `Enter` there goes back to the first open clash (Q7 a). Same `app.back` row; the bar says `esc pause, come back later` |
+| `Enter` | Not offered in a merge: picks advance, so there is no "mark done" step; P11's auto-open of the summary is dropped (the review opens on `y`) |
+
 Rows marked P2, P3, P6–P8 were approved 2026-09-23 (`docs/field-notes.md`;
 `docs/design-notes/m6-conflicts.md` Amendments 1–2; layout ADR-0043). P11,
 the `n` wording and `d` on a whole-file choice were approved 2026-09-24
@@ -403,6 +420,12 @@ an `edit` stop, where `a` amends the stopped commit (Amended 2026-09-26 (M7, use
 the banner's `c` (§2.4, P14).
 A bisect draws no banner until M7, so it is not covered by this rule.
 
+**Proposed (ADR-0063)** — `u` inside the resolver and the merge review
+undoes the **last pick** of the operation (the clash opens again, cursor on
+it), not a journal entry: the refusal above still holds on the banner and
+the graph. A merge paused from the clash screen (`Esc`) leads the banner's
+bar with `⏎ back to the clashes`.
+
 ### 2.6b Finish summary
 
 Opened by `c` for a merge (§2.6, §2.6a, §2.4), and by itself when the last
@@ -426,6 +449,13 @@ page keys approved 2026-09-24; `docs/design-notes/m6-conflicts.md` Amendment
 | `PgUp` / `PgDn` | Page the file list (§2.2) |
 | `Tab` / `Shift+Tab` | Move focus files → subject → body → files, and back |
 | `Ctrl+E` | Open the message in `$EDITOR` (§2.10) |
+
+**Proposed (ADR-0063)** — for a merge the review replaces this summary: `y`
+commits the merge, `j`/`k` move, `Enter`/`Space` open the read-only **look**
+at the cursor file (no inline diff; same `finish.toggle_diff` row), `u`
+undoes the last pick (§2.6a), `Esc` back to the clashes (`y` brings you
+here again). In the look: `Esc` back to the review, `y` commits the merge.
+Other operations keep the summary above.
 
 ### 2.7 Interactive rebase editor
 
@@ -497,6 +527,15 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 | `Ctrl+S` | Insert a sign-off trailer |
 | `Ctrl+Shift+C` | Insert a co-author trailer |
 | `Esc` | Cancel |
+
+**Proposed (ADR-0063)** — the commit screen: `Tab` moves subject → body →
+files (the options row is gone); `Esc` in the body back to the subject, in
+the files back to the subject, in the subject closes (message kept for the
+next `c` this run); in the files `j`/`k` move, `Space` puts a file in or
+out, `Enter` commits. The subject counter is 72 (was 50). The options
+(amend, skip hooks, allow empty) have no key: `commit.toggle_amend`,
+`commit.toggle_no_verify`, `commit.toggle_allow_empty`, listed in `?` and
+`Ctrl+P` while the screen is open (Q8 a); `Ctrl+S` still signs off.
 
 ### 2.11 Undo journal browser
 

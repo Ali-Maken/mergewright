@@ -4,6 +4,7 @@
 
 mod chords;
 mod clash;
+mod ease;
 mod literals;
 mod rules;
 mod spelling;

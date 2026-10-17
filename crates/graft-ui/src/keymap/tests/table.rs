@@ -45,13 +45,22 @@ fn ids_are_unique_well_formed_and_prefixed_by_their_context() {
     }
 }
 
+/// The rows with no key out of the box.
+const KEYLESS: [&str; 4] = [
+    "app.suspend",
+    "commit.toggle_amend",
+    "commit.toggle_no_verify",
+    "commit.toggle_allow_empty",
+];
+
 #[test]
 fn every_action_has_a_default_and_no_context_binds_one_chord_twice() {
     for &ctx in ContextId::ALL {
         let mut seen: Vec<(KeyChord, &str)> = Vec::new();
         for b in defaults().iter().filter(|b| b.context == ctx) {
-            // `app.suspend` has a key only with `suspend_on_ctrl_z` (m8/09c, D2).
-            if b.action.0 != "app.suspend" {
+            // `app.suspend` has a key only with `suspend_on_ctrl_z` (m8/09c,
+            // D2); the commit options have none (ease-pass/03, Q8 a).
+            if !KEYLESS.contains(&b.action.0) {
                 assert!(!b.default.is_empty(), "{} has no default", b.action.0);
             }
             for c in b.default {

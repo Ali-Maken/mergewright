@@ -463,6 +463,26 @@ const DEFAULTS: &[Binding] = &[
         &[ctrl('C')],
         "Insert a co-author trailer",
     ),
+    // Ease pass (Q8 a): the options are off the commit screen, so no key;
+    // `?` and `⌃P` list them while it is open.
+    b(
+        "commit.toggle_amend",
+        CommitEditor,
+        &[],
+        "Amend the last commit",
+    ),
+    b(
+        "commit.toggle_no_verify",
+        CommitEditor,
+        &[],
+        "Skip the commit hooks",
+    ),
+    b(
+        "commit.toggle_allow_empty",
+        CommitEditor,
+        &[],
+        "Allow an empty commit",
+    ),
     // §2.11 Undo journal browser.
     b(
         "journal.revert",

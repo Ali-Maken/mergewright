@@ -22,6 +22,10 @@ theme dark
   ours-tint       #284559     23    default
   theirs-tint     #4B3445     53    default
   open-tint       #533F13     58    default
+  role-this       #7ED49B     115   14
+  role-under      #E9B65C     179   7
+  role-trunk      #9FB7FF     111   7
+  role-other      #4D5654     240   8
   lane-1          #0077BB     32    6
   lane-2          #EE8866     209   9
   lane-3          #AA3377     125   5
@@ -55,6 +59,10 @@ theme light
   ours-tint       #B0D2E6     152   default
   theirs-tint     #E2C5D7     224   default
   open-tint       #E5D0B0     187   default
+  role-this       #1E7F45     29    2
+  role-under      #9A6200     94    3
+  role-trunk      #3550B8     25    4
+  role-other      #B4BAC2     250   7
   lane-1          #0077BB     32    6
   lane-2          #EE8866     209   9
   lane-3          #AA3377     125   5
@@ -88,6 +96,10 @@ theme high-contrast
   ours-tint       default     default default
   theirs-tint     default     default default
   open-tint       default     default default
+  role-this       #00E676     41    10
+  role-under      #FFB300     214   11
+  role-trunk      #82A0FF     111   7
+  role-other      #6E6E6E     242   8
   lane-1          #0077BB     32    6
   lane-2          #EE8866     209   9
   lane-3          #AA3377     125   5

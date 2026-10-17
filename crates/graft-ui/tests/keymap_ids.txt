@@ -35,6 +35,9 @@ commit.edit_outside
 commit.next_field
 commit.prev_field
 commit.sign_off
+commit.toggle_allow_empty
+commit.toggle_amend
+commit.toggle_no_verify
 confirm.choose
 confirm.cycle
 confirm.left
