@@ -7,12 +7,14 @@
 //! ticket) runs the commands and hands their bytes to these functions.
 
 mod file_list;
+mod origins;
 mod pairs;
 mod patch;
 mod read;
 mod unified;
 
 pub use file_list::{parse_file_list, parse_worktree_file_list};
+pub use origins::{LineOrigin, Origin, line_origins};
 pub use pairs::{Pair, pairs};
 pub use patch::{PatchDirection, PatchError, Selection, hunk_patch};
 pub use read::{DiffError, DiffOptions, DiffSpec, file_diff, list_files};

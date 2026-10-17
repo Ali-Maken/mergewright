@@ -324,7 +324,8 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-/// A block index past the last block.
+/// A block index past the last block — or, for
+/// [`ConflictFile::reopen`], one naming a block that is not taken.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoSuchBlock(pub usize);
 
@@ -353,5 +354,7 @@ pub fn blob_id(bytes: &[u8]) -> Oid {
     Oid::from_sha1(hasher.finalize().into())
 }
 
+#[cfg(test)]
+mod reopen_tests;
 #[cfg(test)]
 mod tests;

@@ -11,6 +11,7 @@ mod diff_cases;
 mod diff_fixture;
 mod equal_dates;
 mod history_reads;
+mod merge_forecast;
 mod run;
 mod session;
 mod shallow_history;

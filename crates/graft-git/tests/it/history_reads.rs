@@ -14,7 +14,7 @@ use graft_git::history_reads::{
 use graft_git::repo::RepoHandle;
 use graft_git::version;
 
-fn open(path: &Path) -> RepoHandle {
+pub(super) fn open(path: &Path) -> RepoHandle {
     RepoHandle::open(path).unwrap_or_else(|why| panic!("opening {}: {why}", path.display()))
 }
 
@@ -44,7 +44,7 @@ fn git(dir: &Path, args: &[&str]) -> Output {
 }
 
 /// [`git`], asserting success — every setup step.
-fn git_ok(dir: &Path, args: &[&str]) {
+pub(super) fn git_ok(dir: &Path, args: &[&str]) {
     let output = git(dir, args);
     assert!(
         output.status.success(),
@@ -54,7 +54,7 @@ fn git_ok(dir: &Path, args: &[&str]) {
     );
 }
 
-fn rev_parse(dir: &Path, revision: &str) -> Oid {
+pub(super) fn rev_parse(dir: &Path, revision: &str) -> Oid {
     let output = git(dir, &["rev-parse", revision]);
     assert!(output.status.success(), "rev-parse {revision}");
     let hex = String::from_utf8(output.stdout)
@@ -62,11 +62,11 @@ fn rev_parse(dir: &Path, revision: &str) -> Oid {
     Oid::from_hex(hex.trim()).unwrap_or_else(|why| panic!("{hex:?} is not an id: {why}"))
 }
 
-fn init(dir: &Path) {
+pub(super) fn init(dir: &Path) {
     git_ok(dir, &["init", "-q", "-b", "main"]);
 }
 
-fn write_and_commit(dir: &Path, file: &str, content: &str, message: &str) {
+pub(super) fn write_and_commit(dir: &Path, file: &str, content: &str, message: &str) {
     std::fs::write(dir.join(file), content)
         .unwrap_or_else(|why| panic!("a fixture file writes: {why}"));
     git_ok(dir, &["add", file]);
@@ -77,7 +77,7 @@ fn write_and_commit(dir: &Path, file: &str, content: &str, message: &str) {
 /// corpus copy, since these tests need branch topologies and conflicts the
 /// corpus's own names do not promise (`copy_into_temp` gives a real *shape*,
 /// not blank ground to build on).
-fn scratch() -> Scratch {
+pub(super) fn scratch() -> Scratch {
     graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial)
 }
 
