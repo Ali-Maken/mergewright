@@ -24,7 +24,9 @@ mod compare;
 mod forecast;
 mod unreached;
 
-pub use compare::{CompareSpan, StashOnly, compare_span, count_between, only_in_stash};
+pub use compare::{
+    CompareSpan, StashOnly, commits_from, compare_span, count_between, only_in_stash,
+};
 pub use forecast::{
     ClashForecast, Forecast, MergeCheck, MergeForecast, MergeStep, UNRELATED, forecast_merge,
     merge_forecast, merge_tree_step,
