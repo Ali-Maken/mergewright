@@ -1,299 +1,111 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Show all branches</title>
+<title>Today's graph, kept</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;600&display=swap">
 <style>
-/* Layout: one real-size terminal window as the hero, the reasoning under it. Page is light/dark; the terminal is always a dark terminal. */
+/* Same paper, type and terminal as the accepted ease-pass mocks, so this reads as part of that set. */
 :root{
   --paper:#eef0ea; --ink:#1d2320; --muted:#5d6661; --rule:#c9cec6;
-  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#5f6864; --term-faint:#30383a; --cursor:#243037; --other:#4d5654;
-  --this:#7ed49b; --under:#e9b65c; --trunk:#9fb7ff; --warn:#ffcf6b;
+  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#5f6864; --term-faint:#30383a;
+  --this:#7ed49b; --under:#e9b65c; --trunk:#9fb7ff;
   --display:"Fraunces",Georgia,serif; --body:"Public Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}}
 :root[data-theme="dark"]{--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}
-body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
 .wrap{max-width:1180px;margin:0 auto;padding:40px 16px 64px}
-h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 8px;text-wrap:balance;max-width:24ch}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 8px;max-width:24ch;text-wrap:balance}
 .lede{color:var(--muted);max-width:66ch;margin:0 0 28px}
-kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--rule);border-radius:4px;padding:0 5px}
+code,kbd{font-family:var(--mono);font-size:.88em}
+kbd{border:1px solid var(--rule);border-radius:4px;padding:0 5px}
+
+/* Three states of one screen. The switch is the page's one bold element. */
+.states{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);border-radius:8px;overflow:hidden;width:max-content;max-width:100%;margin-bottom:14px}
+.states button{font:inherit;font-size:15px;color:var(--ink);background:transparent;border:0;border-right:1px solid var(--rule);padding:8px 16px;cursor:pointer;text-align:left}
+.states button:last-child{border-right:0}
+.states button small{display:block;color:var(--muted);font-size:12.5px}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.states button[aria-pressed="true"] small{color:var(--paper);opacity:.75}
+.states button:focus-visible{outline:2px solid var(--trunk);outline-offset:-2px}
 
 .termbox{overflow-x:auto;border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}
-.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;min-width:1040px;outline:none;border-radius:10px}
-.term:focus-visible{box-shadow:0 0 0 2px var(--trunk)}
+.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:12.5px;line-height:1.6;min-width:max-content;border-radius:10px}
 .chrome{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--term-faint)}
 .chrome i{width:11px;height:11px;border-radius:50%;background:var(--term-faint)}
-.hdr{display:flex;gap:18px;padding:6px 14px;border-bottom:1px solid var(--term-faint);white-space:pre}
-.hdr .dim{color:var(--term-dim)}
-.body{display:grid;grid-template-columns:1fr 290px}
-/* fixed height, like a real terminal window: 14 lines */
-.rows{padding:6px 0;border-right:1px solid var(--term-faint);min-width:0;height:calc(14 * 1.65em);overflow-y:auto}
-.row{display:grid;grid-template-columns:13ch 20ch minmax(0,1fr) 6ch 4ch;gap:0 1ch;padding:0 14px;white-space:pre;cursor:pointer}
-.row.cur{background:var(--cursor)}
-.row .msg{overflow:hidden;text-overflow:ellipsis}
-.row .more{grid-column:3/-1;white-space:normal;color:var(--term-dim);padding-bottom:2px}
-.row .who,.row .age{color:var(--term-dim);text-align:right}
-.g span{font-weight:700}
-.br{overflow:hidden;text-overflow:ellipsis}
-.fold{color:var(--term-dim)}
-.side{padding:12px 16px;white-space:pre-wrap}
-.side h3{margin:0;font-size:inherit;font-weight:700}
-.side .k{color:var(--term-dim)}
-.bar{display:flex;flex-wrap:wrap;gap:4px 20px;padding:6px 14px;border-top:1px solid var(--term-faint);color:var(--term-dim)}
-.bar b{color:var(--term-fg)}
-.term.mono-only *{color:var(--term-fg)!important}
-.term.mono-only .k,.term.mono-only .fold,.term.mono-only .who,.term.mono-only .age,.term.mono-only .bar,.term.mono-only .r-other{color:var(--term-dim)!important}
-.toggles{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;font-size:14px;color:var(--muted)}
-.toggles button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:6px;padding:4px 10px;cursor:pointer}
-.toggles button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-.toggles button:focus-visible{outline:2px solid var(--trunk);outline-offset:2px}
+.term pre{margin:0;padding:10px 4px 12px;font:inherit;white-space:pre;min-height:calc(15 * 1.6em)}
+.cap{color:var(--muted);font-size:14px;margin:12px 0 0;max-width:80ch}
 
-.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 44px;margin-top:48px}
-.rules h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0 0 6px;line-height:1.25}
-.rules p{margin:0;color:var(--muted);max-width:54ch}
-.sec{font-family:var(--display);font-weight:700;font-size:26px;margin:56px 0 0}
-.sec+.rules{margin-top:20px}
-.rules a{color:inherit}
-.sw{font-family:var(--mono);font-weight:700}
-.term{position:relative}
-.hdr .mode{color:var(--term-fg)}
-/* Help list: floats over the graph, like the real palette. */
-.help{position:absolute;left:50%;top:64px;transform:translateX(-50%);width:520px;background:#1b2126;border:1px solid var(--term-dim);border-radius:6px;padding:8px 0;display:none;box-shadow:0 12px 30px -10px rgba(0,0,0,.7)}
-.help.on{display:block}
-.help .q{padding:2px 14px 8px;border-bottom:1px solid var(--term-faint);white-space:pre}
-.help .q b{color:var(--this)}
-.help .it{display:grid;grid-template-columns:1fr 12ch;padding:0 14px;white-space:pre}
-.help .it.cur{background:var(--cursor)}
-.help .it .kk{color:var(--term-dim);text-align:right}
-.help .it .set{color:var(--under);text-align:right}
-.help .foot{padding:8px 14px 0;color:var(--term-dim);border-top:1px solid var(--term-faint);margin-top:6px}
-.flash{color:var(--this)!important}
-/* The settings file, as it sits on disk. */
-.cfg{margin-top:28px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px 44px;align-items:start}
-.cfg pre{margin:0;background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;padding:12px 16px;border-radius:8px;overflow-x:auto}
-.cfg pre .c{color:var(--term-dim)}
-.cfg pre .chg{background:#2c3a2f}
-.cfg h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0 0 6px}
-.cfg p{margin:0 0 10px;color:var(--muted)}
-@media (max-width:760px){.cfg{grid-template-columns:1fr}}
-.note{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px;max-width:72ch}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:32px 48px;margin-top:52px}
+.two h2{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;margin:0 0 8px}
+.two p{margin:0 0 10px;color:var(--muted);max-width:56ch}
+.cfg{margin:0;background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;padding:12px 16px;border-radius:8px;overflow-x:auto}
+.cfg .c{color:var(--term-dim)}
+.cfg .on{color:var(--this)}
+ol{margin:0;padding-left:1.2em;color:var(--muted)}
+ol li{margin:0 0 6px}
+.note{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px;max-width:76ch}
 </style>
 
 <div class="wrap">
-  <h1>Every branch on its own line, when you want it</h1>
-  <p class="lede">Merged branches stay folded by default. If you'd rather see everything, it's a setting, not a key. Click the terminal, press <kbd>?</kbd>, type <kbd>branches</kbd> and press <kbd>⏎</kbd>. Watch the top line, the graph and the settings file below. Do the same again to fold them back.</p>
+  <h1>Today's graph stays, as a setting</h1>
+  <p class="lede">The new default folds branches that are already merged. If you or a teammate prefer the graph you have today, one line in the settings file brings it back. There's no new key. Switch between the three below. All three show the same repo.</p>
 
-  <div class="termbox">
-    <div class="term" id="term" tabindex="0" aria-label="Mergewright terminal mock. j and k move, space folds or unfolds a merge, question mark opens the help list.">
-      <div class="chrome"><i></i><i></i><i></i></div>
-      <div class="hdr"><span>mwr  ~/work/reports</span><span>on <b style="color:var(--this)">wallet-release</b></span><span class="dim" id="lanes">lanes drawn: 5 of 8</span><span class="mode" id="mode">38 merged branches folded</span></div>
-      <div class="body">
-        <div class="rows" id="rows"></div>
-        <div class="side" id="side"></div>
-      </div>
-      <div class="bar" id="bar"></div>
-      <div class="help" id="help" role="dialog" aria-label="Help list"><div class="q" id="q"></div><div id="items"></div><div class="foot">⏎ run  ·  esc close  ·  type to find</div></div>
-    </div>
+  <div class="states" role="group" aria-label="Which graph">
+    <button data-s="today" aria-pressed="false">Today<small>what mwr draws now</small></button>
+    <button data-s="new" aria-pressed="true">New default<small>merged branches folded</small></button>
+    <button data-s="shown" aria-pressed="false">New, with the setting on<small>every branch shown</small></button>
   </div>
-  <div class="toggles">
-    <button id="tTall" aria-pressed="false">Two lines on every row</button>
-    <button id="tMono" aria-pressed="false">Colour off (#)</button>
-    <span id="fit"></span>
-  </div>
+  <div class="termbox"><div class="term"><div class="chrome"><i></i><i></i><i></i></div><pre id="grid"></pre></div></div>
+  <p class="cap" id="cap"></p>
 
-  <div class="cfg">
+  <div class="two">
     <div>
-      <h2>Kept in your settings file</h2>
-      <p>The help list writes your choice to <code>~/.config/mergewright/config.toml</code>, the same file that holds your theme and key changes. Next launch opens the way you left it. You can also edit the line by hand.</p>
-      <p>Ticket 06h uses this exact line: <code>merged_branches = "folded"</code> or <code>"shown"</code>. A typo there shows under <em>Your config</em> and the graph stays folded.</p>
+      <h2>How you switch to the full graph</h2>
+      <ol>
+        <li>Open <code>~/.config/mergewright/config.toml</code>, the file that already holds your theme and key changes.</li>
+        <li>Set the line on the right to <code>"shown"</code>.</li>
+        <li>Every launch after that draws every branch. Set it back to <code>"folded"</code> to return.</li>
+      </ol>
+      <p style="margin-top:12px">The top line always says which way you're looking: <code>2 merged branches folded</code> or <code>every branch shown</code>.</p>
     </div>
-    <pre id="cfg"></pre>
+    <pre class="cfg" id="cfg"></pre>
   </div>
-  <div class="rules">
-    <div><h2>No new key</h2><p>It's something you set once and keep, so it doesn't take a key. It lives in the help list, so typing "branches" or "fold" finds it.</p></div>
-    <div><h2>The top line says which way you're looking</h2><p><span class="sw">38 merged branches folded</span> or <span class="sw">every branch shown</span>. You never have to guess whether something is hidden.</p></div>
-    <div><h2><kbd>space</kbd> rests while everything is shown</h2><p>With every branch shown there's nothing folded to open, so <kbd>space</kbd> does nothing on the graph and the bar stops offering it. Fold them back from the help list.</p></div>
+
+  <div class="two" style="margin-top:36px">
+    <div>
+      <h2>What stays the same either way</h2>
+      <p>Your branch, the cursor, every key. With the setting on, <kbd>space</kbd> has nothing to open, so the bar stops offering it.</p>
+    </div>
+    <div>
+      <h2>What's not settled yet</h2>
+      <p>Whether the <kbd>?</kbd> help list also gets a "Show all branches" entry. It would flip the same line, so nobody has to open the file. Your call.</p>
+    </div>
   </div>
-  <p class="note">A mock on the made-up repo from the main-screen mock. The real full view would add a lane per merged branch; here the merged commits share one extra lane to keep the page small.</p>
+
+  <p class="note">"Today" and "New default" are real captures of the app on the same test repo: before the fold work (e31a2d2e) and after it (now). "With the setting on" is today's capture with the new top-line words; the setting isn't built yet (ticket 06h). The captures are characters only, so no colour shows here. The new colours come later in this milestone and apply to all three.</p>
 </div>
 
 <script>
-// Branches. route = what the branch is built on, trunk first.
-const B={
- D:{name:"development",route:["D"]},
- I:{name:"integration",route:["D","I"]},
- W:{name:"wallet-release",route:["D","I","W"],you:true},
- S:{name:"sara/dexcom-report",route:["D","S"]},
- H:{name:"omar/outstanding-summary",route:["D","H"]},
+const G={"today": " \u25c6 api  ~/code/api \u00b7 main                                                                                    10 commits\n\n\u25b8   \u25cf        [feature/three] three: in progress                                                         GF 7y   0683985\n  \u25c6\u2500\u2502\u2500\u256e      [\u25c6 main] Merge branch &#x27;feature/two&#x27;                                                        GF 7y   5202e1c\n  \u2502 \u2502 \u25cf      [feature/two] two: finish                                                                  GF 7y   e30e870\n  \u2502 \u2502 \u25cf      two: start                                                                                 GF 7y   40034e4\n  \u25c9\u2500\u2502\u2500\u2502\u2500\u256e    Merge branch &#x27;feature/one&#x27;                                                                 GF 7y   3a97003\n  \u2502 \u2502 \u2502 \u25cf    [feature/one] one: finish                                                                  GF 7y   fdb311f\n  \u2502 \u2502 \u2502 \u25cf    one: start                                                                                 GF 7y   bba225a\n  \u25cf\u2500\u2534\u2500\u256f \u2502    Add b.txt                                                                                  GF 7y   de95041\n  \u25cf\u2500\u2500\u2500\u2500\u2500\u256f    Add a.txt                                                                                  GF 7y   21b16b9\n  \u25c7          Add a readme                                                                               GF 7y   daa5167\n\n\n m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys", "new": " \u25c6 api  ~/code/api \u00b7 main                                                           2 merged branches folded   6 commits\n\n\u25b8   \u25cf    [feature/three] three: in progress                                                             GF 7y   0683985\n  \u25c6 \u2502    [\u25c6 main] Merge branch &#x27;feature/two&#x27; \u25b8 2 commits from feature/two                               GF 7y   5202e1c\n  \u25c9 \u2502    Merge branch &#x27;feature/one&#x27; \u25b8 2 commits from feature/one                                        GF 7y   3a97003\n  \u25cf\u2500\u256f    Add b.txt                                                                                      GF 7y   de95041\n  \u25cf      Add a.txt                                                                                      GF 7y   21b16b9\n  \u25c7      Add a readme                                                                                   GF 7y   daa5167\n\n\n m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys", "shown": " \u25c6 api  ~/code/api \u00b7 main                                                                every branch shown   10 commits\n\n\u25b8   \u25cf        [feature/three] three: in progress                                                         GF 7y   0683985\n  \u25c6\u2500\u2502\u2500\u256e      [\u25c6 main] Merge branch &#x27;feature/two&#x27;                                                        GF 7y   5202e1c\n  \u2502 \u2502 \u25cf      [feature/two] two: finish                                                                  GF 7y   e30e870\n  \u2502 \u2502 \u25cf      two: start                                                                                 GF 7y   40034e4\n  \u25c9\u2500\u2502\u2500\u2502\u2500\u256e    Merge branch &#x27;feature/one&#x27;                                                                 GF 7y   3a97003\n  \u2502 \u2502 \u2502 \u25cf    [feature/one] one: finish                                                                  GF 7y   fdb311f\n  \u2502 \u2502 \u2502 \u25cf    one: start                                                                                 GF 7y   bba225a\n  \u25cf\u2500\u2534\u2500\u256f \u2502    Add b.txt                                                                                  GF 7y   de95041\n  \u25cf\u2500\u2500\u2500\u2500\u2500\u256f    Add a.txt                                                                                  GF 7y   21b16b9\n  \u25c7          Add a readme                                                                               GF 7y   daa5167\n\n\n m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys"};
+const CAP={
+ today:"Today: every branch keeps its own lane, merged ones included. feature/one and feature/two are finished, and they still take two lanes and four rows.",
+ new:"New default: the two finished branches fold into their merge rows (▸ 2 commits from …). 10 rows become 6, 4 lanes become 2. space on a merge row opens it.",
+ shown:"Setting on: the same picture as today. Only the top line differs, so you can tell which mode you're in.",
 };
-const N=6; // lanes: 0 D,1 I,2 W,3 S,4 H,5 unfolded commits
-// L: branch per lane at this row (null = empty). at: commit lane. j: [lane, "up"|"down", branch] a connector.
-const R=[
- {L:[0,0,"W"],at:2,g:"●",b:"W",msg:"PAY-399: wallet release on integration 27ce3f2, without our test files",who:"you",age:"23h",lbl:"↑1 to push"},
- {L:[0,"I","W"],at:1,g:"◉",b:"I",msg:"Merge PAY-571: bounced check charge on the PDF",who:"you",age:"27h",j:[2,"up","W"],fold:{n:1,from:"pay-571/bounce-charge",kids:["PAY-571: bounced check charge prints on the practice report"]}},
- {L:[0,"I"],at:1,g:"◉",b:"I",msg:"Merge PAY-317: invoice prints credit left as of the date",who:"you",age:"9d",fold:{n:1,from:"pay-317/credit-left",kids:["PAY-317: re-prints send creditLeftAsOf"]}},
- {L:[0,"I"],at:1,g:"◉",b:"I",msg:"Merge PAY-309: monthly invoice prints credit left",who:"you",age:"9d",fold:{n:1,from:"pay-309/monthly-credit",kids:["PAY-309: credit left under the credit note"]}},
- {L:[0,"I"],at:1,g:"◉",b:"I",msg:"Merge PAY-307: amounts of $1,000 or more get a comma",who:"you",age:"9d",fold:{n:1,from:"pay-307/thousands",kids:["PAY-307: credit table thousands comma"]}},
- {L:["D","I"],at:0,g:"◉",b:"D",msg:"Merged PR 16041: adjust layout of the executive summary",who:"you",age:"10d",j:[1,"up","I"],fold:{n:2,from:"ali/summary-layout",kids:["Adjust summary dimensions","Fix summary page break"]}},
- {L:["D"],at:0,g:"◉",b:"D",msg:"Merged PR 16067: development into master",who:"Mehdi",age:"11d",lbl:"master is here"},
- {L:["D"],at:0,g:"◉",b:"D",msg:"Merged PR 16021: fix table of contents",who:"Sara",age:"11d",fold:{n:4,from:"sara/fix-toc",kids:["Remove subprocess","Fix header issue","Fix billing issue","Change the table of contents"]}},
- {L:["D"],at:0,g:"●",b:"D",msg:"Refactor optional vital sign blocks in SOAP note",who:"you",age:"12d"},
- {L:["D",0,0,"S"],at:3,g:"●",b:"S",msg:"Fix report issue",who:"Sara",age:"2w",lbl:"not merged"},
- {L:["D",0,0,"S","H"],at:4,g:"●",b:"H",msg:"Adjust spacing in outstanding balance report",who:"Omar",age:"2w",lbl:"not merged"},
- {L:["D",0,0,"S","H"],at:4,g:"●",b:"H",msg:"Add payment methods to outstanding balance",who:"Omar",age:"2w"},
- {L:["D",0,0,"S","H"],at:0,g:"◉",b:"D",msg:"Merged PR 15794: dexcom AGP review",who:"Sara",age:"2w",j:[3,"up","S"],fold:{n:3,from:"sara/agp-review",kids:["AGP review page","Monthly report arrange","Fix AGP legend"]}},
- {L:["D",0,0,0,"H"],at:0,g:"◉",b:"D",msg:"Merged PR 15865: integrate eligibility API",who:"Omar",age:"3w",fold:{n:6,from:"omar/eligibility-api",kids:["Add demographic mismatch section","Update eligibility terminology","Refactor eligibility report structure","Refactor eligibility report methods","(2 merges from development, hidden)"]}},
- {L:["D",0,0,0,"H"],at:0,g:"●",b:"D",msg:"Fix outstanding table invoice number alignment",who:"you",age:"3w",j:[4,"up","H"]},
- {L:["D"],at:0,g:"◉",b:"D",msg:"Merged PR 15856: update executive summary images",who:"Ali",age:"3w",fold:{n:1,from:"ab/pvc-reports",kids:["Update exec_later_pages.jpg"]}},
- {L:["D"],at:0,g:"●",b:"D",msg:"Terms now come from the backend",who:"you",age:"3w"},
-];
-let cur=0,mono=false,tall=false,showAll=false,status="";
-// flip = merges whose state differs from the mode's default (open in folded mode, closed in show-all).
-const flip=new Set();const isOpen=i=>showAll?!flip.has(i):flip.has(i);
-let helpOn=false,query="",hcur=0;
-const term=document.getElementById("term"),rowsEl=document.getElementById("rows"),side=document.getElementById("side"),bar=document.getElementById("bar");
-const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
-// Role of a branch relative to the branch under the cursor.
-function role(br,focus){const rt=B[focus].route;if(br===focus)return"this";if(br==="D")return"trunk";if(rt.includes(br))return"under";return"other"}
-const COL={this:"var(--this)",under:"var(--under)",trunk:"var(--trunk)",other:"var(--other)"};
-const V={this:"┃",under:"│",trunk:"║",other:"┊"}, H={this:"━",under:"─",trunk:"═",other:"┄"};
-const cell=(ch,r)=>`<span class="r-${r}" style="color:${COL[r]}">${ch}</span>`;
-function graph(L,at,glyph,j,focus,extra){
-  let s="";const span=j?[Math.min(at,j[0]),Math.max(at,j[0])]:null;
-  for(let i=0;i<N;i++){
-    const br=L[i]||null;let ch=" ",r="other",gap=" ",gr=null;
-    if(i===at){ch=glyph;r=role(L[i],focus)}
-    else if(j&&i===j[0]){r=role(j[2],focus);ch=j[1]==="up"?"╯":"╮"}
-    else if(br){r=role(br,focus);ch=V[r]}
-    if(extra!=null&&i===5){r=role(extra,focus);ch="●"}
-    if(span&&i>=span[0]&&i<span[1]){gr=role(j[2],focus);gap=H[gr]}
-    s+=(ch===" "?" ":cell(ch,r))+(gr?cell(gap,gr):" ");
-  }
-  return s;
+const CFG={
+ today:'<span class="c"># no setting exists today</span>',
+ new:'<span class="c"># ~/.config/mergewright/config.toml</span>\n\n[graph]\nmerged_branches = "folded"   <span class="c"># the default; this line can be left out</span>',
+ shown:'<span class="c"># ~/.config/mergewright/config.toml</span>\n\n[graph]\n<span class="on">merged_branches = "shown"</span>',
+};
+const btns=[...document.querySelectorAll(".states button")];
+function show(s){
+  document.getElementById("grid").innerHTML=G[s];
+  document.getElementById("cap").textContent=CAP[s];
+  document.getElementById("cfg").innerHTML=CFG[s];
+  btns.forEach(b=>b.setAttribute("aria-pressed",b.dataset.s===s));
 }
-// The cursor row grows a second line: full message, who, when, where. Lanes continue through it.
-const AGE={h:"hours",d:"days",w:"weeks"};
-function more(r,next,focus){
-  let g="";const L=next?(next.r?next.r.L:next.p.L):[];
-  for(let i=0;i<N;i++){const br=L[i];if(br){const rl=role(br,focus);g+=cell(V[rl],rl)+" "}else g+="  "}
-  const age=r.age.replace(/(\d+)([hdw])/,(m,n,u)=>n+" "+AGE[u]+" ago");
-  const hash=(0x5f3a91c+R.indexOf(r)*0x1d2b7).toString(16).slice(0,7);
-  const where=B[r.b].name+(r.lbl?" · "+r.lbl:"")+(r.fold?" · merged "+r.fold.n+" from "+r.fold.from:"");
-  const i=R.indexOf(r),also=Object.keys(B).filter(x=>x!==r.b&&contains(x,r.b,i));
-  const alsoTxt=also.length?` · also in ${also.map(x=>`<span style="color:${COL[role(x,focus)]}">${esc(B[x].name)}</span>`).join(", ")}`:"";
-  return `<span class="g">${g}</span><span></span><span class="more">${r.who==="you"?"you":r.who} · ${age} · made on ${esc(where)}${alsoTxt} · ${hash}</span>`;
-}
-// Row where each branch left the one it was built on. A commit is in branch X
-// if it was made on X, or on what X was built on, at or below where X left it.
-const START={I:5,W:1,S:12,H:14};
-function contains(x,b,i){
-  if(x===b)return true;const rt=B[x].route;if(rt.length<2||!rt.includes(b))return false;
-  return i>=START[x]&&contains(rt[rt.length-2],b,i);
-}
-function flat(){const out=[];R.forEach((r,i)=>{out.push({r,i});if(r.fold&&isOpen(i))r.fold.kids.forEach(k=>out.push({kid:k,p:r,i}))});return out}
-function draw(){
-  const F=flat();cur=Math.min(cur,F.length-1);
-  const focus=F[cur].kid?F[cur].p.b:F[cur].r.b;
-  let last=null;
-  rowsEl.innerHTML=F.map((f,idx)=>{
-    if(f.kid){
-      const L=f.p.L.map(x=>x||0);const g=graph(L.map((x,i)=>i===f.p.at?f.p.b:x),-1,"",null,focus,"merged");
-      return `<div class="row${idx===cur?" cur":""}" data-i="${idx}"><span class="g">${g}</span><span class="fold">  ${esc(f.p.fold.from.split("/").pop())}</span><span class="msg fold">${esc(f.kid)}</span><span></span><span></span></div>`}
-    const r=f.r,rl=role(r.b,focus);
-    const g=graph(r.L,r.at,r.g,r.j,focus,null);
-    const nm=B[r.b].name+(B[r.b].you?" (you)":"");
-    const brTxt=r.b!==last?`<span class="br" style="color:${COL[rl]};font-weight:${rl==="other"?400:700}">${esc(nm)}</span>`:`<span></span>`;last=r.b;
-    const fold=r.fold&&!showAll?`<span class="fold">  ${isOpen(f.i)?"▾":"▸"} ${r.fold.n} commit${r.fold.n>1?"s":""} from ${esc(r.fold.from)}</span>`:"";
-    const lbl=r.lbl?`<span class="fold">  ${r.lbl}</span>`:"";
-    return `<div class="row${idx===cur?" cur":""}" data-i="${idx}"><span class="g">${g}</span>${brTxt}<span class="msg"${rl==="other"?' style="color:var(--term-dim)"':""}>${esc(r.msg)}${fold}${lbl}</span><span class="who"${r.who==="you"?' style="color:var(--term-fg);font-weight:700"':""}>${r.who}</span><span class="age">${r.age}</span>${idx===cur||tall?more(r,F[idx+1],focus):""}</div>`}).join("");
-  const b=B[focus],rt=b.route;
-  const route=rt.map((x,i)=>{const rl=role(x,focus);return `<span style="color:${COL[rl]};font-weight:700">${i?" ─◆ ":""}${esc(B[x].name)}</span>`}).join("\n  ");
-  // Four answers per branch. ! = needs you, ✓ = fine.
-  const S={
-    W:[["!","1 commit to push"],["·","not merged"],["✓","up to date with integration"],["·","you, last commit 23h ago"]],
-    I:[["✓","pushed"],["·","not merged into development"],["✓","up to date with development"],["·","you, last commit 27h ago"]],
-    D:[["✓","pushed"],["·","the main line: branches merge into it"],["·","master is 1 merge behind it"],["·","everyone, last commit 10d ago"]],
-    S:[["✓","pushed"],["·","not merged"],["!","development has 4 new commits since it left"],["·","Sara, last commit 2w ago"]],
-    H:[["✓","pushed"],["·","not merged"],["!","development has 6 new commits since it left"],["·","Omar, last commit 2w ago"]],
-  }[focus];
-  const mark={"!":"var(--warn)","✓":"var(--this)","·":"var(--term-dim)"};
-  const lines=S.map(([m,t])=>`<span style="color:${mark[m]}">${m}</span> ${m==="!"?`<span style="color:var(--warn)">${esc(t)}</span>`:esc(t)}`).join("\n");
-  side.innerHTML=`<h3 style="color:var(--this)">${esc(b.name)}${b.you?"  (you're here)":""}</h3>
-${lines}
-
-<span class="k">built on</span>
-  ${route}`;
-  const fr=F[cur].r;
-  const keys=fr&&fr.fold&&!showAll?[["space",isOpen(F[cur].i)?"hide the commits inside":`show the ${fr.fold.n} commit${fr.fold.n>1?"s":""} inside`],["⏎","open"],["x","compare"]]:focus==="W"?[["⏎","open"],["P","push"],["c","commit"]]:[["⏎","open"],["C","switch to "+b.name.split("/").pop()],["x","compare with yours"]];
-  bar.innerHTML=keys.concat([["u","undo"],["?","more"]]).map(([k,v])=>`<span><b>${k}</b> ${esc(v)}</span>`).join("");
-  const folded=R.filter(r=>r.fold).length;
-  document.getElementById("lanes").textContent=showAll?"lanes drawn: 6 of 6":"lanes drawn: 5 of 8";
-  document.getElementById("mode").textContent=showAll?"every branch shown":"38 merged branches folded";
-  if(status)bar.innerHTML=`<span class="flash">${esc(status)}</span>`+bar.innerHTML;
-  drawHelp();drawCfg();
-  document.getElementById("tMono").setAttribute("aria-pressed",mono);
-  document.getElementById("tTall").setAttribute("aria-pressed",tall);
-  term.classList.toggle("mono-only",mono);
-  const c=rowsEl.querySelector(".row.cur");if(c)c.scrollIntoView({block:"nearest"});
-  const lh=parseFloat(getComputedStyle(term).lineHeight);
-  document.getElementById("fit").textContent=`${Math.floor(rowsEl.clientHeight/(tall?2*lh:lh))-(tall?0:1)} commits fit in this window`;
-}
-function items(){
-  const all=[
-    ["Commit","c"],["Push","P"],["Switch branch","C"],["Compare with yours","x"],["Undo","u"],
-    showAll?["Fold merged branches",null,"setting"]:["Show all branches",null,"setting"],
-    ["Colour on / off","#"],["Two lines on every row",null,"setting"],
-  ];
-  const q=query.toLowerCase();
-  const words={5:"show all branches fold merged lanes every"};
-  return all.map((it,i)=>({it,i})).filter(({it,i})=>!q||(it[0]+" "+(words[i]||"")).toLowerCase().includes(q));
-}
-function drawHelp(){
-  const h=document.getElementById("help");h.classList.toggle("on",helpOn);if(!helpOn)return;
-  const L=items();hcur=Math.min(hcur,Math.max(0,L.length-1));
-  document.getElementById("q").innerHTML=`<b>?</b> ${esc(query)}<span style="background:var(--term-fg)"> </span>`;
-  document.getElementById("items").innerHTML=L.length?L.map(({it},n)=>`<div class="it${n===hcur?" cur":""}"><span>${esc(it[0])}</span>${it[1]?`<span class="kk">${it[1]}</span>`:`<span class="set">${it[2]}</span>`}</div>`).join(""):`<div class="it"><span style="color:var(--term-dim)">nothing matches "${esc(query)}"</span></div>`;
-}
-function drawCfg(){
-  const v=showAll?'"shown"':'"folded"';
-  document.getElementById("cfg").innerHTML=`<span class="c"># ~/.config/mergewright/config.toml</span>
-
-[theme]
-name = "dark"
-
-[graph]
-<span class="${showAll?"chg":""}">merged_branches = ${v}</span>   <span class="c"># "folded" or "shown"</span>`;
-}
-function helpKey(e){
-  const k=e.key,L=items();
-  if(k==="Escape"){helpOn=false}
-  else if(k==="ArrowDown")hcur=Math.min(L.length-1,hcur+1);
-  else if(k==="ArrowUp")hcur=Math.max(0,hcur-1);
-  else if(k==="Backspace")query=query.slice(0,-1);
-  else if(k==="Enter"){const sel=L[hcur];helpOn=false;if(sel){
-    if(sel.i===5){showAll=!showAll;flip.clear();status=showAll?"✓ Every branch shown · saved to your settings":"✓ Merged branches folded · saved to your settings"}
-    else if(sel.i===6)mono=!mono;else if(sel.i===7)tall=!tall;
-    else status="(the mock only runs the settings)";}}
-  else if(k.length===1)query+=k,hcur=0;
-  else return false;
-  draw();return true;
-}
-function key(k){
-  status="";
-  if(k==="?"){helpOn=true;query="";hcur=0;draw();return true}
-  const n=flat().length;
-  if(k==="j"||k==="ArrowDown")cur=Math.min(n-1,cur+1);
-  else if(k==="k"||k==="ArrowUp")cur=Math.max(0,cur-1);
-  else if(k===" "){if(showAll){draw();return true}const f=flat()[cur];if(f.r&&f.r.fold){flip.has(f.i)?flip.delete(f.i):flip.add(f.i)}else if(f.kid){showAll?flip.add(f.i):flip.delete(f.i);cur=flat().findIndex(x=>x.r&&x.i===f.i)}}
-  else if(k==="#")mono=!mono;
-  else return false;
-  draw();return true;
-}
-term.addEventListener("keydown",e=>{if(e.metaKey||e.ctrlKey)return;if(helpOn?helpKey(e):key(e.key))e.preventDefault()});
-rowsEl.addEventListener("click",e=>{const r=e.target.closest(".row");if(r){cur=+r.dataset.i;draw();term.focus()}});
-document.getElementById("tMono").onclick=()=>key("#");
-document.getElementById("tTall").onclick=()=>{tall=!tall;draw()};
-draw();
+btns.forEach(b=>b.onclick=()=>show(b.dataset.s));
+show("new");
 </script>
