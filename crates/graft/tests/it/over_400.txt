@@ -107,7 +107,7 @@
 2067 crates/graft-ui/src/detail_pane/tests.rs
 558 crates/graft-ui/src/empty_state/tests.rs
 556 crates/graft-ui/src/finish_summary/tests.rs
-795 crates/graft-ui/src/graph_column/tests.rs
+807 crates/graft-ui/src/graph_column/tests.rs
 489 crates/graft-ui/src/graph_screen/hints/context.rs
 3173 crates/graft-ui/src/graph_screen/hints/tests.rs
 650 crates/graft-ui/src/graph_screen/layout.rs
@@ -280,6 +280,6 @@
 597 crates/graft/tests/it/stash_clash.rs
 510 crates/graft/tests/it/submodule_truth.rs
 548 crates/graft/tests/it/tour_tasks.rs
-934 crates/graft/tests/it/tour_walk.rs
+942 crates/graft/tests/it/tour_walk.rs
 438 crates/graft/tests/it/two_boxes_over_content.rs
 640 crates/graft/tests/it/undo_over_drift.rs

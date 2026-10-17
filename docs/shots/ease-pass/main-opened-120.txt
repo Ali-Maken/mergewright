@@ -1,0 +1,39 @@
+ease-pass 06 box 9, 120x36, `space` on the PR 16021 merge: drawn by `view::view` from a real AppState over the job pool (crates/graft/tests/it/fold_by_default.rs, `wallet_release`: `main <- wallet-release <- sara/fix-toc`, PR 16021 merged with its branch deleted). Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its four commits appear under it on one lane of their own that joins the merge row; the cursor stays on the merge; `sara/fix-toc`'s merge stays folded.
+
+ ◆ api  ~/code/api · wallet-release                                                                           8 commits
+
+    ◆      [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rel… ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
+▸   ◉─╮    Merged PR 16021: Fix the wallet totals ▾ 4 commits from PR 16021                             GF 28h  4eb2a56
+    │ ●    totals: test the sum                                                                         GF 28h  a03e550
+    │ ●    totals: drop the cache                                                                       GF 28h  3334d8b
+    │ ●    totals: round once                                                                           GF 28h  2c2a1cf
+    │ ●    totals: read the ledger                                                                      GF 28h  79709e0
+    ●─╯    Start the wallet release                                                                     GF 28h  68f9980
+  ◇─╯      [main] Add the readme                                                                        GF 28h  2b013b5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys

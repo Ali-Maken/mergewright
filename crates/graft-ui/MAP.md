@@ -130,7 +130,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `CELLS_PER_LANE` (const) — 2: a lane's own cell, then the gap.
 - `STUB_BELOW`, `STUB_ABOVE`, `RAIL` (consts) — `▾` / `▴` / `⋮`: folded edges and the rail folded lanes sit behind.
 - `NodeKind` (enum, re-exported from `graph_column/kinds.rs`) — commit, merge, root, HEAD, stash, uncommitted, `StashOnly`, `Absent`.
-- `NodeKind::of`, `NodeKind::glyph` (fns) — the shape from a row's parents; the node's character.
+- `NodeKind::of`, `NodeKind::glyph` (fns) — the shape from git's parents (a folded merge is still `◉`); the node's character.
 - `RowPaint` (enum) — `Normal`, `Dimmed`, `Highlighted`, `DropTarget`…: how a row is painted.
 - `GraphLine` (struct) — `row`, `node`, `paint`, `thread`, ghost lanes: one row as the widget draws it.
 - `GraphLine::plain`, `GraphLine::owned`, `GraphLine::ghost` (fns) — a borrowed row, a synthesised row, a Ghost Preview row.

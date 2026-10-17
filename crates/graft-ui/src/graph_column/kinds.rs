@@ -37,11 +37,14 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
-    /// The kind a row's drawn parents give it. `HEAD`, stash and uncommitted
-    /// are facts about refs, not the graph, so the caller says those.
+    /// The kind git's commit gives a row: its real parents, not the edges
+    /// this view draws, so a merge folded by default or trimmed by the
+    /// first-parent view still draws `◉` (ease-pass 06f; 06 D1). `HEAD`,
+    /// stash and uncommitted are facts about refs, not the graph, so the
+    /// caller says those.
     #[must_use]
     pub fn of(row: &Row) -> NodeKind {
-        match row.drawn_parents.len() {
+        match row.commit.parents.len() {
             0 => NodeKind::Root,
             1 => NodeKind::Commit,
             _ => NodeKind::Merge,

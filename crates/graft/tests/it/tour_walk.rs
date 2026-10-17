@@ -108,15 +108,18 @@ fn settled(screen: &Screen) -> bool {
         && screen.has("\u{24d8}")
 }
 
-/// What the graph's header draws while its walk or its sort is still
-/// running (`graft-ui` `graph_screen/layout.rs`: `walk_text_within`, the
-/// order notice).
-const IN_FLIGHT: [&str; 5] = [
+/// What the graph draws while its walk, its sort or a folded merge's count
+/// is still running (`graft-ui` `graph_screen/layout.rs`: `walk_text_within`,
+/// the order notice; `graph_screen/fold_mark.rs`: a tail with no number yet,
+/// `▸ commits from …`, ease-pass 06f).
+const IN_FLIGHT: [&str; 7] = [
     "opening\u{2026}",
     "reading history\u{2026}",
     "reading\u{2026} ",
     "laying out\u{2026}",
     "sorting\u{2026}",
+    "\u{25b8} commits",
+    "\u{25be} commits",
 ];
 
 /// A screen a capture may hold (19e §R2): nothing on it still in flight,
@@ -914,16 +917,21 @@ fn a_screen_still_sorting_is_not_ready_to_shoot() {
     assert!(ready_to_shoot(&finished), "{finished}");
     assert!(ready_to_shoot(&conflict), "{conflict}");
 
-    // The walk done (`10 commits`) but the sort not: still not ready.
+    // The walk done (`6 commits`, merged branches folded) but the sort
+    // not: still not ready.
     let (header, rest) = finished.split_once('\n').expect("a header and a body");
-    assert!(header.ends_with("  10 commits"), "{header}");
+    assert!(header.ends_with("  6 commits"), "{header}");
     let sorting = format!("{header}  date order, sorting\u{2026}\n{rest}");
     assert!(!ready_to_shoot(&sorting), "{sorting}");
     let reading = format!(
         "{}reading\u{2026} 5 rows\n{rest}",
-        header.trim_end_matches("10 commits")
+        header.trim_end_matches("6 commits")
     );
     assert!(!ready_to_shoot(&reading), "{reading}");
+    // A folded merge's count not landed yet (ease-pass 06f): not ready.
+    let counting = finished.replacen("\u{25b8} 2 commits", "\u{25b8} commits", 1);
+    assert_ne!(counting, finished, "the home capture holds a counted tail");
+    assert!(!ready_to_shoot(&counting), "{counting}");
 }
 
 #[test]

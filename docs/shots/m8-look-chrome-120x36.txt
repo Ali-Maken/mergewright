@@ -1,17 +1,17 @@
 m8-polish-and-ship/06 at 120x36: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                                                                    10 commits
+ ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●        [feature/three] three: in progress                                                         GF 7y   0683985
-  ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                        GF 7y   5202e1c
-  │ │ ●      [feature/two] two: finish                                                                  GF 7y   e30e870
-  │ │ ●      two: start                                                                                 GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                 GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                  GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                 GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                  GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                  GF 7y   21b16b9
-  ◇          Add a readme                                                                               GF 7y   daa5167
+▸   ●    [feature/three] three: in progress                                                             GF 7y   0683985
+  ◆ │    [◆ main] Merge branch 'feature/two' ▸ 2 commits from feature/two                               GF 7y   5202e1c
+  ◉ │    Merge branch 'feature/one' ▸ 2 commits from feature/one                                        GF 7y   3a97003
+  ●─╯    Add b.txt                                                                                      GF 7y   de95041
+  ●      Add a.txt                                                                                      GF 7y   21b16b9
+  ◇      Add a readme                                                                                   GF 7y   daa5167
+
+
+
+
 
 
 

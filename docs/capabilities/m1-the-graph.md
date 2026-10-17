@@ -350,7 +350,8 @@ status: works
   `graft_graph::inclusion::tests::a_hidden_stash_takes_its_own_commits_with_it_but_not_its_base`
   `graft_graph::inclusion::tests::first_parent_view_follows_the_default_branch_only`
 - **Looks like:** `docs/shots/15-first-parent.txt`,
-  `docs/shots/15-merges-folded.txt`, `docs/shots/15-merges-unfolded.txt`,
+  `docs/shots/ease-pass/main-folded-120.txt`,
+  `docs/shots/ease-pass/main-opened-120.txt`,
   `docs/shots/15-stash-hidden.txt`
 - **Decided in:** `docs/design/02-keymap.md` §2.3 (keys added by this
   ticket, not pre-existing in the keymap doc).

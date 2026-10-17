@@ -43,43 +43,41 @@ const LANE_NOW: i64 = LANE_EPOCH + 60 * 60;
 const COLUMNS: u16 = 160;
 const ROWS: u16 = 24;
 
-/// `main` with fourteen topic branches merged into it one after another, so
-/// fifteen columns are open over most of the window — more lanes than any
-/// breakpoint draws, which is what makes the cap visible.
+/// Commits on `main` between the base and its tip: enough that the window,
+/// scrolled to the oldest of them, holds no topic tip.
+const MAIN_STEPS: i64 = 30;
+
+/// The subject the cursor is put on: the oldest `main` commit, so the
+/// window shows only rows the fourteen topic lanes pass straight through.
+const SCROLLED_TO: &str = "main: step 01";
+
+/// `main` with [`MAIN_STEPS`] commits of its own and fourteen **unmerged**
+/// topic branches forked from its base, each newer than all of `main`
+/// (ease-pass 06 D3, route 2: merged topics fold by default, so the lanes
+/// come from branches still open). The topic tips sit at the top and their
+/// lanes run down past every `main` commit to the base: scrolled to the
+/// oldest `main` commit, fifteen columns are open with no topic node on
+/// screen — more lanes than any breakpoint draws, which is what makes the
+/// cap visible.
 fn many_lanes() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
     let base = git(path, &["rev-parse", "HEAD"]).trim().to_owned();
 
-    // Shape (m7-power-tools/36): every topic's commit first, then every
-    // merge. The top rows are then merges only, each opening a lane whose
-    // own commit sits below the screen, so lanes pass through rows with no
-    // node on them, which is what the cap can fold. The old shape (commit,
-    // merge, commit, merge) put a node on every open lane within 24 rows,
-    // and `Fold::plan` never hides those: its `+1 lanes` came only from the
-    // false no-upstream ⓘ marker column eating width, which m7/15 removed.
+    // A column with a node on screen is never folded (`Fold::plan`,
+    // m7-power-tools/36), so the window the cap decides must hold lanes
+    // passing through rows with no node of theirs.
+    for step in 1..=MAIN_STEPS {
+        write(path, "main.rs", &format!("const STEP: u32 = {step};\n"));
+        commit(path, &format!("main: step {step:02}"), step);
+    }
     for topic in 1..=14 {
         let branch = format!("topic-{topic:02}");
         git(path, &["switch", "--quiet", "-c", &branch, &base]);
         write(path, &format!("{branch}.rs"), "fn topic() {}\n");
-        commit(path, &format!("Work on {branch}"), topic);
+        commit(path, &format!("Work on {branch}"), MAIN_STEPS + topic);
     }
     git(path, &["switch", "--quiet", "main"]);
-    for topic in 1..=14 {
-        let branch = format!("topic-{topic:02}");
-        run_at(
-            path,
-            &[
-                "merge",
-                "--quiet",
-                "--no-ff",
-                "-m",
-                &format!("Merge branch '{branch}'"),
-                &branch,
-            ],
-            14 + topic,
-        );
-    }
     scratch
 }
 
@@ -101,9 +99,9 @@ fn run_at(repo: &Path, args: &[&str], minute: i64) {
         .unwrap_or_else(|why| panic!("git {args:?}: {why}"));
 }
 
-/// The app opened on the fixture, with the graph on hand, the detail pane
-/// open on the row the cursor starts on, and the repository path shortened
-/// to `/code/api`.
+/// The app opened on the fixture, with the graph on hand, the cursor on
+/// [`SCROLLED_TO`] (the window scrolled past every topic tip), the detail
+/// pane open on that row, and the repository path shortened to `/code/api`.
 ///
 /// The path is shortened **before** any frame is drawn: the header lays
 /// itself out against it, and the scratch repository's ~50-character
@@ -119,6 +117,21 @@ fn opened_with_pane(app: &App, state: graft::update::AppState) -> graft::update:
                 .and_then(|history| history.window.as_ref())
                 .is_some_and(|window| !window.rows.is_empty())
     });
+    // The whole walk first: the rows `j` walks onto are all read.
+    let mut state = crate::captures::at_rest(app, state);
+    // `j` down from wherever the cursor landed to the oldest `main` commit;
+    // bounded, so a fixture that never draws it fails here, not by timeout.
+    for _ in 0..2 * MAIN_STEPS {
+        if selected_subject(&state).as_deref() == Some(SCROLLED_TO) {
+            break;
+        }
+        state = app.key(&state, KeyCode::Char('j'));
+    }
+    assert_eq!(
+        selected_subject(&state).as_deref(),
+        Some(SCROLLED_TO),
+        "the cursor reaches the oldest main commit"
+    );
     let state = app.key(&state, KeyCode::Enter);
     let mut state = app.pump(state, "the detail pane's file list", |state| {
         state.detail.shown && matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
@@ -126,7 +139,29 @@ fn opened_with_pane(app: &App, state: graft::update::AppState) -> graft::update:
     if let Some(facts) = state.repository.as_mut() {
         facts.path = std::path::PathBuf::from("/code/api");
     }
-    app.resize(&state, COLUMNS, ROWS)
+    let state = app.resize(&state, COLUMNS, ROWS);
+    // The pane's diff is read on its own job: a frame before it lands
+    // differs from the next run's.
+    app.pump(state, "the pane's diff read", |state| {
+        frame(state, COLUMNS, ROWS)
+            .iter()
+            .all(|row| !row.contains("reading\u{2026}"))
+    })
+}
+
+/// The selected row's subject.
+fn selected_subject(state: &graft::update::AppState) -> Option<String> {
+    state
+        .history
+        .as_ref()
+        .and_then(graft::history::History::selected)
+        .map(|row| {
+            String::from_utf8_lossy(&row.commit.message)
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .to_owned()
+        })
 }
 
 /// How many lanes the header says are folded away (`+N lanes`); 0 when the
@@ -209,9 +244,10 @@ fn capture_lane_cap_for_docs_shots() {
 /// capture cannot show.
 fn header() -> String {
     "# m5-lane-cap-160x24.txt: 160x24, drawn by `view::view` from a real\n\
-     # AppState \u{2014} a scratch repository with fourteen topic branches merged\n\
-     # into `main` one after another, so fifteen columns are open over most\n\
-     # of the window (crates/graft/tests/it/lane_cap.rs,\n\
+     # AppState \u{2014} a scratch repository with fourteen unmerged topic\n\
+     # branches forked from `main`'s base, scrolled to `main`'s oldest\n\
+     # commits, so fifteen columns are open over the whole window (merged\n\
+     # branches fold by default since ease-pass 06; crates/graft/tests/it/lane_cap.rs,\n\
      # capture_lane_cap_for_docs_shots, asserted). Not a pty capture: the\n\
      # terminal is ratatui's TestBackend, so this is a character grid with\n\
      # no colour attributes in it \u{2014} CLAUDE.md rule 5, colour ships\n\
@@ -226,15 +262,15 @@ fn header() -> String {
      #\n\
      # What right looks like:\n\
      #  - **The two frames differ.** With the pane open the graph folds\n\
-     #    more: the header says `+6 lanes` and a `\u{22ee}` marker column\n\
+     #    more: the header says `+8 lanes` and a `\u{22ee}` marker column\n\
      #    stands where the folded lanes were. With the pane closed the same\n\
-     #    repository on the same terminal says `+4 lanes`: twelve lanes\n\
-     #    drawn, not eight. The two used to be identical, because both\n\
-     #    asked the screen.\n\
-     #  - The top rows are merges only, so their lanes pass through rows\n\
-     #    with no node on them: those are what the cap folds. A column with\n\
-     #    a node on screen is never folded (m7-power-tools/36 reshaped the\n\
-     #    fixture for this).\n\
+     #    repository on the same terminal says `+4 lanes`: more lanes\n\
+     #    drawn. The two used to be identical, because both asked the\n\
+     #    screen.\n\
+     #  - The topic tips sit above the window, so their lanes pass through\n\
+     #    rows with no node on them: those are what the cap folds. A column\n\
+     #    with a node on screen is never folded (m7-power-tools/36; the\n\
+     #    fixture reshaped again for the fold by ease-pass 06f).\n\
      #  - With the pane open the subject column starts two cells earlier\n\
      #    and every subject is still readable.\n\
      #  - Nothing reads as an error on either frame.\n\

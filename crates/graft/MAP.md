@@ -77,7 +77,8 @@ The first-launch line: for his first launches, until he opens the palette, the s
 ## history
 Reading history for the screen: `graft-git`'s walk meets `graft-graph`'s layout here, laid out as it arrives.
 - `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase; `head_pending` while the first request waits for `HEAD` (ease-pass 06 D2).
-- `Window` (struct) — the laid-out rows the screen currently holds, with each row's `RowFold`.
+- `Window` (struct) — the laid-out rows the screen currently holds; `Window.fold` holds each row's `RowFold`, index for index.
+- `View` (struct) — `follow`, `inclusion`: the view a walk lays out; `View::folded` (fn) is what the app opens on — merged branches folded, none opened.
 - `RowFold` (struct) — `folds`, `inside`: does a merge row fold a branch; the opened merge a row sits inside.
 - `Inside` (struct) — `merge`, `label`: an opened merge and the branch name its subject gives.
 - `HistoryUpdate` (enum) — what the history worker reports back to `update`.

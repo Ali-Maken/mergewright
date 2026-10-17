@@ -288,3 +288,77 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
     drop(state);
     app.close();
 }
+
+/// The caption every box 9 capture starts with: what it is and what it
+/// cannot show.
+const BOX_9_HEAD: &str = "drawn by `view::view` from a real AppState over the job pool \
+     (crates/graft/tests/it/fold_by_default.rs, `wallet_release`: `main <- wallet-release <- \
+     sara/fix-toc`, PR 16021 merged with its branch deleted). Judge beside \
+     prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture: a character grid, \
+     colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).";
+
+/// Box 9: the main screen folded at first paint, and with `space` on the
+/// PR 16021 merge, at 120 columns, every count landed.
+#[test]
+fn capture_main_folded_and_opened_at_120() {
+    let scratch = wallet_release();
+    let (app, state) = first_paint(scratch.path());
+    let tails = |frame: &[String]| {
+        [
+            "\u{25b8} 4 commits from PR 16021",
+            "1 commit from sara/fix-toc",
+        ]
+        .iter()
+        .all(|tail| frame.iter().any(|line| line.contains(tail)))
+    };
+    let state = app.pump(state, "both counts", |state| tails(&drawn(state)));
+    let state = crate::captures::at_rest(&app, state);
+    let folded = drawn(&state);
+    assert!(tails(&folded), "{}", folded.join("\n"));
+    crate::captures::check_shot(
+        "ease-pass/main-folded-120.txt",
+        &format!(
+            "ease-pass 06 box 9, 120x36, main screen at first paint: {BOX_9_HEAD}\n\
+             What right looks like: no row of a merged branch; the PR's merge ends \
+             `▸ 4 commits from PR 16021`, the named merge `▸ 1 commit from sara/fix-toc`; \
+             the PR's merge draws `◉` (the named merge is `HEAD`, `◆`); the header counts \
+             the shown commits.\n\n{}\n",
+            folded.join("\n")
+        ),
+    );
+
+    let y = folded
+        .iter()
+        .position(|line| line.contains(PR_MERGE))
+        .expect("the PR merge is drawn");
+    let state = app.mouse_down(
+        &state,
+        MouseButton::Left,
+        30,
+        u16::try_from(y).expect("short"),
+    );
+    let state = app.key(&state, KeyCode::Char(' '));
+    let state = app.pump(state, "the opened merge, counted", |state| {
+        let frame = drawn(state);
+        PR_COMMITS
+            .iter()
+            .all(|subject| frame.iter().any(|line| line.contains(subject)))
+            && frame
+                .iter()
+                .any(|line| line.contains("\u{25be} 4 commits from PR 16021"))
+    });
+    let state = crate::captures::at_rest(&app, state);
+    let opened = drawn(&state);
+    crate::captures::check_shot(
+        "ease-pass/main-opened-120.txt",
+        &format!(
+            "ease-pass 06 box 9, 120x36, `space` on the PR 16021 merge: {BOX_9_HEAD}\n\
+             What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its \
+             four commits appear under it on one lane of their own that joins the merge row; \
+             the cursor stays on the merge; `sara/fix-toc`'s merge stays folded.\n\n{}\n",
+            opened.join("\n")
+        ),
+    );
+    drop(state);
+    app.close();
+}

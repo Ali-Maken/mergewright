@@ -16,7 +16,7 @@ use graft::session::Clock;
 use graft::update::AppState;
 use graft_core::event::MouseButton;
 
-use crate::app_harness::App;
+use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame_at, radar_has_answered, settled_frame};
 
 /// The sizes the ticket names: the everyday editor terminal, the mock-up's
@@ -28,7 +28,63 @@ pub(crate) const NOW: i64 = 1_800_000_000;
 
 /// A feature-branch history, opened and settled at `columns`x`rows`.
 pub(crate) fn opened(columns: u16, rows: u16) -> (graft_fixtures::Scratch, App, AppState) {
+    opened_in(
+        graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches),
+        columns,
+        rows,
+    )
+}
+
+/// The feature-branch corpus plus `feature/two-next`: one commit on
+/// `feature/two`'s tip that no merge brought in, dated a second after it.
+///
+/// `feature/two` is merged into `main`, so its rows fold by default (ease-pass
+/// 06). The cursor-row captures are about a row with a branch badge and three
+/// lanes, not about a merged branch, so they keep `[feature/two] two: finish`
+/// on screen this way (06 D3, route 2: a new ref, the corpus refs untouched).
+pub(crate) fn with_feature_two_kept() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches);
+    let path = scratch.path();
+    let tip_date: i64 = git(path, &["log", "-1", "--format=%ct", "feature/two"])
+        .trim()
+        .parse()
+        .expect("a commit time");
+    let date = format!("@{} +0000", tip_date + 1);
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(path)
+        .args([
+            "-c",
+            "user.name=Graft Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit-tree",
+            "feature/two^{tree}",
+            "-p",
+            "feature/two",
+            "-m",
+            "two: follow-up",
+        ])
+        .env("GIT_AUTHOR_DATE", &date)
+        .env("GIT_COMMITTER_DATE", &date)
+        .output()
+        .unwrap_or_else(|why| panic!("git commit-tree: {why}"));
+    assert!(
+        out.status.success(),
+        "git commit-tree: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let tip = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    git(path, &["branch", "feature/two-next", &tip]);
+    scratch
+}
+
+/// `scratch`, opened and settled at `columns`x`rows`.
+pub(crate) fn opened_in(
+    scratch: graft_fixtures::Scratch,
+    columns: u16,
+    rows: u16,
+) -> (graft_fixtures::Scratch, App, AppState) {
     let (app, state) = App::open(scratch.path());
     let state = app.resize(&state, columns, rows);
     let state = settled_frame(&app, state);
@@ -234,7 +290,7 @@ fn capture_the_cursor_row_in_dark_and_light() {
     use graft_ui::theme::{Theme, ThemeKind, Token, TokenColor};
 
     let (columns, rows) = (120, 36);
-    let (_scratch, app, state) = opened(columns, rows);
+    let (_scratch, app, state) = opened_in(with_feature_two_kept(), columns, rows);
     let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
     let y = drawn
         .iter()
