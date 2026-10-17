@@ -199,12 +199,12 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 Decides which hints the footer draws, per context; `graph_screen`'s footer draws them. Words come from the keymap, never literals.
 - `HintContext` (enum) — where the cursor or focus is, for the footer's hint list; one variant per screen and state (`Picker` / `PickerOnCurrent`: the picker, its cursor off / on HEAD's branch).
 - `RowVerbs` (struct) — which of a commit row's own verbs act on the cursor's row; `RowVerbs::NONE`, `RowVerbs::ALL`.
-- `RowBar` (enum) — `HintContext::GraphRow`'s row kind: `Own`, `Elsewhere { branch }`, `FoldedMerge { inside }`, `Opened`, `JustCommitted`, `JustMerged { inside }`.
-- `ClashBar` (struct), `ClashAt` (enum), `ClashOp` (enum) — `HintContext::Clash`'s state: where the clash stands, and `Merge` or `Other(SideRoles)`.
-- `bar_name` (fn) — a branch's bar form, its last path segment (`sara/fix-toc` → `fix-toc`).
-- `WayToBanner` (enum) — `Forward` / `Back`: which one press reaches the banner from the graph.
+- `RowBar` (enum) — `HintContext::GraphRow`'s row kind: `Own`, `Elsewhere { branch }`, `FoldedMerge { inside }`, `OpenedMerge` (the merge row whose fold is open), `JustCommitted`, `JustMerged { inside }`.
+- `ClashBar` (struct), `ClashAt` (enum) — `Clash`'s state `{ at, roles }`; `is_merge` reads `roles`; the next file is drawn by its last segment.
+- `bar_name` (fn) — a branch's or path's bar form, its last path segment (`sara/fix-toc` → `fix-toc`; `hints/context/row_bar.rs`).
+- `WayToBanner` (enum, `hints/context/live_op.rs`) — `Forward` / `Back`: which one press reaches the banner from the graph.
 - `LiveC` (enum) — what `c` does while an operation is live: finish, continue, and the rest.
-- `TabWord` (enum) — `Graph`, `Diff`, `Banner`: where `⇥` lands from the changes pane; `TabWord::word`, `TabWord::ALL`.
+- `TabWord` (enum, `hints/context/tab_word.rs`) — `Graph`, `Diff`, `Banner`: where `⇥` lands from the changes pane; `TabWord::word`, `TabWord::ALL`.
 - `ConfirmYes` (enum) — the button `y` confirms in a confirm box; `ConfirmYes::label`, `ConfirmYes::word`, `ConfirmYes::from_label`, `ConfirmYes::ALL`.
 - `HintState` (enum) — `Live` / `Planned`: whether the key does the verb today.
 - `Rung` (enum) — `Key` < `Short` < `Full`: how much of a hint the bar had room for.
@@ -416,7 +416,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `key_verbs` (fn) — A footer's `<key> <verb>` pairs, two spaces apart, each spelled by [`Keymap::key_verb`] from one action id, an unbound one left out (`⏎ apply  p pop  esc close`).
 - `after` (fn) — `words` with ` · <key> <verb>` after it (`finish needs 60x20 · esc back`), or `words` alone when the key is unbound.
 - `live_labels` (fn) — The action's live chords, spelled: every chord it holds, less any another action of its own context took in a collision, and less any a collision anywhere names it as losing D7: after `merge = "j"`
-- `defaults` (fn) — the table, grouped by context in `ContextId::ALL` order. Adding a row edits `tests/keymap_ids.txt`.
+- `defaults` (fn) — the table, grouped by context in `ContextId::ALL` order (§2.6 and §2.10 rows in `keymap/table/`, joined in place). Adding a row edits `tests/keymap_ids.txt`.
 - `KeyWarning` (enum) — One problem with one override line: `UnknownAction`, `BadKey`, `Collision { line, places: Vec<Clash> }` (every place a key changed hands), `Reserved`, `Fixed`, `SwitchOff`, `Follows { action, leader }`.
 - `Clash` (struct) — `key`, `context`, `kept`, `lost`, `keeps: Option<KeyChord>` (the loser's key left there, for the words).
 - `words` (fn) — The problem in one lowercase line, keys spelled as the app spells them.
@@ -605,7 +605,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `ContrastRule` (struct) — one floor: `fg` token on `bg` token at `min`:1.
 - `ContrastMiss` (struct) — a floor missed: `rule` and the `ratio` reached. `words()` → `selection on bg 1.0:1 — under 3.0`, ratio floored to 0.1 (never rounds up to its floor).
 - `words` (fn) — `selection on bg 1.0:1 — under 3.0`.
-- `CONTRAST_RULES` (const) — the four floors every theme passes: text/bg 4.5, text/selection 4.5, selection/bg 3.0, text-muted/bg 4.5.
+- `CONTRAST_RULES` (const) — the seven floors every theme passes: text/bg 4.5, text/selection 4.5, selection/bg 3.0, text-muted/bg 4.5, role-this/under/trunk on bg 3.0.
 - `legible_on` (fn) — `fg` unchanged if ≥ 4.5:1 on `bg`, else mixed toward white (dark bg) / black (light bg) in 5% steps until it is; target after 20 steps.
 - `on_selection` (fn) — `fg` as drawn on this theme's `selection` fill, at this terminal's depth — what every widget calls for text it draws on the cursor row.
 - `TOKEN_COUNT` (const) — 22: PROMPT.md §5's twelve, the six conflict roles, the four graph roles.
@@ -622,7 +622,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `color_depth` (fn) — How much colour this terminal has, or [`ColorDepth::None`] if `NO_COLOR` was set — the same reduction [`Theme::new`] applied to every token.
 - `token` (fn) — the colour for one chrome token. Conflict tokens use private `pinned` (fixed 256/16 entries, dark and high contrast) then `depth::nearest_256_cube` (16–231, never the grey ramp); a dropped tint is `TokenColor::Default`.
 - `lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
-- `lane_muted` (fn) — : a lane's hue mixed 45% toward `bg` for off-thread cells at truecolor/256; the lane's own colour at 16/none (caller keeps DIM).
+- `lane_muted` (fn, lane methods live in `theme/lanes.rs`) — a lane's hue mixed 45% toward `bg` for off-thread cells at truecolor/256; the lane's own colour at 16/none (caller keeps DIM).
 - `branch_muted` (fn) — `lane_muted` by `BranchIdentity`.
 - `fades_by_hue` (fn) — truecolor or 256: off-thread lanes fade by hue, not DIM.
 - `raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.

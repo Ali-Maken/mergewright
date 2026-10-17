@@ -8,31 +8,36 @@
 //! open clash` and `esc pause, come back later` (the ticket names it).
 //!
 //! A words-only bar, as the mocks draw it: each hint has a short rung that
-//! is a prefix of its words (`o take yours`, `u undo`, `esc pause`), so the
-//! three most relevant still fit a 40-column bar.
+//! is a prefix of its words (`o take yours`, `u undo`, `esc pause`). A file
+//! is named by its last path segment, as the mock's bar names it
+//! (`mergewright-merge-screen.html:150`).
 
 use super::super::keys::{
     BACK, BOTH, MARK_DONE, NEXT_BLOCK, OURS, RESOLVER_EDIT, RESOLVER_FINISH, THEIRS, UNDO,
 };
-use super::super::{ClashAt, ClashBar, ClashOp, Hint, hint, named};
+use super::super::{ClashAt, ClashBar, Hint, bar_name, hint, named};
 use crate::conflict_resolver::SideRoles;
 
 /// The clash screen's bar for `bar`.
 pub(super) fn clash_list(bar: &ClashBar) -> Vec<Hint> {
     let mut list = match &bar.at {
-        ClashAt::Open => picks(bar.op),
+        ClashAt::Open => picks(bar.roles),
         ClashAt::Picked => vec![named(NEXT_BLOCK, "next open clash", "next"), undo_pick()],
         ClashAt::FileSolved { next } => {
-            let mut list = file_done(bar.op);
+            let mut list = file_done(bar);
             list.extend([
-                named(NEXT_BLOCK, format!("next file: {next}"), "next file"),
+                named(
+                    NEXT_BLOCK,
+                    format!("next file: {}", bar_name(next)),
+                    "next file",
+                ),
                 undo_pick(),
             ]);
             list
         }
         ClashAt::AllSolved => {
-            let mut list = file_done(bar.op);
-            list.extend([hint(RESOLVER_FINISH, finish_word(bar.op)), undo_pick()]);
+            let mut list = file_done(bar);
+            list.extend([hint(RESOLVER_FINISH, finish_word(bar)), undo_pick()]);
             list
         }
     };
@@ -44,11 +49,7 @@ pub(super) fn clash_list(bar: &ClashBar) -> Vec<Hint> {
 
 /// The picks on an open clash, sides named by the operation's roles: a
 /// merge's `yours`/`theirs`, a rebase's `upstream`/`yours`.
-fn picks(op: ClashOp) -> Vec<Hint> {
-    let roles = match op {
-        ClashOp::Merge => SideRoles::Merge,
-        ClashOp::Other(roles) => roles,
-    };
+fn picks(roles: SideRoles) -> Vec<Hint> {
     let ((ours, ours_short), (theirs, theirs_short)) = take_words(roles);
     vec![
         named(OURS, ours, ours_short),
@@ -87,20 +88,18 @@ fn undo_pick() -> Hint {
 
 /// Outside a merge a solved file is finished by `⏎`, today's word first
 /// (Q12 a); a merge's files are done by their last pick.
-fn file_done(op: ClashOp) -> Vec<Hint> {
-    match op {
-        ClashOp::Merge => Vec::new(),
-        ClashOp::Other(_) => vec![hint(MARK_DONE, "done")],
+fn file_done(bar: &ClashBar) -> Vec<Hint> {
+    if bar.is_merge() {
+        Vec::new()
+    } else {
+        vec![hint(MARK_DONE, "done")]
     }
 }
 
 /// `c`'s word, as today's resolver says it: `finish` in a merge (P points
 /// it at the review later), `continue` elsewhere.
-fn finish_word(op: ClashOp) -> &'static str {
-    match op {
-        ClashOp::Merge => "finish",
-        ClashOp::Other(_) => "continue",
-    }
+fn finish_word(bar: &ClashBar) -> &'static str {
+    if bar.is_merge() { "finish" } else { "continue" }
 }
 
 #[cfg(test)]

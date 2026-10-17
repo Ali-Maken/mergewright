@@ -74,7 +74,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             conflicted,
             merge,
         } => banner_list(*skippable, *conflicted, *merge),
-        HintContext::BannerPaused => paused_banner_list(),
+        HintContext::BannerPaused { merge } => paused_banner_list(*merge),
         HintContext::ChangesPane {
             unmerged,
             live,
@@ -324,13 +324,19 @@ fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
     list
 }
 
-/// The conflicted merge's banner after `esc pause` (ease-pass Q7 a): `⏎`
-/// says where it goes, back to the clash screen `esc` paused. Only then:
-/// on first landing he has not been there yet, so that banner says
-/// `resolve`. `back` is its short rung, so a 40-column bar keeps its floor.
-fn paused_banner_list() -> Vec<Hint> {
-    let mut list = banner_list(false, true, true);
-    list[0] = named(OPEN, "back to the clashes", "back");
+/// The banner after `esc pause` (Q7 a, Q17 a): `⏎` says where it goes,
+/// back to the clash screen `esc` paused (first landing says `resolve`).
+fn paused_banner_list(merge: bool) -> Vec<Hint> {
+    paused(banner_list(false, true, merge))
+}
+
+/// `list` with its `⏎` hint, found by key, saying `back to the clashes`.
+pub(super) fn paused(mut list: Vec<Hint>) -> Vec<Hint> {
+    for hint in &mut list {
+        if hint.is(OPEN) {
+            *hint = named(OPEN, "back to the clashes", "back");
+        }
+    }
     list
 }
 

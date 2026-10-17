@@ -54,7 +54,7 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         }
         HintContext::ChangesPane { .. }
         | HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Preview
         | HintContext::Picker
         | HintContext::PickerOnCurrent
@@ -115,7 +115,7 @@ pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Rewritable(_) => Some(HintContext::Marked(Box::new(context.clone()))),
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
@@ -157,7 +157,7 @@ pub(super) fn searching_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Rewritable(_)
         | HintContext::Marked(_) => Some(HintContext::Searching(Box::new(context.clone()))),
         HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
@@ -235,7 +235,7 @@ pub(super) fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         }
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker

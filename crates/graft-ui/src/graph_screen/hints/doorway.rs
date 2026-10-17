@@ -106,7 +106,7 @@ pub(super) fn words_for(context: &HintContext) -> Words {
         HintContext::OperationLive { row, .. } => words_for(row),
         HintContext::Preview
         | HintContext::Banner { .. }
-        | HintContext::BannerPaused
+        | HintContext::BannerPaused { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
