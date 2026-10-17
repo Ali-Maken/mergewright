@@ -15,7 +15,9 @@
 /// Recognises:
 /// - `Merge branch '<name>'`, with or without a trailing `into <target>`;
 /// - `Merge remote-tracking branch '<name>'`, git's own form for a remote;
-/// - `Merge pull request #<n> from <name>`, GitHub's form.
+/// - `Merge pull request #<n> from <name>`, GitHub's form;
+/// - `Merged PR <n>: <title>`, Azure DevOps' form, which names no branch:
+///   the PR's number is read back as `PR <n>` (ease-pass Q13 a).
 ///
 /// [`None`] when the subject matches none of these — the caller falls back
 /// to a short SHA (DESIGN.md §3.4), not an error.
@@ -24,6 +26,7 @@ pub fn recover_branch_name(subject: &[u8]) -> Option<Vec<u8>> {
     quoted_after(subject, b"Merge branch '")
         .or_else(|| quoted_after(subject, b"Merge remote-tracking branch '"))
         .or_else(|| pull_request_source(subject))
+        .or_else(|| azure_pull_request(subject))
 }
 
 /// The text between `prefix` and the next `'`.
@@ -50,6 +53,18 @@ fn pull_request_source(subject: &[u8]) -> Option<Vec<u8>> {
         return None;
     }
     Some(name.to_vec())
+}
+
+/// `PR <n>` from `Merged PR <n>: <title>`.
+fn azure_pull_request(subject: &[u8]) -> Option<Vec<u8>> {
+    let rest = subject.strip_prefix(b"Merged PR ")?;
+    let digits = rest.iter().position(|byte| !byte.is_ascii_digit())?;
+    if digits == 0 || !rest[digits..].starts_with(b":") {
+        return None;
+    }
+    let mut name = b"PR ".to_vec();
+    name.extend_from_slice(&rest[..digits]);
+    Some(name)
 }
 
 #[cfg(test)]

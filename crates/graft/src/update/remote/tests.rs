@@ -59,7 +59,7 @@ fn plain(c: char) -> KeyPress {
 /// sends nothing to the job runner.
 #[test]
 fn pull_refusals_are_words_not_commands() {
-    let cases = [
+    let cases = vec![
         (
             with_facts(vec![remote("origin")], None, None),
             "HEAD is detached — check out a branch first",

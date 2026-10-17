@@ -318,7 +318,7 @@ mod tests {
     /// cycle to reverse.
     fn banner_states() -> Vec<(&'static str, AppState, &'static [Place])> {
         let mut out = Vec::new();
-        for (name, base) in [
+        let bases = vec![
             (
                 "conflict stop",
                 crate::update::banner::tests::stopped(InProgress::Rebase, &["a.rs"]),
@@ -327,7 +327,8 @@ mod tests {
                 "edit stop",
                 crate::update::banner::rewrite_stop_tests::edit_stop(),
             ),
-        ] {
+        ];
+        for (name, base) in bases {
             assert!(
                 crate::update::banner::banner_view(&base).is_some(),
                 "{name}: a banner is drawn"

@@ -14,6 +14,8 @@ use crate::layout::tests::{Handles, commit, oid};
 use crate::row::Row;
 use crate::seeds::BranchSeed;
 
+mod fold_by_default;
+
 /// A walk held in memory, readable by id.
 struct VecSource {
     walk: Vec<Commit>,
@@ -96,8 +98,9 @@ fn ids(commits: &[Commit]) -> Vec<Oid> {
     commits.iter().map(|commit| commit.id).collect()
 }
 
-fn all_rows<S: CommitSource<Error = Infallible>>(layout: &mut StreamingLayout<S>) -> Vec<Row> {
-    let advance = layout.advance(usize::MAX, &never).expect("in memory");
+/// Lays out to the end, repairs included, and reads every row back.
+fn all_rows(layout: &mut StreamingLayout<Included<VecSource>>) -> Vec<Row> {
+    let advance = advance_folded(layout, usize::MAX, &never).expect("in memory");
     assert!(advance.done);
     layout.rows(0..layout.rows_emitted()).expect("in memory")
 }
@@ -487,9 +490,9 @@ proptest! {
         prop_assert_eq!(all_rows(&mut streamed), expected);
     }
 
-    /// Fold a merge, then unfold it: the rows are the original rows. While
-    /// folded, the rows are what the slice form draws and every row above
-    /// the merge is untouched.
+    /// Fold a merge by hand, then unfold it: the rows are the original rows.
+    /// While folded, the rows are what the slice form draws and every row
+    /// above the merge is untouched.
     #[test]
     fn fold_then_unfold_returns_the_original_rows(
         (history, _, _) in viewed(),

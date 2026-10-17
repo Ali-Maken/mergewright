@@ -59,3 +59,19 @@ fn a_pull_request_subject_with_no_source_recovers_nothing() {
 fn a_pull_request_subject_with_nothing_after_from_recovers_nothing() {
     assert_eq!(recover_branch_name(b"Merge pull request #42 from "), None);
 }
+
+#[test]
+fn an_azure_devops_pr_subject_recovers_the_pr_number() {
+    // Azure DevOps names the PR, not the branch; once the branch is deleted
+    // the number is all there is (ease-pass Q13 a).
+    assert_eq!(
+        recover_branch_name(b"Merged PR 16021: Fix the table of contents"),
+        Some(b"PR 16021".to_vec())
+    );
+}
+
+#[test]
+fn an_azure_devops_pr_subject_with_no_number_or_colon_recovers_nothing() {
+    assert_eq!(recover_branch_name(b"Merged PR : no number"), None);
+    assert_eq!(recover_branch_name(b"Merged PR 16021 no colon"), None);
+}
