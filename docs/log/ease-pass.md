@@ -17,3 +17,5 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - scout 02 · 10 tools. Both → planner-fable spec-only fix (01, 02 + dependents).
 - planner-fable spec fix: 01 full ref names, usize, count_between/commits_between, made_on from Row.lanes; 02 merge_forecast &GitVersion, unrelated = not checkable, Build with Opus; 05/07/09/10 + note Interfaces updated; merged rule replaced (stacked branches not merged).
 - ease-pass start 9cb03ce8. W1: 01 builder-fable ‖ 02 builder-opus.
+- builder-opus 02 (17cbbcc7, merged 4fb8f4bb): merge_forecast/MergeCheck, reopen, line_origins; 6/6 boxes (conductor wrote ticks from report — worktree based on c5235291, stale, read specs by absolute path). Gap unverified: rename/rename clash places. scout used. skills: implement · 82 tools
+- gates after 02 merge (4fb8f4bb): fmt ok, clippy 0, nextest 6455/6455, doc ok; worktree removed. reviewer 02 dispatched.
