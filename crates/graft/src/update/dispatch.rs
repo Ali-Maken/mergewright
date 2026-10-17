@@ -226,6 +226,8 @@ pub(super) fn job_cancelled(
     // m7-16b..21b, Minor 2).
     remote::leaves_job_ended(next, id, "the read was cancelled");
     tour::job_ended(next, id);
+    // An untake that will never answer (ease-pass 05).
+    resolver::untake_ended(next, id);
     let mut local_jobs = next.local_jobs;
     // The write `Esc` stopped: the answer the user asked for. Any other
     // cancelled write (shutdown) is cleared as before.
@@ -277,6 +279,7 @@ pub(super) fn job_failed(
     rewrite_editor::job_ended(next, id, &failure.to_string());
     remote::leaves_job_ended(next, id, &failure.to_string());
     tour::job_ended(next, id);
+    resolver::untake_ended(next, id);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;
     commands.extend(operate::write_job_ended(next, id, &mut || {

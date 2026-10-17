@@ -1,20 +1,25 @@
-//! `n`/`N`: the next or previous block, taken or not, then the next file
-//! in the list — and where a take moves the cursor (m6-conflicts/15).
+//! `n`: the first open clash of the whole operation, from the top
+//! (ease-pass 05, [`first_open`]). `N`: the previous block, taken or not,
+//! then the previous file in the list (m6-conflicts/15, unchanged — the
+//! walk below is written for both directions).
 //!
-//! Past the last block (for `N`, before the first) one rule decides, by
-//! position only (keymap §2.6, the user's call of 2026-09-24):
+//! Before the first block, one rule decides, by position only (keymap
+//! §2.6, the user's call of 2026-09-24):
 //! 1. another file in the list not done → cross to it;
 //! 2. else this file has an open block → wrap to it;
 //! 3. else `no more conflicts this way`, a notice ([`NO_MORE_THIS_WAY`]);
 //!    the bar keeps offering `⏎ done`.
 //!
-//! Crossing first is what keeps `n` from circling a file that still has an
+//! Crossing first is what keeps `N` from circling a file that still has an
 //! open block and never leaving it.
+
+use std::path::PathBuf;
 
 use graft_core::job::JobId;
 use graft_git::conflict::{BlockState, ConflictFile};
 
 use super::files::{RowState, listed_files, select_file};
+use super::picks::{BlockAt, blocks_of, next_open};
 use super::scrolled_to;
 use super::take::pending_file;
 use crate::update::events::Command;
@@ -22,8 +27,88 @@ use crate::update::state::AppState;
 
 /// Rule 3's words: nothing open anywhere this way (m6-conflicts/61). An info
 /// notice on the notice row, never the status line, so the bar keeps its
-/// own hints — `⏎ done` among them.
+/// own hints — `⏎ done` among them. `n` says it too, with nothing open
+/// anywhere (05b gives a merge its own words).
 pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
+
+/// `n` with the cursor already where `n` goes: said, an info notice, so the
+/// bar's `n` is never a dead key (the mock's `n` does nothing there).
+pub(crate) const ON_FIRST_OPEN: &str = "already on the first open clash";
+
+/// `n`: the first open clash of the whole operation, from the top of the
+/// list (ease-pass 05, the mock's `nextOpen`) — taken blocks and finished
+/// files skipped. In the file on screen the cursor moves to it; another
+/// file is opened, and its fresh read lands on its first block, which a
+/// fresh read always has open (taken blocks are plain text on disk). A
+/// whole-file card, or a file not read yet, counts as open: there is a
+/// choice in it to make. Already there: [`ON_FIRST_OPEN`]. Nothing open
+/// anywhere: [`NO_MORE_THIS_WAY`].
+pub(super) fn first_open(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    let here = match pending_file(open) {
+        Some(Ok(file)) if open.done.is_none() => blocks_of(&file),
+        // The take in flight names a block the document lacks: a take's
+        // words, and no walk over a document that cannot be what is on disk.
+        Some(Err(missing)) => {
+            if let Some(open) = state.resolver.as_mut() {
+                open.notice = Some((no_block(missing.0), true));
+            }
+            return;
+        }
+        _ if open.done.is_none() && open.whole_file.is_some() => vec![ANY_OPEN],
+        // Done, or its opening read still out: nothing here to go to.
+        _ => Vec::new(),
+    };
+    let (path, card, cursor) = (
+        open.path.clone(),
+        open.whole_file.is_some(),
+        open.cursor_block,
+    );
+    let listed = listed_files(state);
+    let files: Vec<(PathBuf, Vec<BlockAt>)> = listed
+        .iter()
+        .map(|row| {
+            let blocks = if row.path == path {
+                here.clone()
+            } else {
+                row_blocks(&row.state)
+            };
+            (row.path.clone(), blocks)
+        })
+        .collect();
+    match next_open(&files) {
+        Some((index, _)) if listed[index].path != path => {
+            cross(state, commands, index, true, next_id);
+        }
+        // A card has no block for the cursor: it is already where `n` goes.
+        Some(_) if card => say(state, ON_FIRST_OPEN),
+        Some((_, block)) if cursor == Some(block) => say(state, ON_FIRST_OPEN),
+        Some((_, block)) => move_cursor(state, block, None),
+        None => no_more_conflicts(state),
+    }
+}
+
+/// A file not on screen, as `n` counts it: one open block where anything
+/// is left to choose, none where nothing is.
+fn row_blocks(row: &RowState) -> Vec<BlockAt> {
+    match row {
+        RowState::Open { open, .. } if *open > 0 => vec![ANY_OPEN],
+        RowState::Open { .. } | RowState::AllTaken | RowState::Done => Vec::new(),
+        RowState::WholeFile { .. } | RowState::Binary | RowState::Unread => vec![ANY_OPEN],
+    }
+}
+
+/// A file's first block, open — where its fresh read lands the cursor.
+const ANY_OPEN: BlockAt = BlockAt {
+    index: 0,
+    open: true,
+};
 
 /// `n`/`N`: the next or previous block, then the three rules above.
 pub(super) fn walk_blocks(
@@ -94,8 +179,13 @@ pub(super) fn walk_blocks(
 /// every file is done the finish row takes the notice row instead
 /// (`view::resolver::finish_row`), and it already names the next key.
 fn no_more_conflicts(state: &mut AppState) {
+    say(state, NO_MORE_THIS_WAY);
+}
+
+/// `words` on the notice row, as information.
+fn say(state: &mut AppState, words: &str) {
     if let Some(open) = state.resolver.as_mut() {
-        open.notice = Some((NO_MORE_THIS_WAY.to_owned(), false));
+        open.notice = Some((words.to_owned(), false));
     }
 }
 
@@ -183,22 +273,6 @@ pub fn next_block(file: &ConflictFile, from: Option<usize>, forward: bool) -> Op
             .checked_sub(1)
             .map(|previous| previous.min(count - 1)),
     }
-}
-
-/// Where the cursor goes after `taken` was taken: the next **open** block
-/// after it, wrapping round to the file's start; `None` when none is open.
-#[must_use]
-pub fn after_take(file: &ConflictFile, taken: usize) -> Option<usize> {
-    let open: Vec<usize> = file
-        .blocks()
-        .into_iter()
-        .filter(|at| at.state == BlockState::Open)
-        .map(|at| at.index)
-        .collect();
-    open.iter()
-        .find(|index| **index > taken)
-        .or_else(|| open.first())
-        .copied()
 }
 
 /// The `listed_files` index `n` (or `N`) crosses to: the next row not done

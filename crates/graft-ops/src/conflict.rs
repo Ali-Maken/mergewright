@@ -158,14 +158,7 @@ pub fn apply_take(
     let mut next = file.clone();
     next.take(block, take)
         .map_err(|no| TakeError::NoSuchBlock(no.0))?;
-    match graft_git::conflict::write_back(&in_worktree(repo, path), &next, file.fingerprint) {
-        Ok(fingerprint) => {
-            next.fingerprint = fingerprint;
-            Ok(next)
-        }
-        Err(WriteError::Changed { now }) => Err(TakeError::Changed { now }),
-        Err(error) => Err(TakeError::Write(error)),
-    }
+    write_against(repo, path, next, file.fingerprint)
 }
 
 /// [`apply_take`] for every block still open in `file`: one write, against
@@ -182,7 +175,61 @@ pub fn apply_take_all(
 ) -> Result<ConflictFile, TakeError> {
     let mut next = file.clone();
     next.take_all(take);
-    match graft_git::conflict::write_back(&in_worktree(repo, path), &next, file.fingerprint) {
+    write_against(repo, path, next, file.fingerprint)
+}
+
+/// One block put back as it was before a pick: `before: None` is open,
+/// `Some(take)` the take a re-take replaced. `block` indexes as
+/// [`ConflictFile::take`] and [`ConflictFile::reopen`] do.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Restore {
+    /// The block the pick changed.
+    pub block: usize,
+    /// What it was before the pick.
+    pub before: Option<Take>,
+}
+
+/// Puts back what a pick changed: each block in `restore` is reopened, then
+/// re-taken with its `before` where there was one, and the result goes to
+/// disk in one write against `file.fingerprint` — so the bytes are exactly
+/// the ones the file had before the pick (a reopened block renders the
+/// markers it was parsed with).
+///
+/// Nothing is journaled, as for [`apply_take`]: git's conflict stages for
+/// the path stay in the index until it is staged, which is what makes a
+/// pick safe, not a backup (ease-pass 05, "Why picks need no backup").
+///
+/// # Errors
+/// [`TakeError::Changed`] leaving the bytes untouched; [`TakeError::NoSuchBlock`]
+/// when a block in `restore` is not taken in `file` (the document is out of
+/// step with the pick), nothing written; or the write error.
+pub fn apply_untake(
+    repo: &RepoHandle,
+    path: &Path,
+    file: &ConflictFile,
+    restore: &[Restore],
+) -> Result<ConflictFile, TakeError> {
+    let mut next = file.clone();
+    for one in restore {
+        next.reopen(one.block)
+            .map_err(|no| TakeError::NoSuchBlock(no.0))?;
+        if let Some(take) = one.before {
+            next.take(one.block, take)
+                .map_err(|no| TakeError::NoSuchBlock(no.0))?;
+        }
+    }
+    write_against(repo, path, next, file.fingerprint)
+}
+
+/// Writes `next` over `path` if the bytes there are still `expected`, and
+/// hands it back carrying the new fingerprint.
+fn write_against(
+    repo: &RepoHandle,
+    path: &Path,
+    mut next: ConflictFile,
+    expected: Oid,
+) -> Result<ConflictFile, TakeError> {
+    match graft_git::conflict::write_back(&in_worktree(repo, path), &next, expected) {
         Ok(fingerprint) => {
             next.fingerprint = fingerprint;
             Ok(next)
@@ -268,3 +315,5 @@ fn in_worktree(repo: &RepoHandle, path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod untake_tests;

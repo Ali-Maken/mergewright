@@ -81,7 +81,7 @@ fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
     let (keys, on_screen) = match stem {
         "m6-10-stop-lands-in-resolver" => (mm(), "▸ gone.txt"),
         "m6-11-card-on-notes" => (then(mm(), &[ch('o')]), "▸ notes.txt"),
-        "m6-12-after-t" => (then(mm(), &[ch('n'), ch('t')]), "took theirs"),
+        "m6-12-after-t" => (then(mm(), &[ch('j'), ch('t')]), "took theirs"),
         "m6-13-after-ctrl-t" => (
             [mm(), vec![KeyPress::control(ch('t'))]].concat(),
             "took theirs",
@@ -662,9 +662,9 @@ fn two_files_out_of_order() -> Scenario {
             m_m(),
             vec![
                 route(),
-                key(ch('n')),
+                key(ch('j')),
                 Step::WaitFor(Wait::ConflictOpened),
-                Step::See("n crossed to notes.txt", |state| {
+                Step::See("j stepped to notes.txt", |state| {
                     resolver_on(state, "notes.txt")
                 }),
             ],
@@ -1015,7 +1015,7 @@ fn walk_back_a_done_file() -> Scenario {
         vec![
             on_feature(),
             m_m(),
-            vec![key(ch('n')), Step::WaitFor(Wait::ConflictOpened)],
+            vec![key(ch('j')), Step::WaitFor(Wait::ConflictOpened)],
             done_by('T', "notes.txt"),
             vec![
                 Step::See("the landing after ⏎: the next file open", |state| {

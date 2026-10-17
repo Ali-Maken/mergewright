@@ -85,6 +85,12 @@ pub(crate) fn refresh_clash(state: &mut AppState) -> Judged {
     };
     let launch = !state.clash_facts_seen;
     state.clash_facts_seen = true;
+    // A clash that ended, or gave way to another: its picks go with it
+    // (ease-pass 05). An operation's picks never meet this — it has none.
+    let was = state.clash.as_ref().map(|was| &was.clash.entry);
+    if was.is_some() && was != found.as_ref().map(|clash| &clash.entry) {
+        state.picks.clear();
+    }
     state.clash = found.map(|clash| {
         let origin = match &state.clash {
             Some(was) if was.clash.entry == clash.entry => was.origin,

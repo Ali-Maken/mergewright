@@ -24,7 +24,10 @@
 //! - `base` — `B`: show/hide the merged common ancestor.
 //! - `restart` — `d`: start this file over, behind a confirm box.
 //! - `take` — `o`/`t`/`b`: a side of the block under the cursor.
-//! - `walk` — `n`/`N`: the next block, taken or not, then the next file.
+//! - `picks`, `unpick` — the pick stack and `u`, which puts the last pick
+//!   back (ease-pass 05).
+//! - `walk` — `n`: the first open clash from the top; `N`: the previous
+//!   block, taken or not, then the previous file.
 //! - `scroll` — the window over the document: keys, wheel and click.
 //! - `answers` — the jobs' answers: the opening read, a take, a
 //!   hand-back, and the `⏎` stage landing.
@@ -47,11 +50,13 @@ mod handover;
 mod leave;
 mod names;
 mod open;
+mod picks;
 mod resolved;
 mod restart;
 mod scroll;
 mod settle;
 mod take;
+mod unpick;
 mod walk;
 mod whole_file;
 
@@ -79,6 +84,7 @@ pub use names::side_names;
 pub(in crate::update) use open::box_open;
 pub(crate) use open::land_on_clash;
 pub use open::open_resolver;
+pub use picks::{BlockAt, Pick, Picks, blocks_of, next_open, next_open_in_file};
 #[cfg(test)]
 pub(crate) use resolved::close_after_last;
 pub use resolved::resolved_advance;
@@ -86,7 +92,8 @@ pub(crate) use resolved::{every_file_done, finish_if_owed, finish_refused_notice
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
 pub use scroll::resolver_mouse;
-pub use walk::{after_take, next_block};
+pub use unpick::{untake_ended, untaken};
+pub use walk::next_block;
 pub use whole_file::{WholeFileShape, whole_file_keys};
 
 use base::toggle_base;
@@ -99,7 +106,8 @@ use resolved::{cancel_owed_finish, mark_resolved};
 use restart::restart_box;
 use scroll::scroll_key;
 use take::take_keys;
-use walk::walk_blocks;
+use unpick::undo_keys;
+use walk::{first_open, walk_blocks};
 
 /// Where `⏎` opened the resolver from, and so where `Esc` gives the
 /// keyboard back to.
@@ -300,6 +308,11 @@ pub(super) fn write_refusal(state: &AppState) -> Option<&'static str> {
     if let Some(words) = state.resolver.as_ref().and_then(ResolverState::busy_words) {
         return Some(words);
     }
+    // `u`'s untake is an fs write on the pool too. The resolver holds its id
+    // while it runs; this catches a resolver opened since (ease-pass 05).
+    if state.picks.undoing().is_some() {
+        return Some(unpick::UNDO_LANDING);
+    }
     state
         .operating
         .is_some()
@@ -369,69 +382,18 @@ fn act(
             step_file(state, commands, false, next_id);
         }
         KeyCode::Char('B') if plain => toggle_base(state, commands, next_id),
-        KeyCode::Char('n') if plain => walk_blocks(state, commands, true, next_id),
+        KeyCode::Char('n') if plain => first_open(state, commands, next_id),
         KeyCode::Char('N') if plain => walk_blocks(state, commands, false, next_id),
         KeyCode::Enter if plain => mark_resolved(state, commands, next_id),
         KeyCode::Char('e') if plain => edit_here(state, commands),
         KeyCode::Char('d') if plain => restart_box(state),
         KeyCode::Char('M') if plain => mergetool_here(state, commands),
         KeyCode::Char('c') if plain => finish_pressed(state, commands, next_id),
-        _ if asks_undo(state, key) => undo_answered(state),
+        _ if undo_keys(state, commands, key, next_id) => {}
         _ if plain => scroll_key(state, key.code),
         // Swallowed on purpose and silently: §2.1's modal rule. The bar
         // under the document is what says which keys apply here.
         _ => {}
-    }
-}
-
-/// `key` is one of `app.undo`'s or `app.redo`'s chords as shipped: `u`,
-/// `⌃Z`, `U`. The edge hands a handler shipped chords only
-/// (`update/edge.rs`), so this is the action itself, whichever chord he
-/// pressed and whatever he moved it to. `⌃Z` was swallowed until m8/09g C.
-/// With `suspend_on_ctrl_z`, `⌃Z` is `app.suspend`'s, not undo's, and
-/// stays swallowed here: a suspend from the resolver would come back as
-/// the `HandedOver` that `update/mod.rs` reads as `e`'s edit returning.
-fn asks_undo(state: &AppState, key: KeyPress) -> bool {
-    use graft_ui::keymap::{ActionId, KeyChord, Keymap};
-    let Some(chord) = KeyChord::from_press(&key) else {
-        return false;
-    };
-    let of = |id| Keymap::shipped().chords(&ActionId(id)).contains(&chord);
-    let suspends = state.suspend_on_ctrl_z && chord == KeyChord::ctrl('z');
-    (of("app.undo") && !suspends) || of("app.redo")
-}
-
-/// `u`/`U` inside the resolver: not undo — the resolver is modal (§2.1) —
-/// but never silence either (review m6-usability-2 m-i). The notice row
-/// says where undo is, as information: with an operation live, what `u`
-/// would say anywhere (§2.6a); on a stash or set-aside clash, the clause its
-/// landing notice used; else that `u` works from the graph. No command, and
-/// the status line is left alone.
-fn undo_answered(state: &mut AppState) {
-    let words = if let Some(live) = super::banner::live(state) {
-        super::undo::live_refusal_words(live.kind)
-    } else if let Some(clause) = super::clash::undo_clause(state) {
-        clause
-    } else {
-        // A sequence (W5): `esc` from the resolver's place, `u` from the
-        // graph's, where it lands him; an unbound one drops its clause.
-        [
-            state
-                .keymap
-                .key_verb(&[graft_ui::keymap::ActionId("app.back")], "first"),
-            state.keymap.key_verb(
-                &[graft_ui::keymap::ActionId("app.undo")],
-                "undoes from the graph",
-            ),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>()
-        .join(" \u{b7} ")
-    };
-    if let Some(open) = state.resolver.as_mut() {
-        // A line that is only key clauses, every key unbound, draws nothing.
-        open.notice = (!words.is_empty()).then_some((words, false));
     }
 }
 

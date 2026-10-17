@@ -20,6 +20,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::Undo(..)
         | Command::Redo(..)
         | Command::TakeSide(..)
+        | Command::UntakeSide(..)
         | Command::OpenExternalEditor { .. }
         | Command::OpenConflictEditor { .. }
         | Command::OpenMergetool { .. }

@@ -67,7 +67,7 @@ fn t_and_b_take() {
     non_snake_case,
     reason = "`n` and `N` are two different keys, and the test is named for them"
 )]
-fn n_and_N_walk_every_block() {
+fn N_reaches_a_taken_block_and_n_goes_up_the_list() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let state = resolver_on(&app, state, "three.txt");
     assert_eq!(open(&state).cursor_block, Some(0));
@@ -90,9 +90,14 @@ fn n_and_N_walk_every_block() {
         Some(0),
         "N reaches a taken block"
     );
+    // `n` no longer walks down (ease-pass 05): it is the first open clash
+    // from the top of the list, and `three.txt` is not the list's first file.
     let state = app.key(&state, KeyCode::Char('n'));
-    let state = app.key(&state, KeyCode::Char('n'));
-    assert_eq!(open(&state).cursor_block, Some(2));
+    assert_ne!(
+        open(&state).path,
+        Path::new("three.txt"),
+        "n went up the list"
+    );
 
     drop(state);
     app.close();
@@ -181,22 +186,22 @@ fn advance_capture() {
     drop(scratch);
 }
 
+/// `N` before the first block opens the previous conflicted file. Was `n`
+/// past the last block onto `zdiff3.txt`; `n` no longer walks (ease-pass
+/// 05), and the cross is the same code in the other direction.
 #[test]
-fn n_past_the_last_block_opens_the_next_conflicted_file() {
+#[allow(non_snake_case, reason = "`N` is the key, not `n`")]
+fn N_before_the_first_block_opens_the_previous_conflicted_file() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let state = resolver_on(&app, state, "three.txt");
-    // Straight past all three, from the first block: two `n` reach block 2,
-    // the third has nothing left in this file.
-    let state = app.key(&state, KeyCode::Char('n'));
-    let state = app.key(&state, KeyCode::Char('n'));
-    assert_eq!(open(&state).cursor_block, Some(2));
-    let state = app.key(&state, KeyCode::Char('n'));
+    assert_eq!(open(&state).cursor_block, Some(0));
+    let state = app.key(&state, KeyCode::Char('N'));
     let state = settled(&app, state);
 
     assert_eq!(
         open(&state).path,
-        Path::new("zdiff3.txt"),
-        "the next conflicted path in status order"
+        Path::new("theirs-deleted.txt"),
+        "the previous conflicted path in status order"
     );
     assert_eq!(
         open(&state).opened_from,

@@ -318,17 +318,18 @@ mod tests {
     /// cycle to reverse.
     fn banner_states() -> Vec<(&'static str, AppState, &'static [Place])> {
         let mut out = Vec::new();
-        let bases = vec![
-            (
-                "conflict stop",
-                crate::update::banner::tests::stopped(InProgress::Rebase, &["a.rs"]),
-            ),
+        // The makers, not the states: two whole `AppState`s in one array
+        // trip `large_stack_arrays`.
+        let conflict_stop: fn() -> AppState =
+            || crate::update::banner::tests::stopped(InProgress::Rebase, &["a.rs"]);
+        for (name, make) in [
+            ("conflict stop", conflict_stop),
             (
                 "edit stop",
-                crate::update::banner::rewrite_stop_tests::edit_stop(),
+                crate::update::banner::rewrite_stop_tests::edit_stop,
             ),
-        ];
-        for (name, base) in bases {
+        ] {
+            let base = make();
             assert!(
                 crate::update::banner::banner_view(&base).is_some(),
                 "{name}: a banner is drawn"

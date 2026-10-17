@@ -160,6 +160,11 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
             resolver::taken(next, id, result, commands, &mut || local_jobs.next_id());
             next.local_jobs = local_jobs;
         }
+        AppEvent::Produced(id, Product::Untaken(result)) => {
+            let mut local_jobs = next.local_jobs;
+            resolver::untaken(next, id, result, commands, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
+        }
         AppEvent::Produced(id, Product::BaseLoaded(result)) => {
             resolver::base_loaded(next, id, result);
         }

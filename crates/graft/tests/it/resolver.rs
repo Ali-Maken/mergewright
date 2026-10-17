@@ -22,6 +22,7 @@ mod handover;
 mod last_file;
 mod modal;
 mod opens_summary;
+mod picks;
 pub(crate) mod restart;
 mod resume_words;
 mod shell_begun;

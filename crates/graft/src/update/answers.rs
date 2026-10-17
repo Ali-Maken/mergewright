@@ -152,6 +152,7 @@ pub(super) fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobI
         | Task::ReadRemotes
         | Task::OpenConflict
         | Task::TakeSide
+        | Task::UntakeSide
         | Task::LoadBase
         | Task::ReadConflictSet
         | Task::ReadFinishSummary
