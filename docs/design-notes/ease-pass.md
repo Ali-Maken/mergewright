@@ -168,6 +168,7 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
   (gate: trace, not eye). Neither is Fable: correctness is checkable by tests/trace.
 
 ## Questions for the user
+**Answered 2026-10-17 by the user: "all a"** — every question takes option (a). Blocked specs are unblocked.
 1. On a teammate's row the bar says `C switch to <branch>`; today `C` opens the branch list. (a) list opens on that branch, `⏎` switches (2 keys) · (b) `C` switches at once. **Rec a.**
 2. On a teammate's row the bar says `x compare with yours`; today `x` marks a row and a second `x` on another row compares. (a) keep today's, bar says `x compare` · (b) one `x` compares his branch with yours. **Rec a.**
 3. `#` turns colours off (lines keep their shapes). (a) `#` does it, whole screen, until you quit · (b) only from `⌃P`. **Rec a.**
