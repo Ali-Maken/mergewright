@@ -7,8 +7,11 @@ use super::*;
 #[test]
 fn e_hands_over_and_rereads() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
-    let state = resolver_on(&app, state, "three.txt");
-    let state = app.key(&state, KeyCode::Char('n'));
+    let mut state = resolver_on(&app, state, "three.txt");
+    // A block past the first, so the line `e` opens at is the cursor's and
+    // not the file's first. No key walks down past an open block since
+    // ease-pass 05 (`n` is the first open clash), so it is put there.
+    state.resolver.as_mut().expect("open").cursor_block = Some(1);
     let block = open(&state).cursor_block.expect("a block under the cursor");
 
     let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('e')));

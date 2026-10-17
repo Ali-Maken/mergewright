@@ -1,7 +1,8 @@
-//! The resolver's two jobs: opening a conflicted path, and taking one side
-//! of one block (m6-conflicts/04).
+//! The resolver's jobs: opening a conflicted path (m6-conflicts/04), its
+//! base, the operation's conflict set, and the two writes in [`write`] — a
+//! take, and a pick put back (ease-pass 05).
 //!
-//! Both are thin: `graft_ops::conflict` decides everything, this file only
+//! All are thin: `graft_ops::conflict` decides everything, this file only
 //! opens the repository and turns `ops`' errors into the words the status
 //! line shows. The app never calls `graft_git::conflict`'s writing half
 //! itself — that is the seam `tests/it/seam_rule.rs` locks.
@@ -10,13 +11,17 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
-use graft_git::conflict::{ConflictFile, Take};
+use graft_git::conflict::ConflictFile;
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::status::UnmergedHow;
 use graft_ops::operation::RestartKind;
 
 use crate::repos::RepoStore;
+
+mod write;
+
+pub use write::{TakeFailure, UntakeFailure, take, untake};
 
 /// What [`open`] found: `graft_ops::conflict::Opened`, as the app holds it.
 ///
@@ -130,16 +135,6 @@ pub enum Opening {
     /// git no longer calls it unmerged: the file on disk, read-only, and
     /// whether `d` can start it over.
     Done(Arc<graft_ops::conflict::DoneFile>, StartOver),
-}
-
-/// Why a take did not land, with the same distinction kept the same way.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TakeFailure {
-    /// `graft_ops`' own words, ready to show.
-    pub words: String,
-    /// The bytes on disk are not the ones the take was chosen against, so
-    /// nothing was written and the document must be read again.
-    pub reread: bool,
 }
 
 /// Reads one conflicted path for the resolver.
@@ -306,40 +301,6 @@ fn start_over(handle: &RepoHandle, path: &Path, stop: &dyn Stop) -> StartOver {
         },
         Err(error) => could_not(error.explain()),
     }
-}
-
-/// Takes one side of one block — or of every open block (`TakeAt::Every`)
-/// — and writes the file back once, returning the
-/// document as it now stands.
-///
-/// # Errors
-/// [`TakeFailure`], carrying `graft_ops::conflict::TakeError`'s own
-/// `Display`. `Changed` is the one the resolver acts on: it re-reads rather
-/// than writing over an edit made outside Mergewright.
-pub fn take(
-    store: &RepoStore,
-    path: &Path,
-    file: &ConflictFile,
-    at: crate::update::TakeAt,
-    side: Take,
-) -> Result<ConflictFile, TakeFailure> {
-    let repo = store.shared().map_err(|error| TakeFailure {
-        words: error.to_string(),
-        reread: false,
-    })?;
-    let handle = repo.handle();
-    let taken = match at {
-        crate::update::TakeAt::Block(block) => {
-            graft_ops::conflict::apply_take(&handle, path, file, block, side)
-        }
-        crate::update::TakeAt::Every => {
-            graft_ops::conflict::apply_take_all(&handle, path, file, side)
-        }
-    };
-    taken.map_err(|error| TakeFailure {
-        words: error.to_string(),
-        reread: matches!(error, graft_ops::conflict::TakeError::Changed { .. }),
-    })
 }
 
 /// Attaches the merge base to every block of `file` (`B`, m6-conflicts/05).

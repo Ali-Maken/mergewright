@@ -31,6 +31,8 @@ pub fn operation_ended(state: &mut AppState) {
     // just ended (m6-conflicts/19): the next merge starts clean.
     state.choices.clear();
     state.finish_draft = None;
+    // And its picks (ease-pass 05).
+    state.picks.clear();
 }
 
 /// The working-tree read after [`operation_ended`]: spends the mark, and

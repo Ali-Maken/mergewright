@@ -90,6 +90,12 @@ pub(super) fn working_tree_read(
     if let Some(disagreement) = undo::reread_disagrees(next, read.in_progress.as_ref()) {
         next.status = disagreement;
     }
+    // An operation that was live and is not: finished or aborted in the
+    // shell. Its picks go with it (ease-pass 05) — on the change only, not
+    // on every read with nothing live, which is how a stash clash looks.
+    if next.in_progress.is_some() && read.in_progress.is_none() {
+        next.picks.clear();
+    }
     next.working_tree = Some(read.status);
     next.in_progress = read.in_progress;
     next.mergetool = read.mergetool;

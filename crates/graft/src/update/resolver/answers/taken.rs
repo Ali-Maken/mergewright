@@ -5,6 +5,7 @@ use super::{
     AppState, Arc, BlockState, Command, ConflictFile, JobId, Status, TakeAt, TakeRequest,
     all_taken, remember, scrolled_to, settle_landed, side_word,
 };
+use crate::update::resolver::Pick;
 
 /// A take answered.
 pub fn taken(
@@ -121,6 +122,16 @@ pub(in crate::update::resolver) fn take_landed(
     let (bulk, side) = landed_words(state, &blocks);
     let was_bulk = bulk.is_some();
     record_landed(state, file);
+    // One pick per landing — one keypress, `Every` included — against the
+    // document this write was applied to, still `open.file` here. A re-take
+    // of the side a block already has changes nothing, and is no pick.
+    let pick = state
+        .resolver
+        .as_ref()
+        .and_then(|open| Pick::between(&open.path, open.file.as_deref()?, Arc::clone(file)));
+    if let Some(pick) = pick {
+        state.picks.push(pick);
+    }
     let keys = Arc::clone(&state.keymap);
     let Some(open) = state.resolver.as_mut() else {
         return;

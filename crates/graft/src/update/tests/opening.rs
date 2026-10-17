@@ -109,6 +109,7 @@ fn every_field_spelled_out() -> AppState {
         preview: None,
         resolver: None,
         choices: std::collections::BTreeMap::new(),
+        picks: Box::default(),
         finish: None,
         finish_draft: None,
         conflict_editing: Some(std::path::PathBuf::from("notes.txt")),

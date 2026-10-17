@@ -607,6 +607,13 @@ pub(super) fn graft_rebase_at_step_one() -> (Scratch, App, AppState) {
     let scratch = graft_fixtures::copy_into_temp(Shape::TwoStopRebase);
     git(scratch.path(), &["rebase", "--abort"]);
     let (app, state) = opened_on(&scratch);
+    let state = rebased_onto_main_by_graft(&app, state, "a.txt");
+    (scratch, app, state)
+}
+
+/// The branch checked out rebased onto `main` **by Graft** (`r` on `main`'s
+/// row, confirmed), waited on until it stops with `first` unmerged.
+pub(super) fn rebased_onto_main_by_graft(app: &App, state: AppState, first: &str) -> AppState {
     let state = app.pump(state, "the graph and its badges", |state| {
         state.refs.is_some() && state.history.is_some()
     });
@@ -629,16 +636,15 @@ pub(super) fn graft_rebase_at_step_one() -> (Scratch, App, AppState) {
     });
     let state = app.key(&state, KeyCode::Right);
     let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the rebase stopping at step 1", |state| {
+    app.pump(state, "the rebase stopping at step 1", |state| {
         state.operating.is_none()
             && state.in_progress.is_some()
             && state.working_tree.as_ref().is_some_and(|tree| {
                 tree.entries
                     .iter()
-                    .any(|entry| entry.unmerged && entry.path == Path::new("a.txt"))
+                    .any(|entry| entry.unmerged && entry.path == Path::new(first))
             })
-    });
-    (scratch, app, state)
+    })
 }
 
 #[test]
@@ -691,24 +697,6 @@ fn a_rebase_lists_only_this_steps_files() {
         body.contains("✓ every file done — c continue the rebase"),
         "{body}"
     );
-    drop(state);
-    app.close();
-    drop(scratch);
-}
-
-/// J9's first step (m6-conflicts/15): `n` on `gone.txt`'s card crosses to
-/// the next file in the list, `notes.txt`, and lands on its block 0.
-#[test]
-fn n_on_a_card_crosses_to_the_next_file_in_list_order() {
-    let scratch = gone_and_notes_merge();
-    let (app, state) = opened_on(&scratch);
-    let state = resolver_on_whole_file(&app, state, "gone.txt");
-    let state = app.key(&state, KeyCode::Char('n'));
-    assert_eq!(open(&state).path, Path::new("notes.txt"));
-    let state = settled(&app, state);
-    assert_eq!(open(&state).path, Path::new("notes.txt"));
-    assert_eq!(open(&state).cursor_block, Some(0));
-    assert_eq!(open(&state).notice, Some(("▸ notes.txt".to_owned(), false)));
     drop(state);
     app.close();
     drop(scratch);

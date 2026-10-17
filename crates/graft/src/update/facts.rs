@@ -88,6 +88,7 @@ pub(super) fn took_fact(
         | Product::HandedOver(_)
         | Product::ConflictOpened(_)
         | Product::Taken(_)
+        | Product::Untaken(_)
         | Product::BaseLoaded(_)
         | Product::ConflictSet(_)
         | Product::FinishSummary(_)

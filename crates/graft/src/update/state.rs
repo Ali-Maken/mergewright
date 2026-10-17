@@ -466,6 +466,10 @@ pub struct AppState {
     /// What the user chose for each conflicted file, for the finish
     /// summary's words (m6-conflicts/19). Cleared when the operation ends.
     pub choices: std::collections::BTreeMap<std::path::PathBuf, super::finish::Choices>,
+    /// The live operation's picks for the resolver's `u` (ease-pass 05):
+    /// beside the operation, so closing the resolver keeps them; memory
+    /// only. Boxed: tests hold `AppState`s in arrays on the stack.
+    pub picks: Box<super::resolver::Picks>,
     /// The finish summary (`c` on a merge, m6-conflicts/19): `None` while
     /// closed. Modal, and first in [`AppState::graph_overlay`].
     pub finish: Option<super::finish::FinishState>,

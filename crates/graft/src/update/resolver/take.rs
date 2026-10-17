@@ -8,8 +8,8 @@ use graft_core::job::JobId;
 use graft_git::conflict::{ConflictFile, NoSuchBlock, Take};
 use graft_ops::operation::Side;
 
+use super::picks::{blocks_of, next_open_in_file};
 use super::settle::settle_key;
-use super::walk::after_take;
 use super::whole_file::{whole_file_both_refused, whole_file_take};
 use super::{ResolverState, TAKE_QUEUE_CAP, scrolled_to};
 use crate::update::events::{Command, TakeAt, TakeRequest};
@@ -74,6 +74,13 @@ fn take_block(
     // What the document will be once this take lands too. A block it
     // lacks means the cursor and the document disagree: said, never
     // swallowed, and nothing sent (rule 3).
+    //
+    // **Question 16 (open), the one place it is decided:** a block already
+    // taken is taken again — its take *replaced* (`ConflictFile::take`), as
+    // before ease-pass 05; the pick its landing pushes remembers the
+    // earlier take, so `u` restores that. Answered "refuse", this is where
+    // a taken block stops with the notice `already taken · u undoes it`
+    // and nothing is sent.
     let pending = pending.and_then(|mut file| file.take(block, take).map(|()| file));
     let pending = match pending {
         Ok(file) => file,
@@ -85,7 +92,7 @@ fn take_block(
         }
     };
     take_side(state, commands, TakeAt::Block(block), take, next_id);
-    advance(state, &pending, block);
+    advance(state, &pending);
 }
 
 /// `Ctrl+O`/`Ctrl+T`: take one side in **every** block still open, in one
@@ -196,11 +203,12 @@ pub(super) fn take_refusal(state: &AppState) -> Option<&'static str> {
     open.base_job.is_some().then_some("still loading the base")
 }
 
-/// The cursor after a take of `taken`: on to the next open block of
-/// `pending`, scrolled into view — or, with none open, left where it is
-/// and the notice says what is left to do.
-fn advance(state: &mut AppState, pending: &ConflictFile, taken: usize) {
-    let next = after_take(pending, taken);
+/// The cursor after a take: on to the **first** open block of `pending`,
+/// top-down (ease-pass 05, the mock's `findIndex`), scrolled into view —
+/// so a file is solved in order whichever block was taken last. With none
+/// open it is left where it is, and the notice says what is left to do.
+fn advance(state: &mut AppState, pending: &ConflictFile) {
+    let next = next_open_in_file(&blocks_of(pending));
     let top = next.map(|block| scrolled_to(state, block));
     let keys = std::sync::Arc::clone(&state.keymap);
     let Some(open) = state.resolver.as_mut() else {

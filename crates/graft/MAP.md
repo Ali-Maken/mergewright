@@ -112,7 +112,7 @@ A clone as a pool job for the start screen's `c`, stoppable, with a fetch's prog
 ## jobs::commit_message
 What the commit editor needs: `commit.template`'s contents and `HEAD`'s message for an amend.
 ## jobs::conflict
-The resolver's jobs: open a conflicted path, take one side of one block. `graft_ops::conflict` decides.
+The resolver's jobs: open a conflicted path, take one side of one block, put the last pick back (`untake`, which reads the status first). `graft_ops::conflict` decides.
 ## jobs::detail
 The detail pane's reads: changed files, one file's diff, which refs contain a commit; view models built here.
 ## jobs::finish
@@ -289,7 +289,7 @@ Landing on an operation git is part-way through: the banner takes the keyboard a
 ## update::remote
 Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running write, progress and failure lines. `esc_stops_write` (fn): whether `Esc` goes to the running write now; J, stash and Map bars read it.
 ## update::resolver
-The conflict resolver: a modal over one conflicted file; `o`/`t`/`b` take a side per block, `⏎` marks it resolved.
+The conflict resolver, modal over one conflicted file: `o`/`t`/`b` take a side and move to the first open block; `u` puts the last pick back (`Picks`, memory only); `n` goes to the first open clash; `⏎` marks it resolved.
 ## update::rewrite_editor
 The rewrite editor (`R`): the branch as rows, the plan and squashed message shown before `y` runs the rewrite.
 ## update::row_tags

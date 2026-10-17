@@ -1,6 +1,7 @@
-//! `n`/`N` reach every block, taken or not, and cross files in the list's
-//! order (m6-conflicts/15). Split out of `advance.rs` (review
-//! m6-amend-15 M3), whose fixtures it shares.
+//! `N` reaches every block, taken or not, and crosses files in the list's
+//! order (m6-conflicts/15); `n` goes to the first open clash from the top
+//! (ease-pass 05). Split out of `advance.rs` (review m6-amend-15 M3), whose
+//! fixtures it shares.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -24,7 +25,7 @@ fn three_alone() -> AppState {
     non_snake_case,
     reason = "`n` and `N` are two different keys, and the test is named for them"
 )]
-fn n_and_N_reach_a_taken_block() {
+fn N_reaches_a_taken_block_and_n_skips_it() {
     let (state, commands) = press(&three_alone(), KeyCode::Char('t'));
     let (state, _) = landed(&state, &sent(&commands)[0]);
     assert_eq!(cursor(&state), Some(1));
@@ -39,8 +40,12 @@ fn n_and_N_reach_a_taken_block() {
         "a re-take"
     );
     assert_eq!(cursor(&state), Some(1), "and on to block 1");
+    // `n` is the first open clash from the top (ease-pass 05): back on the
+    // taken block 0, it goes past it to block 1.
+    let (state, _) = press(&state, KeyCode::Char('N'));
+    assert_eq!(cursor(&state), Some(0));
     let (state, _) = press(&state, KeyCode::Char('n'));
-    assert_eq!(cursor(&state), Some(2));
+    assert_eq!(cursor(&state), Some(1), "n skips the taken block");
 }
 
 /// The opening read of the file the walk crossed to lands with `file`.
@@ -87,11 +92,15 @@ fn n_at_the_last_block_crosses_in_list_order() {
     assert_eq!(cursor(&state), Some(2), "N lands on the last block");
 }
 
+/// Rule 1 before rule 2, for `N` (the rules are `n`'s no longer, ease-pass
+/// 05): before `a`'s first block, `b` is not done, so `N` crosses to it
+/// rather than wrap to `a`'s last open block.
 #[test]
-fn n_crosses_before_it_wraps() {
+#[allow(non_snake_case, reason = "`N` is the key, not `n`")]
+fn N_crosses_before_it_wraps() {
     let mut state = on("a", three(), &["a", "b"], &["a", "b"]);
-    state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    let (state, _) = press(&state, KeyCode::Char('n'));
+    state.resolver.as_mut().expect("open").cursor_block = Some(0);
+    let (state, _) = press(&state, KeyCode::Char('N'));
     assert_eq!(open_path(&state), Path::new("b"));
     assert_eq!(notice(&state), Some("▸ b"));
 }
@@ -107,9 +116,15 @@ fn only_block_0_open() -> AppState {
     state
 }
 
+/// `N` from block 0 with no other file to cross to wraps to the last open
+/// block, and says so. `n` from block 2 reaches the same block from the
+/// top: no wrap, so no words (ease-pass 05, `first_open.rs`).
 #[test]
-fn n_wraps_when_no_other_file_is_open() {
-    let (state, commands) = press(&only_block_0_open(), KeyCode::Char('n'));
+#[allow(non_snake_case, reason = "`N` is the key, not `n`")]
+fn N_wraps_when_no_other_file_is_open() {
+    let mut state = only_block_0_open();
+    state.resolver.as_mut().expect("open").cursor_block = Some(0);
+    let (state, commands) = press(&state, KeyCode::Char('N'));
     assert!(
         !commands
             .iter()
@@ -118,6 +133,10 @@ fn n_wraps_when_no_other_file_is_open() {
     );
     assert_eq!(cursor(&state), Some(0));
     assert_eq!(notice(&state), Some("wrapped · 1 still open"));
+
+    let (state, _) = press(&only_block_0_open(), KeyCode::Char('n'));
+    assert_eq!(cursor(&state), Some(0));
+    assert_eq!(notice(&state), None);
 }
 
 /// Every block of `three.txt` taken, the cursor on the last, in a list of
