@@ -66,3 +66,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 05r (e31a2d2e): fmt ok, clippy 0, nextest 6644/6644, doc ok; worktree removed. builder-fable 05b + scouts 08, 10 dispatched.
 - scout 08 commit-screen: 5 spec/code mismatches (⌃S flag vs insert, Field enum, amend line, no Draft, JustCommitted site); Build with Opus · 17 tools. planner-fable spec pass on 08 dispatched.
 - scout 10 merge-preview: 8 spec/code mismatches (graft-ops in set, refusal in box vs status, esc, opener, PreviewBox, hints path, footer join); Build with Sonnet · 29 tools. planner-fable spec pass on 10 dispatched.
+- planner-fable 08 reconcile (Draft/LastCommit, CommitFocus, ⌃S flag shown in header, keymap reword in scope) · 30 tools; planner-fable 10 reconcile (graft-ops in set, refusal stays status line, unrelated withholds y, note l.75 fixed) · 25 tools. 08, 10 ready, Build with Opus.
