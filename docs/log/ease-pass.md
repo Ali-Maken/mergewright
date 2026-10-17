@@ -37,3 +37,5 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 04 merge (ea7206cb): fmt ok, clippy 0, nextest 6519/6519, doc ok; worktree removed. builder-opus 04r dispatched.
 - builder-fable 01r (011ad962, merged 62e92c5b): entry_into + footing rules; 17/17 boxes, red 11/35 at 9297164b. Unverified: transitive Who not mutation-checked, spawn counts by reading. Untested limit: no-commit teammate --no-ff merge counts as merged. skills: implement, tdd · 130 tools
 - gates after 01r (62e92c5b): fmt ok, clippy 0, nextest 6538/6538, doc ok; worktree removed. builder-opus 03b dispatched.
+- builder-opus 04r (39caf3be, merged 611de959): per-run scratch name commit-index-<pid>-<n> under journal lock, recovery sweep, missing copy = error (cause; red quoted: two threads → empty tree, Committed); M2 + m1 + m3 cause. 11/11 boxes. Touched graft-git (free). Ceilings raised run.rs 690, journal/file.rs 404. skills: none · 152 tools
+- gates after 04r (611de959): fmt ok, clippy 0, nextest 6545/6545, doc ok; worktree removed. KNOWN_GAPS +5 ease rows. builder-opus 02r dispatched.
