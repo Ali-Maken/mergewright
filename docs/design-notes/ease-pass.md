@@ -251,6 +251,7 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
   by fixture (`git ls-files -s`), so not Fable.
 
 ## Questions for the user
+**Later answers, 2026-10-17 (user: "14a 15 yes 16a 17a 18a"):** Q14 (a) only lanes/folded words added; design-doc edits approved (02-keymap Proposed marks become decided; 01/03 docs and PROMPT §1.3 follow the mocks); note-Q15 stacked base (a) built on `integration`; note-Q16 re-take **replaces** (today); note-Q17 a rebase stop **lands on the first clash**, like a merge.
 **Answered 2026-10-17 by the user: "all a"** — Q1–13 take option (a). Close calls he flagged: 2, 9 (`docs/field-notes.md:112`).
 1. On a teammate's row the bar says `C switch to <branch>`; today `C` opens the branch list. (a) list opens on that branch, `⏎` switches (2 keys) · (b) `C` switches at once. **Rec a.**
 2. On a teammate's row the bar says `x compare with yours`; today `x` marks a row and a second `x` on another row compares. (a) keep today's, bar says `x compare` · (b) one `x` compares his branch with yours. **Rec a.**
