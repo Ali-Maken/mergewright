@@ -12,3 +12,6 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - user answered 13 questions: all (a) (note + field-notes). planner-fable pass 2 dispatched.
 - planner-fable pass 2: 8 new specs + 4 updated; waves R‖K · V‖W · P‖F · G‖S · B‖Mp · L‖Fr · X alone · A; Fable 2; Q14 new (top line names branch twice) · 41 tools
 - conductor: filed 01–14 (01 R … 14 A), Blocked by set, Status ready.
+- scout 02: CommitSummary is String/Identity not Vec<u8>; when exists (author.when); NoSuchBlock exists (conflict.rs:329); merge_forecast needs &GitVersion (forecast.rs:71-81); files changed + clash places need new reads; reopen feasible. Unconfirmed: unrelated histories. Rec builder-opus. → spec fix with 01's scout.
+- scout 01: made_on — Row.lanes is Option<BranchIdentity> (row.rs:45), LaneIdentity only on RowShape; ahead_behind no stop, WalkError (divergence.rs:52); merge_base no stop (compare_span does); counts usize not u32; of_name &[u8]. Unconfirmed: Candidate.name full vs short. · 11 tools
+- scout 02 · 10 tools. Both → planner-fable spec-only fix (01, 02 + dependents).
