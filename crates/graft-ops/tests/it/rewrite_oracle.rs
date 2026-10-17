@@ -114,7 +114,7 @@ fn graft(repo: &TempRepo, params: RewriteParams, between: &dyn Fn(&TempRepo)) {
                 let mut journal = journal_for(&handle);
                 let never = Never;
                 let mut ctx = context(&handle, &mut journal, at, &never);
-                result = resume(&mut ctx, Resume::Continue);
+                result = resume(&mut ctx, Resume::Continue { solved: Vec::new() });
             }
             Err(why) => panic!(
                 "Graft's route failed: {}",

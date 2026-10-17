@@ -37,7 +37,8 @@ pub(super) fn finish_screen_for(
             }],
             message: b"Merge branch 'feature'\n".to_vec(),
             recorded: true,
-        })),
+        })
+        .into()),
     );
     if let Some(open) = state.finish.as_mut() {
         open.cursor = usize::from(expandable);

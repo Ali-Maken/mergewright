@@ -72,6 +72,8 @@ pub(super) fn control_key(
     match key.code {
         KeyCode::Enter => commit(state, commands, next_id),
         KeyCode::Char('e') => edit_outside(state, commands, next_id),
+        // `⌃Z`, `app.undo`'s other chord: never text, so from any focus.
+        _ if asks_undo(key) => undo_pick(state, commands, next_id),
         // §2.10's word moves, in whichever field has focus.
         KeyCode::Left => with_finish(state, |finish| match finish.focus {
             FinishFocus::Subject => finish.subject.word_left(),
@@ -98,6 +100,7 @@ pub(super) fn files_key(
 ) {
     match key.code {
         KeyCode::Char('y') => commit(state, commands, next_id),
+        _ if asks_undo(key) => undo_pick(state, commands, next_id),
         KeyCode::Enter | KeyCode::Char(' ') => toggle_diff(state, commands, next_id),
         KeyCode::Char('j') | KeyCode::Down => move_cursor(state, 1),
         KeyCode::Char('k') | KeyCode::Up => move_cursor(state, -1),
@@ -105,6 +108,43 @@ pub(super) fn files_key(
         KeyCode::PageUp => move_cursor(state, -page(state)),
         _ => {}
     }
+}
+
+/// `key` is one of `app.undo`'s chords as shipped (`u`, `⌃Z`): the edge
+/// hands a handler shipped chords only (`update/edge.rs`).
+fn asks_undo(key: KeyPress) -> bool {
+    use graft_ui::keymap::{ActionId, KeyChord, Keymap};
+    KeyChord::from_press(&key).is_some_and(|chord| {
+        Keymap::shipped()
+            .chords(&ActionId("app.undo"))
+            .contains(&chord)
+    })
+}
+
+/// `u` in the review's file list (ease-pass/05b): back to the resolver with
+/// the last pick put back and the cursor on it — the resolver under the
+/// review, or one opened on the pick when the review was asked for from
+/// the banner. Nothing to undo: said, and the review stays.
+fn undo_pick(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    if state.picks.is_empty() {
+        with_finish(state, |finish| {
+            finish.notice = Some((crate::update::resolver::NOTHING_TO_UNDO.to_owned(), false));
+        });
+        return;
+    }
+    let from_banner = state
+        .finish
+        .as_ref()
+        .is_some_and(|finish| finish.return_to == ReturnTo::Banner);
+    close_keeping_draft(state);
+    if from_banner {
+        state.banner_focus = crate::update::banner::banner_view(state).is_some();
+    }
+    crate::update::resolver::undo_from_review(state, commands, from_banner, next_id);
 }
 
 /// One page: the list's visible height, the lines the frame leaves it.
@@ -233,8 +273,9 @@ pub(super) fn commit(
             return;
         }
         // Nothing to compare against: git's own message, as the line says.
-        Loading::Failed(_) => Resume::Continue,
+        Loading::Failed(_) => Resume::Continue { solved: Vec::new() },
         Loading::Ready(summary) => {
+            let solved = finish.solved.clone();
             if finish.subject.text().trim().is_empty() {
                 finish.notice = Some((
                     state.keymap.after(
@@ -248,10 +289,11 @@ pub(super) fn commit(
             }
             let message = compose(finish.subject.text(), &finish.body.text());
             if message.trim_end() == String::from_utf8_lossy(&summary.message).trim_end() {
-                Resume::Continue
+                Resume::Continue { solved }
             } else {
                 Resume::ContinueWith {
                     message: message.into_bytes(),
+                    solved,
                 }
             }
         }

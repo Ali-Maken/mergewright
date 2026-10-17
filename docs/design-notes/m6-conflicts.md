@@ -492,11 +492,11 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 a-merge-to-stop               2
 a-stop-to-first-conflict      0                     # JetBrains 0
 b-launch-to-first-conflict    1
-one-file-one-conflict         1                    # JetBrains 2 · P11 (approved 2026-09-24): lands on the summary, count unchanged
-three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1 · P11 (approved): lands on the summary, count unchanged
+one-file-one-conflict         2                    # JetBrains 2 · P11 (approved 2026-09-24): lands on the summary, count unchanged · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
+three-conflicts-all-theirs    2                    # JetBrains Accept Theirs 1 · P11 (approved): lands on the summary, count unchanged · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
 modify-delete-keep-yours      1                     # JetBrains 1
-two-files-in-order            2                    # JetBrains 2 · P11 (approved): lands on the summary, count unchanged
-two-files-out-of-order        3                    # P11 (approved): lands on the summary, count unchanged
+two-files-in-order            3                    # JetBrains 2 · P11 (approved): lands on the summary, count unchanged · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
+two-files-out-of-order        4                    # P11 (approved): lands on the summary, count unchanged · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
 a-finish                      1                     # lazygit 1 (bare confirm, rejected) · P11+P12 approved 2026-09-24 → 1: `y` in the summary the last file opened · lowered by last-file-opens-the-summary
 b-finish                      1                     # P11+P12 approved → 1 (`y`) · lowered by last-file-opens-the-summary
 summary-open-git-combined     1
@@ -504,9 +504,9 @@ back-after-esc                2
 open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
 walk-back-a-done-file         3                     # Tower reset-to-unmerged (CR 1.11): count (?) · P15 approved → 3 (`j d y`) · lowered by ticket 50
 walk-back-a-whole-file-choice 3                     # batch 7 (approved 2026-09-24): k d → ⏎ · ticket 50 → 3 (k d y) · Tower (?)
-a-whole-one-file              4                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`) · approved; lowered by last-file-opens-the-summary
-a-whole-two-files             5                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`) · approved; lowered by last-file-opens-the-summary
-b-whole-two-files             4                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`) · approved; lowered by last-file-opens-the-summary
+a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`) · approved; lowered by last-file-opens-the-summary · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
+a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`) · approved; lowered by last-file-opens-the-summary · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
+b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`) · approved; lowered by last-file-opens-the-summary · ease-pass/05b: +1, the resolver's `y` opens the review (ease-pass.md Journeys, merge-one-clash `m y o y y`; P11 dropped for merges)
 editor-to-finish              2                     # c y from the changes pane (P14 approved 2026-09-24; usability M3) · was 5 (c ⇥ ⇥ c ⏎) · lowered by ticket 52
 b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2 · approved; keys re-sent by finish-summary-is-a-preview
 b-abort-shell-merge           2                     # batch 3 (approved 2026-09-24): a → ⏎ from the banner · ticket 50 → 2 (a y) · lazygit 3 (?)

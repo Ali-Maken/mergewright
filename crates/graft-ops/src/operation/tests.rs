@@ -1266,6 +1266,7 @@ fn working_tree_cases() -> Vec<(Operation, bool)> {
             Operation::FinishMerge(super::FinishMergeParams {
                 merge_head: oid(0x0b),
                 message: None,
+                solved: Vec::new(),
             }),
             true,
         ),

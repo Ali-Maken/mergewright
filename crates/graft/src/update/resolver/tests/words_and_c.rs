@@ -137,7 +137,7 @@ fn continued(commands: &[Command]) -> bool {
     commands.iter().any(|command| {
         matches!(
             command,
-            Command::Resume(_, graft_ops::apply::Resume::Continue, ..)
+            Command::Resume(_, graft_ops::apply::Resume::Continue { .. }, ..)
                 | Command::ReadFinishSummary(_)
         )
     })
@@ -217,9 +217,8 @@ fn c_before_the_status_read_lands_agrees_with_the_notice() {
 }
 
 /// `m6-conflicts/31`: while the status read is out, the notice row — not
-/// the status line — says it is checking. Rewritten for m6-conflicts/60:
-/// when it lands, the summary opens over the resolver on its own and the
-/// notice is cleared.
+/// the status line — says it is checking. When it lands the notice gives
+/// way to the finish row; nothing opens on its own (ease-pass/05b).
 #[test]
 fn a_status_read_out_shows_checking_on_the_notice_row() {
     let (landed, commands) = last_stage_lands();
@@ -233,7 +232,8 @@ fn a_status_read_out_shows_checking_on_the_notice_row() {
     );
     let (fresh, _) = update(&landed, AppEvent::Produced(owed, read(&[])));
     assert_eq!(notice(&fresh), None);
-    assert!(fresh.finish.is_some(), "the summary opened on its own");
+    assert!(fresh.finish.is_none(), "nothing opens on its own");
+    assert_eq!(finish_row(&fresh).as_deref(), Some(FINISH_ROW));
     assert_eq!(fresh.status, landed.status, "the status line untouched");
 }
 
@@ -279,17 +279,14 @@ fn the_notice_and_c_agree_before_and_after_the_read_lands() {
     assert_eq!(finish_row(&fresh).as_deref(), Some(FINISH_ROW));
     agree(&fresh, true, "after the read, c pressed meanwhile");
 
-    // An edit from outside left a file conflicted after all: the notice is
-    // `c`'s own refusal, and `c` says exactly that again.
+    // An edit from outside left a file unmerged after all. In a merge a
+    // status cannot call it conflicted — it may be solved on disk, waiting
+    // for the finish to stage it (ease-pass/05b) — so the notice claims
+    // nothing, and `c` opens the review, whose read judges it.
     let (outside, _) = update(&older, AppEvent::Produced(owed, read(&["gone.txt"])));
-    assert!(!invites_c(&outside), "{:?}", notice(&outside));
-    let (again, sent) = press(&outside, KeyCode::Char('c'));
-    assert!(!continued(&sent), "{sent:?}");
-    assert_eq!(notice(&again), notice(&outside), "the notice and c agree");
-    assert_eq!(
-        notice(&outside),
-        Some(("1 file still conflicted · ⏎ marks done".to_owned(), false))
-    );
+    assert_eq!(notice(&outside), None);
+    let (_, sent) = press(&outside, KeyCode::Char('c'));
+    assert!(continued(&sent), "{sent:?}");
 }
 
 /// The read the notice waits on ends with no status: the notice stops

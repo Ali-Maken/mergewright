@@ -224,7 +224,7 @@ fn ctrl_t_notice_counts_the_blocks() {
     let (state, _) = landed(&state, &sent(&commands)[0]);
     assert_eq!(
         notice(&state),
-        Some("took theirs · feature in 3 blocks · ⏎ marks three.txt done")
+        Some("took theirs · feature in 3 blocks · y reviews the merge")
     );
     assert_eq!(cursor(&state), Some(1), "unchanged from before the press");
 
@@ -235,7 +235,7 @@ fn ctrl_t_notice_counts_the_blocks() {
     let (state, _) = landed(&state, &sent(&commands)[0]);
     assert_eq!(
         notice(&state),
-        Some("took yours · main in 2 blocks · ⏎ marks three.txt done")
+        Some("took yours · main in 2 blocks · y reviews the merge")
     );
 
     // One block open.
@@ -246,7 +246,7 @@ fn ctrl_t_notice_counts_the_blocks() {
     let (state, _) = landed(&state, &sent(&commands)[0]);
     assert_eq!(
         notice(&state),
-        Some("took theirs · feature in 1 block · ⏎ marks three.txt done")
+        Some("took theirs · feature in 1 block · y reviews the merge")
     );
 }
 

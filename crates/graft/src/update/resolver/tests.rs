@@ -474,22 +474,16 @@ fn last_file_staged_from_the_pane() -> AppState {
 /// continues (acceptance finding F4: from the pane, `c` once opened the
 /// commit editor). Since m6-conflicts/31 that is the resolver itself: it
 /// stays open after the last file, whichever way it was opened, and the
-/// keyboard stays where it was. Rewritten for m6-conflicts/60: opened from
-/// the pane, the merge's summary opens on its own too; `Esc` from it leaves
-/// the finish row, and `c` there opens it again — never the commit editor.
+/// keyboard stays where it was. Nothing opens on its own (ease-pass/05b):
+/// the finish row offers `c`, and `c` opens the summary — never the commit
+/// editor.
 #[test]
 fn all_resolved_from_the_pane_offers_c_where_c_continues() {
     let state = last_file_staged_from_the_pane();
     assert_eq!(open_path(&state), Path::new("conflicted.rs"), "it stays");
-    let finish = state
-        .finish
-        .as_ref()
-        .expect("the summary opened on its own");
-    assert_eq!(finish.return_to, crate::update::finish::ReturnTo::Resolver);
+    assert!(state.finish.is_none(), "nothing opens on its own");
     assert!(state.commit_editor.is_none());
     assert!(!state.banner_focus, "banner_focus unchanged");
-    let (state, _) = press(&state, KeyCode::Escape);
-    assert!(state.finish.is_none(), "Esc closed the summary");
     assert_eq!(state.resolver.as_ref().expect("open").notice, None);
     assert_eq!(
         crate::view::resolver::finish_row(&state).map(|row| row.full.as_str().to_owned()),
@@ -701,6 +695,7 @@ mod file_list;
 mod finish_here;
 mod first_open;
 mod opens_itself;
+mod review_at_y;
 mod step;
 mod take_all;
 mod undo_ends;

@@ -243,6 +243,7 @@ fn resolve(write: Fix) -> Vec<Step> {
 fn c_is_refused() -> Vec<Step> {
     vec![
         key(ch('c')),
+        Step::WaitFor(Wait::ReviewRefused),
         Step::See("c refuses and names the keys that resolve it", |state| {
             status_containing(state, "1 file still conflicted")?;
             status_containing(state, "⏎ resolve  M mergetool  e edit")

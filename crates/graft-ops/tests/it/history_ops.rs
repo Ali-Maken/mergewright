@@ -1187,7 +1187,8 @@ fn a_merge_that_stops_on_shared_txt(repo: &TempRepo) -> JournalEntry {
     assert_eq!(entries(repo)[0].status, EntryStatus::Pending);
 
     // Continue before resolving: refused before git is asked.
-    let refused = run_resume(repo, Resume::Continue, NOW + 1).expect_err("unmerged");
+    let refused =
+        run_resume(repo, Resume::Continue { solved: Vec::new() }, NOW + 1).expect_err("unmerged");
     assert!(
         matches!(refused, ApplyError::Refused(Refusal::Unmerged { .. })),
         "{refused:?}"
@@ -1234,7 +1235,8 @@ fn conflict_span_is_one_entry_and_undoes_to_before_the_merge() {
     );
 
     // Now it continues, and the entry finally gets its outcome line.
-    let applied = run_resume(&repo, Resume::Continue, NOW + 4).expect("the merge finishes");
+    let applied = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 4)
+        .expect("the merge finishes");
     assert_eq!(
         applied.entry.id, entry.id,
         "the same entry, start to finish"
@@ -1300,7 +1302,8 @@ fn resolving_each_file_in_turn_still_leaves_the_span_one_entry() {
     // whether the step got an entry of its own.
     assert_eq!(entries(&repo).len(), 1, "one entry, two resolve steps");
 
-    let applied = run_resume(&repo, Resume::Continue, NOW + 4).expect("the merge finishes");
+    let applied = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 4)
+        .expect("the merge finishes");
     assert_eq!(
         applied.entry.id, entry.id,
         "the same entry, start to finish"
@@ -1472,7 +1475,8 @@ fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
     // Since m6-conflicts/20 `Continue` on a merge with no entry of Graft's
     // finishes it as a shell-begun merge of its own, so the refusal here is
     // the unmerged path — and Graft's stale entry is still not adopted.
-    let refused = run_resume(&repo, Resume::Continue, NOW + 1).expect_err("not Graft's merge");
+    let refused = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 1)
+        .expect_err("not Graft's merge");
     assert!(
         matches!(refused, ApplyError::Refused(Refusal::Unmerged { .. })),
         "the branch moved since the entry was written: {refused:?}"
@@ -1529,8 +1533,10 @@ fn rebase_conflicts_twice_same_entry() {
 
     repo.write("shared.txt", b"resolved one\n");
     repo.git(&["add", "shared.txt"]);
-    let (again, still, _) =
-        conflict_of(run_resume(&repo, Resume::Continue, NOW + 1).expect_err("it stops again"));
+    let (again, still, _) = conflict_of(
+        run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 1)
+            .expect_err("it stops again"),
+    );
     assert_eq!(again.id, entry.id, "one entry across both stops");
     assert_eq!(still, InProgress::Rebase);
     assert_eq!(
@@ -1541,7 +1547,8 @@ fn rebase_conflicts_twice_same_entry() {
 
     repo.write("shared.txt", b"resolved two\n");
     repo.git(&["add", "shared.txt"]);
-    let done = run_resume(&repo, Resume::Continue, NOW + 2).expect("the rebase finishes");
+    let done = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 2)
+        .expect("the rebase finishes");
     assert_eq!(done.entry.id, entry.id);
     assert_eq!(done.entry.status, EntryStatus::Committed);
     assert!(!repo.exists(".git/rebase-merge"));

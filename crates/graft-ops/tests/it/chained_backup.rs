@@ -306,7 +306,7 @@ fn resume_chains_then_after_snapshot_parents_the_chain() {
     let mut journal = journal_for(&handle);
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 3, &never);
-    resume(&mut ctx, Resume::Continue)
+    resume(&mut ctx, Resume::Continue { solved: Vec::new() })
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     drop(journal);
 

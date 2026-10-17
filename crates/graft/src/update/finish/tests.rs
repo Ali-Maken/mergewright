@@ -121,7 +121,7 @@ pub(crate) fn opened() -> AppState {
         .expect("`c` asks for the summary");
     update(
         &state,
-        AppEvent::Produced(id, Product::FinishSummary(Ok(summary()))),
+        AppEvent::Produced(id, Product::FinishSummary(Ok(summary().into()))),
     )
     .0
 }
@@ -163,11 +163,36 @@ fn c_on_a_resolved_merge_opens_the_summary_not_the_commit() {
     );
 }
 
+fn read_id(commands: &[Command]) -> JobId {
+    commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadFinishSummary(id) => Some(*id),
+            _ => None,
+        })
+        .expect("the review is read")
+}
+
+/// Banner `c` in a merge with a file still unmerged (ease-pass/05b): the
+/// files git still calls unmerged may be solved on disk, which only the
+/// review's read can tell, so `c` asks it; a read that finds a clash still
+/// open closes the review and refuses in today's words, counting the open
+/// files. Nothing is written.
 #[test]
-fn c_with_a_file_unmerged_is_still_refused() {
+fn c_with_a_file_still_open_is_refused_by_the_review_read() {
     let state = stopped(InProgress::Merge, &["notes.txt"]);
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
+    assert!(resumes(&commands).is_empty());
+    let id = read_id(&commands);
+    let (state, commands) = update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::FinishSummary(Err(ReviewFailed::StillOpen { count: 1 })),
+        ),
+    );
     assert!(state.finish.is_none());
+    assert!(state.banner_focus, "the banner has the keyboard back");
     assert!(resumes(&commands).is_empty());
     assert_eq!(
         state.status,
@@ -179,13 +204,48 @@ fn c_with_a_file_unmerged_is_still_refused() {
     );
 }
 
+/// Banner `c` in a merge whose unmerged file is solved on disk: the review
+/// opens, and its `y` hands the solved files to the finish, which stages
+/// them in the same operation (ease-pass/05b). Nothing is staged before.
+#[test]
+fn y_in_the_review_stages_the_files_the_read_found_solved() {
+    let state = stopped(InProgress::Merge, &["notes.txt"]);
+    let (state, commands) = press(&state, plain(KeyCode::Char('c')));
+    assert!(
+        commands
+            .iter()
+            .all(|command| !matches!(command, Command::Operate(..) | Command::Resume(..))),
+        "nothing staged or written on c: {commands:?}"
+    );
+    let id = read_id(&commands);
+    let reviewed = Reviewed {
+        summary: summary(),
+        solved: vec![PathBuf::from("notes.txt")],
+    };
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(id, Product::FinishSummary(Ok(reviewed))),
+    );
+    assert_eq!(finish(&state).solved, vec![PathBuf::from("notes.txt")]);
+    let (_, commands) = press(&state, plain(KeyCode::Char('y')));
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue {
+            solved: vec![PathBuf::from("notes.txt")]
+        }]
+    );
+}
+
 #[test]
 fn a_rebase_c_still_continues_directly() {
     let mut state = stopped(InProgress::Rebase, &[]);
     state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
     assert!(state.finish.is_none());
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
 }
 
 #[test]
@@ -221,7 +281,10 @@ fn unread_summary_has_no_names() {
 fn y_commits_with_gits_message_when_unedited() {
     let state = opened();
     let (state, commands) = press(&state, plain(KeyCode::Char('y')));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
     assert_eq!(finish(&state).committing, state.operating);
     assert!(state.operating.is_some());
 }
@@ -235,6 +298,7 @@ fn an_edited_subject_commits_continue_with() {
     assert_eq!(
         resumes(&commands),
         vec![&Resume::ContinueWith {
+            solved: Vec::new(),
             message: b"Merge branch 'feature' at last".to_vec()
         }]
     );
@@ -280,11 +344,14 @@ fn an_unreadable_summary_commits_with_gits_message() {
         &state,
         AppEvent::Produced(
             *id,
-            Product::FinishSummary(Err("1 still conflicted".to_owned())),
+            Product::FinishSummary(Err("1 still conflicted".to_owned().into())),
         ),
     );
     let (_, commands) = press(&state, plain(KeyCode::Char('y')));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
 }
 
 #[test]
@@ -364,7 +431,7 @@ fn esc_goes_back_and_keeps_the_draft() {
     let id = finish(&state).job.expect("reading");
     let (state, _) = update(
         &state,
-        AppEvent::Produced(id, Product::FinishSummary(Ok(summary()))),
+        AppEvent::Produced(id, Product::FinishSummary(Ok(summary().into()))),
     );
     assert_eq!(
         finish(&state).subject.text(),
@@ -432,7 +499,7 @@ fn esc_from_the_summary_over(focus: graft_ui::detail::DetailFocus) -> AppState {
         .expect("`c` asks for the summary");
     let (state, _) = update(
         &state,
-        AppEvent::Produced(id, Product::FinishSummary(Ok(summary()))),
+        AppEvent::Produced(id, Product::FinishSummary(Ok(summary().into()))),
     );
     assert_eq!(finish(&state).return_to, ReturnTo::Banner);
     let state = key(&state, KeyCode::Tab);
@@ -520,11 +587,11 @@ fn space_expands_a_git_combined_file() {
 fn keys_outside_2_6b_do_nothing() {
     let state = opened();
     // Arrows, pages and `⇧⇥` are bound since ticket 59
-    // (`arrows_and_pages_move_the_file_cursor`, `backtab_steps_focus_back`).
+    // (`arrows_and_pages_move_the_file_cursor`, `backtab_steps_focus_back`);
+    // `u` undoes the last pick since ease-pass/05b (`resolver::tests::review_at_y`).
     for key in [
         plain(KeyCode::Home),
         plain(KeyCode::End),
-        plain(KeyCode::Char('u')),
         plain(KeyCode::Char('q')),
     ] {
         let (after, commands) = press(&state, key);
@@ -745,7 +812,10 @@ fn y_in_the_file_list_commits_and_enter_toggles_the_diff() {
     assert_eq!(finish(&hidden).expanded, None, "⏎ again hides it");
 
     let (state, commands) = press(&state, plain(KeyCode::Char('y')));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
     assert_eq!(finish(&state).committing, state.operating);
     assert!(state.operating.is_some());
 }
@@ -766,7 +836,10 @@ fn y_in_the_subject_is_typed_text() {
 fn enter_in_the_subject_still_commits() {
     let state = key(&opened(), KeyCode::Tab);
     let (_, commands) = press(&state, plain(KeyCode::Enter));
-    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(
+        resumes(&commands),
+        vec![&Resume::Continue { solved: Vec::new() }]
+    );
 }
 
 #[test]

@@ -447,10 +447,10 @@ pub enum Product {
     /// (`graft_ops::conflict::operation_conflicts`, m6-conflicts/13), or why
     /// they could not be read, in `graft_ops`' own words.
     ConflictSet(Result<std::sync::Arc<graft_ops::conflict::ConflictSet>, String>),
-    /// What the merge about to be committed changes
-    /// (`graft_ops::finish::finish_summary`, m6-conflicts/19), or why it
-    /// could not be read, in `graft_ops`' own words.
-    FinishSummary(Result<std::sync::Arc<graft_ops::finish::FinishSummary>, String>),
+    /// What the merge about to be committed changes and the solved files
+    /// its finish stages (`graft_ops::finish::merge_review`,
+    /// m6-conflicts/19, ease-pass/05b), or why it could not be read.
+    FinishSummary(Result<crate::update::finish::Reviewed, crate::update::finish::ReviewFailed>),
     /// One staged file's diff for the finish summary, or why not
     /// (m6-conflicts/19): the same view model the detail pane draws, built
     /// by the same code (`jobs::detail::assemble_diff`).

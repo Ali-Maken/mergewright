@@ -206,6 +206,7 @@ pub(super) fn take_refusal(state: &AppState) -> Option<&'static str> {
 /// so a file is solved in order whichever block was taken last. With none
 /// open it is left where it is, and the notice says what is left to do.
 fn advance(state: &mut AppState, pending: &ConflictFile) {
+    let merge = super::review::open_elsewhere(state);
     let next = next_open_in_file(&blocks_of(pending));
     let top = next.map(|block| scrolled_to(state, block));
     let keys = std::sync::Arc::clone(&state.keymap);
@@ -218,13 +219,22 @@ fn advance(state: &mut AppState, pending: &ConflictFile) {
             open.top = top;
             open.notice = None;
         }
-        _ => open.notice = Some((all_taken(&open.path, &keys), false)),
+        _ => open.notice = Some((all_taken(&open.path, &keys, merge), false)),
     }
 }
 
 /// The notice once every block is taken: `⏎` from his keymap (m8/10g),
-/// left out when unbound.
-pub(super) fn all_taken(path: &Path, keys: &graft_ui::keymap::Keymap) -> String {
+/// left out when unbound. `merge` is [`super::review::open_elsewhere`].
+pub(super) fn all_taken(
+    path: &Path,
+    keys: &graft_ui::keymap::Keymap,
+    merge: Option<bool>,
+) -> String {
+    // A merge's file needs no marking (ease-pass/05b): the way on is the
+    // next open clash, or the review.
+    if let Some(open_elsewhere) = merge {
+        return super::review::solved_way_on("all blocks taken", open_elsewhere, keys);
+    }
     keys.after(
         "all blocks taken",
         graft_ui::keymap::ActionId("resolver.mark_done"),

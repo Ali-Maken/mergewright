@@ -130,6 +130,7 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("resolver.step_next"),   // the same, forward
     id("resolver.mark_done"),   // `mark_resolved`: `git add` on the open file
     id("resolver.finish"),      // `finish_pressed` → `banner::continue_pressed`
+    id("resolver.review"),      // `review::review_pressed`: a merge's review
     id("resolver.edit"),        // `$EDITOR` on the open file
     id("resolver.mergetool"),   // `open_mergetool`
     // The overlays (`map`, `journal`, `stash`).

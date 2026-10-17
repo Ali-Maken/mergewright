@@ -179,7 +179,7 @@ pub fn summary_area(state: &AppState) -> Rect {
 /// on a row they resolved `⏎`/`space` works too, unadvertised.
 #[must_use]
 pub fn finish_context(state: &AppState) -> HintContext {
-    let finish = state.finish.as_ref();
+    let finish = state.finish.as_deref();
     HintContext::Finish {
         focus: summary_focus(finish.map_or(FinishFocus::Files, |open| open.focus)),
         expandable: finish.is_some_and(on_a_git_row),

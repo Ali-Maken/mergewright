@@ -34,6 +34,7 @@ mod journal_tie;
 mod journal_two_writers;
 mod lost_work;
 #[cfg(unix)]
+mod merge_review;
 mod merge_set_aside;
 mod mistake_radar;
 mod octopus_merge;

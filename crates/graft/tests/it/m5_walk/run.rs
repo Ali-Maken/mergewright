@@ -590,7 +590,8 @@ impl Walk<'_> {
             | Wait::ResolverClosed
             | Wait::ConflictedPath(_)
             | Wait::Resolved
-            | Wait::FinishReady => self.wait_for_resolver(state, wait),
+            | Wait::FinishReady
+            | Wait::ReviewRefused => self.wait_for_resolver(state, wait),
         }
     }
 
@@ -647,6 +648,7 @@ impl Walk<'_> {
                             && (open.file.is_some() || open.whole_file.is_some())
                     })
             }),
+            Wait::ResolvedPath(path) if in_a_merge(&state) => self.solved_in_a_merge(state, path),
             Wait::ResolvedPath(path) => {
                 let state = self.pump(state, "the re-read after the resolution", |state| {
                     state.operating.is_none()
@@ -683,8 +685,36 @@ impl Walk<'_> {
             Wait::FinishReady => self.pump(state, "the finish summary", |state| {
                 state.finish.as_ref().is_some_and(|open| open.job.is_none())
             }),
+            Wait::ReviewRefused => self.pump(state, "the review's read refusing", |state| {
+                state.finish.is_none() && matches!(state.status, Status::Sticky { .. })
+            }),
             other => unreachable!("wait_for_state answers {other:?}"),
         }
+    }
+
+    /// `path` resolved in a merge (ease-pass/05b): the resolver idle, and
+    /// on disk either staged — a whole-file card's choice, which stages at
+    /// once — or still unmerged in git with no clash left open in the
+    /// file: a merge stages its solved files only at the review's `y`.
+    fn solved_in_a_merge(&mut self, state: AppState, path: &str) -> Result<AppState, String> {
+        let state = self.pump(state, "the resolver idle after the resolution", |state| {
+            state.operating.is_none()
+                && state
+                    .resolver
+                    .as_ref()
+                    .is_none_or(|open| open.job.is_none() && open.queued.is_empty())
+        })?;
+        if super::truth::unmerged(self.fixture.repo(), path)?.is_empty() {
+            return Ok(state);
+        }
+        let bytes = super::truth::resolved_bytes(self.fixture.repo(), path)?;
+        let open = graft_git::conflict::parse(&bytes)
+            .map_err(|why| format!("{path} does not parse: {why:?}"))?
+            .open();
+        check(open == 0, || {
+            format!("the app calls {path} solved; {open} clash(es) are still open on disk")
+        })?;
+        Ok(state)
     }
 
     pub(super) fn settle_write(&mut self, state: AppState, what: &str) -> Result<AppState, String> {
@@ -697,6 +727,15 @@ impl Walk<'_> {
             other => Err(format!("{what} did not succeed: {other:?}")),
         }
     }
+}
+
+/// A merge is the operation stopped: its solved files stay unmerged until
+/// the review's `y` stages them (ease-pass/05b).
+fn in_a_merge(state: &AppState) -> bool {
+    state
+        .in_progress
+        .as_ref()
+        .is_some_and(|detail| detail.kind == graft_git::state::InProgress::Merge)
 }
 
 /// The plan behind the open preview, as the claim.

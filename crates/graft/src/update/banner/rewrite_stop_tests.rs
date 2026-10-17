@@ -242,7 +242,7 @@ fn focus_at_each_site(rewrite: &RewriteStop, paths: &[&str]) -> [bool; 3] {
     let mut again = live(Some(Ok(rewrite.clone())), paths);
     again.banner_focus = true;
     again.operating = Some(id);
-    again.resuming = Some((id, Resume::Continue));
+    again.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     resumed(&mut again, id, conflicted(rewrite), &mut || {
         crate::update::JobId::new(8)
     });
@@ -408,7 +408,7 @@ fn c_after_an_amend_at_an_edit_stop_continues_the_rewrite() {
     assert!(
         commands
             .iter()
-            .any(|command| matches!(command, Command::Resume(_, Resume::Continue, ..))),
+            .any(|command| matches!(command, Command::Resume(_, Resume::Continue { .. }, ..))),
         "{commands:?}"
     );
 }

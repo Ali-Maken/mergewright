@@ -24,7 +24,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `EditsAt` (enum, re-exported at the crate root) — `Stash { n }`, `Back { copy }`, `Backup { copy }`: where a failed set-aside left the edits; `words()`.
 - `askpass_words` (fn) — `(&io::Error) -> String`: one wording for an askpass refusal or socket clean-up failure, remote ops and clone alike.
 - `kind_name` (fn) — `OperationKind -> &'static str`: the kind as a backup commit's message names it (`cherry-pick`, `branch`, `delete tag`).
-- `Resume` (enum) — `Continue`, `ContinueWith { message }` (merge only), `Skip`, `Abort`: how a stopped operation goes on.
+- `Resume` (enum) — `Continue { solved }`, `ContinueWith { message, solved }` (merge only), `Skip`, `Abort`: how a stopped operation goes on; `solved` = a merge's resolver-solved files, staged inside the finish (05b).
 - `resume` (fn) — finds the one live `Pending` entry and runs its `Resume`; with none, a shell-begun merge becomes `FinishMerge`/`AbortMerge`.
 - `RemoteHooks` (struct) — `progress` callback, `askpass: Arc<dyn AskPass>`, `helper` binary path: only an `Invocation` with `remote: true` gets them.
 - `StageSource` (enum) / `stage_source` (fn) — where `d` gets a path's conflict stages: `Index` while unmerged, else `Backup { tree }` from the current step's chain.
@@ -73,6 +73,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Opened` (struct) — `file: Option<ConflictFile>` (`None` for a whole-file shape or binary), `how: UnmergedHow`, `binary`.
 - `OpenError` (enum) — `Refused(Refusal)`, `Read(io::Error)`, `TooLarge { bytes }`, `Markers(ParseError)`.
 - `open_conflict` (fn) — `(repo, status, path)`: the parsed conflicted file; malformed markers surface as `Markers` with their line.
+- `FileState` (enum) / `file_state` (fn) — `(opened, unmerged)`: `Open { open }` (a whole-file card is `open: 0`), `Solved` (unmerged marker document, 0 open), `Done` (not unmerged).
 - `TakeError` (enum) — `Changed { now: Oid }`, `NoSuchBlock(usize)`, `Write(WriteError)`.
 - `DoneFile` (enum) / `open_done` (fn) — a path no longer unmerged, read-only for the done card: `Text { file, unstaged }`, `Binary { unstaged }`, `Removed`.
 - `apply_take` (fn) — `(repo, path, file, block, take)`: one block's side written back against `file.fingerprint`; takes the document so blocks stay stable.
@@ -97,8 +98,10 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `FinishSummary` (struct) — what a merge will commit: `into`, `from`, `by_you`, `by_git`, `message` (`MERGE_MSG` minus comments), `recorded`.
 - `ByYou` (struct) / `ResultIs` (enum) — a conflicted path's staged result: `Yours`, `Theirs`, `Deleted`, `Combined`.
 - `ByGit` (struct) / `Change` (enum) — every other staged change: `Added`, `Modified`, `Deleted`, `Renamed { from }`, `TypeChanged`.
-- `SummaryError` (enum) — `NotMerging`, `StillUnmerged { count }`, `Facts`, `Run`, `Io`, `Conflicts`, `Diff`.
+- `SummaryError` (enum) — `NotMerging`, `StillUnmerged { count }`, `Facts`, `Run`, `Io`, `Conflicts`, `Diff`, `Scratch`.
 - `finish_summary` (fn) — `(repo)`: merge only, nothing unmerged; reads only.
+- `finish_preview` (fn) — `(repo, solved, stop)`: the summary as if `solved` were staged, read from a temp copy of the index; the real index untouched.
+- `merge_review` (fn) / `MergeReview` (struct) — `(repo, stop)`: every unmerged path sorted by `file_state` on disk; any not solved → `StillUnmerged { count }`; else `finish_preview` over the solved, with them.
 
 ## in_the_way
 - `Blocking` (struct) — `ignored`, `untracked`: files git doesn't keep where a write puts its own, sorted and unique; `is_empty`.
@@ -230,7 +233,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RestartParams` (struct) — `path`, `kind: RestartKind`: start one file's conflict over with `checkout <flag> -- <path>`.
 - `RestartKind` (enum) — `Markers` or `WholeFile { shape: OneSided }`; `checkout_flag()` (`--merge`, `--ours`, `--theirs`).
 - `OneSided` (enum) — `DeletedByThem`, `DeletedByUs`, `AddedByUs`, `AddedByThem`; `from_how`, `how`.
-- `FinishMergeParams` (struct) — `merge_head: Oid`, `message: Option<Vec<u8>>`: finishing a merge begun in the shell, as its own entry.
+- `FinishMergeParams` (struct) — `merge_head: Oid`, `message: Option<Vec<u8>>`, `solved` (staged as its first line): finishing a merge begun in the shell, as its own entry.
 - `AbortMergeParams` (struct) — `merge_head: Oid`: aborting a shell-begun merge with a full backup, so `u` puts it back.
 - `MergeEnd` (enum) — `Finish`, `Abort`; `in_the_shell()`: the shell command for that end.
 - `FetchParams` (struct) — `remote: Option<String>` (`None` = `--all`), `prune`.

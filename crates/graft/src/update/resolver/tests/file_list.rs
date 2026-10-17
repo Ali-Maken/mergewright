@@ -432,10 +432,9 @@ fn last_file_lands(kind: Option<InProgress>) -> AppState {
     state
 }
 
-/// The resolver stays on the last file (m6-conflicts/31, P8). Rewritten for
-/// m6-conflicts/60 (was `after_the_last_file_the_notice_says_c_finishes`):
-/// the words moved to the status line, `<file> done ✓ · every file done`
-/// with no key, because the summary it now owes opens on its own.
+/// The resolver stays on the last file (m6-conflicts/31, P8): the status
+/// line says `<file> done ✓ · every clash is solved · y reviews the merge`. Nothing
+/// opens on its own (ease-pass/05b dropped m6-conflicts/60's owed open).
 #[test]
 fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {
     let state = last_file_lands(Some(InProgress::Merge));
@@ -443,13 +442,13 @@ fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {
     assert!(!state.banner_focus);
     let open = state.resolver.as_ref().expect("open");
     assert_eq!(open.notice, None, "no status read out: nothing to check");
-    assert!(open.finish_owed, "the summary is owed");
+    assert!(!open.finish_owed, "nothing owed");
     assert_eq!(
         state.status,
         Status::Done {
             what: "conflicted.rs done".to_owned(),
             also: None,
-            keys: Some("every file done".to_owned()),
+            keys: Some("every clash is solved · y reviews the merge".to_owned()),
         }
     );
 }

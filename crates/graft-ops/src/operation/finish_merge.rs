@@ -4,6 +4,8 @@
 //! `apply::resume` on its own entry; this one has none, so each end is an
 //! operation of its own, with its own entry and backup.
 
+use std::path::PathBuf;
+
 use graft_core::oid::Oid;
 use graft_git::run::GitArg;
 use graft_git::state::InProgress;
@@ -19,6 +21,10 @@ pub struct FinishMergeParams {
     pub merge_head: Oid,
     /// The message the user edited, or `None` for git's own `MERGE_MSG`.
     pub message: Option<Vec<u8>>,
+    /// The files the resolver calls solved, still unmerged: staged by this
+    /// operation's first line, inside its own entry, just before the commit
+    /// (ease-pass/05b, hard choice 3). Empty when every path is staged.
+    pub solved: Vec<PathBuf>,
 }
 
 /// The kind's own rule: a merge is what git has in progress. Unmerged paths
@@ -39,13 +45,17 @@ pub(super) fn check(facts: &RepoFacts) -> Result<(), Refusal> {
 /// live-entry `ContinueWith` runs (m6-conflicts/22), since `finish_summary`
 /// already took git's comment lines out and a `#` line left is the user's.
 /// `GIT_EDITOR=true` comes from the plan runner, as for every plan step.
+///
+/// The solved files go first, `git --literal-pathspecs add -- <solved>`, so
+/// the stage and the commit are one entry and `u` puts both back.
 pub(super) fn plan(params: &FinishMergeParams) -> Vec<Invocation> {
-    match &params.message {
-        None => vec![Invocation::new(vec![
-            GitArg::Flag("merge"),
-            GitArg::Flag("--continue"),
-        ])],
-        Some(message) => vec![Invocation::with_stdin(
+    let mut plan: Vec<Invocation> = stage_solved_args(&params.solved)
+        .map(Invocation::new)
+        .into_iter()
+        .collect();
+    plan.push(match &params.message {
+        None => Invocation::new(vec![GitArg::Flag("merge"), GitArg::Flag("--continue")]),
+        Some(message) => Invocation::with_stdin(
             vec![
                 GitArg::Flag("commit"),
                 GitArg::Flag("--cleanup=whitespace"),
@@ -53,8 +63,16 @@ pub(super) fn plan(params: &FinishMergeParams) -> Vec<Invocation> {
                 GitArg::Flag("-"),
             ],
             message.clone(),
-        )],
-    }
+        ),
+    });
+    plan
+}
+
+/// `git --literal-pathspecs add -- <solved>`: a merge's solved files staged
+/// as its finish begins — `None` when there are none. One line for both
+/// merge origins: `FinishMerge`'s plan and `resume`'s live entry.
+pub(crate) fn stage_solved_args(solved: &[PathBuf]) -> Option<Vec<GitArg>> {
+    (!solved.is_empty()).then(|| super::stage::with_paths(vec![GitArg::Flag("add")], solved))
 }
 
 /// `finish merge of <short id>`: the fallback `describe` can give without a

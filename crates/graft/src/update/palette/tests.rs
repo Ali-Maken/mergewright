@@ -143,7 +143,10 @@ fn in_progress_rows_run_as_the_focused_banner_would() {
             // `c`'s refusal at a conflict names the keys acting where he
             // stands (m8/10l), and the palette run leaves the graph focused:
             // the reason is compared, the keys are not — as `M`'s refusal.
-            let refused = label == "Continue" && name.contains("conflict");
+            // A merge's `c` opens its review, whose read refuses later
+            // (ease-pass/05b): nothing refused at the key.
+            let refused =
+                label == "Continue" && name.contains("conflict") && !name.starts_with("merge");
             let (by_row_cmp, by_key_cmp) = keys_excepted(refused, &by_row, by_key, name);
             assert_eq!(
                 but_focus(by_row_cmp),

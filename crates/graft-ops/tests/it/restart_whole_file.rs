@@ -470,7 +470,7 @@ fn undo_after_a_whole_file_start_over_matches_markers() {
         } else {
             mark_both_done(&repo);
         }
-        run_resume(&repo, Resume::Continue, NOW + 6).unwrap_or_else(|why| {
+        run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 6).unwrap_or_else(|why| {
             panic!(
                 "{start_over}: finishing: {}",
                 why.explain(&crate::support::Letters)

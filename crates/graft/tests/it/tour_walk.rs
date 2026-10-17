@@ -66,7 +66,7 @@ const CARD: [(&str, &str); 8] = [
     ),
     (
         "resolve a conflict",
-        "m on clash \u{b7} y stops on its conflict \u{b7} t takes theirs \u{b7} \u{23ce} marks it done \u{b7} y finishes",
+        "m on clash \u{b7} y stops on its conflict \u{b7} t takes theirs \u{b7} y reviews the merge \u{b7} y finishes",
     ),
     ("push", "P sends main to origin"),
 ];
@@ -570,7 +570,7 @@ impl Walk {
         });
     }
 
-    /// 7 from the stop: `t`, `⏎` (the finish preview), `y`; the put-back
+    /// 7 from the stop: `t`, `y` (the merge's review, ease-pass/05b), `y`; the put-back
     /// after. The status names the merge only: the finish summary's words
     /// replace the line that would say `your edits are back`
     /// (`update/banner/resume.rs` `resumed_done`; 19d-c NOTES), so the walk
@@ -578,7 +578,7 @@ impl Walk {
     fn resolve_and_finish(&mut self) {
         self.send(b"t");
         self.wait("theirs taken", |s| s.has("took theirs"));
-        self.send(b"\r");
+        self.send(b"y");
         self.wait("the finish preview", |s| {
             s.has("Preview: finish merging clash into main")
         });

@@ -14,11 +14,16 @@ use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
 use graft_git::diff::{DiffError, DiffOptions, DiffSpec, FileStatus, list_files};
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, RunError};
-use graft_git::state::{self, InProgress};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::state::InProgress;
 
 use crate::conflict::{ConflictSetError, conflicts_of, merge_msg};
 use crate::facts::{self, FactsError};
+use crate::snapshot::SnapshotError;
+
+mod review;
+use review::summary_of;
+pub use review::{MergeReview, finish_preview, merge_review};
 
 /// One screen of what a merge will commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -122,6 +127,9 @@ pub enum SummaryError {
     /// The staged diff could not be read.
     #[error("{0}")]
     Diff(#[from] DiffError),
+    /// The review's copy of the index could not be made or removed.
+    #[error("the review's copy of the index: {0}")]
+    Scratch(#[from] SnapshotError),
 }
 
 impl From<FactsError> for SummaryError {
@@ -137,18 +145,27 @@ impl From<FactsError> for SummaryError {
 /// [`SummaryError::StillUnmerged`] while any path is unmerged; the read's
 /// own failure otherwise.
 pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError> {
-    // No caller-supplied stop: every read here is one short `git` call.
-    let stop = &();
-    let in_progress = state::in_progress(repo).map_err(FactsError::State)?;
-    if in_progress != Some(InProgress::Merge) {
-        return Err(SummaryError::NotMerging);
-    }
-    let status = graft_git::status::read(repo, stop).map_err(FactsError::from)?;
-    let count = status.entries.iter().filter(|entry| entry.unmerged).count();
-    if count > 0 {
-        return Err(SummaryError::StillUnmerged { count });
-    }
-    let set = conflicts_of(repo, in_progress, &status)?;
+    summary_of(repo, &[], &())
+}
+
+/// The summary's reads, with each resolved file's result read from `index`
+/// when given (the review's copy), else from the real index.
+fn summary_on(
+    repo: &RepoHandle,
+    in_progress: Option<InProgress>,
+    status: &graft_git::status::WorkingTreeStatus,
+    index: Option<&Path>,
+    stop: &dyn Stop,
+) -> Result<FinishSummary, SummaryError> {
+    let mut set = conflicts_of(repo, in_progress, status)?;
+    // The set lists git's unmerged paths first; a merge's review sees some
+    // staged and some solved but unmerged (ease-pass/05b), so it lists them
+    // in git's own path order, bytes, as the index does.
+    set.paths.sort_by(|a, b| {
+        a.as_os_str()
+            .as_encoded_bytes()
+            .cmp(b.as_os_str().as_encoded_bytes())
+    });
     let prepared = merge_msg::read(repo)?;
     let into = match facts::head_ref(repo)? {
         HeadRef::Branch(name) | HeadRef::Unborn(name) => short_branch(&name),
@@ -164,7 +181,7 @@ pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError> 
     Ok(FinishSummary {
         into,
         from,
-        by_you: results(repo, &set.paths)?,
+        by_you: results(repo, &set.paths, index)?,
         by_git: changed_by_git(repo, &set.paths)?,
         message,
         recorded: set.recorded,
@@ -206,11 +223,15 @@ fn changed_by_git(repo: &RepoHandle, conflicted: &[PathBuf]) -> Result<Vec<ByGit
 }
 
 /// Each conflicted path's staged blob against `HEAD`'s and `MERGE_HEAD`'s.
-fn results(repo: &RepoHandle, paths: &[PathBuf]) -> Result<Vec<ByYou>, SummaryError> {
+fn results(
+    repo: &RepoHandle,
+    paths: &[PathBuf],
+    index: Option<&Path>,
+) -> Result<Vec<ByYou>, SummaryError> {
     if paths.is_empty() {
         return Ok(Vec::new());
     }
-    let staged = staged_blobs(repo, paths)?;
+    let staged = staged_blobs(repo, paths, index)?;
     let ours = tree_blobs(repo, "HEAD", paths)?;
     let theirs = tree_blobs(repo, "MERGE_HEAD", paths)?;
     Ok(paths
@@ -227,8 +248,13 @@ fn results(repo: &RepoHandle, paths: &[PathBuf]) -> Result<Vec<ByYou>, SummaryEr
         .collect())
 }
 
-/// `ls-files -s`: each path's stage-0 blob in the index.
-fn staged_blobs(repo: &RepoHandle, paths: &[PathBuf]) -> Result<HashMap<PathBuf, Oid>, RunError> {
+/// `ls-files -s`: each path's stage-0 blob in the index — `index`, the
+/// review's copy, when given.
+fn staged_blobs(
+    repo: &RepoHandle,
+    paths: &[PathBuf],
+    index: Option<&Path>,
+) -> Result<HashMap<PathBuf, Oid>, RunError> {
     let mut args = vec![
         GitArg::Flag("--literal-pathspecs"),
         GitArg::Flag("ls-files"),
@@ -237,7 +263,11 @@ fn staged_blobs(repo: &RepoHandle, paths: &[PathBuf]) -> Result<HashMap<PathBuf,
         GitArg::Separator,
     ];
     args.extend(paths.iter().map(|path| GitArg::Path(bytes_of(path))));
-    let output = GitInvocation::new(repo).args(args).run(&())?;
+    let mut invocation = GitInvocation::new(repo).args(args);
+    if let Some(index) = index {
+        invocation = invocation.env("GIT_INDEX_FILE", index);
+    }
+    let output = invocation.run(&())?;
     // `<mode> <oid> <stage>\t<path>`
     records(&output.stdout, |fields| match fields {
         [_, _, b"0"] => Some(1),

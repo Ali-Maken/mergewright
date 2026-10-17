@@ -91,7 +91,6 @@ pub(super) const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::Banner, "app.next_match", R_BANNER),
     (ContextId::Banner, "app.prev_match", R_BANNER),
     (ContextId::Banner, "app.menu", R_BANNER),
-    (ContextId::Finish, "app.undo", R_FINISH),
     (ContextId::Finish, "app.redo", R_FINISH),
     (ContextId::Finish, "app.refresh", R_FINISH),
     (ContextId::Finish, "app.quit", R_FINISH),

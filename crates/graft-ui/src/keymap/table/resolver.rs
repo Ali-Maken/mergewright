@@ -56,6 +56,12 @@ pub(super) const ROWS: &[Binding] = &[
     ),
     b("resolver.finish", Resolver, &[k('c')], "Finish"),
     b(
+        "resolver.review",
+        Resolver,
+        &[k('y')],
+        "Review the merge (a merge only)",
+    ),
+    b(
         "resolver.mark_done",
         Resolver,
         &[ENTER],

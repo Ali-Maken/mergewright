@@ -249,26 +249,18 @@ fn merge_resolved_with_the_keys() -> Scenario {
             mark_resolved("three.txt"),
             resolve_the_rest(&["both.txt", "three.txt"]),
             vec![
-                // The last file's done read (m6-conflicts/31): the resolver
-                // stays on it, read-only, and the merge's summary opens on
-                // its own over it once the reads land (m6-conflicts/60).
-                Step::WaitFor(Wait::FinishReady),
-                Step::See(
-                    "the resolver stays after the last file, the summary over it",
-                    |state| {
-                        status_containing(state, "every file done")?;
-                        check(
-                            state
-                                .resolver
-                                .as_ref()
-                                .is_some_and(|open| open.done.is_some())
-                                && state.finish.is_some(),
-                            || "not the summary over the done file".to_owned(),
-                        )
-                    },
-                ),
+                // Every clash solved: the resolver stays, and nothing is
+                // staged until the review's `y` (ease-pass/05b).
                 Step::Mark("resolved"),
-                // The summary's `y` commits (m6-conflicts/19, 59).
+                key(ch('y')),
+                Step::WaitFor(Wait::FinishReady),
+                Step::See("the review open over the resolver", |state| {
+                    check(state.resolver.is_some() && state.finish.is_some(), || {
+                        "not the review over the resolver".to_owned()
+                    })
+                }),
+                // The review's `y` stages the solved files and commits
+                // (m6-conflicts/19, 59; ease-pass/05b).
                 key(ch('y')),
                 Step::Write("c from the resolver"),
                 Step::WaitFor(Wait::Ready),
@@ -312,11 +304,12 @@ fn merge_resolved_with_the_keys() -> Scenario {
                     String::from_utf8_lossy(&want)
                 )
             })?;
-            // Every path resolved: git has no unmerged entry left, and
-            // `both.txt` is git's own `--ours`.
+            // Every path solved, and still unmerged: a merge stages its
+            // solved files at the review's `y` (ease-pass/05b). `both.txt` is
+            // git's own `--ours`.
             let resolved = marks.get("resolved")?;
-            check(resolved.index_tree.is_some(), || {
-                "git still lists unmerged entries after the last ⏎".to_owned()
+            check(resolved.index_tree.is_none(), || {
+                "the solved files were staged before the review's y".to_owned()
             })?;
             let resolved_both = resolved
                 .repo
@@ -396,8 +389,9 @@ fn every_whole_file_shape() -> Scenario {
                 &["rm", "--quiet", "--", "both-deleted.txt"],
                 &["checkout", "--theirs", "--", "pic.bin"],
                 &["add", "--", "pic.bin"],
+                // A text file solved in a merge stays unmerged until the
+                // review's `y` stages it (ease-pass/05b): no `add` here.
                 &["checkout", "--ours", "--", "both-added.txt"],
-                &["add", "--", "both-added.txt"],
             ] {
                 run_git(raw.repo(), args)?;
             }
@@ -750,8 +744,9 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
     }
 }
 
-/// What `n` and `N` say with nothing open and `zdiff3.txt`'s clash taken.
-const NONE_OPEN: &str = "no open clashes left \u{b7} \u{2190}/\u{2192} step through them";
+/// What `n` and `N` say in a merge with nothing open and `zdiff3.txt`'s
+/// clash taken (ease-pass/05b: the next step is the review).
+const NONE_OPEN: &str = "no open clashes left \u{b7} y reviews the merge";
 
 /// `N` with nothing open says the same and leaves the resolver on `zdiff3.txt`.
 fn n_back_stays_on_zdiff3(state: &graft::update::AppState) -> Result<(), String> {

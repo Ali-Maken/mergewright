@@ -172,7 +172,7 @@ fn undo_after_c_puts_back_exactly_what_was_there_before_c() {
         before.merge_files
     );
 
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     assert!(!merging(&repo), "c finished the merge");
     assert_ne!(records(&repo), before, "c changed something to undo");
 
@@ -203,7 +203,7 @@ fn continue_finishes_a_merge_begun_in_the_shell() {
     let state = merge_state_on_disk(&repo);
     assert_eq!(state.merge_head, feature);
 
-    let entry = finish(&repo, Resume::Continue, NOW);
+    let entry = finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
 
     assert_eq!(
         oid(&repo, "HEAD^2"),
@@ -236,8 +236,9 @@ fn an_unmerged_shell_merge_is_refused_unmerged_not_not_in_progress() {
     let msg = maybe_read(&git_path(&repo, "MERGE_MSG"));
 
     for how in [
-        Resume::Continue,
+        Resume::Continue { solved: Vec::new() },
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: b"mine\n".to_vec(),
         },
     ] {
@@ -270,7 +271,8 @@ fn skip_of_a_shell_merge_stays_not_in_progress() {
     assert!(journal_ids(&repo).is_empty());
 
     let clean = two_file_conflict();
-    let refused = run_resume(&clean, Resume::Continue, NOW).expect_err("nothing in progress");
+    let refused = run_resume(&clean, Resume::Continue { solved: Vec::new() }, NOW)
+        .expect_err("nothing in progress");
     assert!(matches!(
         refused,
         ApplyError::Refused(Refusal::NotInProgress)
@@ -285,6 +287,7 @@ fn an_edited_message_finishes_a_shell_begun_merge() {
     let entry = finish(
         &repo,
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: message.clone(),
         },
         NOW,
@@ -339,7 +342,7 @@ fn an_unedited_finish_keeps_gits_message() {
         String::from_utf8_lossy(&msg)
     );
 
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
 
     assert_eq!(
         String::from_utf8_lossy(&head_message(&repo)),
@@ -352,7 +355,7 @@ fn an_unedited_finish_keeps_gits_message() {
 #[test]
 fn redo_after_undo_lands_on_the_same_merge_commit() {
     let repo = shell_merge_resolved();
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     let merge_commit = oid(&repo, "HEAD");
 
     run_undo(&repo, NOW + 1, false)
@@ -377,13 +380,13 @@ fn redo_after_undo_lands_on_the_same_merge_commit() {
 #[test]
 fn c_again_after_undo_makes_an_equal_merge() {
     let repo = shell_merge_resolved();
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     let tree = repo.git(&["rev-parse", "HEAD^{tree}"]);
     let parents = repo.git(&["log", "-1", "--format=%P"]);
 
     run_undo(&repo, NOW + 1, false)
         .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
-    let again = finish(&repo, Resume::Continue, NOW + 2);
+    let again = finish(&repo, Resume::Continue { solved: Vec::new() }, NOW + 2);
 
     assert_eq!(again.kind, OperationKind::FinishMerge);
     assert_eq!(repo.git(&["rev-parse", "HEAD^{tree}"]), tree, "same tree");
@@ -427,7 +430,7 @@ impl Stop for StopWhenRefIs {
 fn a_stop_before_set_merge_state_rolls_back() {
     let repo = shell_merge_resolved();
     let pre_merge = repo.git(&["rev-parse", "HEAD"]);
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     let merge_commit = oid(&repo, "HEAD");
 
     let handle = repo.open();
@@ -476,7 +479,7 @@ fn a_stop_before_set_merge_state_rolls_back() {
 #[test]
 fn undo_refuses_when_a_new_merge_was_begun() {
     let repo = shell_merge_resolved();
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     // A merge that changes nothing on disk: only git's merge state moves.
     repo.git(&["branch", "empty"]);
     repo.git(&["switch", "-q", "empty"]);
@@ -516,7 +519,8 @@ fn a_hook_refusal_leaves_the_merge_in_progress() {
     refuse_commits(&repo);
     let head = oid(&repo, "HEAD");
 
-    let why = run_resume(&repo, Resume::Continue, NOW).expect_err("the hook refuses");
+    let why = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW)
+        .expect_err("the hook refuses");
     let entry = match why {
         ApplyError::Git { entry, .. } => *entry,
         other => panic!("expected the failed git step, got {other:?}"),
@@ -564,7 +568,7 @@ fn a_pull_begun_in_the_shell_finishes_the_same_way() {
     assert!(!tracking.is_empty(), "the pull's fetch set a tracking ref");
     let before = records(&repo);
 
-    let entry = finish(&repo, Resume::Continue, NOW);
+    let entry = finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     assert_eq!(entry.kind, OperationKind::FinishMerge);
     assert_eq!(oid(&repo, "HEAD^2"), fetched, "the fetched tip");
     assert!(!merging(&repo));
@@ -592,7 +596,7 @@ fn merge_state_round_trips_non_utf8_bytes() {
     let mode = b"no-ff".to_vec();
     std::fs::write(git_path(&repo, "MERGE_MODE"), &mode).expect("MERGE_MODE");
 
-    let entry = finish(&repo, Resume::Continue, NOW);
+    let entry = finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     let read_back = entries(&repo)
         .into_iter()
         .find(|found| found.id == entry.id)
@@ -623,7 +627,7 @@ fn the_merge_head_commit_is_anchored() {
     repo.git(&["checkout", "--theirs", "--", "a.txt"]);
     repo.git(&["add", "--", "a.txt"]);
 
-    let entry = finish(&repo, Resume::Continue, NOW);
+    let entry = finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     let backup = entry.backup_ref.expect("a backup ref");
     // The backup ref holds the after-commit; its first parent is the
     // before-commit `begin` took.
@@ -658,7 +662,7 @@ fn after_u_checkout_m_still_rebuilds_the_conflict() {
     let repo = shell_merge_resolved();
     let reuc_before = repo.git(&["ls-files", "--resolve-undo"]);
     assert!(!reuc_before.is_empty(), "add recorded resolve-undo");
-    finish(&repo, Resume::Continue, NOW);
+    finish(&repo, Resume::Continue { solved: Vec::new() }, NOW);
     let reuc_after_c = repo.git(&["ls-files", "--resolve-undo"]);
     run_undo(&repo, NOW + 1, false)
         .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
@@ -729,8 +733,9 @@ fn finish_refuses_while_git_holds_an_autostash() {
     let head = oid(&repo, "HEAD");
 
     for how in [
-        Resume::Continue,
+        Resume::Continue { solved: Vec::new() },
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: b"mine\n".to_vec(),
         },
     ] {

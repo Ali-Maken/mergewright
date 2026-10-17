@@ -232,7 +232,7 @@ fn continue_with_nothing_unmerged_queues_an_unstoppable_resume() {
     // signal it (m8-13b).
     let [
         Command::Unstoppable(marked, _),
-        Command::Resume(id, Resume::Continue, ..),
+        Command::Resume(id, Resume::Continue { .. }, ..),
     ] = commands.as_slice()
     else {
         panic!("expected the mark, then one Resume: {commands:?}");
@@ -571,7 +571,7 @@ fn stopping_again_keeps_the_banner_focused() {
     let mut state = stopped(InProgress::Rebase, &["a.rs"]);
     let id = JobId::new(7);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     let commands = resumed(
         &mut state,
         id,
@@ -621,7 +621,7 @@ fn a_failed_resume_keeps_a_abort() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     resumed(
         &mut state,
         id,
@@ -661,7 +661,7 @@ fn finishing_clears_the_focus() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     resumed(
         &mut state,
         id,
@@ -687,7 +687,7 @@ fn u_right_after_continue_is_accepted() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     let (answered, _) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -725,7 +725,7 @@ fn answer_and_read_disagree_says_so() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     let (answered, _) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -960,7 +960,7 @@ fn continued(key: &str, verb: &str, before: &AppState, after: &AppState, command
                 commands,
                 [
                     Command::Unstoppable(..),
-                    Command::Resume(_, Resume::Continue, ..)
+                    Command::Resume(_, Resume::Continue { .. }, ..)
                 ]
             ),
             "`{key} {verb}` queued {commands:?}"
@@ -977,7 +977,19 @@ fn did_a_resume_verb(
     commands: &[Command],
 ) {
     match verb {
-        // Unmerged files: a refusal in words. None: the real `--continue`.
+        // A merge: its review, whose read judges the files on disk
+        // (ease-pass/05b). Otherwise unmerged files: a refusal in words.
+        // None: the real `--continue`.
+        "continue"
+            if before.in_progress.as_ref().map(|detail| detail.kind) == Some(InProgress::Merge) =>
+        {
+            assert!(
+                commands
+                    .iter()
+                    .any(|command| matches!(command, Command::ReadFinishSummary(_))),
+                "`{key} {verb}` reads the merge's review: {commands:?}"
+            );
+        }
         "continue" => match continue_refusal(before) {
             Some(reason) => assert_eq!(
                 after.status,
@@ -1307,7 +1319,7 @@ fn a_rebase_stopping_again_lands_in_the_resolver() {
     let mut state = stopped(InProgress::Rebase, &["a.rs"]);
     let id = JobId::new(7);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     let commands = resumed(
         &mut state,
         id,
@@ -1388,7 +1400,7 @@ fn the_stop_line_outlives_a_dismissed_problem() {
     let mut state = step(&a_merge_stops(), KeyCode::Escape);
     let id = JobId::new(8);
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     let (state, _) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -1817,7 +1829,7 @@ fn continued_rebase() -> (AppState, JobId, JobId) {
     state.detail.focus = graft_ui::detail::DetailFocus::Files;
     state.on_working_tree = true;
     state.operating = Some(id);
-    state.resuming = Some((id, Resume::Continue));
+    state.resuming = Some((id, Resume::Continue { solved: Vec::new() }));
     let (state, commands) = crate::update::update(
         &state,
         AppEvent::Produced(

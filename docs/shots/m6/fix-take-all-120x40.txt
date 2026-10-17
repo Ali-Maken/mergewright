@@ -4,7 +4,7 @@ files · 13     added-by-us.txt •          both-added.txt •           both-d
                pic.bin •                  theirs-deleted.txt •     ▸ three.txt ⏎ marks done   … 2 more
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ three.txt · 3 conflicts · 0 open
-took theirs · feature in 3 blocks · ⏎ marks three.txt done
+took theirs · feature in 3 blocks · n goes to the next
    1 alpha
 ▏ ── conflict 1 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
 ▏  2 one-theirs

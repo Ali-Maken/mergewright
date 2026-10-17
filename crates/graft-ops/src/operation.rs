@@ -49,6 +49,7 @@ use crate::rewrite::EditStop;
 pub use choice::{FileChoice, OutWhy, first_choice, looks_like_secrets};
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
+pub(crate) use finish_merge::stage_solved_args;
 pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,

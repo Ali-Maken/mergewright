@@ -53,6 +53,39 @@ pub(super) fn first_open(
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    first_open_or(state, commands, none_open, next_id);
+}
+
+/// `⏎` on a solved file in a merge (ease-pass/05b): where `n` goes, and
+/// with nothing open anywhere, `every clash is solved · y reviews the
+/// merge`.
+pub(super) fn solved_next(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    first_open_or(
+        state,
+        commands,
+        |state, _| {
+            let words = super::review::reviews_the_merge(EVERY_SOLVED, &state.keymap);
+            say(state, &words);
+        },
+        next_id,
+    );
+}
+
+/// The head of [`solved_next`]'s words with nothing open anywhere.
+const EVERY_SOLVED: &str = "every clash is solved";
+
+/// [`first_open`], with `none` saying what nothing open means for the key
+/// that asked (`taken`: the document on screen holds a taken block).
+fn first_open_or(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    none: impl FnOnce(&mut AppState, bool),
+    next_id: &mut impl FnMut() -> JobId,
+) {
     let Some(open) = state.resolver.as_ref() else {
         return;
     };
@@ -96,7 +129,7 @@ pub(super) fn first_open(
         Some(_) if card => say(state, ON_FIRST_OPEN),
         Some((_, block)) if cursor == Some(block) => say(state, ON_FIRST_OPEN),
         Some((_, block)) => move_cursor(state, block, None),
-        None => none_open(state, taken),
+        None => none(state, taken),
     }
 }
 
@@ -219,7 +252,13 @@ const NONE_OPEN: &str = "no open clashes left";
 
 /// [`none_open_words`] on the notice row, as information.
 fn none_open(state: &mut AppState, taken: bool) {
-    let words = none_open_words(taken, &state.keymap);
+    // In a merge nothing is staged until the review (ease-pass/05b): the
+    // way on from here is `y`.
+    let words = if super::review::in_a_merge(state) {
+        super::review::reviews_the_merge(NONE_OPEN, &state.keymap)
+    } else {
+        none_open_words(taken, &state.keymap)
+    };
     say(state, &words);
 }
 

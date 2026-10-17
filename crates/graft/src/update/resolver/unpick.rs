@@ -93,6 +93,25 @@ pub(super) fn undo_pick(
     commands.push(Command::UntakeSide(id, pick));
 }
 
+/// The review's `u` (ease-pass/05b): the last pick put back, as the
+/// resolver's `u` does — the review has closed already. `open_after`: no
+/// resolver was open under the review (it was asked for from the banner),
+/// so the untake's landing opens one on the pick, from the banner.
+pub(crate) fn undo_from_review(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    open_after: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    undo_pick(state, commands, next_id);
+    if open_after
+        && state.resolver.is_none()
+        && let Some(id) = state.picks.undoing()
+    {
+        state.picks.open_on_landing(id);
+    }
+}
+
 /// Why `u` must wait, or `None`. A take landing is asked first: its words
 /// say to wait, where the busy file's would read as a refusal.
 fn refusal(state: &AppState) -> Option<&'static str> {
@@ -191,6 +210,23 @@ pub fn untaken(
     let Some(pick) = state.picks.finish_undo(id) else {
         return;
     };
+    // The review's `u` from the banner: the resolver opens on the pick,
+    // whatever the answer, so he is where the pick is (ease-pass/05b).
+    if state.picks.opens_on_landing(id) && state.resolver.is_none() {
+        let path = pick.path.clone();
+        crate::update::resolver::open_resolver(
+            state,
+            commands,
+            path,
+            super::OpenedFrom::Banner,
+            next_id,
+        );
+        if let (Ok(file), Some(_)) = (&result, state.resolver.as_ref()) {
+            state
+                .picks
+                .land_after_read(&pick.path, Arc::clone(file), pick.first_block());
+        }
+    }
     let holds = release(state, id);
     let path = pick.path.clone();
     match result {

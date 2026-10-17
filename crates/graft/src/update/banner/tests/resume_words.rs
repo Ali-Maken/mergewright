@@ -134,7 +134,7 @@ fn a_continue_whose_drop_fails_says_the_edits_are_back() {
         &[KeyCode::Char('c')],
     );
     let (id, how) = sent_resume(&commands);
-    assert_eq!(how, Resume::Continue);
+    assert_eq!(how, Resume::Continue { solved: Vec::new() });
     let failure = "rebase main onto origin/main: error: cannot lock ref";
     let state = answer(
         &state,
@@ -192,7 +192,7 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
     // The `c` that finishes it says the same after its own words.
     assert_eq!(
         resumed_words(
-            &Resume::Continue,
+            &Resume::Continue { solved: Vec::new() },
             &with_entry(set_aside_around(entry(
                 OperationKind::Rebase,
                 "rebase main onto origin/main",
@@ -238,7 +238,7 @@ fn a_continue_whose_put_back_clashes_lands_on_the_clash() {
     ));
     let (state, commands) = keys(before, &[KeyCode::Char('c')]);
     let (id, how) = sent_resume(&commands);
-    assert_eq!(how, Resume::Continue);
+    assert_eq!(how, Resume::Continue { solved: Vec::new() });
     let state = answer(
         &state,
         id,
@@ -314,7 +314,7 @@ fn kept_open_rereads_everything_after_a_clash() {
 fn the_resume_words_say_what_happened() {
     let rows: [(Resume, JournalEntry, Status); 8] = [
         (
-            Resume::Continue,
+            Resume::Continue { solved: Vec::new() },
             entry(
                 OperationKind::Rebase,
                 "rebase main onto fix",
@@ -324,6 +324,7 @@ fn the_resume_words_say_what_happened() {
         ),
         (
             Resume::ContinueWith {
+                solved: Vec::new(),
                 message: b"merge".to_vec(),
             },
             entry(
@@ -362,7 +363,7 @@ fn the_resume_words_say_what_happened() {
             Status::done("aborted: cherry-pick abc1234"),
         ),
         (
-            Resume::Continue,
+            Resume::Continue { solved: Vec::new() },
             entry(
                 OperationKind::Rebase,
                 "rebase main onto fix",
@@ -380,7 +381,7 @@ fn the_resume_words_say_what_happened() {
             Status::sticky("rebase main onto fix did not finish: git exited 1"),
         ),
         (
-            Resume::Continue,
+            Resume::Continue { solved: Vec::new() },
             entry(
                 OperationKind::Rebase,
                 "rebase main onto fix",
@@ -467,7 +468,7 @@ fn a_resume_whose_put_back_lost_staging_is_done_and_says_so() {
         &[KeyCode::Char('c')],
     );
     let (id, how) = sent_resume(&commands);
-    assert_eq!(how, Resume::Continue);
+    assert_eq!(how, Resume::Continue { solved: Vec::new() });
     let mut done = applied(
         OperationKind::Rebase,
         "rebase main onto origin/main",
@@ -525,7 +526,7 @@ fn finishing_a_merge_keeps_your_edits_are_back() {
     };
     crate::update::banner::resume::resumed_done(
         &mut state,
-        &Resume::Continue,
+        &Resume::Continue { solved: Vec::new() },
         &done,
         Some(crate::update::finish::FinishAnswer::Merged(Some(
             "merged feature into main".to_owned(),

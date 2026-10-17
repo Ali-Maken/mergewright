@@ -485,6 +485,18 @@ fn committed_from_the_summary(app: &App, state: &AppState) -> AppState {
     app.pump(state, "the continue", |state| state.operating.is_none())
 }
 
+/// Banner `c` on a merge with files still open. A merge's `c` is the
+/// review's door: solved files stay unmerged until the review's `y`
+/// (ease-pass/05b), so only the review's read of the files on disk can
+/// tell — it closes the review and refuses in `c`'s words, the banner
+/// focused again.
+fn c_refused(app: &App, state: &AppState) -> AppState {
+    let asked = app.key(state, KeyCode::Char('c'));
+    app.pump(asked, "the review's read refusing", |state| {
+        state.finish.is_none() && matches!(state.status, Status::Sticky { .. })
+    })
+}
+
 #[test]
 fn continue_refuses_while_unmerged_then_finishes() {
     let scratch = about_to_conflict();
@@ -493,7 +505,7 @@ fn continue_refuses_while_unmerged_then_finishes() {
     let state = stopped_on_the_conflict(&app, state);
 
     // `c` with both files unmerged: words, no job.
-    let refused = app.key(&state, KeyCode::Char('c'));
+    let refused = c_refused(&app, &state);
     assert!(
         refused.operating.is_none(),
         "the refusal ran nothing: {:?}",
@@ -566,7 +578,7 @@ fn abort_always_offered_and_restores() {
 
     // Offered after a failed `c`, which is the state a user most often
     // reaches it from.
-    let state = app.key(&state, KeyCode::Char('c'));
+    let state = c_refused(&app, &state);
     assert!(matches!(state.status, Status::Sticky { .. }), "`c` refused");
 
     let state = app.key(&state, KeyCode::Char('a'));

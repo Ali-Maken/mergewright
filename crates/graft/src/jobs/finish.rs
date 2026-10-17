@@ -8,24 +8,36 @@ use std::sync::Arc;
 
 use graft_git::diff::{DiffOptions, DiffSpec, file_diff, list_files};
 use graft_git::run::Stop;
-use graft_ops::finish::FinishSummary;
+use graft_ops::finish::SummaryError;
 use graft_ui::detail::{DiffView, FileStatusView};
 
 use super::detail::assemble_diff;
 use crate::repos::RepoStore;
 use crate::update::detail::MAX_LINES;
+use crate::update::finish::{ReviewFailed, Reviewed};
 
-/// What the merge in progress will commit, or why it cannot be said, in
-/// `graft_ops`' own words.
-pub(super) fn summary(repos: &RepoStore) -> Result<Arc<FinishSummary>, String> {
+/// The merge review (ease-pass/05b): what the merge in progress will
+/// commit and the files solved on disk that its `y` stages, read with
+/// `graft_ops::finish::merge_review` — nothing is staged by reading.
+/// Files with a clash still open come back as
+/// [`ReviewFailed::StillOpen`] so the app can close the review and say
+/// how many; any other failure in `graft_ops`' own words.
+pub(super) fn summary(repos: &RepoStore) -> Result<Reviewed, ReviewFailed> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
-    graft_ops::finish::finish_summary(&repo.handle())
-        .map(Arc::new)
-        .map_err(|error| error.to_string())
+    match graft_ops::finish::merge_review(&repo.handle(), &()) {
+        Ok(review) => Ok(Reviewed {
+            summary: Arc::new(review.summary),
+            solved: review.solved,
+        }),
+        Err(SummaryError::StillUnmerged { count }) => Err(ReviewFailed::StillOpen { count }),
+        Err(error) => Err(ReviewFailed::Failed(error.to_string())),
+    }
 }
 
 /// `path`'s staged change — the index against `HEAD`, which is exactly what
 /// the merge commit will record for it — as the detail pane's view model.
+/// A path git still calls unmerged is a solved file the finish stages
+/// (ease-pass/05b): its change is the file on disk against `HEAD`.
 ///
 /// A path with no entry is staged but equal to `HEAD` (a resolution that
 /// kept yours): an empty view, which the summary draws as `no change to
@@ -39,13 +51,23 @@ pub(super) fn staged_diff(
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
     let options = DiffOptions::default();
-    let list = list_files(&handle, &DiffSpec::Staged, &options, stop).map_err(|e| e.to_string())?;
+    let status = graft_git::status::read(&handle, stop).map_err(|e| e.to_string())?;
+    let solved = status
+        .entries
+        .iter()
+        .any(|entry| entry.unmerged && entry.path == path);
+    let spec = if solved {
+        DiffSpec::WorkingTreeVsHead
+    } else {
+        DiffSpec::Staged
+    };
+    let list = list_files(&handle, &spec, &options, stop).map_err(|e| e.to_string())?;
     let want = path.as_os_str().as_encoded_bytes();
     let Some(entry) = list.files.iter().find(|entry| entry.path == want) else {
         return Ok(Arc::new(unchanged(path)));
     };
-    let diff = file_diff(&handle, &DiffSpec::Staged, entry, &options, MAX_LINES, stop)
-        .map_err(|e| e.to_string())?;
+    let diff =
+        file_diff(&handle, &spec, entry, &options, MAX_LINES, stop).map_err(|e| e.to_string())?;
     // Word spans are always worked out; whether they tint is the widget's call.
     Ok(Arc::new(assemble_diff(&diff, true)))
 }

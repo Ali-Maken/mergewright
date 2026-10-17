@@ -269,6 +269,7 @@ fn an_edited_message_is_the_commit_message() {
     let refused = run_resume(
         &repo,
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: message.clone(),
         },
         NOW + 3,
@@ -292,6 +293,7 @@ fn an_edited_message_is_the_commit_message() {
     let applied = run_resume(
         &repo,
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: message.clone(),
         },
         NOW + 4,
@@ -325,7 +327,7 @@ fn continue_is_unchanged() {
     repo.git(&["checkout", "--theirs", "a.txt", "b.txt"]);
     graft_stage(&repo, "a.txt", NOW + 1);
     graft_stage(&repo, "b.txt", NOW + 2);
-    let applied = run_resume(&repo, Resume::Continue, NOW + 3)
+    let applied = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 3)
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(
@@ -350,6 +352,7 @@ fn a_message_on_a_rebase_is_refused_before_anything_runs() {
     let refused = run_resume(
         &repo,
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: b"not here\n".to_vec(),
         },
         NOW + 1,
@@ -381,8 +384,15 @@ fn a_message_on_a_rebase_is_refused_before_anything_runs() {
 fn a_hash_line_the_user_typed_survives() {
     let repo = graft_merge_resolved();
     let message = b"Merge feature\n\n#123 fixes login\n".to_vec();
-    let applied = run_resume(&repo, Resume::ContinueWith { message }, NOW + 3)
-        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
+    let applied = run_resume(
+        &repo,
+        Resume::ContinueWith {
+            solved: Vec::new(),
+            message,
+        },
+        NOW + 3,
+    )
+    .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     let body = repo.git(&["log", "-1", "--format=%B"]);
     assert!(
@@ -431,7 +441,7 @@ fn an_unedited_message_lands_as_shown() {
     let shown = finish_summary(&repo.open())
         .unwrap_or_else(|why| panic!("{why}"))
         .message;
-    let applied = run_resume(&repo, Resume::Continue, NOW + 3)
+    let applied = run_resume(&repo, Resume::Continue { solved: Vec::new() }, NOW + 3)
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     // Byte for byte: git ends a message with exactly one newline, and the

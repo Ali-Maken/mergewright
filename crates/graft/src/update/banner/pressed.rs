@@ -31,7 +31,12 @@ pub(crate) fn continue_pressed(
         }
         return;
     }
-    if let Some(reason) = continue_refusal(state) {
+    // A merge's unmerged files may be solved on disk, waiting for the
+    // finish to stage them (ease-pass/05b): only the review's read can
+    // tell, and it refuses in these same words when one is still open
+    // (`finish::summary_landed`).
+    let merge = live(state).is_some_and(|detail| detail.kind == InProgress::Merge);
+    if !merge && let Some(reason) = continue_refusal(state) {
         match from {
             ReturnTo::Banner => {
                 state.status = continue_refused(reason, super::refused_at(state), &state.keymap);
@@ -88,7 +93,12 @@ pub(crate) fn continue_pressed(
         });
         return;
     }
-    resume(state, commands, Resume::Continue, next_id);
+    resume(
+        state,
+        commands,
+        Resume::Continue { solved: Vec::new() },
+        next_id,
+    );
 }
 
 /// `git <kind> --continue` came back from the shell hand-over (07c). One

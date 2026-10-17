@@ -249,7 +249,8 @@ fn n_goes_to_the_first_open_clash_from_the_top() {
     assert_eq!(on(&state), Path::new("c.txt"));
     assert_eq!(
         notice(&state),
-        "no open clashes left \u{b7} \u{2190}/\u{2192} step through them"
+        "no open clashes left \u{b7} y reviews the merge",
+        "a merge: the next step is the review (ease-pass/05b)"
     );
     drop(state);
     app.close();

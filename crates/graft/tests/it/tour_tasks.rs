@@ -256,12 +256,12 @@ impl Tour {
         });
     }
 
-    /// 7, from the stop: `t` takes theirs, `⏎` marks the file done (the
-    /// finish preview opens: no file left), `y` commits the merge.
+    /// 7, from the stop: `t` takes theirs, `y` opens the merge's review
+    /// (ease-pass/05b: nothing is staged before it), `y` commits the merge.
     fn resolve_and_finish(&mut self) {
         self.send(b"t");
         self.wait("theirs taken", |s| s.has("took theirs"));
-        self.send(b"\r");
+        self.send(b"y");
         self.wait("the finish preview", |s| {
             s.has("Preview: finish merging clash into main")
         });

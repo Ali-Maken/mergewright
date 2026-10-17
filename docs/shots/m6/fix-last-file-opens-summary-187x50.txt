@@ -1,6 +1,6 @@
 MERGING
 FILES · 2 conflicted      │▸ notes.txt · 2 conflicts · 0 open
-                          │all blocks taken · ⏎ marks notes.txt done
+                          │all blocks taken · y reviews the merge
    gone.txt   done ✓      │ yours · main                                       │ result                                               │ theirs · feature
 ▏▸ notes.txt  ⏎ marks done│ 1 one                                              │ 1 one                                                │ 1 one
                           │ ── taken ✓                                         ▶ ── 1 of 2 · took yours · main                        ┊ ── not taken
@@ -48,7 +48,7 @@ FILES · 2 conflicted      │▸ notes.txt · 2 conflicts · 0 open
                           │
                           │
  took yours · main in notes.txt · 0 of 2 open ✓
---- after ⏎ ---
+--- after y ---
 MERGING
 ╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 1 merge commit on main · nothing is committed until y                                                                                                                                   │

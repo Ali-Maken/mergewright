@@ -267,7 +267,11 @@ fn is_write_covers_every_operation_launch() {
             )),
             keys(),
         ),
-        Command::Resume(job, graft_ops::apply::Resume::Continue, keys()),
+        Command::Resume(
+            job,
+            graft_ops::apply::Resume::Continue { solved: Vec::new() },
+            keys(),
+        ),
         Command::RevertTo(
             job,
             graft_core::journal::EntryId::new(1_000, [0; 10]),

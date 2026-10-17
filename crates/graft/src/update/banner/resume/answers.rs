@@ -147,7 +147,7 @@ pub(in crate::update::banner) fn closing(
         // commits and already reads `abort merge of …`: no second word.
         (
             EntryStatus::Committed,
-            Resume::Continue | Resume::ContinueWith { .. } | Resume::Abort,
+            Resume::Continue { .. } | Resume::ContinueWith { .. } | Resume::Abort,
         ) => Closing::Finished(what.clone()),
         // The skip finished the rebase, but which commit it left out is not
         // known here: a stop on the first of three skips the first, and the
@@ -162,7 +162,7 @@ pub(in crate::update::banner) fn closing(
         }
         (
             EntryStatus::Aborted { reason },
-            Resume::Continue | Resume::ContinueWith { .. } | Resume::Skip,
+            Resume::Continue { .. } | Resume::ContinueWith { .. } | Resume::Skip,
         ) => Closing::Unfinished(format!("{what} did not finish: {reason}")),
         // Not expected on a closing answer; here so nothing says `✓` over it.
         (EntryStatus::Pending, _) => {

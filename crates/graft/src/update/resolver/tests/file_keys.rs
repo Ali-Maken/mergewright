@@ -46,9 +46,20 @@ fn opened(commands: &[Command]) -> Vec<String> {
         .collect()
 }
 
+/// [`three_alone`] in a rebase, where a file whose last block is taken is
+/// staged: a merge stages nothing until its review (ease-pass/05b,
+/// `review_at_y`).
+fn three_alone_in_a_rebase() -> AppState {
+    let mut state = three_alone();
+    if let Some(detail) = state.in_progress.as_mut() {
+        detail.kind = graft_git::state::InProgress::Rebase;
+    }
+    state
+}
+
 #[test]
 fn shift_t_waits_behind_a_queued_take() {
-    let (state, first) = keys(&three_alone(), "o");
+    let (state, first) = keys(&three_alone_in_a_rebase(), "o");
     let (state, commands) = press(&state, KeyCode::Char('T'));
     assert_eq!(takes(&commands), 0, "queued, not sent");
     let open = state.resolver.as_ref().expect("open");
@@ -71,7 +82,7 @@ fn shift_t_waits_behind_a_queued_take() {
 
 #[test]
 fn shift_t_with_nothing_open_but_a_take_in_flight_stages_after_it() {
-    let (state, commands) = keys(&three_alone(), "ttt");
+    let (state, commands) = keys(&three_alone_in_a_rebase(), "ttt");
     let (state, second) = landed(&state, &sent(&commands)[0]);
     let (state, third) = landed(&state, &sent(&second)[0]);
     let last = sent(&third);
@@ -326,7 +337,10 @@ fn n_from_a_done_file_with_nothing_open_says_none_open() {
         assert!(acting(&commands).is_empty(), "{commands:?}");
         assert_eq!(
             after.resolver.as_ref().expect("open").notice,
-            Some(("no open clashes left".to_owned(), false)),
+            Some((
+                "no open clashes left · y reviews the merge".to_owned(),
+                false
+            )),
             "{code:?}"
         );
         assert_eq!(after.status, state.status, "{code:?}");

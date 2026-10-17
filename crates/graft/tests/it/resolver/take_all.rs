@@ -1,5 +1,6 @@
 //! `Ctrl+T`: theirs in every open block, one write, then `⏎`
-//! (m6-conflicts/16), against the stopped-merge corpus.
+//! (m6-conflicts/16), against the stopped-merge corpus. A merge stages
+//! nothing until the review's `y` (ease-pass/05b).
 
 use super::*;
 
@@ -14,7 +15,7 @@ fn per_block_theirs(repo: &Path, path: &str) -> Vec<u8> {
 }
 
 #[test]
-fn ctrl_t_takes_theirs_everywhere_then_enter_resolves() {
+fn ctrl_t_takes_theirs_everywhere_and_a_merge_stages_nothing() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let repo = scratch.path().to_owned();
     let want = per_block_theirs(&repo, "three.txt");
@@ -28,10 +29,14 @@ fn ctrl_t_takes_theirs_everywhere_then_enter_resolves() {
     );
     assert_eq!(open(&state).file.as_ref().expect("a document").open(), 0);
 
+    // `⏎` on the solved file: on to the next open clash, nothing staged —
+    // the review's `y` stages it (ease-pass/05b).
     let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the stage", |state| state.operating.is_none());
+    assert!(state.operating.is_none(), "⏎ in a merge queued a write");
+    let state = settled(&app, state);
+    assert_ne!(open(&state).path, Path::new("three.txt"), "on to the next");
     let unmerged = crate::app_harness::git(&repo, &["ls-files", "-u", "--", "three.txt"]);
-    assert!(unmerged.trim().is_empty(), "still unmerged: {unmerged}");
+    assert!(!unmerged.trim().is_empty(), "three.txt was staged");
 
     drop(state);
     app.close();
@@ -49,7 +54,7 @@ fn take_all_capture() {
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
     assert!(
-        body.contains("took theirs · feature in 3 blocks · ⏎ marks three.txt done"),
+        body.contains("took theirs · feature in 3 blocks · n goes to the next"),
         "{body}"
     );
     assert!(body.contains("⌃O/⌃T all"), "{body}");

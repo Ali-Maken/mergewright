@@ -301,7 +301,7 @@ fn q_on_the_banner_while_its_continue_runs_waits_for_it() {
     assert!(crate::update::banner::resume(
         &mut state,
         &mut commands,
-        graft_ops::apply::Resume::Continue,
+        graft_ops::apply::Resume::Continue { solved: Vec::new() },
         &mut || {
             next += 1;
             JobId::new(next)
@@ -750,7 +750,7 @@ fn waiting_on_a_continue() -> (AppState, JobId) {
     assert!(crate::update::banner::resume(
         &mut state,
         &mut commands,
-        graft_ops::apply::Resume::Continue,
+        graft_ops::apply::Resume::Continue { solved: Vec::new() },
         &mut || JobId::new(61),
     ));
     let (state, _) = press(&state, plain('q'));

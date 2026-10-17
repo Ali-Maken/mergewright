@@ -8,36 +8,55 @@ fn last_file_closes_to_where_it_opened() {
     last_file_without_one();
 }
 
-/// Opened from the banner, walked through both files: the resolver **stays**
-/// on the last one, read-only (m6-conflicts/31, P8), and the merge's
-/// summary opens over it on its own once the reads land (m6-conflicts/60).
-/// `Esc` from the summary leaves the finish row, whose `c` opens it again.
-///
-/// Also the ticket's observation of its three premises against real git
-/// (Scope 3): what shows between the stage landing and the done read
-/// landing, whether that read answers "done" or "resolved outside", and
-/// whether the notice survives it.
+/// Opened from the banner, walked through both files of a merge: nothing
+/// is staged (ease-pass/05b), the resolver stays on the last file, its
+/// notice offering `y`, `y` opens the review over it, `esc` goes back, and `c` opens
+/// the same review (m6-conflicts/60's summary no longer opens on its own).
 fn last_file_with_a_banner() {
     let scratch = two_file_merge();
     let (app, state) = opened_on(&scratch);
-    let state = last_file_marked(&app, state);
-    let between = stage_landed(&app, state);
-    let state = done_read_landed(&app, between);
-    assert_eq!(still_unmerged(scratch.path()), "", "and git agrees");
+    let state = both_files_taken(&app, state);
+    assert_eq!(open(&state).path, Path::new("b.txt"), "stays on the last");
+    assert_eq!(
+        still_unmerged(scratch.path()).trim(),
+        "a.txt\nb.txt",
+        "a merge stages nothing before the review"
+    );
     let state = captured_both_moments(&app, &state);
 
-    // `c` on the finish row opens the summary again, the resolver under it.
+    // `c` opens the same review, the resolver under it.
     let state = app.key(&state, KeyCode::Char('c'));
-    assert!(state.finish.is_some(), "c opened the summary");
+    let state = review_landed(&app, state);
     assert!(state.resolver.is_some(), "the resolver stays under it");
     drop(state);
     app.close();
     drop(scratch);
 }
 
+/// The review's read landed over the resolver.
+fn review_landed(app: &App, state: AppState) -> AppState {
+    let state = app.pump(state, "the review's read", |state| {
+        state
+            .finish
+            .as_ref()
+            .is_some_and(|finish| finish.job.is_none())
+    });
+    let finish = state.finish.as_ref().expect("the review");
+    assert_eq!(finish.return_to, graft::update::finish::ReturnTo::Resolver);
+    state
+}
+
 /// From launch: the resolver opened from the banner, `a.txt` done, every
-/// block of `b.txt` taken, and `⏎` pressed on it — its `Stage` launched.
+/// block of `b.txt` taken, and `⏎` pressed on it — its `Stage` launched (a
+/// cherry-pick; a merge stages at its review, ease-pass/05b).
 fn last_file_marked(app: &App, state: AppState) -> AppState {
+    let state = both_files_taken(app, state);
+    app.key(&state, KeyCode::Enter)
+}
+
+/// From launch: the resolver opened from the banner, `a.txt` taken and
+/// marked, every block of `b.txt` taken.
+fn both_files_taken(app: &App, state: AppState) -> AppState {
     let state = app.pump(state, "the merge banner", |state| {
         state.in_progress.is_some()
     });
@@ -53,7 +72,7 @@ fn last_file_marked(app: &App, state: AppState) -> AppState {
         state = app.key(&state, KeyCode::Char('o'));
         state = settled(app, state);
     }
-    app.key(&state, KeyCode::Enter)
+    state
 }
 
 /// Premise 1: the stage has landed, the done read has not.
@@ -81,51 +100,14 @@ fn stage_landed(app: &App, state: AppState) -> AppState {
     between
 }
 
-/// Premises 2 and 3: the read answers done (not "resolved outside"); once
-/// the status the stage asked for lands too, the summary opens on its own
-/// over the done file (m6-conflicts/60).
-fn done_read_landed(app: &App, between: AppState) -> AppState {
-    let state = app.pump(
-        between,
-        "the done read, the status and the summary",
-        |state| {
-            state.status_read.is_none()
-                && state
-                    .resolver
-                    .as_ref()
-                    .is_none_or(|open| open.job.is_none())
-                && state
-                    .finish
-                    .as_ref()
-                    .is_none_or(|finish| finish.job.is_none())
-        },
-    );
-    let open_now = state
-        .resolver
-        .as_ref()
-        .unwrap_or_else(|| panic!("the done read closed the resolver: {:?}", state.status));
-    assert_eq!(open_now.path, Path::new("b.txt"));
-    assert!(open_now.done.is_some(), "read as done, read-only");
-    assert_eq!(open_now.notice, None, "the summary speaks, not the notice");
-    let finish = state
-        .finish
-        .as_ref()
-        .unwrap_or_else(|| panic!("no summary opened: {:?}", state.status));
-    assert_eq!(finish.return_to, graft::update::finish::ReturnTo::Resolver);
-    assert!(
-        matches!(&state.status, Status::Done { what, also: None, keys: Some(keys) }
-            if what == "b.txt done" && keys == "every file done"),
-        "{:?}",
-        state.status
-    );
-    state
-}
-
-/// Two moments, captured: the summary as it opened on its own, and after
-/// `Esc` from it — the resolver on the done file, the finish row on its
-/// notice row and `c finish` leading the bar.
+/// Two moments, captured: the review `y` opened over the solved merge,
+/// and after `Esc` from it — the resolver on the last file, its notice
+/// offering `y` again.
 fn captured_both_moments(app: &App, state: &AppState) -> AppState {
-    let landed = crate::captures::frame(state, 120, 40);
+    let state = app.key(state, KeyCode::Char('y'));
+    assert!(state.operating.is_none(), "y wrote: {:?}", state.status);
+    let state = review_landed(app, state);
+    let landed = crate::captures::frame(&state, 120, 40);
     assert!(
         landed
             .iter()
@@ -133,8 +115,8 @@ fn captured_both_moments(app: &App, state: &AppState) -> AppState {
         "{}",
         landed.join("\n")
     );
-    let state = app.key(state, KeyCode::Escape);
-    assert!(state.finish.is_none(), "Esc closed the summary");
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.finish.is_none(), "Esc closed the review");
     assert_eq!(
         state.graph_overlay(),
         Some(GraphOverlay::Resolver),
@@ -145,13 +127,7 @@ fn captured_both_moments(app: &App, state: &AppState) -> AppState {
     assert!(
         after_esc
             .iter()
-            .any(|line| line.contains("✓ every file done — c review and finish the merge")),
-        "{body}"
-    );
-    assert!(
-        after_esc
-            .last()
-            .is_some_and(|line| line.starts_with(" c finish")),
+            .any(|line| line.contains("· y reviews the merge")),
         "{body}"
     );
     let shot = format!(
@@ -204,7 +180,11 @@ fn resolving_the_last_listed_file_first_goes_back_for_the_rest() {
         )
     };
     assert_eq!(open.path, Path::new("a.txt"), "back to the one left");
-    assert_eq!(still_unmerged(scratch.path()).trim(), "a.txt");
+    assert_eq!(
+        still_unmerged(scratch.path()).trim(),
+        "a.txt\nb.txt",
+        "a merge stages nothing before the review (ease-pass/05b)"
+    );
 
     drop(state);
     app.close();
@@ -220,7 +200,8 @@ fn resolving_the_last_listed_file_first_goes_back_for_the_rest() {
 /// where it lands.
 #[test]
 fn the_last_file_done_draws_one_tick_on_the_footer() {
-    let scratch = two_file_merge();
+    // A cherry-pick: a merge stages nothing before its review (ease-pass/05b).
+    let scratch = two_file_cherry_pick();
     let (app, state) = opened_on(&scratch);
     let state = last_file_marked(&app, state);
     let between = stage_landed(&app, state);
@@ -241,20 +222,20 @@ fn the_last_file_done_draws_one_tick_on_the_footer() {
         .find(|row| row.contains("every file done"))
         .unwrap_or_else(|| panic!("no row names it:\n{body}"));
     assert!(
-        footer.contains("every file done ✓ · c finishes the merge"),
+        footer.contains("every file done ✓ · c continues the cherry-pick"),
         "{footer:?}"
     );
     assert_eq!(footer.matches('✓').count(), 1, "one tick: {footer:?}");
     assert_eq!(
         footer.trim_end(),
-        " every file done ✓ · c finishes the merge",
-        "nothing after `merge`"
+        " every file done ✓ · c continues the cherry-pick",
+        "nothing after `cherry-pick`"
     );
     // Trimmed to the two rows the check is about: the header with the
     // banner's `MERGING`, and the footer. The graph rows between them are
     // commits the fixture makes now, so their ids, dates and the order of
     // two made in the same second change every run.
-    assert!(frame[0].trim_end().ends_with("MERGING"), "{body}");
+    assert!(frame[0].trim_end().ends_with("CHERRY-PICKING"), "{body}");
     let shot = format!("{}\n⋮\n{}\n", frame[0].trim_end(), footer.trim_end());
     crate::captures::check_shot("m6/fix-every-file-done-footer-120x40.txt", &shot);
     drop(state);

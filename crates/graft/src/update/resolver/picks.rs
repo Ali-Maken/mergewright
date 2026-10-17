@@ -78,6 +78,9 @@ pub struct Picks {
     /// Where an untake that landed on another file puts the cursor once
     /// that file's read lands: the document it left, and the block.
     landing: Option<Landing>,
+    /// The untake the review's `u` sent with no resolver open under it
+    /// (ease-pass/05b): its landing opens the resolver on the pick.
+    opens: Option<JobId>,
 }
 
 /// An untake's landing on a file the resolver was not showing.
@@ -188,6 +191,18 @@ impl Picks {
     /// top, where it was — nothing could land a pick while it was out.
     pub fn put_back(&mut self, pick: Pick) {
         self.stack.push(pick);
+    }
+
+    /// The untake `id` opens the resolver on its pick when it lands: the
+    /// review's `u`, sent with no resolver open (ease-pass/05b).
+    pub fn open_on_landing(&mut self, id: JobId) {
+        self.opens = Some(id);
+    }
+
+    /// Whether the untake `id` that answered was to open the resolver;
+    /// spent.
+    pub fn opens_on_landing(&mut self, id: JobId) -> bool {
+        self.opens.take_if(|out| *out == id).is_some()
     }
 
     /// Remember where the cursor goes once `path`'s read lands.

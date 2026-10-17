@@ -63,6 +63,7 @@ pub(super) const NO_EFFECT_IN_FIXTURE: &[(ContextId, &str, &str)] = &[
     (ContextId::Resolver, "app.bottom", "document fits the window: resolver/scroll.rs:146-150"),
     (ContextId::Resolver, "app.page_down", "document fits the window: resolver/scroll.rs:139,157"),
     (ContextId::Resolver, "app.page_up", "top already 0: resolver/scroll.rs:140,157"),
+    (ContextId::Resolver, "resolver.review", "no merge in the fixture: resolver/review.rs:64 review_pressed"),
     (ContextId::Finish, "app.down", "cursor on last of 2 files (tests.rs:5107); finish/keys.rs:100"),
     (ContextId::Finish, "app.page_down", "cursor on last of 2 files (tests.rs:5107); finish/keys.rs:102"),
     (ContextId::Rewrite, "rewrite.move_up", "cursor on the top row: rewrite_editor/keys.rs:163"),

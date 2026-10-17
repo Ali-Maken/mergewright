@@ -394,6 +394,7 @@ fn merged_as_resolved(repo: &TempRepo, closed: &JournalEntry, how: &Resume) {
 #[test]
 fn a_stopped_merge_finished_puts_the_edits_back() {
     a_stopped_merge_ends(&Resume::ContinueWith {
+        solved: Vec::new(),
         message: b"Merge feature, by hand\n".to_vec(),
     });
     // The message is the one sent, not git's.
@@ -404,6 +405,7 @@ fn a_stopped_merge_finished_puts_the_edits_back() {
     resume_with(
         &repo,
         Resume::ContinueWith {
+            solved: Vec::new(),
             message: b"Merge feature, by hand\n".to_vec(),
         },
         NOW + 1,
@@ -418,7 +420,7 @@ fn a_stopped_merge_finished_puts_the_edits_back() {
 /// `c` on the banner: `git merge --continue`.
 #[test]
 fn a_stopped_merge_continued_puts_the_edits_back() {
-    a_stopped_merge_ends(&Resume::Continue);
+    a_stopped_merge_ends(&Resume::Continue { solved: Vec::new() });
 }
 
 /// `a`: `git merge --abort`, then the edits back onto the old tip
