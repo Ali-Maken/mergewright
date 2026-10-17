@@ -29,6 +29,7 @@ fn commit() -> Operation {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     })
 }
 

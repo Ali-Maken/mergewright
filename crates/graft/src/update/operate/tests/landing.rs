@@ -134,6 +134,7 @@ fn landing_of_names_every_kind() {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         })),
         Some(Landing::Head)
     );

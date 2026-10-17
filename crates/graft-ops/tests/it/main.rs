@@ -14,6 +14,7 @@ mod chained_backup;
 mod checkout_hook_fails;
 mod cherry_pick;
 mod clone;
+mod commit_chosen;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;

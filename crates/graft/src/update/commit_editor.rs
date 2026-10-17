@@ -22,7 +22,7 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_git::state::InProgress;
 use graft_git::status::WorkingTreeStatus;
-use graft_ops::operation::{CommitParams, Operation};
+use graft_ops::operation::{CommitParams, Include, Operation};
 use graft_ui::commit_editor::Field;
 use graft_ui::text_input::{TextArea, TextField};
 
@@ -155,6 +155,7 @@ impl CommitEditor {
             sign_off: self.sign_off,
             no_verify: self.no_verify,
             allow_empty: self.allow_empty,
+            include: Include::Staged,
         }
     }
 
@@ -339,9 +340,7 @@ pub fn head_message_arrived(
             Ok(message) => {
                 let amend = Operation::Amend(CommitParams {
                     message,
-                    sign_off: false,
-                    no_verify: false,
-                    allow_empty: false,
+                    ..CommitParams::default()
                 });
                 let launched = super::operate::launch(state, commands, amend, next_id);
                 super::operate::say_if_refused(state, launched);

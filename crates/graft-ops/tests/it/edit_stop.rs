@@ -83,6 +83,7 @@ fn amend_verdict(repo: &TempRepo) -> Result<(), Refusal> {
         sign_off: false,
         no_verify: false,
         allow_empty: true,
+        include: graft_ops::operation::Include::Staged,
     })
     .check(&facts(repo))
 }
@@ -247,6 +248,7 @@ fn keep_message(message: &str) -> Operation {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     })
 }
 

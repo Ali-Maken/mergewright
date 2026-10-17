@@ -275,6 +275,7 @@ fn remote_step(args: Vec<GitArg>) -> Invocation {
         args,
         stdin: None,
         remote: true,
+        index: super::IndexFile::Real,
     }
 }
 

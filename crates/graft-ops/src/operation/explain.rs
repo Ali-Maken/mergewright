@@ -55,6 +55,7 @@ impl Refusal {
             Self::NothingStaged => {
                 "Nothing is staged; stage something first, or allow an empty commit.".to_owned()
             }
+            Self::NothingChosen => "nothing goes in · put a file in first".to_owned(),
             Self::EmptySubject => "The commit message needs a subject line.".to_owned(),
             Self::UnbornHead => "There is no commit yet; amend and stash both need one.".to_owned(),
             Self::NothingToStash => "There are no changes to stash: untracked files count only \

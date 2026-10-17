@@ -13,6 +13,7 @@
 //! a snapshot; it turns a key into an `Operation` and hands it over.
 
 mod check;
+mod choice;
 mod commit;
 mod conflict;
 mod explain;
@@ -45,6 +46,7 @@ use graft_git::version::GitVersion;
 use crate::keys::{KeyNames, OpKey, clause, continue_or_abort, then};
 use crate::rewrite::EditStop;
 
+pub use choice::{FileChoice, OutWhy, first_choice, looks_like_secrets};
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
 pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};

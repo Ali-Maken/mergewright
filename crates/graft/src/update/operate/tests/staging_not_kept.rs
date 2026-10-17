@@ -104,6 +104,7 @@ fn operated_takes_staging_not_kept_as_done_with_its_line() {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     });
     launch(&mut state, &mut commands, commit, &mut next_id).expect("no write is running");
     let id = state.operating.expect("launched");
@@ -168,6 +169,7 @@ fn operated_staging_not_kept_names_what_came_back() {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     });
     launch(&mut state, &mut commands, commit, &mut next_id).expect("no write is running");
     let id = state.operating.expect("launched");

@@ -250,6 +250,7 @@ fn commit_round_trips() {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         }),
     );
 }
@@ -265,6 +266,7 @@ fn amend_round_trips() {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         }),
     );
 }
@@ -386,6 +388,7 @@ fn a_refused_operation_writes_nothing_at_all() {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         }),
     );
     assert!(matches!(refused, Err(ApplyError::Refused(_))));
@@ -420,6 +423,7 @@ fn refresh_says_everything_only_when_a_ref_moved() {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         }),
     )
     .expect("commit runs");

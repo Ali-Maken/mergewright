@@ -1,6 +1,8 @@
 //! Running a plan: one `git` per invocation, in order, stopping at the first
 //! failure, with a remote invocation's askpass and progress wired in.
 
+use std::path::PathBuf;
+
 use graft_core::journal::JournalEntry;
 use graft_git::remote::RemoteFailure;
 use graft_git::repo::RepoHandle;
@@ -8,7 +10,8 @@ use graft_git::run::{GitInvocation, RunError};
 use graft_git::state::InProgress;
 
 use crate::keys::NoKeys;
-use crate::operation::{Invocation, RemoteNames};
+use crate::operation::{IndexFile, Invocation, RemoteNames};
+use crate::snapshot::TempIndex;
 
 use super::error::joined;
 use super::stopped::BEFORE_PAUSE;
@@ -171,10 +174,68 @@ pub(super) fn run_plan(
     names: Option<&RemoteNames>,
 ) -> PlanRun {
     let mut cleanup = Vec::new();
+    let mut scratch = None;
+    let failure = run_lines(ctx, plan, names, &mut scratch, &mut cleanup);
+    if let Some(index) = scratch {
+        let path = index.path().to_path_buf();
+        if let Err(error) = index.remove() {
+            cleanup.push(AfterState::ScratchIndexLeft { path, error });
+        }
+    }
+    PlanRun {
+        failure,
+        cleanup,
+        edit_stop: false,
+    }
+}
+
+/// The scratch index's file name in the names dir: one, overwritten by the
+/// next plan that needs it (ease-pass/04).
+pub(super) const SCRATCH_INDEX: &str = "commit-index";
+
+/// Where a plan's scratch index lives: what its `Scratch` lines run on and
+/// what the Command Log names.
+pub(super) fn scratch_index_path(ctx: &Context<'_>) -> PathBuf {
+    ctx.scratch().join(SCRATCH_INDEX)
+}
+
+/// A plan line as the Command Log records it: a `Scratch` line with the
+/// scratch index's real path, so it runs as shown.
+pub(super) fn logged_line(ctx: &Context<'_>, invocation: &Invocation) -> String {
+    invocation.command_line_in(&scratch_index_path(ctx))
+}
+
+/// The lines in order up to the first failure. The scratch index is copied
+/// from the real one before the first `Scratch` line and left in `scratch`
+/// for the caller to remove, failure or not.
+fn run_lines(
+    ctx: &Context<'_>,
+    plan: &[Invocation],
+    names: Option<&RemoteNames>,
+    scratch: &mut Option<TempIndex>,
+    cleanup: &mut Vec<AfterState>,
+) -> Option<PlanFailure> {
     for invocation in plan {
-        let git = plan_git(ctx.repo, invocation);
+        let mut git = plan_git(ctx.repo, invocation);
+        if invocation.index == IndexFile::Scratch {
+            if scratch.is_none() {
+                match TempIndex::copied_as(ctx.repo, ctx.scratch(), SCRATCH_INDEX) {
+                    Ok(index) => *scratch = Some(index),
+                    // No git ran: the copy is the step that failed, in the
+                    // words a failed spawn has.
+                    Err(why) => {
+                        return Some(PlanFailure::local(RunError::Spawn(std::io::Error::other(
+                            format!("the index could not be copied for the commit: {why}"),
+                        ))));
+                    }
+                }
+            }
+            if let Some(index) = scratch.as_ref() {
+                git = git.env("GIT_INDEX_FILE", index.path());
+            }
+        }
         let failure = if let Some(names) = names {
-            remote::run(ctx.remote_run(), git, invocation, &mut cleanup)
+            remote::run(ctx.remote_run(), git, invocation, cleanup)
                 .err()
                 .map(|failed| PlanFailure {
                     remote: Some(RemoteFailed {
@@ -191,18 +252,10 @@ pub(super) fn run_plan(
             git.run(ctx.stop).err().map(PlanFailure::local)
         };
         if failure.is_some() {
-            return PlanRun {
-                failure,
-                cleanup,
-                edit_stop: false,
-            };
+            return failure;
         }
     }
-    PlanRun {
-        failure: None,
-        cleanup,
-        edit_stop: false,
-    }
+    None
 }
 
 /// The git one plan line runs.

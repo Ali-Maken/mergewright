@@ -32,6 +32,7 @@ fn a_graft_commit(repo: &TempRepo, at: i64) {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         }),
         at,
     );

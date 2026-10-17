@@ -37,6 +37,7 @@ fn commit(message: &str) -> Operation {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     })
 }
 
@@ -199,6 +200,7 @@ fn amend_matches_the_command_it_logs() {
                 sign_off: false,
                 no_verify: false,
                 allow_empty: false,
+                include: graft_ops::operation::Include::Staged,
             })
         },
     );
@@ -901,6 +903,7 @@ fn an_amends_pre_amend_commit_survives_an_aggressive_prune() {
             sign_off: false,
             no_verify: false,
             allow_empty: false,
+            include: graft_ops::operation::Include::Staged,
         }),
         NOW,
     );
