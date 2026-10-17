@@ -291,14 +291,14 @@ fn cursor_line(screen: &Screen) -> Option<String> {
     screen
         .lines()
         .into_iter()
-        .find(|line| line.contains('\u{25b8}'))
+        .find(|line| line.starts_with('\u{25b8}'))
 }
 
 fn cursor_row(screen: &Screen) -> Option<usize> {
     screen
         .lines()
         .iter()
-        .position(|line| line.contains('\u{25b8}'))
+        .position(|line| line.starts_with('\u{25b8}'))
 }
 
 fn row_of(screen: &Screen, label: &str) -> Option<usize> {

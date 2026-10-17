@@ -86,7 +86,7 @@ fn on_the_graph_at_head(pty: &Pty, path: &Path, subject: &str) -> Screen {
             s.lines()[0].contains(&name)
                 && s.lines()
                     .iter()
-                    .any(|line| line.contains('\u{25b8}') && line.contains(subject))
+                    .any(|line| line.starts_with('\u{25b8}') && line.contains(subject))
         },
     )
 }
@@ -349,13 +349,13 @@ fn landed(pty: &Pty, subject: &str, settled: &[&str]) -> (usize, Vec<String>) {
     let screen = pty.wait_for("the cursor on HEAD", |s| {
         s.lines()
             .iter()
-            .any(|line| line.contains('\u{25b8}') && line.contains(subject))
+            .any(|line| line.starts_with('\u{25b8}') && line.contains(subject))
             && settled.iter().all(|line| s.has(line))
     });
     let lines = screen.lines();
     let cursor = lines
         .iter()
-        .position(|line| line.contains('\u{25b8}'))
+        .position(|line| line.starts_with('\u{25b8}'))
         .expect("a cursor row");
     // The graph column only: the pane on the right fills in on its own time.
     let graph = lines[1..=cursor]
@@ -367,6 +367,11 @@ fn landed(pty: &Pty, subject: &str, settled: &[&str]) -> (usize, Vec<String>) {
 
 /// The pinned uncommitted row of [`launch_and_open_land_alike`]'s tree.
 const DIRTY: &str = "Uncommitted changes (1 unstaged)";
+
+/// `HEAD`'s folded merge once its count has landed (ease-pass 06): the
+/// count answers on its own job, so a frame read before it draws
+/// `▸ commits from …` and differs from the next run's.
+const COUNTED: &str = "\u{25b8} 2 commits from feature/two";
 
 /// m8-polish-and-ship/12d Decision 2: a launch lands exactly where an open
 /// from the empty state lands on the same repository — dirty tree (the
@@ -399,7 +404,7 @@ fn launch_and_open_land_alike() {
 
     let isolated = Isolated::new();
     let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
-    let at_launch = landed(&launched, &subject, &[DIRTY]);
+    let at_launch = landed(&launched, &subject, &[DIRTY, COUNTED]);
     quit_cleanly(launched);
 
     let isolated = Isolated::new();
@@ -407,7 +412,7 @@ fn launch_and_open_land_alike() {
     let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (120, 36));
     on_the_empty_state(&opener);
     opener.send(b"\r");
-    let at_open = landed(&opener, &subject, &[DIRTY]);
+    let at_open = landed(&opener, &subject, &[DIRTY, COUNTED]);
     quit_cleanly(opener);
 
     assert!(at_launch.0 > 1, "HEAD is not the top row: {at_launch:?}");

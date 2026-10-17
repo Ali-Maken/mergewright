@@ -136,7 +136,7 @@
 1644 crates/graft/src/event_loop/tests.rs
 545 crates/graft/src/event_loop/tests/pace.rs
 651 crates/graft/src/event_loop/tests/pixel_scroll.rs
-708 crates/graft/src/event_loop/tests/settle.rs
+710 crates/graft/src/event_loop/tests/settle.rs
 1475 crates/graft/src/history/tests.rs
 558 crates/graft/src/jobs/operate.rs
 1285 crates/graft/src/jobs/tests.rs
@@ -267,7 +267,7 @@
 434 crates/graft/tests/it/m7_walk/rewrite_stops.rs
 420 crates/graft/tests/it/m7_walk/switch.rs
 686 crates/graft/tests/it/name_and_drag.rs
-577 crates/graft/tests/it/outside_repo.rs
+582 crates/graft/tests/it/outside_repo.rs
 1143 crates/graft/tests/it/preview.rs
 614 crates/graft/tests/it/pty.rs
 401 crates/graft/tests/it/quit_waits/hangup.rs

@@ -100,11 +100,13 @@ fn nothing_else_takes_esc(pty: &Pty) {
 }
 
 /// The screen line the cursor is on; `usize::MAX` while none is drawn.
+/// The cursor's `▸` leads its line: a folded merge's tail (`▸ 2 commits
+/// from …`, ease-pass 06) draws the same glyph further along.
 fn cursor_row(screen: &Screen) -> usize {
     screen
         .lines()
         .iter()
-        .position(|line| line.contains('\u{25b8}'))
+        .position(|line| line.starts_with('\u{25b8}'))
         .unwrap_or(usize::MAX)
 }
 
@@ -113,7 +115,7 @@ fn cursor_subject(screen: &Screen, subjects: &[String]) -> String {
     let row = screen
         .lines()
         .into_iter()
-        .find(|line| line.contains('\u{25b8}'))
+        .find(|line| line.starts_with('\u{25b8}'))
         .unwrap_or_else(|| panic!("no cursor row:\n{}", screen.text()));
     subjects
         .iter()
@@ -136,7 +138,7 @@ fn on_head(pty: &Pty, repo: &Path, name: &str) -> usize {
             s.lines()[0].contains(name)
                 && s.lines()
                     .iter()
-                    .any(|line| line.contains('\u{25b8}') && line.contains(head.as_str()))
+                    .any(|line| line.starts_with('\u{25b8}') && line.contains(head.as_str()))
         }),
     )
 }
@@ -221,7 +223,7 @@ fn the_palette_starts_the_tour_and_esc_returns_to_his_commit() {
     let back = pty.wait_for(&format!("the cursor back on {was_on:?}"), |s| {
         s.lines()
             .iter()
-            .any(|line| line.contains('\u{25b8}') && line.contains(was_on.as_str()))
+            .any(|line| line.starts_with('\u{25b8}') && line.contains(was_on.as_str()))
             || s.has("the commit you were on is gone")
     });
     assert_eq!(
@@ -292,7 +294,7 @@ fn an_unwritable_temp_folder_stays_in_his_repo_and_says_why() {
     let back = pty.wait_for(&format!("the cursor back on {was_on:?}"), |s| {
         s.lines()
             .iter()
-            .any(|line| line.contains('\u{25b8}') && line.contains(was_on.as_str()))
+            .any(|line| line.starts_with('\u{25b8}') && line.contains(was_on.as_str()))
     });
     assert_eq!(cursor_subject(&back, &subjects), was_on);
     std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755)).expect("writable");

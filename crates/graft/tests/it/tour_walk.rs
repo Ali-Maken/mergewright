@@ -236,7 +236,7 @@ fn cursor_row(screen: &Screen) -> Option<usize> {
     screen
         .lines()
         .iter()
-        .position(|line| line.contains('\u{25b8}'))
+        .position(|line| line.starts_with('\u{25b8}'))
 }
 
 /// The card's ticks row as bits (`graft_ui::tour_card::ticks_text`: each

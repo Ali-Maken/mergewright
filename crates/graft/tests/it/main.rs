@@ -38,6 +38,7 @@ mod esc_and_the_walk;
 mod file_size;
 mod finish;
 mod first_launch;
+mod fold_by_default;
 mod frame_trace;
 #[cfg(feature = "heavy-tests")]
 mod frames;

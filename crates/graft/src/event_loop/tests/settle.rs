@@ -18,6 +18,8 @@ use crate::history::History;
 use crate::update::detail::{DetailSpec, Loading};
 use crate::update::{Product, follow_behind};
 
+mod fold;
+
 /// What the script does next.
 enum Step {
     /// Hand this wake out.
