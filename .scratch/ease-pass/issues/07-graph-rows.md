@@ -1,9 +1,9 @@
 # graph-rows — colour by role, branch / who / age columns, the cursor row's second line (Unicode tier)
 
-Status: ready
+Status: ready (Needs revised 2026-10-17 after ease-vocabulary's scout; this group's own scout not yet run)
 Blocked by: 01-roles-and-route, 03-ease-vocabulary, 06-graph-fold-and-lanes
 Build with: (blank — brownfield; conductor sets after the scout)
-Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on(&Row) -> Option<BranchIdentity>` (roles-and-route; reads `Row.lanes[row.lane]`, `Row.lanes: Vec<Option<BranchIdentity>>`, `graft-graph/src/row.rs:24,45`); `Token::Role*`, `graph.colours_off`, graph-row `HintContext`s (ease-vocabulary); `Opened`, `OpenedFrom`, folded rows (graph-fold-and-lanes).
+Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on(&Row) -> Option<BranchIdentity>` (roles-and-route; reads `Row.lanes[row.lane]`, `Row.lanes: Vec<Option<BranchIdentity>>`, `graft-graph/src/row.rs:24,45`); `Token::Role*`, `graph.colours_off` (`#`, context `Graph`), the graph-row `HintContext` states — own branch's row, teammate's row (carries the branch name), folded merge row, opened row, trunk row — as V added or extended them (`BranchRow`/`PlainRow`/new variants; names in V's NOTES) (ease-vocabulary); `Opened`, `OpenedFrom`, folded rows (graph-fold-and-lanes).
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Prior art rows "Which line is which" → "Who"; Mock behaviours G1–G9, G13, G14; New UI (graph widths); Questions 2, 3, 4, 10, 11 (answered a).
@@ -18,6 +18,7 @@ Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on(&Row) -> Option<Bran
 - What `history::scroll` assumes about one row per screen line; every hit-test (`row_at`, `geometry`, `badge_spans`, drag) that maps a screen line to a row.
 - What the contains read (`jobs::detail`) costs and whether it runs only at rest.
 - Where today's `↑N to push` count comes from and its integer type.
+- **Same kind of mismatch as V's scout:** where the graph picks today's row `HintContext` (`WorkingTreeRow` / `BranchRow { current }` / `PlainRow`, `graft-ui/src/graph_screen/hints/context.rs:47+`) — V's new row states are chosen at that same place; how `update::keys` dispatches Graph keys (translated ids vs `KeyCode` matches) so `#` reaches `graph.colours_off`; which key `y` (copy SHA) is and whether anything reads the SHA column's cells.
 
 ## Scope
 In (graft-ui `graph_column`, `graph_screen` row drawing and `columns`, `theme` (colourless resolve only); graft `view::entries`, `view::rows`, `history::scroll`, `update::keys` (`#`), `update::geometry`/`mouse`/`drag` hit-test, `AppState` fields `colours_off`, `route`). **This group owns `update/state.rs`, `update/events.rs`, `jobs/kinds.rs` in wave 4**; S adds only at the end of those enums/structs.
@@ -28,10 +29,10 @@ In (graft-ui `graph_column`, `graph_screen` row drawing and `columns`, `theme` (
 - **Message (G6):** dimmed on Other rows. **Labels (G7):** muted, after the message: `↑N to push`, `not merged`, `<branch> is here` (a branch and its upstream one name; a remote-only branch `origin/x is here`); tags as `tag <name>` (badge replacement, planner decision — the mock shows no tags). Today's row tags (`✎ changed`), radar marker and compare mark stay.
 - **Who / age (G8):** first name of the author; own commits `you`, bold; age `23h`, `9d`, `2w` (4 cells).
 - **Second line (G9):** the row under the cursor — every row, opened ones included — grows one line: `<who> · <N hours> ago · made on <branch>[ · <label>][ · merged N from <b>][ · also in A, B] · <sha7>`, words and `<who>` form as the mock; lanes continue straight through it. `also in` comes from the contains read, at rest only (`event_loop::rest`); before it lands the clause is absent, never `reading…`. The uncommitted row's second line: `not committed yet · N files · on <branch>` (planner decision; it has no who/hash). The viewport shows one fewer commit while the cursor is in view; held `j/k` never scrolls the cursor off.
-- **Bar per row kind (G13):** pick V's `HintContext` (own row, teammate's row, folded merge, opened row, trunk).
-- **`#` (G14, Q3 a):** toggles `colours_off`; the whole screen resolves its theme with no colour (as `NO_COLOR`) until quit; shapes, bold and dim stay. Not saved.
+- **Bar per row kind (G13):** pick V's row state for each row (own row, teammate's row with its branch name, folded merge, opened row, trunk); never edit the hint lists.
+- **`#` (G14, Q3 a):** `graph.colours_off` toggles `colours_off`; the whole screen resolves its theme with no colour (as `NO_COLOR`) until quit; shapes, bold and dim stay. Not saved.
 - Drag source (§2.15): the `<branch> is here` label and the branch column name replace the badge as the thing dragged.
-Out: the branch pane and route read (B), pixel tier (X — this group's Unicode second line is X's model), header (F), the picker opening on a branch (B).
+Out: the branch pane and route read (B), pixel tier (X — this group's Unicode second line is X's model), header (F), the picker opening on a branch (B), hint list words (V).
 
 ## Signatures
 graft-ui:
@@ -60,7 +61,7 @@ pub fn commit_rows(body_rows: u16, cursor_in_view: bool) -> u16; // history::scr
 ```
 
 ## Touches
-Every capture of the graph screen (list them; recaptured here at 120/100/90); `history::scroll` and `in_view`; mouse hit-tests and drag (§2.15); Ghost Preview slice (`view::preview` — ghost rows keep today's look but take the new columns); search highlight; overview strip viewport; Map `⏎` landing; tour card (`view::tour` words naming badges?); `y` copy SHA (still works without a SHA column); `?`/palette entries that mention badges; `docs/design/01-view-mockups.md` §1.1–1.3 (Proposed edit, NOTES only); X depends on the second-line model.
+Every capture of the graph screen (list them; recaptured here at 120/100/90); `history::scroll` and `in_view`; mouse hit-tests and drag (§2.15); Ghost Preview slice (`view::preview` — ghost rows keep today's look but take the new columns); search highlight; overview strip viewport; Map `⏎` landing; tour card (`view::tour` words naming badges?); `y` copy SHA (still works without a SHA column); `?`/palette entries that mention badges; the row `HintContext` choice site; `docs/design/01-view-mockups.md` §1.1–1.3 (Proposed edit, NOTES only); X depends on the second-line model.
 
 ## Acceptance
 - [ ] Role table test: fixture `main ← wallet-release ← sara/fix-toc`, cursor on a `sara/fix-toc` row with `Route::new(main, [wallet-release], sara)`: its lane `┃`, wallet-release `│`, main `║`, `ops/ci` `┊`; cursor to an `ops/ci` row → `ops/ci` `┃`, sara `┊`.

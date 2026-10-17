@@ -4,7 +4,9 @@ Source of truth: ADR-0063 and the three accepted mocks `prototypes/ease-mocks/me
 (read for visible text and key handlers only). **Build to the mocks** (ADR-0063 Consequences): every behaviour below is an
 acceptance line; every departure is in **Questions for the user**, not decided here. Colour is never promised (rule 5).
 **Pass 2 done** (2026-10-17): 13 specs in `.scratch/ease-pass/issues/`; Q1–13 answered "all a"; Q14 open (build proceeds
-on its recommendation, one-line change if he picks b).
+on its recommendation, one-line change if he picks b). **V and W fitted to their scouts** (2026-10-17): no new keymap
+context, existing ids kept with new handlers, bars stay where the code draws them; commit writes through a scratch index
+(executor change in W). No behaviour he accepted changed.
 
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
@@ -132,10 +134,15 @@ focus)`, `focus()`, `trunk()`, `chain()`, `role(BranchIdentity) -> LaneRole`), `
 (reads `Row.lanes[row.lane]`); caller: app `view::entries`/`strips`. **graft-ops `branch_status`** — `Candidate` (full ref
 name), `CandidateKind`, `Apart` (`usize`), `short_name`, pure `choose_base`, `route`, `branch_status -> BranchStatus {
 route, pushed, merged, behind, who }`, all reads through `count_between`/`commits_between` (stop, `RunError`); caller: app
-job behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap
-contexts `CommitFiles`, `Incoming`, `MergeLook`, action ids and every bar's `HintContext` (V owns `hints.rs` for the
-pass). **graft-ops** — `CommitParams.include: Include` (amend too), `Chosen`, `Part`, `FileChoice`, `first_choice`,
-`looks_like_secrets` (W). **graft-git** — `merge_forecast(repo, git, ours, theirs, stop) -> MergeCheck {
+job behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap:
+new ids `graph.colours_off` `#`, `resolver.review` `y`, keyless `commit.toggle_{amend,no_verify,allow_empty}`; **no new
+`ContextId`** (incoming list ⊂ `Preview`, look ⊂ `Finish`, commit files a focus of `CommitEditor`); `n`/`esc`/`u`/`c`/review
+`⏎` keep `resolver.next_block`/`app.back`/`app.undo`/`resolver.finish`/`finish.toggle_diff`, their handlers change (P, Fr);
+merge-preview `⏎` stays hard-matched, branched by kind (Mp); hint-list states for graph rows, landings, banner, clash
+screen, review, look (V owns `hints.rs`); commit-screen and preview footers stay screen code (S, Mp). **graft-ops** —
+`CommitParams.include: Include` (one struct for commit and amend; `message: String`), `Chosen`, `Part`, `FileChoice`,
+`first_choice`, `looks_like_secrets`, `Refusal::NothingChosen`, `Invocation.index: IndexFile { Real, Scratch }` (the
+executor runs `Scratch` lines on a copy of the real index; undo unchanged — it already restores HEAD and index) (W). **graft-git** — `merge_forecast(repo, git, ours, theirs, stop) -> MergeCheck {
 Checked(MergeForecast { changed, changed_capped, clashes: Vec<ClashForecast> }), NotCheckable(reason) }`,
 `ConflictFile::reopen` (existing `NoSuchBlock`), pure `line_origins` (K); `CommitSummary` unchanged — the incoming list's
 age is the existing `author.when`. **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`,
@@ -145,7 +152,7 @@ Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `Fol
 `lane_glyph`/`join_glyph`, `GraphEntry` cells `BranchCell`/`WhoCell`/`RowLabel`/`SecondLine` (badges, SHA, chip removed),
 `Theme::colourless` (G); `branch_pane::{BranchPaneView, PaneLine, Mark, pane_width}` (B); `CommitScreenView`,
 `SUBJECT_LIMIT = 72` (S); `MergeParts`, `IncomingList` (Mp); resolver `Mark`, `ListTail`, inline only (L); `ReviewView`,
-`LookView`, `MergeLook` (Fr). **graft app** `lane_roles`, `commit_rows`, `AppState.{route, colours_off}` (G); `StatusKey`,
+`LookView`, `MergeLook` widget (Fr). **graft app** `lane_roles`, `commit_rows`, `AppState.{route, colours_off}` (G); `StatusKey`,
 `candidates`, `identity_of`, picker `open_on` (B); `TallRow` (X); `Draft`, `include_of` (S); `jobs::finish::look_read` (Fr).
 
 ## Hard-to-reverse choices
@@ -189,6 +196,8 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
   here). **Planner recommends Fable**; `Build with` left to the conductor after the scout.
 - graph-fold-and-lanes is in the layout-engine area (`builder-opus-xhigh`); pixel-roles-and-tall-row carries the lag risk
   (gate: trace, not eye). Neither is Fable: correctness is checkable by tests/trace.
+- commit-what-goes-in now changes the executor (`IndexFile::Scratch`); Opus per its scout — every index state is checked
+  by fixture (`git ls-files -s`), so not Fable.
 
 ## Questions for the user
 **Answered 2026-10-17 by the user: "all a"** — Q1–13 take option (a). Close calls he flagged: 2, 9 (`docs/field-notes.md:112`).
@@ -216,5 +225,6 @@ Same-crate pairs (graft app in W3–W6, graft-ui in W4–W6) use disjoint files 
 `graft-ui/src/graph_screen/hints.rs`** for the pass (later groups pick a `HintContext`, never edit lists). `update/state.rs`,
 `update/events.rs`, `jobs/kinds.rs`: the first-named group of each pair owns them; the second adds only at the end of an
 enum/struct and names the lines in its report, for the conductor's merge.
+W2 crate sets: V graft-ui only; W graft-ops plus six `CommitParams` literals in graft (compile fix, `Include::Staged`) — disjoint.
 Dependency order: R, K, V, W (no needs) → P (K, V) · F (none) → G (R, V, F) · S (W, V) → B (R, G, V) · Mp (K, V) → L (P, V)
 · Fr (P, K, V, F) → X (R, G, F, V) → A (all).

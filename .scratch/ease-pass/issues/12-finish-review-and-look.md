@@ -1,14 +1,15 @@
 # finish-review-and-look — "Nothing committed yet", a read-only look per file, landing on the folded merge
 
-Status: ready
+Status: ready (ids revised 2026-10-17 after ease-vocabulary's scout; this group's own scout not yet run)
 Blocked by: 05-resolver-picks, 02-clash-reads, 03-ease-vocabulary, 06-graph-fold-and-lanes
 Build with: (blank — brownfield; conductor sets after the scout)
-Needs: `finish_preview`, review state and its `y`/`u`/`esc` (resolver-picks); `line_origins`, `LineOrigin`, `Origin` (clash-reads); `finish.look`, `look.*`, `MergeLook`, `Review`/`Look`/`AfterMerge` `HintContext`s (ease-vocabulary); folded merge row words (graph-fold-and-lanes).
+Needs: `finish_preview`, review state and its `y`/`u`/`esc` (resolver-picks); `line_origins`, `LineOrigin`, `Origin` (clash-reads); folded merge row words (graph-fold-and-lanes). Keys — **no new ids or contexts** (ease-vocabulary decided it): the look is a state of `ContextId::Finish`; `⏎`/`space` stay `finish.toggle_diff` (`keymap/table.rs:362-364`, handled `graft/src/update/finish/keys.rs:100-101`, mouse `finish/mouse.rs:74`) and in the merge review this group points it at the look; `y` = `confirm.yes` (borrowed by `Finish`, `keymap.rs:204`; `finish/keys.rs:100`); `esc` = `app.back`. Bars: V's review, look and after-merge `HintContext` states (names in V's NOTES; `finish_list`, `hints/lists/resolver.rs:148`).
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Prior art row "Finish", Journeys merge-* (steps 4–5 and the landing), Mock behaviours M15–M19, New UI (review and look), Hard-to-reverse choice 3.
 - `docs/design/02-keymap.md` §2.6b. `docs/design/01-view-mockups.md` §1.7 (preview frame only).
 - `crates/graft-ui/MAP.md`: `finish_summary` (all), `detail_pane::diff_body`. `crates/graft/MAP.md`: `update::finish`, `view::finish`, `jobs::finish`, `update::undo`.
+- `.scratch/ease-pass/scouts/03-ease-vocabulary.md` (finish lines).
 - The merge mock's visible text and key handlers (review and look only).
 - The scout's file.
 
@@ -17,16 +18,17 @@ Needs: `finish_preview`, review state and its `y`/`u`/`esc` (resolver-picks); `l
 - What `jobs::finish` reads (staged diff per file) and how to read the three diffs (base→result, base→yours, base→theirs) for one path during a live merge.
 - What the merge's success lands on today (cursor, status line, bar).
 - **Whether the mock's review has a message field.** Build what the mock shows; if it has none, the merge commits with git's prepared message (`MERGE_MSG`) and the subject/body fields leave the review — say which in NOTES.
+- **Same kind of mismatch as V's scout:** which operations open the finish summary today (§2.6b says merges only; "non-merge keeps it" below assumes one might). If none but merges, `finish.toggle_diff`'s inline toggle has no caller left — say so in NOTES (V kept the id name; a rename with alias is a later readability item). Whether the frame's bottom-border keys (`footer_hints`, graft-ui MAP.md :342) are the bar or the bottom bar is — the review's words go where today's do.
 
 ## Scope
-In (graft-ui `finish_summary` redrawn as the review + a new `merge_look` widget; graft `view::finish`, `jobs::finish` (look read), `update::finish` (`⏎` look and the look's keys only — `y`/`u`/`esc` on the review are P's), the after-merge landing words):
-- **M15:** the review in boxes as the mock, full frame: title and `Nothing committed yet`; the clashing files with how each was solved; `Combined by git (N)`; the bar (V's `Review`). Facts from `finish_preview` (scratch index), never the real index.
+In (graft-ui `finish_summary` redrawn as the review + a new `merge_look` widget; graft `view::finish`, `jobs::finish` (look read), `update::finish` (the `finish.toggle_diff` handler's merge branch and the look's keys only — `y`/`u`/`esc` on the review are P's), the after-merge landing words):
+- **M15:** the review in boxes as the mock, full frame: title and `Nothing committed yet`; the clashing files with how each was solved; `Combined by git (N)`; the bar (V's review state). Facts from `finish_preview` (scratch index), never the real index.
 - **M16:** drawn states for P's keys — `esc` returns to the clashes, `y` from the clashes returns here.
-- **M17:** `⏎` on a file → the read-only look (`MergeLook`): the file's result, line by line, read-only. On a `Combined by git` row: per file `yours +a −d  theirs +a −d`, and one sample hunk with each line marked `from yours` / `from theirs` (`line_origins`). `esc` → the review, cursor kept; `y` → commit (same as the review's `y`).
-- **M18 landing:** after `y`: the graph, cursor on the merge commit, folded (`▸ N commits from <from>`, F's words); status `✓ Merged <from> into <into>` (mock words); bar `u undo the merge · P push · space show the N commits inside` (V's `AfterMerge`).
+- **M17:** `⏎`/`space` (`finish.toggle_diff`) on a file in a merge review → the read-only look (a `Showing::Look` state inside `Finish`, no new context): the file's result, line by line, read-only. On a `Combined by git` row: per file `yours +a −d  theirs +a −d`, and one sample hunk with each line marked `from yours` / `from theirs` (`line_origins`). `esc` → the review, cursor kept; `y` → commit (same as the review's `y`). If the mock gives `space` no meaning in the review, NOTES says `space` kept today's pairing with `⏎`.
+- **M18 landing:** after `y`: the graph, cursor on the merge commit, folded (`▸ N commits from <from>`, F's words); status `✓ Merged <from> into <into>` (mock words); bar from V's after-merge state (`u undo the merge · P push · space show the N commits inside`).
 - **M19:** `u` from there undoes the merge (today's undo; state test only).
-- Non-merge operations keep today's finish summary untouched (Q12 a).
-Out: review keys `y`/`u`/`esc` and staging (P); the clash screen (L); the fold itself (F).
+- Non-merge operations keep today's finish summary untouched (Q12 a), if the scout finds any that open it.
+Out: review keys `y`/`u`/`esc` and staging (P); the clash screen (L); the fold itself (F); key table and hint lists (V).
 
 ## Signatures
 graft-ui:
@@ -46,10 +48,10 @@ graft app (`jobs::finish`):
 ```rust
 pub fn look_read(repo: &RepoHandle, path: &Path, stop: &dyn Stop) -> Result<(FileDiff, FileDiff, FileDiff), RunError>;   // base→result, base→yours, base→theirs
 ```
-`Origin` is graft-git's; the app maps it into a ui-side enum if the crate rules forbid ui naming it (graft-ui does not depend on git — define `graft_ui::finish_summary::Origin { Yours, Theirs, Both }` and map in `view::finish`).
+`Origin` is graft-git's; the app maps it into a ui-side enum if the crate rules forbid ui naming it (graft-ui does not depend on git — define `graft_ui::finish_summary::Origin { Yours, Theirs, Both }` and map in `view::finish`). `MergeLook` is a widget name only; there is no `ContextId::MergeLook`.
 
 ## Touches
-`FinishView`, `FinishScreen`, `ExpandedDiff`, `footer_hints`, `undo_line`, `preview_title` callers and tests; mouse `hit` on the review; `finish.toggle_diff` alias; `update::undo` after a merge; the graph landing and its status line; review and summary captures (recaptured); `02-keymap.md` §2.6b (V's Proposed edit).
+`FinishView`, `FinishScreen`, `ExpandedDiff`, `footer_hints`, `undo_line`, `preview_title` callers and tests; `finish/keys.rs:100-101` and mouse `hit` (`finish/mouse.rs:74`) on the review; `update::undo` after a merge; the graph landing and its status line; review and summary captures (recaptured); `02-keymap.md` §2.6b (V's Proposed edit).
 
 ## Acceptance
 - [ ] Fixture merge with `report.md` (2 clashes, one `o` one `t`) and 2 combined files, all solved, `y` from the clashes → review shows `Nothing committed yet`, `report.md` with its solved words, `Combined by git (2)`; the real index still has `report.md` unmerged (`git ls-files -u`).
@@ -58,7 +60,7 @@ pub fn look_read(repo: &RepoHandle, path: &Path, stop: &dyn Stop) -> Result<(Fil
 - [ ] Look `y` commits (same state as review `y`).
 - [ ] Landing: cursor on the merge commit; its row reads `▸ N commits from sara/fix-toc`; status starts `✓ Merged`; bar `u undo the merge · P push · space show the N commits inside`.
 - [ ] `u` after landing: HEAD back to before the merge (state test).
-- [ ] A rebase's finish summary is unchanged (existing tests pass untouched).
+- [ ] Any non-merge finish summary the scout found is unchanged (existing tests pass untouched).
 - [ ] Captures next to the merge mock: `docs/shots/ease-pass/merge-review-120.txt`, `merge-look-clashed-120.txt`, `merge-look-combined-120.txt`, `merge-landed-120.txt`, `merge-review-90.txt`; colour unverified. Each tick names its test.
 
 ## Gates
