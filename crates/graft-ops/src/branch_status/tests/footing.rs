@@ -97,6 +97,73 @@ fn who_ignores_the_integration_branchs_own_work() {
     );
 }
 
+/// Transitive: sara → wallet-release → main, both `--no-ff`. The trunk
+/// decides "merged into main"; `Who` still reads from the nearest holder's
+/// entry (wallet's merge of sara), so Wendy's work stays out.
+#[test]
+fn who_of_a_branch_merged_through_integration_reads_the_nearest_entry() {
+    let repo = Repo::new();
+    repo.commit("m1");
+    repo.git(&["switch", "-q", "-c", "wallet-release"]);
+    repo.commit_as(WENDY, "w1");
+    repo.git(&["switch", "-q", "-c", "sara"]);
+    repo.commit_as(SARA, "s1");
+    repo.git(&["switch", "-q", "wallet-release"]);
+    repo.commit_as(WENDY, "w2");
+    repo.git_as(
+        WENDY,
+        &["merge", "-q", "--no-ff", "-m", "merge sara", "sara"],
+    );
+    repo.commit_as(WENDY, "w3");
+    repo.git(&["switch", "-q", "main"]);
+    repo.git(&[
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        "merge wallet",
+        "wallet-release",
+    ]);
+    let candidates = vec![
+        repo.cand("main", CandidateKind::Trunk),
+        repo.cand("wallet-release", CandidateKind::Integration),
+        repo.cand("sara", CandidateKind::Other),
+    ];
+    let sara = status(&repo, "sara", &candidates, None);
+    assert_eq!(sara.merged, Merged::Into("refs/heads/main".to_owned()));
+    // s1: 3 minutes in (m1 w1 s1).
+    assert_eq!(
+        authors(&sara),
+        (vec!["Sara Sahin".to_owned()], 0, 1_700_000_000 + 180)
+    );
+}
+
+/// `bob/z` was cut from sara's tip, then merged `ops/ci` in. Its line runs
+/// straight through sara: that merge took in ops/ci, not sara.
+#[test]
+fn a_branch_on_the_tip_that_merges_something_else_has_not_merged_it() {
+    let repo = Repo::new();
+    repo.commit("m1");
+    repo.git(&["switch", "-q", "-c", "ops/ci"]);
+    repo.commit("o1");
+    repo.git(&["switch", "-q", "-c", "sara", "main"]);
+    repo.commit("s1");
+    repo.git(&["switch", "-q", "-c", "bob/z"]);
+    repo.git(&["merge", "-q", "--no-ff", "-m", "merge ops", "ops/ci"]);
+    let candidates = vec![
+        repo.cand("main", CandidateKind::Trunk),
+        repo.cand("sara", CandidateKind::Other),
+        repo.cand("bob/z", CandidateKind::Other),
+    ];
+    let sara = status(&repo, "sara", &candidates, None);
+    assert_eq!(
+        sara.merged,
+        Merged::NotYet {
+            into: Some("refs/heads/main".to_owned())
+        }
+    );
+}
+
 /// Major 4, fresh: `foo` made at main@m2, then main gets m3 m4. It has no
 /// commits of its own; it sits on main's line, two behind.
 #[test]

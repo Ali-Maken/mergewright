@@ -267,4 +267,3 @@ fn who_of_a_merged_branch_is_its_own_authors() {
         (vec!["Bea Brandt".to_owned()], 0, 1_700_000_000 + 180)
     );
 }
-

@@ -1,7 +1,8 @@
-//! The route under 01r's R1: siblings, a base that moved on, and a branch
-//! cut from an older commit are never "built on"; a stop mid-walk.
+//! The route against real repositories: a stacked branch, the walk's
+//! guards, and 01r's R1 (siblings, a base that moved on, and a branch cut
+//! from an older commit are never "built on"); stops, at entry and mid-walk.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use graft_git::run::{RunError, Stop};
 
@@ -126,7 +127,9 @@ impl StopAfter {
 impl Stop for StopAfter {
     fn should_stop(&self) -> bool {
         self.0
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| left.checked_sub(1))
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
+                left.checked_sub(1)
+            })
             .is_err()
     }
 }
@@ -158,4 +161,130 @@ fn stop_mid_walk() {
     let far = 1_000_000;
     assert!(route(&handle, sara, &candidates, &StopAfter::new(far)).is_ok());
     assert!(branch_status(&handle, sara, &candidates, None, &StopAfter::new(far)).is_ok());
+}
+#[test]
+fn route_of_a_stacked_branch_ends_at_the_trunk() {
+    let repo = stack();
+    let candidates = stack_candidates(&repo);
+    let sara = find(&candidates, "sara/fix-toc");
+    let route = route(&repo.handle(), sara, &candidates, &()).expect("the route");
+    assert_eq!(
+        names(&route),
+        ["refs/heads/wallet-release", "refs/heads/main"]
+    );
+}
+
+#[test]
+fn route_of_the_trunk_is_empty() {
+    let repo = stack();
+    let candidates = stack_candidates(&repo);
+    let main = find(&candidates, "main");
+    let route = route(&repo.handle(), main, &candidates, &()).expect("the route");
+    assert!(route.is_empty(), "{route:?}");
+}
+
+/// A candidate at the branch's own tip holds every commit of it: skipped,
+/// so the base is the next one down.
+#[test]
+fn route_skips_a_candidate_at_the_same_tip() {
+    let repo = stack();
+    repo.git(&["branch", "sara/twin", "sara/fix-toc"]);
+    let mut candidates = stack_candidates(&repo);
+    candidates.push(repo.cand("sara/twin", CandidateKind::Other));
+    let sara = find(&candidates, "sara/fix-toc").clone();
+    let route = route(&repo.handle(), &sara, &candidates, &()).expect("the route");
+    assert_eq!(
+        names(&route),
+        ["refs/heads/wallet-release", "refs/heads/main"]
+    );
+}
+
+/// Two integration branches at one tip, nothing else but a third diverged
+/// from them: each sits on the other's line, so the walk must not loop.
+/// (01 had these `Other`, expecting `[b]`; under 01r's R1 an ordinary
+/// branch with commits of its own is never a base, so they are long-lived
+/// here to keep the cycle possible.)
+#[test]
+fn route_does_not_cycle() {
+    let repo = Repo::new();
+    repo.commit("r1");
+    repo.git(&["switch", "-q", "-c", "a"]);
+    repo.commit("a1");
+    repo.git(&["branch", "a-twin"]);
+    repo.git(&["switch", "-q", "-c", "b", "main"]);
+    repo.commit("b1");
+    // No trunk among the candidates: the route can only end by the guard.
+    let candidates = vec![
+        repo.cand("a", CandidateKind::Integration),
+        repo.cand("a-twin", CandidateKind::Integration),
+        repo.cand("b", CandidateKind::Integration),
+    ];
+    let a = candidates[0].clone();
+    let route = route(&repo.handle(), &a, &candidates, &()).expect("the route");
+    assert_eq!(names(&route), ["refs/heads/a-twin", "refs/heads/b"]);
+}
+
+/// A base that has moved on past the branch is not walked back through:
+/// `wallet-release` gains a commit after `sara/fix-toc` left it, so
+/// `sara/fix-toc` now has the fewest commits `wallet-release` lacks; the
+/// walk from `wallet-release` must still go to `main`, not back.
+#[test]
+fn route_does_not_walk_back_through_the_branch() {
+    let repo = stack();
+    repo.git(&["switch", "-q", "wallet-release"]);
+    repo.commit("w3");
+    let candidates = stack_candidates(&repo);
+    let sara = find(&candidates, "sara/fix-toc");
+    let route = route(&repo.handle(), sara, &candidates, &()).expect("the route");
+    assert_eq!(
+        names(&route),
+        ["refs/heads/wallet-release", "refs/heads/main"]
+    );
+}
+
+#[test]
+fn route_stops_at_depth_eight() {
+    let repo = Repo::new();
+    repo.commit("root");
+    let mut candidates = vec![repo.cand("main", CandidateKind::Trunk)];
+    let mut on = "main".to_owned();
+    for n in 1..=10 {
+        let branch = format!("b{n}");
+        repo.git(&["switch", "-q", "-c", &branch, &on]);
+        repo.commit(&branch);
+        candidates.push(repo.cand(&branch, CandidateKind::Other));
+        on = branch;
+    }
+    let tip = find(&candidates, "b10").clone();
+    let route = route(&repo.handle(), &tip, &candidates, &()).expect("the route");
+    assert_eq!(
+        names(&route),
+        [
+            "refs/heads/b9",
+            "refs/heads/b8",
+            "refs/heads/b7",
+            "refs/heads/b6",
+            "refs/heads/b5",
+            "refs/heads/b4",
+            "refs/heads/b3",
+            "refs/heads/b2",
+        ]
+    );
+}
+
+#[test]
+fn route_and_status_honour_stop() {
+    let repo = stack();
+    let candidates = stack_candidates(&repo);
+    let sara = find(&candidates, "sara/fix-toc");
+    let stopped = AtomicBool::new(true);
+    let handle = repo.handle();
+    assert!(matches!(
+        route(&handle, sara, &candidates, &stopped),
+        Err(RunError::Stopped)
+    ));
+    assert!(matches!(
+        branch_status(&handle, sara, &candidates, None, &stopped),
+        Err(RunError::Stopped)
+    ));
 }

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d627ff57641e925e3dcccd02c79ffca425ef29a2efd3a94d91cb12c26ad9b452 # shrinks to measured = [(Candidate { name: "refs/heads/b3", tip: Oid(1111111111111111111111111111111111111111), kind: Integration }, Apart { branch_only: 1, base_only: 0 })], me = 0, at_most = Trunk
