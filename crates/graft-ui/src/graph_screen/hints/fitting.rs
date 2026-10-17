@@ -142,7 +142,7 @@ pub(super) fn fit_list(
     // Fitted in priority order, drawn in list order (m8/15 A5): `order[k]`
     // is the list index of the k-th hint to be fitted.
     let order = fit_order(list);
-    let list: Vec<Hint> = order.iter().map(|&at| stamp(list[at])).collect();
+    let list: Vec<Hint> = order.iter().map(|&at| stamp(list[at].clone())).collect();
     let list = list.as_slice();
     let trailer = trailer.map(stamp);
     let room = usize::from(columns);
@@ -157,23 +157,23 @@ pub(super) fn fit_list(
         .collect();
     // Width does not depend on order (every join is the same separator),
     // so a candidate is measured in fit order and drawn in list order.
-    let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().copied().collect::<Vec<_>>();
+    let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().cloned().collect::<Vec<_>>();
     let in_list_order = |slots: &[Option<Hint>]| {
         let mut placed: Vec<(usize, Hint)> = order
             .iter()
             .zip(slots)
-            .filter_map(|(&at, slot)| slot.map(|hint| (at, hint)))
+            .filter_map(|(&at, slot)| slot.clone().map(|hint| (at, hint)))
             .collect();
         placed.sort_by_key(|&(at, _)| at);
         placed.into_iter().map(|(_, hint)| hint).collect::<Vec<_>>()
     };
-    if !fits(&drawn(&slots), trailer, room, keys) {
+    if !fits(&drawn(&slots), trailer.as_ref(), room, keys) {
         return below_the_floor(list, trailer, room, words, keys);
     }
     for Step { index, rung } in ladder(list, floor, words) {
         let mut candidate = slots.clone();
         candidate[index] = Some(list[index].at(rung));
-        if !fits(&drawn(&candidate), trailer, room, keys) {
+        if !fits(&drawn(&candidate), trailer.as_ref(), room, keys) {
             break;
         }
         slots = candidate;
@@ -202,9 +202,9 @@ pub(super) fn fit_order(list: &[Hint]) -> Vec<usize> {
 /// The trailer is measured on the end wherever [`place_doorway`] will put
 /// it: [`hints_text`] separates every pair of hints the same way, so moving
 /// one hint within the row changes no cell count.
-fn fits(drawn: &[Hint], trailer: Option<Hint>, room: usize, keys: &Keymap) -> bool {
+fn fits(drawn: &[Hint], trailer: Option<&Hint>, room: usize, keys: &Keymap) -> bool {
     let mut measured = drawn.to_vec();
-    measured.extend(trailer);
+    measured.extend(trailer.cloned());
     text_width(&hints_text(&measured, keys)) <= room
 }
 
@@ -251,7 +251,7 @@ fn below_the_floor(
     words: Words,
     keys: &Keymap,
 ) -> Vec<Hint> {
-    let doorway = trailer.or_else(|| list.first().copied().filter(|hint| hint.is(MENU)));
+    let doorway = trailer.or_else(|| list.first().cloned().filter(|hint| hint.is(MENU)));
     let Some(doorway) = doorway else {
         return Vec::new();
     };

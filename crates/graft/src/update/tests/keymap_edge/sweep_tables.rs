@@ -7,7 +7,7 @@ use graft_ui::keymap::ContextId;
 use graft_ui::text_input::TextField;
 
 use super::AppState;
-use super::sweep_swallowed::{R_CREDENTIAL, R_EDITOR, R_PICKER};
+use super::sweep_swallowed::{R_CREDENTIAL, R_PICKER};
 use crate::update::credential::PromptField;
 
 /// `(place, id, why)`: answered there, but the fixture gives it nothing to
@@ -229,13 +229,13 @@ pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, IdleWhy)] = &[
         at: "picker.rs:141", given: picker_on_row_1, then: picker_row_1_to_0 }),
     (ContextId::Picker, "app.top", "home", Defect { at: "picker.rs:158 swallows home; g is typed (:150)" }),
     (ContextId::Picker, "app.bottom", "end", Defect { at: "picker.rs:158 swallows end; G is typed (:150)" }),
-    (ContextId::CommitEditor, "app.undo", "⌃Z", Defect { at: "commit_editor/keys.rs:110 swallows ⌃Z; u is typed" }),
-    (ContextId::CommitEditor, "app.up", "↑", Defect { at: "commit_editor/keys.rs:231 swallows ↑ in the subject" }),
+    (ContextId::CommitEditor, "app.undo", "⌃Z", Defect { at: "commit_editor/keys.rs:154 swallows ⌃Z; u is typed" }),
+    (ContextId::CommitEditor, "app.up", "↑", Defect { at: "commit_editor/keys.rs:275 swallows ↑ in the subject" }),
     (ContextId::CommitEditor, "app.top", "home", ActsGivenState {
-        at: "commit_editor/keys.rs:229", given: |s| subject_abc(s, 2),
+        at: "commit_editor/keys.rs:273", given: |s| subject_abc(s, 2),
         then: |b, a| went(subject, b, a, ("abc", 2), ("abc", 0)) }),
     (ContextId::CommitEditor, "app.bottom", "end", ActsGivenState {
-        at: "commit_editor/keys.rs:230", given: |s| subject_abc(s, 0),
+        at: "commit_editor/keys.rs:274", given: |s| subject_abc(s, 0),
         then: |b, a| went(subject, b, a, ("abc", 0), ("abc", 3)) }),
     (ContextId::Credential, "credential.edit_text", "delete", ActsGivenState {
         at: "credential.rs:378", given: |s| credential_abc(s, 1),
@@ -262,7 +262,6 @@ pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, IdleWhy)] = &[
         at: "credential.rs:382", given: |s| credential_abc(s, 1),
         then: |b, a| went(credential, b, a, ("abc", 1), ("abc", 3)) }),
     (ContextId::Picker, "app.palette", "⌃P", Defect { at: R_PICKER }),
-    (ContextId::CommitEditor, "app.palette", "⌃P", Defect { at: R_EDITOR }),
     (ContextId::Credential, "app.palette", "⌃P", Defect { at: R_CREDENTIAL }),
     (ContextId::Menu, "changes.stage", "s", Defect { at: "context_menu.rs:162 closes, falls through; the graph has no s" }),
 ];

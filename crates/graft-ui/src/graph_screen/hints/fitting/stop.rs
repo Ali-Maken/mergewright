@@ -93,7 +93,7 @@ pub fn stopped_row_before_keys(
         let Some(room) = usize::from(columns).checked_sub(text_width(wording) + 3) else {
             continue;
         };
-        if !fits(&floor, trailer, room, keys) {
+        if !fits(&floor, trailer.as_ref(), room, keys) {
             continue;
         }
         let room = u16::try_from(room).unwrap_or(u16::MAX);

@@ -3,6 +3,10 @@
 use crate::conflict_resolver::SideRoles;
 use crate::finish_summary::SummaryFocus;
 
+mod ease;
+
+pub use ease::{ClashAt, ClashBar, ClashOp, RowBar, bar_name};
+
 /// Which of a commit row's own verbs act on the cursor's row
 /// (m7-power-tools/40). `graft` works each out from the check its key runs
 /// (`update::context_menu::verbs::can_take`, `update::amend_into::amend_blocked`);
@@ -76,6 +80,21 @@ pub enum HintContext {
     /// **inside** [`HintContext::OperationLive`], so at a stop the stop's
     /// keys still lead. Never a pane's, an overlay's or a box's bar.
     Searching(Box<HintContext>),
+    /// The cursor is on a graph row, in the ease pass's words (ticket
+    /// ease-pass/03b): which kind of row picks the bar ([`RowBar`]), and the
+    /// row verbs that act on it are placed as on any row. `graft` picks it
+    /// at the row-context choice site (ticket G); until then `BranchRow` and
+    /// `PlainRow` stay.
+    GraphRow {
+        /// Which row the cursor is on, with the name or count its bar says.
+        row: RowBar,
+        /// The row verbs that act on this row (`o take`, `a amend`).
+        verbs: RowVerbs,
+    },
+    /// The clash screen's bar (ticket ease-pass/03b, Q12 a): where the
+    /// cursor's clash stands and which operation it belongs to. `Resolver`
+    /// stays for whatever L does not move here.
+    Clash(ClashBar),
     /// The operation banner has focus (a conflict just landed, or the user
     /// tabbed to it); `skippable` is false for a plain merge, which has no
     /// `s` skip.
@@ -94,6 +113,11 @@ pub enum HintContext {
         /// rather than `c continue` (m6-conflicts/70, n2).
         merge: bool,
     },
+    /// The live merge's banner after `esc pause` left the clash screen
+    /// (ticket ease-pass/03b, Q7 a): a conflicted merge's banner whose `⏎`
+    /// leads `back to the clashes`. `graft` picks it once `esc pause` is
+    /// what the resolver's `esc` does (ticket P); until then `Banner` stays.
+    BannerPaused,
     /// The Ghost Preview box has focus: its own border draws the footer,
     /// so the main footer's list is empty.
     Preview,

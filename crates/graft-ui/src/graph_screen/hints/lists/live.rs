@@ -24,11 +24,11 @@ pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
         }
         match c {
             LiveC::Finish => Some(Hint {
-                verb: "finish",
+                verb: "finish".into(),
                 ..hint
             }),
             LiveC::Continue | LiveC::ContinueAmends => Some(Hint {
-                verb: "continue",
+                verb: "continue".into(),
                 ..hint
             }),
             LiveC::Refuses => None,

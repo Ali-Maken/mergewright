@@ -23,12 +23,11 @@ pub(super) fn whole_bar(
         // included. Three keys at 80 columns would have hidden the exit of
         // a modal that swallows every other key, which is the failure
         // `banner_key`'s own doc comment warns of.
-        // A drag takes no doorway either, and for the banner's reason: `.`
-        // does not open the menu while a badge is in the air, it cancels the
-        // drag. Two hints fit at every width the app draws at.
-        // The bars where the keys are the point (ADR-0058 §4): each
-        // swallows `?` or types it, so a doorway there would be a dead key.
+        // A drag takes no doorway either: `.` cancels the drag. The bars
+        // where the keys are the point (ADR-0058 §4) swallow `?` or type it,
+        // so a doorway there would be a dead key.
         HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
@@ -36,6 +35,7 @@ pub(super) fn whole_bar(
         | HintContext::Picker
         | HintContext::PickerOnCurrent
         | HintContext::Resolver { .. }
+        | HintContext::Clash(_)
         | HintContext::Finish { .. }
         // The rewrite editor is modal (keymap §2.7): no doorway.
         | HintContext::RewriteEditor { .. }
@@ -71,6 +71,7 @@ pub(super) fn whole_bar(
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::GraphRow { .. }
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => (
@@ -96,8 +97,8 @@ pub(super) fn whole_bar(
                 Some(WayToBanner::Forward) => WAY_TO_BANNER_FORWARD,
                 Some(WayToBanner::Back) => WAY_TO_BANNER_BACK,
             };
-            let mut led = vec![way];
-            led.extend(list.into_iter().filter(|hint| !hint.is(way.keys)));
+            let mut led: Vec<Hint> = list.into_iter().filter(|hint| !hint.is(way.keys)).collect();
+            led.insert(0, way);
             (led, trailer)
         }
     }
@@ -294,6 +295,10 @@ pub(super) const GRAPH_ONLY: [&[HintKey]; 5] = [
 pub(super) const NEEDS_A_COMMIT: [&[HintKey]; 3] =
     [hint_keys::COPY_SHA, hint_keys::COMPARE, hint_keys::FOLD];
 
+/// What an ease-pass row bar ([`HintContext::GraphRow`]) draws of [`TAIL`]:
+/// `u undo`, the mock's bar end (03's Handoff).
+const ROW_BAR_TAIL: [Hint; 1] = [hint(hint_keys::UNDO, "undo")];
+
 /// Every hint the footer could draw for `context`, in priority order, with
 /// the ones nothing has built yet already dropped: the context's own keys,
 /// then — on the graph's row contexts only — the keys the whole screen
@@ -318,12 +323,21 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         HintContext::WorkingTreeRow
             | HintContext::BranchRow { .. }
             | HintContext::PlainRow { .. }
+            | HintContext::GraphRow { .. }
             | HintContext::StashRow
             | HintContext::Rewritable(_)
     );
     if rows {
         let commits = *context != HintContext::WorkingTreeRow;
-        for extra in TAIL {
+        // An ease-pass row bar is the mock's (G13): its own words, then
+        // `u undo`, then the doorway — the screen's other keys are `?`'s,
+        // so a named verb is not crowded to its short rung by them.
+        let tail: &[Hint] = if matches!(context, HintContext::GraphRow { .. }) {
+            &ROW_BAR_TAIL
+        } else {
+            &TAIL
+        };
+        for extra in tail.iter().cloned() {
             let dead = !commits && NEEDS_A_COMMIT.contains(&extra.keys);
             if !dead && !list.iter().any(|hint| hint.is(extra.keys)) {
                 list.push(extra);
@@ -334,11 +348,13 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         && !matches!(
             context,
             HintContext::Banner { .. }
+                | HintContext::BannerPaused
                 | HintContext::Dragging
                 | HintContext::Picker
                 | HintContext::PickerOnCurrent
                 | HintContext::PaneOverOverlay { .. }
                 | HintContext::Resolver { .. }
+                | HintContext::Clash(_)
                 | HintContext::Finish { .. }
                 | HintContext::Blame { .. }
                 | HintContext::History { .. }

@@ -15,9 +15,21 @@ pub(crate) trait Spelled {
     /// Leaked — a test-only handful of short strings — so `(key, verb)`
     /// tuples still compare as `&str`.
     fn key(&self) -> &'static str;
+
+    /// The hint's whole verb, leaked as [`Spelled::key`] is: a verb that
+    /// names a branch or a count is built per bar (ease-pass/03b), so
+    /// `Hint::verb` is a `Cow` and a `(key, verb)` tuple needs this.
+    fn said(&self) -> &'static str;
 }
 
 impl Spelled for Hint {
+    fn said(&self) -> &'static str {
+        match &self.verb {
+            std::borrow::Cow::Borrowed(verb) => verb,
+            std::borrow::Cow::Owned(verb) => Box::leak(verb.clone().into_boxed_str()),
+        }
+    }
+
     fn key(&self) -> &'static str {
         let text = self
             .key_text(Keymap::shipped())

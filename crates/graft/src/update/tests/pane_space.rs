@@ -19,7 +19,7 @@ fn space_hints(state: &AppState) -> Vec<&'static str> {
     )
     .into_iter()
     .filter(|hint| hint.key() == "space")
-    .map(|hint| hint.verb)
+    .map(|hint| hint.said())
     .collect()
 }
 

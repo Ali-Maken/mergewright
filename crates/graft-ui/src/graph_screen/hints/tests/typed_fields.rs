@@ -55,10 +55,10 @@ fn a_fixed_key_is_drawn_only_where_keys_go_on_as_typed() {
 /// On any other row it still says `switch to it`.
 #[test]
 fn picker_on_current_enter_says_what_tab_says() {
-    let verbs = |context: &HintContext| -> Vec<&'static str> {
+    let verbs = |context: &HintContext| -> Vec<String> {
         hints_for(context, Divider::Hidden, 200)
             .iter()
-            .map(|hint| hint.verb)
+            .map(|hint| hint.verb.to_string())
             .collect()
     };
     assert_eq!(
@@ -83,7 +83,10 @@ fn picker_on_current_enter_says_what_tab_says() {
         ]
     );
     // `⏎` and `⇥` are one act; every other pair of clauses shares no word.
-    let distinct: Vec<&str> = [0, 2, 3, 4].iter().map(|at| on_current[*at]).collect();
+    let distinct: Vec<&str> = [0, 2, 3, 4]
+        .iter()
+        .map(|at| on_current[*at].as_str())
+        .collect();
     for (at, left) in distinct.iter().enumerate() {
         for right in &distinct[at + 1..] {
             let shared = left

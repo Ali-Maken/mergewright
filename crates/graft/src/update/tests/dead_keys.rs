@@ -127,10 +127,10 @@ fn dead_keys_in(
                 hint.key(),
                 hint.verb
             );
-            if pressed.contains(&(hint.keys, hint.verb)) {
+            if pressed.contains(&(hint.keys, hint.said())) {
                 continue;
             }
-            pressed.push((hint.keys, hint.verb));
+            pressed.push((hint.keys, hint.said()));
             if !blind && !answered(&state, &idle, &hint) {
                 // Both names: the screen the state is, and the bar the key
                 // came off — they differ exactly when the classifier reads
@@ -271,7 +271,16 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
         // never reach the app.
-        HintContext::Preview | HintContext::Resolver { .. } => None,
+        // The ease pass's bars (03b) are not yet what the app's footer
+        // answers: G picks `GraphRow` at the row-context choice site and L
+        // moves the resolver to `Clash`. Until then no state classifies as
+        // either; their keys are still pressed (`screen_for`). P picks
+        // `BannerPaused` once the resolver's `esc` pauses.
+        HintContext::Preview
+        | HintContext::Resolver { .. }
+        | HintContext::GraphRow { .. }
+        | HintContext::Clash(_)
+        | HintContext::BannerPaused => None,
         // A standing search (m8/15b): the row's form, led by `n N`.
         HintContext::Searching(row) => {
             classified_form(row).map(|row| HintContext::Searching(Box::new(row)))

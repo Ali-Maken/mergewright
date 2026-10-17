@@ -1,6 +1,6 @@
 # ease-vocabulary-rest — names and counts in bar words; graph, banner and clash bars; commit options in `?`/`⌃P`
 
-Status: ready
+Status: done
 Blocked by: 03-ease-vocabulary (merged)
 Build with: Opus (builder-opus) — brownfield edits to registries pinned by sweeps and snapshots; the representation is decided below, so a wrong turn shows up in a failing sweep or snapshot, not later. Fails Fable test 2 (correctness is checkable by tests). Scout: palette questions only (below); the hint facts are in 03's scout and Handoff — the conductor may skip the scout if 03's builder answers them.
 Needs: none. Feeds: G (07) `HintContext::GraphRow`; S (08) `RowBar::JustCommitted`, the commit-option listing; P (05) `HintContext::Clash`, the merge banner words; L (11) `ClashBar`; Fr (12) `RowBar::JustMerged`, the `Cow` verb; Mp (10) M1 words.
@@ -69,17 +69,39 @@ graft: no new public items; the palette gains a "listed from" source (scout name
 `hints_for` fitting and rungs; every `.verb` reader (~19 files, 03 Handoff) — list them; `every_context`/`every_hint` sample values (`sara/fix-toc`, `3`); graft sweeps `sweep_screens.rs:47 screen_for`, `dead_keys.rs:191 classified_form` (an arm per new state, each in a graft state where every drawn key acts); `palette_live.rs:222` known table; `?`/`⌃P` listing for every other screen (unchanged — test); the subject's typed `?`; existing hint snapshots in `src/graph_screen/snapshots/`, `tests/snapshots/` (must pass **unedited**: no existing bar changes words); `tests/no_literal_keys.rs`; the commit editor's option rows (S retires them, keeps the dispatch); man page (no id change — regenerate and diff empty).
 
 ## Acceptance
-- [ ] `Hint.verb` is `Cow<'static, str>`; every existing hint snapshot passes unedited (no `.snap.new`).
-- [ ] Each `RowBar` at 120 cols draws 03 Handoff's words exactly, keys spelled from the keymap; `Elsewhere { branch: "sara/fix-toc" }` reads `C switch to fix-toc` and `m merge fix-toc into yours`; `FoldedMerge { inside: 1 }` reads `1 commit`, `{ inside: 3 }` `3 commits`.
-- [ ] At 60 cols a 60-cell branch name: whole hints only, the named verb at `Short` (`C switch`) or dropped, never cut mid-word.
-- [ ] The live merge banner leads `⏎ back to the clashes`; non-merge banners unchanged (snapshot unedited).
-- [ ] Each `ClashBar` for `Merge` and `Other` draws its words; `esc` spelled `pause, come back later`, `u` `undo pick`, `n` `next open clash` / `next file: <name>`.
-- [ ] graft sweeps pass with an arm per new state: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`, the `screen_for`/`classified_form` sweeps.
-- [ ] Commit editor: `⌃P` lists `commit.toggle_amend`, `_no_verify`, `_allow_empty` spelled `—` (closes 03's open `?`-listing box); choosing `_no_verify` turns skip-hooks on, back on the editor, focus kept; `?` in the subject types `?`; from the graph the palette lists no `CommitEditor` row.
-- [ ] Workspace gates green; NOTES name the variants, the `.verb` files touched, whether `HintContext` lost `Copy`. Each tick names its test.
+- [x] `Hint.verb` is `Cow<'static, str>`; every existing hint snapshot passes unedited (no `.snap.new`). — `hint.rs` field; no snapshot or capture file in the diff; workspace nextest 6551/6551.
+- [x] Each `RowBar` at 120 cols draws 03 Handoff's words exactly, keys spelled from the keymap; `Elsewhere { branch: "sara/fix-toc" }` reads `C switch to fix-toc` and `m merge fix-toc into yours`; `FoldedMerge { inside: 1 }` reads `1 commit`, `{ inside: 3 }` `3 commits`. — [x] `hints::tests::ease::each_row_bar_leads_with_the_mock_words_at_120_columns`, `a_bar_names_a_branch_by_its_last_path_segment`.
+- [x] At 60 cols a 60-cell branch name: whole hints only, the named verb at `Short` (`C switch`) or dropped, never cut mid-word. — `hints::tests::ease::a_long_name_at_60_columns_draws_whole_hints_only`, `every_short_rung_is_a_prefix_of_its_verb`.
+- [x] The live merge banner leads `⏎ back to the clashes`; non-merge banners unchanged (snapshot unedited). — **as `HintContext::BannerPaused`** (scope's own fallback; NOTES): `hints::tests::ease::the_paused_merge_banner_leads_back_to_the_clashes`; `Banner { .. }` captures unedited (`conflict_interim::*`, `m8_walk::teaches::resolve_is_on_the_stop_banner_bar` green).
+- [x] Each `ClashBar` for `Merge` and `Other` draws its words; `esc` spelled `pause, come back later`, `u` `undo pick`, `n` `next open clash` / `next file: <name>`. — `hints::tests::ease::each_clash_bar_draws_its_words`, `lists::clash::tests::the_take_words_name_the_roles_the_resolver_names`, `a_clash_bar_below_the_resolver_floor_says_only_close`.
+- [x] graft sweeps pass with an arm per new state: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`, the `screen_for`/`classified_form` sweeps. — all green in workspace nextest; arms in `sweep_screens.rs` (`GraphRow` with the row screens, `Clash` via `clash_as_resolver`, `BannerPaused` as a conflicted merge stop) and `dead_keys.rs` (`None`); `bar_keys::every_key_the_bar_draws_is_answered` green; `graph_screen::tests` coverage slots 120–134.
+- [x] Commit editor: `⌃P` lists `commit.toggle_amend`, `_no_verify`, `_allow_empty` spelled `—` (closes 03's open `?`-listing box); choosing `_no_verify` turns skip-hooks on, back on the editor, focus kept; `?` in the subject types `?`; from the graph the palette lists no `CommitEditor` row. — `update::palette::editor_tests::{ctrl_p_from_the_commit_editor_lists_its_rows_and_only_its_rows, choosing_an_option_row_flips_it_and_keeps_the_editor, question_mark_in_the_subject_types_it, question_mark_off_the_text_fields_opens_the_editors_rows, from_the_graph_no_commit_editor_row_is_listed}`.
+- [x] Workspace gates green; NOTES name the variants, the `.verb` files touched, whether `HintContext` lost `Copy`. Each tick names its test. — fmt --check, clippy --all-targets -D warnings, nextest 6551/6551, test --doc: all pass, workspace-wide.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 Medium (~60k). Split point: the palette listing (blocker 2) as its own ticket; the `Cow` verb and the bar states stay together.
+
+## NOTES (builder, 03b)
+
+**Compacted once mid-ticket.** Nothing remains of the scope; the work after the compaction was the banner fallback, the clash width floor, the palette wiring and the gates.
+
+- **Variants added:** `HintContext::GraphRow { row: RowBar, verbs }`, `HintContext::Clash(ClashBar)`, `HintContext::BannerPaused`. `RowBar`, `ClashBar`, `ClashAt`, `ClashOp`, `bar_name` in `hints/context/ease.rs`. Lists in `hints/lists/rows.rs` (`graph_row_list`) and new `hints/lists/clash.rs`.
+- **`HintContext` and `Copy`:** it was already not `Copy` before this ticket; nothing lost. `Hint` lost `Copy` (now `Clone`), as specified.
+- **`.verb` files touched** — graft-ui: `hint.rs`, `fitting.rs`, `fitting/stop.rs`, `filters.rs`, `doorway.rs`, `catalogue.rs`, `lists/live.rs`, `finish_summary/tests.rs`, `hints/tests.rs`, `hints/tests/typed_fields.rs`. graft: `spelled.rs` (new `Spelled::said`, a `&'static str` view for tests), `update/banner/tests.rs`, `keys/edit_stop_tests.rs`, `keys/live_c_tests.rs`, `place/tests/hints.rs`, `tests/pane_space.rs`, `tests/dead_keys.rs`.
+
+**Deviations, each with its reason:**
+1. **Banner → `BannerPaused`.** `Banner { merge: true, conflicted: true }` is also the first landing on a merge (`update::banner` lands there before he has opened the clashes) and the shell-merge relaunch; `⏎ back to the clashes` would be false there, and 8 committed captures teach `⏎ resolve` (`conflict_interim::*`, `m8_walk::teaches::resolve_is_on_the_stop_banner_bar`). So `BannerPaused` carries the words and `Banner` is unchanged. **P picks it** once the resolver's `esc` pauses; today nothing picks it (`classified_form` → `None`).
+2. **`ClashOp::Other(SideRoles)`**, not a bare `Other`: `o`/`t` say whose side, and in a rebase "yours" is upstream (`conflict_resolver/names.rs:15`). Words come from the same roles the resolver names (`take_words`).
+3. **Clash bar is words-only** (`doorway.rs`), modal without a doorway, every hint with a short rung, so 40 columns keeps the floor.
+4. **Clash shares the resolver's width floor** (`hints.rs` `hints_for`): below `conflict_resolver::MIN_COLUMNS` the bar is `esc close`, because the clash screen *is* the resolver until L and answers only `esc` there. Found by `bar_keys::every_key_the_bar_draws_is_answered` at 40 cols (o/t/u dead). Cause fix. `hints/tests.rs::all_contexts` now leaves `Clash` out beside `Resolver` (same reason: the width sweeps read the floor as hints losing ground).
+5. **`GraphRow` tail is `u undo` alone** (`filters.rs` `ROW_BAR_TAIL`), not the row `TAIL`: with the mock's named verbs the full tail crowded `m merge <b> into yours` out at 120.
+6. `hints/tests.rs::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn` now excludes the floor by `fit_order`, not `.skip(3)` (a test fix: `fit_order` moves `u undo` to second, which `.skip(3)` ignored once a list had `u` late).
+
+**Palette over the commit editor** (`palette/listing.rs` `listed(binding, at)`, `groups.rs`, `run.rs`, `commit_editor/keys.rs`): `⌃P` opens in every focus, `?` off the subject/body (`opens_the_palette`). From the editor only `CommitEditor` rows list (any other key would type into the field); a keyless row runs `commit_editor::toggle_from_palette`. The `keymap_edge` table row `CommitEditor app.palette ⌃P Defect` is removed — it now acts (the sweep said "listed, but acts"). Cited lines in `keymap_edge/sweep_{tables,swallowed}.rs` moved +44 with the new code.
+
+**Transient (scope):** `u undo pick`, `n next open clash`, `esc pause` run ahead of their handlers until P; today they press into the resolver, which answers them, so sweeps pass. Not a KNOWN_GAPS row unless the milestone ends before P.
+
+**Unverified (not broken):** EVERYWHERE's find groups (branches/commits/files) and theme/tour rows still list when `⌃P` opens over the commit editor; choosing a branch seeks the graph behind the editor. Not exercised by a test; behaviour by reading `run.rs` only. No capture taken (no visual ticket): every bar's words are checked as text by the tests above, not by eye.

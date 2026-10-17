@@ -140,7 +140,7 @@ fn c_hint(hints: &[Hint]) -> Option<&'static str> {
     hints
         .iter()
         .find(|hint| hint.key() == "c")
-        .map(|hint| hint.verb)
+        .map(crate::spelled::Spelled::said)
 }
 
 fn refuses_in_words_and_sends_nothing(kind: InProgress, begun: Begun, frame: Frame) {
@@ -409,7 +409,7 @@ fn tab_banner_is_hinted_only_where_one_tab_reaches_it() {
     let way_back = |hints: &[Hint]| {
         hints
             .iter()
-            .any(|hint| (hint.key(), hint.verb) == ("⇥", "banner"))
+            .any(|hint| (hint.key(), hint.said()) == ("⇥", "banner"))
     };
 
     let details = live(

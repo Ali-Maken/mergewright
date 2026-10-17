@@ -2339,8 +2339,9 @@ fn row_at_is_none_off_the_body() {
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`; 111 → 112 in m8-polish-and-ship/13: `Quit`, whose
 /// place after `Redo` (63) was already the changes pane's; 116 → 113 in
-/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner; 119 → 120 in m8/47: `PickerOnCurrent`).
-const COVERAGE_SLOTS: usize = 120;
+/// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner; 119 → 120 in m8/47: `PickerOnCurrent`; 120 → 134 in ease-pass/03b: `GraphRow` per
+/// `RowBar` (120–125), `Clash` per `ClashAt` × op (126–133)).
+const COVERAGE_SLOTS: usize = 135;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2393,6 +2394,35 @@ fn row_slot(base: usize, verbs: RowVerbs) -> usize {
         base
     } else {
         102 + 3 * (base - 1) + (combo - 1)
+    }
+}
+
+/// The ease pass's bars (03b): a `GraphRow` per row kind, whatever the
+/// name, count or verbs (120–125); a `Clash` per state and op, whatever the
+/// side roles (126–133); the paused banner (134).
+fn ease_slot(context: &HintContext) -> usize {
+    use super::hints::{ClashAt, ClashOp, RowBar};
+    match context {
+        HintContext::GraphRow { row, .. } => {
+            120 + match row {
+                RowBar::Own => 0,
+                RowBar::Elsewhere { .. } => 1,
+                RowBar::FoldedMerge { .. } => 2,
+                RowBar::Opened => 3,
+                RowBar::JustCommitted => 4,
+                RowBar::JustMerged { .. } => 5,
+            }
+        }
+        HintContext::Clash(bar) => {
+            let at = match bar.at {
+                ClashAt::Open => 0,
+                ClashAt::Picked => 1,
+                ClashAt::FileSolved { .. } => 2,
+                ClashAt::AllSolved => 3,
+            };
+            126 + 2 * at + usize::from(bar.op != ClashOp::Merge)
+        }
+        _ => 134,
     }
 }
 
@@ -2452,12 +2482,13 @@ fn coverage_slot(context: &HintContext) -> usize {
         }
         HintContext::RewriteMessage => 17,
         HintContext::Rewritable(_) => 112,
-        HintContext::PaneOverOverlay { opens: false } => 18,
-        HintContext::PaneOverOverlay { opens: true } => 19,
+        HintContext::PaneOverOverlay { opens } => 18 + usize::from(*opens),
         HintContext::Resolver { .. } => resolver_slot(context),
+        HintContext::GraphRow { .. } | HintContext::Clash(_) | HintContext::BannerPaused => {
+            ease_slot(context)
+        }
         HintContext::ConfirmBox { yes } => confirm_slot(*yes),
-        HintContext::NamePrompt { toggle: false } => 26,
-        HintContext::NamePrompt { toggle: true } => 27,
+        HintContext::NamePrompt { toggle } => 26 + usize::from(*toggle),
         HintContext::Credential => 28,
         HintContext::OperationLive { .. } => operation_live_slot(context),
         // Only the files focus reads `expandable`.

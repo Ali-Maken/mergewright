@@ -9,19 +9,22 @@ use super::keys::{
     NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT, PULL, PUSH, QUIT, RELEASE, RENDERER,
     REWRITE as REWRITE_KEY, SKIP, STAGE, STAGE_ALL, STASH, STATUS, SWITCH, TAKE, UNDO, WHITESPACE,
 };
-use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
+use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint, named};
 
+mod clash;
 mod editors;
 mod live;
 mod resolver;
 mod rows;
 
+use clash::clash_list;
 use editors::{picker_list, picker_on_current_list, rewrite_editor_list};
 use live::said_live;
 pub(super) use live::said_live_on_the_graph;
 use resolver::{finish_list, resolver_context_list};
 use rows::{
-    branch_row_list, current_branch_row_list, plain_row_list, stash_row_list, working_tree_row_list,
+    branch_row_list, current_branch_row_list, graph_row_list, plain_row_list, stash_row_list,
+    working_tree_row_list,
 };
 
 /// A confirm box's bar: `y <acting label>` first when `y` takes a button.
@@ -64,11 +67,14 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         } => with_verbs(current_branch_row_list(), *verbs),
         HintContext::PlainRow { verbs } => with_verbs(plain_row_list(), *verbs),
         HintContext::StashRow => stash_row_list(),
+        HintContext::GraphRow { row, verbs } => with_verbs(graph_row_list(row), *verbs),
+        HintContext::Clash(bar) => clash_list(bar),
         HintContext::Banner {
             skippable,
             conflicted,
             merge,
         } => banner_list(*skippable, *conflicted, *merge),
+        HintContext::BannerPaused => paused_banner_list(),
         HintContext::ChangesPane {
             unmerged,
             live,
@@ -315,6 +321,16 @@ fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
     // matter more than a way out he can always reach by `⇥` (m8-13b).
     // `q` boxes from here (`graft::update::banner::banner_key`).
     list.push(hint(QUIT, "quit"));
+    list
+}
+
+/// The conflicted merge's banner after `esc pause` (ease-pass Q7 a): `⏎`
+/// says where it goes, back to the clash screen `esc` paused. Only then:
+/// on first landing he has not been there yet, so that banner says
+/// `resolve`. `back` is its short rung, so a 40-column bar keeps its floor.
+fn paused_banner_list() -> Vec<Hint> {
+    let mut list = banner_list(false, true, true);
+    list[0] = named(OPEN, "back to the clashes", "back");
     list
 }
 

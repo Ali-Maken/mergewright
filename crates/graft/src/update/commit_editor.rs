@@ -34,6 +34,7 @@ mod keys;
 mod refusal;
 mod returned;
 pub(crate) use edit_stop::{amend_at_edit_stop, at_edit_stop};
+pub(crate) use keys::toggle_from_palette;
 pub use keys::{committed, editor_key, paste};
 pub(crate) use refusal::pane_c_acts;
 pub use refusal::{Begun, OperationRefusal, live_operation, operation_refusal, refusal_way};
