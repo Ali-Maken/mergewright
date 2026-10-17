@@ -1,0 +1,234 @@
+<title>Mergewright merge screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: same terminal window as the other mocks. Inside: files left, the file right; only clashing blocks split into yours | theirs. */
+:root{
+  --paper:#eef0ea; --ink:#1d2320; --muted:#5d6661; --rule:#c9cec6;
+  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#5f6864; --term-faint:#30383a; --cursor:#243037;
+  --yours:#6fd3e0; --theirs:#e693e0; --yours-bg:#13343a; --theirs-bg:#3a1d38; --open:#ffb35c; --ok:#7ed49b; --trunk:#9fb7ff;
+  --display:"Fraunces",Georgia,serif; --body:"Public Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 8px;text-wrap:balance;max-width:26ch}
+.lede{color:var(--muted);max-width:66ch;margin:0 0 28px}
+kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--rule);border-radius:4px;padding:0 5px}
+
+.termbox{overflow-x:auto;border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}
+.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;min-width:1040px;border-radius:10px;outline:none}
+.term:focus-visible{box-shadow:0 0 0 2px var(--trunk)}
+.chrome{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--term-faint)}
+.chrome i{width:11px;height:11px;border-radius:50%;background:var(--term-faint)}
+.hdr{display:flex;gap:18px;padding:6px 14px;border-bottom:1px solid var(--term-faint);white-space:pre}
+.hdr .dim{color:var(--term-dim)}
+.screen{height:calc(22 * 1.65em);overflow:auto}
+.pad{padding:8px 14px;white-space:pre}
+.dim{color:var(--term-dim)}
+.cur{background:var(--cursor)}
+.box{margin:10px 14px;border:1px solid var(--term-faint);border-radius:4px;padding:8px 12px;white-space:pre-wrap}
+.box h3{margin:0 0 6px;font-size:inherit}
+.res{display:grid;grid-template-columns:30ch 1fr;height:100%}
+.flist{border-right:1px solid var(--term-faint);padding:6px 0;white-space:pre}
+.flist div{padding:0 14px}
+.file{padding:6px 14px 10px;white-space:pre;overflow:auto}
+.ln{color:var(--term-dim);display:inline-block;width:4ch;text-align:right;margin-right:1ch}
+.clash{display:grid;grid-template-columns:2ch 1fr 1fr;gap:0 1ch;margin:4px 0;position:relative}
+.clash .st{font-weight:700}
+.side{padding:2px 8px;border-left:3px solid transparent}
+.side .lbl{font-size:12px;opacity:.9}
+.side.y{background:var(--yours-bg);border-color:var(--yours)}
+.side.t{background:var(--theirs-bg);border-color:var(--theirs)}
+.side.y .lbl{color:var(--yours)} .side.t .lbl{color:var(--theirs)}
+.side.off{background:transparent;border-color:var(--term-faint);opacity:.4}
+.clash.open .st{color:var(--open)}
+.clash.cursor{outline:1px solid var(--open);outline-offset:2px}
+.taken{display:grid;grid-template-columns:2ch 1fr;gap:0 1ch;margin:4px 0}
+.taken .st{font-weight:700}
+.done{color:var(--ok)}
+.bar{display:flex;flex-wrap:wrap;gap:4px 20px;padding:6px 14px;border-top:1px solid var(--term-faint);color:var(--term-dim)}
+.bar b{color:var(--term-fg)}
+.toggles{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;font-size:14px;color:var(--muted)}
+.toggles button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toggles button:focus-visible{outline:2px solid var(--trunk);outline-offset:2px}
+
+.sec{font-family:var(--display);font-weight:700;font-size:26px;margin:56px 0 0}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 44px;margin-top:20px}
+.rules h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0 0 6px;line-height:1.25}
+.rules p{margin:0;color:var(--muted);max-width:54ch}
+.count-t{border-collapse:collapse;margin-top:20px;font-size:15px}
+.count-t td,.count-t th{text-align:left;padding:6px 18px 6px 0;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+.count-t th{font-weight:600}
+.tw{overflow-x:auto}
+.note{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px;max-width:72ch}
+</style>
+
+<div class="wrap">
+  <h1>Merge, and when it clashes, land right on the clash</h1>
+  <p class="lede">You're on <em>wallet-release</em> and want integration's latest work in it. Click the terminal and press <kbd>m</kbd>. Every key you need is in the bar at the bottom, and every screen tells you what happens next.</p>
+
+  <div class="termbox">
+    <div class="term" id="term" tabindex="0" aria-label="Mergewright merge mock. Follow the keys in the bottom bar.">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="hdr" id="hdr"></div>
+      <div class="screen" id="screen"></div>
+      <div class="bar" id="bar"></div>
+    </div>
+  </div>
+  <div class="toggles"><button id="reset">Start over</button></div>
+
+  <h2 class="sec">What makes it easy</h2>
+  <div class="rules">
+    <div><h2>You see it before it happens</h2><p><kbd>m</kbd> opens a preview: which commits come in, and which files will clash, before anything changes. <kbd>y</kbd> goes ahead, as in every other preview in the app.</p></div>
+    <div><h2>A stop lands on the first clash</h2><p>When files clash, the merge stops and you're already in the first one, cursor on the first clash. Last time you had to back out and find them yourself, about 7 keys. Now it's 0.</p></div>
+    <div><h2>Only the clash is split</h2><p>Most of the file is one column, as normal. Only a clashing block splits into <b style="color:var(--yours)">yours</b> on the left and <b style="color:var(--theirs)">theirs</b> on the right, each named with its branch. VS Code went back to this inline style after trying three columns for everything.</p></div>
+    <div><h2>Open and solved look different</h2><p>An open clash has an orange <b style="color:var(--open)">?</b> and both sides lit. Once you pick, the block shrinks to the result, marked <b>◀</b> yours, <b>▶</b> theirs or <b>◆</b> both, and the side you didn't take is gone. Cyan and pink, not red and green, so colour-blind eyes can tell them apart too.</p></div>
+    <div><h2>One key per clash, then it moves on</h2><p><kbd>o</kbd> takes yours, <kbd>t</kbd> theirs, <kbd>b</kbd> both, and the cursor jumps to the next open clash in the file, as KDiff3 does. When a file is done it stays on screen, fully solved, so you can read it. <kbd>n</kbd> goes to the next file.</p></div>
+    <div><h2>The end is a preview, not a surprise</h2><p>When every clash is solved, <kbd>y</kbd> opens the review: “Nothing committed yet”, and what will land, including the files Git combined on its own. <kbd>y</kbd> again commits the merge. <kbd>Esc</kbd> goes back to the clashes and <kbd>y</kbd> brings you back. <kbd>u</kbd> undoes a pick at any point.</p></div>
+  </div>
+
+  <h2 class="sec">Keys for a merge with one clash</h2>
+  <div class="tw"><table class="count-t">
+    <tr><th>Tool</th><th>Steps</th></tr>
+    <tr><td>lazygit</td><td>4</td></tr>
+    <tr><td>JetBrains, VS Code, Sublime Merge</td><td>about 4–5 clicks</td></tr>
+    <tr><td>Mergewright, as you hit it on 2026-09-23</td><td>about 7 or more</td></tr>
+    <tr><td>This design: m, y, o, y, y</td><td>5</td></tr>
+  </table></div>
+  <p class="note">Counts come from <code>docs/research/conflict-resolution.md</code>. Colours are from <code>docs/research/conflict-visuals-and-finish.md</code>; a real terminal may draw them differently. This is a mock: the repo and code are made up and nothing is merged.</p>
+</div>
+
+<script>
+const CLASHES0=[
+ {file:"src/receipt.rs",at:41,y:["let tax = round_cents(total * rate);"],t:["let tax = (total * rate).round_to(Cents);"]},
+ {file:"src/receipt.rs",at:58,y:["footer.push_str(&refund_line(r));"],t:["footer.push_str(&format_refund(r, locale));"]},
+ {file:"config/payments.toml",at:7,y:["retries = 3"],t:["retries = 5","backoff_ms = 200"]},
+];
+const CTX={"src/receipt.rs":[[39,"fn totals(r: &Receipt, rate: f64) -> Totals {"],[40,"    let total = r.lines.iter().map(|l| l.amount).sum();"],["C",0],[42,"    Totals { total, tax }"],[43,"}"],[56,"fn footer(r: &Receipt) -> String {"],[57,"    let mut footer = paid_line(r);"],["C",1],[59,"    footer"],[60,"}"]],
+ "config/payments.toml":[[5,"[payments]"],[6,"timeout_s = 30"],["C",2],[9,"currency = \"USD\""]]};
+const FILES=["src/receipt.rs","config/payments.toml"];
+let st,C,cur,hist,fcur=0;
+const term=document.getElementById("term"),screen=document.getElementById("screen"),bar=document.getElementById("bar"),hdr=document.getElementById("hdr");
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const keys=a=>bar.innerHTML=a.map(([k,v])=>`<span><b>${k}</b> ${v}</span>`).join("");
+function reset(){st="graph";fcur=0;C=CLASHES0.map(c=>({...c,pick:null}));cur=0;hist=[];draw()}
+const openIn=f=>C.filter(c=>c.file===f&&!c.pick).length;
+function draw(){
+  hdr.innerHTML=`<span>mwr  ~/work/reports</span><span>on <b style="color:var(--ok)">wallet-release</b></span>`+(st==="resolve"||st==="finish"?`<span style="color:var(--open)">merging integration into wallet-release</span>`:"");
+  if(st==="graph"){
+    screen.innerHTML=`<div class="pad"><span style="color:var(--ok)">●</span>    <b style="color:var(--ok)">wallet-release (you)</b>  PAY-399: wallet release on integration 27ce3f2      you   23h
+<span style="color:var(--ok)">┃</span>
+<span class="cur"><span style="color:#e9b65c">●</span>    <b style="color:#e9b65c">integration</b>           Merge PAY-588: refunds show the locale's format      Sara  2h </span>
+<span style="color:#e9b65c">◉</span>                          Merge PAY-580: tax uses the new rounding             Omar  5h
+<span style="color:#e9b65c">◉</span>                          Merge PAY-577: more payment retries                  Omar  8h
+<span style="color:#e9b65c">●</span><span style="color:var(--ok)">━╯</span>                        Merge PAY-571: bounced check charge on the PDF       you   27h
+
+<span class="dim">integration has 4 new commits that wallet-release doesn't have.</span></div>`;
+    keys([["m","merge integration into yours"],["⏎","open"],["u","undo"],["?","more"]]);
+  } else if(st==="preview"){
+    screen.innerHTML=`<div class="box"><h3>Merge integration into wallet-release</h3><span class="dim">Nothing has changed yet.</span>
+
+Comes in      4 commits from integration (Sara, Omar)
+Changes       9 files
+Git combines  7 files on its own
+<span style="color:var(--open)">You decide    2 files clash: src/receipt.rs (2 places), config/payments.toml (1 place)</span>
+
+After <b>y</b> you go straight to the first clash.</div>`;
+    keys([["y","merge"],["esc","cancel"],["⏎","see the 4 commits"]]);
+  } else if(st==="resolve"){
+    const f=C[cur].file,left=C.filter(c=>!c.pick).length;
+    screen.innerHTML=`<div class="res"><div class="flist"><div class="dim">Clashing files</div>${FILES.map(x=>{const n=openIn(x);return `<div class="${x===f?"cur":""}">${n?`<span style="color:var(--open)">?</span>`:`<span class="done">✓</span>`} ${esc(x.split("/").pop())}  <span class="dim">${n?n+" open":"done"}</span></div>`}).join("")}
+${left?"":`<div class="done">✓ Review the merge  <b style="color:var(--term-fg)">y</b></div>`}
+<div class="dim">Combined by git (7)</div><div class="dim">✓ refund.rs, locale.rs,
+  … 5 more</div></div><div class="file"><span class="dim">${esc(f)} · ${openIn(f)?openIn(f)+" of "+C.filter(c=>c.file===f).length+" clashes open":"all solved"} · ${left} left in the merge</span>
+
+${CTX[f].map(([n,l])=>n==="C"?clash(l):`<span class="ln">${n}</span>${esc(l)}`).join("\n")}
+${openIn(f)?"":`\n<span class="done">✓ Every clash in ${esc(f.split("/").pop())} is solved.</span> ${left?`<span class="dim">n next file, ${left} clash${left>1?"es":""} left</span>`:`<b>y</b> <span class="dim">review the merge</span>`}`}</div></div>`;
+    const c=C[cur],nx=nextOpen();
+    keys(openIn(f)===0?(nx>=0?[["n",`next file: ${esc(C[nx].file.split("/").pop())}`],["u","undo pick"],["esc","pause, come back later"]]:[["y","review the merge"],["u","undo pick"],["esc","pause, come back later"]]):c.pick?[["n","next open clash"],["u","undo pick"]]:[["o","take yours (left)"],["t","take theirs (right)"],["b","take both"],["e","edit by hand"],["u","undo pick"],["esc","pause, come back later"]]);
+  } else if(st==="finish"){
+    screen.innerHTML=`<div class="box"><h3 class="done">All 3 clashes solved. Nothing committed yet.</h3>
+This merge will put into wallet-release:
+  4 commits from integration
+${FILES.map((f,i)=>`<span class="${fcur===i?"cur":""}">  <span class="done">✓</span> ${esc(f.split("/").pop().padEnd(14))} you chose: ${C.filter(c=>c.file===f).map(c=>({y:"◀ yours",t:"▶ theirs",b:"◆ both"})[c.pick]).join(", ")} </span>`).join("\n")}
+<span class="${fcur===2?"cur":""}">  <span class="done">✓</span> 7 files git combined on its own </span>
+
+Message  Merge integration into wallet-release</div>`;
+    keys([["y","commit the merge"],["j k","move"],["⏎","look at it"],["u","undo last pick"],["esc","back to the clashes (y brings you here again)"]]);
+  } else if(st==="look"){
+    // Read-only look from the review: the file as it will land.
+    if(fcur<2){const f=FILES[fcur];
+      screen.innerHTML=`<div class="file"><span class="dim">${esc(f)} · as it will land · read only</span>\n\n${CTX[f].map(([n,l])=>n==="C"?clash(l):`<span class="ln">${n}</span>${esc(l)}`).join("\n")}</div>`;
+    } else {
+      screen.innerHTML=`<div class="file"><span class="dim">7 files git combined on its own: both sides changed different lines, so it kept both</span>
+
+<span class="done">✓</span> src/refund.rs        <span style="color:var(--yours)">yours +6</span>   <span style="color:var(--theirs)">theirs +2 −1</span>
+<span class="done">✓</span> src/locale.rs                  <span style="color:var(--theirs)">theirs +14</span>
+<span class="done">✓</span> src/receipt_pdf.rs   <span style="color:var(--yours)">yours +3 −3</span>
+<span class="done">✓</span> tests/refund.rs      <span style="color:var(--yours)">yours +20</span>
+<span class="done">✓</span> tests/locale.rs                <span style="color:var(--theirs)">theirs +31</span>
+<span class="done">✓</span> Cargo.toml                     <span style="color:var(--theirs)">theirs +1</span>
+<span class="done">✓</span> CHANGELOG.md         <span style="color:var(--yours)">yours +2</span>   <span style="color:var(--theirs)">theirs +4</span>
+
+<span class="dim">src/refund.rs, around line 12:</span>
+<span class="ln">12</span>pub fn refund_line(r: &Receipt) -> String {
+<span class="ln">13</span><span style="color:var(--theirs)">+    let d = locale::date(r.refunded_on);</span>   <span class="dim">from theirs</span>
+<span class="ln">14</span><span style="color:var(--yours)">+    let amt = cents(r.refund);</span>           <span class="dim">from yours</span></div>`;
+    }
+    keys([["esc","back to the review"],["y","commit the merge"]]);
+  } else if(st==="commits"){
+    screen.innerHTML=`<div class="pad"><span class="dim">The 4 commits that come in from integration</span>
+
+<span style="color:#e9b65c">◉</span>  Merge PAY-588: refunds show the locale's format     Sara  2h
+<span style="color:#e9b65c">◉</span>  Merge PAY-580: tax uses the new rounding            Omar  5h
+<span style="color:#e9b65c">◉</span>  Merge PAY-577: more payment retries                 Omar  8h
+<span style="color:#e9b65c">●</span>  Bump receipt template version                       Sara  9h</div>`;
+    keys([["esc","back to the preview"],["y","merge"]]);
+  } else if(st==="landed"){
+    screen.innerHTML=`<div class="pad"><span class="cur"><span style="color:var(--ok)">◉</span><span style="color:#e9b65c">─╮</span>  <b style="color:var(--ok)">wallet-release (you)</b>  Merge integration into wallet-release  ▸ 4 commits from integration   you  now </span>
+<span style="color:var(--ok)">●</span> <span style="color:#e9b65c">│</span>                         PAY-399: wallet release on integration 27ce3f2      you  23h
+<span style="color:var(--ok)">┃</span> <span style="color:#e9b65c">●</span>  <b style="color:#e9b65c">integration</b>            Merge PAY-588: refunds show the locale's format      Sara 2h
+
+<span class="done">✓ Merged integration into wallet-release.</span>  <span class="dim">u undo · P push</span></div>`;
+    keys([["u","undo the merge"],["P","push"],["space","show the 4 commits inside"]]);
+  }
+}
+function clash(i){
+  const c=C[i],on=i===cur;
+  if(c.pick){
+    const mark={y:"◀",t:"▶",b:"◆"}[c.pick],col=c.pick==="y"?"var(--yours)":c.pick==="t"?"var(--theirs)":"var(--ok)";
+    const lines=c.pick==="y"?c.y:c.pick==="t"?c.t:c.y.concat(c.t);
+    return `<div class="taken"><span class="st" style="color:${col}">${mark}</span><span>${lines.map(l=>`<span style="color:${col}">    ${esc(l)}</span>`).join("\n")}  <span class="dim">${{y:"kept yours",t:"took theirs",b:"kept both"}[c.pick]}</span></span></div>`;
+  }
+  return `<div class="clash open${on?" cursor":""}"><span class="st">?</span><div class="side y"><div class="lbl">yours · wallet-release</div>${c.y.map(esc).join("\n")}</div><div class="side t"><div class="lbl">theirs · integration</div>${c.t.map(esc).join("\n")}</div></div>`;
+}
+function nextOpen(){const i=C.findIndex(c=>!c.pick);return i}
+term.addEventListener("keydown",e=>{
+  const k=e.key;let used=true;
+  if(st==="graph"&&k==="m")st="preview";
+  else if(st==="preview"&&k==="y"){st="resolve";cur=0}
+  else if(st==="preview"&&k==="Escape")st="graph";
+  // A pick moves to the next open clash in the same file only. A solved file stays on screen; n goes on.
+  else if(st==="resolve"&&"otb".includes(k)&&k.length===1&&!C[cur].pick){C[cur].pick=k==="o"?"y":k;hist.push(cur);const n=C.findIndex(c=>!c.pick&&c.file===C[cur].file);if(n>=0)cur=n}
+  else if(st==="resolve"&&k==="n"){const n=nextOpen();if(n>=0)cur=n}
+  else if(st==="resolve"&&k==="y"&&nextOpen()<0)st="finish";
+  else if((st==="resolve"||st==="finish")&&k==="u"&&hist.length){const i=hist.pop();C[i].pick=null;cur=i;st="resolve"}
+  else if(st==="resolve"&&k==="Escape")st="graph";
+  else if(st==="finish"&&k==="Escape"){st="resolve"}
+  else if((st==="finish"||st==="look")&&k==="y")st="landed";
+  else if(st==="finish"&&(k==="j"||k==="ArrowDown"))fcur=Math.min(2,fcur+1);
+  else if(st==="finish"&&(k==="k"||k==="ArrowUp"))fcur=Math.max(0,fcur-1);
+  else if(st==="finish"&&k==="Enter")st="look";
+  else if(st==="look"&&k==="Escape")st="finish";
+  else if(st==="preview"&&k==="Enter")st="commits";
+  else if(st==="commits"&&k==="Escape")st="preview";
+  else if(st==="commits"&&k==="y"){st="resolve";cur=0}
+  else if(st==="landed"&&k==="u"){reset();return}
+  else used=false;
+  if(used){e.preventDefault();draw()}
+});
+document.getElementById("reset").onclick=()=>{reset();term.focus()};
+reset();
+</script>

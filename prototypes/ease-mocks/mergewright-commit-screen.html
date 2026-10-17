@@ -1,0 +1,182 @@
+<title>Mergewright commit screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: same terminal window as the main-screen mock; message on top, files left, the selected file's changes right. */
+:root{
+  --paper:#eef0ea; --ink:#1d2320; --muted:#5d6661; --rule:#c9cec6;
+  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#5f6864; --term-faint:#30383a; --cursor:#243037;
+  --this:#7ed49b; --trunk:#9fb7ff; --warn:#ffcf6b; --add:#7ed49b; --del:#f08a8a;
+  --display:"Fraunces",Georgia,serif; --body:"Public Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 8px;text-wrap:balance;max-width:24ch}
+.lede{color:var(--muted);max-width:66ch;margin:0 0 28px}
+kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--rule);border-radius:4px;padding:0 5px}
+
+.termbox{overflow-x:auto;border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}
+.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;min-width:1000px;border-radius:10px}
+.chrome{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--term-faint)}
+.chrome i{width:11px;height:11px;border-radius:50%;background:var(--term-faint)}
+.hdr{display:flex;gap:18px;padding:6px 14px;border-bottom:1px solid var(--term-faint);white-space:pre}
+.hdr .dim{color:var(--term-dim)}
+.screen{height:calc(17 * 1.65em);display:flex;flex-direction:column}
+
+.msg{margin:10px 14px 8px;border:1px solid var(--term-faint);border-radius:4px;padding:4px 10px}
+.msg:focus-within{border-color:var(--this)}
+.msg .line{display:flex;gap:1ch;align-items:baseline}
+.msg input,.msg textarea{flex:1;background:transparent;border:0;color:var(--term-fg);font:inherit;outline:none;padding:0;resize:none}
+.msg input{font-weight:700}
+.msg input::placeholder,.msg textarea::placeholder{color:var(--term-dim);font-weight:400}
+.msg .count{color:var(--term-dim)}
+.msg .count.long{color:var(--warn)}
+.msg textarea{display:block;width:100%;height:3.3em;color:var(--term-fg)}
+.sum{padding:0 14px 6px;white-space:pre-wrap}
+.sum b{color:var(--this)}
+.split{flex:1;display:grid;grid-template-columns:44ch 1fr;border-top:1px solid var(--term-faint);min-height:0}
+.files{border-right:1px solid var(--term-faint);padding:4px 0;outline:none;overflow-y:auto}
+.files:focus-visible{box-shadow:inset 2px 0 0 var(--this)}
+.grp{padding:2px 14px;color:var(--term-dim)}
+.f{display:grid;grid-template-columns:2ch 2ch 1fr auto;gap:0 1ch;padding:0 14px;white-space:pre;cursor:pointer}
+.f.cur{background:var(--cursor)}
+.f.out{color:var(--term-dim)}
+.f .in{color:var(--this);font-weight:700}
+.f .why{color:var(--warn)}
+.n-add{color:var(--add)} .n-del{color:var(--del)}
+.diff{padding:4px 14px;white-space:pre;overflow:auto}
+.diff .h{color:var(--term-dim)}
+.diff .a{color:var(--add)} .diff .d{color:var(--del)}
+.bar{display:flex;flex-wrap:wrap;gap:4px 20px;padding:6px 14px;border-top:1px solid var(--term-faint);color:var(--term-dim)}
+.bar b{color:var(--term-fg)}
+/* the graph you land on after committing */
+.land{padding:8px 14px;white-space:pre}
+.land .new{background:var(--cursor)}
+.land .ok{color:var(--this)}
+.toggles{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;font-size:14px;color:var(--muted)}
+.toggles button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toggles button:focus-visible{outline:2px solid var(--trunk);outline-offset:2px}
+
+.sec{font-family:var(--display);font-weight:700;font-size:26px;margin:56px 0 0}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 44px;margin-top:20px}
+.rules h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0 0 6px;line-height:1.25}
+.rules p{margin:0;color:var(--muted);max-width:54ch}
+.count-t{border-collapse:collapse;margin-top:20px;font-size:15px}
+.count-t td,.count-t th{text-align:left;padding:6px 18px 6px 0;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+.count-t th{font-weight:600}
+.tw{overflow-x:auto}
+.note{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px;max-width:72ch}
+</style>
+
+<div class="wrap">
+  <h1>Commit in three keys, and see exactly what goes in</h1>
+  <p class="lede">You've edited some files on <em>wallet-release</em> and pressed <kbd>c</kbd>. You're typing straight away. Type a message, press <kbd>⏎</kbd>, done. Click into the message box below and try it. <kbd>Tab</kbd> moves to the detail box, then to the file list.</p>
+
+  <div class="termbox">
+    <div class="term" id="term">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="hdr"><span>mwr  ~/work/reports</span><span>committing to <b style="color:var(--this)">wallet-release</b></span><span class="dim" id="hdrState">not pushed yet</span></div>
+      <div class="screen" id="screen"></div>
+      <div class="bar" id="bar"></div>
+    </div>
+  </div>
+  <div class="toggles"><button id="reset">Start over</button></div>
+
+  <h2 class="sec">What makes it easy</h2>
+  <div class="rules">
+    <div><h2>You type first</h2><p>The cursor starts in the message. No opening a pane, no staging step. If you haven't picked files, every changed file goes in, as in JetBrains and VS Code. The screen says so in a full sentence.</p></div>
+    <div><h2><kbd>⏎</kbd> commits</h2><p>From the message line, <kbd>⏎</kbd> commits, as in lazygit. The key the old design used, <kbd>Ctrl+⏎</kbd>, doesn't reach the app in Zed's or VS Code's terminal, which is where you work.</p></div>
+    <div><h2>In and out look different</h2><p>Files going in sit under one heading with a green <b>✓</b>. Files staying out sit under another, dimmed, with a <b>·</b>. Added and removed lines carry <b>+</b> and <b>−</b> as well as colour.</p></div>
+    <div><h2>It says what will happen</h2><p>One line above the files: “3 files go in, +60 −3, as a new commit on wallet-release.” That's what you're agreeing to when you press <kbd>⏎</kbd>.</p></div>
+    <div><h2>A secrets file stays out by itself</h2><p>A new file named like <b>.env</b> is left out and marked <b style="color:var(--warn)">!</b> with the reason. <kbd>space</kbd> puts it in if you really mean it. This is a new idea, not taken from another tool.</p></div>
+    <div><h2>You land on your commit</h2><p>After <kbd>⏎</kbd> you're back on the graph with the cursor on the new commit and the line “Committed 3 files to wallet-release · u undo”. The key said commit, the result says committed.</p></div>
+  </div>
+
+  <h2 class="sec">Keys to commit everything, message only</h2>
+  <div class="tw"><table class="count-t">
+    <tr><th>Tool</th><th>Keys</th><th>Steps</th></tr>
+    <tr><td>JetBrains, VS Code</td><td>open commit, type, Ctrl+⏎</td><td>3</td></tr>
+    <tr><td>lazygit</td><td>a, c, type, ⏎</td><td>4</td></tr>
+    <tr><td>Mergewright today (from the design docs, in Zed)</td><td>⏎, Ctrl+A, c, type, ⏎, Tab…, ⏎</td><td>7 or more</td></tr>
+    <tr><td>This design</td><td>c, type, ⏎</td><td>3</td></tr>
+  </table></div>
+  <p class="note">Counts for the other tools come from <code>docs/research/commit-stash.md</code>. A typed message counts as one step. This is a mock: the files and changes are made up and nothing is committed.</p>
+</div>
+
+<script>
+const FILES0=[
+ {p:"src/receipt.rs",k:"M",add:12,del:3,diff:[["h","@@ receipt.rs: line 40"],[" ","fn footer(r: &Receipt) -> String {"],["d","    format!(\"Paid {}\", r.paid_on)"],["a","    let mut s = format!(\"Paid {}\", r.paid_on);"],["a","    if let Some(d) = r.refunded_on {"],["a","        s += &format!(\"  Refunded {}\", d);"],["a","    }"],["a","    s"],[" ","}"]]},
+ {p:"src/refund.rs",k:"A",add:40,del:0,diff:[["h","new file, 40 lines"],["a","pub struct Refund {"],["a","    pub amount: Cents,"],["a","    pub on: Date,"],["a","}"],["h","… 35 more"]]},
+ {p:"tests/receipt.rs",k:"M",add:8,del:0,diff:[["h","@@ tests/receipt.rs: line 12"],["a","#[test]"],["a","fn receipt_shows_refund_date() {"],["a","    let r = receipt_with_refund(\"2026-10-15\");"],["a","    assert!(footer(&r).contains(\"Refunded 2026-10-15\"));"],["a","}"]]},
+ {p:".env.local",k:"A",add:1,del:0,out:true,why:"looks like a secrets file",diff:[["h","new file, 1 line"],["a","PAYMENT_KEY=••••••••"]]},
+];
+let F,cur,done;
+const screen=document.getElementById("screen"),bar=document.getElementById("bar");
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function reset(){F=FILES0.map(f=>({...f}));cur=0;done=false;build()}
+function build(){
+  if(done)return landed();
+  screen.innerHTML=`
+  <div class="msg"><div class="line"><input id="subj" autocomplete="off" spellcheck="false" placeholder="What did you change? (one line)" maxlength="100"><span class="count" id="cnt"></span></div>
+  <textarea id="body" spellcheck="false" placeholder="More detail, if it needs it (optional)"></textarea></div>
+  <div class="sum" id="sum"></div>
+  <div class="split"><div class="files" id="files" tabindex="0" aria-label="Files. j and k move, space puts a file in or out."></div><div class="diff" id="diff"></div></div>`;
+  const s=document.getElementById("subj"),b=document.getElementById("body"),fl=document.getElementById("files");
+  s.addEventListener("input",draw);
+  s.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();commit()}
+    else if(e.key==="ArrowDown"){e.preventDefault();cur=Math.min(F.length-1,cur+1);draw()}
+    else if(e.key==="ArrowUp"){e.preventDefault();cur=Math.max(0,cur-1);draw()}
+  });
+  b.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();s.focus()}});
+  fl.addEventListener("keydown",e=>{
+    if(e.key==="j"||e.key==="ArrowDown")cur=Math.min(F.length-1,cur+1);
+    else if(e.key==="k"||e.key==="ArrowUp")cur=Math.max(0,cur-1);
+    else if(e.key===" ")F[cur].out=!F[cur].out;
+    else if(e.key==="Enter")commit();
+    else if(e.key==="Escape"){s.focus();return}
+    else return;
+    e.preventDefault();draw();
+  });
+  fl.addEventListener("click",e=>{const r=e.target.closest(".f");if(r){cur=+r.dataset.i;draw()}});
+  [s,b,fl].forEach(el=>el.addEventListener("focus",draw));
+  draw();
+}
+function draw(){
+  const s=document.getElementById("subj"),fl=document.getElementById("files");
+  const ins=F.map((f,i)=>({...f,i})).filter(f=>!f.out),outs=F.map((f,i)=>({...f,i})).filter(f=>f.out);
+  const row=f=>`<div class="f${f.i===cur?" cur":""}${f.out?" out":""}" data-i="${f.i}"><span class="${f.out?"":"in"}">${f.out?(f.why?'<span class="why">!</span>':"·"):"✓"}</span><span>${f.k}</span><span>${esc(f.p)}</span><span><span class="n-add">+${f.add}</span>${f.del?` <span class="n-del">−${f.del}</span>`:""}</span></div>`;
+  fl.innerHTML=`<div class="grp">Going in (${ins.length})</div>${ins.map(row).join("")||'<div class="grp">  nothing yet</div>'}<div class="grp">Staying out (${outs.length})</div>${outs.map(row).join("")||'<div class="grp">  nothing</div>'}`;
+  const c=F[cur];
+  document.getElementById("diff").innerHTML=(c.why?`<span style="color:var(--warn)">! left out: ${c.why}. space puts it in.</span>\n\n`:"")+c.diff.map(([t,l])=>t==="h"?`<span class="h">${esc(l)}</span>`:t==="a"?`<span class="a">+ ${esc(l)}</span>`:t==="d"?`<span class="d">− ${esc(l)}</span>`:`  ${esc(l)}`).join("\n");
+  const add=ins.reduce((a,f)=>a+f.add,0),del=ins.reduce((a,f)=>a+f.del,0);
+  document.getElementById("sum").innerHTML=ins.length?`<b>${ins.length} file${ins.length>1?"s":""} go in</b>, <span class="n-add">+${add}</span> <span class="n-del">−${del}</span>, as a new commit on wallet-release.${outs.length?` ${outs.length} stay${outs.length>1?"":"s"} out.`:""}`:`<span style="color:var(--warn)">Nothing goes in. Put a file in with space.</span>`;
+  const n=s.value.length,cnt=document.getElementById("cnt");cnt.textContent=n?`${n}/72`:"";cnt.className="count"+(n>72?" long":"");
+  const a=document.activeElement&&document.activeElement.id;
+  const ready=n>0&&ins.length>0;
+  const keys=a==="body"?[["esc","back to the message line"],["tab","files"]]:a==="files"?[["space",F[cur].out?"put it in":"leave it out"],["j k","move"],["⏎",ready?"commit":"type a message first"],["esc","back to the message"]]:[["⏎",ready?`commit ${ins.length} file${ins.length>1?"s":""}`:(n?"put a file in first":"type a message first")],["tab","more detail"],["↑ ↓","see a file's changes"],["esc","cancel, your message is kept"]];
+  bar.innerHTML=keys.map(([k,v])=>`<span><b>${k}</b> ${v}</span>`).join("");
+}
+function commit(){
+  const s=document.getElementById("subj");
+  if(!s.value.trim()||!F.some(f=>!f.out)){s.focus();draw();return}
+  done={msg:s.value.trim(),n:F.filter(f=>!f.out).length};build();
+}
+function landed(){
+  document.getElementById("hdrState").textContent="1 commit to push";
+  screen.innerHTML=`<div class="land" tabindex="0" id="land" aria-label="Graph after committing. u undoes.">
+<span class="new"><span style="color:var(--this)">●</span>    <b style="color:var(--this)">wallet-release (you)</b>  ${esc(done.msg)}   you  now </span>
+<span style="color:var(--this)">●</span>                          PAY-399: wallet release on integration 27ce3f2   you  23h
+<span style="color:var(--this)">┃</span>
+<span style="color:#e9b65c">◉</span>    integration           Merge PAY-571: bounced check charge on the PDF    you  27h
+
+<span class="ok">✓ Committed ${done.n} file${done.n>1?"s":""} to wallet-release.</span>  <span style="color:var(--term-dim)">u undo · P push</span></div>`;
+  bar.innerHTML=[["u","undo the commit, your edits come back"],["P","push"],["c","commit again"]].map(([k,v])=>`<span><b>${k}</b> ${v}</span>`).join("");
+  const l=document.getElementById("land");l.focus();
+  l.addEventListener("keydown",e=>{if(e.key==="u"||e.key==="c"){const m=done.msg;done=false;build();const s=document.getElementById("subj");if(e.key==="u")s.value=m;s.focus();draw();document.getElementById("hdrState").textContent="not pushed yet"}});
+}
+document.getElementById("reset").onclick=()=>{reset();document.getElementById("subj").focus()};
+reset();
+</script>
