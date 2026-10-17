@@ -3,11 +3,11 @@
 
 use super::{ALICE, Repo, find, stack, stack_candidates};
 use crate::branch_status::{
-    Behind, BranchStatus, Candidate, CandidateKind, Merged, Pushed, branch_status,
+    Behind, BranchStatus, Candidate, CandidateKind, Merged, Pushed, Who, branch_status,
 };
 use crate::operation::Tip;
 
-fn status(
+pub(super) fn status(
     repo: &Repo,
     branch: &str,
     candidates: &[Candidate],
@@ -63,7 +63,7 @@ fn merged_into_its_base_after_a_merge_commit() {
     assert_eq!(
         before.merged,
         Merged::NotYet {
-            into: "refs/heads/wallet-release".to_owned()
+            into: Some("refs/heads/wallet-release".to_owned())
         }
     );
 
@@ -91,7 +91,7 @@ fn a_branch_stacked_on_top_is_not_a_merge() {
     assert_eq!(
         sara.merged,
         Merged::NotYet {
-            into: "refs/heads/wallet-release".to_owned()
+            into: Some("refs/heads/wallet-release".to_owned())
         }
     );
 }
@@ -142,24 +142,39 @@ fn feature_by(commits: &[(&str, &str)]) -> (Repo, Vec<Candidate>) {
     (repo, candidates)
 }
 
+/// `Who::Authors`' names, how many others, and when the newest was made;
+/// fails on any other answer.
+pub(super) fn authors(status: &BranchStatus) -> (Vec<String>, usize, i64) {
+    match &status.who {
+        Who::Authors {
+            first,
+            others,
+            last,
+        } => (
+            first
+                .iter()
+                .map(|n| String::from_utf8_lossy(n).into_owned())
+                .collect(),
+            *others,
+            last.seconds,
+        ),
+        other => panic!("expected authors, got {other:?}"),
+    }
+}
+
 fn first_names(status: &BranchStatus) -> Vec<String> {
-    status
-        .who
-        .first
-        .iter()
-        .map(|n| String::from_utf8_lossy(n).into_owned())
-        .collect()
+    authors(status).0
 }
 
 #[test]
 fn who_one_author() {
     let (repo, candidates) = feature_by(&[ALICE, ALICE]);
     let feature = status(&repo, "feature", &candidates, None);
-    assert_eq!(first_names(&feature), ["Alice Ames"]);
-    assert_eq!(feature.who.others, 0);
-    assert!(!feature.who.everyone);
     // The last of the three commits (m1, f0, f1): 3 minutes in.
-    assert_eq!(feature.who.last.seconds, 1_700_000_000 + 180);
+    assert_eq!(
+        authors(&feature),
+        (vec!["Alice Ames".to_owned()], 0, 1_700_000_000 + 180)
+    );
 }
 
 /// Most commits first; a tie goes to the more recent author.
@@ -169,7 +184,7 @@ fn who_two_authors() {
     let feature = status(&repo, "feature", &candidates, None);
     // Two each; Alice has the newest commit.
     assert_eq!(first_names(&feature), ["Alice Ames", "Bea Brandt"]);
-    assert_eq!(feature.who.others, 0);
+    assert_eq!(authors(&feature).1, 0);
 }
 
 #[test]
@@ -177,7 +192,7 @@ fn who_four_authors() {
     let (repo, candidates) = feature_by(&[CAL, DEV, BEA, BEA, BEA, ALICE, ALICE]);
     let feature = status(&repo, "feature", &candidates, None);
     assert_eq!(first_names(&feature), ["Bea Brandt", "Alice Ames"]);
-    assert_eq!(feature.who.others, 2);
+    assert_eq!(authors(&feature).1, 2);
 }
 
 #[test]
@@ -220,19 +235,23 @@ fn who_on_the_trunk_is_everyone() {
         candidates[1].clone(),
     ];
     let main = status(&repo, "main", &candidates, None);
-    assert!(main.who.everyone);
-    assert!(main.who.first.is_empty());
     // main's tip, m2: three minutes in (m1, f0, then m2).
-    assert_eq!(main.who.last.seconds, 1_700_000_000 + 180);
+    match main.who {
+        Who::Everyone { last } => assert_eq!(last.seconds, 1_700_000_000 + 180),
+        other => panic!("expected everyone, got {other:?}"),
+    }
 }
 
-/// A branch `main` has taken in has no base: every candidate holds it. Its
-/// `Who` reads its own history from the tip down (m1 by Alice, f0 and f1
-/// by Bea).
+/// 01r Major 4. Replaces 01's `who_of_a_branch_with_no_base`, which
+/// expected `["Bea Brandt", "Alice Ames"]`: Alice only made main's own
+/// commits. `feature` (Bea's f0 f1) is merged into main, where Alice made
+/// m1 and m2: `Who` is the branch's own authors, read from the merge's
+/// first parent.
 #[test]
-fn who_of_a_branch_with_no_base() {
+fn who_of_a_merged_branch_is_its_own_authors() {
     let (repo, _) = feature_by(&[BEA, BEA]);
     repo.git(&["switch", "-q", "main"]);
+    repo.commit("m2");
     repo.git(&["merge", "-q", "--no-ff", "-m", "merge feature", "feature"]);
     let candidates = vec![
         repo.cand("main", CandidateKind::Trunk),
@@ -242,7 +261,10 @@ fn who_of_a_branch_with_no_base() {
     assert!(feature.route.is_empty());
     assert_eq!(feature.behind, Behind::NoBase);
     assert_eq!(feature.merged, Merged::Into("refs/heads/main".to_owned()));
-    assert_eq!(first_names(&feature), ["Bea Brandt", "Alice Ames"]);
-    assert_eq!(feature.who.others, 0);
-    assert_eq!(feature.who.last.seconds, 1_700_000_000 + 180);
+    // f1, the newest of Bea's: 3 minutes in (m1, f0, f1).
+    assert_eq!(
+        authors(&feature),
+        (vec!["Bea Brandt".to_owned()], 0, 1_700_000_000 + 180)
+    );
 }
+

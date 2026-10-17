@@ -72,7 +72,11 @@ pub fn short_name(full: &str) -> &str {
 /// and never a candidate with no branch-only commits: one that already
 /// holds every commit of the branch is not something it was built on.
 /// Pure.
-pub fn choose_base<'a>(branch: &str, measured: &'a [(Candidate, Apart)]) -> Option<&'a Candidate> {
+pub fn choose_base<'a>(
+    branch: &str,
+    measured: &'a [(Candidate, Apart)],
+    _at_most: CandidateKind,
+) -> Option<&'a Candidate> {
     measured
         .iter()
         .filter(|(candidate, apart)| candidate.name != branch && apart.branch_only != 0)
@@ -120,7 +124,7 @@ fn route_from(
     stop: &dyn Stop,
 ) -> Result<Vec<Candidate>, RunError> {
     let mut route: Vec<Candidate> = Vec::new();
-    let Some(mut base) = choose_base(&branch.name, first).cloned() else {
+    let Some(mut base) = choose_base(&branch.name, first, branch.kind).cloned() else {
         return Ok(route);
     };
     loop {
@@ -132,7 +136,7 @@ fn route_from(
             .chain(route.iter().map(|c| c.tip))
             .collect();
         let measured = measure(repo, &base, candidates, &walked, stop)?;
-        match choose_base(&base.name, &measured) {
+        match choose_base(&base.name, &measured, base.kind) {
             Some(next) => base = next.clone(),
             None => return Ok(route),
         }

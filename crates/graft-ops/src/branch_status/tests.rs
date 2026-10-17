@@ -58,7 +58,7 @@ fn choose_base_worked_example() {
         ),
         (cand("refs/heads/twin", CandidateKind::Other), apart(0, 0)),
     ];
-    let base = choose_base("refs/heads/sara/fix-toc", &measured).expect("a base");
+    let base = choose_base("refs/heads/sara/fix-toc", &measured, CandidateKind::Other).expect("a base");
     assert_eq!(base.name, "refs/heads/wallet-release");
 }
 
@@ -73,11 +73,11 @@ fn choose_base_ties_go_trunk_then_integration_then_name() {
         ),
         (cand("refs/heads/main", CandidateKind::Trunk), apart(3, 0)),
     ];
-    let base = choose_base("refs/heads/x", &measured).expect("a base");
+    let base = choose_base("refs/heads/x", &measured, CandidateKind::Other).expect("a base");
     assert_eq!(base.name, "refs/heads/main");
-    let base = choose_base("refs/heads/x", &measured[..3]).expect("a base");
+    let base = choose_base("refs/heads/x", &measured[..3], CandidateKind::Other).expect("a base");
     assert_eq!(base.name, "refs/heads/rel");
-    let base = choose_base("refs/heads/x", &measured[..2]).expect("a base");
+    let base = choose_base("refs/heads/x", &measured[..2], CandidateKind::Other).expect("a base");
     assert_eq!(base.name, "refs/heads/a");
 }
 
@@ -87,7 +87,7 @@ fn choose_base_none_when_every_candidate_holds_the_branch() {
         (cand("refs/heads/main", CandidateKind::Trunk), apart(0, 4)),
         (cand("refs/heads/x", CandidateKind::Other), apart(2, 0)),
     ];
-    assert_eq!(choose_base("refs/heads/x", &measured), None);
+    assert_eq!(choose_base("refs/heads/x", &measured, CandidateKind::Other), None);
 }
 
 fn kind() -> impl Strategy<Value = CandidateKind> {
@@ -113,17 +113,24 @@ fn measured() -> impl Strategy<Value = Vec<(Candidate, Apart)>> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(graft_fixtures::proptest_cases()))]
 
-    /// The answer is never the branch itself and never a candidate holding
-    /// the branch; no eligible candidate has fewer branch-only commits; an
-    /// eligible one with as few sorts after it by kind, then name.
+    /// The answer is never the branch itself, never a candidate holding
+    /// the branch, never above `at_most`, and never an ordinary branch with
+    /// commits the branch lacks (R1); no eligible candidate has fewer
+    /// branch-only commits; an eligible one with as few sorts after it by
+    /// kind, then name.
     #[test]
-    fn choose_base_picks_the_nearest(measured in measured(), me in 0u8..6) {
+    fn choose_base_picks_the_nearest(measured in measured(), me in 0u8..6, at_most in kind()) {
         let branch = format!("refs/heads/b{me}");
         let eligible: Vec<&(Candidate, Apart)> = measured
             .iter()
-            .filter(|(c, a)| c.name != branch && a.branch_only != 0)
+            .filter(|(c, a)| {
+                c.name != branch
+                    && a.branch_only != 0
+                    && c.kind <= at_most
+                    && (c.kind != CandidateKind::Other || a.base_only == 0)
+            })
             .collect();
-        match choose_base(&branch, &measured) {
+        match choose_base(&branch, &measured, at_most) {
             None => prop_assert!(eligible.is_empty()),
             Some(base) => {
                 prop_assert_ne!(&base.name, &branch);
@@ -132,6 +139,12 @@ proptest! {
                     .find(|(c, _)| std::ptr::eq(c, base))
                     .expect("the answer is one of the inputs");
                 prop_assert_ne!(mine.branch_only, 0);
+                prop_assert!(base.kind <= at_most, "{base:?} is above {at_most:?}");
+                prop_assert!(
+                    base.kind != CandidateKind::Other || mine.base_only == 0,
+                    "{base:?} is an ordinary branch with {} commits of its own",
+                    mine.base_only
+                );
                 for (other, theirs) in eligible {
                     prop_assert!(theirs.branch_only >= mine.branch_only);
                     if theirs.branch_only == mine.branch_only {
@@ -393,4 +406,6 @@ fn route_and_status_honour_stop() {
     ));
 }
 
+mod footing;
+mod route;
 mod status;
