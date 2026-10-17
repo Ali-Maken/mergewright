@@ -2,7 +2,7 @@
 
 Status: draft
 Replaces: `06h-merged-branches-setting.md` (conductor: `git rm` it; this spec and `06i-graph-mode-in-help.md` take its place).
-Blocked by: 06b-lanes-on-screen-and-header (`header_tail` / `Filters.folded_in_view` asserted here), 06c-fold-seek-reveal (shares `history::state`; its search suffix and `Whereabouts` asserted here)
+Blocked by: 06r-fold-fixes, 06b-lanes-on-screen-and-header (`header_tail` / `Filters.folded_in_view` asserted here), 06c-fold-seek-reveal (shares `history::state`; its search suffix and `Whereabouts` asserted here)
 Build with: Sonnet — config read, the walk's starting view and one switch through the existing view-change path; no engine change (the unfolded inclusion exists: `fold: None`); every behaviour is a state test. Brownfield: scout first (ADR-0035); conductor confirms the model after it.
 Needs: from 06b `header_tail(&Filters) -> String`, `Filters.folded_in_view`; from 06c `Included::whereabouts -> Whereabouts`, the search hit summary's `folded: usize`. Existing: `View::folded` (`crates/graft/MAP.md` `history`), `Inclusion { fold: Option<Folding> }` and `opened`/`keep_mut` → `None` when not folding (`crates/graft-graph/MAP.md` `inclusion`), `Config` `[graph]` (`config::types`), `keymap_from` (every config problem as words), `update::keys::view_change` (`1`/`H`), `history::fold::lay_out`, `update::fold_count`.
 Scout: needed — one page: where `Config`'s `[graph]` is typed and how a bad value stops today; who builds the problem list the status row and `YOUR CONFIG` read; every production caller of `View::folded()` (walk start, re-walk after an operation, `1`/`H` return); where `History` is built from config; how `view_change` re-walks and where it keeps the cursor's commit.

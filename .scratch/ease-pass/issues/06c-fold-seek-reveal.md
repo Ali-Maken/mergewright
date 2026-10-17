@@ -9,6 +9,7 @@ Needs: from 06: `FoldWalk::behind`, `OpenedMerges::open`, `Inclusion::opened_mut
 - `docs/design-notes/ease-pass.md`: Mock behaviour G4; Hard-to-reverse choice 2 (as amended 2026-10-17, and its 2026-10-18 fold rule); "Mock gaps" paragraph, its 2026-10-18 search sentence.
 - `crates/graft-graph/MAP.md` `inclusion` (`Included::walked`/`shown`). `crates/graft/MAP.md`: `history::scroll`, `history::state`, `update::search`, `update::map`, `update::palette`, `update::detail`, `update::banner`, `update::operate`.
 - 06's scout file, "Seeks to a possibly hidden commit".
+- `docs/reviews/ease-pass-06.md` Major M3 (the routes as built at 89325b16: `search.rs:333`, `update/detail/landing.rs:237-239`).
 
 ## Why (scout: today every route says "not in this view" or nothing)
 With folding the default, a merge's second parent, a search hit on a merged PR, a `J` put-back on a merged branch are hidden in the everyday case — not, as before, only after he chose to fold. Each route today lands nowhere (search: footer `(not in this view)`, `graft/src/search.rs:332-336`; palette, Map, `J`, detail links: silent) **and** first lays out the whole history to look (`serve.rs:180-181`, `usize::MAX`). Planner decision (`docs/research/ux-principles.md`: visibility of system state, fewest steps): a commit hidden **by the default fold** is revealed — its merge opens, the cursor lands on it, 0 extra keys; the alternative, a miss he must answer by finding the merge and pressing `space`, costs a search he can't do (the merge isn't named for the commit). A commit hidden by a view **he** chose (first-parent `1`, hidden stashes) keeps today's answer.
@@ -39,12 +40,13 @@ impl<S: CommitSource> Included<S> {
 graft app (`history`): the seek's miss answer gains `Folded { open: Vec<Oid> }` beside today's not-in-this-view (names follow `history::state`'s; payload as given). Search: the hit summary the footer reads gains `folded: usize` (hits whose `whereabouts` is `Folded`), named in NOTES with its file and line.
 
 ## Touches
-Every `History::seek` caller (scout's list, above); `scroll/apply.rs:156-161` cursor-stays path (now only for a chosen-view miss); search state across a reveal (the hit list stays valid: same ids); `n` repeated through one PR's commits opens that merge once; the search footer (captures `m8-bar-after-search-120x36`, `m8/search-hint-120x36` — re-shot only if their fixture has a folded hit, D3 rule in 06; `graft-ui` `no_literal_keys` allow-list if the suffix trips it); the overview strip; Ghost Preview; `J`'s landing words; the full-history layout on a miss (now only for an id never walked — one number in NOTES: rows laid out for a seek to a walked hidden commit, before/after).
+Every `History::seek` caller (scout's list, above); `scroll/apply.rs:156-161` cursor-stays path (now only for a chosen-view miss); search state across a reveal (the hit list stays valid: same ids); `n` repeated through one PR's commits opens that merge once; the search footer (captures `m8-bar-after-search-120x36`, `m8/search-hint-120x36` — re-shot only if their fixture has a folded hit, D3 rule in 06; `m8/search-hint-120x36` does, per 06f and review ease-pass-06 M3); `graft-ui` `no_literal_keys` allow-list if the suffix trips it); the overview strip; Ghost Preview; `J`'s landing words; the full-history layout on a miss (now only for an id never walked — one number in NOTES: rows laid out for a seek to a walked hidden commit, before/after).
 
 ## Acceptance
 - [ ] Detail pane on a folded merge, follow parent 2 → that merge opens, cursor on parent 2 (state test).
 - [ ] Search for a subject on a merged PR's commit → merge opened, cursor on the hit; `n` to the next hit in the same PR opens nothing new.
 - [ ] Search with 4 hits, 3 inside folded merges (two merges): footer reads `4 matches · 3 in folded merges`; `n` from the first visits all 4 in walk order, each folded one revealed and landed; after the walk the footer reads `4 matches` (no suffix). State test plus footer-words test.
+- [ ] Same search, `N` from the first hit (added 2026-10-18, review ease-pass-06 M3: the review names `n`/`N`): wraps to the last hit, its merge opened, cursor on it; `N` again visits the rest backwards, each revealed; no `(not in this view)` at any step. State test.
 - [ ] Search with no folded hit: footer has no suffix (today's words, byte-equal).
 - [ ] Palette commit find and Map `⏎` on a hidden commit → revealed and landed (one test each).
 - [ ] `J` put-back of a commit on a merged branch → lands on it, merge opened.
@@ -53,6 +55,7 @@ Every `History::seek` caller (scout's list, above); `scroll/apply.rs:156-161` cu
 - [ ] A seek to a walked hidden commit lays out no further than the walk already is (row count before/after the answer).
 - [ ] Ghost Preview slice identical with every merge folded and with every merge opened (row-set test); overview strip marks unchanged.
 - [ ] Capture `docs/shots/ease-pass/main-search-folded-120.txt`: the footer with the suffix before `n`, cursor on the first hit (06e's `wallet_release` fixture, 120×36). Look unjudged (rule 6), colour unverified (rule 5).
+- [ ] `m8/search-hint-120x36` re-shot (added 2026-10-18: the review's observed case, `/topic` with 3 of 4 hits folded): its footer carries ` · 3 in folded merges`; NOTES gives its D3 classification (suffix-only, or a stop).
 - [ ] Each tick names its test.
 
 ## Gates

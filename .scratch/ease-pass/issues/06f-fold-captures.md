@@ -1,6 +1,6 @@
 # fold-captures — every capture the fold default changes, re-shot or fixed by D3's rule; the folded and opened main screen
 
-Status: ready
+Status: done — 5/5 (box 5 closed by the debugger, 068b98c3)
 Blocked by: 06e
 Build with: Opus (`builder-opus-xhigh`) — sorting each diff into fold-only or regression is the step where a regression gets shot in as "expected". It needs judgment, not a script.
 Needs: from 06d/06e: the fixed parents, the HEAD keep, fixtures (including any unmerged branch 06e added).

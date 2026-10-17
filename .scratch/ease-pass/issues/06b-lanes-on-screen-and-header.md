@@ -1,7 +1,7 @@
 # lanes-on-screen-and-header — lanes only for branches with a commit in view; `lanes drawn: N of M · K merged branches folded`
 
 Status: ready (Q14 answered (a), 2026-10-17)
-Blocked by: 06-graph-fold-and-lanes
+Blocked by: 06-graph-fold-and-lanes, 06r-fold-fixes (shares `graft-ui/src/graph_screen/render.rs`: 06r's fold-tail fallback and gap; added 2026-10-18)
 Build with: Opus (`builder-opus-xhigh`) — `Fold::plan` is the layout engine's lens; checkable by fold tests over a fixture window.
 Needs: from 06: `FoldWalk::folds`, `OpenedMerges`, the fold mark per row (a merge row in the window is "folded" when `folds == Some(true)` and it is not opened). Existing: `Fold::plan(max_lanes, &Keep, rows) -> Fold` (`graft-graph/src/fold.rs:73-110`), `Fold::kept`, `Fold::folded_count`, `HeaderView`/`header_line`/`tail_room`, `Filters::text`.
 

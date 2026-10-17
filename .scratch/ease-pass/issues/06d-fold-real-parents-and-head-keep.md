@@ -1,6 +1,6 @@
 # fold-real-parents-and-head-keep — a folded merge is still a merge to everything but the drawing; launch lays out once
 
-Status: partial — 6/7 boxes; box 4 waits on the take_refused capture (06e/06f)
+Status: done — 7/7 (box 4 closed by 06f: take-refused-merge re-shot)
 Blocked by: 06 continuation 1 merged (branch `worktree-agent-acb2cc0f5685a9e78` @ 7a4c11f0)
 Build with: Opus (`builder-opus-xhigh`) — a public field change on `Row` with many readers, classified one by one. The shape is decided (06 D1); correctness is checkable by a property test and the m5/m7 walks, so not Fable.
 Needs: from 06: `Included`, `advance_folded`, `View::folded`, `with_head_kept`, `history::fold::{lay_out, landing}`, `views/sent.rs` `refresh_sent`. Existing: `Row::assemble` (`graft-graph/src/row.rs:201`), `RepositoryFacts` (HEAD), `RevertParams { mainline, parents, .. }` (graft-ops).

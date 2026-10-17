@@ -1,6 +1,6 @@
 # fold-integration-tests — the integration tier agrees with fold by default; boxes 5, 7, 8
 
-Status: done — 4/5 boxes; box 5 open only on capture mismatches (06f), listed in NOTES
+Status: done — 5/5 (box 5 closed by 06f)
 Blocked by: 06d
 Build with: Opus (`builder-opus-xhigh`) — several timeouts are undiagnosed, and each needs a cause with a line (rule 7) before any change.
 Needs: from 06d: `Row::is_merge`, `Row::drawn_parents`, `View::folded(head)`. From 06: `space` handler, `Window.fold`, `FoldMark`.
