@@ -226,6 +226,7 @@ impl Fold {
         DrawnRow {
             row: Cow::Owned(Row {
                 commit: row.commit.clone(),
+                drawn_parents: row.drawn_parents.clone(),
                 lane: self.drawn(row.lane).unwrap_or(rail),
                 incoming,
                 outgoing,

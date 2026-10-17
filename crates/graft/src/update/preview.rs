@@ -449,7 +449,13 @@ fn resident_slice(state: &AppState, height: usize) -> (usize, Vec<Commit>) {
                 if commits.is_empty() {
                     slice_top = row;
                 }
-                commits.push(found.commit.clone());
+                // The picture is of what the screen draws: the drawn
+                // parents, not the real ones (ease-pass 06 D1), or a
+                // stash entry's index commit reads as a lane leaving it.
+                commits.push(Commit {
+                    parents: found.drawn_parents.clone(),
+                    ..found.commit.clone()
+                });
             }
             // A gap in the window: the rows on hand are contiguous, so this
             // only happens before the first one or after the last.

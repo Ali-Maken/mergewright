@@ -244,6 +244,7 @@ fn a_column_open_in_no_row_is_dropped_without_counting() {
     let some = |name: &str| Some(BranchIdentity::of_name(name.as_bytes()));
     let row = Row {
         commit,
+        drawn_parents: Vec::new(),
         lane: 0,
         incoming: Vec::new(),
         outgoing: vec![(0, oid(2))],

@@ -49,7 +49,13 @@ fn drawn(state: &AppState) -> Vec<String> {
 
 /// The corpus octopus opened at 120×36, laid out and settled.
 fn octopus() -> (graft_fixtures::Scratch, App, AppState) {
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::OctopusMerge);
+    laid_out(graft_fixtures::copy_into_temp(
+        graft_fixtures::Shape::OctopusMerge,
+    ))
+}
+
+/// `scratch` opened at 120×36, laid out and settled.
+fn laid_out(scratch: graft_fixtures::Scratch) -> (graft_fixtures::Scratch, App, AppState) {
     let (app, state) = App::open(scratch.path());
     let state = opened(&app, state);
     let state = app.resize(&state, COLUMNS, ROWS);
@@ -57,21 +63,23 @@ fn octopus() -> (graft_fixtures::Scratch, App, AppState) {
     (scratch, app, state)
 }
 
-/// The corpus octopus with the cursor clicked onto `topic-1`'s row: a
-/// branch that is not `HEAD`, where merging it is an action.
+/// The corpus octopus with the cursor clicked onto the unmerged `topic-4`'s
+/// row: a branch that is not `HEAD`, where merging it is an action. (The
+/// octopus's own topics fold by default; see
+/// [`super::octopus_with_an_unmerged_branch`].)
 fn on_a_branch_row() -> (graft_fixtures::Scratch, App, AppState) {
-    let (scratch, app, state) = octopus();
+    let (scratch, app, state) = laid_out(super::octopus_with_an_unmerged_branch());
     let frame = drawn(&state);
     let y = frame
         .iter()
-        .position(|line| line.contains("[topic-1]"))
-        .unwrap_or_else(|| panic!("topic-1's row is drawn\n{}", frame.join("\n")));
+        .position(|line| line.contains("[topic-4]"))
+        .unwrap_or_else(|| panic!("topic-4's row is drawn\n{}", frame.join("\n")));
     let row = u16::try_from(y).expect("short screen");
     let state = app.mouse_down(&state, MouseButton::Left, 40, row);
     let frame = drawn(&state);
     assert!(
         frame[y].starts_with(CURSOR),
-        "the cursor on topic-1: {:?}",
+        "the cursor on topic-4: {:?}",
         frame[y]
     );
     (scratch, app, state)
@@ -226,38 +234,60 @@ fn wheel_flick() {
     app.close();
 }
 
-/// J33 `fold-merge-count` = 1: `Space` on the corpus octopus folds it; its
-/// row ends ` +` while the count runs, then ` +3` (the three topic commits
-/// it brought in); `Ctrl+R` does not count it again.
+/// J33 `fold-merge-count` = 1, as ease-pass 06 redrew it: the corpus
+/// octopus opens folded, none of its topics' rows drawn, its row's tail
+/// reading `▸ 3 commits` once the count lands (the three topic commits it
+/// brought in; an octopus names no one branch, so no ` from …`). `Space` on
+/// it opens it: `▾ 3 commits`, and the three topics' rows appear. `Ctrl+R`
+/// does not count it again. (The tail's pending and failed words are
+/// `view::rows::fold::tests`'.)
 #[test]
 fn fold_merge_count() {
     let (_scratch, app, state) = octopus();
     let merge = "Merge branches 'topic-1', 'topic-2' and 'topic-3'";
-    let route = ["Space"];
-    let folded = app.key(&state, KeyCode::Char(' '));
-    within_the_note("fold-merge-count", &route);
-    let counting = drawn(&folded);
-    let row = counting
+    let topics = ["[topic-1]", "[topic-2]", "[topic-3]"];
+    let folded = app.pump(state, "the fold's count", |state| {
+        drawn(state)
+            .iter()
+            .any(|line| line.contains(&format!("{merge} \u{25b8} 3 commits")))
+    });
+    let frame = drawn(&folded);
+    assert!(
+        topics
+            .iter()
+            .all(|topic| frame.iter().all(|line| !line.contains(topic))),
+        "folded: no topic's row drawn\n{}",
+        frame.join("\n")
+    );
+    let merge_row = frame
         .iter()
         .find(|line| line.contains(merge))
         .expect("the merge's row");
     assert!(
-        row.contains(&format!("{merge} +")) && !row.contains(&format!("{merge} +3")),
-        "counting: {row:?}"
+        merge_row.starts_with(CURSOR),
+        "cursor on HEAD's merge: {merge_row:?}"
     );
-    let folded = app.pump(folded, "the fold's count", |state| {
-        drawn(state)
+    let route = ["Space"];
+    let opened = app.key(&folded, KeyCode::Char(' '));
+    within_the_note("fold-merge-count", &route);
+    let opened = app.pump(opened, "the topics' rows", |state| {
+        let frame = drawn(state);
+        topics
             .iter()
-            .any(|line| line.contains(&format!("{merge} +3 ")))
+            .all(|topic| frame.iter().any(|line| line.contains(topic)))
+            && frame
+                .iter()
+                .any(|line| line.contains(&format!("{merge} \u{25be} 3 commits")))
     });
-    let folded = settled_frame(&app, folded);
-    let refreshed = app.press(&folded, KeyPress::control(KeyCode::Char('r')));
+    let opened = settled_frame(&app, opened);
+    let refreshed = app.press(&opened, KeyPress::control(KeyCode::Char('r')));
     let refreshed = settled_frame(&app, refreshed);
     assert!(
         drawn(&refreshed)
             .iter()
-            .any(|line| line.contains(&format!("{merge} +3 "))),
-        "the count stays over Ctrl+R"
+            .any(|line| line.contains(&format!("{merge} \u{25be} 3 commits"))),
+        "the count stays over Ctrl+R\n{}",
+        drawn(&refreshed).join("\n")
     );
     drop(refreshed);
     app.close();

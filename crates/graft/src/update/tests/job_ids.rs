@@ -36,7 +36,7 @@ fn no_local_job_id_is_ever_minted_twice() {
     ];
 
     let mut state = AppState {
-        repository: Some(facts("/code/api", "main")),
+        repository: Some(Box::new(facts("/code/api", "main"))),
         ..AppState::default()
     };
     // Which press first handed out each id, so a clash names both.

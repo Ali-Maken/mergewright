@@ -9,8 +9,11 @@ use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::history::Order;
+use graft_graph::inclusion::OpenedMerges;
 use graft_graph::layout::{Anchor, CommitSource, StreamingLayout};
-use graft_graph::{Follow, Inclusion, Row};
+use graft_graph::{Follow, Included, Inclusion, Row};
+
+use super::fold::RowFold;
 
 /// What a walk is, known before its first commit: the order it is in and the
 /// branches its lanes are anchored on.
@@ -62,12 +65,27 @@ pub enum Wanted {
 
 /// Which history the screen is looking at: every parent or first parents
 /// only, and what is folded or hidden (PROMPT.md §1.3, DESIGN.md §3.6).
+///
+/// The default draws every commit; the app's view is [`View::folded`].
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct View {
     /// Every parent, or only `parents[0]` (the first-parent view).
     pub follow: Follow,
-    /// Merges folded and stashes hidden.
+    /// Merged branches folded, merges opened, stashes hidden.
     pub inclusion: Inclusion,
+}
+
+impl View {
+    /// What the app opens on (ease-pass 06, ADR-0063): every parent, merged
+    /// branches folded into their merges, none opened. `HEAD` joins the
+    /// kept tips once the refs say where it is.
+    #[must_use]
+    pub fn folded() -> Self {
+        View {
+            follow: Follow::AllParents,
+            inclusion: Inclusion::folded_by_default(Vec::new(), OpenedMerges::default()),
+        }
+    }
 }
 
 /// One ask for rows, numbered so its answer can be told from a stale one.
@@ -104,13 +122,17 @@ pub struct Promote {
 
 impl Promote {
     /// The rows a viewport needs in `layout` so that the anchor sits where it
-    /// sat — or `None` with no anchor, or one this view does not show.
+    /// sat — or, folded away in this order, the merge it hides behind —
+    /// or `None` with no anchor, or one this view does not show.
     pub(super) fn around<S: CommitSource>(
         &self,
-        layout: &StreamingLayout<S>,
+        layout: &StreamingLayout<Included<S>>,
     ) -> Option<Range<usize>> {
         let anchor = self.anchor?;
-        let top = layout.row_of(anchor.commit)?.saturating_sub(anchor.offset);
+        let row = layout.row_of(anchor.commit).or_else(|| {
+            super::fold::landing(layout, anchor.commit).and_then(|merge| layout.row_of(merge))
+        })?;
+        let top = row.saturating_sub(anchor.offset);
         Some(top.saturating_sub(self.height)..top + 2 * self.height)
     }
 }
@@ -132,6 +154,14 @@ pub struct Window {
     /// Whether these rows answer a request's [`Promote`]: their row numbers
     /// are the promoted order's, and the screen re-finds its anchor in them.
     pub promoted: bool,
+    /// What the fold says about each of `rows`, in order; empty when the
+    /// view does not fold merged branches (ease-pass 06).
+    pub fold: Arc<[RowFold]>,
+    /// On a promoted window: the request's anchor, when the new order folds
+    /// it away, and the shown merge it now hides behind — where the cursor
+    /// lands instead (ease-pass 06). Boxed: rare, and every `AppState`
+    /// clone carries the window.
+    pub anchor_behind: Option<Box<(Oid, Oid)>>,
 }
 
 impl Window {
@@ -251,6 +281,10 @@ pub struct History {
     /// history unasked ([`HistoryUpdate::LaidOut`]); `None` until then. Kept
     /// as heard: nothing is drawn from it yet.
     pub laid_out: Option<usize>,
+    /// The first request waits for `HEAD`'s commit, so the walk starts
+    /// with it kept and a launch lays out once (ease-pass 06 D2): `show`
+    /// asks nothing until the opening or the refs say where `HEAD` is.
+    pub head_pending: bool,
 }
 
 impl History {
@@ -268,11 +302,12 @@ impl History {
             asked: 0,
             jump: None,
             seeking: None,
-            view: View::default(),
+            view: View::folded(),
             promotion: None,
             strip_rows: None,
             outstanding: None,
             laid_out: None,
+            head_pending: false,
         }
     }
 }

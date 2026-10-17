@@ -91,6 +91,25 @@ fn a_detached_head_reports_the_commit_it_points_at() {
     );
 }
 
+/// `HEAD`'s commit: the branch tip, the detached commit, or none while
+/// unborn (ease-pass 06 D2: the walk starts with it kept).
+#[test]
+fn head_commit_is_the_branch_tip_the_detached_commit_or_none_while_unborn() {
+    let fixture = Fixture::with_two_commits();
+    let repo = RepoHandle::open(fixture.root()).expect("opens");
+    let tip = Oid::from_hex(&fixture.rev_parse("HEAD")).expect("git printed hex");
+    assert_eq!(repo.head_commit().expect("resolves"), Some(tip));
+
+    let first = fixture.rev_parse("HEAD~1");
+    fixture.git(&["checkout", "--detach", &first]);
+    let first = Oid::from_hex(&first).expect("git printed hex");
+    assert_eq!(repo.head_commit().expect("resolves"), Some(first));
+
+    let empty = Fixture::empty_repo();
+    let unborn = RepoHandle::open(empty.root()).expect("opens");
+    assert_eq!(unborn.head_commit().expect("unborn is not an error"), None);
+}
+
 #[test]
 fn a_bare_repository_has_no_working_tree() {
     let fixture = Fixture::bare_repo();

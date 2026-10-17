@@ -156,6 +156,18 @@ fn stash_only_node_draws_a_hollow_square() {
     assert_eq!(text(&buf, 0), "| * ");
 }
 
+/// ease-pass 06f: a folded (or first-parent) merge still draws `◉`, as the
+/// main-screen mock's folded rows do; the kind is git's commit (06 D1).
+#[test]
+fn a_merge_whose_side_is_not_drawn_is_still_a_merge() {
+    let rows = reuse_rows();
+    let mut folded = rows[0].clone();
+    assert!(folded.commit.parents.len() > 1, "row 0 is a merge");
+    folded.drawn_parents.truncate(1);
+    folded.outgoing.truncate(1);
+    assert_eq!(NodeKind::of(&folded), NodeKind::Merge);
+}
+
 #[test]
 fn the_caller_decides_head_and_the_row_decides_the_rest() {
     let rows = reuse_rows();

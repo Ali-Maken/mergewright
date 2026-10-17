@@ -1,0 +1,21 @@
+main-folded-120.txt	06 box 9, mock prototypes/ease-mocks/mergewright-main-screen.html: first paint folded. No row of a merged branch; PR 16021's merge ends `▸ 4 commits from PR 16021` and draws `◉`; HEAD's merge ends `▸ 1 commit from sara/fix-toc`. Colour unverified (rule 5).
+main-opened-120.txt	06 box 9, mock prototypes/ease-mocks/mergewright-main-screen.html: `space` on PR 16021's merge. Its tail reads `▾ 4 commits from PR 16021`; its four commits sit under it on one lane of their own that leaves the merge row; the cursor stays on the merge; sara/fix-toc's merge stays folded. Colour unverified (rule 5).
+../m8-look-chrome-80x24.txt	06f re-shot, fold-only: merged-branch rows gone, `▸ 2 commits from …` tails, header 10 → 6 commits, their lanes gone. Judge by the capture's own first line.
+../m8-look-chrome-120x36.txt	06f re-shot, fold-only (as 80x24). Judge by the capture's own first line.
+../m8-look-chrome-187x50.txt	06f re-shot, fold-only (as 80x24). Judge by the capture's own first line.
+../m8-look-help-graph-187x50.txt	06f re-shot, fold-only: graph behind the keys palette folded, header 10 → 6 commits; the palette unchanged.
+../m8-help-80x24.txt	06f re-shot, fold-only: the hand-built merge row gains `▸ 1 commit`; the bar and palette unchanged.
+../m8-keymap-config-problem-120x36.txt	06f re-shot, fold-only: `▸ 1 commit` on the merge row; nothing else.
+../m8-keymap-remapped-120x36.txt	06f re-shot, fold-only: `▸ 1 commit` on the merge row in each frame; nothing else.
+../m8-bar-after-search-120x36.txt	06f re-shot, fold-only: the octopus's topic rows folded, `▸ 3 commits`, header 5 → 2 commits; the search words and bar unchanged.
+../m8/search-hint-120x36.txt	06f re-shot, fold-only (as bar-after-search). Search still counts 4 matches, 3 of them in folded rows: see 06f NOTES question.
+../m8/doorway-marked-120x36.txt	06f re-shot, fold-only: alpha's row folded into its merge, `▸ 1 commit from alpha`, header 4 → 3; the ⚠ mark and the doorway bar unchanged.
+../m8/doorway-marked-140x40.txt	06f re-shot, fold-only (as 120x36).
+../m7/radar-not-checked-evil-120x40.txt	06f re-shot, fold-only: alpha's row folded, `▸ 1 commit from alpha`, header 4 → 3; the ⚠ evil-merge mark unchanged.
+../m7/take-refused-merge-120x40.txt	06f re-shot, fold-only: login-page's row folded into `merged`'s merge (its badges go with the row), `▸ 1 commit`, header 7 → 6; the refusal box unchanged.
+../m6/fix-finish-shell-merge-120x40.txt	06f re-shot, fold-only: feature's row folded, `▸ 1 commit from feature`, header 7 → 6, its lane gone; cursor on the merge as before.
+../m8-look-cursor-row-dark-120x36.txt	06f re-shot, route 2 (06 D3): new unmerged `feature/two-next` keeps `[feature/two] two: finish` drawn; cursor row still `▸ │ │ ●`, now with that branch joining (`─╯`).
+../m8-look-cursor-row-light-120x36.txt	06f re-shot, route 2 (as dark).
+../m8-look-cursor-row-80x24.txt	06f re-shot, route 2 (as dark).
+../m8-look-cursor-row-187x50.txt	06f re-shot, route 2 (as dark).
+../m5-lane-cap-160x24.txt	06f re-shot, route 2 (06 D3): fixture's topics now unmerged, window scrolled to main's oldest commits; pane open `+8 lanes`, closed `+4 lanes` (were +6 / +4). 06b re-shoots it.

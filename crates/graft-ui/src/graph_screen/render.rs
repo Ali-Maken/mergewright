@@ -293,7 +293,7 @@ impl GraphScreen<'_> {
         buf: &mut Buffer,
     ) {
         let subject = entry.subject.as_str();
-        let mark = drawn_fold(entry, width);
+        let mark = drawn_fold(entry, self.view.ascii, width);
         let mark_width = mark.as_deref().map_or(0, fold_cells);
         let tag = drawn_tag(entry, self.view.ascii, width - mark_width);
         if mark.is_none() && tag.is_none() {
@@ -638,21 +638,22 @@ fn drawn_tag<'e>(
     (width.saturating_sub(tag_width.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)
 }
 
-/// Cells between the subject and a folded merge's `+N`.
+/// Cells between the subject and a folding merge's tail.
 const FOLD_GAP: u16 = 1;
 
-/// The cells a fold mark takes, its gap included.
+/// The cells a fold tail takes, its gap included.
 fn fold_cells(mark: &str) -> u16 {
     u16::try_from(mark.width())
         .unwrap_or(u16::MAX)
         .saturating_add(FOLD_GAP)
 }
 
-/// A folded merge's `+N` when [`GraphScreen::draw_subject`] draws it in a
-/// subject column of `width` cells: `None` off a folded merge, at `+0`, or
-/// when the mark and one subject cell do not fit — the mark is never cut.
-fn drawn_fold(entry: &GraphEntry<'_>, width: u16) -> Option<String> {
-    let mark = entry.fold?.words()?;
+/// A folding merge's tail when [`GraphScreen::draw_subject`] draws it in a
+/// subject column of `width` cells: `None` off a folding merge, or when the
+/// tail and one subject cell do not fit — the tail is never cut. `ascii` is
+/// `GraphView::ascii`.
+fn drawn_fold(entry: &GraphEntry<'_>, ascii: bool, width: u16) -> Option<String> {
+    let mark = entry.fold.as_ref()?.words(ascii);
     (fold_cells(&mark) < width).then_some(mark)
 }
 
@@ -669,7 +670,9 @@ pub(super) fn subject_truncated(
 ) -> bool {
     let taken = badges_width(entry, icons, keys, columns);
     let width = columns.subject_width.saturating_sub(taken);
-    let mark = drawn_fold(entry, width).as_deref().map_or(0, fold_cells);
+    let mark = drawn_fold(entry, ascii, width)
+        .as_deref()
+        .map_or(0, fold_cells);
     let width = width - mark;
     let tag = drawn_tag(entry, ascii, width).map_or(0, |tag| {
         u16::try_from(tag.width())

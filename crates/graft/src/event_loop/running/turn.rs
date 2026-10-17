@@ -23,7 +23,9 @@ use super::{Screen, prefetch};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
 use crate::trace::Tracer;
-use crate::update::{AppEvent, AppState, Command, Quit, follow_behind, follow_key, update};
+use crate::update::{
+    AppEvent, AppState, Command, Quit, follow_behind, follow_key, rest_owed, update,
+};
 
 /// The most update time a turn spends on queued wakes before its frame shows
 /// them — job answers and keys alike. Half a 60 Hz frame: a burst longer than
@@ -81,8 +83,8 @@ struct Run<'r, 'o, B: Backend, W, D, R> {
     /// When the next frame may be written (ADR-0054).
     pacer: Pacer,
     /// When the cursor last moved, and so when it has rested (G-settle):
-    /// mid-burst the pane's follow is owed, and the loop applies
-    /// `AppEvent::Rested` once the moves stop.
+    /// mid-burst the pane's follow and the next fold count are owed, and
+    /// the loop applies `AppEvent::Rested` once the moves stop.
     rest: Rest,
     /// When the first change not yet drawn was applied; `None` while the
     /// screen shows the state. Queued wakes share one frame, up to
@@ -337,13 +339,11 @@ where
         Ok(exit)
     }
 
-    /// When a follow is owed, the moment the cursor counts as rested.
+    /// When work is owed to rest (a follow, a folding merge's count), the
+    /// moment the cursor counts as rested. No burst, nothing deferred.
     fn rest_deadline(&self) -> Option<Instant> {
-        if follow_behind(self.state) {
-            self.rest.deadline()
-        } else {
-            None
-        }
+        let deadline = self.rest.deadline()?;
+        rest_owed(self.state).then_some(deadline)
     }
 
     /// When the quit wait's stop offer is due (m8/13b review fix). The loop

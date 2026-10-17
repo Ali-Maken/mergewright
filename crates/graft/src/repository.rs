@@ -24,6 +24,11 @@ pub struct RepositoryFacts {
     pub bare: bool,
     /// Where `HEAD` points.
     pub head: Head,
+    /// The commit `HEAD` resolves to; `None` while unborn, or when `HEAD`
+    /// could not be read or resolved (then `head` is
+    /// [`Head::Unreadable`] and says why). The history walk starts with it
+    /// kept out of the fold (ease-pass 06 D2).
+    pub head_commit: Option<Oid>,
     /// The repository's resolved `.mailmap`, for the author chip
     /// (m1-the-graph/10).
     pub mailmap: Mailmap,
@@ -93,15 +98,24 @@ pub fn facts(repository: &RepoHandle) -> Result<RepositoryFacts, String> {
     let location = std::path::absolute(&location)
         .map_err(|error| format!("cannot work out where {} is: {error}", location.display()))?;
 
+    let head = match repository.head() {
+        Ok(HeadState::Branch(name)) => Head::Branch(name.shorthand().to_vec()),
+        Ok(HeadState::Detached(id)) => Head::Detached(id),
+        Ok(HeadState::Unborn(name)) => Head::Unborn(name.shorthand().to_vec()),
+        Err(error) => Head::Unreadable(error.to_string()),
+    };
+    // A `HEAD` that reads but does not resolve is unreadable too: the
+    // reason goes where the status screen shows `HEAD`, never dropped.
+    let (head, head_commit) = match (head, repository.head_commit()) {
+        (Head::Unreadable(why), _) => (Head::Unreadable(why), None),
+        (head, Ok(commit)) => (head, commit),
+        (_, Err(error)) => (Head::Unreadable(error.to_string()), None),
+    };
     Ok(RepositoryFacts {
         path: location,
         bare: repository.is_bare(),
-        head: match repository.head() {
-            Ok(HeadState::Branch(name)) => Head::Branch(name.shorthand().to_vec()),
-            Ok(HeadState::Detached(id)) => Head::Detached(id),
-            Ok(HeadState::Unborn(name)) => Head::Unborn(name.shorthand().to_vec()),
-            Err(error) => Head::Unreadable(error.to_string()),
-        },
+        head,
+        head_commit,
         mailmap: repository.mailmap(),
         commit_graph: commit_graph_fact(repository),
     })

@@ -142,15 +142,17 @@ fn stash_and_bring_back_are_found() {
     app.close();
 }
 
-/// The corpus octopus with the cursor clicked onto `topic-1`'s row.
+/// The corpus octopus with the cursor clicked onto the unmerged `topic-4`'s
+/// row ([`super::octopus_with_an_unmerged_branch`]: the octopus's own
+/// topics fold by default).
 fn on_a_branch_row() -> (graft_fixtures::Scratch, App, AppState) {
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::OctopusMerge);
+    let scratch = super::octopus_with_an_unmerged_branch();
     let (app, state) = opened(&scratch);
     let frame = drawn(&state);
     let y = frame
         .iter()
-        .position(|line| line.contains("[topic-1]"))
-        .expect("topic-1's row");
+        .position(|line| line.contains("[topic-4]"))
+        .unwrap_or_else(|| panic!("topic-4's row\n{}", frame.join("\n")));
     let row = u16::try_from(y).expect("short screen");
     let state = app.mouse_down(&state, MouseButton::Left, 40, row);
     (scratch, app, state)

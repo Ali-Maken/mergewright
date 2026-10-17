@@ -41,7 +41,7 @@ fn a_bare_c_is_not_quit() {
 fn opened_at(now_seconds: i64) -> AppState {
     AppState {
         repo_path: PathBuf::from("/code/api"),
-        repository: Some(facts("/code/api", "main")),
+        repository: Some(Box::new(facts("/code/api", "main"))),
         harness: Harness {
             clock: crate::session::Clock::Fixed(now_seconds),
             ..Harness::default()

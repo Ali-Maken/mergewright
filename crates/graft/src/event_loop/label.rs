@@ -203,6 +203,8 @@ mod tests {
             laid_out: 0,
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         };
         let wakes = [
             Wake::Event(AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char(

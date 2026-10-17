@@ -44,16 +44,19 @@ pub fn strip_marks(state: &AppState) -> StripMarks {
     if let Some(window) = &history.window {
         for (offset, row) in window.rows.iter().enumerate() {
             let at = window.first + offset;
-            if row.commit.parents.len() >= 2 {
+            if crate::history::parents::is_merge(row, state.refs.as_deref()) {
                 marks.push((at, StripMark::Merge));
             }
             // `subject()` borrows the message it is already holding; the
             // whole message was being decoded here for a rule that only
             // reads the first line.
             let subject = String::from_utf8_lossy(row.commit.subject());
-            if let Some(marker) =
-                super::radar::marker_for(state, row.commit.id, &row.commit.parents, &subject)
-            {
+            if let Some(marker) = super::radar::marker_for(
+                state,
+                row.commit.id,
+                crate::history::parents::of(row, state.refs.as_deref()),
+                &subject,
+            ) {
                 marks.push((at, StripMark::Radar(marker.severity)));
             }
             if Some(row.commit.id) == head {
@@ -131,6 +134,8 @@ mod tests {
                 done: true,
                 rows: rows.into(),
                 promoted: false,
+                fold: [].into(),
+                anchor_behind: None,
             }),
             rows: row_count,
             phase: Phase::Complete,

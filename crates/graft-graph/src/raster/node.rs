@@ -26,10 +26,10 @@ pub enum Ring {
 }
 
 impl Ring {
-    /// The ring a row's parent count implies: none is a root, several a
+    /// The ring a row's drawn parent count implies: none is a root, several a
     /// merge. `Head`, `Stash` and `Uncommitted` are the caller's to set.
     pub fn of(row: &Row) -> Ring {
-        match row.commit.parents.len() {
+        match row.drawn_parents.len() {
             0 => Ring::Root,
             1 => Ring::Commit,
             _ => Ring::Merge,

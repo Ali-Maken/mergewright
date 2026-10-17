@@ -44,6 +44,8 @@ pub(crate) use fixtures::{
 mod pane_space;
 
 mod first_launch;
+mod folded_merge;
+mod head_keep;
 mod place_footers;
 
 mod keymap_edge;

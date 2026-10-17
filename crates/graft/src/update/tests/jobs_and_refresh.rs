@@ -121,6 +121,9 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
         refs_read: RefsRead::Pending(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
         // The working-tree read is named too: the status waits on it.
         status_read: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 5)),
+        // The opening is asked beside the walk: the walk's first request
+        // waits for HEAD (ease-pass 06 D2).
+        facts_pending: true,
         local_jobs: next.local_jobs,
         ..state.clone()
     };

@@ -1,7 +1,7 @@
 //! What `answer` hands the repository opening, the history walk starting,
 //! the working tree read and the stash entries.
 
-use crate::history::History;
+use crate::history::{History, View};
 use crate::repository::RepositoryFacts;
 
 use super::facts::repository_open_failed;
@@ -12,16 +12,60 @@ use super::{
 
 /// The repository opened, or failed to — `answer` routes only
 /// [`Product::Repository`] here.
-pub(super) fn repository_answer(next: &mut AppState, result: Result<RepositoryFacts, String>) {
-    match result {
-        Ok(facts) => repository_opened(next, facts),
-        Err(failure) => repository_open_failed(next, failure),
+pub(super) fn repository_answer(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    result: Result<RepositoryFacts, String>,
+) {
+    next.facts_pending = false;
+    let head = match result {
+        Ok(facts) => {
+            let head = facts.head_commit;
+            repository_opened(next, facts);
+            head
+        }
+        Err(failure) => {
+            repository_open_failed(next, failure);
+            None
+        }
+    };
+    head_known(next, commands, head);
+}
+
+/// The opening said where `HEAD` is (`None`: unborn, or unreadable — the
+/// facts say which, and a failed opening says why on the status line).
+/// A walk whose first request waited for it asks now, with `HEAD` kept;
+/// a walk already asking re-lays out only if `HEAD` really moved
+/// (ease-pass 06 D2).
+fn head_known(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    head: Option<graft_core::oid::Oid>,
+) {
+    let height = next.graph_rows();
+    let Some(history) = next.history.as_mut() else {
+        return;
+    };
+    let request = if history.head_pending {
+        history.head_pending = false;
+        if let Some(view) = keys::view_change::with_head_kept(&history.view, head) {
+            history.view = view;
+        }
+        history.show(height)
+    } else {
+        keys::view_change::with_head_kept(&history.view, head)
+            .and_then(|view| history.change_view(view, height))
+    };
+    if let Some(request) = request
+        && let Some(walk) = next.awaiting
+    {
+        commands.push(Command::ShowRows(walk, request));
     }
 }
 
 /// The repository opened, or re-opened on a refresh.
 pub(super) fn repository_opened(next: &mut AppState, facts: RepositoryFacts) {
-    next.repository = Some(facts);
+    next.repository = Some(Box::new(facts));
     // A read failure from last time has been superseded by a repository
     // that opened. Nothing else is: a write's `Sticky` failure stays until
     // `Esc` (PROMPT.md §3), and the refresh that very failure asked for is
@@ -64,7 +108,19 @@ pub(super) fn history_started(
     }
     // The refs may have landed before this walk: its first request already
     // knows the stash entries, so their internals are never drawn at all.
-    if let Some(view) = keys::view_change::with_stash_entries(&history.view, &stash_entries(next)) {
+    // `HEAD` is kept out of the fold from the first request on, so a launch
+    // lays out once (ease-pass 06 D2): from this walk's own opening when it
+    // has answered, or else the first request waits for it (`head_known`).
+    let head = if next.facts_pending {
+        history.head_pending = true;
+        head(next)
+    } else {
+        next.repository
+            .as_ref()
+            .and_then(|facts| facts.head_commit)
+            .or_else(|| head(next))
+    };
+    if let Some(view) = refs_view(&history.view, &stash_entries(next), head) {
         history.view = view;
     }
     if let Some(request) = history.show(next.graph_rows()) {
@@ -188,19 +244,46 @@ pub(super) fn stash_entries(state: &AppState) -> Vec<graft_core::oid::Oid> {
     })
 }
 
+/// The commit `HEAD` resolves to, as the refs last read say; `None` before
+/// they are read, or while the branch is unborn.
+fn head(state: &AppState) -> Option<graft_core::oid::Oid> {
+    state.refs.as_deref().and_then(crate::refs::RefBadges::head)
+}
+
+/// `view` knowing what the refs say — the stash entries
+/// (`with_stash_entries`) and `HEAD`, kept out of the fold
+/// (`with_head_kept`, ease-pass 06) — or `None` when it already does.
+fn refs_view(
+    view: &View,
+    stashes: &[graft_core::oid::Oid],
+    head: Option<graft_core::oid::Oid>,
+) -> Option<View> {
+    let with_entries = keys::view_change::with_stash_entries(view, stashes);
+    let base = with_entries.as_ref().unwrap_or(view);
+    keys::view_change::with_head_kept(base, head).or(with_entries)
+}
+
 /// The refs were read (m7-power-tools/16): the history view learns the stash
-/// entries, so each keeps only its first parent, and — with at least one —
+/// entries, so each keeps only its first parent, and where `HEAD` is, so
+/// its line is never folded (ease-pass 06); and — with at least one stash —
 /// a read asks which commits only a stash reaches. With none, the marks go
 /// at once and nothing is asked.
 pub(super) fn stash_entries_read(next: &mut AppState, commands: &mut Vec<Command>) {
     let stashes = stash_entries(next);
+    let head = head(next);
     let height = next.graph_rows();
     if let Some(history) = next.history.as_mut()
-        && let Some(view) = keys::view_change::with_stash_entries(&history.view, &stashes)
-        && let Some(request) = history.change_view(view, height)
-        && let Some(walk) = next.awaiting
+        && let Some(view) = refs_view(&history.view, &stashes, head)
     {
-        commands.push(Command::ShowRows(walk, request));
+        if history.head_pending {
+            // Nothing asked yet: the first request carries it
+            // (`head_known`).
+            history.view = view;
+        } else if let Some(request) = history.change_view(view, height)
+            && let Some(walk) = next.awaiting
+        {
+            commands.push(Command::ShowRows(walk, request));
+        }
     }
     if stashes.is_empty() {
         next.stash_only = StashOnlyMarks::default();

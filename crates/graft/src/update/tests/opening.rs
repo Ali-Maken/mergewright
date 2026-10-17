@@ -22,7 +22,8 @@ fn every_field_spelled_out() -> AppState {
             rows: 24,
         },
         repo_path: PathBuf::from("/code/api"),
-        repository: Some(facts("/code/api", "main")),
+        repository: Some(Box::new(facts("/code/api", "main"))),
+        facts_pending: true,
         system_git: None,
         commit_graph: CommitGraphOffer::NotNeeded,
         awaiting: None,
@@ -195,7 +196,10 @@ fn an_opened_repository_becomes_what_the_screen_shows() {
         ),
     );
 
-    assert_eq!(next.repository, Some(facts("/code/api", "main")));
+    assert_eq!(
+        next.repository.as_deref(),
+        Some(&facts("/code/api", "main"))
+    );
     assert_eq!(next.status, Status::Ready);
     // Two commands: the launch reads of the undo journal and the remote
     // facts, which cannot run before the repository is open
@@ -213,7 +217,7 @@ fn an_opened_repository_becomes_what_the_screen_shows() {
 fn a_repository_that_opened_clears_an_earlier_failure() {
     let failed = AppState {
         status: Status::Failed("could not re-read the repository".to_owned()),
-        repository: Some(facts("/code/api", "main")),
+        repository: Some(Box::new(facts("/code/api", "main"))),
         ..AppState::default()
     };
 
@@ -225,7 +229,10 @@ fn a_repository_that_opened_clears_an_earlier_failure() {
         ),
     );
 
-    assert_eq!(next.repository, Some(facts("/code/api", "release")));
+    assert_eq!(
+        next.repository.as_deref(),
+        Some(&facts("/code/api", "release"))
+    );
     assert_eq!(next.status, Status::Ready);
 }
 
@@ -253,7 +260,7 @@ fn a_path_that_is_not_a_repository_ends_the_run() {
 #[test]
 fn a_failed_refresh_of_an_open_repository_only_reaches_the_status_line() {
     let open = AppState {
-        repository: Some(facts("/code/api", "main")),
+        repository: Some(Box::new(facts("/code/api", "main"))),
         ..AppState::default()
     };
 
@@ -271,7 +278,10 @@ fn a_failed_refresh_of_an_open_repository_only_reaches_the_status_line() {
         Status::Failed("the repository went away".to_owned())
     );
     // The repository already read stays on screen: stale beats blank.
-    assert_eq!(next.repository, Some(facts("/code/api", "main")));
+    assert_eq!(
+        next.repository.as_deref(),
+        Some(&facts("/code/api", "main"))
+    );
 }
 
 #[test]

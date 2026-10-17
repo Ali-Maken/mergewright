@@ -136,11 +136,20 @@ impl History {
                 Phase::Streaming
             };
         }
+        // Folded away in the new order (ease-pass 06): the cursor lands on
+        // the merge it now hides behind.
+        let landed = |commit| match window.anchor_behind.as_deref() {
+            Some(&(anchor, merge)) if anchor == commit => merge,
+            _ => commit,
+        };
         let found = anchor.and_then(|anchor| {
-            let at = window
-                .rows
-                .iter()
-                .position(|row| row.commit.id == anchor.commit)?;
+            let shown = window.rows.iter().any(|row| row.commit.id == anchor.commit);
+            let commit = if shown {
+                anchor.commit
+            } else {
+                landed(anchor.commit)
+            };
+            let at = window.rows.iter().position(|row| row.commit.id == commit)?;
             Some((window.first + at, anchor.offset))
         });
         if let Some((row, offset)) = found {
@@ -173,7 +182,11 @@ impl History {
 
     /// The request that fills a `height`-row viewport where it is now, if the
     /// rows held do not already. For a walk just started, and after a resize.
+    /// Nothing while [`History::head_pending`].
     pub fn show(&mut self, height: usize) -> Option<RowRequest> {
+        if self.head_pending {
+            return None;
+        }
         self.wanted(height.max(1), false)
     }
 

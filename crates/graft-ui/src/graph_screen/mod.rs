@@ -19,6 +19,7 @@ pub mod badges;
 mod banner;
 mod carve;
 pub mod columns;
+mod fold_mark;
 mod footer;
 mod header;
 mod header_tail;
@@ -38,6 +39,7 @@ pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use carve::{CarveInputs, RowCarve, row_carve};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
+pub use fold_mark::{FoldCount, FoldMark};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintKey, HintState, LiveC, NOT_A_BINDING, Rung,
@@ -294,8 +296,6 @@ pub enum GraphicsStatus {
 pub struct Filters {
     /// Only first parents are followed.
     pub first_parent: bool,
-    /// How many merges are drawn folded.
-    pub folded: usize,
     /// The stash is hidden.
     pub stash_hidden: bool,
     /// Focus mode is on (DESIGN.md §5.2): rows off the selection's thread
@@ -312,11 +312,6 @@ impl Filters {
         let mut parts = Vec::new();
         if self.first_parent {
             parts.push("first-parent".to_owned());
-        }
-        match self.folded {
-            0 => {}
-            1 => parts.push("1 merge folded".to_owned()),
-            many => parts.push(format!("{many} merges folded")),
         }
         if self.stash_hidden {
             parts.push("stash hidden".to_owned());
@@ -399,35 +394,10 @@ pub struct GraphEntry<'a> {
     /// A short tag drawn after the subject — `✎ changed` on a commit a
     /// rewrite just changed (m7-power-tools/09). `None` on almost every row.
     pub tag: Option<RowTag>,
-    /// A folded merge's `+N` (m8-polish-and-ship/17b), drawn muted one space
-    /// after the subject. `None` on every row that is not a folded merge.
+    /// A folding merge's tail (ease-pass 06, mock G4), drawn muted one
+    /// space after the subject. `None` on every row that is not a merge with
+    /// a merged branch folded behind it, or opened.
     pub fold: Option<FoldMark>,
-}
-
-/// How many commits a folded merge brought in, as its row draws it: one
-/// space after the subject, muted, ASCII in every tier. The subject is cut
-/// with `…` before the mark; the mark is never cut.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FoldMark {
-    /// `+`: asked, not answered yet.
-    Counting,
-    /// `+N`. Zero draws nothing.
-    Count(usize),
-    /// `+?`: git could not count; the status line said why.
-    Unknown,
-}
-
-impl FoldMark {
-    /// The words drawn after the subject, or `None` for `+0`.
-    #[must_use]
-    pub fn words(self) -> Option<String> {
-        match self {
-            FoldMark::Counting => Some("+".to_owned()),
-            FoldMark::Count(0) => None,
-            FoldMark::Count(count) => Some(format!("+{count}")),
-            FoldMark::Unknown => Some("+?".to_owned()),
-        }
-    }
 }
 
 /// A tag a row carries after its subject until the next write starts

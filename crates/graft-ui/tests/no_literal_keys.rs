@@ -73,6 +73,16 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "`1` is a count, not a tab key",
     ),
     (
+        "graph_screen/fold_mark.rs",
+        "1 commit",
+        "`1` is a folding merge's count, not the first-parent key",
+    ),
+    (
+        "graph_screen/fold_mark.rs",
+        "? commits",
+        "`?` is a count git could not give, not the help key",
+    ),
+    (
         "finish_summary/frame.rs",
         "1 merge commit · nothing is committed {until}",
         "`1` is a count, not a tab key",

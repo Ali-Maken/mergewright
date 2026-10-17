@@ -205,7 +205,7 @@ fn selected_merge(state: &AppState) -> Option<graft_core::oid::Oid> {
         .and_then(crate::history::History::selected)?;
     let id = row.commit.id;
     let refs = state.refs.as_deref()?;
-    (row.commit.parents.len() >= 2 && !refs.is_stash(id)).then_some(id)
+    crate::history::parents::is_merge(row, Some(refs)).then_some(id)
 }
 
 /// `follow_selection` without the evil-merge probe: what the pane itself
@@ -470,6 +470,7 @@ mod tests {
 
     fn commit_row(byte: u8) -> graft_graph::Row {
         graft_graph::Row {
+            drawn_parents: Vec::new(),
             commit: graft_core::commit::Commit {
                 id: graft_core::oid::Oid::from_bytes(&[byte; 20]).unwrap(),
                 parents: Vec::new(),
@@ -499,6 +500,8 @@ mod tests {
             laid_out: 2,
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         });
         state
     }

@@ -12,14 +12,16 @@ use graft::session::Clock;
 use graft_core::event::{KeyCode, MouseButton};
 
 use crate::captures::{check_shot, frame_at, settled_frame};
-use crate::look_chrome::{NOW, opened};
+use crate::look_chrome::{NOW, opened, opened_in, with_feature_two_kept};
 
 /// The cursor clicked onto `[feature/two] two: finish` at `columns`×`rows`:
 /// `▸` leads the row and the branch badge is on it.
 #[test]
 fn capture_the_cursor_row_at_80x24_and_187x50() {
     for (columns, rows) in [(80, 24), (187, 50)] {
-        let (_scratch, app, state) = opened(columns, rows);
+        // `feature/two` folds into `main` by default; `with_feature_two_kept`
+        // keeps its row (ease-pass 06 D3, route 2).
+        let (_scratch, app, state) = opened_in(with_feature_two_kept(), columns, rows);
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
         let y = drawn
             .iter()

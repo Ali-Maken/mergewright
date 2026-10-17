@@ -334,22 +334,24 @@ milestone: m1-the-graph
 status: works
 ```
 
-- **How:** `Space` folds/unfolds the merge under the cursor; `1` switches to
+- **How:** merged branches start folded behind their merge (ease-pass 06);
+  `Space` opens/closes the merge under the cursor; `1` switches to
   a first-parent-only view; `H` hides/shows stash commits.
 - **Behaviour:** first-parent view collapses a history with merges to one
   straight lane, following only the default branch's own parent chain.
-  Folding a merge hides its branch down to the fork point; hiding a stash
+  A folded merge hides its branch down to the fork point; hiding a stash
   takes its own commits with it but leaves its base commit alone. Each
   toggle only re-lays-out the rows it actually invalidates — switching back
   to a previous view rebuilds no chunks. These are pure inclusion-time
   predicates applied before layout, so the §1.2 graph invariants (M1-02)
   hold identically with any combination on.
 - **Proven by:**
-  `graft_graph::inclusion::tests::a_folded_merge_hides_its_branch_down_to_the_fork_point`
+  `graft_graph::inclusion::tests::fold_by_default::opening_a_merge_invalidates_only_the_rows_from_the_merge_down`
   `graft_graph::inclusion::tests::a_hidden_stash_takes_its_own_commits_with_it_but_not_its_base`
   `graft_graph::inclusion::tests::first_parent_view_follows_the_default_branch_only`
 - **Looks like:** `docs/shots/15-first-parent.txt`,
-  `docs/shots/15-merges-folded.txt`, `docs/shots/15-merges-unfolded.txt`,
+  `docs/shots/ease-pass/main-folded-120.txt`,
+  `docs/shots/ease-pass/main-opened-120.txt`,
   `docs/shots/15-stash-hidden.txt`
 - **Decided in:** `docs/design/02-keymap.md` §2.3 (keys added by this
   ticket, not pre-existing in the keymap doc).

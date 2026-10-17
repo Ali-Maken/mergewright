@@ -18,6 +18,8 @@ use crate::history::History;
 use crate::update::detail::{DetailSpec, Loading};
 use crate::update::{Product, follow_behind};
 
+mod fold;
+
 /// What the script does next.
 enum Step {
     /// Hand this wake out.
@@ -204,6 +206,8 @@ fn history_with_merges(cursor: usize) -> History {
             done: true,
             rows: rows.into(),
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         }),
         rows: usize::from(COMMITS),
         phase: Phase::Complete,

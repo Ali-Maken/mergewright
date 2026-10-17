@@ -9,9 +9,7 @@ record as drawn on its day, ages included. Contact sheets are derived
 - `14-many-lanes-16.txt` · no producer · last changed 2026-09-13
 - `14-many-lanes-expanded.txt` · no producer · last changed 2026-09-13
 - `15-first-parent-back.txt` · no producer · last changed 2026-09-13
-- `15-merges-folded.txt` · no producer · last changed 2026-09-13
 - `15-merges-full.txt` · no producer · last changed 2026-09-13
-- `15-merges-unfolded.txt` · no producer · last changed 2026-09-13
 - `15-stash-hidden.txt` · no producer · last changed 2026-09-13
 - `16-criss-cross-focus-esc.txt` · no producer · last changed 2026-09-13
 - `16-criss-cross-focus-moved.txt` · no producer · last changed 2026-09-13
@@ -93,6 +91,5 @@ record as drawn on its day, ages included. Contact sheets are derived
 - `m5-hints-uncommitted-160x48.txt` · no producer · last changed 2026-10-07
 - `m5-hints-uncommitted-80x24.txt` · no producer · last changed 2026-10-07
 - `m7-proto2-b2-file-history.txt` · no producer · last changed 2026-09-26
-- `m8-look-cursor-row-dark-120x36.txt` · no producer · last changed 2026-10-07
-- `m8-look-cursor-row-light-120x36.txt` · no producer · last changed 2026-10-07
 - `user-37-git-git-pixel-after-scroll.png` · no producer · last changed 2026-09-17
+- `m8/polish-fold-120x36.txt` · no producer since ease-pass 06f (its `+3` mark is superseded by the fold tail; see `ease-pass/main-folded-120.txt`) · last changed 2026-10-07

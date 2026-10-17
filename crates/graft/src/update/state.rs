@@ -59,8 +59,13 @@ pub struct AppState {
     /// first frame.
     pub repo_path: PathBuf,
     /// What the repository turned out to be, once the job that opened it has
-    /// answered. `None` until then, which is the first frame.
-    pub repository: Option<RepositoryFacts>,
+    /// answered. `None` until then, which is the first frame. Boxed: kept
+    /// inline it put `AppState` past 8 KiB (ease-pass 06d's `head_commit`),
+    /// and every state the tests line up in an array would be on the stack.
+    pub repository: Option<Box<RepositoryFacts>>,
+    /// An opening was asked beside a walk and has not answered: the walk's
+    /// first request waits for its `HEAD` (ease-pass 06 D2).
+    pub facts_pending: bool,
     /// What the system `git` turned out to be, once that job has answered.
     pub system_git: Option<GitCheck>,
     /// Where Graft's offer to build a missing commit-graph file is
@@ -492,11 +497,10 @@ pub struct AppState {
     /// Tags rows carry after their subject until the next write starts —
     /// `✎ changed` after a put-in (m7-power-tools/09).
     pub row_tags: super::row_tags::RowTags,
-    /// Each folded merge's `+N`, by merge id (m8-polish-and-ship/17b): a
-    /// fact of the merge commit, so kept for the session and never
-    /// recounted — unfolding keeps it too. Filled by
-    /// `update::fold_count::request`, which **every place that adds to
-    /// `Inclusion::folded` must call** (today one: `Space`).
+    /// Each folding merge's count, by merge id (m8-polish-and-ship/17b,
+    /// ease-pass 06): a fact of the merge commit, so kept for the session
+    /// and never recounted — opening and closing keep it too. Filled at
+    /// rest by `update::fold_count::at_rest`, for the merges on screen.
     pub(crate) fold_counts:
         std::collections::BTreeMap<graft_core::oid::Oid, super::fold_count::FoldCount>,
     /// The cursor is mid-burst (G-settle): `settle` records a moved

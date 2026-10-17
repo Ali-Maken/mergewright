@@ -16,7 +16,7 @@ use graft::session::Clock;
 use graft::update::AppState;
 use graft_core::event::MouseButton;
 
-use crate::app_harness::App;
+use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame_at, radar_has_answered, settled_frame};
 
 /// The sizes the ticket names: the everyday editor terminal, the mock-up's
@@ -28,7 +28,63 @@ pub(crate) const NOW: i64 = 1_800_000_000;
 
 /// A feature-branch history, opened and settled at `columns`x`rows`.
 pub(crate) fn opened(columns: u16, rows: u16) -> (graft_fixtures::Scratch, App, AppState) {
+    opened_in(
+        graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches),
+        columns,
+        rows,
+    )
+}
+
+/// The feature-branch corpus plus `feature/two-next`: one commit on
+/// `feature/two`'s tip that no merge brought in, dated a second after it.
+///
+/// `feature/two` is merged into `main`, so its rows fold by default (ease-pass
+/// 06). The cursor-row captures are about a row with a branch badge and three
+/// lanes, not about a merged branch, so they keep `[feature/two] two: finish`
+/// on screen this way (06 D3, route 2: a new ref, the corpus refs untouched).
+pub(crate) fn with_feature_two_kept() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches);
+    let path = scratch.path();
+    let tip_date: i64 = git(path, &["log", "-1", "--format=%ct", "feature/two"])
+        .trim()
+        .parse()
+        .expect("a commit time");
+    let date = format!("@{} +0000", tip_date + 1);
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(path)
+        .args([
+            "-c",
+            "user.name=Graft Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit-tree",
+            "feature/two^{tree}",
+            "-p",
+            "feature/two",
+            "-m",
+            "two: follow-up",
+        ])
+        .env("GIT_AUTHOR_DATE", &date)
+        .env("GIT_COMMITTER_DATE", &date)
+        .output()
+        .unwrap_or_else(|why| panic!("git commit-tree: {why}"));
+    assert!(
+        out.status.success(),
+        "git commit-tree: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let tip = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    git(path, &["branch", "feature/two-next", &tip]);
+    scratch
+}
+
+/// `scratch`, opened and settled at `columns`x`rows`.
+pub(crate) fn opened_in(
+    scratch: graft_fixtures::Scratch,
+    columns: u16,
+    rows: u16,
+) -> (graft_fixtures::Scratch, App, AppState) {
     let (app, state) = App::open(scratch.path());
     let state = app.resize(&state, columns, rows);
     let state = settled_frame(&app, state);
@@ -70,46 +126,83 @@ fn selected_subject(state: &AppState) -> Option<String> {
         })
 }
 
+/// The short id a graph row ends with, if `line` is a commit row.
+fn drawn_short_id(line: &str) -> Option<&str> {
+    let last = line.split_whitespace().last()?;
+    (last.len() == 7 && last.chars().all(|glyph| glyph.is_ascii_hexdigit())).then_some(last)
+}
+
+/// Clicks every commit row drawn in `state`'s frame and checks the click
+/// selects the commit whose short id that row draws; how many it checked.
+fn clicks_select_what_is_drawn(app: &App, state: &AppState, columns: u16, rows: u16) -> usize {
+    let drawn = frame_at(state, columns, rows, Some(Clock::Fixed(NOW)));
+    let mut checked = 0;
+    for (y, line) in drawn.iter().enumerate().skip(1) {
+        let Some(short) = drawn_short_id(line) else {
+            continue;
+        };
+        let row = u16::try_from(y).expect("a screen is shorter than u16::MAX");
+        // Inside the subject column, clear of the gutter and the lanes.
+        let clicked = app.mouse_down(state, MouseButton::Left, 30, row);
+        let selected = clicked
+            .history
+            .as_ref()
+            .and_then(graft::history::History::selected)
+            .map(|row| row.commit.id.to_string());
+        assert!(
+            selected.as_deref().is_some_and(|id| id.starts_with(short)),
+            "{columns}x{rows}: a click on row {row} ({line:?}) selected {selected:?}\n{}",
+            drawn.join("\n")
+        );
+        checked += 1;
+    }
+    checked
+}
+
 /// Acceptance (geometry sweep): at 24×80, 36×120 and 50×187 a click on
 /// every drawn graph row selects the commit drawn on that row — the mouse's
 /// row math (`update::geometry::rows_above_graph`, `graph_pane_rows`) and
 /// the widget's carve (`ScreenRows`, gap and rule included) agree.
+///
+/// Swept twice (ease-pass 06e): as the fixture opens, both merges folded
+/// (six rows), and with `feature/one`'s merge opened by `space` (its two
+/// commits drawn between rows the fold had made neighbours) — click
+/// mapping across hidden rows is the risk the fold brings.
 #[test]
 fn every_drawn_row_is_the_row_a_click_selects_at_every_designed_size() {
     for (columns, rows) in SIZES {
         let (_scratch, app, state) = opened(columns, rows);
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
-        let subjects = [
-            "three: in progress",
-            "two: finish",
-            "two: start",
-            "one: finish",
-            "one: start",
-            "Add b.txt",
-            "Add a.txt",
-            "Add a readme",
-        ];
-        let mut checked = 0;
-        for (y, line) in drawn.iter().enumerate() {
-            let Some(subject) = subjects.iter().find(|subject| line.contains(**subject)) else {
-                continue;
-            };
-            let row = u16::try_from(y).expect("a screen is shorter than u16::MAX");
-            // Inside the subject column, clear of the gutter and the lanes.
-            let clicked = app.mouse_down(&state, MouseButton::Left, 30, row);
-            assert_eq!(
-                selected_subject(&clicked).as_deref(),
-                Some(*subject),
-                "{columns}x{rows}: a click on row {row} ({line:?})\n{}",
-                drawn.join("\n")
-            );
-            checked += 1;
-        }
-        assert!(
-            checked >= 5,
-            "{columns}x{rows}: only {checked} rows drawn\n{}",
+        let checked = clicks_select_what_is_drawn(&app, &state, columns, rows);
+        assert_eq!(
+            checked,
+            6,
+            "{columns}x{rows}: folded, six commit rows drawn\n{}",
             drawn.join("\n")
         );
+        let merge = drawn
+            .iter()
+            .position(|line| line.contains("Merge branch 'feature/one'"))
+            .expect("feature/one's merge is drawn");
+        let merge = u16::try_from(merge).expect("a screen is shorter than u16::MAX");
+        let on_merge = app.mouse_down(&state, MouseButton::Left, 30, merge);
+        let opened = app.key(&on_merge, graft_core::event::KeyCode::Char(' '));
+        let opened = app.pump(opened, "feature/one's commits drawn", |state| {
+            let frame = frame_at(state, columns, rows, Some(Clock::Fixed(NOW)));
+            ["one: start", "one: finish"]
+                .iter()
+                .all(|subject| frame.iter().any(|line| line.contains(subject)))
+        });
+        let opened = settled_frame(&app, opened);
+        let checked = clicks_select_what_is_drawn(&app, &opened, columns, rows);
+        let opened_frame = frame_at(&opened, columns, rows, Some(Clock::Fixed(NOW)));
+        assert_eq!(
+            checked,
+            8,
+            "{columns}x{rows}: one merge opened, eight commit rows drawn\n{}",
+            opened_frame.join("\n")
+        );
+        drop(opened);
         // From 30 rows the second row is blank and the row over the bar is
         // the rule; below, neither is drawn.
         let spaced = graft_ui::graph_screen::spaced(rows);
@@ -197,7 +290,7 @@ fn capture_the_cursor_row_in_dark_and_light() {
     use graft_ui::theme::{Theme, ThemeKind, Token, TokenColor};
 
     let (columns, rows) = (120, 36);
-    let (_scratch, app, state) = opened(columns, rows);
+    let (_scratch, app, state) = opened_in(with_feature_two_kept(), columns, rows);
     let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
     let y = drawn
         .iter()

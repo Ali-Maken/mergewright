@@ -293,13 +293,14 @@ mod tests {
         )
         .expect("plain data with no upstream to count always builds");
         state.refs = Some(std::sync::Arc::new(refs));
-        state.repository = Some(RepositoryFacts {
+        state.repository = Some(Box::new(RepositoryFacts {
             path: std::path::PathBuf::from("/repo"),
             bare: false,
             head: Head::Branch(b"main".to_vec()),
+            head_commit: None,
             mailmap: graft_git::mailmap::Mailmap::default(),
             commit_graph: CommitGraphFact::Absent { declined: false },
-        });
+        }));
         state.radar = RadarState {
             context: Loading::Ready(std::sync::Arc::new(RadarContext::of_ids(
                 chain.iter().copied(),

@@ -100,6 +100,7 @@ fn facts(path: &str, head: Head) -> RepositoryFacts {
         path: PathBuf::from(path),
         bare: false,
         head,
+        head_commit: None,
         mailmap: graft_git::mailmap::Mailmap::default(),
         commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
     }

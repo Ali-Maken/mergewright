@@ -1,6 +1,6 @@
 "                                                                  2 rows so far "
 "  ◆    [◆ main] a commit                                           57y  0101010 "
-"▸ ◉    [feature] a commit                                          57y  0202020 "
+"▸ ◉    [feature] a commit ▸ 1 commit                               57y  0202020 "
 "                                                                                "
 "                                                                                "
 "                                                                                "

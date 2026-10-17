@@ -23,7 +23,7 @@ const ABBREVIATED_ID: usize = 12;
 #[must_use]
 pub fn status_view(session: &Session, state: &AppState) -> StatusView {
     StatusView {
-        repository: state.repository.as_ref().map(repository_view),
+        repository: state.repository.as_deref().map(repository_view),
         rendering: session.rendering,
         notes: notes(session, state),
         problem: problem(state.shown_status()),

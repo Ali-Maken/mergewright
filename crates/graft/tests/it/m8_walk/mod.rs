@@ -287,3 +287,43 @@ fn one_key_over_the_note_fails() {
     );
     within_the_note("leave-tour", &route[..allowed]);
 }
+
+/// The corpus octopus plus `topic-4`: one commit on `main`'s tip that no
+/// merge brought in, dated an hour before [`graft_fixtures::CORPUS_NOW`].
+///
+/// The octopus's own topics fold by default (ease-pass 06), so a walk that
+/// needs a branch row that is not `HEAD` — where merging it is an action —
+/// clicks `topic-4`'s instead (ease-pass 06 D3, route 2: a new ref, the
+/// corpus refs untouched). No journey's step count changes: the click is
+/// setup, not part of any route.
+pub fn octopus_with_an_unmerged_branch() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::OctopusMerge);
+    let date = format!("@{} +0000", graft_fixtures::CORPUS_NOW - 3600);
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(scratch.path())
+        .args([
+            "-c",
+            "user.name=Graft Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit-tree",
+            "main^{tree}",
+            "-p",
+            "main",
+            "-m",
+            "topic-4: start",
+        ])
+        .env("GIT_AUTHOR_DATE", &date)
+        .env("GIT_COMMITTER_DATE", &date)
+        .output()
+        .unwrap_or_else(|why| panic!("git commit-tree: {why}"));
+    assert!(
+        out.status.success(),
+        "git commit-tree: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let tip = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    crate::app_harness::git(scratch.path(), &["branch", "topic-4", &tip]);
+    scratch
+}

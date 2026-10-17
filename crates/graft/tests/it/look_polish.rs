@@ -97,41 +97,10 @@ fn shot(header: &str, drawn: &[String]) -> String {
     out
 }
 
-/// 17b decision 1: `Space` on the corpus octopus folds it; once the count
-/// answers, its row ends ` +3` (the three topics it brought in), muted.
-#[test]
-fn capture_folded_merge_count_for_docs_shots() {
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::OctopusMerge);
-    let (app, state) = App::open(scratch.path());
-    let state = opened(&app, state);
-    let state = app.resize(&state, 120, 36);
-    let clock = Some(graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW));
-    let folded = app.key(&state, KeyCode::Char(' '));
-    let folded = app.pump(folded, "the fold's count", |state| {
-        crate::captures::frame_at(state, 120, 36, clock)
-            .iter()
-            .any(|line| line.contains("Merge branches 'topic-1', 'topic-2' and 'topic-3' +3 "))
-    });
-    let folded = crate::captures::settled_frame(&app, folded);
-    let drawn = crate::captures::frame_at(&folded, 120, 36, clock);
-    assert!(
-        drawn.iter().any(|line| line.contains("1 merge folded")),
-        "{drawn:#?}"
-    );
-    let out = shot(
-        "# m8/polish-fold-120x36: drawn by `view::view` from a real AppState\n\
-         # (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,\n\
-         # no colour (CLAUDE.md rule 5 — colour unverified).\n\
-         #\n\
-         # The corpus octopus folded with `Space`. Right: the merge's row reads\n\
-         # `Merge branches 'topic-1', 'topic-2' and 'topic-3' +3` — one space, then\n\
-         # `+3` (muted), the three topic commits the fold hides; the header says\n\
-         # `1 merge folded`. While counting the mark reads `+`; a failure `+?`.\n\n",
-        &drawn,
-    );
-    app.close();
-    crate::captures::check_shot("m8/polish-fold-120x36.txt", &out);
-}
+// `capture_folded_merge_count_for_docs_shots` (m8/17b, `+3` on a merge
+// `space` folded) retired in ease-pass 06f: merges fold by default and the
+// tail reads `▸ 3 commits`; box 9's captures replace it
+// (`fold_by_default::capture_main_folded_and_opened_at_120`).
 
 /// m8/22c (09h's capture box): `?` with the Map open and the graph focused.
 /// HERE lists the Map's own keys, EVERYWHERE the Global keys that act there;

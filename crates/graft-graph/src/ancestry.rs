@@ -91,17 +91,17 @@ impl Ancestry {
 fn kin_of(rows: &[Row], at: usize) -> (Vec<Kin>, HashSet<Oid>) {
     let mut kin = vec![Kin::Unrelated; rows.len()];
     kin[at] = Kin::Selected;
-    let mut ancestors: HashSet<Oid> = rows[at].commit.parents.iter().copied().collect();
+    let mut ancestors: HashSet<Oid> = rows[at].drawn_parents.iter().copied().collect();
     for (index, row) in rows.iter().enumerate().skip(at + 1) {
         if ancestors.contains(&row.commit.id) {
             kin[index] = Kin::Ancestor;
-            ancestors.extend(row.commit.parents.iter().copied());
+            ancestors.extend(row.drawn_parents.iter().copied());
         }
     }
     let mut descendants: HashSet<Oid> = HashSet::from([rows[at].commit.id]);
     for index in (0..at).rev() {
         let row = &rows[index];
-        if row.commit.parents.iter().any(|p| descendants.contains(p)) {
+        if row.drawn_parents.iter().any(|p| descendants.contains(p)) {
             kin[index] = Kin::Descendant;
             descendants.insert(row.commit.id);
         }

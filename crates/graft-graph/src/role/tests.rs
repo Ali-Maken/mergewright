@@ -80,6 +80,7 @@ fn trunk_in_built_on_is_dropped() {
 fn row(lane: usize, lanes: Vec<Option<BranchIdentity>>) -> Row {
     Row {
         commit: commit(1, &[], 0, b"one"),
+        drawn_parents: Vec::new(),
         lane,
         incoming: Vec::new(),
         outgoing: Vec::new(),

@@ -24,6 +24,9 @@ use graft_core::ref_name::RefName;
 
 use crate::run::{GitArg, GitInvocation, RunError};
 
+pub use head_error::HeadError;
+
+mod head_error;
 mod names;
 mod peel;
 mod refs;
@@ -188,6 +191,29 @@ impl RepoHandle {
             )),
         }
     }
+    /// The commit `HEAD` resolves to, symbolic refs followed; `None` while
+    /// the branch is unborn. Read on every call, as [`Self::head`].
+    ///
+    /// # Errors
+    /// [`HeadError`] if `HEAD` cannot be read or resolved.
+    pub fn head_commit(&self) -> Result<Option<Oid>, HeadError> {
+        let git_dir = || self.git_dir().to_path_buf();
+        let mut head = self.repo.head().map_err(|source| HeadError::Read {
+            git_dir: git_dir(),
+            source: Box::new(source),
+        })?;
+        let id = head.try_peel_to_id().map_err(|source| HeadError::Peel {
+            git_dir: git_dir(),
+            source: Box::new(source),
+        })?;
+        id.map(|id| Oid::from_bytes(id.as_bytes()))
+            .transpose()
+            .map_err(|source| HeadError::Malformed {
+                git_dir: git_dir(),
+                source,
+            })
+    }
+
     /// The repository `gix` is holding.
     ///
     /// Crate-private: `gix`'s types are this crate's business, and letting
@@ -351,28 +377,6 @@ impl OpenError {
             | OpenError::Unusable { path, .. } => path,
         }
     }
-}
-
-/// Why `HEAD` could not be read.
-#[derive(Debug, thiserror::Error)]
-pub enum HeadError {
-    /// `HEAD` itself could not be read.
-    #[error("cannot read HEAD in {}: {source}", git_dir.display())]
-    Read {
-        /// The repository whose `HEAD` was being read.
-        git_dir: PathBuf,
-        /// What `gix` said. Boxed to keep `HeadError` small.
-        source: Box<gix::reference::find::existing::Error>,
-    },
-    /// `HEAD` was read, but names something git's own rules reject: a ref name
-    /// with a control character in it, or an object id of the wrong length.
-    #[error("HEAD in {} is malformed: {source}", git_dir.display())]
-    Malformed {
-        /// The repository whose `HEAD` was being read.
-        git_dir: PathBuf,
-        /// Which invariant the value broke.
-        source: graft_core::error::Error,
-    },
 }
 
 #[cfg(test)]

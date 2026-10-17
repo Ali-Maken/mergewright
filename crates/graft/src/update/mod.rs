@@ -117,6 +117,7 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     };
     let walk = state.local_jobs.next_id();
     state.awaiting = Some(walk);
+    state.facts_pending = true;
     let refs = state.local_jobs.next_id();
     state.refs_read.asked(refs);
     let tree = state.local_jobs.next_id();
@@ -219,6 +220,15 @@ fn keep_unseen_failure(before: &AppState, next: &mut AppState) {
     }
 }
 
+/// Is work owed to rest (G-settle)? What [`settle`] defers mid-burst: the
+/// cursor's follow, and the next folding merge's count. The loop wakes for
+/// rest while either holds — a count asked mid-burst by nobody else (its
+/// predecessor's answer landing inside the burst, with no follow owed)
+/// would otherwise wait for an unrelated key (ease-pass 06f).
+pub(crate) fn rest_owed(state: &AppState) -> bool {
+    follow_behind(state) || fold_count::owed(state)
+}
+
 /// What follows every answered event: the selection reconciled with the
 /// cursor, the pane and the radar asking for what they now need.
 fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize) {
@@ -245,6 +255,11 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
             local_jobs.next_id()
         }));
         next.followed = selection::follow_key(next);
+        // At rest — not merely a burst with no follow owed — the folding
+        // merges on screen get their counts: a held `j` reads none.
+        if !next.defer_follow {
+            fold_count::at_rest(next, commands, &mut || local_jobs.next_id());
+        }
     }
     // The other asks below do not read the cursor (G-settle grep): the
     // radar's context and probes and the remotes are about refs, the

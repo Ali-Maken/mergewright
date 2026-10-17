@@ -222,6 +222,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `names_in_force` (fn) — `(common_dir) -> io::Result<Generation>`: the newest generation up to `CURRENT` whose `<common_dir>/<dir>/migrated` exists, else `Graft`; stats only, no spawn; read now, not cached.
 - `RepoHandle::on_disk_names` (fn) — `-> Generation`: `names_in_force` read once at open; an unreadable stat is `OpenError::Io`.
 - `RepoHandle::mailmap` / `head` (fn) — the resolved `.mailmap`; where `HEAD` points.
+- `RepoHandle::head_commit` (fn) — `-> Result<Option<Oid>, HeadError>`; the commit `HEAD` resolves to, `None` while unborn.
 - `RepoHandle::git_path` (fn) — `git rev-parse --git-path`, made absolute.
 - `RepoHandle::worktree_name` (fn) — `"main"` or the linked worktree's name.
 - `RepoHandle::references` / `reference` (fn) — every ref; one ref by full name.
@@ -229,7 +230,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from.
 - `HeadState` (enum) — a branch, detached, or unborn.
 - `OpenError` (enum) — why opening failed; `path` (fn) the path that failed.
-- `HeadError` (enum) — why reading `HEAD` failed.
+- `HeadError` (enum, `repo/head_error.rs`) — why reading or resolving `HEAD` failed: `Read`, `Peel`, `Malformed`.
 - `SharedRepo` (struct) — the `Send` expensive half of a repository; hands out `RepoHandle`s.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size handles open with.
 - `SharedRepo::open` / `handle` / `handle_with_object_cache` / `git_dir` (fn) — open; per-thread handles; the `.git` dir.

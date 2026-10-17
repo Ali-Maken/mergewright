@@ -441,18 +441,22 @@ fn apply_view_change(next: &mut AppState, commands: &mut Vec<Command>, change: V
     let Some(history) = next.history.as_mut() else {
         return;
     };
-    let Some(view) = change.apply(history, &stashes) else {
+    let Some(changed) = change.apply(history, &stashes) else {
         return;
     };
-    // `Space` is where a merge enters `Inclusion::folded`: its `+N` is
-    // asked for here, once (m8-polish-and-ship/17b).
-    let folded = view.inclusion.folded.clone();
-    if let Some(request) = history.change_view(view, height)
+    let mut request = history.change_view(changed.view, height);
+    // `space` inside an opened merge: the cursor goes to the merge it
+    // closed. Rows above the merge keep their numbers when it closes, so a
+    // merge row on hand is where it will be.
+    if let Some(merge) = changed.land_on {
+        history.reanchor = None;
+        request = history.seek(merge, height).or(request);
+    }
+    if let Some(request) = request
         && let Some(id) = next.awaiting
     {
         commands.push(Command::ShowRows(id, request));
     }
-    super::fold_count::request(next, commands, &folded);
 }
 
 /// One remote key, with `local_jobs` borrowed out for the closure.
