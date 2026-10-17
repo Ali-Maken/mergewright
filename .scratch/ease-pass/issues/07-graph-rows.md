@@ -3,12 +3,12 @@
 Status: ready
 Blocked by: 01-roles-and-route, 03-ease-vocabulary, 06-graph-fold-and-lanes
 Build with: (blank — brownfield; conductor sets after the scout)
-Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on` (roles-and-route); `Token::Role*`, `graph.colours_off`, graph-row `HintContext`s (ease-vocabulary); `Opened`, `OpenedFrom`, folded rows (graph-fold-and-lanes).
+Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on(&Row) -> Option<BranchIdentity>` (roles-and-route; reads `Row.lanes[row.lane]`, `Row.lanes: Vec<Option<BranchIdentity>>`, `graft-graph/src/row.rs:24,45`); `Token::Role*`, `graph.colours_off`, graph-row `HintContext`s (ease-vocabulary); `Opened`, `OpenedFrom`, folded rows (graph-fold-and-lanes).
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Prior art rows "Which line is which" → "Who"; Mock behaviours G1–G9, G13, G14; New UI (graph widths); Questions 2, 3, 4, 10, 11 (answered a).
 - `docs/design/01-view-mockups.md` §1.0 (chrome) and §1.1–1.3 (the rows only). `docs/design/02-keymap.md` §2.3.
-- `crates/graft-ui/MAP.md`: `graph_column`, `graph_screen` (+ `::columns`, `::badges`), `theme`. `crates/graft/MAP.md`: `view::entries`, `view::rows`, `history::scroll`, `update::keys`, `update::geometry`, `update::mouse`, `update::drag`, `update::in_view`, `refs`, `jobs::detail` (contains read), `event_loop::rest`.
+- `crates/graft-ui/MAP.md`: `graph_column`, `graph_screen` (+ `::columns`, `::badges`), `theme`. `crates/graft/MAP.md`: `view::entries`, `view::rows`, `history::scroll`, `update::keys`, `update::geometry`, `update::mouse`, `update::drag`, `update::in_view`, `refs`, `jobs::detail` (contains read), `event_loop::rest`. `crates/graft-graph/MAP.md`: `row` (`Row.lanes`, `Row.lane`).
 - The main mock's visible text: `prototypes/ease-mocks/mergewright-main-screen.html`.
 - The scout's file.
 
@@ -17,10 +17,11 @@ Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on` (roles-and-route); 
 - How the lane glyph table is chosen (Unicode/ASCII), and where a lane's colour comes from (`Theme::branch`/`lane`).
 - What `history::scroll` assumes about one row per screen line; every hit-test (`row_at`, `geometry`, `badge_spans`, drag) that maps a screen line to a row.
 - What the contains read (`jobs::detail`) costs and whether it runs only at rest.
+- Where today's `↑N to push` count comes from and its integer type.
 
 ## Scope
 In (graft-ui `graph_column`, `graph_screen` row drawing and `columns`, `theme` (colourless resolve only); graft `view::entries`, `view::rows`, `history::scroll`, `update::keys` (`#`), `update::geometry`/`mouse`/`drag` hit-test, `AppState` fields `colours_off`, `route`). **This group owns `update/state.rs`, `update/events.rs`, `jobs/kinds.rs` in wave 4**; S adds only at the end of those enums/structs.
-- **Roles (G1, G2):** each lane drawn by `route.role(identity)`: This `┃`, Under `│`, Trunk `║`, Other `┊` (grey). Connectors `╯ ╮` with `━ ─ ═ ┄` in the **joining** branch's role. ASCII tier: `|` for This/Under/Trunk, `:` for Other. Focus = the cursor row's `made_on`; on an opened row, the merge row's branch (G4); `Route::unread` until B's read lands (Under shows nothing extra before then). Moves with `j/k`.
+- **Roles (G1, G2):** each lane drawn by `route.role(identity)` with `identity = row.lanes[i]`; a lane with no identity (`None`) → `Other`. This `┃`, Under `│`, Trunk `║`, Other `┊` (grey). Connectors `╯ ╮` with `━ ─ ═ ┄` in the **joining** branch's role. ASCII tier: `|` for This/Under/Trunk, `:` for Other. Focus = the cursor row's `made_on`; on an opened row, the merge row's branch (G4); `Route::unread` until B's read lands (Under shows nothing extra before then). Moves with `j/k`.
 - **Nodes (G3):** `●` commit, `◉` merge; other node kinds (HEAD, stash, uncommitted, root) as today.
 - **Columns (New UI):** `graph | branch | message | who 6 | age 4`, branch 20 (≥120), 14 (100–119), 12 (<100). No SHA column, no author chip, no ref badges (G8).
 - **Branch column (G5):** written on the first row of each run of the same `made_on`, in its role colour, bold unless Other, `(you)` after HEAD's branch; opened rows: the `OpenedFrom` label's last path segment, dim.
@@ -39,7 +40,7 @@ pub fn lane_glyph(role: LaneRole, ascii: bool) -> char;          // ┃ │ ║ 
 pub fn join_glyph(role: LaneRole, ascii: bool) -> char;          // ━ ─ ═ ┄ / - .
 pub struct BranchCell { pub name: SanitizedText, pub role: LaneRole, pub you: bool, pub dim: bool }
 pub struct WhoCell { pub name: SanitizedText, pub own: bool }
-pub enum RowLabel { ToPush(u32), NotMerged, Here(SanitizedText), Tag(SanitizedText) }
+pub enum RowLabel { ToPush(usize), NotMerged, Here(SanitizedText), Tag(SanitizedText) }
 pub struct SecondLine { pub words: SanitizedText, pub sha7: SanitizedText }
 pub struct GraphEntry { /* kept: line, subject, when, marker, tag, fold, compare_marked */
     pub branch: Option<BranchCell>, pub who: Option<WhoCell>, pub labels: Vec<RowLabel>,
@@ -49,9 +50,10 @@ pub const WHO_WIDTH: u16 = 6; pub const AGE_WIDTH: u16 = 4;
 pub fn age(then: Timestamp, now: Timestamp) -> String;           // "23h" "9d" "2w"
 impl Theme { pub fn colourless(&self) -> Theme; }
 ```
+`RowLabel::ToPush` carries the count in whatever integer type its source holds today (`usize` expected — git-side counts are `usize`); say which in NOTES.
 graft app:
 ```rust
-pub fn lane_roles(row: &Row, route: &Route) -> Vec<LaneRole>;    // view::entries, per drawn column
+pub fn lane_roles(row: &Row, route: &Route) -> Vec<LaneRole>;    // view::entries, per drawn column; None lane → Other
 /// Screen lines the body shows commits on, given the cursor row's second line.
 pub fn commit_rows(body_rows: u16, cursor_in_view: bool) -> u16; // history::scroll
 // AppState: pub colours_off: bool, pub route: Route
@@ -62,6 +64,7 @@ Every capture of the graph screen (list them; recaptured here at 120/100/90); `h
 
 ## Acceptance
 - [ ] Role table test: fixture `main ← wallet-release ← sara/fix-toc`, cursor on a `sara/fix-toc` row with `Route::new(main, [wallet-release], sara)`: its lane `┃`, wallet-release `│`, main `║`, `ops/ci` `┊`; cursor to an `ops/ci` row → `ops/ci` `┃`, sara `┊`.
+- [ ] `lane_roles` on a row with an unnamed lane (`lanes[i] == None`) → `Other` at `i`.
 - [ ] Connector test: a merge of `sara/fix-toc` into `wallet-release` draws `╯`/`╮` with `━` when sara is This, `┄` when Other.
 - [ ] Branch column test: written once per run, `(you)` on HEAD's, last path segment on opened rows; widths 20/14/12 at 120/110/90.
 - [ ] No SHA column and no `[branch]` badge text on any row (capture grep); labels `↑1 to push`, `not merged`, `wallet-release is here`, `tag v1.2` present on the fixture.

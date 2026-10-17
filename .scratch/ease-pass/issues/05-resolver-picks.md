@@ -3,7 +3,7 @@
 Status: ready
 Blocked by: 02-clash-reads, 03-ease-vocabulary
 Build with: (blank — brownfield; conductor sets after the scout). **Planner recommends Fable**: passes all three tests — approach decided here, a wrong staging model is structural, index states can't be judged from the diff.
-Needs: `ConflictFile::reopen`, `NoSuchBlock` (clash-reads); `resolver.review`, `resolver.undo_pick`, `resolver.pause`, `finish.undo_pick` action ids (ease-vocabulary).
+Needs: `ConflictFile::reopen(&mut self, block: usize) -> Result<(), NoSuchBlock>` (clash-reads; `NoSuchBlock(pub usize)` is the existing type, `graft-git/src/conflict.rs:329`, already returned by `take` and handled at `graft-ops/src/conflict.rs:125,160`); `resolver.review`, `resolver.undo_pick`, `resolver.pause`, `finish.undo_pick` action ids (ease-vocabulary).
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Journeys (merge-*, undo-a-pick, pause-and-resume) and landing points, Mock behaviours M5, M8–M10, M12, M14–M16, Hard-to-reverse choice 3, Questions 7 and 12.
@@ -22,7 +22,7 @@ In (graft-ops; graft app `update::resolver`, `update::finish`, `update::banner`,
 - Stop lands on the resolver, cursor on the first open block of the first file (0 keys). P11 auto-open of the summary dropped for merges.
 - `o`/`t`/`b`: `apply_take`, push a `Pick`, cursor to `next_open_in_file`; file solved → stays, cursor stays; **nothing staged in a merge**. On a taken block: notice `already taken · u undoes it`, no write.
 - `n`: `next_open` across files (list order); none open → notice `no open clashes left · y reviews the merge` (merge) / today's finish words (others).
-- `u`: pop the last pick, `reopen` + `write_back` against the fingerprint, cursor on that block (switching file if needed). File changed outside → notice in words, stack kept. Empty stack → notice `nothing to undo here`.
+- `u`: pop the last pick, `reopen` + `write_back` against the fingerprint, cursor on that block (switching file if needed). File changed outside → notice in words, stack kept. Empty stack → notice `nothing to undo here`. A `NoSuchBlock` from `reopen` (stack and file out of step) → notice in words, stack kept, nothing written — never swallowed.
 - `y` (alias `c`) when every file is solved → the review (Fr draws it); `y` with open clashes → notice `N clashes still open · n goes to the next`.
 - Review: `y` commits via `Resume::Continue{solved}` / `ContinueWith{message, solved}` or `FinishMerge` with `solved`, staging the solved files **once**; `u` → back to the resolver with the last pick reopened; `esc` → resolver unchanged.
 - `⏎` in a merge: on a solved file → next file; on an open file → refused as today.
@@ -59,10 +59,10 @@ pub fn next_open_in_file(blocks: &[BlockAt]) -> Option<usize>;
 /// (file index, block index) of the first open block in list order.
 pub fn next_open(files: &[(PathBuf, Vec<BlockAt>)]) -> Option<(usize, usize)>;
 ```
-`Picks` lives for one operation; cleared on finish or abort; kept across pause (`esc`) and relaunch-free resume; not journaled (a pick is a disk write inside the live operation, which the operation's backup already covers — scout confirms).
+`Pick.block` indexes as `ConflictFile::take`/`reopen` do. `Picks` lives for one operation; cleared on finish or abort; kept across pause (`esc`) and relaunch-free resume; not journaled (a pick is a disk write inside the live operation, which the operation's backup already covers — scout confirms).
 
 ## Touches
-Every `Resume` and `FinishMergeParams` site; `resume` for shell-begun merges; journal entries for finish/abort; `u` routing (§2.6a refusal must stay for every other screen mid-operation — test it from the graph); banner focus and its bar; finish summary for non-merge operations (unchanged); stash clash close path (`update::clash`); relaunch path; resolver and finish captures (recaptured by L, Fr).
+Every `Resume` and `FinishMergeParams` site; `resume` for shell-begun merges; journal entries for finish/abort; `u` routing (§2.6a refusal must stay for every other screen mid-operation — test it from the graph); banner focus and its bar; finish summary for non-merge operations (unchanged); stash clash close path (`update::clash`); relaunch path; resolver and finish captures (recaptured by L, Fr); existing `NoSuchBlock` handling in `graft-ops/src/conflict.rs:125,160` (unchanged).
 
 ## Acceptance
 - [ ] Fixture merge, one file, 2 clashes: `o` → cursor on clash 2, file still listed `?`; `o` → file `✓`, cursor stays; index still unmerged for that path (`git ls-files -u` non-empty).

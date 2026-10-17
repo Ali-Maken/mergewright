@@ -126,24 +126,27 @@ Other mock keys: `C` (Q1), `x` (Q2), preview `⏎` (Q6), resolver `u` (§2.6a re
 pick undo, a DESIGN edit), resolver `n` (meaning narrows to open clashes), finish `⏎` (look, replaces inline diff).
 
 ## Interfaces and data shapes
-Pass-1 signatures (exact in the specs): **graft-graph `role`** — `enum LaneRole { This, Under, Trunk, Other }`,
-`struct Route` (`new(trunk, built_on: &[BranchIdentity], focus)`, `unread(trunk, focus)`, `focus()`, `trunk()`, `chain()`,
-`role(BranchIdentity) -> LaneRole`), `fn made_on(&Row) -> Option<BranchIdentity>`; caller: app `view::entries`/`strips`.
-**graft-ops `branch_status`** — `Candidate`, `CandidateKind`, `Apart`, pure `choose_base`, `route`, `branch_status ->
-BranchStatus { route, pushed, merged, behind, who }`; caller: app job behind the right pane and the route. **graft-ui**
-— theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap contexts `CommitFiles`, `Incoming`, `MergeLook`, action
-ids and every bar's `HintContext` (V owns `hints.rs` for the pass). **graft-ops** — `CommitParams.include: Include` (amend
-too), `Chosen`, `Part`, `FileChoice`, `first_choice`, `looks_like_secrets` (W). **graft-git** — `merge_forecast ->
-MergeForecast { changed, clashes: Vec<ClashForecast> }`, `CommitSummary.when`, `ConflictFile::reopen`, pure `line_origins`
-(K). **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`, `FinishMergeParams.solved`,
-`finish_preview(repo, solved, stop)`; app `Picks` (+`seal`), `next_open_in_file`, `next_open` (P).
+Pass-1 signatures (exact in the specs; fitted to the scouts' code facts 2026-10-17): **graft-graph `role`** — `enum
+LaneRole { This, Under, Trunk, Other }`, `struct Route` (`new(trunk, built_on: &[BranchIdentity], focus)`, `unread(trunk,
+focus)`, `focus()`, `trunk()`, `chain()`, `role(BranchIdentity) -> LaneRole`), `fn made_on(&Row) -> Option<BranchIdentity>`
+(reads `Row.lanes[row.lane]`); caller: app `view::entries`/`strips`. **graft-ops `branch_status`** — `Candidate` (full ref
+name), `CandidateKind`, `Apart` (`usize`), `short_name`, pure `choose_base`, `route`, `branch_status -> BranchStatus {
+route, pushed, merged, behind, who }`, all reads through `count_between`/`commits_between` (stop, `RunError`); caller: app
+job behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap
+contexts `CommitFiles`, `Incoming`, `MergeLook`, action ids and every bar's `HintContext` (V owns `hints.rs` for the
+pass). **graft-ops** — `CommitParams.include: Include` (amend too), `Chosen`, `Part`, `FileChoice`, `first_choice`,
+`looks_like_secrets` (W). **graft-git** — `merge_forecast(repo, git, ours, theirs, stop) -> MergeCheck {
+Checked(MergeForecast { changed, changed_capped, clashes: Vec<ClashForecast> }), NotCheckable(reason) }`,
+`ConflictFile::reopen` (existing `NoSuchBlock`), pure `line_origins` (K); `CommitSummary` unchanged — the incoming list's
+age is the existing `author.when`. **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`,
+`FinishMergeParams.solved`, `finish_preview(repo, solved, stop)`; app `Picks` (+`seal`), `next_open_in_file`, `next_open` (P).
 Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `FoldWalk::admit`, `Fold::open_columns`,
 `merge_name` `PR <n>` (F); raster `Stroke::of(LaneRole)`, `PlainStrip.roles`, `rasterise_continuation` (X). **graft-ui**
 `lane_glyph`/`join_glyph`, `GraphEntry` cells `BranchCell`/`WhoCell`/`RowLabel`/`SecondLine` (badges, SHA, chip removed),
 `Theme::colourless` (G); `branch_pane::{BranchPaneView, PaneLine, Mark, pane_width}` (B); `CommitScreenView`,
 `SUBJECT_LIMIT = 72` (S); `MergeParts`, `IncomingList` (Mp); resolver `Mark`, `ListTail`, inline only (L); `ReviewView`,
 `LookView`, `MergeLook` (Fr). **graft app** `lane_roles`, `commit_rows`, `AppState.{route, colours_off}` (G); `StatusKey`,
-`candidates`, picker `open_on` (B); `TallRow` (X); `Draft`, `include_of` (S); `jobs::finish::look_read` (Fr).
+`candidates`, `identity_of`, picker `open_on` (B); `TallRow` (X); `Draft`, `include_of` (S); `jobs::finish::look_read` (Fr).
 
 ## Hard-to-reverse choices
 1. **What "made on" and "built on" mean.** Options: new attribution pass inside the layout engine; or lane identity for
