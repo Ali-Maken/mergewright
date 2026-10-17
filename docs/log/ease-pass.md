@@ -19,3 +19,5 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - ease-pass start 9cb03ce8. W1: 01 builder-fable ‖ 02 builder-opus.
 - builder-opus 02 (17cbbcc7, merged 4fb8f4bb): merge_forecast/MergeCheck, reopen, line_origins; 6/6 boxes (conductor wrote ticks from report — worktree based on c5235291, stale, read specs by absolute path). Gap unverified: rename/rename clash places. scout used. skills: implement · 82 tools
 - gates after 02 merge (4fb8f4bb): fmt ok, clippy 0, nextest 6455/6455, doc ok; worktree removed. reviewer 02 dispatched.
+- scout 04: message String not Vec<u8> (types.rs:57); Amend uses CommitParams (operation.rs:82); scratch index needs env on Invocation (types.rs:102), executor unconfirmed; NothingChosen new (explain.rs); u already restores HEAD+index (undo.rs:325-335). Rec builder-opus. → spec fix.
+- scout 03: resolver.next_block not next (table.rs:323); c = resolver.finish (325); esc = Global app.back (77); u = Global app.undo (78, resolver.rs:379); finish.toggle_diff on ⏎/space (362-364); preview one context; editor/preview bars from screen code not hint lists. Rec builder-opus. · scouts 03 04 → planner-fable spec fix.
