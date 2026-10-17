@@ -17,7 +17,7 @@
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: the lease box over a rejected push ===
- ◆ api  ~/code/api · main                                           201 commits
+ ◆ api  ~/code/api · main                         201 commits  1 commit to push
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
@@ -43,7 +43,7 @@
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
- ◆ api  ~/code/api · main                                           201 commits
+ ◆ api  ~/code/api · main                         201 commits  1 commit to push
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1
@@ -95,7 +95,7 @@
  y undo  ←/→ move  ⏎ choose  esc cancel
 
 === frame 4: `b`, `⏎` on an empty name ===
- ◆ api  ~/code/api · main                                           201 commits
+ ◆ api  ~/code/api · main                         201 commits  1 commit to push
 ▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
   ●    [origin/main] Commit 200                                    7y   d5ae5fd
   ●    Commit 199                                                  7y   13e6ab1

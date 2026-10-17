@@ -272,7 +272,7 @@ fn every_one_chord_row_that_acts_given_state_does() {
         }
     }
     assert_eq!(failures, Vec::<String>::new());
-    assert_eq!(checked, 10, "ten rows act given state");
+    assert_eq!(checked, 11, "eleven rows act given state");
 }
 
 /// What a place stands down (`ContextId::stands_down`, m8/09f) it answers

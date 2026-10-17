@@ -81,6 +81,7 @@ pub(super) fn took_fact(
         | Product::FoldedCounted { .. }
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
+        | Product::CommitFiles(_)
         | Product::RewritePlanned(_)
         | Product::RowTagsResolved(_)
         | Product::RewriteOpened(_)

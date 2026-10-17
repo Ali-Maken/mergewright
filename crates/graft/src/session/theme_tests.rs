@@ -204,7 +204,7 @@ fn an_overridden_bg_fills_the_commit_editor_and_never_the_graph() {
     );
 
     let mut editing = self::graph();
-    editing.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
+    editing.commit_editor = Some(Box::new(crate::update::commit_editor::CommitEditor::new()));
     let editor = frame(&session, &editing);
     let filled = editor
         .content()

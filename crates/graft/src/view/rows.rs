@@ -98,6 +98,8 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         ascii: false,
         pixel: false,
         graphics: None,
+        push: crate::update::commit_editor::push_words(state, false)
+            .map(|words| graft_term::sanitize_line(&words)),
         notice: None,
         search: modal_blanked(state, search_line),
         search_tail: modal_blanked(state, search_tail),
@@ -287,6 +289,7 @@ fn opening_view(
         ascii: false,
         pixel: false,
         graphics: None,
+        push: None,
         notice: None,
         search: modal_blanked(state, search_line),
         search_tail: modal_blanked(state, search_tail),

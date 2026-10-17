@@ -1,4 +1,4 @@
- ◆ api  ~/code/api · main                                                                         8 commits  UNCOMMITTED · 1 staged 1 unstaged
+ ◆ api  ~/code/api · main                                                       8 commits  1 commit to push  UNCOMMITTED · 1 staged 1 unstaged
                                                                                                              diff vs HEAD a65d7e4
 ▸ ◌          Uncommitted changes (1 staged, 1 unstaged)
     ■        [stash@{0}] On main: tune metrics                                              GF 3m   91dddee

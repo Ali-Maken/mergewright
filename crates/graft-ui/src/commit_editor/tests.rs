@@ -1,13 +1,19 @@
-//! What the editor's character grid says: which field has focus, which
-//! options are on, and why the button will not fire.
+//! What the commit screen's character grid says (ease-pass/08): the
+//! placeholders, the counter, the summary, the two file groups, the three
+//! bars and the secrets note — each in the mock's words.
+
+use std::sync::Arc;
 
 use graft_term::sanitize_line;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::buffer::Buffer;
 
 use super::*;
+use crate::detail::{BodyView, DiffView, FileStatusView};
 use crate::test_support::terminal as test_capabilities;
-use crate::theme::ThemeKind;
+use crate::text_input::{AreaView, FieldView};
+use crate::theme::{ThemeKind, Token};
 
 fn theme() -> Theme {
     Theme::new(
@@ -16,57 +22,107 @@ fn theme() -> Theme {
     )
 }
 
-fn view<'a>(focus: Field, refusal: Option<&str>) -> CommitEditorView<'a> {
-    CommitEditorView {
-        title: sanitize_line("COMMIT ── ⎇ main ── 2 files staged"),
-        subject: FieldView {
-            label: "Subject",
-            text: sanitize_line("teach the editor to commit"),
-            cursor: (focus == Field::Subject).then_some(26),
-            guide_at: Some(u16::try_from(SUBJECT_LIMIT).expect("50 fits in a u16")),
-            counter: Some((26, SUBJECT_LIMIT)),
-            focused: focus == Field::Subject,
-            secret: None,
-        },
-        body: AreaView {
-            label: "Body",
-            lines: vec![sanitize_line("why this change")],
-            cursor: (focus == Field::Body).then_some((0, 15)),
-            guide_at: Some(BODY_LIMIT),
-            focused: focus == Field::Body,
-        },
-        options: [
-            (Field::Amend, false),
-            (Field::SignOff, true),
-            (Field::NoVerify, false),
-            (Field::AllowEmpty, false),
-        ],
-        focus,
-        refusal: refusal.map(sanitize_line),
-        status: None,
-        busy: false,
+fn file(
+    path: &str,
+    kind: char,
+    group: FileGroup,
+    counts: (u32, u32),
+    secret: bool,
+) -> CommitFileRow {
+    CommitFileRow {
+        path: sanitize_line(path),
+        kind,
+        group,
+        added: Some(counts.0),
+        removed: Some(counts.1),
+        secret,
     }
 }
 
-fn draw(view: &CommitEditorView<'_>, columns: u16, rows: u16) -> String {
+/// The mock's four files: three going in, `.env.local` left out.
+fn files() -> Vec<CommitFileRow> {
+    vec![
+        file("src/receipt.rs", 'M', FileGroup::GoingIn, (12, 3), false),
+        file("src/refund.rs", 'A', FileGroup::GoingIn, (40, 0), false),
+        file("tests/receipt.rs", 'M', FileGroup::GoingIn, (8, 0), false),
+        file(".env.local", 'A', FileGroup::StayingOut, (1, 0), true),
+    ]
+}
+
+fn view<'a>(subject: &str, focus: CommitFocus) -> CommitScreenView<'a> {
+    let typed = subject.chars().count();
+    CommitScreenView {
+        header: CommitHeader {
+            branch: sanitize_line("wallet-release"),
+            amending: None,
+            push: Some(sanitize_line("not pushed yet")),
+            options: Vec::new(),
+        },
+        subject: FieldView {
+            label: "",
+            text: sanitize_line(subject),
+            cursor: (focus == CommitFocus::Subject).then_some(typed),
+            guide_at: None,
+            counter: Some((typed, SUBJECT_LIMIT)),
+            focused: focus == CommitFocus::Subject,
+            secret: None,
+        },
+        body: AreaView {
+            label: "",
+            lines: vec![sanitize_line("")],
+            cursor: (focus == CommitFocus::Body).then_some((0, 0)),
+            guide_at: Some(BODY_LIMIT),
+            focused: focus == CommitFocus::Body,
+        },
+        summary: Summary::Goes {
+            files: 3,
+            lines: Some((60, 3)),
+            onto: Onto::NewCommit(sanitize_line("wallet-release")),
+            out: 1,
+        },
+        files: files(),
+        cursor: 0,
+        focus,
+        diff: BodyView::Diff(Arc::new(DiffView {
+            path: sanitize_line("src/receipt.rs"),
+            old_path: None,
+            status: FileStatusView::Modified,
+            hunks: Vec::new(),
+            binary: None,
+            truncated: None,
+            untracked: false,
+        })),
+        refusal: (typed == 0).then_some(Refusal::NoMessage),
+        status: None,
+        busy: false,
+        live: None,
+    }
+}
+
+fn buffer(view: &CommitScreenView<'_>, columns: u16, rows: u16) -> Buffer {
     let theme = theme();
     let mut terminal = Terminal::new(TestBackend::new(columns, rows))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
     terminal
         .draw(|frame| {
             frame.render_widget(
-                &CommitEditorScreen {
+                &CommitScreen {
                     view,
                     theme: &theme,
+                    keys: Keymap::shipped(),
                 },
                 frame.area(),
             );
         })
         .unwrap_or_else(|why| panic!("a test backend always draws: {why}"));
-    let buffer = terminal.backend().buffer().clone();
-    (0..rows)
+    terminal.backend().buffer().clone()
+}
+
+fn grid(buffer: &Buffer) -> String {
+    let area = buffer.area;
+    (0..area.height)
         .map(|y| {
-            (0..columns)
+            (0..area.width)
                 .map(|x| buffer[(x, y)].symbol().to_owned())
                 .collect::<String>()
                 .trim_end()
@@ -76,260 +132,281 @@ fn draw(view: &CommitEditorView<'_>, columns: u16, rows: u16) -> String {
         .join("\n")
 }
 
-#[test]
-fn the_grid_says_which_field_has_focus() {
-    let subject = draw(&view(Field::Subject, None), 100, 20);
-    assert!(subject.contains("▸Subject"), "{subject}");
-    assert!(subject.contains(" Body"), "{subject}");
+fn draw(view: &CommitScreenView<'_>, columns: u16, rows: u16) -> String {
+    grid(&buffer(view, columns, rows))
+}
 
-    let body = draw(&view(Field::Body, None), 100, 20);
-    assert!(body.contains("▸Body"), "{body}");
-    assert!(body.contains(" Subject"), "{body}");
-
-    let button = draw(&view(Field::CommitButton, None), 100, 20);
-    assert!(button.contains("▸ [ Commit ]"), "{button}");
+fn last_line(drawn: &str) -> &str {
+    drawn.lines().last().unwrap_or_default()
 }
 
 #[test]
-fn the_grid_says_which_options_are_on() {
-    let drawn = draw(&view(Field::SignOff, None), 100, 20);
-    assert!(drawn.contains("[ ] amend"), "{drawn}");
-    assert!(drawn.contains("▸ [x] sign-off"), "{drawn}");
-    assert!(drawn.contains("[ ] no-verify"), "{drawn}");
-    assert!(drawn.contains("[ ] allow empty"), "{drawn}");
-}
-
-/// The options row: the one holding `[ Commit ]`.
-fn options_row(lines: &[&str]) -> usize {
-    lines
-        .iter()
-        .position(|line| line.contains("[ Commit ]"))
-        .expect("the options row is drawn")
-}
-
-/// m6-conflicts/40: at 80 columns nothing fits beside `[ Commit ]`, so the
-/// refusal has a full-width row of its own directly above the options row.
-#[test]
-fn the_refusal_has_its_own_row_above_the_options() {
-    let words = "merge begun in the shell — esc, ⇥ banner, then c finishes it";
-    let drawn = draw(&view(Field::Subject, Some(words)), 80, 24);
-    let lines: Vec<&str> = drawn.lines().collect();
-    let options = options_row(&lines);
-    assert_eq!(lines[options - 1], format!("  {words}"), "{drawn}");
-    assert!(lines[options].trim_end().ends_with("[ Commit ]"), "{drawn}");
-}
-
-/// Not refused, the layout is what it was before ticket 40: the body block
-/// keeps the row the refusal would take — 18 rows (label + 17 lines) at
-/// 80x24, from row 4 up to the options row at 22.
-#[test]
-fn without_a_refusal_the_body_keeps_the_row() {
-    let drawn = draw(&view(Field::Subject, None), 80, 24);
-    let lines: Vec<&str> = drawn.lines().collect();
-    let options = options_row(&lines);
-    let body_top = lines
-        .iter()
-        .position(|line| line.contains(" Body"))
-        .expect("the body label");
-    assert_eq!((body_top, options), (4, 22), "{drawn}");
-    assert_eq!(options - body_top, 18, "body rows: {drawn}");
-    assert_eq!(lines[options - 1], "", "a body row, nothing on it: {drawn}");
+fn an_empty_screen_shows_both_placeholders_and_the_header() {
+    let drawn = draw(&view("", CommitFocus::Subject), 120, 30);
+    assert!(drawn.contains("What did you change? (one line)"), "{drawn}");
+    assert!(
+        drawn.contains("More detail, if it needs it (optional)"),
+        "{drawn}"
+    );
+    let first = drawn.lines().next().unwrap_or_default();
+    assert_eq!(first, " committing to wallet-release · not pushed yet");
+    // Nothing typed: no counter yet.
+    assert!(!drawn.contains("0/72"), "{drawn}");
 }
 
 #[test]
-fn the_guide_and_the_counter_are_in_the_grid() {
-    let drawn = draw(&view(Field::Subject, None), 100, 20);
-    assert!(drawn.contains('┊'), "the length guides are drawn: {drawn}");
-    assert!(drawn.contains("26/50"), "{drawn}");
+fn the_counter_reads_typed_over_72_and_warns_past_it() {
+    let drawn = draw(&view("fix toc!", CommitFocus::Subject), 120, 30);
+    assert!(drawn.contains("8/72"), "{drawn}");
+    assert!(!drawn.contains("What did you change?"), "{drawn}");
+
+    let long = "x".repeat(73);
+    let buffer = buffer(&view(&long, CommitFocus::Subject), 120, 30);
+    let drawn = grid(&buffer);
+    let row = drawn
+        .lines()
+        .position(|line| line.contains("73/72"))
+        .expect("the counter is drawn");
+    let line: Vec<&str> = drawn.lines().collect();
+    let column = line[row].chars().take_while(|c| *c != '7').count();
+    let cell = &buffer[(
+        u16::try_from(column).unwrap_or(0),
+        u16::try_from(row).unwrap_or(0),
+    )];
+    assert_eq!(
+        cell.style().fg,
+        Some(crate::paint::color(theme().token(Token::Warning))),
+        "past 72 the counter is in the warning colour"
+    );
 }
 
 #[test]
-fn a_tiny_area_still_draws_the_title_and_never_panics() {
-    for rows in 1..=8 {
-        for columns in [1_u16, 8, 40, 100] {
-            let drawn = draw(&view(Field::Subject, None), columns, rows);
-            assert!(!drawn.is_empty() || columns == 0, "{columns}×{rows}");
+fn the_summary_says_what_goes_in_in_the_mocks_words() {
+    let drawn = draw(&view("fix toc", CommitFocus::Subject), 120, 30);
+    assert!(
+        drawn.contains(" 3 files go in, +60 −3, as a new commit on wallet-release. 1 stays out."),
+        "{drawn}"
+    );
+    let nothing = CommitScreenView {
+        summary: Summary::Nothing,
+        ..view("fix toc", CommitFocus::Subject)
+    };
+    let drawn = draw(&nothing, 120, 30);
+    assert!(
+        drawn.contains("Nothing goes in. Put a file in with space."),
+        "{drawn}"
+    );
+}
+
+#[test]
+fn summary_words_count_one_file_and_many() {
+    let one = Summary::Goes {
+        files: 1,
+        lines: None,
+        onto: Onto::NewCommit(sanitize_line("main")),
+        out: 2,
+    };
+    assert_eq!(
+        summary_line(&one),
+        "1 file goes in, as a new commit on main. 2 stay out."
+    );
+    let amend = Summary::Goes {
+        files: 2,
+        lines: Some((3, 1)),
+        onto: Onto::Amend,
+        out: 0,
+    };
+    assert_eq!(
+        summary_line(&amend),
+        "2 files go in, +3 −1, into the last commit."
+    );
+    assert_eq!(
+        summary_line(&Summary::MessageOnly { out: 1 }),
+        "Only the message changes. 1 stays out."
+    );
+}
+
+#[test]
+fn files_go_under_their_two_headings_with_their_marks() {
+    let drawn = draw(&view("fix toc", CommitFocus::Files), 120, 30);
+    assert!(drawn.contains(" Going in (3)"), "{drawn}");
+    assert!(drawn.contains(" Staying out (1)"), "{drawn}");
+    assert!(drawn.contains(" ▸✓ M src/receipt.rs"), "{drawn}");
+    assert!(drawn.contains("  ✓ A src/refund.rs"), "{drawn}");
+    assert!(
+        drawn.contains("  ! A .env.local  looks like a secrets file"),
+        "{drawn}"
+    );
+    assert!(drawn.contains("+12 −3"), "{drawn}");
+}
+
+#[test]
+fn an_empty_group_says_so() {
+    let mut out = view("fix toc", CommitFocus::Subject);
+    for file in &mut out.files {
+        file.group = FileGroup::StayingOut;
+    }
+    let drawn = draw(&out, 120, 30);
+    assert!(drawn.contains(" Going in (0)"), "{drawn}");
+    assert!(drawn.contains("\n   nothing yet "), "{drawn}");
+    let drawn = draw(
+        &view("fix toc", CommitFocus::Subject).clone_with_all_in(),
+        120,
+        30,
+    );
+    assert!(drawn.contains(" Staying out (0)"), "{drawn}");
+    assert!(drawn.contains("\n   nothing "), "{drawn}");
+}
+
+impl CommitScreenView<'_> {
+    fn clone_with_all_in(mut self) -> Self {
+        for file in &mut self.files {
+            file.group = FileGroup::GoingIn;
         }
+        self
     }
-    // The refusal row is budgeted always (m6-conflicts/40): 8, not 7.
-    assert!(!fits(Rect::new(0, 0, 80, 7)));
-    assert!(fits(Rect::new(0, 0, 80, 8)));
 }
 
 #[test]
-fn tab_walks_the_four_regions_and_comes_back() {
-    let mut focus = Field::Subject;
-    focus = focus.next();
-    assert_eq!(focus, Field::Body);
-    focus = focus.next();
-    assert_eq!(focus, Field::Amend, "the options region's first toggle");
-    focus = focus.next();
-    assert_eq!(focus, Field::CommitButton);
-    focus = focus.next();
-    assert_eq!(focus, Field::Subject);
+fn the_file_cursor_is_marked_away_from_the_files() {
+    let drawn = draw(&view("fix toc", CommitFocus::Subject), 120, 30);
+    assert!(drawn.contains(" ›✓ M src/receipt.rs"), "{drawn}");
+    assert!(
+        drawn.contains("│ ▸fix toc"),
+        "the subject has the focus mark: {drawn}"
+    );
 }
 
 #[test]
-fn shift_tab_walks_the_regions_backwards() {
-    assert_eq!(Field::Subject.previous(), Field::CommitButton);
-    assert_eq!(Field::CommitButton.previous(), Field::Amend);
-    assert_eq!(Field::NoVerify.previous(), Field::Body);
-    assert_eq!(Field::Body.previous(), Field::Subject);
+fn the_secrets_files_diff_starts_with_why_it_is_left_out() {
+    let mut on_secret = view("fix toc", CommitFocus::Files);
+    on_secret.cursor = 3;
+    let drawn = draw(&on_secret, 120, 30);
+    assert!(
+        drawn.contains("! left out: looks like a secrets file. space puts it in."),
+        "{drawn}"
+    );
 }
 
 #[test]
-fn arrows_move_between_the_options_and_stop_at_the_ends() {
-    assert_eq!(Field::Amend.sibling_option(false), Some(Field::Amend));
-    assert_eq!(Field::Amend.sibling_option(true), Some(Field::SignOff));
+fn the_subject_bar_is_the_mocks() {
+    let drawn = draw(&view("fix toc", CommitFocus::Subject), 120, 30);
     assert_eq!(
-        Field::AllowEmpty.sibling_option(true),
-        Some(Field::AllowEmpty)
+        last_line(&drawn),
+        " ⏎ commit 3 files  ⇥ more detail  ↑/↓ see a file's changes  esc cancel, your message is kept"
     );
-    assert_eq!(Field::Subject.sibling_option(true), None);
-}
-
-/// Major 1 of the m3/05 review: a pre-commit hook refusing a commit is an
-/// ordinary day. The reason has to be *on the editor*, because the editor is
-/// what the user is looking at when it lands.
-#[test]
-fn a_refused_commits_reason_is_drawn_on_the_editor_not_only_behind_it() {
-    let mut view = view(Field::Subject, None);
-    view.status = Some(sanitize_line("pre-commit: 3 files would be reformatted"));
-
-    let grid = draw(&view, 80, 24);
-
+    let drawn = draw(&view("", CommitFocus::Subject), 120, 30);
     assert!(
-        grid.contains("pre-commit: 3 files would be reformatted"),
-        "the hook's words are in the character grid:\n{grid}"
+        last_line(&drawn).starts_with(" ⏎ type a message first  ⇥ more detail"),
+        "{drawn}"
     );
-    assert!(
-        grid.contains("esc dismisses"),
-        "and the way to get rid of them:\n{grid}"
-    );
-}
-
-#[test]
-fn the_key_hints_come_back_once_there_is_nothing_to_report() {
-    let grid = draw(&view(Field::Subject, None), 80, 24);
-
-    assert!(grid.contains("esc cancel"), "the footer hints:\n{grid}");
-    assert!(
-        !grid.contains("esc dismisses"),
-        "and no phantom failure:\n{grid}"
-    );
-}
-
-/// The failure takes the footer row from the hints rather than a row of its
-/// own, so nothing the editor draws moves when one arrives.
-#[test]
-fn a_failure_costs_the_editor_no_rows() {
-    let quiet = draw(&view(Field::Subject, None), 80, 24);
-    let mut loud = view(Field::Subject, None);
-    loud.status = Some(sanitize_line("hook said no"));
-    let loud = draw(&loud, 80, 24);
-
-    let rows = |grid: &str| grid.lines().count();
-    assert_eq!(rows(&quiet), rows(&loud));
-    let subject_row = |grid: &str| {
-        grid.lines()
-            .position(|line| line.contains("teach the editor to commit"))
+    let no_file = CommitScreenView {
+        refusal: Some(Refusal::NoFile),
+        ..view("fix toc", CommitFocus::Subject)
     };
-    assert_eq!(
-        subject_row(&quiet),
-        subject_row(&loud),
-        "the subject did not move"
+    let drawn = draw(&no_file, 120, 30);
+    assert!(
+        last_line(&drawn).starts_with(" ⏎ put a file in first"),
+        "{drawn}"
     );
 }
 
-/// P16 / pick 14: `⏎` commits from the subject, so the footer there says so
-/// and names `⇥` as the way to the body; every other field keeps the old one.
 #[test]
-fn the_footer_follows_focus() {
-    let last_row = |focus: Field| {
-        draw(&view(focus, None), 120, 40)
-            .lines()
-            .last()
-            .map(|line| line.trim_end().to_owned())
-            .expect("a footer row")
+fn the_body_bar_is_the_mocks() {
+    let drawn = draw(&view("fix toc", CommitFocus::Body), 120, 30);
+    assert_eq!(last_line(&drawn), " esc back to the message line  ⇥ files");
+}
+
+#[test]
+fn the_files_bar_is_the_mocks() {
+    let drawn = draw(&view("fix toc", CommitFocus::Files), 120, 30);
+    assert_eq!(
+        last_line(&drawn),
+        " space leave it out  j/k move  ⏎ commit  esc back to the message"
+    );
+    let mut on_secret = view("fix toc", CommitFocus::Files);
+    on_secret.cursor = 3;
+    let drawn = draw(&on_secret, 120, 30);
+    assert!(last_line(&drawn).starts_with(" space put it in"), "{drawn}");
+}
+
+#[test]
+fn a_failure_takes_the_bar_row() {
+    let failed = CommitScreenView {
+        status: Some(sanitize_line("pre-commit hook said no")),
+        ..view("fix toc", CommitFocus::Subject)
     };
+    let drawn = draw(&failed, 120, 30);
     assert_eq!(
-        footer_subject(),
-        "⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel"
+        last_line(&drawn),
+        " pre-commit hook said no · esc dismisses"
     );
-    assert_eq!(footer(Field::Subject), footer_subject());
-    assert_eq!(last_row(Field::Subject), footer_subject());
+    assert!(drawn.contains("fix toc"), "the message is kept: {drawn}");
+}
+
+#[test]
+fn the_header_names_the_options_and_the_amend() {
+    let mut header = view("fix toc", CommitFocus::Subject);
+    header.header.options = vec!["signing off", "skipping hooks"];
+    let drawn = draw(&header, 120, 30);
     assert_eq!(
-        footer_other(),
-        "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel",
-        "today's footer, byte for byte"
+        drawn.lines().next().unwrap_or_default(),
+        " committing to wallet-release · not pushed yet · signing off · skipping hooks"
     );
-    for focus in [
-        Field::Body,
-        Field::Amend,
-        Field::SignOff,
-        Field::NoVerify,
-        Field::AllowEmpty,
-        Field::CommitButton,
-    ] {
-        assert_eq!(footer(focus), footer_other(), "{focus:?}");
-        assert_eq!(last_row(focus), footer_other(), "{focus:?}");
+    header.header.amending = Some(sanitize_line("a1b2c3d Fix the toc"));
+    let drawn = draw(&header, 120, 30);
+    assert!(
+        drawn.starts_with(" amending a1b2c3d Fix the toc · not pushed yet"),
+        "{drawn}"
+    );
+}
+
+#[test]
+fn under_100_columns_the_diff_is_hidden() {
+    let mut on_secret = view("fix toc", CommitFocus::Files);
+    on_secret.cursor = 3;
+    let drawn = draw(&on_secret, 90, 30);
+    assert!(!drawn.contains("left out:"), "{drawn}");
+    assert!(!drawn.contains('┬'), "{drawn}");
+    assert!(drawn.contains(" Going in (3)"), "{drawn}");
+    let wide = draw(&on_secret, 120, 30);
+    assert!(wide.contains('┬'), "{wide}");
+}
+
+#[test]
+fn no_option_row_is_drawn() {
+    let drawn = draw(&view("fix toc", CommitFocus::Subject), 120, 30);
+    for gone in ["[ ]", "[x]", "[ Commit ]", "sign-off", "no-verify"] {
+        assert!(!drawn.contains(gone), "{gone}: {drawn}");
     }
 }
 
-/// Review m6-look-finish-wave2 m6 (ADR-0044 §3.4 pairs the two subject
-/// fields): `⌃E` reads the same in the commit editor's footer and in the
-/// finish summary's, subject and body alike. `esc` stays apart on purpose:
-/// the editor's `esc cancel` closes it, the summary's `esc back` returns to
-/// where it was opened from (design note, "Finish summary").
 #[test]
-fn ctrl_e_reads_the_same_in_both_subject_fields() {
-    use crate::finish_summary::SummaryFocus;
-    use crate::graph_screen::{Divider, HintContext, hints_for};
-    use crate::keymap::Keymap;
-    for focus in [SummaryFocus::Subject, SummaryFocus::Body] {
-        let hints = hints_for(
-            &HintContext::Finish {
-                focus,
-                expandable: false,
-            },
-            Divider::Hidden,
-            200,
-            Keymap::shipped(),
-        );
-        let ctrl_e = hints
-            .iter()
-            .filter_map(|hint| hint.text(Keymap::shipped()))
-            .find(|text| text.starts_with("⌃E "))
-            .unwrap_or_else(|| panic!("{focus:?}: no ⌃E in {hints:?}"));
-        assert_eq!(ctrl_e, "⌃E $EDITOR", "{focus:?}");
-        assert!(footer_subject().contains(&ctrl_e), "{}", footer_subject());
-        assert!(footer_other().contains(&ctrl_e), "{}", footer_other());
+fn tab_walks_subject_body_files_and_back() {
+    assert_eq!(CommitFocus::Subject.next(), CommitFocus::Body);
+    assert_eq!(CommitFocus::Body.next(), CommitFocus::Files);
+    assert_eq!(CommitFocus::Files.next(), CommitFocus::Subject);
+    assert_eq!(CommitFocus::Subject.previous(), CommitFocus::Files);
+    assert_eq!(CommitFocus::Files.previous(), CommitFocus::Body);
+    assert_eq!(CommitFocus::Body.previous(), CommitFocus::Subject);
+}
+
+#[test]
+fn a_tiny_area_draws_without_panicking() {
+    for (columns, rows) in [(1, 1), (10, 2), (40, 5), (120, 8), (120, 9)] {
+        let _drawn: String = draw(&view("fix toc", CommitFocus::Files), columns, rows);
     }
 }
 
-/// Spell sweep (c), ticket m8/10c: the editor is a text field, so both
-/// footers spell the shipped keys — they take no keymap to follow.
+/// A bar too wide for its row drops whole parts from its end: no key's
+/// words are cut mid-word (the 90-column capture).
 #[test]
-fn the_footers_spell_the_shipped_keys() {
-    use crate::keymap::sweep::assert_shipped;
-    assert_shipped(
-        &footer_subject(),
-        &[
-            &["app.open"],
-            &["commit.next_field"],
-            &["commit.edit_outside"],
-            &["commit.sign_off"],
-            &["app.back"],
-        ],
+fn a_bar_too_wide_keeps_whole_parts() {
+    let line = "⏎ commit 3 files  ⇥ more detail  esc cancel, your message is kept";
+    assert_eq!(
+        words::whole_parts(line, 40),
+        "⏎ commit 3 files  ⇥ more detail"
     );
-    assert_shipped(
-        &footer_other(),
-        &[
-            &["commit.commit"],
-            &["commit.next_field"],
-            &["commit.edit_outside"],
-            &["commit.sign_off"],
-            &["app.back"],
-        ],
-    );
+    assert_eq!(words::whole_parts(line, 200), line);
+    assert_eq!(words::whole_parts(line, 5), "");
 }

@@ -136,9 +136,13 @@ fn ready_to_shoot(screen: &str) -> bool {
         return false;
     }
     let header = screen.lines().next().unwrap_or_default();
+    // The walk's count, before the push words when the branch is ahead
+    // (`N commits  1 commit to push`, ease-pass/08).
     let walked = header
-        .split_whitespace()
+        .split("  ")
+        .filter(|part| !part.trim().is_empty() && !part.trim_end().ends_with("to push"))
         .last()
+        .and_then(|part| part.split_whitespace().last())
         .is_some_and(|word| word == "commits" || word == "commit");
     let resolver = header.trim() == "MERGING" && screen.contains("\u{2500}\u{2500} conflict ");
     walked || resolver
@@ -486,7 +490,7 @@ impl Walk {
     /// 2: `c`, a message, `⏎`.
     fn commit(&mut self) {
         self.send(b"c");
-        self.wait("the commit editor", |s| s.has("\u{23ce} commit"));
+        self.wait("the commit editor", |s| s.has("more detail"));
         self.send(b"Note the changes");
         self.send(b"\r");
         self.wait("the commit on main", |s| {

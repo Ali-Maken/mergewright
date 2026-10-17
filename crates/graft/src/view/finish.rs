@@ -5,7 +5,7 @@
 //! and to hit-test a click, so a click and the draw agree on every row.
 
 use graft_term::{sanitize_line, sanitize_path};
-use graft_ui::commit_editor::{BODY_LIMIT, Field, SUBJECT_LIMIT};
+use graft_ui::commit_editor::{BODY_LIMIT, SUBJECT_LIMIT};
 use graft_ui::finish_summary::{ExpandedDiff, FinishView, SummaryFocus, SummaryRow, SummaryState};
 use graft_ui::graph_screen::HintContext;
 use graft_ui::text_input::{AreaView, FieldView};
@@ -113,7 +113,7 @@ fn summary_parts(state: &AppState, finish: &FinishState) -> SummaryParts {
 fn subject_view(finish: &FinishState) -> FieldView<'static> {
     let focused = finish.focus == FinishFocus::Subject;
     FieldView {
-        label: Field::Subject.label(),
+        label: "Subject",
         text: sanitize_line(finish.subject.text()),
         cursor: focused.then(|| finish.subject.cursor()),
         guide_at: u16::try_from(SUBJECT_LIMIT).ok(),
@@ -126,7 +126,7 @@ fn subject_view(finish: &FinishState) -> FieldView<'static> {
 fn body_view(finish: &FinishState) -> AreaView<'static> {
     let focused = finish.focus == FinishFocus::Body;
     AreaView {
-        label: Field::Body.label(),
+        label: "Body",
         lines: finish
             .body
             .lines()

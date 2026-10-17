@@ -228,7 +228,7 @@ The operation banner: which operation git is part-way through, and the conflict 
 ## update::clash
 A stash put back that clashed: whether one is live, what landing on it does, and its words. Not a `Stop`: it has no git state.
 ## update::commit_editor
-The commit editor's state and keys (`c`, `a`): message, template and amend, all pure.
+The commit screen's state and keys (`c`, `a`), all pure: message, files in or out, the cursor file's diff, options, the kept draft, and the landing (`LastCommit`, `u` gives the message back).
 ## update::commit_graph
 The commit-graph offer: whether to offer after a slow topological sort, and the `B`/`X` state machine.
 ## update::confirm
@@ -322,7 +322,7 @@ What `answer` hands the repository opening, the history walk starting, the worki
 ## view
 The pure `view(state)`: reads and draws, never changes anything; everything from a repository crosses into `ui` as `SanitizedText`.
 ## view::commit_editor
-The commit editor's view model for `graft_ui::commit_editor`, every repository string sanitised.
+The commit screen's view model (`commit_screen_view`) for `graft_ui::commit_editor`, every repository string sanitised.
 ## view::credential
 The credential prompt's view model; `secret` decides how the text is drawn, no character counter.
 ## view::detail

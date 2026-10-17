@@ -186,6 +186,11 @@ pub struct GraphView<'a> {
     /// How the terminal took the last graph images, while the pixel tier
     /// draws them; `None` at every other tier.
     pub graphics: Option<GraphicsStatus>,
+    /// `N commit(s) to push` while `HEAD`'s branch is ahead of its upstream
+    /// (ease-pass/08 C13), at the top line's right end; `None` when level,
+    /// with no upstream, or not read yet — never a word when there is
+    /// nothing to say.
+    pub push: Option<SanitizedText>,
     /// What the app layer did to the renderer tier the user did not ask to
     /// be told twice — the tier-drop key said what it did. Takes the
     /// footer's place under [`GraphView::problem`], above the hints.

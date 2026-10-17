@@ -154,6 +154,11 @@ pub(super) fn working_tree_read(
     next.working_tree = Some(read.status);
     next.in_progress = read.in_progress;
     next.mergetool = read.mergetool;
+    // An open commit screen follows the files that came or went
+    // (ease-pass/08 C6).
+    let mut local_jobs = next.local_jobs;
+    super::commit_editor::tree_read(next, commands, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
     // The banner cannot have focus once there is no banner: the operation
     // finished, was aborted, or was finished from another terminal. Leaving
     // the flag set would make every key vanish into a modal nothing

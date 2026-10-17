@@ -449,6 +449,9 @@ pub enum Command {
         /// `w`: read with git's `-w`, whitespace-only changes unmarked.
         ignore_whitespace: bool,
     },
+    /// Every change against `HEAD` with its line counts, for the commit
+    /// screen's rows and summary (ease-pass/08).
+    ReadCommitFiles(JobId),
 }
 
 /// One block's take, as the resolver asks for it.

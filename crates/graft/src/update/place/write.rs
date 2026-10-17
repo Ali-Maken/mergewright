@@ -74,6 +74,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::CountFolded { .. }
         | Command::ReadCommitTemplate(..)
         | Command::ReadHeadMessage(..)
+        | Command::ReadCommitFiles(..)
         | Command::PlanRewrite { .. }
         | Command::OpenRewrite { .. }
         | Command::ResolveRowTags(..)

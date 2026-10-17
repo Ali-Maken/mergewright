@@ -107,6 +107,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
         ascii: false,
         pixel: false,
         graphics: None,
+        push: None,
         notice: None,
         search: None,
         search_tail: None,

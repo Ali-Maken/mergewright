@@ -117,14 +117,27 @@ pub(super) fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> H
         };
     }
     let verbs = row_verbs(state);
-    let base = cursor
-        .badges
-        .iter()
-        .find_map(|badge| match badge.kind {
-            BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current, verbs }),
-            _ => None,
-        })
-        .unwrap_or(HintContext::PlainRow { verbs });
+    // The commit just made (C13), ahead of the row kinds: its bar names
+    // the undo that gives the edits back. Off it, the row's own bar.
+    let selected = state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)
+        .map(|row| row.commit.id);
+    let landed = crate::update::commit_editor::landed_bar(state.last_commit.as_deref(), selected)
+        .map(|row| HintContext::GraphRow { row, verbs });
+    let base = landed.unwrap_or_else(|| {
+        cursor
+            .badges
+            .iter()
+            .find_map(|badge| match badge.kind {
+                BadgeKind::Branch { current, .. } => {
+                    Some(HintContext::BranchRow { current, verbs })
+                }
+                _ => None,
+            })
+            .unwrap_or(HintContext::PlainRow { verbs })
+    });
     let base = if rewrite_offered(state) {
         HintContext::Rewritable(Box::new(base))
     } else {

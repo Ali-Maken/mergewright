@@ -82,7 +82,7 @@ fn operate(commands: &[Command]) -> Option<&Operation> {
 fn c_opens_the_editor_and_typing_lands_in_the_subject() {
     let (open, _) = update(&ready(&["a.rs", "b.rs"]), key(KeyCode::Char('c')));
     let editor = open.commit_editor.as_ref().expect("`c` opens the editor");
-    assert_eq!(editor.focus, Field::Subject);
+    assert_eq!(editor.focus, CommitFocus::Subject);
 
     let typed = typed(&open, "add a thing");
     let editor = typed.commit_editor.as_ref().expect("still open");
@@ -91,13 +91,20 @@ fn c_opens_the_editor_and_typing_lands_in_the_subject() {
 }
 
 #[test]
-fn the_title_counts_the_staged_files() {
+fn the_summary_counts_the_files_going_in() {
     let (open, _) = update(&ready(&["a.rs", "b.rs"]), key(KeyCode::Char('c')));
-    let view = crate::view::commit_editor_view(&open).expect("the editor is open");
+    let view = crate::view::commit_screen_view(&open).expect("the editor is open");
     assert!(
-        view.title.as_str().contains("2 files staged"),
-        "{}",
-        view.title
+        matches!(
+            view.summary,
+            graft_ui::commit_editor::Summary::Goes {
+                files: 2,
+                out: 0,
+                ..
+            }
+        ),
+        "{:?}",
+        view.summary
     );
 }
 
@@ -107,7 +114,7 @@ fn the_title_counts_the_staged_files() {
 fn enter_matches_ctrl_enter(open: &AppState) -> (AppState, Vec<Command>) {
     assert_eq!(
         open.commit_editor.as_ref().expect("open").focus,
-        Field::Subject,
+        CommitFocus::Subject,
         "the press under test is from the subject"
     );
     let (entered, commands) = update(open, key(KeyCode::Enter));
@@ -184,8 +191,18 @@ fn a_refused_enter_sends_nothing() {
     });
     merging.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let rows: Vec<(&str, AppState, &str, &str)> = vec![
-        ("nothing staged", ready(&[]), "subject", "nothing staged"),
-        ("empty subject", ready(&["a.rs"]), "", "subject empty"),
+        (
+            "nothing staged",
+            ready(&[]),
+            "subject",
+            "put a file in first",
+        ),
+        (
+            "empty subject",
+            ready(&["a.rs"]),
+            "",
+            "type a message first",
+        ),
         (
             "a merge in progress",
             merging.clone(),
@@ -205,19 +222,12 @@ fn a_refused_enter_sends_nothing() {
         assert!(after.operating.is_none(), "{row}");
         let before = open.commit_editor.as_ref().expect("open");
         let editor = after.commit_editor.as_ref().expect("still open");
-        assert_eq!(editor.focus, Field::Subject, "{row}: focus stays");
+        assert_eq!(editor.focus, CommitFocus::Subject, "{row}: focus stays");
         assert_eq!(editor.subject.text(), before.subject.text(), "{row}");
         assert_eq!(editor.body.text(), before.body.text(), "{row}");
         let (controlled, _) = update(&open, control(KeyCode::Enter));
-        let refusal = |state: &AppState| {
-            crate::view::commit_editor_view(state)
-                .expect("open")
-                .refusal
-                .as_deref()
-                .map(str::to_owned)
-        };
-        let shown = refusal(&after).expect("a refusal row");
-        assert_eq!(Some(shown.clone()), refusal(&controlled), "{row}");
+        let shown = shown_refusal(&after).expect("a refusal row");
+        assert_eq!(Some(shown.clone()), shown_refusal(&controlled), "{row}");
         assert!(shown.contains(words), "{row}: {shown}");
     }
 }
@@ -233,7 +243,7 @@ fn enter_while_a_job_runs_is_eaten_like_ctrl_enter() {
     assert_eq!(after.operating, Some(id));
     let before = running.commit_editor.as_ref().expect("open");
     let editor = after.commit_editor.as_ref().expect("still open");
-    assert_eq!(editor.focus, Field::Subject);
+    assert_eq!(editor.focus, CommitFocus::Subject);
     assert_eq!(editor.subject.text(), before.subject.text());
     assert_eq!(editor.body.text(), before.body.text());
     let (_, commands) = update(&after, key(KeyCode::Escape));
@@ -267,22 +277,20 @@ fn a_pasted_newline_does_not_commit() {
     assert!(paste(&mut pasted, "fix: x\n"));
     assert!(pasted.operating.is_none(), "a paste writes nothing");
     let editor = pasted.commit_editor.as_ref().expect("still open");
-    assert_eq!(editor.focus, Field::Subject);
+    assert_eq!(editor.focus, CommitFocus::Subject);
     assert_eq!(editor.subject.text(), "fix: x");
 }
 
 #[test]
-fn down_and_tab_still_move_to_the_body() {
+fn tab_still_moves_to_the_body() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
-    for leave in [KeyCode::Down, KeyCode::Tab] {
-        let (moved, commands) = update(&open, key(leave));
-        assert!(commands.is_empty(), "{leave:?}: {commands:?}");
-        let editor = moved.commit_editor.as_ref().expect("still open");
-        assert_eq!(editor.focus, Field::Body, "{leave:?}");
-        assert_eq!(editor.subject.text(), "subject", "{leave:?}");
-        assert!(editor.body.is_empty(), "{leave:?}");
-    }
+    let (moved, commands) = update(&open, key(KeyCode::Tab));
+    assert!(commands.is_empty(), "{commands:?}");
+    let editor = moved.commit_editor.as_ref().expect("still open");
+    assert_eq!(editor.focus, CommitFocus::Body);
+    assert_eq!(editor.subject.text(), "subject");
+    assert!(editor.body.is_empty());
 }
 
 #[test]
@@ -295,20 +303,15 @@ fn enter_in_the_body_is_a_newline() {
     assert!(commands.is_empty(), "{commands:?}");
     let open = typed(&open, "two");
     let editor = open.commit_editor.as_ref().expect("still open");
-    assert_eq!(editor.focus, Field::Body);
+    assert_eq!(editor.focus, CommitFocus::Body);
     assert_eq!(editor.body.text(), "one\ntwo");
     assert!(open.operating.is_none());
 }
 
 #[test]
-fn tab_walks_subject_body_options_button_and_back() {
+fn tab_walks_subject_body_files_and_back() {
     let (mut state, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
-    let expected = [
-        Field::Body,
-        Field::Amend,
-        Field::CommitButton,
-        Field::Subject,
-    ];
+    let expected = [CommitFocus::Body, CommitFocus::Files, CommitFocus::Subject];
     for want in expected {
         let (next, _) = update(&state, key(KeyCode::Tab));
         state = next;
@@ -320,21 +323,19 @@ fn tab_walks_subject_body_options_button_and_back() {
 }
 
 #[test]
-fn enter_on_the_button_commits_the_subject_and_the_body() {
+fn enter_from_the_files_commits_the_subject_and_the_body() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
-    let (open, _) = update(&open, key(KeyCode::Down)); // to the body
+    let (open, _) = update(&open, key(KeyCode::Tab)); // to the body
     let open = typed(&open, "body");
-    // Tab from the body: options, then the button.
-    let (open, _) = update(&open, key(KeyCode::Tab));
-    let (open, _) = update(&open, key(KeyCode::Tab));
+    let (open, _) = update(&open, key(KeyCode::Tab)); // to the files
     assert_eq!(
         open.commit_editor.as_ref().expect("still open").focus,
-        Field::CommitButton
+        CommitFocus::Files
     );
     let (fired, commands) = update(&open, key(KeyCode::Enter));
     let Some(Operation::Commit(params)) = operate(&commands) else {
-        panic!("the button commits: {commands:?}");
+        panic!("⏎ from the files commits: {commands:?}");
     };
     assert_eq!(params.message, "subject\n\nbody\n");
     assert!(!params.sign_off);
@@ -372,65 +373,73 @@ fn ctrl_shift_c_starts_a_co_author_trailer_and_puts_the_cursor_after_it() {
     let (trailer, _) = update(&open, control(KeyCode::Char('C')));
     let editor = trailer.commit_editor.as_ref().expect("open");
     assert_eq!(editor.body.text(), "Co-authored-by: ");
-    assert_eq!(editor.focus, Field::Body);
+    assert_eq!(editor.focus, CommitFocus::Body);
     assert_eq!(editor.body.cursor(), (0, "Co-authored-by: ".len()));
 }
 
 #[test]
-fn nothing_staged_refuses_and_the_button_does_nothing() {
+fn nothing_going_in_refuses_and_enter_does_nothing() {
     let (open, _) = update(&ready(&[]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
-    let view = crate::view::commit_editor_view(&open).expect("open");
-    assert_eq!(
-        view.refusal.as_deref().map(str::to_owned),
-        Some("nothing staged".to_owned())
-    );
+    assert_eq!(shown_refusal(&open).as_deref(), Some("put a file in first"));
     let (after, commands) = update(&open, control(KeyCode::Enter));
     assert!(operate(&commands).is_none(), "{commands:?}");
     assert!(after.operating.is_none());
     assert!(after.commit_editor.is_some(), "and the editor stays open");
 }
 
+/// What the bar says `⏎` would not do, or the live operation's words in
+/// its place (C9, m6-conflicts/48).
 fn shown_refusal(state: &AppState) -> Option<String> {
-    crate::view::commit_editor_view(state)
-        .expect("open")
-        .refusal
-        .as_deref()
-        .map(str::to_owned)
+    let view = crate::view::commit_screen_view(state).expect("open");
+    view.live
+        .map(|words| words.as_str().to_owned())
+        .or_else(|| {
+            view.refusal.map(|refusal| {
+                match refusal {
+                    graft_ui::commit_editor::Refusal::NoMessage => "type a message first",
+                    graft_ui::commit_editor::Refusal::NoFile => "put a file in first",
+                }
+                .to_owned()
+            })
+        })
 }
 
-/// m7-power-tools/15 (:776): an empty subject is where every commit starts,
-/// not a mistake — nothing is said until `Commit` is pressed.
+/// C9: before a word is typed the bar's `⏎` slot already says why it
+/// would do nothing — a key's label, not a failure.
 #[test]
-fn a_fresh_commit_editor_shows_no_refusal() {
+fn a_fresh_commit_editor_says_type_a_message_first() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
-    assert_eq!(shown_refusal(&open), None);
+    assert_eq!(
+        shown_refusal(&open).as_deref(),
+        Some("type a message first")
+    );
+    assert_eq!(open.status, Status::Ready, "nothing on the status row");
 }
 
 #[test]
-fn commit_with_empty_subject_says_subject_empty() {
+fn commit_with_empty_subject_commits_nothing() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     for press in [key(KeyCode::Enter), control(KeyCode::Enter)] {
         let (after, commands) = update(&open, press);
         assert!(operate(&commands).is_none(), "{commands:?}");
-        assert_eq!(shown_refusal(&after), Some("subject empty".to_owned()));
+        assert_eq!(
+            shown_refusal(&after).as_deref(),
+            Some("type a message first")
+        );
     }
-    // The button too.
-    let mut on_button = open.clone();
-    on_button.commit_editor.as_mut().expect("open").focus = Field::CommitButton;
-    let (after, _) = update(&on_button, key(KeyCode::Enter));
-    assert_eq!(shown_refusal(&after), Some("subject empty".to_owned()));
 }
 
 #[test]
-fn typing_clears_subject_empty() {
+fn typing_clears_the_refusal() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
-    let (refused, _) = update(&open, key(KeyCode::Enter));
-    let (typed_one, _) = update(&refused, key(KeyCode::Char('x')));
+    let (typed_one, _) = update(&open, key(KeyCode::Char('x')));
     assert_eq!(shown_refusal(&typed_one), None);
-    // Deleting it back to empty is an edit too: still nothing said.
     let (erased, _) = update(&typed_one, key(KeyCode::Backspace));
-    assert_eq!(shown_refusal(&erased), None);
+    assert_eq!(
+        shown_refusal(&erased).as_deref(),
+        Some("type a message first")
+    );
 }
 
 /// The editor opened with `c` over `state`'s live operation. Since
@@ -463,8 +472,7 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
     state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let open = opened_under(&state);
     let open = typed(&open, "subject");
-    let view = crate::view::commit_editor_view(&open).expect("open");
-    let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
+    let refusal = shown_refusal(&open).expect("a refusal");
     assert!(refusal.contains("merge in progress"), "{refusal}");
     // m5-history-and-ghost-preview/15, piece 6: the refusal names the
     // banner's keys, not only the shell command ADR-0034's interim showed.
@@ -493,8 +501,7 @@ fn shell_refusal(kind: graft_git::state::InProgress) -> String {
     assert!(state.live_entries.is_empty(), "nothing of Graft's is live");
     let open = opened_under(&state);
     let open = typed(&open, "subject");
-    let view = crate::view::commit_editor_view(&open).expect("open");
-    let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
+    let refusal = shown_refusal(&open).expect("a refusal");
     let (_, commands) = update(&open, control(KeyCode::Enter));
     assert!(operate(&commands).is_none(), "{commands:?}");
     refusal
@@ -523,30 +530,29 @@ fn a_merge_in_progress_points_at_c() {
 #[test]
 fn a_graft_begun_operation_names_the_banner() {
     use graft_git::state::InProgress;
-    let editor = CommitEditor::new();
     for kind in [
         InProgress::Merge,
         InProgress::Rebase,
         InProgress::CherryPick,
         InProgress::Revert,
     ] {
-        let refusal = editor
-            .refusal(
-                None,
-                Some((kind, Begun::InGraft)),
-                crate::update::banner::BannerWay::tabs(1),
-            )
-            .expect("a refusal");
+        let refusal = operation_refusal(
+            (kind, Begun::InGraft),
+            crate::update::banner::BannerWay::tabs(1),
+            graft_ui::keymap::Keymap::shipped(),
+        )
+        .editor_words();
         assert!(refusal.contains("esc, ⇥ banner, then "), "{refusal}");
         assert!(!refusal.contains("esc, then c"), "{refusal}");
     }
     assert_eq!(
-        editor.refusal(
-            None,
-            Some((InProgress::Merge, Begun::InGraft)),
-            crate::update::banner::BannerWay::tabs(1)
-        ),
-        Some("merge in progress — esc, ⇥ banner, then c finish  a abort".to_owned())
+        operation_refusal(
+            (InProgress::Merge, Begun::InGraft),
+            crate::update::banner::BannerWay::tabs(1),
+            graft_ui::keymap::Keymap::shipped(),
+        )
+        .editor_words(),
+        "merge in progress — esc, ⇥ banner, then c finish  a abort"
     );
 }
 
@@ -583,31 +589,21 @@ fn a_bisect_in_progress_still_names_the_shell_command() {
     });
     let open = opened_under(&state);
     let open = typed(&open, "subject");
-    let view = crate::view::commit_editor_view(&open).expect("open");
-    let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
+    let refusal = shown_refusal(&open).expect("a refusal");
     assert!(refusal.contains("git bisect good/bad"), "{refusal}");
     assert!(!refusal.contains("c continue"), "{refusal}");
 }
 
 #[test]
-fn allow_empty_lets_a_commit_through_with_nothing_staged() {
+fn allow_empty_lets_a_commit_through_with_nothing_going_in() {
     let (open, _) = update(&ready(&[]), key(KeyCode::Char('c')));
-    let open = typed(&open, "subject");
-    // Tab to the options, then right three times to `allow empty`.
-    let (open, _) = update(&open, key(KeyCode::Tab));
-    let (open, _) = update(&open, key(KeyCode::Tab));
-    let mut open = open;
-    for _ in 0..3 {
-        let (next, _) = update(&open, key(KeyCode::Right));
-        open = next;
-    }
-    assert_eq!(
-        open.commit_editor.as_ref().expect("open").focus,
-        Field::AllowEmpty
-    );
-    let (toggled, _) = update(&open, key(KeyCode::Char(' ')));
-    assert!(toggled.commit_editor.as_ref().expect("open").allow_empty);
-    let (_, commands) = update(&toggled, control(KeyCode::Enter));
+    let mut open = typed(&open, "subject");
+    assert!(toggle_from_palette(
+        &mut open,
+        graft_ui::keymap::ActionId("commit.toggle_allow_empty")
+    ));
+    assert!(open.commit_editor.as_ref().expect("open").allow_empty);
+    let (_, commands) = update(&open, control(KeyCode::Enter));
     let Some(Operation::Commit(params)) = operate(&commands) else {
         panic!("{commands:?}");
     };
@@ -723,8 +719,6 @@ fn esc_keeps_a_draft_and_the_next_c_picks_it_back_up() {
     let editor = reopened.commit_editor.as_ref().expect("reopened");
     assert_eq!(editor.subject.text(), "half a thought");
     assert!(editor.from_draft);
-    let view = crate::view::commit_editor_view(&reopened).expect("open");
-    assert!(view.title.as_str().contains("draft kept"), "{}", view.title);
 }
 
 #[test]
@@ -832,17 +826,14 @@ fn while_the_commit_runs_only_esc_is_answered() {
 }
 
 #[test]
-fn the_title_says_committing_while_the_write_runs() {
+fn the_bar_says_committing_while_the_write_runs() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
     let (running, _) = update(&open, control(KeyCode::Enter));
-    let view = crate::view::commit_editor_view(&running).expect("open");
+    let view = crate::view::commit_screen_view(&running).expect("open");
     assert!(view.busy);
-    assert!(
-        view.title.as_str().contains("committing…"),
-        "{}",
-        view.title
-    );
+    let bar = graft_ui::commit_editor::bar(&view, graft_ui::keymap::Keymap::shipped());
+    assert!(bar.contains("committing…"), "{bar}");
 }
 
 /// `Esc` while `$EDITOR` is open means the draft is the user's again: what
@@ -995,7 +986,7 @@ fn a_refused_commits_reason_reaches_the_editors_own_view() {
         ),
     );
 
-    let view = crate::view::commit_editor_view(&after).expect("the editor is still open");
+    let view = crate::view::commit_screen_view(&after).expect("the editor is still open");
     let said = view
         .status
         .expect("the reason is on the editor")
@@ -1035,16 +1026,13 @@ fn esc_dismisses_the_reason_first_and_closes_the_editor_second() {
     assert!(closed.commit_editor.is_none(), "the second Esc closes it");
 }
 
-/// m6-conflicts/40: at 80 columns the refusal's own row has 78 columns after
-/// its 2-column indent, and every arm of `refusal` fits in them whole.
+/// m6-conflicts/40: at 80 columns the bar's row has 79 columns after its
+/// 1-column indent, and every live operation's words fit in them whole.
 #[test]
 fn every_refusal_fits_80_columns() {
     use graft_git::state::InProgress;
     use unicode_width::UnicodeWidthStr;
 
-    let editor = CommitEditor::new();
-    let empty = WorkingTreeStatus::default();
-    let with_staged = staged(&["a.rs"]);
     let mut arms: Vec<String> = Vec::new();
     for kind in [
         InProgress::Merge,
@@ -1054,25 +1042,17 @@ fn every_refusal_fits_80_columns() {
         InProgress::Bisect,
     ] {
         for begun in [Begun::InGraft, Begun::InShell] {
-            arms.extend(editor.refusal(
-                Some(&empty),
-                Some((kind, begun)),
-                crate::update::banner::BannerWay::tabs(1),
-            ));
+            arms.push(
+                operation_refusal(
+                    (kind, begun),
+                    crate::update::banner::BannerWay::tabs(1),
+                    graft_ui::keymap::Keymap::shipped(),
+                )
+                .editor_words(),
+            );
         }
     }
-    arms.extend(editor.refusal(None, None, crate::update::banner::BannerWay::tabs(1))); // working tree not read yet
-    arms.extend(editor.refusal(
-        Some(&empty),
-        None,
-        crate::update::banner::BannerWay::tabs(1),
-    )); // nothing staged
-    arms.extend(editor.refusal(
-        Some(&with_staged),
-        None,
-        crate::update::banner::BannerWay::tabs(1),
-    )); // subject empty
-    assert_eq!(arms.len(), 13, "every arm answered: {arms:#?}");
+    assert_eq!(arms.len(), 10, "every arm answered: {arms:#?}");
     let widest = arms.iter().max_by_key(|words| words.width()).expect("arms");
     for words in &arms {
         assert!(
@@ -1174,15 +1154,7 @@ const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
 /// for byte (written before `OperationRefusal`, passing unchanged after).
 #[test]
 fn the_editor_words_are_unchanged() {
-    let editor = CommitEditor::new();
     for (live, words, _, _) in EVERY_LIVE_OPERATION {
-        assert_eq!(
-            editor
-                .refusal(None, Some(live), crate::update::banner::BannerWay::tabs(1))
-                .as_deref(),
-            Some(words),
-            "{live:?}"
-        );
         assert_eq!(
             operation_refusal(
                 live,

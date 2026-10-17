@@ -50,7 +50,7 @@ fn typing_u_into_the_stash_message_writes_letters_not_an_undo() {
 #[test]
 fn typing_u_into_the_commit_subject_writes_letters_not_an_undo() {
     let state = AppState {
-        commit_editor: Some(commit_editor::CommitEditor::new()),
+        commit_editor: Some(Box::new(commit_editor::CommitEditor::new())),
         ..AppState::default()
     };
     let state = press_undo_keys(&state);
@@ -62,9 +62,9 @@ fn typing_u_into_the_commit_subject_writes_letters_not_an_undo() {
 #[test]
 fn typing_u_into_the_commit_body_writes_letters_not_an_undo() {
     let mut editor = commit_editor::CommitEditor::new();
-    editor.focus = graft_ui::commit_editor::Field::Body;
+    editor.focus = graft_ui::commit_editor::CommitFocus::Body;
     let state = AppState {
-        commit_editor: Some(editor),
+        commit_editor: Some(Box::new(editor)),
         ..AppState::default()
     };
     let state = press_undo_keys(&state);
@@ -103,7 +103,7 @@ fn every_text_field_the_app_has_is_named_by_text_field_open() {
     assert!(searching.text_field_open(), "the search prompt");
 
     let committing = AppState {
-        commit_editor: Some(commit_editor::CommitEditor::new()),
+        commit_editor: Some(Box::new(commit_editor::CommitEditor::new())),
         ..AppState::default()
     };
     assert!(committing.text_field_open(), "the commit editor");

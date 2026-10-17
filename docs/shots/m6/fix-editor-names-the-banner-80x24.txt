@@ -5,36 +5,36 @@
 # pane with `c` (m6-conflicts/40).
 #
 # Judge by eye:
-# - The row directly above the options row reads, from column 3, exactly
-#   `merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it` — whole at 80 columns.
-# - The options row ends at `[ Commit ]`, nothing after it.
-# - `git commit` and `…` appear nowhere in the editor's rows.
-# - The title row reads `COMMIT ── ⎇ main ── 2 files staged`.
-# - The reason and the button are dimmed; colour is unverified (CLAUDE.md
+# - The bottom row (the commit screen's bar, ease-pass/08) reads, from
+#   column 2, exactly `merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it` — whole at 80 columns.
+# - `git commit` and `…` appear nowhere on the screen.
+# - The top row reads `committing to main · not pushed yet`; both files
+#   are under `Going in`.
+# - The words are in the warning colour; colour is unverified (CLAUDE.md
 #   rule 5), so the words carry it here.
 #
 === 80x24 ===
-COMMIT ── ⎇ main ── 2 files staged
-
-▸Subject                                                   ┊                0/50
-
- Body
-
-
-
-
-
-
-
-
-
-
-
+ committing to main · not pushed yet
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ▸What did you change? (one line)                                             │
+│  More detail, if it needs it (optional)                                      │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+ 2 files go in, +2 −2, as a new commit on main.
+────────────────────────────────────────────────────────────────────────────────
+ Going in (2)
+ ›✓ M notes.md                                                            +1 −1
+  ✓ M shared.rs                                                           +1 −1
+ Staying out (0)
+   nothing
 
 
 
 
 
-  merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+
+
+
+
+ merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it

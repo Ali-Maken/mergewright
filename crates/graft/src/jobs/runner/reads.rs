@@ -270,6 +270,22 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads every change's line counts for the commit screen, under an id
+    /// `update` chose (ease-pass/08).
+    pub(super) fn read_commit_files(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadCommitFiles), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::CommitFiles(crate::jobs::kinds::read_commit_files(
+                    &repos, cancel,
+                )))
+            })
+        });
+    }
+
     /// Plans `a` into an older commit, or absorb, under an id `update`
     /// chose (m7-power-tools/09). A read: no `AppState::operating`.
     pub(super) fn plan_rewrite(

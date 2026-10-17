@@ -67,7 +67,7 @@ MERGING
 │ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │
 │ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
-│ ▸ notes.md   combined                                                                                           Subject Merge branch 'feature'                            ┊       22/50 │
+│ ▸ notes.md   combined                                                                                           Subject Merge branch 'feature'                                    22/72 │
 │   shared.rs  combined                                                                                           Body                                                                    │
 │ COMBINED BY GIT ON ITS OWN · none                                                                                                                                                       │
 │                                                                                                                                                                                         │

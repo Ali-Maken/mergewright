@@ -5,7 +5,7 @@ One line per public item. Update when a public item changes.
 
 ## lib.rs
 - `blame` (mod) — the blame place's picture; pure draw.
-- `commit_editor` (mod) — the commit/amend editor screen.
+- `commit_editor` (mod) — the commit screen: message, file list, changes.
 - `confirm` (mod) — the confirm box with N choices.
 - `conflict_resolver` (mod) — the conflict resolver screen: document with cards, file list, three panes.
 - `context_menu` (mod) — the `.`/right-click popup of row actions.
@@ -225,20 +225,24 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 
 
 ## commit_editor
-- `SUBJECT_LIMIT` (const) — 50, where the subject's guide stands and past which its counter turns `Warning`.
+- `SUBJECT_LIMIT` (const) — 72, where the subject's guide stands and past which its counter turns `Warning`.
 - `BODY_LIMIT` (const) — 72, the body's guide column.
-- `Field` (enum) — what has focus: `Subject`, `Body`, `Amend`, `SignOff`, `NoVerify`, `AllowEmpty`, `CommitButton`. `OPTIONS` (const) lists the four checkboxes in row order.
-- `OPTIONS` (const) — The four option toggles, in the order the row draws them.
-- `is_option` (fn) — Is this one of the option toggles?
-- `label` (fn) — The option's label, as the row draws it and as a `--flag` would read.
-- `next` (fn) — The next region `Tab` moves to: subject → body → options → button → subject.
-- `previous` (fn) — The previous region, for `Shift+Tab`.
-- `sibling_option` (fn) — The option one step left or right of this one, staying inside the row.
-- `CommitEditorView` (struct) — `title`, `subject`/`body` (`FieldView`/`AreaView`), `options` (four toggles, on or off), `focus`, `refusal` (why `[ Commit ]` would do nothing), `status` (why the last write failed), `busy`.
-- `CommitEditorScreen` (struct) — `view`, `theme`; `Widget`: title row, subject row, body block, the refusal row (only when refused), the options row and the footer, drawn into the graph's area with the detail pane left alone.
-- `footer_subject` (fn) — The key hints under the editor while the subject has focus: `⏎` commits from there and `⇥` is the way to the body (m6 usability P16, pick 14).
-- `footer_other` (fn) — The key hints under the editor anywhere else (design note, "Commit editor"): in the body `⏎` is a newline, so only `⌃⏎` and the button commit.
-- `fits` (fn) — Whether an area is tall enough for a body line (`CHROME_ROWS` = 6 plus `REFUSAL_ROWS` = 1, budgeted always). Below it the editor still draws title, subject, options and footer; the body is off screen.
+- `FILES_WIDTH` (const) — 44, the file list's width beside the changes.
+- `DIFF_COLUMNS` (const) — 100; under it the changes pane is hidden and the files take the width.
+- `CommitFocus` (enum) — what has focus: `Subject`, `Body`, `Files`.
+- `next` (fn) — the next part `⇥` moves to: subject → body → files → subject.
+- `previous` (fn) — the previous part, for `⇧⇥`.
+- `types` (fn) — whether the focus is a text field (`?` is typed there, not the palette).
+- `FileGroup` (enum) — `GoingIn` or `StayingOut`.
+- `CommitFileRow` (struct) — one file row: path, kind letter, group, line counts, secrets mark.
+- `Onto` (enum) — where the commit goes: a new commit on a branch, or an amend of a commit.
+- `Summary` (enum) — the sentence above the files: what goes in (files, lines, onto, how many stay out) or nothing.
+- `Refusal` (enum) — why `⏎` would do nothing: `NoMessage`, `NoFile`.
+- `CommitHeader` (struct) — the top row: committing to / amending, the push state, the options that are on.
+- `CommitScreenView` (struct) — everything the screen draws: header, subject/body, summary, files and cursor, the cursor file's changes, focus, refusal, status, busy, and a live operation's words.
+- `CommitScreen` (struct) — `view`, `theme`, `keys`; `Widget`: the whole-area commit screen (header, message box, summary, files | changes, bar).
+- `bar` (fn) — the bar's words for the focused part, keys spelled from the keymap.
+- `summary_line` (fn) — the sentence above the files.
 
 ## confirm
 - `ConfirmView` (struct) — Everything the confirm box draws: what is about to happen, in plain words, and the exact command that will run.

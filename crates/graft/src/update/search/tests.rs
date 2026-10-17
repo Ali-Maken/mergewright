@@ -59,7 +59,7 @@ fn every_modal() -> Vec<Modal> {
 /// The modals that hold a text field: `/` there is a character.
 fn text_fields() -> Vec<Modal> {
     let mut editor = on_graph();
-    editor.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
+    editor.commit_editor = Some(Box::new(crate::update::commit_editor::CommitEditor::new()));
 
     let mut stash = on_graph();
     stash.stash.shown = true;

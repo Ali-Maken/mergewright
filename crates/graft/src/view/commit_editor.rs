@@ -1,109 +1,180 @@
-//! Turning [`AppState`]'s commit editor into the view model
-//! [`graft_ui::commit_editor::CommitEditorScreen`] draws
-//! (m3-working-tree-undo-and-stash/05).
+//! Turning [`AppState`]'s commit screen into the view model
+//! [`graft_ui::commit_editor::CommitScreen`] draws (ease-pass/08, the
+//! commit mock).
 //!
-//! Every string that came out of the repository — the branch name, the short
-//! SHA, the refusal — goes through `graft_term::sanitize_line` here, because
-//! the widget takes [`SanitizedText`] and nothing else.
+//! Every string that came out of the repository — the branch name, the
+//! paths, the short SHA, the failure — goes through
+//! `graft_term::sanitize_line` here, because the widget takes
+//! [`SanitizedText`] and nothing else.
 
 use graft_term::{SanitizedText, sanitize_line};
-use graft_ui::commit_editor::{BODY_LIMIT, CommitEditorView, Field, SUBJECT_LIMIT};
+use graft_ui::commit_editor::{
+    BODY_LIMIT, CommitFileRow, CommitFocus, CommitHeader, CommitScreenView, FileGroup, Onto,
+    SUBJECT_LIMIT, Summary,
+};
+use graft_ui::detail::BodyView;
 use graft_ui::text_input::{AreaView, FieldView};
 
 use crate::update::AppState;
-use crate::update::commit_editor::CommitEditor;
+use crate::update::commit_editor::{CommitEditor, CommitOption, kind_of, push_words};
 
-/// The editor as it draws now, or `None` when none is open.
+/// The screen as it draws now, or `None` when none is open.
 #[must_use]
-pub fn commit_editor_view(state: &AppState) -> Option<CommitEditorView<'static>> {
+pub fn commit_screen_view(state: &AppState) -> Option<CommitScreenView<'static>> {
     let editor = state.commit_editor.as_ref()?;
-    let busy = state.operating.is_some();
-    let refusal = editor.shown_refusal(
-        state.working_tree.as_deref(),
-        crate::update::commit_editor::live_operation(state),
-        crate::update::commit_editor::refusal_way(state),
-    );
-    Some(CommitEditorView {
-        title: title(state, editor, busy),
+    let order = crate::update::commit_editor::display_order(&editor.files);
+    let files: Vec<CommitFileRow> = order.iter().map(|at| row(state, editor, *at)).collect();
+    let cursor = order
+        .iter()
+        .position(|at| *at == editor.file_cursor)
+        .unwrap_or(0);
+    Some(CommitScreenView {
+        header: header(state, editor),
         subject: FieldView {
-            label: Field::Subject.label(),
+            label: "",
             text: sanitize_line(editor.subject.text()),
-            cursor: (editor.focus == Field::Subject).then(|| editor.subject.cursor()),
-            guide_at: u16::try_from(SUBJECT_LIMIT).ok(),
+            cursor: (editor.focus == CommitFocus::Subject).then(|| editor.subject.cursor()),
+            guide_at: None,
             counter: Some((editor.subject.len(), SUBJECT_LIMIT)),
-            focused: editor.focus == Field::Subject,
+            focused: editor.focus == CommitFocus::Subject,
             secret: None,
         },
         body: AreaView {
-            label: Field::Body.label(),
+            label: "",
             lines: editor
                 .body
                 .lines()
                 .iter()
                 .map(|line| sanitize_line(line))
                 .collect(),
-            cursor: (editor.focus == Field::Body).then(|| editor.body.cursor()),
+            cursor: (editor.focus == CommitFocus::Body).then(|| editor.body.cursor()),
             guide_at: Some(BODY_LIMIT),
-            focused: editor.focus == Field::Body,
+            focused: editor.focus == CommitFocus::Body,
         },
-        options: editor.options(),
+        summary: summary(state, editor, &files),
+        files,
+        cursor,
         focus: editor.focus,
-        refusal: refusal.as_deref().map(sanitize_line),
-        // A hook's refusal is the commonest failure here and the editor is
-        // what is on screen when it lands, so the editor draws it. It stays
-        // until `Esc` dismisses it (m3/05 review, Major 1). `shown_status`
-        // like every status reader (m6-conflicts/78).
+        diff: diff(editor),
+        refusal: editor.refusal(),
+        // A hook's refusal is the commonest failure here and the screen is
+        // what is up when it lands, so the screen draws it, until `esc`
+        // dismisses it (m3/05 review, Major 1). `shown_status` like every
+        // status reader (m6-conflicts/78).
         status: super::status::problem(state.shown_status()),
-        busy,
+        busy: state.operating.is_some(),
+        live: crate::update::commit_editor::live_words(state).map(|words| sanitize_line(&words)),
     })
 }
 
-/// `COMMIT ── ⎇ main ── 2 files staged`, `AMEND a1b2c3d ── …`, or
-/// `committing…` while the write runs (design note, "Commit editor").
-///
-/// The refusal is deliberately *not* here: the spec puts it beside the dimmed
-/// button, and one reason in one place reads better than the same words twice.
-fn title(state: &AppState, editor: &CommitEditor, busy: bool) -> SanitizedText {
-    if busy {
-        return sanitize_line("committing… — esc cancels");
-    }
-    let mut parts = Vec::new();
-    match (&editor.amend, &editor.head_short) {
-        (true, Some(short)) => parts.push(format!("AMEND {short}")),
-        (true, None) => parts.push("AMEND".to_owned()),
-        (false, _) => parts.push("COMMIT".to_owned()),
-    }
-    if let Some(branch) = branch_name(state) {
-        parts.push(format!("⎇ {branch}"));
-    }
-    parts.push(staged_count(state));
-    if editor.from_draft {
-        parts.push("draft kept".to_owned());
-    }
-    sanitize_line(&parts.join(" ── "))
-}
-
-/// The branch `HEAD` is on, or `None` when `HEAD` is detached, unreadable or
-/// not read yet. The name comes off disk as bytes, so it is sanitised here
-/// like any other repository text.
-fn branch_name(state: &AppState) -> Option<String> {
-    let facts = state.repository.as_ref()?;
-    match &facts.head {
-        crate::repository::Head::Branch(name) | crate::repository::Head::Unborn(name) => {
-            Some(String::from_utf8_lossy(name).into_owned())
-        }
-        crate::repository::Head::Detached(_) | crate::repository::Head::Unreadable(_) => None,
+/// One file as the list draws it, its counts from the line-count read when
+/// it has landed.
+fn row(state: &AppState, editor: &CommitEditor, at: usize) -> CommitFileRow {
+    let choice = &editor.files[at];
+    let counted = editor
+        .counts
+        .as_deref()
+        .and_then(|list| crate::update::commit_editor::counted(list, &choice.path));
+    let kind = state
+        .working_tree
+        .as_deref()
+        .and_then(|status| {
+            status
+                .entries
+                .iter()
+                .find(|entry| entry.path == choice.path)
+        })
+        .map_or('M', kind_of);
+    CommitFileRow {
+        path: sanitize_line(&choice.path.to_string_lossy()),
+        kind,
+        group: if choice.goes_in {
+            FileGroup::GoingIn
+        } else {
+            FileGroup::StayingOut
+        },
+        added: counted.and_then(|entry| entry.added),
+        removed: counted.and_then(|entry| entry.removed),
+        secret: matches!(
+            choice.why_out,
+            Some(graft_ops::operation::OutWhy::LooksLikeSecrets)
+        ),
     }
 }
 
-/// `2 files staged`, or `nothing read yet` before the first status lands.
-fn staged_count(state: &AppState) -> String {
-    let Some(status) = state.working_tree.as_deref() else {
-        return "reading the working tree…".to_owned();
+/// The sentence above the files (C4).
+fn summary(state: &AppState, editor: &CommitEditor, files: &[CommitFileRow]) -> Summary {
+    let count = |group| {
+        u32::try_from(files.iter().filter(|file| file.group == group).count()).unwrap_or(u32::MAX)
     };
-    match status.staged().count() {
-        0 => "nothing staged".to_owned(),
-        1 => "1 file staged".to_owned(),
-        many => format!("{many} files staged"),
+    let going = count(FileGroup::GoingIn);
+    let out = count(FileGroup::StayingOut);
+    if going == 0 {
+        return if editor.amend && !editor.touched {
+            Summary::MessageOnly { out }
+        } else {
+            Summary::Nothing
+        };
+    }
+    // Every file going in has its counts, or the sum would understate.
+    let lines = files
+        .iter()
+        .filter(|file| file.group == FileGroup::GoingIn)
+        .try_fold((0u32, 0u32), |(added, removed), file| {
+            Some((
+                added.saturating_add(file.added?),
+                removed.saturating_add(file.removed.unwrap_or(0)),
+            ))
+        });
+    let onto = if editor.amend {
+        Onto::Amend
+    } else {
+        Onto::NewCommit(branch(state))
+    };
+    Summary::Goes {
+        files: going,
+        lines,
+        onto,
+        out,
+    }
+}
+
+/// The header: branch, amend, push state, options on (Q8 a).
+fn header(state: &AppState, editor: &CommitEditor) -> CommitHeader {
+    CommitHeader {
+        branch: branch(state),
+        amending: editor
+            .amend
+            .then(|| sanitize_line(editor.head_short.as_deref().unwrap_or("HEAD"))),
+        push: push_words(state, true).map(|words| sanitize_line(&words)),
+        options: CommitOption::HEADER_ORDER
+            .iter()
+            .filter(|option| editor.option(**option))
+            .filter_map(|option| option.header_word())
+            .collect(),
+    }
+}
+
+/// The branch `HEAD` is on, or `HEAD`'s short SHA when detached.
+fn branch(state: &AppState) -> SanitizedText {
+    let name = state.repository.as_ref().map(|facts| match &facts.head {
+        crate::repository::Head::Branch(name) | crate::repository::Head::Unborn(name) => {
+            String::from_utf8_lossy(name).into_owned()
+        }
+        crate::repository::Head::Detached(oid) => oid.to_string().chars().take(7).collect(),
+        crate::repository::Head::Unreadable(_) => "HEAD".to_owned(),
+    });
+    sanitize_line(name.as_deref().unwrap_or("HEAD"))
+}
+
+/// The diff of the file under the cursor.
+fn diff(editor: &CommitEditor) -> BodyView {
+    if editor.files.is_empty() {
+        return BodyView::Empty(sanitize_line("no changes"));
+    }
+    match &editor.diff.view {
+        Some(Ok(view)) => BodyView::Diff(std::sync::Arc::clone(view)),
+        Some(Err(why)) => BodyView::Failed(sanitize_line(why)),
+        None => BodyView::Loading(sanitize_line("reading…")),
     }
 }

@@ -2646,18 +2646,13 @@ const COMMIT_EDITOR_HEADER: &str = "\
 # regenerate on purpose). `c` on the scripted dirty tree, a subject typed,
 # then Tab to the body and a sentence typed there.
 #
-# Judge by eye:
-# - The title row reads COMMIT ── ⎇ main ── 1 file staged. Not \"looks
-#   right\": the count must match the STAGED section of the changes-pane
-#   capture beside it.
-# - The subject row shows ▸Subject, the typed text, and a counter reading
-#   26/50. The ┊ guide is at column 50 of the text, not at the screen edge.
-# - The body row shows Body (no ▸: focus is on the body's text, and the
-#   marker follows the focus) with its own ┊ guide at 72.
-# - The options row: four [ ] boxes — amend, sign-off, no-verify, allow
-#   empty — then [ Commit ]. None is ticked and none is refused, so no
-#   reason follows the button.
-# - The footer offers ⌃⏎/Commit, ⇥, ⌃E, ⌃S and esc.
+# Judge by eye (the commit screen since ease-pass/08; its own captures,
+# next to the commit mock, are docs/shots/ease-pass/commit-*.txt):
+# - The top row reads `committing to main`.
+# - The subject holds the typed text and a counter reading 26/72; the body
+#   below it has the ▸ (focus follows the marker) and a ┊ guide at 72.
+# - No option row anywhere: options are named in the header only when on.
+# - The bar is the body's: esc back to the message line, ⇥ files.
 ";
 
 /// The pane line, which is the one thing that differs between the two sizes.
@@ -2665,16 +2660,14 @@ const COMMIT_EDITOR_HEADER: &str = "\
 fn commit_editor_pane_note(columns: u16) -> &'static str {
     if columns < 100 {
         "\
-# - The editor has the whole area and the detail pane is not drawn. Under
-#   100 columns the pane would be a tab, and the editor is modal, so the key
-#   that selects the other tab never reaches it — an editor behind a tab
-#   nobody can press is an editor that did not open.
+# - The screen has the whole area. Under 100 columns the file list takes
+#   the width and no changes pane is drawn.
 #
 "
     } else {
         "\
-# - The detail pane is still there beside the editor, with its own header.
-#   The editor replaced the graph, not the pane.
+# - The screen has the whole area: the file list on the left, the cursor
+#   file's changes on the right.
 #
 "
     }
@@ -2688,7 +2681,7 @@ fn capture_m3_commit_editor() {
     for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
         let state = commit_editor_state(columns, rows);
         let screen = draw(&state, columns, rows);
-        assert!(screen.contains("COMMIT"), "{screen}");
+        assert!(screen.contains("committing to main"), "{screen}");
         shots.check(
             format!(
                 "{}/../../docs/shots/m3-commit-editor-{columns}x{rows}.txt",
@@ -2721,8 +2714,8 @@ fn capture_m3_commit_editor_rejected() {
 # the commit.
 #
 # Judge by eye:
-# - The hook's own words are on the footer row, in place of the key hints,
-#   followed by `— esc dismisses`. Before this the reason went to the graph
+# - The hook's own words are on the bar row, in place of the key hints,
+#   followed by `· esc dismisses` (the commit screen since ease-pass/08). Before this the reason went to the graph
 #   screen's problem line, which is behind the editor: a rejected commit
 #   looked to the user like nothing had happened at all.
 # - The typed subject and body are still there. Esc dismisses the reason and
@@ -2751,19 +2744,25 @@ fn capture_m3_commit_editor_refused() {
     state.working_tree = Some(std::sync::Arc::new(
         graft_git::status::WorkingTreeStatus::default(),
     ));
+    // The screen re-chooses its files when the tree is re-read, as the
+    // tree-read answer does; the commands it asks are not run here.
+    let mut ids = 1000_u64..;
+    let mut asked = Vec::new();
+    crate::update::commit_editor::tree_read(&mut state, &mut asked, &mut || {
+        graft_core::job::JobId::new(ids.next().unwrap_or_default())
+    });
     let screen = draw(&state, 120, 40);
-    assert!(screen.contains("nothing staged"), "{screen}");
+    assert!(screen.contains("Nothing goes in"), "{screen}");
     let header = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_commit_editor_refused in crates/graft/src/view/tests.rs
-# (asserted). The same editor with nothing staged.
+# (asserted). The same screen with nothing changed at all.
 #
-# Judge by eye:
-# - `nothing staged` sits on its own row directly above the options row.
-#   The button is also dimmed, and no capture in this repo can show that
-#   (CLAUDE.md) — the words are what has to carry it.
-# - The title row still reads `nothing staged` as its count, so the reason
-#   is visible even with the options row off the bottom of a short terminal.
+# Judge by eye (the commit screen since ease-pass/08):
+# - The line above the files reads `Nothing goes in. Put a file in with
+#   space.` and both groups are empty.
+# - The body has focus, so the bar is the body's; from the subject or the
+#   files, the bar's `⏎` slot would read `put a file in first`.
 #
 === 120x40 ===
 ";
@@ -2782,23 +2781,23 @@ fn capture_m3_amend() {
     use crate::update::commit_editor::CommitEditor;
 
     let mut state = changes_pane_state(120, 40);
-    state.commit_editor = Some(CommitEditor::amend(
+    state.commit_editor = Some(Box::new(CommitEditor::amend(
         "a1b2c3d".to_owned(),
         "fix the token refresh race\n\nThe old token was refreshed twice when two requests raced.\n",
-    ));
+    )));
     let screen = draw(&state, 120, 40);
-    assert!(screen.contains("AMEND a1b2c3d"), "{screen}");
+    assert!(screen.contains("amending a1b2c3d"), "{screen}");
     let header = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_amend in crates/graft/src/view/tests.rs (asserted). `a` on the
 # scripted tree, with HEAD's message already prefilled.
 #
 # Judge by eye:
-# - The title row reads AMEND a1b2c3d, not COMMIT: which commit is being
-#   rewritten is named, because an amend of the wrong one is the mistake
-#   this milestone exists to prevent.
-# - [x] amend is ticked in the options row, and the subject and body hold
-#   HEAD's message split at its blank line.
+# - The top row reads `amending a1b2c3d fix the token refresh race`, not
+#   `committing to`: which commit is being rewritten is named, because an
+#   amend of the wrong one is the mistake this milestone exists to prevent.
+# - The subject and body hold HEAD's message split at its blank line; no
+#   option row (the commit screen since ease-pass/08).
 #
 === 120x40 ===
 ";

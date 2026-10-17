@@ -149,14 +149,6 @@ fn after_a_commit_the_cursor_is_on_it() {
     for character in "land here".chars() {
         state = app.key(&state, KeyCode::Char(character));
     }
-    for _ in 0..4 {
-        if state.commit_editor.as_ref().map(|editor| editor.focus)
-            == Some(graft_ui::commit_editor::Field::CommitButton)
-        {
-            break;
-        }
-        state = app.key(&state, KeyCode::Tab);
-    }
     let state = app.key(&state, KeyCode::Enter);
     let state = written_and_landed(&app, state, "the commit");
     assert_ne!(rev(work, "HEAD"), before, "a commit was made");

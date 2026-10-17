@@ -31,6 +31,12 @@ pub(super) fn incomplete_answered(
         applied.entry.description
     ));
     let mut commands = landed(state, applied, lands, next_id);
+    // A plain commit says what went in and where, and earns its bar (C13).
+    if let Some(words) =
+        crate::update::commit_editor::commit_landed(state, launched_op, &applied.entry)
+    {
+        state.status = words;
+    }
     crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
     crate::update::recover::tag_rows(state, launched_op);
     state.status = warning;
@@ -129,6 +135,9 @@ pub(super) fn landed(
     // (m3-working-tree-undo-and-stash/05). A failure leaves both
     // alone: the message is what the user has to fix.
     crate::update::commit_editor::committed(state);
+    // Whatever landed, the commit `c` made is no longer the last thing
+    // that happened (C13); a commit sets it again in `done_answered`.
+    state.last_commit = None;
     let mut commands = refresh_scope(state, applied.refresh, next_id);
     // A write that moved `HEAD` lands the cursor on its new row once
     // this refresh's refs and walk are in, exactly as a `--continue`
@@ -295,6 +304,12 @@ fn done_answered(
     let lands = lands.filter(|_| !pulled_nothing(launched_op, &applied.entry));
     state.status = words;
     let mut commands = landed(state, applied, lands, next_id);
+    // A plain commit says what went in and where, and earns its bar (C13).
+    if let Some(words) =
+        crate::update::commit_editor::commit_landed(state, launched_op, &applied.entry)
+    {
+        state.status = words;
+    }
     crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
     crate::update::recover::tag_rows(state, launched_op);
     commands

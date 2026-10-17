@@ -358,16 +358,8 @@ pub(super) fn esc_then_tabs_to_the_banner(app: &App, state: &AppState) -> (AppSt
 
 /// The words the editor over `state` shows.
 pub(super) fn editor_words(state: &AppState) -> String {
-    state
-        .commit_editor
-        .as_ref()
-        .expect("open")
-        .refusal(
-            state.working_tree.as_deref(),
-            live_operation(state),
-            graft::update::commit_editor::refusal_way(state),
-        )
-        .expect("a refusal")
+    assert!(state.commit_editor.is_some(), "open");
+    graft::update::commit_editor::live_words(state).expect("a refusal")
 }
 
 /// **Step 2:** on a merge Graft began, the words name `⇥ banner`, and the

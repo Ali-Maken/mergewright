@@ -1,6 +1,6 @@
 m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the left (`…-step1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work`, the run's random folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the top row opens your changes · space stages the change under the cursor` (at 120 columns the ticks row does not fit beside that line, so it is dropped, never cut); the practice graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, `feature` and `clash` beside it, the cursor on `main`. Colour unverified (rule 5).
 
- ◇ work  …tep1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work · a throwaway repo, not yours · main  7 commits
+ ◇ work  …ce-tmp/mergewright-practice-1609459200/work · a throwaway repo, not yours · main  7 commits  1 commit to push
 
 ╭─ practice 1 of 8 · stage a change ──────────────────────────────────────────────────────────────────────── esc leave ╮
 │ ⏎ on the top row opens your changes · space stages the change under the cursor                                       │

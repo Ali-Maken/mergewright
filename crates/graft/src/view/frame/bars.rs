@@ -102,7 +102,7 @@ pub(super) fn draw_box_bars(session: &Session, state: &AppState, frame: &mut Fra
 /// that stands where the graph does — the graph, an overlay, or with the
 /// sub-100-column Detail tab up, the tab's own hint row at the foot of the
 /// frame. The resolver covers the detail pane too, so its bar runs the
-/// whole width. The status screen has none: its `q  quit` is a line of the
+/// whole width, and so does the commit screen's. The status screen has none: its `q  quit` is a line of the
 /// page, not a bar.
 pub(super) fn bar_rows(state: &AppState, area: Rect) -> Vec<Rect> {
     let bottom_of = |rect: Rect| Rect {
@@ -112,7 +112,12 @@ pub(super) fn bar_rows(state: &AppState, area: Rect) -> Vec<Rect> {
     };
     match state.screen {
         Screen::Status => Vec::new(),
-        Screen::Graph if state.resolver.is_some() || state.finish.is_some() => {
+        // The commit screen covers the detail pane too (ease-pass/08).
+        Screen::Graph
+            if state.resolver.is_some()
+                || state.finish.is_some()
+                || state.graph_overlay() == Some(crate::update::GraphOverlay::CommitEditor) =>
+        {
             vec![bottom_of(area)]
         }
         Screen::Graph => vec![bottom_of(primary_pane_area(state, area).unwrap_or(area))],

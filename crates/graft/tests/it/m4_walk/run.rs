@@ -194,7 +194,7 @@ impl Walk<'_> {
                     let state = self.app.key(&state, KeyCode::Right);
                     self.app.key(&state, KeyCode::Enter)
                 }
-                Step::CommitButton => self.press_the_button(state)?,
+                Step::CommitFromSubject => self.press_the_button(state)?,
                 Step::Cancel(what) => self.cancel(&state, what)?,
                 Step::UndoAll => self.undo_all(state)?,
                 Step::Shell(fix) => {
@@ -300,16 +300,18 @@ impl Walk<'_> {
         }
     }
 
+    /// `⇥` back to the subject, then `⏎` (ease-pass/08: `⏎` from the
+    /// subject commits).
     fn press_the_button(&mut self, mut state: AppState) -> Result<AppState, String> {
-        for _ in 0..4 {
+        for _ in 0..3 {
             if state.commit_editor.as_ref().map(|editor| editor.focus)
-                == Some(graft_ui::commit_editor::Field::CommitButton)
+                == Some(graft_ui::commit_editor::CommitFocus::Subject)
             {
                 return Ok(self.app.key(&state, KeyCode::Enter));
             }
             state = self.app.key(&state, KeyCode::Tab);
         }
-        Err("Tab never reached [ Commit ]".to_owned())
+        Err("Tab never reached the subject".to_owned())
     }
 
     fn cancel(&mut self, state: &AppState, what: &str) -> Result<AppState, String> {

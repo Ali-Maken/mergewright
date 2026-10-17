@@ -12,7 +12,7 @@
 # - The action reads `Push`, not `Force push`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
- ◆ api  ~/code/api · main                                                                                                                                                      202 commits
+ ◆ api  ~/code/api · main                                                                                                                                    202 commits  1 commit to push
 
 ▸ ◆  ⓘ [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
   ●    [origin/main] theirs                                                                                                                                                GF 6y   7be74b5

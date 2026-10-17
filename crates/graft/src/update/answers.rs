@@ -159,6 +159,7 @@ pub(super) fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobI
         | Task::ReadFinishDiff
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
+        | Task::ReadCommitFiles
         | Task::PlanRewrite
         | Task::OpenRewrite
         | Task::ResolveRowTags

@@ -11,8 +11,8 @@ use super::facts::took_fact;
 use super::tree_answers::{repository_answer, stash_only_answered};
 use super::{
     AppEvent, AppState, Command, Product, Progress, Status, Task, amend_into, banner, clash,
-    commit_graph, detail, finish, fold_count, history, journal, map, palette, picker, place,
-    preview, radar, remote, resolver, rewrite_editor, search, stash, tour,
+    commit_editor, commit_graph, detail, finish, fold_count, history, journal, map, palette,
+    picker, place, preview, radar, remote, resolver, rewrite_editor, search, stash, tour,
 };
 
 /// The half of [`update`] that answers one event, before the viewport is
@@ -82,6 +82,16 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
             if stash::claims(next, id, &product) =>
         {
             stash_answer(next, id, &product);
+        }
+        // The commit screen reads the diff of the file under its cursor
+        // through `ReadFileDiff` too, under its own id (ease-pass/08).
+        AppEvent::Produced(id, Product::FileDiff(_, result))
+            if commit_editor::claims_diff(next, id) =>
+        {
+            commit_editor::diff_arrived(next, id, result.map(|(view, _)| view));
+        }
+        AppEvent::Produced(id, Product::CommitFiles(result)) => {
+            commit_editor::commit_files_arrived(next, id, result);
         }
         // The detail pane names its jobs itself, before they start.
         event @ AppEvent::Produced(

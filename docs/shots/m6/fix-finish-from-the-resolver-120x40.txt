@@ -7,7 +7,7 @@ MERGING
 │   b.txt  yours · main in 1 of 1 conflicts                                                                            │
 │ COMBINED BY GIT ON ITS OWN · none                                                                                    │
 │ MESSAGE · ⇥ edit                                                                                                     │
-│  Subject Merge branch 'side'                               ┊                                                   19/50 │
+│  Subject Merge branch 'side'                                                     ┊                             19/72 │
 │  Body                                                                                                                │
 │                                                                                  ┊                                   │
 │                                                                                                                      │

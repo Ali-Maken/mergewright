@@ -172,12 +172,15 @@ pub(super) fn fixture(ctx: ContextId) -> Option<AppState> {
             )
             .remove(0),
         ),
+        // Two files and a word typed (ease-pass/08): `⏎` has a commit to
+        // make and `↓` a file to move to, as on the screen he uses.
         C::CommitEditor => {
-            update(
-                &super::commit_editor::tests::ready(&["a.rs"]),
+            let open = update(
+                &super::commit_editor::tests::ready(&["a.rs", "b.rs"]),
                 key(KeyCode::Char('c')),
             )
-            .0
+            .0;
+            update(&open, key(KeyCode::Char('x'))).0
         }
         C::Credential => box_over_the_graph(walk(), &HintContext::Credential),
         C::Menu => update(&on_a_branch_row(), key(KeyCode::Char('.'))).0,

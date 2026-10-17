@@ -6,47 +6,48 @@
 # The session fixture with notes.md staged; `c`.
 #
 # What right looks like:
-#  - The commit editor, its subject empty, the cursor in it.
-#  - No `subject empty` anywhere: it is said only after Commit is pressed
-#    with an empty subject (m7-power-tools/15).
+#  - The commit screen (ease-pass/08), its subject empty, the cursor in it;
+#    `notes.md` under `Going in`, its changes on the right.
+#  - No `subject empty` anywhere (m7-power-tools/15); the bar's `⏎` slot
+#    says `type a message first` instead, as the commit mock does.
 
-COMMIT ── ⎇ main ── 1 file staged
-
-▸Subject                                                   ┊                                                        0/50
-
- Body
-                                                                                 ┊
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+ committing to main · not pushed yet
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ▸What did you change? (one line)                                                                                     │
+│  More detail, if it needs it (optional)                                                                              │
+│                                                                                                                      │
+│                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ 1 file goes in, +1 −0, as a new commit on main. 1 stays out.
+────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────
+ Going in (1)                               │
+ ›✓ A notes.md                           +1 │       1 + a note
+ Staying out (1)                            │
+  · A src/new.rs                         +1 │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+ ⏎ type a message first  ⇥ more detail  ↑/↓ see a file's changes  esc cancel, your message is kept

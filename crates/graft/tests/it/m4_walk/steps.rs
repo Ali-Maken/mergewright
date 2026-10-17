@@ -56,8 +56,8 @@ pub enum Step {
     Settle(&'static str),
     /// The box `P` opened: `→` off `Cancel`, `Enter`.
     Confirm,
-    /// `Tab` until `[ Commit ]` has focus, then `Enter` (ADR-0034's path).
-    CommitButton,
+    /// `Tab` until the subject has focus, then `Enter` (the commit screen).
+    CommitFromSubject,
     /// `Esc` on the running write, then its answer; it must clear within
     /// 5 s of the key.
     Cancel(&'static str),

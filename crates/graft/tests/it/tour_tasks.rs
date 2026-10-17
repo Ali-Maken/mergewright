@@ -185,7 +185,7 @@ impl Tour {
     /// 2: `c`, a message, `⏎`.
     fn commit(&mut self) {
         self.send(b"c");
-        self.wait("the commit editor", |s| s.has("\u{23ce} commit"));
+        self.wait("the commit editor", |s| s.has("more detail"));
         self.send(b"Note the changes");
         self.send(b"\r");
         self.wait("the commit on main", |s| s.has("main ↑2] Note the changes"));
