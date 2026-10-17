@@ -59,3 +59,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - planner-fable 05r spec: ←/→ (h/l) step every clash in the file incl. taken (§2.2 movement keys; lazygit); opus-xhigh; builder pastes 02-keymap text. Q19 (asked): '← → clashes' on solved-file bar (not in mock). Queued.
 - builder-sonnet 03r (1e320e4f, merged 105faacc): 8/9; OpenedMerge bar; ease.rs renamed; ratchets down (lanes.rs, keymap split); +3 role contrast floors. Left: commit.toggle labels (editor_tests.rs pins) → gap. skills: none · 84 tools
 - gates after 03r (105faacc): fmt ok, clippy 0, nextest 6613/6613, doc ok; worktree removed. builder-opus-xhigh 05r dispatched (Q19 open: build bar hint as (a), one-line change).
+- user Q19: ok → (a) add '← → clashes' bar hint; sent to 05r builder.
