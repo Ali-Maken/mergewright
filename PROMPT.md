@@ -136,6 +136,7 @@ The layout engine is a **pure library crate** with no terminal code, so it can b
 **Folding**
 
 - Collapse a merged branch's commits into its merge commit, and expand it again.
+- Merged branches open **folded** by default (`▸ N commits from <branch>`); `Space` opens and closes one (ADR-0063, user approved 2026-10-17).
 - A "first-parent view" gives a clean default-branch-only history.
 - Stashes can be shown in or hidden from the graph.
 

@@ -197,6 +197,8 @@ and resumed.
 
 ### 3.4 Merge commits and branch-name recovery
 
+**Ease pass (ADR-0063; user approved 2026-10-17)** — lines are coloured by **role** relative to the cursor row's branch, not by branch identity: `┃` this branch, `│` built on, `║` trunk, `┊` grey other; the role moves with `j/k`. The second-parent curve takes the joining branch's role. A deleted branch's label also recovers `Merged PR <n>` as `PR <n>` (Q13 a). Supersedes the identity-colour rule below.
+
 - The **second-parent curve** is drawn in the merged branch's `identity`
   colour (from the lane opened for that parent in step 3), not the primary
   lane's colour, so a merge visually reads as "this colour flowed into that
@@ -218,6 +220,8 @@ and resumed.
   window and attaches cross-references rather than a marker on layout itself.
 
 ### 3.5 Compaction (the fold rail)
+
+**Ease pass (ADR-0063; user approved 2026-10-17)** — lanes are drawn only for branches with a commit in view (columns with no node in view are dropped), and the header's `+N lanes` becomes `lanes drawn: N of M`, shown only while something is not drawn.
 
 **The cap is a budget, admitted by priority, not a set of vetoes**
 (ADR-0025 — supersedes this section's original "never fold lane 0, a

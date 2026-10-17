@@ -70,3 +70,4 @@ Merge rose 4 → 5 when the finish preview's `y` was added at his request (`fiel
   build must pass. Any change to what he tried — a planner's keymap ruling, a terminal limit, a cut — goes to him as
   a question **before** it is built, not reported after. Captures of the real screens go next to the mock for
   comparison. Colour is the one thing not promised: it is judged in his own terminal.
+- **Design docs updated** to the accepted mocks (`02-keymap`, `01-view-mockups`, `03-graph-layout-algorithm`, PROMPT §1.3): user approved 2026-10-17 ("15 yes").

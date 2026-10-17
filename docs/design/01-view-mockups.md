@@ -21,6 +21,8 @@ being drawn.
 
 ### 1.0 Screen chrome (M8, ADR-0058) — supersedes the borders, header and footer of §1.1–§1.3
 
+**Ease pass (ADR-0063; user approved 2026-10-17)** — today's frame kept; the top line's right end adds `on <branch>`, `lanes drawn: N of M` and `K merged branches folded`, the last two only while something is not drawn (Q11 a, Q14 a). Per the mocks in `prototypes/ease-mocks/`, rows in `docs/design-notes/ease-pass.md` "Acceptance".
+
 The pane layouts of §1.1–§1.3 stand (sidebar, graph, detail beside / below / tab). Their outer box, top-border
 header and bottom-border footer are replaced by the M8 mock-up's chrome (`docs/shots/m8-proto-3d-first-line.txt`,
 judged against the real app in `.scratch/m8-polish-and-ship/real-vs-mockup.md`):
@@ -53,6 +55,8 @@ judged against the real app in `.scratch/m8-polish-and-ship/real-vs-mockup.md`):
 
 ### 1.1 Main graph view — wide (160+ columns, three-column layout)
 
+**Ease pass (ADR-0063; user approved 2026-10-17)** — supersedes the columns below at every width. Columns: `graph | branch | message | who | age`, then `│` and the branch pane (≥120 cols: branch 20, who 6, age 4, pane 36; 100–119: pane 30, branch 14; <100: no pane, branch 12, the cursor row's second line says who/when/branch/hash). No SHA column, no ref badges. Branch column written once where it changes, in its role colour; own rows `you` bold. Right pane: pushed? merged? behind its base? who/last. `⏎` opens the detail pane, which replaces the branch pane while open. Merged branches open folded (`▸ N commits from <branch>`). Per the mocks in `prototypes/ease-mocks/`, rows in `docs/design-notes/ease-pass.md` "Acceptance".
+
 ```
 ╭─ ◆ graft ─ ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ─────────────────────────────────────── ⌃P Commands ─╮
 │ BRANCHES         ⌕ │ GRAPH   REF            SUBJECT                          AUTHOR  WHEN   SHA      │ COMMIT a1b2c3d                  │
@@ -82,6 +86,8 @@ judged against the real app in `.scratch/m8-polish-and-ship/real-vs-mockup.md`):
 
 ### 1.2 Main graph view — medium (100–159 columns)
 
+**Ease pass (ADR-0063; user approved 2026-10-17)** — see §1.1's ease-pass note; it supersedes this layout.
+
 Sidebar collapses to icons; detail pane moves under the graph instead of
 beside it.
 
@@ -102,6 +108,8 @@ beside it.
 ```
 
 ### 1.3 Main graph view — narrow (under 100 columns, exactly 80×24)
+
+**Ease pass (ADR-0063; user approved 2026-10-17)** — see §1.1's ease-pass note; under 100 columns no pane, branch column 12.
 
 A single pane with a tab strip. `Tab`/`Shift-Tab` still switch panes; here
 that means switching tabs.
@@ -154,6 +162,8 @@ staged at hunk or line granularity; `Space` toggles whatever is under the
 cursor (file, hunk or single line).
 
 ### 1.5 Conflict resolver (file list + three panes when wide, card below)
+
+**Ease pass (ADR-0063; user approved 2026-10-17)** — inline at every width ≥100: only clash blocks split yours | theirs; the three-pane layout and kept headers are retired. List column 30 (`Clashing files`, `?`/`✓`, `N open`/`done`, `✓ Review the merge y`); below 100, sides stack (today's). A merge or rebase stop lands on the first clash (Q17 a). Per the mocks in `prototypes/ease-mocks/`, rows in `docs/design-notes/ease-pass.md` "Acceptance".
 
 Per ADR-0043 (supersedes ADR-0042, which replaced this section's original
 OURS/RESULT/THEIRS columns and `CONFLICTED FILES` strip). **A file list is
@@ -284,6 +294,8 @@ its key would and asks for the argument again. (The drawing's last row read `git
 argument, until ADR-0061.)
 
 ### 1.7 Ghost Preview (overlaid on the graph, before confirming)
+
+**Ease pass (ADR-0063; user approved 2026-10-17)** — the merge preview has no buttons: `y` merges, `Esc` cancels, `⏎` lists the incoming commits; the faint would-be rows stay (Q5 a, Q6 a). Other previews unchanged.
 
 ```
 │ ●a      [main]          Fix token refresh race            RM   2m   a1b2c│
@@ -420,6 +432,8 @@ Colour (not shown) ages from a bright "recent" hue to a dim "old" hue, redundant
 with the printed relative age so it never depends on colour alone.
 
 ### 1.13 Operation banner (mid-rebase, focused)
+
+**Ease pass (ADR-0063; user approved 2026-10-17)** — a merge's banner reads `merging <from> into <into>`.
 
 ```
 ╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ───────────────────────────╮
