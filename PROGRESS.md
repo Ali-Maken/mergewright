@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M8 stop (Mergewright set), 2026-10-12 — waiting on the user.** Rename to Mergewright/`mwr` done: tickets 46–59 merged and gated (5caee901+, 6445/6445). Local release build ok (`mwr 0.1.0`, nothing published). Usability walk done (`docs/reviews/m8-mergewright-usability.md`), its Majors fixed (59). AUTHORSHIP regenerated. Live log: `docs/log/m8.md`. **Next (user):** judge captures by eye; trademark search before anything public; post-M8 gaps.
+**Current step:** **Ease pass, 2026-10-17** — build the graph/commit/merge mocks the user accepted (ADR-0063, build to the mocks). planner-fable writing `docs/design-notes/ease-pass.md` + specs. Live log: `docs/log/ease-pass.md`. M8 stop items (captures by eye, trademark search) still with the user.
 
 **Running now:** nothing.
 
@@ -73,6 +73,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [x] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
 | [x] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
 | [ ] | M8 Polish, **final name**, ship (read-only) — **conditional** (ADR-0030) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
+| [ ] | **Ease pass** — graph by role, commit from the subject line, merge lands on the clash (ADR-0063), **built to the mocks** | per group | Fable | Each mock behaviour, side by side with `prototypes/ease-mocks/`; colour judged in your terminal |
 
 **Who designs, specifies, builds and reviews; ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here. Fable's share was raised for M2 onward on 2026-09-13; M1 keeps its tickets and its Opus review. Record of who did what: `docs/AUTHORSHIP.md`.
 
@@ -108,7 +109,7 @@ The original text stands below as the brief's reasoning.
 
 ## Session log
 
-Live at [docs/log/m8.md](docs/log/m8.md) — the current milestone's log
+Live at [docs/log/ease-pass.md](docs/log/ease-pass.md) (M8: [docs/log/m8.md](docs/log/m8.md)) — the current milestone's log
 (moved out, housekeeping/01 continuation 1, 2026-09-18, to keep this file
 under 10 KB). Finished milestones: [docs/log/m0.md](docs/log/m0.md),
 [docs/log/m1.md](docs/log/m1.md), [docs/log/m2.md](docs/log/m2.md).
