@@ -180,6 +180,10 @@ fn run_error_to_commit_graph_error(error: RunError) -> CommitGraphError {
         // file through `status` instead), so this never fires in practice;
         // handled for exhaustiveness rather than left a `todo!`.
         RunError::Unparsable(reason) => CommitGraphError::Io(io::Error::other(reason)),
+        // Only a caller's own step before git makes this; `run` never does.
+        not_run @ RunError::NotRun { .. } => {
+            CommitGraphError::Io(io::Error::other(not_run.to_string()))
+        }
         RunError::Stopped => CommitGraphError::Io(io::Error::other(
             "write was stopped, which never asks to be",
         )),

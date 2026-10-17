@@ -254,5 +254,15 @@ fn command_line_quotes_what_a_shell_would_split() {
     assert_eq!(line, r"git log '--format=%H %s' -- 'it'\''s.txt'");
 }
 
+#[test]
+fn quote_word_quotes_one_word_as_a_command_line_would() {
+    assert_eq!(
+        quote_word(b"/r/.git/mwr/commit-index"),
+        "/r/.git/mwr/commit-index"
+    );
+    assert_eq!(quote_word(b"/my repo/it's"), r"'/my repo/it'\''s'");
+    assert_eq!(quote_word(b""), "''");
+}
+
 /// m8-polish-and-ship/13c: the process group, and how a stop ends git's hook.
 mod stop;

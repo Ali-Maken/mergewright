@@ -1,7 +1,7 @@
 //! Running a plan: one `git` per invocation, in order, stopping at the first
 //! failure, with a remote invocation's askpass and progress wired in.
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use graft_core::journal::JournalEntry;
 use graft_git::remote::RemoteFailure;
@@ -11,7 +11,7 @@ use graft_git::state::InProgress;
 
 use crate::keys::NoKeys;
 use crate::operation::{IndexFile, Invocation, RemoteNames};
-use crate::snapshot::TempIndex;
+use crate::snapshot::{SnapshotError, TempIndex};
 
 use super::error::joined;
 use super::stopped::BEFORE_PAUSE;
@@ -167,21 +167,21 @@ pub(super) fn with_cleanup(reason: String, cleanup: &[AfterState]) -> String {
 /// first, so a failure leaves the least behind it. A remote operation's
 /// invocations go through `remote::run`, which keeps their stderr; a local
 /// operation's run exactly as before. `names` is `Some` exactly for a remote
-/// operation (`Operation::remote_names`).
+/// operation (`Operation::remote_names`). A plan with `Scratch` lines runs
+/// them on this context's own copy of the index, removed after, failure or
+/// not.
 pub(super) fn run_plan(
     ctx: &Context<'_>,
     plan: &[Invocation],
     names: Option<&RemoteNames>,
 ) -> PlanRun {
+    let mut scratch = ScratchIndex::new(ctx);
     let mut cleanup = Vec::new();
-    let mut scratch = None;
-    let failure = run_lines(ctx, plan, names, &mut scratch, &mut cleanup);
-    if let Some(index) = scratch {
-        let path = index.path().to_path_buf();
-        if let Err(error) = index.remove() {
-            cleanup.push(AfterState::ScratchIndexLeft { path, error });
-        }
-    }
+    let failure = plan
+        .iter()
+        .find_map(|invocation| run_line(ctx, invocation, names, &mut scratch, &mut cleanup).err())
+        .map(|failed| *failed);
+    cleanup.extend(scratch.remove());
     PlanRun {
         failure,
         cleanup,
@@ -189,73 +189,127 @@ pub(super) fn run_plan(
     }
 }
 
-/// The scratch index's file name in the names dir: one, overwritten by the
-/// next plan that needs it (ease-pass/04).
+/// The prefix of a scratch index's file name in the names dir:
+/// `commit-index-<pid>-<n>`, one per [`Context`] (review ease-pass-04,
+/// Major 1). Recovery sweeps what a dead run left (`recover`).
 pub(super) const SCRATCH_INDEX: &str = "commit-index";
-
-/// Where a plan's scratch index lives: what its `Scratch` lines run on and
-/// what the Command Log names.
-pub(super) fn scratch_index_path(ctx: &Context<'_>) -> PathBuf {
-    ctx.scratch().join(SCRATCH_INDEX)
-}
 
 /// A plan line as the Command Log records it: a `Scratch` line with the
 /// scratch index's real path, so it runs as shown.
 pub(super) fn logged_line(ctx: &Context<'_>, invocation: &Invocation) -> String {
-    invocation.command_line_in(&scratch_index_path(ctx))
+    invocation.command_line_in(ctx.scratch_index())
 }
 
-/// The lines in order up to the first failure. The scratch index is copied
-/// from the real one before the first `Scratch` line and left in `scratch`
-/// for the caller to remove, failure or not.
-fn run_lines(
+/// One plan line, run; a `Scratch` line on the scratch index.
+fn run_line(
     ctx: &Context<'_>,
-    plan: &[Invocation],
+    invocation: &Invocation,
     names: Option<&RemoteNames>,
-    scratch: &mut Option<TempIndex>,
+    scratch: &mut ScratchIndex<'_>,
     cleanup: &mut Vec<AfterState>,
-) -> Option<PlanFailure> {
-    for invocation in plan {
-        let mut git = plan_git(ctx.repo, invocation);
-        if invocation.index == IndexFile::Scratch {
-            if scratch.is_none() {
-                match TempIndex::copied_as(ctx.repo, ctx.scratch(), SCRATCH_INDEX) {
-                    Ok(index) => *scratch = Some(index),
-                    // No git ran: the copy is the step that failed, in the
-                    // words a failed spawn has.
-                    Err(why) => {
-                        return Some(PlanFailure::local(RunError::Spawn(std::io::Error::other(
-                            format!("the index could not be copied for the commit: {why}"),
-                        ))));
-                    }
-                }
-            }
-            if let Some(index) = scratch.as_ref() {
-                git = git.env("GIT_INDEX_FILE", index.path());
-            }
-        }
-        let failure = if let Some(names) = names {
-            remote::run(ctx.remote_run(), git, invocation, cleanup)
-                .err()
-                .map(|failed| PlanFailure {
-                    remote: Some(RemoteFailed {
-                        failure: remote::failure_of(&failed.error, &failed.segments),
-                        stderr_tail: remote::tail(&failed.segments),
-                        names: Box::new(names.clone()),
-                        moves_unread: None,
-                    }),
-                    error: failed.error,
-                    before_pause: false,
-                    paused: None,
-                })
-        } else {
-            git.run(ctx.stop).err().map(PlanFailure::local)
-        };
-        if failure.is_some() {
-            return failure;
+) -> Result<(), Box<PlanFailure>> {
+    let mut git = plan_git(ctx.repo, invocation);
+    if invocation.index == IndexFile::Scratch {
+        git = git.env("GIT_INDEX_FILE", scratch.ready(ctx)?);
+    }
+    let Some(names) = names else {
+        return git
+            .run(ctx.stop)
+            .map(drop)
+            .map_err(|why| Box::new(PlanFailure::local(why)));
+    };
+    remote::run(ctx.remote_run(), git, invocation, cleanup).map_err(|failed| {
+        Box::new(PlanFailure {
+            remote: Some(RemoteFailed {
+                failure: remote::failure_of(&failed.error, &failed.segments),
+                stderr_tail: remote::tail(&failed.segments),
+                names: Box::new(names.clone()),
+                moves_unread: None,
+            }),
+            error: failed.error,
+            before_pause: false,
+            paused: None,
+        })
+    })
+}
+
+/// The copy of the index a plan's `Scratch` lines run on: made before the
+/// first of them, checked before each later one, removed by
+/// [`ScratchIndex::remove`].
+struct ScratchIndex<'a> {
+    path: &'a Path,
+    copy: Option<TempIndex>,
+}
+
+impl<'a> ScratchIndex<'a> {
+    fn new(ctx: &'a Context<'_>) -> Self {
+        ScratchIndex {
+            path: ctx.scratch_index(),
+            copy: None,
         }
     }
-    None
+
+    /// The path to hand git as `GIT_INDEX_FILE`, the copy made on first
+    /// asking. A copy gone by a later line is a failure, never the empty
+    /// index git would read in its place: a commit on that deletes every
+    /// file he did not choose.
+    ///
+    /// The run holds the journal's writer's lock while the copy exists, so
+    /// recovery's sweep of dead runs' copies (`recover`) never takes a live
+    /// one.
+    fn ready(&mut self, ctx: &Context<'_>) -> Result<&'a Path, Box<PlanFailure>> {
+        if !ctx.journal.claimed() {
+            return Err(not_run(
+                "the commit's index copy needs the journal held",
+                "no entry is open",
+            ));
+        }
+        if self.copy.is_some() {
+            still_there(self.path)?;
+        } else {
+            let copy = TempIndex::copied_as(ctx.repo, self.path.to_path_buf(), ctx.stop).map_err(
+                |why| match why {
+                    SnapshotError::Stopped => Box::new(PlanFailure::local(RunError::Stopped)),
+                    SnapshotError::Io(why) => not_run(COPY_FAILED, why),
+                    other => not_run(COPY_FAILED, other),
+                },
+            )?;
+            self.copy = Some(copy);
+        }
+        Ok(self.path)
+    }
+
+    /// Remove the copy, if one was made; what could not go, said.
+    fn remove(self) -> Option<AfterState> {
+        let copy = self.copy?;
+        copy.remove()
+            .err()
+            .map(|error| AfterState::ScratchIndexLeft {
+                path: self.path.to_path_buf(),
+                error,
+            })
+    }
+}
+
+/// A failed copy's words: git never ran, so not "could not run git".
+const COPY_FAILED: &str = "could not copy the index for the commit";
+
+/// A failure before git ran, in the step's own words.
+fn not_run(what: &'static str, why: impl std::fmt::Display) -> Box<PlanFailure> {
+    Box::new(PlanFailure::local(RunError::NotRun {
+        what,
+        why: why.to_string(),
+    }))
+}
+
+/// The scratch index is still where the run copied it.
+fn still_there(path: &Path) -> Result<(), Box<PlanFailure>> {
+    const GONE: &str = "the commit's index copy is gone";
+    match path.try_exists() {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(not_run(GONE, path.display())),
+        Err(why) => Err(not_run(GONE, why)),
+    }
 }
 
 /// The git one plan line runs.
@@ -282,3 +336,6 @@ pub(super) fn plan_git(repo: &RepoHandle, invocation: &Invocation) -> GitInvocat
         git.stop_hooks_first()
     }
 }
+
+#[cfg(test)]
+mod tests;

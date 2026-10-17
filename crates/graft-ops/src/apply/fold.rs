@@ -13,11 +13,11 @@ use std::collections::BTreeMap;
 
 use graft_core::journal::{EntryStatus, JournalEntry};
 
-use crate::operation::{Operation, RepoFacts};
+use crate::operation::{IndexFile, Operation, RepoFacts};
 use crate::snapshot;
 
 use super::resume::live_entry;
-use super::run::{PlanRun, logged_line, run_plan};
+use super::run::{PlanRun, logged_line, run_plan, with_cleanup};
 use super::{Applied, ApplyError, Context, Refresh, RestartPrep, as_apply_error, run_restart_prep};
 
 /// Run `op` folded into the operation git already has in progress, or answer
@@ -144,11 +144,18 @@ fn inside_live_operation(
     let mut commands = run_restart_prep(ctx, prep)?;
 
     let plan = op.plan(facts);
+    // A commit of chosen files at an edit stop runs on a copy of the index,
+    // which recovery may sweep from under any run not holding the journal
+    // (`run::ScratchIndex`). Held as a resume holds it: acting on an entry
+    // this `Journal` may not have opened.
+    if plan.iter().any(|line| line.index == IndexFile::Scratch) {
+        ctx.journal.claim().map_err(ApplyError::journal)?;
+    }
     commands.extend(plan.iter().map(|line| logged_line(ctx, line)));
-    let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
+    let run = run_plan(ctx, &plan, op.remote_names().as_ref());
     fold_commands(ctx, span, commands.clone());
 
-    let mut record = JournalEntry {
+    let record = JournalEntry {
         id: ctx.next_id(),
         at_unix_ms: ctx.now_unix_ms,
         kind: op.kind(),
@@ -177,18 +184,41 @@ fn inside_live_operation(
         put_back: None,
         fetched_refs: None,
     };
+    let applied = Applied {
+        came_back: Vec::new(),
+        stopped_at: None,
+        entry: record,
+        refresh,
+        step_backup,
+        replaced: crate::undo::Replaced::default(),
+    };
+    step_outcome(applied, run)
+}
+
+/// The folded step's answer: what ran, with what its run left behind
+/// (`cleanup`) said — never dropped (review ease-pass-04, Minor 1).
+fn step_outcome(applied: Applied, run: PlanRun) -> Result<Applied, ApplyError> {
+    let PlanRun {
+        failure, cleanup, ..
+    } = run;
     match failure {
-        None => Ok(Applied {
-            came_back: Vec::new(),
-            stopped_at: None,
-            entry: record,
-            refresh,
-            step_backup,
-            replaced: crate::undo::Replaced::default(),
-        }),
+        None => {
+            if cleanup.is_empty() {
+                Ok(applied)
+            } else {
+                // A scratch index that would not go, or an askpass that
+                // would not shut down: the step went through, and the answer
+                // says what it left.
+                Err(ApplyError::AfterState {
+                    applied: Box::new(applied),
+                    unread: cleanup,
+                })
+            }
+        }
         Some(failed) => {
+            let mut record = applied.entry;
             record.status = EntryStatus::Aborted {
-                reason: failed.reason(),
+                reason: with_cleanup(failed.reason(), &cleanup),
             };
             Err(failed.into_error(record))
         }

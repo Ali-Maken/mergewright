@@ -40,7 +40,8 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::snapshot_reads::{self, ReadError};
 
 use super::SnapshotError;
-use super::plumbing::{TempIndex, c_quoted, oid_from, path_of, stopped};
+use super::TempIndex;
+use super::plumbing::{c_quoted, oid_from, path_of, stopped};
 
 mod converted;
 

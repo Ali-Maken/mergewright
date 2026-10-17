@@ -225,6 +225,14 @@ fn os_bytes(bytes: &[u8]) -> OsString {
     OsString::from(String::from_utf8_lossy(bytes).into_owned())
 }
 
+/// One word — a path, a ref — quoted as [`super::command_line`] quotes it,
+/// for a line that shows it outside a `git …` command
+/// (`GIT_INDEX_FILE=<path>`). Decoded lossily; never run this.
+#[must_use]
+pub fn quote_word(word: &[u8]) -> String {
+    shell_quote(&String::from_utf8_lossy(word))
+}
+
 /// Quotes `text` for a POSIX shell when it holds anything beyond the plainly
 /// safe characters.
 pub(super) fn shell_quote(text: &str) -> String {

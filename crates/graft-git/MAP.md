@@ -248,10 +248,11 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Stop` (trait) — `should_stop() -> bool`, `Sync`; polled by long runs.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
 - `RawOutput` (struct) — `output`, `code`; output with the exit code kept.
-- `RunError` (enum) — `GitNotFound`, `Spawn`, `Sink`, `Exited`, `Stopped`, …; why a git run failed.
+- `RunError` (enum) — `GitNotFound`, `Spawn`, `Sink`, `Exited`, `Stopped`, `NotRun { what, why }` (a step before git failed; git never ran), …; why a git run failed.
 - `GitInvocation` (struct) — one `git` command bound to a repository, with fixed env.
 - `REPO_LOCATING_ENV` (const) — the `GIT_DIR`-style variables `in_folder` removes.
 - `command_line` (fn) — `&[GitArg] -> String`; display text for unbound args.
+- `quote_word` (fn) — `&[u8] -> String`: one word shell-quoted as `command_line` quotes it.
 - `GitInvocation::new` / `in_folder` (fn) — bind to a repository; bind to a plain folder.
 - `GitInvocation::arg` / `args` / `env` / `stdin` / `output_cap` (fn) — builders.
 - `GitInvocation::on_stderr_line` / `askpass` (fn) — stream stderr segments; route credential prompts.

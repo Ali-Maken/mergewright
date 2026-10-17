@@ -185,6 +185,10 @@ fn run_error_to_version_error(error: RunError) -> VersionError {
         // existing "did not read as a version" variant rather than left
         // unhandled.
         RunError::Unparsable(output) => VersionError::Unrecognised { output },
+        // Only a caller's own step before git makes this; `run` never does.
+        not_run @ RunError::NotRun { .. } => VersionError::Spawn {
+            source: io::Error::other(not_run.to_string()),
+        },
         RunError::Stopped => VersionError::Timeout {
             after: DEADLINE,
             // `GitInvocation::run` already killed and reaped the child

@@ -2,6 +2,8 @@
 //! `interrupted` with the repository as it stands, unless git's own state
 //! says its operation is still under way.
 
+use std::path::{Path, PathBuf};
+
 use graft_core::journal::{EntryId, MergeState};
 use graft_core::oid::Oid;
 use graft_git::state;
@@ -13,6 +15,7 @@ use crate::undo::RepoStateNow;
 
 use super::record::anchors;
 use super::resume::live_entry;
+use super::run::SCRATCH_INDEX;
 use super::{ApplyError, Context, EditsAt, set_aside};
 
 /// Close every entry left `Pending` by a previous run as `interrupted`,
@@ -71,6 +74,7 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
     let mut recovered = Recovered {
         live: live.into_iter().collect(),
         set_aside: edits_left(ctx, &open),
+        scratch_left: sweep_scratch_indexes(ctx.scratch()),
         ..Recovered::default()
     };
     for Open {
@@ -112,6 +116,44 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
         recovered.closed.push(id);
     }
     Ok(recovered)
+}
+
+/// Remove every commit's index copy a dead run left in the names dir
+/// (`run::ScratchIndex`; review ease-pass-04, Minor 4): index-sized, and
+/// read by nothing. Called only while recovery holds the journal alone, and
+/// a run holds the writer's lock for as long as its copy exists, so no copy
+/// here is a live run's. The old single name, `commit-index`, goes too.
+fn sweep_scratch_indexes(names_dir: &Path) -> Vec<(PathBuf, std::io::Error)> {
+    let prefix = format!("{SCRATCH_INDEX}-");
+    let entries = match std::fs::read_dir(names_dir) {
+        Ok(entries) => entries,
+        // No names dir: nothing was ever copied into it.
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
+        Err(why) => return vec![(names_dir.to_path_buf(), why)],
+    };
+    let mut left = Vec::new();
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(why) => {
+                left.push((names_dir.to_path_buf(), why));
+                continue;
+            }
+        };
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name != SCRATCH_INDEX && !name.starts_with(&prefix) {
+            continue;
+        }
+        let path = entry.path();
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            // Gone already: what the sweep wanted.
+            Err(why) if why.kind() == std::io::ErrorKind::NotFound => {}
+            Err(why) => left.push((path, why)),
+        }
+    }
+    left
 }
 
 /// The entry git's own state says is still under way, if any.
@@ -176,6 +218,10 @@ pub struct Recovered {
     /// Closed entries whose rewrite plan (`graft/rewrite/<id>/` under the
     /// git dir) could not be removed, and why (rewrite-engine-b).
     pub plans_left: Vec<(EntryId, std::io::Error)>,
+    /// Commits' index copies a dead run left in the names dir that could not
+    /// be removed, and why (review ease-pass-04, Minor 4). Swept only while
+    /// the read held the journal alone.
+    pub scratch_left: Vec<(PathBuf, std::io::Error)>,
     /// Interrupted set-aside entries whose stash is still listed, and where
     /// their edits were when recovery read the repository (ADR-0045 §5;
     /// 30c). Only this launch knows it: the entries are closed by then, so

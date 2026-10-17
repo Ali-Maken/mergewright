@@ -48,6 +48,7 @@ use std::time::Duration;
 use graft_core::oid::Oid;
 use graft_core::on_disk::ASKPASS_SOCKET_VAR;
 
+pub use exec::quote_word;
 use exec::{Ending, Event, Pipe, apply, collect_rest, drain, os_arg, shell_quote};
 use stop::{Graces, StopOrder, kill};
 
@@ -200,6 +201,11 @@ pub enum RunError {
         /// [`GitInvocation::command_line`], for the message.
         command: String,
     },
+    /// A caller's own step before git failed, so git never ran — not
+    /// [`RunError::Spawn`]'s "could not run git" (ease-pass/04r).
+    #[error("{what}: {why}")]
+    #[expect(missing_docs, reason = "the variant's doc names both fields")]
+    NotRun { what: &'static str, why: String },
 }
 
 /// A git command, built from typed arguments and run against one repository.

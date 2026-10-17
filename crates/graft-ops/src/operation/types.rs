@@ -202,13 +202,9 @@ impl Invocation {
     #[must_use]
     pub fn command_line_in(&self, scratch_index: &std::path::Path) -> String {
         use std::os::unix::ffi::OsStrExt;
-        // graft-git quotes words only inside a whole `git …` line; one path
-        // alone is that line without its `git `.
-        let line = graft_git::run::command_line(&[GitArg::Path(
-            scratch_index.as_os_str().as_bytes().to_vec(),
-        )]);
-        let quoted = line.strip_prefix("git ").unwrap_or(&line);
-        self.spelled(quoted)
+        self.spelled(&graft_git::run::quote_word(
+            scratch_index.as_os_str().as_bytes(),
+        ))
     }
 
     fn spelled(&self, scratch_index: &str) -> String {
