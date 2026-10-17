@@ -103,6 +103,69 @@ pub fn commits_from(
     super::rev_list(repo, cap, vec![GitArg::Oid(include)], stop)
 }
 
+/// The commit where `onto` entered `line`'s first-parent chain, with its
+/// parents ([`entry_into`]'s answer).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LineEntry {
+    /// The oldest commit on `line`'s first-parent chain that holds `onto`.
+    pub commit: Oid,
+    /// Its parents, first parent first.
+    pub parents: Vec<Oid>,
+}
+
+/// Where `onto` entered `line`'s first-parent chain: the oldest commit on
+/// that chain with `onto` as an ancestor. A merge there means `line` took
+/// `onto` in; a first parent equal to `onto` means `line` was built
+/// straight on top of it (ease-pass 01r).
+///
+/// `None` when `line` does not hold `onto`, or `line == onto`. One
+/// `rev-list --ancestry-path --parents ^onto line` (every commit between
+/// the two), then `parents[0]` followed from `line` while inside that set.
+/// `--first-parent` is not combined with `--ancestry-path`: the set must
+/// keep a merge that came in through another merge. Uncapped: a walk past
+/// the runner's output cap is `Unparsable`, never a partial answer.
+///
+/// # Errors
+/// [`RunError`] from the runner, `Stopped` included.
+pub fn entry_into(
+    repo: &RepoHandle,
+    onto: Oid,
+    line: Oid,
+    stop: &dyn Stop,
+) -> Result<Option<LineEntry>, RunError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--ancestry-path"),
+            GitArg::Flag("--parents"),
+            GitArg::Word(format!("^{onto}")),
+            GitArg::Oid(line),
+        ])
+        .run(stop)?;
+    if output.truncated {
+        return Err(RunError::Unparsable(
+            "rev-list's ancestry path outgrew the output cap".to_owned(),
+        ));
+    }
+    let (_, between) = parse_parents(&output.stdout)?;
+    let mut at = line;
+    let Some(mut parents) = between.get(&at) else {
+        return Ok(None);
+    };
+    // Down the first parents while they still hold `onto`.
+    while let Some((&next, up)) = parents
+        .first()
+        .and_then(|first| between.get_key_value(first))
+    {
+        at = next;
+        parents = up;
+    }
+    Ok(Some(LineEntry {
+        commit: at,
+        parents: parents.clone(),
+    }))
+}
+
 /// [`only_in_stash`]'s answer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StashOnly {
@@ -210,10 +273,15 @@ fn walk_unheld(
             "rev-list's stash-only history outgrew the output cap".to_owned(),
         ));
     }
-    // Every printed commit, in git's order, with its parents.
+    parse_parents(&output.stdout)
+}
+
+/// `rev-list --parents` output: every printed commit, in git's order, with
+/// its parents.
+fn parse_parents(stdout: &[u8]) -> Result<(Vec<Oid>, Parents), RunError> {
     let mut order = Vec::new();
-    let mut parents: HashMap<Oid, Vec<Oid>> = HashMap::new();
-    for line in output.stdout.split(|&byte| byte == b'\n') {
+    let mut parents: Parents = HashMap::new();
+    for line in stdout.split(|&byte| byte == b'\n') {
         let mut ids = line
             .split(|&byte| byte == b' ')
             .filter(|id| !id.is_empty())
