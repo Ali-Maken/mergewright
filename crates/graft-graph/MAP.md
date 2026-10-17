@@ -35,15 +35,30 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## inclusion
 - `Follow` (enum) — `AllParents` or `FirstParent`; fixed per layout because it changes the seeds.
-- `Inclusion` (struct) — hidden stashes, folded merges and stash entries; may change while a layout lives.
+- `Inclusion` (struct) — hidden stashes, stash entries and `fold: Option<Folding>`; may change while a layout lives.
+- `Inclusion::folded_by_default` (fn) — `folded_by_default(keep: Vec<Oid>, OpenedMerges)`; merged branches hide behind their merge.
+- `Inclusion::opened` / `opened_mut` / `keep` / `keep_mut` (fn) — the fold's opened merges and extra keep tips; `None` when not folding.
 - `Inclusion::with_stashes` / `stashes` (fn) — set / read every stash entry's own commit.
+- `Folding` (struct) — fold by default's state: keep tips beyond the seeds, and the opened merges.
+- `OpenedMerges` (struct) — merges the user opened; `open` / `close` (true if changed), `contains`, `iter`.
+- `FoldWalk` (struct) — the fold rule as a streaming predicate over handles in walk order; ~5.75 bytes/commit dense.
+- `FoldWalk::new` / `mark` (fn) — `new(keep, opened, forced: &[CommitHandle])`; `mark(handle, Mark)` for one known later.
+- `FoldWalk::admit` (fn) — `admit(commit, parents) -> Admit`; decide one commit when the walk reaches it.
+- `FoldWalk::trim` (fn) — `trim(Link) -> Link`; parents a shown commit draws edges to.
+- `FoldWalk::take_late` / `take_rejoined` / `rejoin` / `rejoins` (fn) — late hidden commits to force; merge edges to draw again.
+- `FoldWalk::folds` / `behind` / `inside` / `approximate_bytes` (fn) — does a merge fold; the shown merge a hidden commit is behind; the opened merge a shown commit is inside.
+- `Admit` (enum) — `Shown { inside }` / `Hidden { behind }`.
+- `Mark` (enum) — `Keep` / `Opened` / `Forced`.
 - `seeds_for` (fn) — `seeds_for(Follow, Seeds) -> Seeds`; the seeds a view lays out from.
 - `apply` (fn) — slice form: the commits a view shows, parents trimmed, and its seeds.
 - `Included` (struct) — `Included<S: CommitSource>`: a source wrapper passing only what a view shows; remembers walked handles.
 - `Included::new` / `seeds` / `follow` / `inclusion` / `inner` (fn) — build and query the wrapper.
-- `Included::walked` / `shown` (fn) — walked and currently shown handles, as `HandleSet`s.
+- `Included::walked` / `shown` / `fold` (fn) — walked and currently shown handles, as `HandleSet`s; the fold's walk, if folding.
 - `Included::reinclude` (fn) — `reinclude(Inclusion) -> Result<Option<usize>, _>`; switch inclusion, first changed row.
+- `Included::repair` (fn) — `repair() -> Result<Option<usize>, _>`; force late commits shown, redraw rejoined edges; first changed row.
 - `reinclude` (fn) — switch a `StreamingLayout<Included<_>>`'s inclusion and truncate from the first changed row; `Invalidated`.
+- `repair` (fn) — run `Included::repair` on a `StreamingLayout` and truncate; `Option<Invalidated>`.
+- `advance_folded` (fn) — `advance` then `repair` until neither has work; what a folding view advances with.
 
 ## lane
 - `LaneIdentity` (enum) — `Known(BranchIdentity)` or `Merge { merge, parent }`, a merge lane's name resolved at assembly.
@@ -88,7 +103,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `StreamingLayout::truncate` (fn) — `truncate(row) -> Result<Invalidated, _>`; forget rows from `row` on.
 
 ## merge_name
-- `recover_branch_name` (fn) — `recover_branch_name(&[u8]) -> Option<Vec<u8>>`; branch name from a merge subject.
+- `recover_branch_name` (fn) — `recover_branch_name(&[u8]) -> Option<Vec<u8>>`; branch name from a merge subject; `PR <n>` from Azure DevOps' `Merged PR <n>: …`.
 
 ## raster
 - `cache` (mod) — the strip cache.

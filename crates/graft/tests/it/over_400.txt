@@ -27,10 +27,11 @@
 688 crates/graft-git/tests/it/snapshot_reads.rs
 702 crates/graft-git/tests/it/trace.rs
 446 crates/graft-graph/src/fold/tests.rs
-567 crates/graft-graph/src/inclusion/tests.rs
+415 crates/graft-graph/src/inclusion/fold_walk/tests.rs
+570 crates/graft-graph/src/inclusion/tests.rs
 1429 crates/graft-graph/src/layout/stream/tests.rs
 701 crates/graft-graph/src/layout/tests.rs
-610 crates/graft-graph/src/layout/tests/properties.rs
+620 crates/graft-graph/src/layout/tests/properties.rs
 438 crates/graft-graph/src/raster/emphasis.rs
 455 crates/graft-graph/tests/it/corpus.rs
 587 crates/graft-graph/tests/it/emphasis_layer.rs
@@ -220,7 +221,7 @@
 893 crates/graft/src/view/rows.rs
 429 crates/graft/src/view/strips.rs
 485 crates/graft/src/view/strips/tests.rs
-5302 crates/graft/src/view/tests.rs
+5303 crates/graft/src/view/tests.rs
 465 crates/graft/src/view/tests/bottom_row.rs
 406 crates/graft/tests/it/app_harness.rs
 425 crates/graft/tests/it/blame_place.rs

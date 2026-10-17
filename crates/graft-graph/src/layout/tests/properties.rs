@@ -522,17 +522,20 @@ fn check_deterministic(
 }
 
 /// A generated history viewed through a generated inclusion: either follow
-/// mode, a random subset of its merges folded, and a random subset of its
-/// commits treated as hidden stashes.
+/// mode, merged branches folded by default or not (a random subset of its
+/// merges opened), a random subset of its merges folded by hand, and a
+/// random subset of its commits treated as hidden stashes.
 pub(crate) fn viewed() -> impl Strategy<Value = (History, Follow, Inclusion)> {
     (
         history(),
         any::<bool>(),
+        any::<bool>(),
         proptest::collection::vec(any::<bool>(), 40),
+        proptest::collection::vec(proptest::bool::weighted(0.3), 40),
         proptest::collection::vec(proptest::bool::weighted(0.2), 40),
     )
-        .prop_map(|(history, first_parent, folds, stashes)| {
-            let pick = |mask: &[bool], merges_only: bool| {
+        .prop_map(|(history, first_parent, fold, opens, folds, stashes)| {
+            let pick = |mask: &[bool], merges_only: bool| -> BTreeSet<Oid> {
                 history
                     .commits
                     .iter()
@@ -541,11 +544,17 @@ pub(crate) fn viewed() -> impl Strategy<Value = (History, Follow, Inclusion)> {
                     .map(|(commit, _)| commit.id)
                     .collect()
             };
-            let inclusion = Inclusion {
-                folded: pick(&folds, true),
-                hidden_stashes: pick(&stashes, false),
-                ..Inclusion::default()
+            let mut inclusion = if fold {
+                let mut opened = crate::inclusion::OpenedMerges::default();
+                for merge in pick(&opens, true) {
+                    opened.open(merge);
+                }
+                Inclusion::folded_by_default(Vec::new(), opened)
+            } else {
+                Inclusion::default()
             };
+            inclusion.folded = pick(&folds, true);
+            inclusion.hidden_stashes = pick(&stashes, false);
             let follow = if first_parent {
                 Follow::FirstParent
             } else {
@@ -587,7 +596,8 @@ proptest! {
     }
 
     /// Every invariant above, on what a view draws: first-parent view,
-    /// folded merges and hidden stashes switched on (ticket m1/15).
+    /// merged branches folded by default (some opened), merges folded by
+    /// hand and hidden stashes switched on (ticket m1/15, ease-pass/06).
     #[test]
     fn every_invariant_holds_under_every_inclusion(
         (history, follow, inclusion) in viewed(),
