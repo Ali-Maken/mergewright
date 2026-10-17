@@ -1372,3 +1372,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/04-unverified | Crash between commit and index reset (Pending recovery) not exercised; app never shows `scratch_left`/`plans_left`; review 04 minors 2, 5, 6, 7 (`allow_empty`) open. | **unverified** | ease-pass |
 | ease/03-review-minors | Review 03 (docs/reviews/ease-pass-03.md) minors 6 and 7 not in 03r; palette ratchet goes with 06c. | **unverified** | ease-pass |
 | ease/03r-toggle-labels | Review 03 Minor 5: `commit.toggle_*` labels not renamed (graft palette/editor_tests.rs:79-81,98,123 pin them); man page unchanged. | **unverified** | ease-pass |
+| ease/05r-cancel-untake | A cancelled untake reports cancel after it has written (jobs/pool.rs:319); only at shutdown. Rec: untake job returns `Outcome::Answered`. | **broken** | ease-pass (11) |
+| ease/05r-n-label | `n` label still reads "Next block"; `n` now goes to the next file. Resolver captures stale since 05/05r/Q19 → re-shot in 11. | **broken** | ease-pass (11) |
