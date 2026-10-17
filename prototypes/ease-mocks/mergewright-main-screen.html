@@ -1,0 +1,229 @@
+<title>Mergewright main screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: one real-size terminal window as the hero, the reasoning under it. Page is light/dark; the terminal is always a dark terminal. */
+:root{
+  --paper:#eef0ea; --ink:#1d2320; --muted:#5d6661; --rule:#c9cec6;
+  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#5f6864; --term-faint:#30383a; --cursor:#243037; --other:#4d5654;
+  --this:#7ed49b; --under:#e9b65c; --trunk:#9fb7ff; --warn:#ffcf6b;
+  --display:"Fraunces",Georgia,serif; --body:"Public Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 16px 64px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 8px;text-wrap:balance;max-width:24ch}
+.lede{color:var(--muted);max-width:66ch;margin:0 0 28px}
+kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--rule);border-radius:4px;padding:0 5px}
+
+.termbox{overflow-x:auto;border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}
+.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;min-width:1040px;outline:none;border-radius:10px}
+.term:focus-visible{box-shadow:0 0 0 2px var(--trunk)}
+.chrome{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--term-faint)}
+.chrome i{width:11px;height:11px;border-radius:50%;background:var(--term-faint)}
+.hdr{display:flex;gap:18px;padding:6px 14px;border-bottom:1px solid var(--term-faint);white-space:pre}
+.hdr .dim{color:var(--term-dim)}
+.body{display:grid;grid-template-columns:1fr 290px}
+/* fixed height, like a real terminal window: 14 lines */
+.rows{padding:6px 0;border-right:1px solid var(--term-faint);min-width:0;height:calc(14 * 1.65em);overflow-y:auto}
+.row{display:grid;grid-template-columns:13ch 20ch minmax(0,1fr) 6ch 4ch;gap:0 1ch;padding:0 14px;white-space:pre;cursor:pointer}
+.row.cur{background:var(--cursor)}
+.row .msg{overflow:hidden;text-overflow:ellipsis}
+.row .more{grid-column:3/-1;white-space:normal;color:var(--term-dim);padding-bottom:2px}
+.row .who,.row .age{color:var(--term-dim);text-align:right}
+.g span{font-weight:700}
+.br{overflow:hidden;text-overflow:ellipsis}
+.fold{color:var(--term-dim)}
+.side{padding:12px 16px;white-space:pre-wrap}
+.side h3{margin:0;font-size:inherit;font-weight:700}
+.side .k{color:var(--term-dim)}
+.bar{display:flex;flex-wrap:wrap;gap:4px 20px;padding:6px 14px;border-top:1px solid var(--term-faint);color:var(--term-dim)}
+.bar b{color:var(--term-fg)}
+.term.mono-only *{color:var(--term-fg)!important}
+.term.mono-only .k,.term.mono-only .fold,.term.mono-only .who,.term.mono-only .age,.term.mono-only .bar,.term.mono-only .r-other{color:var(--term-dim)!important}
+.toggles{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;font-size:14px;color:var(--muted)}
+.toggles button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:6px;padding:4px 10px;cursor:pointer}
+.toggles button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.toggles button:focus-visible{outline:2px solid var(--trunk);outline-offset:2px}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 44px;margin-top:48px}
+.rules h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0 0 6px;line-height:1.25}
+.rules p{margin:0;color:var(--muted);max-width:54ch}
+.sec{font-family:var(--display);font-weight:700;font-size:26px;margin:56px 0 0}
+.sec+.rules{margin-top:20px}
+.rules a{color:inherit}
+.sw{font-family:var(--mono);font-weight:700}
+.note{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px;max-width:72ch}
+</style>
+
+<div class="wrap">
+  <h1>Twenty branches can't each get a colour, so only three do</h1>
+  <p class="lede">Your screenshot has about ten lines in ten colours, and nothing tells you which one matters. In this version a line's colour says how it relates to the row you're on, not which branch it is. Click the terminal and move with <kbd>j</kbd> / <kbd>k</kbd>. Watch the colours move with you. <kbd>space</kbd> on a merge row shows the commits folded into it, <kbd>#</kbd> turns colour off.</p>
+
+  <div class="termbox">
+    <div class="term" id="term" tabindex="0" aria-label="Mergewright terminal mock. j and k move, space unfolds a merge, # toggles colour.">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="hdr"><span>mwr  ~/work/reports</span><span>on <b style="color:var(--this)">wallet-release</b></span><span class="dim">lanes drawn: 5 of 8</span><span class="dim">38 merged branches folded</span></div>
+      <div class="body">
+        <div class="rows" id="rows"></div>
+        <div class="side" id="side"></div>
+      </div>
+      <div class="bar" id="bar"></div>
+    </div>
+  </div>
+  <div class="toggles">
+    <button id="tTall" aria-pressed="false">Two lines on every row</button>
+    <button id="tMono" aria-pressed="false">Colour off (#)</button>
+    <span id="fit"></span>
+  </div>
+
+  <h2 class="sec">From Sublime Merge and others</h2>
+  <div class="rules">
+    <div><h2>Taken: merges folded by default</h2><p>Sublime Merge shows only the main line and opens a merge on click (<a href="https://www.sublimemerge.com/blog/sublime-merge-build-1070">build 1070</a>). Fork does the same and pitches it as its fix for clutter (<a href="https://fork.dev/blog/posts/collapsible-graph/">Fork blog</a>). Here: <kbd>space</kbd> on a merge row.</p></div>
+    <div><h2>Changed: label colour matches its line</h2><p>Sublime Merge colours lanes from a rotating palette and labels by kind, and users read the two as not matching (<a href="https://forum.sublimetext.com/t/branch-graph-colorization-not-matching/47902">forum</a>). Here the branch name is always the colour of its own line.</p></div>
+    <div><h2>Changed: your route lights up</h2><p>Sublime Merge can hide branches, but it doesn't highlight the selected commit's history. Users have asked for that (<a href="https://github.com/sublimehq/sublime_merge/issues/2009">#2009</a>). GitKraken and GitLens dim the unrelated branches. Here that happens on every cursor move, with no click and nothing hidden.</p></div>
+    <div><h2>Changed: names on one line</h2><p>Sublime Merge puts the full author name on a second line, and users say it wastes height (<a href="https://github.com/sublimehq/sublime_merge/issues/18">#18</a>, <a href="https://github.com/sublimehq/sublime_merge/issues/692">#692</a>). lazygit's initials cut three-part names to two letters (<a href="https://github.com/jesseduffield/lazygit/issues/5670">#5670</a>). Here: the first name in its own column, and your own rows in bold, as JetBrains does (<a href="https://www.jetbrains.com/help/phpstorm/log-tab.html">docs</a>).</p></div>
+    <div><h2>Ours: only lanes with something on screen</h2><p>A branch gets a lane only while it has a commit in view. The header says how many lanes are drawn out of how many exist, so the count stays small while you scroll.</p></div>
+  </div>
+  <p class="note" style="margin-top:28px">Full study with every source: <code>docs/research/graph-readability.md</code>.</p>
+
+  <h2 class="sec">How the screen reads</h2>
+  <div class="rules">
+    <div><h2>Colour means a role</h2><p><span class="sw" style="color:var(--this)">┃ the branch you're on</span>, <span class="sw" style="color:var(--under)">│ what it was built on</span>, <span class="sw" style="color:var(--trunk)">║ development</span>. Every other branch is a <span class="sw" style="color:var(--other)">┊ grey dotted line</span>. Move the cursor onto a teammate's branch and it becomes the green one. Three colours are enough for any number of branches.</p></div>
+    <div><h2>Finished branches fold away</h2><p>A branch that's already merged is one row: <span class="sw">◉ Merged PR 16021 · +4 from sara/fix-toc</span>. That removes most of the lines in your screenshot. <kbd>space</kbd> opens it when you want to look inside.</p></div>
+    <div><h2>Every row says its branch</h2><p>A branch column names the branch for each row, written once where it changes. You don't have to trace a line back up to a label.</p></div>
+    <div><h2>Your branch and its remote are one thing</h2><p>Your screenshot shows both <span class="sw">wallet-release</span> and <span class="sw">origin/wallet-release</span> as separate labels. Here it's one name with <span class="sw">↑1 to push</span>.</p></div>
+  </div>
+
+  <p class="note">This is a mock with a made-up repo shaped like yours: a development trunk, an integration branch, your branch on top, teammates' branches beside it. A real terminal may draw the colours differently from this page; the line shapes (┃ │ ║ ┊) carry the same roles without colour.</p>
+</div>
+
+<script>
+// Branches. route = what the branch is built on, trunk first.
+const B={
+ D:{name:"development",route:["D"]},
+ I:{name:"integration",route:["D","I"]},
+ W:{name:"wallet-release",route:["D","I","W"],you:true},
+ S:{name:"sara/dexcom-report",route:["D","S"]},
+ H:{name:"omar/outstanding-summary",route:["D","H"]},
+};
+const N=6; // lanes: 0 D,1 I,2 W,3 S,4 H,5 unfolded commits
+// L: branch per lane at this row (null = empty). at: commit lane. j: [lane, "up"|"down", branch] a connector.
+const R=[
+ {L:[0,0,"W"],at:2,g:"●",b:"W",msg:"PAY-399: wallet release on integration 27ce3f2, without our test files",who:"you",age:"23h",lbl:"↑1 to push"},
+ {L:[0,"I","W"],at:1,g:"◉",b:"I",msg:"Merge PAY-571: bounced check charge on the PDF",who:"you",age:"27h",j:[2,"up","W"],fold:{n:1,from:"pay-571/bounce-charge",kids:["PAY-571: bounced check charge prints on the practice report"]}},
+ {L:[0,"I"],at:1,g:"◉",b:"I",msg:"Merge PAY-317: invoice prints credit left as of the date",who:"you",age:"9d",fold:{n:1,from:"pay-317/credit-left",kids:["PAY-317: re-prints send creditLeftAsOf"]}},
+ {L:[0,"I"],at:1,g:"◉",b:"I",msg:"Merge PAY-309: monthly invoice prints credit left",who:"you",age:"9d",fold:{n:1,from:"pay-309/monthly-credit",kids:["PAY-309: credit left under the credit note"]}},
+ {L:[0,"I"],at:1,g:"◉",b:"I",msg:"Merge PAY-307: amounts of $1,000 or more get a comma",who:"you",age:"9d",fold:{n:1,from:"pay-307/thousands",kids:["PAY-307: credit table thousands comma"]}},
+ {L:["D","I"],at:0,g:"◉",b:"D",msg:"Merged PR 16041: adjust layout of the executive summary",who:"you",age:"10d",j:[1,"up","I"],fold:{n:2,from:"ali/summary-layout",kids:["Adjust summary dimensions","Fix summary page break"]}},
+ {L:["D"],at:0,g:"◉",b:"D",msg:"Merged PR 16067: development into master",who:"Mehdi",age:"11d",lbl:"master is here"},
+ {L:["D"],at:0,g:"◉",b:"D",msg:"Merged PR 16021: fix table of contents",who:"Sara",age:"11d",fold:{n:4,from:"sara/fix-toc",kids:["Remove subprocess","Fix header issue","Fix billing issue","Change the table of contents"]}},
+ {L:["D"],at:0,g:"●",b:"D",msg:"Refactor optional vital sign blocks in SOAP note",who:"you",age:"12d"},
+ {L:["D",0,0,"S"],at:3,g:"●",b:"S",msg:"Fix report issue",who:"Sara",age:"2w",lbl:"not merged"},
+ {L:["D",0,0,"S","H"],at:4,g:"●",b:"H",msg:"Adjust spacing in outstanding balance report",who:"Omar",age:"2w",lbl:"not merged"},
+ {L:["D",0,0,"S","H"],at:4,g:"●",b:"H",msg:"Add payment methods to outstanding balance",who:"Omar",age:"2w"},
+ {L:["D",0,0,"S","H"],at:0,g:"◉",b:"D",msg:"Merged PR 15794: dexcom AGP review",who:"Sara",age:"2w",j:[3,"up","S"],fold:{n:3,from:"sara/agp-review",kids:["AGP review page","Monthly report arrange","Fix AGP legend"]}},
+ {L:["D",0,0,0,"H"],at:0,g:"◉",b:"D",msg:"Merged PR 15865: integrate eligibility API",who:"Omar",age:"3w",fold:{n:6,from:"omar/eligibility-api",kids:["Add demographic mismatch section","Update eligibility terminology","Refactor eligibility report structure","Refactor eligibility report methods","(2 merges from development, hidden)"]}},
+ {L:["D",0,0,0,"H"],at:0,g:"●",b:"D",msg:"Fix outstanding table invoice number alignment",who:"you",age:"3w",j:[4,"up","H"]},
+ {L:["D"],at:0,g:"◉",b:"D",msg:"Merged PR 15856: update executive summary images",who:"Ali",age:"3w",fold:{n:1,from:"ab/pvc-reports",kids:["Update exec_later_pages.jpg"]}},
+ {L:["D"],at:0,g:"●",b:"D",msg:"Terms now come from the backend",who:"you",age:"3w"},
+];
+let cur=0,mono=false,tall=false;const open=new Set();
+const term=document.getElementById("term"),rowsEl=document.getElementById("rows"),side=document.getElementById("side"),bar=document.getElementById("bar");
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+// Role of a branch relative to the branch under the cursor.
+function role(br,focus){const rt=B[focus].route;if(br===focus)return"this";if(br==="D")return"trunk";if(rt.includes(br))return"under";return"other"}
+const COL={this:"var(--this)",under:"var(--under)",trunk:"var(--trunk)",other:"var(--other)"};
+const V={this:"┃",under:"│",trunk:"║",other:"┊"}, H={this:"━",under:"─",trunk:"═",other:"┄"};
+const cell=(ch,r)=>`<span class="r-${r}" style="color:${COL[r]}">${ch}</span>`;
+function graph(L,at,glyph,j,focus,extra){
+  let s="";const span=j?[Math.min(at,j[0]),Math.max(at,j[0])]:null;
+  for(let i=0;i<N;i++){
+    const br=L[i]||null;let ch=" ",r="other",gap=" ",gr=null;
+    if(i===at){ch=glyph;r=role(L[i],focus)}
+    else if(j&&i===j[0]){r=role(j[2],focus);ch=j[1]==="up"?"╯":"╮"}
+    else if(br){r=role(br,focus);ch=V[r]}
+    if(extra!=null&&i===5){r=role(extra,focus);ch="●"}
+    if(span&&i>=span[0]&&i<span[1]){gr=role(j[2],focus);gap=H[gr]}
+    s+=(ch===" "?" ":cell(ch,r))+(gr?cell(gap,gr):" ");
+  }
+  return s;
+}
+// The cursor row grows a second line: full message, who, when, where. Lanes continue through it.
+const AGE={h:"hours",d:"days",w:"weeks"};
+function more(r,next,focus){
+  let g="";const L=next?(next.r?next.r.L:next.p.L):[];
+  for(let i=0;i<N;i++){const br=L[i];if(br){const rl=role(br,focus);g+=cell(V[rl],rl)+" "}else g+="  "}
+  const age=r.age.replace(/(\d+)([hdw])/,(m,n,u)=>n+" "+AGE[u]+" ago");
+  const hash=(0x5f3a91c+R.indexOf(r)*0x1d2b7).toString(16).slice(0,7);
+  const where=B[r.b].name+(r.lbl?" · "+r.lbl:"")+(r.fold?" · merged "+r.fold.n+" from "+r.fold.from:"");
+  const i=R.indexOf(r),also=Object.keys(B).filter(x=>x!==r.b&&contains(x,r.b,i));
+  const alsoTxt=also.length?` · also in ${also.map(x=>`<span style="color:${COL[role(x,focus)]}">${esc(B[x].name)}</span>`).join(", ")}`:"";
+  return `<span class="g">${g}</span><span></span><span class="more">${r.who==="you"?"you":r.who} · ${age} · made on ${esc(where)}${alsoTxt} · ${hash}</span>`;
+}
+// Row where each branch left the one it was built on. A commit is in branch X
+// if it was made on X, or on what X was built on, at or below where X left it.
+const START={I:5,W:1,S:12,H:14};
+function contains(x,b,i){
+  if(x===b)return true;const rt=B[x].route;if(rt.length<2||!rt.includes(b))return false;
+  return i>=START[x]&&contains(rt[rt.length-2],b,i);
+}
+function flat(){const out=[];R.forEach((r,i)=>{out.push({r,i});if(r.fold&&open.has(i))r.fold.kids.forEach(k=>out.push({kid:k,p:r,i}))});return out}
+function draw(){
+  const F=flat();cur=Math.min(cur,F.length-1);
+  const focus=F[cur].kid?F[cur].p.b:F[cur].r.b;
+  let last=null;
+  rowsEl.innerHTML=F.map((f,idx)=>{
+    if(f.kid){
+      const L=f.p.L.map(x=>x||0);const g=graph(L.map((x,i)=>i===f.p.at?f.p.b:x),-1,"",null,focus,"merged");
+      return `<div class="row${idx===cur?" cur":""}" data-i="${idx}"><span class="g">${g}</span><span class="fold">  ${esc(f.p.fold.from.split("/").pop())}</span><span class="msg fold">${esc(f.kid)}</span><span></span><span></span></div>`}
+    const r=f.r,rl=role(r.b,focus);
+    const g=graph(r.L,r.at,r.g,r.j,focus,null);
+    const nm=B[r.b].name+(B[r.b].you?" (you)":"");
+    const brTxt=r.b!==last?`<span class="br" style="color:${COL[rl]};font-weight:${rl==="other"?400:700}">${esc(nm)}</span>`:`<span></span>`;last=r.b;
+    const fold=r.fold?`<span class="fold">  ${open.has(f.i)?"▾":"▸"} ${r.fold.n} commit${r.fold.n>1?"s":""} from ${esc(r.fold.from)}</span>`:"";
+    const lbl=r.lbl?`<span class="fold">  ${r.lbl}</span>`:"";
+    return `<div class="row${idx===cur?" cur":""}" data-i="${idx}"><span class="g">${g}</span>${brTxt}<span class="msg"${rl==="other"?' style="color:var(--term-dim)"':""}>${esc(r.msg)}${fold}${lbl}</span><span class="who"${r.who==="you"?' style="color:var(--term-fg);font-weight:700"':""}>${r.who}</span><span class="age">${r.age}</span>${idx===cur||tall?more(r,F[idx+1],focus):""}</div>`}).join("");
+  const b=B[focus],rt=b.route;
+  const route=rt.map((x,i)=>{const rl=role(x,focus);return `<span style="color:${COL[rl]};font-weight:700">${i?" ─◆ ":""}${esc(B[x].name)}</span>`}).join("\n  ");
+  // Four answers per branch. ! = needs you, ✓ = fine.
+  const S={
+    W:[["!","1 commit to push"],["·","not merged"],["✓","up to date with integration"],["·","you, last commit 23h ago"]],
+    I:[["✓","pushed"],["·","not merged into development"],["✓","up to date with development"],["·","you, last commit 27h ago"]],
+    D:[["✓","pushed"],["·","the main line: branches merge into it"],["·","master is 1 merge behind it"],["·","everyone, last commit 10d ago"]],
+    S:[["✓","pushed"],["·","not merged"],["!","development has 4 new commits since it left"],["·","Sara, last commit 2w ago"]],
+    H:[["✓","pushed"],["·","not merged"],["!","development has 6 new commits since it left"],["·","Omar, last commit 2w ago"]],
+  }[focus];
+  const mark={"!":"var(--warn)","✓":"var(--this)","·":"var(--term-dim)"};
+  const lines=S.map(([m,t])=>`<span style="color:${mark[m]}">${m}</span> ${m==="!"?`<span style="color:var(--warn)">${esc(t)}</span>`:esc(t)}`).join("\n");
+  side.innerHTML=`<h3 style="color:var(--this)">${esc(b.name)}${b.you?"  (you're here)":""}</h3>
+${lines}
+
+<span class="k">built on</span>
+  ${route}`;
+  const fr=F[cur].r;
+  const keys=fr&&fr.fold?[["space",open.has(F[cur].i)?"hide the commits inside":`show the ${fr.fold.n} commit${fr.fold.n>1?"s":""} inside`],["⏎","open"],["x","compare"]]:focus==="W"?[["⏎","open"],["P","push"],["c","commit"]]:[["⏎","open"],["C","switch to "+b.name.split("/").pop()],["x","compare with yours"]];
+  bar.innerHTML=keys.concat([["u","undo"],["?","more"]]).map(([k,v])=>`<span><b>${k}</b> ${esc(v)}</span>`).join("");
+  document.getElementById("tMono").setAttribute("aria-pressed",mono);
+  document.getElementById("tTall").setAttribute("aria-pressed",tall);
+  term.classList.toggle("mono-only",mono);
+  const c=rowsEl.querySelector(".row.cur");if(c)c.scrollIntoView({block:"nearest"});
+  const lh=parseFloat(getComputedStyle(term).lineHeight);
+  document.getElementById("fit").textContent=`${Math.floor(rowsEl.clientHeight/(tall?2*lh:lh))-(tall?0:1)} commits fit in this window`;
+}
+function key(k){
+  const n=flat().length;
+  if(k==="j"||k==="ArrowDown")cur=Math.min(n-1,cur+1);
+  else if(k==="k"||k==="ArrowUp")cur=Math.max(0,cur-1);
+  else if(k===" "){const f=flat()[cur];if(f.r&&f.r.fold){open.has(f.i)?open.delete(f.i):open.add(f.i)}else if(f.kid){open.delete(f.i);cur=flat().findIndex(x=>x.r&&x.i===f.i)}}
+  else if(k==="#")mono=!mono;
+  else return false;
+  draw();return true;
+}
+term.addEventListener("keydown",e=>{if(key(e.key))e.preventDefault()});
+rowsEl.addEventListener("click",e=>{const r=e.target.closest(".row");if(r){cur=+r.dataset.i;draw();term.focus()}});
+document.getElementById("tMono").onclick=()=>key("#");
+document.getElementById("tTall").onclick=()=>{tall=!tall;draw()};
+draw();
+</script>

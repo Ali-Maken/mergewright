@@ -25,7 +25,10 @@ mod forecast;
 mod unreached;
 
 pub use compare::{CompareSpan, StashOnly, compare_span, count_between, only_in_stash};
-pub use forecast::{Forecast, MergeStep, forecast_merge, merge_tree_step};
+pub use forecast::{
+    ClashForecast, Forecast, MergeCheck, MergeForecast, MergeStep, UNRELATED, forecast_merge,
+    merge_forecast, merge_tree_step,
+};
 pub use unreached::{LostRun, Unreached, unreached};
 
 /// Where two commits' histories diverged, or `None` if they share no
