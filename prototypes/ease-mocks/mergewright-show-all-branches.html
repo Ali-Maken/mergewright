@@ -1,15 +1,15 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Today's graph, kept</title>
+<title>Graph mode</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;600&display=swap">
 <style>
-/* Same paper, type and terminal as the accepted ease-pass mocks, so this reads as part of that set. */
+/* Same paper, type and terminal as the accepted ease-pass mocks. */
 :root{
   --paper:#eef0ea; --ink:#1d2320; --muted:#5d6661; --rule:#c9cec6;
-  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#5f6864; --term-faint:#30383a;
-  --this:#7ed49b; --under:#e9b65c; --trunk:#9fb7ff;
+  --term:#14181b; --term-fg:#c9d1cc; --term-dim:#6b7570; --term-faint:#30383a; --cursor:#243037;
+  --this:#7ed49b; --trunk:#9fb7ff;
   --display:"Fraunces",Georgia,serif; --body:"Public Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1b1f1d;--ink:#e3e7e2;--muted:#9aa39e;--rule:#343b37;color-scheme:dark}}
@@ -17,95 +17,130 @@
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
 .wrap{max-width:1180px;margin:0 auto;padding:40px 16px 64px}
 h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 8px;max-width:24ch;text-wrap:balance}
-.lede{color:var(--muted);max-width:66ch;margin:0 0 28px}
+.lede{color:var(--muted);max-width:68ch;margin:0 0 24px}
 code,kbd{font-family:var(--mono);font-size:.88em}
 kbd{border:1px solid var(--rule);border-radius:4px;padding:0 5px}
-
-/* Three states of one screen. The switch is the page's one bold element. */
-.states{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);border-radius:8px;overflow:hidden;width:max-content;max-width:100%;margin-bottom:14px}
+.states{display:flex;flex-wrap:wrap;border:1px solid var(--rule);border-radius:8px;overflow:hidden;width:max-content;max-width:100%;margin-bottom:14px}
 .states button{font:inherit;font-size:15px;color:var(--ink);background:transparent;border:0;border-right:1px solid var(--rule);padding:8px 16px;cursor:pointer;text-align:left}
 .states button:last-child{border-right:0}
 .states button small{display:block;color:var(--muted);font-size:12.5px}
 .states button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .states button[aria-pressed="true"] small{color:var(--paper);opacity:.75}
 .states button:focus-visible{outline:2px solid var(--trunk);outline-offset:-2px}
-
 .termbox{overflow-x:auto;border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}
-.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:12.5px;line-height:1.6;min-width:max-content;border-radius:10px}
+.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:12.5px;line-height:1.6;min-width:max-content;border-radius:10px;outline:none}
+.term:focus-visible{box-shadow:0 0 0 2px var(--trunk)}
 .chrome{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--term-faint)}
 .chrome i{width:11px;height:11px;border-radius:50%;background:var(--term-faint)}
-.term pre{margin:0;padding:10px 4px 12px;font:inherit;white-space:pre;min-height:calc(15 * 1.6em)}
-.cap{color:var(--muted);font-size:14px;margin:12px 0 0;max-width:80ch}
-
-.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:32px 48px;margin-top:52px}
-.two h2{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;margin:0 0 8px}
-.two p{margin:0 0 10px;color:var(--muted);max-width:56ch}
-.cfg{margin:0;background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;line-height:1.65;padding:12px 16px;border-radius:8px;overflow-x:auto}
-.cfg .c{color:var(--term-dim)}
-.cfg .on{color:var(--this)}
-ol{margin:0;padding-left:1.2em;color:var(--muted)}
-ol li{margin:0 0 6px}
+.term pre{margin:0;padding:10px 4px 12px;font:inherit;white-space:pre}
+.dim{color:var(--term-dim)} .on{color:var(--this)} .sel{background:var(--cursor)} .b{font-weight:700}
+.try{color:var(--muted);font-size:14px;margin:12px 0 0;max-width:80ch;min-height:3em}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 48px;margin-top:48px}
+.two h2{font-family:var(--display);font-weight:500;font-size:21px;line-height:1.25;margin:0 0 6px}
+.two p{margin:0;color:var(--muted);max-width:54ch}
 .note{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px;max-width:76ch}
 </style>
 
 <div class="wrap">
-  <h1>Today's graph stays, as a setting</h1>
-  <p class="lede">The new default folds branches that are already merged. If you or a teammate prefer the graph you have today, one line in the settings file brings it back. There's no new key. Switch between the three below. All three show the same repo.</p>
+  <h1>Pick how the graph looks, from inside the app</h1>
+  <p class="lede">Merged branches fold by default. To get today's full graph back, pick it as a mode in the <kbd>?</kbd> list. No new key, no file to edit. The app remembers your pick.</p>
 
-  <div class="states" role="group" aria-label="Which graph">
+  <div class="states" role="group" aria-label="Which app">
     <button data-s="today" aria-pressed="false">Today<small>what mwr draws now</small></button>
-    <button data-s="new" aria-pressed="true">New default<small>merged branches folded</small></button>
-    <button data-s="shown" aria-pressed="false">New, with the setting on<small>every branch shown</small></button>
+    <button data-s="after" aria-pressed="true">After this pass<small>try the mode here</small></button>
   </div>
-  <div class="termbox"><div class="term"><div class="chrome"><i></i><i></i><i></i></div><pre id="grid"></pre></div></div>
-  <p class="cap" id="cap"></p>
+  <div class="termbox"><div class="term" id="term" tabindex="0" aria-label="Mergewright terminal mock. Press question mark, type graph, press Enter."><div class="chrome"><i></i><i></i><i></i></div><pre id="scr"></pre></div></div>
+  <p class="try" id="try"></p>
 
   <div class="two">
-    <div>
-      <h2>How you switch to the full graph</h2>
-      <ol>
-        <li>Open <code>~/.config/mergewright/config.toml</code>, the file that already holds your theme and key changes.</li>
-        <li>Set the line on the right to <code>"shown"</code>.</li>
-        <li>Every launch after that draws every branch. Set it back to <code>"folded"</code> to return.</li>
-      </ol>
-      <p style="margin-top:12px">The top line always says which way you're looking: <code>2 merged branches folded</code> or <code>every branch shown</code>.</p>
-    </div>
-    <pre class="cfg" id="cfg"></pre>
+    <div><h2>A mode, not a key</h2><p>You pick it once and keep it. It sits with the other things in the <kbd>?</kbd> list, and typing "graph", "fold" or "branch" finds it.</p></div>
+    <div><h2>You can always tell which mode is on</h2><p>The top line says <code>2 merged branches folded</code> or <code>every branch shown</code>. In the list, the mode that's on has the filled dot.</p></div>
+    <div><h2>Every branch is today's picture</h2><p>Same rows, same lanes as now. <kbd>space</kbd> has nothing to open in that mode, so the bar stops offering it.</p></div>
   </div>
 
-  <div class="two" style="margin-top:36px">
-    <div>
-      <h2>What stays the same either way</h2>
-      <p>Your branch, the cursor, every key. With the setting on, <kbd>space</kbd> has nothing to open, so the bar stops offering it.</p>
-    </div>
-    <div>
-      <h2>What's not settled yet</h2>
-      <p>Whether the <kbd>?</kbd> help list also gets a "Show all branches" entry. It would flip the same line, so nobody has to open the file. Your call.</p>
-    </div>
-  </div>
-
-  <p class="note">"Today" and "New default" are real captures of the app on the same test repo: before the fold work (e31a2d2e) and after it (now). "With the setting on" is today's capture with the new top-line words; the setting isn't built yet (ticket 06h). The captures are characters only, so no colour shows here. The new colours come later in this milestone and apply to all three.</p>
+  <p class="note">The graph rows are real captures of the app on one test repo, from before the fold work (e31a2d2e) and after it. The <kbd>?</kbd> list and the top-line words are drawn here; the mode isn't built yet (ticket 06h). Captures carry no colour, and the new colours come later this milestone. The app keeps your pick in its settings file (<code>[graph] merged_branches</code>), which you never have to open.</p>
 </div>
 
 <script>
-const G={"today": " \u25c6 api  ~/code/api \u00b7 main                                                                                    10 commits\n\n\u25b8   \u25cf        [feature/three] three: in progress                                                         GF 7y   0683985\n  \u25c6\u2500\u2502\u2500\u256e      [\u25c6 main] Merge branch &#x27;feature/two&#x27;                                                        GF 7y   5202e1c\n  \u2502 \u2502 \u25cf      [feature/two] two: finish                                                                  GF 7y   e30e870\n  \u2502 \u2502 \u25cf      two: start                                                                                 GF 7y   40034e4\n  \u25c9\u2500\u2502\u2500\u2502\u2500\u256e    Merge branch &#x27;feature/one&#x27;                                                                 GF 7y   3a97003\n  \u2502 \u2502 \u2502 \u25cf    [feature/one] one: finish                                                                  GF 7y   fdb311f\n  \u2502 \u2502 \u2502 \u25cf    one: start                                                                                 GF 7y   bba225a\n  \u25cf\u2500\u2534\u2500\u256f \u2502    Add b.txt                                                                                  GF 7y   de95041\n  \u25cf\u2500\u2500\u2500\u2500\u2500\u256f    Add a.txt                                                                                  GF 7y   21b16b9\n  \u25c7          Add a readme                                                                               GF 7y   daa5167\n\n\n m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys", "new": " \u25c6 api  ~/code/api \u00b7 main                                                           2 merged branches folded   6 commits\n\n\u25b8   \u25cf    [feature/three] three: in progress                                                             GF 7y   0683985\n  \u25c6 \u2502    [\u25c6 main] Merge branch &#x27;feature/two&#x27; \u25b8 2 commits from feature/two                               GF 7y   5202e1c\n  \u25c9 \u2502    Merge branch &#x27;feature/one&#x27; \u25b8 2 commits from feature/one                                        GF 7y   3a97003\n  \u25cf\u2500\u256f    Add b.txt                                                                                      GF 7y   de95041\n  \u25cf      Add a.txt                                                                                      GF 7y   21b16b9\n  \u25c7      Add a readme                                                                                   GF 7y   daa5167\n\n\n m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys", "shown": " \u25c6 api  ~/code/api \u00b7 main                                                                every branch shown   10 commits\n\n\u25b8   \u25cf        [feature/three] three: in progress                                                         GF 7y   0683985\n  \u25c6\u2500\u2502\u2500\u256e      [\u25c6 main] Merge branch &#x27;feature/two&#x27;                                                        GF 7y   5202e1c\n  \u2502 \u2502 \u25cf      [feature/two] two: finish                                                                  GF 7y   e30e870\n  \u2502 \u2502 \u25cf      two: start                                                                                 GF 7y   40034e4\n  \u25c9\u2500\u2502\u2500\u2502\u2500\u256e    Merge branch &#x27;feature/one&#x27;                                                                 GF 7y   3a97003\n  \u2502 \u2502 \u2502 \u25cf    [feature/one] one: finish                                                                  GF 7y   fdb311f\n  \u2502 \u2502 \u2502 \u25cf    one: start                                                                                 GF 7y   bba225a\n  \u25cf\u2500\u2534\u2500\u256f \u2502    Add b.txt                                                                                  GF 7y   de95041\n  \u25cf\u2500\u2500\u2500\u2500\u2500\u256f    Add a.txt                                                                                  GF 7y   21b16b9\n  \u25c7          Add a readme                                                                               GF 7y   daa5167\n\n\n m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys"};
-const CAP={
- today:"Today: every branch keeps its own lane, merged ones included. feature/one and feature/two are finished, and they still take two lanes and four rows.",
- new:"New default: the two finished branches fold into their merge rows (▸ 2 commits from …). 10 rows become 6, 4 lanes become 2. space on a merge row opens it.",
- shown:"Setting on: the same picture as today. Only the top line differs, so you can tell which mode you're in.",
-};
-const CFG={
- today:'<span class="c"># no setting exists today</span>',
- new:'<span class="c"># ~/.config/mergewright/config.toml</span>\n\n[graph]\nmerged_branches = "folded"   <span class="c"># the default; this line can be left out</span>',
- shown:'<span class="c"># ~/.config/mergewright/config.toml</span>\n\n[graph]\n<span class="on">merged_branches = "shown"</span>',
-};
-const btns=[...document.querySelectorAll(".states button")];
-function show(s){
-  document.getElementById("grid").innerHTML=G[s];
-  document.getElementById("cap").textContent=CAP[s];
-  document.getElementById("cfg").innerHTML=CFG[s];
-  btns.forEach(b=>b.setAttribute("aria-pressed",b.dataset.s===s));
+const D={"old": ["\u25b8   \u25cf        [feature/three] three: in progress                                                         GF 7y   0683985", "  \u25c6\u2500\u2502\u2500\u256e      [\u25c6 main] Merge branch 'feature/two'                                                        GF 7y   5202e1c", "  \u2502 \u2502 \u25cf      [feature/two] two: finish                                                                  GF 7y   e30e870", "  \u2502 \u2502 \u25cf      two: start                                                                                 GF 7y   40034e4", "  \u25c9\u2500\u2502\u2500\u2502\u2500\u256e    Merge branch 'feature/one'                                                                 GF 7y   3a97003", "  \u2502 \u2502 \u2502 \u25cf    [feature/one] one: finish                                                                  GF 7y   fdb311f", "  \u2502 \u2502 \u2502 \u25cf    one: start                                                                                 GF 7y   bba225a", "  \u25cf\u2500\u2534\u2500\u256f \u2502    Add b.txt                                                                                  GF 7y   de95041", "  \u25cf\u2500\u2500\u2500\u2500\u2500\u256f    Add a.txt                                                                                  GF 7y   21b16b9", "  \u25c7          Add a readme                                                                               GF 7y   daa5167"], "new": ["\u25b8   \u25cf    [feature/three] three: in progress                                                             GF 7y   0683985", "  \u25c6 \u2502    [\u25c6 main] Merge branch 'feature/two' \u25b8 2 commits from feature/two                               GF 7y   5202e1c", "  \u25c9 \u2502    Merge branch 'feature/one' \u25b8 2 commits from feature/one                                        GF 7y   3a97003", "  \u25cf\u2500\u256f    Add b.txt                                                                                      GF 7y   de95041", "  \u25cf      Add a.txt                                                                                      GF 7y   21b16b9", "  \u25c7      Add a readme                                                                                   GF 7y   daa5167"], "bar": " m merge \u00b7 r rebase \u00b7 \u23ce open \u00b7 o take \u00b7 b branch \u00b7 t tag \u00b7 P push \u00b7 c commit \u00b7 p pull \u00b7 f fetch \u00b7 u undo \u00b7 ? keys"};
+const W=120,H=22;
+let app="after",every=false,help=false,q="",hc=0,flash="";
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const pad=(s,n)=>s.length>=n?s.slice(0,n):s+" ".repeat(n-s.length);
+function header(){
+  const left=" ◆ api  ~/code/api · main";
+  const right=app==="today"?"10 commits":(every?"every branch shown   10 commits":"2 merged branches folded   6 commits");
+  return esc(left+" ".repeat(W-1-left.length-right.length))+(app==="after"?`<span class="b">${esc(right)}</span>`:esc(right));
 }
-btns.forEach(b=>b.onclick=()=>show(b.dataset.s));
-show("new");
+// Help list entries. A mode row has no key; the dot says which mode is on.
+function entries(){
+  const E=[
+    {g:"HERE",k:"c",t:"Commit"},{g:"HERE",k:"C",t:"Switch branch"},{g:"HERE",k:"m",t:"Merge selected branch into current"},
+    {g:"HERE",k:"P",t:"Push"},{g:"HERE",k:"u",t:"Undo"},
+    {g:"GRAPH MODE",mode:false,t:"Folded merges",x:"merged branches fold into their merge row"},
+    {g:"GRAPH MODE",mode:true,t:"Every branch",x:"every branch on its own lane, as before"},
+  ];
+  const words="graph mode view fold folded merges merged every branch all lanes";
+  const s=q.toLowerCase().trim();
+  return E.filter(e=>!s||(e.t+" "+(e.k||"")+" "+(e.mode!==undefined?words:"")).toLowerCase().includes(s));
+}
+function helpLines(){
+  const E=entries();hc=Math.min(hc,Math.max(0,E.length-1));
+  const w=W-2,out=[];
+  const title="─ keys here ";const close=" esc close ─";
+  out.push(esc("╭"+title+"─".repeat(w-title.length-close.length)+close+"╮"));
+  out.push(esc("│ › ")+esc(q)+'<span style="background:var(--term-fg)"> </span>'+esc(" ".repeat(Math.max(0,w-4-q.length)))+"│");
+  let g=null;
+  if(!E.length)out.push(esc("│"+pad("  nothing matches",w)+"│"));
+  E.forEach((e,i)=>{
+    if(e.g!==g){g=e.g;out.push(esc("│ ")+`<span class="dim">${esc(pad(g,w-1))}</span>`+"│")}
+    const cur=i===hc?"▸":" ";
+    let txt;
+    if(e.mode===undefined)txt=cur+pad(e.k,6)+e.t;
+    else{const on=e.mode===every;txt=cur+pad(on?"●":"○",6)+pad(e.t,16)+e.x+(on?"   (on)":"")}
+    const body=esc(pad(txt,w));
+    const isOn=e.mode!==undefined&&e.mode===every;
+    out.push("│"+`<span class="${i===hc?"sel":""}${isOn?" on":""}">${body}</span>`+"│");
+  });
+  out.push(esc("╰"+"─".repeat(w)+"╯"));
+  return out;
+}
+function draw(){
+  const rows=app==="today"||every?D.old:D.new;
+  let L=[header(),""];
+  rows.forEach(r=>{
+    let s=esc(r);
+    if(app==="after"&&!every)s=s.replace(/(▸ \d+ commits from [\w/]+)/,'<span class="dim">$1</span>');
+    L.push(s)});
+  while(L.length<H-1)L.push("");
+  let bar=D.bar;
+  if(app==="after"&&!every)bar=" space open · m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · u undo · ? keys";
+  if(help){const hl=helpLines();L=L.slice(0,Math.max(2,H-1-hl.length)).concat(hl);while(L.length<H-1)L.splice(L.length-hl.length,0,"");bar=" ↑↓ move  ⏎ pick  esc close"}
+  const barHtml=flash?`<span class="on">${esc(flash)}</span>`:`<span class="dim">${esc(bar)}</span>`;
+  document.getElementById("scr").innerHTML=L.join("\n")+"\n"+barHtml;
+  document.querySelectorAll(".states button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.s===app));
+  document.getElementById("try").innerHTML=app==="today"
+    ?"Today's app: every branch keeps its own lane, the finished ones too. feature/one and feature/two take two lanes and four rows. There's no mode to pick."
+    :(every?"Mode: every branch. The same picture as today; only the top line differs. Press <kbd>?</kbd> and pick “Folded merges” to go back."
+           :"Click the terminal, press <kbd>?</kbd>, type <kbd>graph</kbd>, move to “Every branch” with <kbd>↓</kbd> and press <kbd>⏎</kbd>.");
+}
+const term=document.getElementById("term");
+term.addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||app!=="after")return;
+  const k=e.key;flash="";
+  if(help){
+    const E=entries();
+    if(k==="Escape")help=false;
+    else if(k==="ArrowDown")hc=Math.min(E.length-1,hc+1);
+    else if(k==="ArrowUp")hc=Math.max(0,hc-1);
+    else if(k==="Backspace")q=q.slice(0,-1);
+    else if(k==="Enter"){const s=E[hc];help=false;if(s&&s.mode!==undefined){if(s.mode!==every){every=s.mode;flash=every?" ✓ Graph: every branch · kept for next launch":" ✓ Graph: folded merges · kept for next launch"}}else if(s)flash=" (this mock only runs the graph mode)"}
+    else if(k.length===1){q+=k;hc=0}
+    else return;
+  }else if(k==="?"){help=true;q="";hc=0}
+  else return;
+  e.preventDefault();draw();
+});
+document.querySelectorAll(".states button").forEach(b=>b.onclick=()=>{app=b.dataset.s;help=false;flash="";draw();if(app==="after")term.focus()});
+draw();
 </script>
