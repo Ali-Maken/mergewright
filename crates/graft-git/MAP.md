@@ -75,11 +75,12 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Region` (enum) — `Plain`, `Conflict(Block)`, `Resolved { block, take }`.
 - `ConflictFile` (struct) — `regions`, `fingerprint`; the parsed file with its blob id.
 - `ConflictFile::render` / `take` / `take_all` / `blocks` / `first_lines` / `open` (fn) — bytes back; resolve one or all blocks; block list; line starts per projection; open count.
+- `ConflictFile::reopen` (fn) — `(block) -> Result<(), NoSuchBlock>`; a taken block back to open, block kept whole.
 - `BlockAt` (struct) — `index`, `state`, `first_line`; a block's place in the rendered file.
 - `BlockState` (enum) — `Open` or `Took(Take)`.
 - `ParseError` (struct) — `line`, `what: ParseErrorKind`; why markers did not parse.
 - `ParseErrorKind` (enum) — the kinds of marker parse failure.
-- `NoSuchBlock` (struct) — the out-of-range index `take` was given.
+- `NoSuchBlock` (struct) — the index `take` or `reopen` was given (past the end; for `reopen`, also a block not taken).
 - `blob_id` (fn) — `&[u8] -> Oid`; git's blob id computed locally.
 - `parse` (fn) — `&[u8] -> Result<ConflictFile, ParseError>`; render of the result equals the input.
 - `ReadError` (enum) — `Io`, `Binary`, `TooLarge`, `Parse`; why a conflicted file could not be read.
@@ -112,6 +113,9 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `parse_worktree_file_list` (fn) — the same join for the working tree, dropping records numstat lacks.
 - `Pair` (struct) — `removed`/`added` index ranges into one hunk.
 - `pairs` (fn) — `&Hunk -> Vec<Pair>`; side-by-side pairing of removed/added runs.
+- `Origin` (enum) — `Yours`, `Theirs`, `Both`; which side a result line came in from.
+- `LineOrigin` (struct) — `line` (1-based in the result), `origin`.
+- `line_origins` (fn) — `(result, yours, theirs: &FileDiff) -> Vec<LineOrigin>`; pure, base→each diffs, matched by added-line text.
 - `DiffSpec` (enum) — which two sides to diff: a commit, the index, the working tree.
 - `DiffOptions` (struct) — `context`, `ignore_whitespace`.
 - `DiffError` (enum) — `Run`, `Parse`, `TooLarge`, `NoHead`.
@@ -175,6 +179,11 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `only_in_stash` (fn) — `(repo, stashes, cap, stop) -> Result<StashOnly, RunError>`.
 - `Forecast` (enum) — `Clean`, `Conflicts { paths }`, `NotCheckable`; a merge's predicted outcome.
 - `forecast_merge` (fn) — `git merge-tree --write-tree` for two tips, as a `Forecast`.
+- `merge_forecast` (fn) — `(repo, git, ours, theirs, stop) -> Result<MergeCheck, RunError>`; changed files plus clashing files with their places.
+- `MergeCheck` (enum) — `Checked(MergeForecast)` or `NotCheckable(reason)`.
+- `MergeForecast` (struct) — `changed: Vec<PathBuf>`, `changed_capped`, `clashes`.
+- `ClashForecast` (struct) — `path: PathBuf`, `places: Option<usize>` (`None`: not countable).
+- `UNRELATED` (const) — the not-checkable reason for two tips sharing no history.
 - `MergeStep` (enum) — `Clean { tree }`, `Conflicts`, `NotCheckable`; one chained merge-tree step.
 - `merge_tree_step` (fn) — `(repo, git, base, ours, theirs, stop)`; one merge-tree step a chain can continue from.
 - `LostRun` (struct) — `tip`, `under`; a run of commits no ref reaches.

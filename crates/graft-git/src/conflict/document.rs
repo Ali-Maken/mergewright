@@ -81,6 +81,28 @@ impl ConflictFile {
         Ok(())
     }
 
+    /// Puts the `block`-th block (indexed as [`ConflictFile::take`] does)
+    /// back to open: its `Resolved` region becomes `Conflict` again, the
+    /// block it kept whole moved back unchanged — so the file renders the
+    /// markers it was parsed with. A block that is already open, or an
+    /// index past the last block, is refused and nothing changes.
+    pub fn reopen(&mut self, block: usize) -> Result<(), NoSuchBlock> {
+        let region = self
+            .regions
+            .iter_mut()
+            .filter(|region| !matches!(region, Region::Plain(_)))
+            .nth(block)
+            .filter(|region| matches!(region, Region::Resolved { .. }))
+            .ok_or(NoSuchBlock(block))?;
+        // The same placeholder move as `take`: no clone of the block.
+        let previous = std::mem::replace(region, Region::Plain(Vec::new()));
+        let Region::Resolved { block: inner, .. } = previous else {
+            unreachable!("matched Resolved above")
+        };
+        *region = Region::Conflict(inner);
+        Ok(())
+    }
+
     /// Takes `take` for every block still open: each `Conflict` region
     /// becomes `Resolved { take }`, and a `Resolved` one keeps its take and
     /// its index. Returns how many blocks changed. The render equals taking
