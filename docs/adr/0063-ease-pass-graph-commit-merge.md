@@ -24,8 +24,8 @@ Sources: `prototypes/ease-mocks/mergewright-{main,commit,merge}-screen.html` (th
 - A **branch column** names each row's branch, written once where it changes. **Invent**.
 - First name in its own column, own rows bold. **Take** JetBrains bold; **reject** lazygit 2-letter initials (#5670) and
   Sublime's two-line author (`graph-readability.md` §3).
-- Cursor row grows a second line (who, when, branch, hash; "made on X · also in Y"); a switch tries it on all rows
-  (`field-notes.md:103–104`). Which one ships: **open** — his reply on growing-row vs all-rows not recorded.
+- Cursor row grows a second line (who, when, branch, hash; "made on X · also in Y"); every other row stays one line.
+  Two lines on every row was tried (a switch in the mock: 7 commits fit vs 13) and not chosen (user, 2026-10-17).
 - Right pane answers four questions: pushed? merged? behind what it was built on? who, last commit (`field-notes.md:105`). **Invent**.
 
 **Commit** (`mergewright-commit-screen.html`)
@@ -66,4 +66,7 @@ Merge rose 4 → 5 when the finish preview's `y` was added at his request (`fiel
 - **Colour unverified** in a real terminal (rule 5): mocks are HTML in a browser, not the TUI; the mocks say so.
 - Mock gaps: `e` edit-by-hand is shown in the bar but has no handler; `Esc` "pause, come back later" just returns to
   the graph — no real pause/resume.
-- Open: growing row vs two lines on every row (`field-notes.md:103–104`).
+- **Build to the mocks** (user, 2026-10-17: "sure"). Each behaviour in the three mocks is an acceptance line the
+  build must pass. Any change to what he tried — a planner's keymap ruling, a terminal limit, a cut — goes to him as
+  a question **before** it is built, not reported after. Captures of the real screens go next to the mock for
+  comparison. Colour is the one thing not promised: it is judged in his own terminal.
