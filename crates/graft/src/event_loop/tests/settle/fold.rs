@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::jobs::{JobRunner, Shutdown};
 use crate::repos::RepoStore;
+use crate::update::fold_count::FoldCount;
 
 /// Merges on `main`'s first-parent chain, each bringing in one commit from
 /// a PR branch that no longer exists. More than one screen, so held `j`
@@ -204,4 +205,77 @@ fn a_held_j_over_a_folded_walk_follows_and_counts_only_at_rest() {
     assert_eq!(state.detail.spec, Some(DetailSpec::Commit(rested_on)));
     assert_eq!(counts_asked(rest), 1, "{rest:?}");
     assert!(!follow_behind(&state));
+}
+
+/// The merge drawn on `row`.
+fn merge_on(state: &AppState, row: usize) -> Oid {
+    state
+        .history
+        .as_ref()
+        .and_then(|history| history.row_at(row))
+        .map(|row| row.commit.id)
+        .expect("a row")
+}
+
+/// The merges a slice of commands asked to count.
+fn counted_merges(commands: &[Command]) -> Vec<Oid> {
+    commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::CountFolded { merge, .. } => Some(*merge),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A count's answer that lands inside a burst with no follow owed (the
+/// launch's own case: the window landing moves the cursor to `HEAD`, and
+/// the first count answers within `BURST_GAP` of it) leaves the next ask
+/// to rest — and rest comes, though no follow is owed. Before the fix the
+/// loop woke for rest only while a follow was owed, so in the real binary
+/// the next folding merge's tail stayed `▸ commits from …` until a key.
+#[test]
+fn a_count_answered_mid_burst_asks_the_next_at_rest() {
+    let scratch = tempfile::tempdir().expect("a temporary directory");
+    folded_prs(scratch.path());
+    let mut state = opened(scratch.path());
+    every_merge_folds(&state);
+    // The first merge's count is out; no other has been asked.
+    let first = merge_on(&state, 0);
+    state.fold_counts.clear();
+    state.fold_counts.insert(first, FoldCount::Counting);
+
+    let jobs = Recorded::default();
+    let answer = Wake::Event(AppEvent::Produced(
+        graft_core::job::JobId::new(1),
+        Product::FoldedCounted {
+            merge: first,
+            count: Ok(1),
+        },
+    ));
+    let mut wakes = Timed::new(
+        &jobs,
+        vec![
+            // Leading edge: followed at once, and the next merge asked.
+            (Duration::ZERO, Step::Wake(j())),
+            // Inside the burst, with no follow owed.
+            (Duration::from_millis(20), Step::Wake(answer)),
+        ],
+    );
+    let (state, _) = run(state, &mut wakes);
+    let commands = jobs.commands();
+    let handed = wakes.handed.clone();
+    assert_eq!(handed.len(), 2);
+    assert_eq!(
+        counted_merges(&commands[handed[0]..handed[1]]),
+        vec![merge_on(&state, 1)],
+        "the key's own settle asks the next merge"
+    );
+    assert_eq!(state.fold_counts.get(&first), Some(&FoldCount::Counted(1)));
+    assert!(!follow_behind(&state), "no follow owed: only the count is");
+    assert_eq!(
+        counted_merges(&commands[handed[1]..]),
+        vec![merge_on(&state, 2)],
+        "at rest, the merge after it is asked"
+    );
 }

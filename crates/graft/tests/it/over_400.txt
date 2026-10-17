@@ -266,7 +266,7 @@
 434 crates/graft/tests/it/m7_walk/rewrite_stops.rs
 420 crates/graft/tests/it/m7_walk/switch.rs
 686 crates/graft/tests/it/name_and_drag.rs
-582 crates/graft/tests/it/outside_repo.rs
+587 crates/graft/tests/it/outside_repo.rs
 1143 crates/graft/tests/it/preview.rs
 614 crates/graft/tests/it/pty.rs
 401 crates/graft/tests/it/quit_waits/hangup.rs

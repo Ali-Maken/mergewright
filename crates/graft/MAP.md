@@ -252,7 +252,7 @@ Facts beside the graph arriving (system git, refs, working-tree counts), their r
 ## update::finish
 The finish summary: `c` on a fully resolved merge shows what will land; `y` commits it.
 ## update::fold_count
-A folding merge's count: asked at rest for the merges on screen, counted once by a job, kept for the session.
+A folding merge's count: asked at rest for the merges on screen (an uncounted one keeps the loop's rest wake owed, `update::rest_owed`), counted once by a job, kept for the session.
 ## update::geometry
 Pure screen geometry a mouse event needs: where the detail pane, its regions, the context menu and a ref badge land.
 ## update::history

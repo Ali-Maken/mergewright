@@ -220,6 +220,15 @@ fn keep_unseen_failure(before: &AppState, next: &mut AppState) {
     }
 }
 
+/// Is work owed to rest (G-settle)? What [`settle`] defers mid-burst: the
+/// cursor's follow, and the next folding merge's count. The loop wakes for
+/// rest while either holds — a count asked mid-burst by nobody else (its
+/// predecessor's answer landing inside the burst, with no follow owed)
+/// would otherwise wait for an unrelated key (ease-pass 06f).
+pub(crate) fn rest_owed(state: &AppState) -> bool {
+    follow_behind(state) || fold_count::owed(state)
+}
+
 /// What follows every answered event: the selection reconciled with the
 /// cursor, the pane and the radar asking for what they now need.
 fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize) {

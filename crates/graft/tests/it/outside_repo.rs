@@ -373,6 +373,11 @@ const DIRTY: &str = "Uncommitted changes (1 unstaged)";
 /// `▸ commits from …` and differs from the next run's.
 const COUNTED: &str = "\u{25b8} 2 commits from feature/two";
 
+/// The folded merge below `HEAD`'s, counted too (ease-pass 06f): its ask
+/// waits for rest, and the loop once woke for rest only while a follow was
+/// owed — so the second count never landed without a key.
+const COUNTED_NEXT: &str = "\u{25b8} 2 commits from feature/one";
+
 /// m8-polish-and-ship/12d Decision 2: a launch lands exactly where an open
 /// from the empty state lands on the same repository — dirty tree (the
 /// uncommitted row pinned on top) and `HEAD` below the first window.
@@ -404,7 +409,7 @@ fn launch_and_open_land_alike() {
 
     let isolated = Isolated::new();
     let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
-    let at_launch = landed(&launched, &subject, &[DIRTY, COUNTED]);
+    let at_launch = landed(&launched, &subject, &[DIRTY, COUNTED, COUNTED_NEXT]);
     quit_cleanly(launched);
 
     let isolated = Isolated::new();
@@ -412,7 +417,7 @@ fn launch_and_open_land_alike() {
     let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (120, 36));
     on_the_empty_state(&opener);
     opener.send(b"\r");
-    let at_open = landed(&opener, &subject, &[DIRTY, COUNTED]);
+    let at_open = landed(&opener, &subject, &[DIRTY, COUNTED, COUNTED_NEXT]);
     quit_cleanly(opener);
 
     assert!(at_launch.0 > 1, "HEAD is not the top row: {at_launch:?}");

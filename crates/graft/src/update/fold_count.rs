@@ -35,16 +35,7 @@ pub(super) fn at_rest(
     commands: &mut Vec<Command>,
     next_id: &mut dyn FnMut() -> JobId,
 ) {
-    let height = next.graph_rows();
-    let Some(history) = next.history.as_ref() else {
-        return;
-    };
-    let uncounted = (history.top..history.top.saturating_add(height)).find_map(|at| {
-        let folds = history.fold_at(at)?.folds == Some(true);
-        let merge = history.row_at(at)?.commit.id;
-        (folds && !next.fold_counts.contains_key(&merge)).then_some(merge)
-    });
-    let Some(merge) = uncounted else {
+    let Some(merge) = uncounted(next) else {
         return;
     };
     next.fold_counts.insert(merge, FoldCount::Counting);
@@ -52,6 +43,26 @@ pub(super) fn at_rest(
         id: next_id(),
         merge,
     });
+}
+
+/// Is a count owed to rest — a folding merge on screen not yet asked? A
+/// burst defers the ask ([`at_rest`] runs only at rest), so the loop must
+/// wake for rest while this holds, as it does for an owed follow
+/// (`update::rest_owed`).
+pub(crate) fn owed(state: &AppState) -> bool {
+    uncounted(state).is_some()
+}
+
+/// The first folding merge drawn on screen, top row first, with no count
+/// asked yet.
+fn uncounted(state: &AppState) -> Option<Oid> {
+    let height = state.graph_rows();
+    let history = state.history.as_ref()?;
+    (history.top..history.top.saturating_add(height)).find_map(|at| {
+        let folds = history.fold_at(at)?.folds == Some(true);
+        let merge = history.row_at(at)?.commit.id;
+        (folds && !state.fold_counts.contains_key(&merge)).then_some(merge)
+    })
 }
 
 /// `Product::FoldedCounted`: keep the answer; a failure is said once, here,
