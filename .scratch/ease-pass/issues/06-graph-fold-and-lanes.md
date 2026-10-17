@@ -1,6 +1,6 @@
 # graph-fold-and-lanes — merged branches folded by default, `space` opens one, the folded row says what's inside
 
-Status: **partial** (2026-10-17) — engine done (graft-graph: predicate, late repair, rejoins, promotion-ready); the app wiring is not started and the app does not fold yet. Stopped at the Size section's split point after a compaction; see NOTES and Handoff. (Rewritten 2026-10-17 after this group's scout, `.scratch/ease-pass/scouts/06-graph-fold-and-lanes.md`; split: lanes-on-screen and header words → **06b**, seeks to a folded commit → **06c**)
+Status: **partial, closed for building** (2026-10-17). Engine done (06); app wiring done but unreconciled (continuation 1, branch `worktree-agent-acb2cc0f5685a9e78` @ 7a4c11f0, unmerged). The remainder is split into **06d** (parents shape, HEAD keep, untested paths), **06e** (integration tests, boxes 5, 7, 8) and **06f** (captures, box 9, MAPs). See "Decisions for continuation 2" at the end. Earlier splits: lanes-on-screen and header words → **06b**; seeks to a folded commit → **06c**. (Rewritten 2026-10-17 after this group's scout, `.scratch/ease-pass/scouts/06-graph-fold-and-lanes.md`.) This file is the branch's ticket plus the decisions. If the branch's copy conflicts on merge, take this one.
 Blocked by: none
 Build with: Opus (`builder-opus-xhigh`) — layout engine (inclusion, reinclude, promotion); correctness is checkable by property tests over generated and date-skewed histories, so not Fable.
 Needs: none. Existing: `Inclusion` (`graft-graph/src/inclusion.rs:55-61`), `Included`/`reinclude` (:37; MAP `inclusion`), `StreamingLayout::truncate`, `EmittedOrder`, `CommitHandle`, `recover_branch_name` (`merge_name.rs:15-18`), `jobs::fold_count::count_folded` (`jobs/fold_count.rs:13-23`), `AppState::fold_counts`.
@@ -91,11 +91,11 @@ carried per row into `GraphEntry` (G names the field; this group fills a value t
 - [x] Property test, the same histories emitted in a date-skewed order (children dated before parents): after late repair, shown ⊇ exact; no commit on a keep tip's first-parent chain is hidden; re-walked in topo order (promotion), shown = exact. — `inclusion::fold_walk::tests::properties::in_date_skewed_order_late_repair_never_hides_a_shown_commit` (the rule), and streamed through `Included` + `advance_folded`: `inclusion::tests::fold_by_default::a_date_skewed_walk_streams_every_commit_the_exact_fold_shows`. Both checked non-vacuous by mutation (dropping `late.push` / ignoring late in `Included::repair` fails them).
 - [x] Opening merge M shows exactly M's second-parent side down to the first shown commit; closing restores the previous row set (row ids equal). **Engine only** — the app's `space` path is box 7. — `inclusion::tests::fold_by_default::opening_a_merge_invalidates_only_the_rows_from_the_merge_down` (fixture: exactly 101, 102 appear under merge 19; close = original rows), `inclusion::tests::fold_by_default::open_then_close_returns_the_original_rows` (proptest: open = slice form, ids above M unchanged, close = original rows), exactness of the side by `in_topological_order_the_fold_is_exact` (random opened mask).
 - [x] Sync merge (main into a feature): `folds == Some(false)`, no mark drawn. — engine: `inclusion::fold_walk::tests::a_sync_merge_folds_nothing`; app: `view::rows::fold::tests::no_tail_on_a_sync_merge_a_plain_commit_or_a_row_the_fold_has_no_fact_for` and `the_graph_draws_each_folding_merge_with_its_tail` (the sync merge's drawn row has no tail). The app half reads hand-built fold facts, not a walked repo.
-- [ ] Fixture `main ← wallet-release ← sara/fix-toc` with PR merges (branch deleted) and one named merge: first paint has no merged-branch commits; tails read `▸ 4 commits from PR 16021` (Q13) and `▸ 1 commit from sara/fix-toc`; before the count lands `▸ commits from PR 16021`; a failing count `▸ ? commits from PR 16021`. **Half:** the words and forms — `view::rows::fold::tests::{a_folding_merge_tails_with_its_count_and_the_name_its_subject_gives, the_count_is_pending_until_it_lands_and_failed_when_it_failed, the_graph_draws_each_folding_merge_with_its_tail}`, graft-ui `graph_screen::tests::fold_tail::*`. Not built: the fixture as a real repo through the worker ("first paint has no merged-branch commits" is proven engine-side only).
+- [ ] Fixture `main ← wallet-release ← sara/fix-toc` with PR merges (branch deleted) and one named merge: first paint has no merged-branch commits; tails read `▸ 4 commits from PR 16021` (Q13) and `▸ 1 commit from sara/fix-toc`; before the count lands `▸ commits from PR 16021`; a failing count `▸ ? commits from PR 16021`. **Half:** the words and forms — `view::rows::fold::tests::{a_folding_merge_tails_with_its_count_and_the_name_its_subject_gives, the_count_is_pending_until_it_lands_and_failed_when_it_failed, the_graph_draws_each_folding_merge_with_its_tail}`, graft-ui `graph_screen::tests::fold_tail::*`. Not built: the fixture as a real repo through the worker ("first paint has no merged-branch commits" is proven engine-side only). **→ 06e.**
 - [x] Counts are asked at rest for every folding merge in the window (job count test), once per merge per session. — `update::fold_count::tests::every_folding_merge_on_screen_is_counted_one_job_each` (jobs = [first, second]), `a_folding_merge_on_screen_has_its_count_asked_at_rest_once`, `no_count_is_asked_mid_burst`, `opening_and_closing_asks_no_second_count`, `a_counted_fold_is_not_recounted_on_refresh_or_open_and_close`, `a_failed_fold_count_says_so_once`. "In the window" built as "drawn on screen" (`top..top+graph_rows`).
-- [ ] `space` on the folded row → `▾`, 4 rows on a lane that is not the merge's own column and joins the merge row (Q10, row-shape test); `space` on one of them → closed, cursor on the merge; `space` on a plain row → nothing. **Half:** `update::tests::graph_toggles::{space_opens_a_folding_merge_and_closes_it_again, space_inside_an_opened_merge_closes_it_and_lands_on_the_merge, space_off_a_merge_changes_nothing}`, edit stop `update::keys::edit_stop_tests::space_on_a_merge_row_at_an_edit_stop_still_opens_it`. Not built: the opened side's lane shape (Q10) app-side.
-- [ ] First paint and held-`j` fast-tier tests pass: `event_loop/tests/settle.rs:312`, `event_loop/tests/pace.rs:220`, `event_loop/tests/pixel_scroll.rs:192`. Release numbers are the milestone review's. **Not ticked:** all three pass (`a_held_j_follows_the_first_row_and_the_row_it_rests_on_and_nothing_between`, `three_hundred_held_keys_never_put_two_frames_in_the_pipe`, `held_j_on_wide_strips_stays_within_the_byte_budget`), but none exercises the fold: settle's window carries `fold: []`, pace and pixel_scroll walk no repo. A passing tick would be vacuous.
-- [ ] Capture `docs/shots/ease-pass/main-folded-120.txt`, `main-opened-120.txt` (next to `prototypes/ease-mocks/mergewright-main-screen.html` in the sheet). Each tick names its test.
+- [ ] `space` on the folded row → `▾`, 4 rows on a lane that is not the merge's own column and joins the merge row (Q10, row-shape test); `space` on one of them → closed, cursor on the merge; `space` on a plain row → nothing. **Half:** `update::tests::graph_toggles::{space_opens_a_folding_merge_and_closes_it_again, space_inside_an_opened_merge_closes_it_and_lands_on_the_merge, space_off_a_merge_changes_nothing}`, edit stop `update::keys::edit_stop_tests::space_on_a_merge_row_at_an_edit_stop_still_opens_it`. Not built: the opened side's lane shape (Q10) app-side. **→ 06e.**
+- [ ] First paint and held-`j` fast-tier tests pass: `event_loop/tests/settle.rs:312`, `event_loop/tests/pace.rs:220`, `event_loop/tests/pixel_scroll.rs:192`. Release numbers are the milestone review's. **Not ticked:** all three pass (`a_held_j_follows_the_first_row_and_the_row_it_rests_on_and_nothing_between`, `three_hundred_held_keys_never_put_two_frames_in_the_pipe`, `held_j_on_wide_strips_stays_within_the_byte_budget`), but none exercises the fold: settle's window carries `fold: []`, pace and pixel_scroll walk no repo. A passing tick would be vacuous. **→ 06e.**
+- [ ] Capture `docs/shots/ease-pass/main-folded-120.txt`, `main-opened-120.txt` (next to `prototypes/ease-mocks/mergewright-main-screen.html` in the sheet). Each tick names its test. **→ 06f.**
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
@@ -120,7 +120,7 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
   - `a_folding_merge_streams_its_first_parent_only`, `a_merged_branch_folds_into_its_merge_down_to_the_fork_point`, `opening_a_merge_invalidates_only_the_rows_from_the_merge_down` and `a_date_skewed_walk_streams_every_commit_the_exact_fold_shows` were green on first run. The last was then checked by mutation.
   - `open_then_close_returns_the_original_rows` first failed on an assertion of mine, not on the code. A row above an opened merge can redraw: an unopened merge whose second parent the opening showed gets its edge back. So it now compares ids above the merge, not whole rows.
 
-## NOTES (continuation 1, app half, 2026-10-17)
+## NOTES (continuation 1, app half, 2026-10-17) — copied from branch `worktree-agent-acb2cc0f5685a9e78` @ 7a4c11f0
 - **Compacted once mid-continuation.** Stopped at a seam: the app folds by default and all the wiring is built, with unit tests green. **The integration tier is not reconciled** — see Handoff 2. Report: `partial`.
 - **Scout used:** `.scratch/ease-pass/scouts/06-app-wiring.md` and `06-graph-fold-and-lanes.md` (given). No new scout.
 - **Built (Handoff 1 items 1–6 below, all done):**
@@ -178,7 +178,7 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
   - `no_literal_keys` allow-list.
   - **Not touched:** `docs/design/02-keymap.md` §2.3 `Space` wording; journal/undo (a fold is not an operation).
 
-## Handoff 2 (what remains after continuation 1)
+## Handoff 2 (what remains after continuation 1) — copied from the branch
 1. **Decide the parents question above**, then fix it. It unblocks the m5 Fix scenarios, the revert, the picker refusal, radar markers on folded merges, and probably the 120 s timeouts (`radar_not_checked`, `hint_bar::capture_the_doorway_on_a_marked_row`, which wait on a merge's marker).
 2. **Fix the launch re-layout** (finding 2) and re-run `m7_walk::pull::pull_ff_over_edits`.
 3. **Integration tests that need a merged branch's rows on screen** must open the merge (`space`) or pick a row the fold keeps. Each fails because the rows they looked for are folded:
@@ -219,3 +219,45 @@ In order. Line refs are from `.scratch/ease-pass/scouts/06-app-wiring.md`; re-ch
 5. **Counts at rest:** for every folding merge in the window with no cached count, ask once per merge per session, one command per rest (`Turn::rested`, `event_loop/running/turn.rs:364` → `AppEvent::Rested`, `update/mod.rs:229-247`; `update/fold_count.rs:30`).
 6. **Words and marks:** `FoldCount` / `FoldMark` / `words` in graft-ui `graph_screen` per Signatures (`FoldMark` today at `graph_screen/mod.rs:404-429`), `view::entries` fold mark, `view::rows` `InsideMerge`.
 7. **Then the checks:** boxes 4 (no mark) to 9, the three budget tests, the two captures, and the MAP.md updates for graft and graft-ui.
+
+## Decisions for continuation 2 (planner, 2026-10-17)
+This is the last continuation. The remainder is more than one context, so it is split three ways, run in order on the branch above (after it merges): **06d → 06e → 06f**. Each is its own spec file in this folder. The line refs above are the builders'. The planner did not read source, so the first step of each ticket re-checks them.
+
+### D1. Parents: `Row.commit` is git's commit, always. Drawing reads `Row.drawn_parents`. (Option (a), the cause fix.)
+- **Shape** (graft-graph `row`): `commit.parents` = every real parent, under every inclusion (fold, opened merges, first-parent `1`, hidden stashes). The new field `drawn_parents` holds what `commit.parents` holds today. `Row::is_merge()` is the one answer to "is this a merge" outside drawing. Signatures: 06d.
+- **Why this direction** (truth in the old field name, the trimmed set in a new one), and not a `real_parents` field next to a trimmed `commit.parents`: say a later reader reaches for `commit.parents`. Here it gets the truth. If that reader is drawing code, the worst case is an extra drawn edge, which a capture and the layout invariants catch. The other direction fails silently, as a wrong git write: today's `revert` without `-m`.
+- **No git write may see a folded view.** This is enforced by a test, not by care. A graft-graph property test says every row's `commit.parents` equals the source commit's parents, under every inclusion `viewed()` generates. App tests say a folded merge, and a merge in `1`, is a merge to every semantic reader.
+- **Drawing stays byte-identical.** `Ring::of`, raster, `Ancestry`, `Fold::plan`/`view`, `made_on`, the layout invariants and the `RowShape` fingerprint read `drawn_parents`. A folded merge keeps today's node; how it looks is 07's call.
+- **Stash rows:** `is_merge()` is false for them. The detail pane for a stash keeps today's parents output.
+- **Rejected (b)**, restoring parents in the worker: it treats the symptom and leaves `1` broken.
+
+### D2. HEAD's keep is known when the walk starts. A refs read re-lays out only when HEAD really moved.
+- **Cause:** the walk starts with `keep = []`. The first refs read writes `{HEAD}`, so the view always differs. That means a reinclude and `Streaming` on every launch (`view_change.rs:106`).
+- **Rule:** every walk start (launch, and any re-walk after an operation) carries HEAD's commit in `keep`. It comes from the read that starts the walk: the repository opening's facts. `with_head_kept` returns `None` when HEAD's commit equals the one already kept. A real HEAD move is one reinclude from the first changed row, which is correct.
+- **Rejected:**
+  - HEAD in graft-graph `Seeds`: seeds start lanes (`LayoutCursor::new`), so HEAD there risks a drawing change and pushes an app fact into the engine.
+  - Suppressing the re-ask or the phase change on keep changes: a symptom fix.
+
+### D3. Captures and failing tests: a diff rule, not a list to re-shoot blindly.
+- **Legitimate fold change** (re-shoot with `MWR_UPDATE_SHOTS=1`, the user judges by eye): the diff against the committed capture is **only**:
+  - merged-branch rows gone, and the rows below moving up;
+  - `▸ N commit(s) from …` tails on merge rows;
+  - the header's commit count;
+  - lanes no longer drawn because their commits folded.
+- **Regression** (fix the cause, never re-shoot) — anything else, for example:
+  - the cursor on a different commit;
+  - a badge, radar mark, menu row, ghost row or banner line that differs;
+  - the thing the capture's `TESTING.md` line is about no longer on screen.
+- **When the fold hid a scenario's subject**, the test changes; "what right looks like" does not. In order of preference:
+  1. target a row the fold keeps that serves the same purpose;
+  2. add an **unmerged** branch to the fixture (a new ref only; existing refs untouched);
+  3. press `space` to open the merge, only when the scenario is about a merged branch's rows.
+- **m8 journey step counts never change.** A journey that would need `space` to reach its row takes route 2.
+- **Ghost / predicted rows never fold** (M5 promise). If one did, that is a regression: stop and report it with the line.
+- **The `tour` is product, not fixture.** If a tour task asks him to act on a row the fold now hides, fix the tour (its repository or its step), and capture it.
+- **Superseded:**
+  - `fold_merge_count` → rewritten to the tail words and `space`;
+  - `capture_folded_merge_count_for_docs_shots` → retired for box 9;
+  - `15-merges-folded/unfolded.txt` → deleted only if `grep` finds no other citer; M1-09 is repointed to box 9's captures.
+- **Lane cap:** the scenario's purpose is many live lanes, so take route 2 (unmerged topic branches), not N presses of `space`. 06b reworks lane drawing after this, so `m5-lane-cap-160x24` will be re-shot again there.
+- **Every re-shot capture is listed in NOTES**, each with its classification and a one-line diff summary, for the user's eye (rules 5, 6).
