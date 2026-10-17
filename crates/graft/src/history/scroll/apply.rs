@@ -136,11 +136,20 @@ impl History {
                 Phase::Streaming
             };
         }
+        // Folded away in the new order (ease-pass 06): the cursor lands on
+        // the merge it now hides behind.
+        let landed = |commit| match window.anchor_behind.as_deref() {
+            Some(&(anchor, merge)) if anchor == commit => merge,
+            _ => commit,
+        };
         let found = anchor.and_then(|anchor| {
-            let at = window
-                .rows
-                .iter()
-                .position(|row| row.commit.id == anchor.commit)?;
+            let shown = window.rows.iter().any(|row| row.commit.id == anchor.commit);
+            let commit = if shown {
+                anchor.commit
+            } else {
+                landed(anchor.commit)
+            };
+            let at = window.rows.iter().position(|row| row.commit.id == commit)?;
             Some((window.first + at, anchor.offset))
         });
         if let Some((row, offset)) = found {

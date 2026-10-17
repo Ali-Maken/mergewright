@@ -22,8 +22,10 @@ use crate::update::{AppState, GraphOverlay};
 use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 
 mod context;
+mod fold;
 pub(crate) use context::back_to_place;
 use context::{cursor_row_context, live_wrapped, search_wrapped};
+pub(super) use fold::fold_tail;
 
 /// Everything the graph screen draws: the rows in the viewport, the cursor
 /// among them, and where the walk is.
@@ -138,7 +140,6 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 fn filters(state: &AppState, history: &History) -> Filters {
     Filters {
         first_parent: history.view.follow == graft_graph::Follow::FirstParent,
-        folded: history.view.inclusion.folded.len(),
         stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
         focused: state.focus,
     }

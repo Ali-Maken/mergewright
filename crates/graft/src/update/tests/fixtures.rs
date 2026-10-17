@@ -25,7 +25,7 @@ pub(crate) fn key(code: KeyCode) -> AppEvent {
 }
 
 /// A walk in flight whose window holds a plain commit (row 0) and a
-/// merge (row 1), the cursor on row `cursor`.
+/// merge (row 1) folding a branch behind it, the cursor on row `cursor`.
 pub(crate) fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
     let commit = |byte: u8, parents: Vec<Oid>| Row {
         commit: Commit {
@@ -52,12 +52,27 @@ pub(crate) fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
         laid_out: 2,
         done: false,
         promoted: false,
+        // The merge folds a branch behind it, as most merges into a trunk do.
+        fold: [
+            crate::history::RowFold::default(),
+            crate::history::RowFold {
+                folds: Some(true),
+                inside: None,
+            },
+        ]
+        .into(),
+        anchor_behind: None,
     };
     let (mut state, _) = update(
         &awaiting(id),
         AppEvent::Progress(id, Progress::History(HistoryUpdate::Window(window))),
     );
     state.history.as_mut().expect("a walk").cursor = cursor;
+    // Its count already known: a count asked at rest (ease-pass 06) would
+    // ride along on every event. `update::fold_count`'s tests clear it.
+    state
+        .fold_counts
+        .insert(merge_id, crate::update::fold_count::FoldCount::Counted(1));
     // Refs read, no stash: the evil probe waits for them (m6/66).
     state.refs = Some(Arc::new(crate::refs::RefBadges::default()));
     (state, merge_id)
@@ -123,6 +138,8 @@ pub(crate) fn rows(id: JobId, n: usize) -> AppEvent {
             laid_out: n,
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         })),
     )
 }
@@ -153,7 +170,8 @@ pub(crate) fn request(id: u64, wanted: Wanted) -> RowRequest {
     RowRequest {
         id,
         wanted,
-        view: View::default(),
+        // What a walk starts in: merges folded by default (ease-pass 06).
+        view: View::folded(),
         promote: None,
     }
 }
@@ -179,6 +197,8 @@ pub(crate) fn rows_for(id: JobId, request: u64, span: Range<usize>, laid_out: us
             laid_out,
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         })),
     )
 }

@@ -8,7 +8,7 @@ use graft_core::oid::Oid;
 use graft_graph::Row;
 use graft_graph::layout::Anchor;
 
-use super::super::{History, Phase, Promote, Promotion, RowRequest, Wanted};
+use super::super::{History, Phase, Promote, Promotion, RowFold, RowRequest, Wanted};
 
 impl History {
     /// The row the cursor is on, if it has arrived.
@@ -24,6 +24,14 @@ impl History {
     pub fn row_at(&self, at: usize) -> Option<&Row> {
         let window = self.window.as_ref()?;
         window.rows.get(at.checked_sub(window.first)?)
+    }
+
+    /// What the fold says about row `at` (ease-pass 06), if it is in the
+    /// window on hand and the view folds merged branches.
+    #[must_use]
+    pub fn fold_at(&self, at: usize) -> Option<&RowFold> {
+        let window = self.window.as_ref()?;
+        window.fold.get(at.checked_sub(window.first)?)
     }
 
     /// Moves the cursor straight to row `at` — a click, not a step — clamped

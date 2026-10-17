@@ -87,6 +87,8 @@ fn on_screen() -> AppState {
         laid_out: 3,
         done: true,
         promoted: false,
+        fold: [].into(),
+        anchor_behind: None,
     };
     let (state, _) = crate::update::update(
         &state,

@@ -13,8 +13,7 @@
 //! through an edge the view keeps, hidden when only hidden commits or
 //! dropped edges point at it, and — outside first-parent view — shown when
 //! nothing points at it at all (a fresh tip), unless it is a hidden stash.
-//! A stash entry drops its index and untracked parents, and so does a merge
-//! the user folded by hand (`folded`, retiring). On top of that,
+//! A stash entry drops its index and untracked parents. On top of that,
 //! [`FoldWalk`] folds every merged branch into the merge that brought it in
 //! unless the merge is opened ([`OpenedMerges`]); what it gets wrong in the
 //! provisional order is repaired by [`repair`].
@@ -59,10 +58,6 @@ pub struct Inclusion {
     /// Stash commits not drawn. A stash a shown commit points at is still
     /// drawn — which a stash never is, outside a hand-built history.
     pub hidden_stashes: BTreeSet<Oid>,
-    /// Merges drawn folded: their second and later parents' branches are
-    /// collapsed into them. The opt-in fold `Space` sets today; it retires
-    /// when the app folds by default (ease-pass 06, app follow-on).
-    pub folded: BTreeSet<Oid>,
     /// Every stash entry's own commit; see [`Inclusion::with_stashes`].
     /// Public only because a private field would break every
     /// `Inclusion { .., ..Inclusion::default() }` built outside this crate
@@ -172,13 +167,8 @@ impl Inclusion {
         let stashes = self
             .hidden_stashes
             .symmetric_difference(&other.hidden_stashes);
-        let folds = self.folded.symmetric_difference(&other.folded);
         let first_parent_only = self.stashes.symmetric_difference(&other.stashes);
-        let mut changed: BTreeSet<Oid> = stashes
-            .chain(folds)
-            .chain(first_parent_only)
-            .copied()
-            .collect();
+        let mut changed: BTreeSet<Oid> = stashes.chain(first_parent_only).copied().collect();
         match (&self.fold, &other.fold) {
             (None, None) => {}
             (Some(mine), Some(theirs)) => {
@@ -363,13 +353,10 @@ impl Frontier {
 }
 
 /// Whether a shown commit keeps only its first parent: in first-parent
-/// view, when folded, or when it is a stash entry (its index and untracked
-/// parents are not history). Looked up by id, as `hidden_stashes` and
-/// `folded` are.
+/// view, or when it is a stash entry (its index and untracked parents are
+/// not history). Looked up by id, as `hidden_stashes` is.
 fn first_parent_only(id: Oid, follow: Follow, inclusion: &Inclusion) -> bool {
-    follow == Follow::FirstParent
-        || inclusion.folded.contains(&id)
-        || inclusion.stashes.contains(&id)
+    follow == Follow::FirstParent || inclusion.stashes.contains(&id)
 }
 
 /// Which of a commit's parents survive when it is drawn: first parent only

@@ -131,6 +131,8 @@ mod tests {
                 done: true,
                 rows: rows.into(),
                 promoted: false,
+                fold: [].into(),
+                anchor_behind: None,
             }),
             rows: row_count,
             phase: Phase::Complete,

@@ -1,7 +1,7 @@
 //! What `answer` hands the repository opening, the history walk starting,
 //! the working tree read and the stash entries.
 
-use crate::history::History;
+use crate::history::{History, View};
 use crate::repository::RepositoryFacts;
 
 use super::facts::repository_open_failed;
@@ -63,8 +63,9 @@ pub(super) fn history_started(
         history.reanchor = previous.selected().map(|row| row.commit.id);
     }
     // The refs may have landed before this walk: its first request already
-    // knows the stash entries, so their internals are never drawn at all.
-    if let Some(view) = keys::view_change::with_stash_entries(&history.view, &stash_entries(next)) {
+    // knows the stash entries, so their internals are never drawn at all,
+    // and where `HEAD` is, so its line is never folded away.
+    if let Some(view) = refs_view(&history.view, &stash_entries(next), head(next)) {
         history.view = view;
     }
     if let Some(request) = history.show(next.graph_rows()) {
@@ -182,15 +183,36 @@ pub(super) fn stash_entries(state: &AppState) -> Vec<graft_core::oid::Oid> {
     })
 }
 
+/// The commit `HEAD` resolves to, as the refs last read say; `None` before
+/// they are read, or while the branch is unborn.
+fn head(state: &AppState) -> Option<graft_core::oid::Oid> {
+    state.refs.as_deref().and_then(crate::refs::RefBadges::head)
+}
+
+/// `view` knowing what the refs say — the stash entries
+/// (`with_stash_entries`) and `HEAD`, kept out of the fold
+/// (`with_head_kept`, ease-pass 06) — or `None` when it already does.
+fn refs_view(
+    view: &View,
+    stashes: &[graft_core::oid::Oid],
+    head: Option<graft_core::oid::Oid>,
+) -> Option<View> {
+    let with_entries = keys::view_change::with_stash_entries(view, stashes);
+    let base = with_entries.as_ref().unwrap_or(view);
+    keys::view_change::with_head_kept(base, head).or(with_entries)
+}
+
 /// The refs were read (m7-power-tools/16): the history view learns the stash
-/// entries, so each keeps only its first parent, and — with at least one —
+/// entries, so each keeps only its first parent, and where `HEAD` is, so
+/// its line is never folded (ease-pass 06); and — with at least one stash —
 /// a read asks which commits only a stash reaches. With none, the marks go
 /// at once and nothing is asked.
 pub(super) fn stash_entries_read(next: &mut AppState, commands: &mut Vec<Command>) {
     let stashes = stash_entries(next);
+    let head = head(next);
     let height = next.graph_rows();
     if let Some(history) = next.history.as_mut()
-        && let Some(view) = keys::view_change::with_stash_entries(&history.view, &stashes)
+        && let Some(view) = refs_view(&history.view, &stashes, head)
         && let Some(request) = history.change_view(view, height)
         && let Some(walk) = next.awaiting
     {

@@ -119,6 +119,8 @@ fn on_screen(at: usize) -> AppState {
         laid_out: 5,
         done: true,
         promoted: false,
+        fold: [].into(),
+        anchor_behind: None,
     };
     let (mut state, _) = update(
         &state,

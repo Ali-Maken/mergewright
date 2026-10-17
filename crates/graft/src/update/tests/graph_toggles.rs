@@ -2,26 +2,94 @@
 
 use super::*;
 
+/// Ease-pass 06 box 7: `space` on a folding merge opens it (`▾`, its
+/// branch drawn), and again closes it; the cursor stays on the merge.
 #[test]
-fn space_folds_the_merge_under_the_cursor_and_unfolds_it() {
+fn space_opens_a_folding_merge_and_closes_it_again() {
     let id = JobId::new(5);
     let (state, merge) = merge_on_screen(id, 1);
 
-    let (folded, commands) = update(&state, key(KeyCode::Char(' ')));
+    let (opened, commands) = update(&state, key(KeyCode::Char(' ')));
     let view = asked_view(&commands);
-    assert_eq!(view.inclusion.folded, [merge].into());
-    assert_eq!(folded.history.as_ref().map(|h| &h.view), Some(&view));
     assert_eq!(
-        folded.history.as_ref().map(|h| h.cursor),
+        view.inclusion.opened().map(|opened| opened.contains(merge)),
+        Some(true),
+        "the merge is opened"
+    );
+    assert_eq!(opened.history.as_ref().map(|h| &h.view), Some(&view));
+    assert_eq!(
+        opened.history.as_ref().map(|h| h.cursor),
         Some(1),
         "stays put"
     );
 
-    let (unfolded, commands) = update(&folded, key(KeyCode::Char(' ')));
-    assert_eq!(asked_view(&commands), View::default());
-    assert_eq!(unfolded.history.map(|h| h.view), Some(View::default()));
+    let (closed, commands) = update(&opened, key(KeyCode::Char(' ')));
+    assert_eq!(asked_view(&commands), View::folded());
+    assert_eq!(closed.history.map(|h| h.view), Some(View::folded()));
 }
 
+/// Ease-pass 06 box 7: `space` on a row inside an opened merge closes that
+/// merge and puts the cursor on the merge's row.
+#[test]
+fn space_inside_an_opened_merge_closes_it_and_lands_on_the_merge() {
+    let id = JobId::new(5);
+    let (state, merge) = merge_on_screen(id, 1);
+    let (mut opened, commands) = update(&state, key(KeyCode::Char(' ')));
+    let Some(Command::ShowRows(_, request)) = commands
+        .iter()
+        .find(|command| matches!(command, Command::ShowRows(..)))
+    else {
+        panic!("opening asks for rows: {commands:?}");
+    };
+    // The opened view's answer: the merged commit shows under the merge.
+    let history = opened.history.as_ref().expect("a walk");
+    let mut side = history.row_at(1).expect("the merge").clone();
+    side.commit.id = Oid::from_bytes(&[4; Oid::SHA1_BYTES]).expect("an oid");
+    side.commit.parents = Vec::new();
+    let rows = vec![
+        history.row_at(0).expect("row 0").clone(),
+        history.row_at(1).expect("the merge").clone(),
+        side,
+    ];
+    let inside = crate::history::RowFold {
+        folds: None,
+        inside: Some(crate::history::Inside { merge, label: None }),
+    };
+    let merge_fold = crate::history::RowFold {
+        folds: Some(true),
+        inside: None,
+    };
+    let window = Window {
+        request: request.id,
+        first: 0,
+        rows: rows.into(),
+        laid_out: 3,
+        done: true,
+        promoted: false,
+        fold: [crate::history::RowFold::default(), merge_fold, inside].into(),
+        anchor_behind: None,
+    };
+    (opened, _) = update(
+        &opened,
+        AppEvent::Progress(id, Progress::History(HistoryUpdate::Window(window))),
+    );
+    opened.history.as_mut().expect("a walk").cursor = 2;
+
+    let (closed, commands) = update(&opened, key(KeyCode::Char(' ')));
+    let view = asked_view(&commands);
+    assert_eq!(
+        view.inclusion.opened().map(|opened| opened.contains(merge)),
+        Some(false),
+        "the merge is closed"
+    );
+    let history = closed.history.as_ref().expect("a walk");
+    assert_eq!(history.cursor, 1, "the cursor lands on the merge");
+    assert_eq!(history.reanchor, None, "not back on the hidden row");
+    assert_eq!(history.selected().map(|row| row.commit.id), Some(merge));
+}
+
+/// Ease-pass 06 box 7: `space` on a row that neither folds a branch nor
+/// sits inside an opened merge does nothing.
 #[test]
 fn space_off_a_merge_changes_nothing() {
     let id = JobId::new(5);
@@ -72,8 +140,8 @@ fn one_switches_to_first_parent_view_from_the_top_and_back() {
     assert_eq!((history.top, history.cursor), (0, 0));
 
     let (full, commands) = update(&straight, key(KeyCode::Char('1')));
-    assert_eq!(asked_view(&commands), View::default());
-    assert_eq!(full.history.map(|h| h.view), Some(View::default()));
+    assert_eq!(asked_view(&commands), View::folded());
+    assert_eq!(full.history.map(|h| h.view), Some(View::folded()));
 }
 
 /// Every event clones the state (`update` returns a new one), so a large
@@ -127,8 +195,8 @@ fn capital_h_hides_the_stash_and_shows_it_again() {
         [stash, older].into()
     );
     let (shown, commands) = update(&hidden, key(KeyCode::Char('H')));
-    assert_eq!(asked_view(&commands), View::default());
-    assert_eq!(shown.history.map(|h| h.view), Some(View::default()));
+    assert_eq!(asked_view(&commands), View::folded());
+    assert_eq!(shown.history.map(|h| h.view), Some(View::folded()));
 }
 
 /// Refs listing one stash entry (`stash@{0}` at `stash`), `HEAD` detached

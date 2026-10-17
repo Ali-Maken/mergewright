@@ -5,10 +5,15 @@
 use std::cell::RefCell;
 use std::sync::mpsc::{Receiver, TryRecvError};
 
+use std::sync::Arc;
+
+use graft_core::oid::Oid;
+use graft_graph::Included;
 use graft_graph::layout::{CommitSource, StreamError, StreamingLayout};
 
 use crate::jobs::Delivery;
 
+use super::fold::{landing, lay_out};
 use super::state::{Ended, HistoryUpdate, RowRequest, Wanted, Window};
 use super::views::{IdleWork, Views, aim, reach};
 
@@ -153,7 +158,9 @@ fn next_request<S: CommitSource>(
 }
 
 /// Answers one request: lays out only as far as it needs, at most a chunk
-/// per step, then reports the rows it names.
+/// per step (mending what folding by default got wrong, `fold::lay_out`),
+/// then reports the rows it names. The window's per-row fold facts are left
+/// empty: [`Views::answer`] fills them.
 ///
 /// Between chunks it reports progress and asks `newer` whether a newer request
 /// has arrived; one that has replaces this one, so a withdrawn `G` stops
@@ -164,7 +171,7 @@ fn next_request<S: CommitSource>(
 /// # Errors
 /// Whatever the layout reports.
 pub(super) fn answer<S: CommitSource>(
-    layout: &mut StreamingLayout<S>,
+    layout: &mut StreamingLayout<Included<S>>,
     mut request: RowRequest,
     newer: &mut dyn FnMut() -> Option<RowRequest>,
     stop: &dyn Fn() -> bool,
@@ -187,7 +194,7 @@ pub(super) fn answer<S: CommitSource>(
         // whole chunk read from the repository costs about 30 ms unoptimised,
         // two frames, when a page key needs a screenful (ticket 30c).
         let needed = chunk.min(reach - layout.rows_emitted());
-        let advanced = layout.advance(needed, stop)?;
+        let advanced = lay_out(layout, needed, stop)?.advance;
         if advanced.stopped || stop() {
             return Ok(Some(Ended::Cancelled));
         }
@@ -206,6 +213,7 @@ pub(super) fn answer<S: CommitSource>(
         }
     }
 
+    let behind = anchor_behind(layout, &request);
     let laid_out = layout.rows_emitted();
     let range = match request.wanted {
         Wanted::Rows(rows) => rows.start.min(laid_out)..rows.end.min(laid_out),
@@ -228,6 +236,8 @@ pub(super) fn answer<S: CommitSource>(
         laid_out,
         done: layout.is_done(),
         promoted: request.promote.is_some(),
+        fold: Arc::from([]),
+        anchor_behind: behind,
     };
     if report(HistoryUpdate::Window(window)) == Delivery::NobodyListening {
         return Ok(Some(Ended::NobodyListening));
@@ -246,4 +256,14 @@ pub(super) fn error_chain(error: &dyn std::error::Error) -> String {
         cause = inner.source();
     }
     text
+}
+
+/// A promoting request's anchor, when the new order folds it away, and the
+/// shown merge it hides behind (ease-pass 06).
+fn anchor_behind<S: CommitSource>(
+    layout: &StreamingLayout<Included<S>>,
+    request: &RowRequest,
+) -> Option<Box<(Oid, Oid)>> {
+    let anchor = request.promote.as_ref()?.anchor?.commit;
+    Some(Box::new((anchor, landing(layout, anchor)?)))
 }

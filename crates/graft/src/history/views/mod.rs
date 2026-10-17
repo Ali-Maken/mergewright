@@ -4,21 +4,26 @@
 //! against them is [`super::serve`].
 
 mod promotion;
+mod sent;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use graft_core::commit_handle::CommitHandle;
+use graft_core::oid::Oid;
 use graft_graph::inclusion::reinclude;
 use graft_graph::layout::{CommitSource, StreamConfig, StreamError, StreamingLayout};
 use graft_graph::{Follow, Included, Seeds};
 
 use crate::jobs::Delivery;
 
+use super::fold::lay_out;
 use super::serve::answer;
 use super::state::{Ended, HistoryUpdate, RowRequest, View};
 
 use promotion::Pending;
 pub(super) use promotion::{aim, reach};
+use sent::Sent;
 
 /// Opens a fresh source over the same walk, for a view laid out on its own —
 /// or, given a promoted order, a source that hands out that order instead.
@@ -52,6 +57,12 @@ pub struct Views<'o, S: CommitSource> {
     /// The id of the newest request answered: tells a request answered
     /// provisionally from one a newer request replaced.
     answered: u64,
+    /// The last window sent, sent again when idle work changes what it
+    /// shows: a fold repair laying its rows out again, or the fold learning
+    /// more about them (ease-pass 06).
+    sent: Option<Sent>,
+    /// Each opened merge's recovered branch name, read once from its row.
+    labels: HashMap<Oid, Option<Arc<[u8]>>>,
 }
 
 /// What one [`Views::idle_step`] did.
@@ -91,6 +102,8 @@ impl<'o, S: CommitSource> Views<'o, S> {
             announced: None,
             pending: None,
             answered: 0,
+            sent: None,
+            labels: HashMap::new(),
         }
     }
 
@@ -121,11 +134,13 @@ impl<'o, S: CommitSource> Views<'o, S> {
         };
         let layout = self.layout(&view)?;
         if !layout.is_done() {
-            let before = layout.rows_emitted();
             let chunk = layout.config().chunk_rows;
-            layout.advance(chunk, stop)?;
+            let laid = lay_out(layout, chunk, stop)?;
+            if self.refresh_sent(laid.invalidated, report)? == Delivery::NobodyListening {
+                return Ok(IdleWork::NobodyListening);
+            }
             return Ok(IdleWork::Advanced {
-                rows: layout.rows_emitted() - before,
+                rows: laid.advance.rows_emitted,
             });
         }
         let rows = layout.rows_emitted();
@@ -181,15 +196,24 @@ impl<'o, S: CommitSource> Views<'o, S> {
     ) -> Result<Option<Ended>, StreamError<S::Error>> {
         let view = request.view.clone();
         let layout = self.layout(&view)?;
-        let mut sent = None;
-        let ended = answer(layout, request, newer, stop, &mut |update| {
-            if let HistoryUpdate::Window(window) = &update {
-                sent = Some(window.request);
+        // The window is held back until its fold facts are filled in, which
+        // reads the layout `answer` is borrowing.
+        let mut held = None;
+        let ended = answer(layout, request, newer, stop, &mut |update| match update {
+            HistoryUpdate::Window(window) => {
+                held = Some(window);
+                Delivery::Received
             }
-            report(update)
+            other => report(other),
         })?;
-        if let Some(id) = sent {
-            self.answered = id;
+        let Some(window) = held else {
+            return Ok(ended);
+        };
+        let window = self.with_folds(&view, window)?;
+        self.answered = window.request;
+        self.sent = Some(Sent::new(view, window.clone()));
+        if report(HistoryUpdate::Window(window)) == Delivery::NobodyListening {
+            return Ok(Some(Ended::NobodyListening));
         }
         Ok(ended)
     }

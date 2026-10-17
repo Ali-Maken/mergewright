@@ -77,11 +77,15 @@ The first-launch line: for his first launches, until he opens the palette, the s
 ## history
 Reading history for the screen: `graft-git`'s walk meets `graft-graph`'s layout here, laid out as it arrives.
 - `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase.
-- `Window` (struct) — the laid-out rows the screen currently holds.
+- `Window` (struct) — the laid-out rows the screen currently holds, with each row's `RowFold`.
+- `RowFold` (struct) — `folds`, `inside`: does a merge row fold a branch; the opened merge a row sits inside.
+- `Inside` (struct) — `merge`, `label`: an opened merge and the branch name its subject gives.
 - `HistoryUpdate` (enum) — what the history worker reports back to `update`.
 - `RowRequest` (struct) — the rows a move needs, sent to the worker.
 - `Phase` (enum) — where the walk is: streaming, complete, and so on.
 - `preview_seeds` (fn) — ghost lanes' colours from the refs, for Ghost Preview.
+## history::fold
+Folding by default in the worker: lays out mending the provisional order's repairs, reads each row's fold facts, and finds the merge a folded commit hides behind.
 ## history::scroll
 Moving through history: cursor, viewport, and the `RowRequest` a move needs. Plain arithmetic on `History`.
 ## history::seeds
@@ -114,7 +118,7 @@ The detail pane's reads: changed files, one file's diff, which refs contain a co
 ## jobs::finish
 The finish summary's reads: what the merge about to be committed changes, and one staged file's diff.
 ## jobs::fold_count
-How many commits a folded merge brought in, behind its `+N`; kept for the session.
+How many commits a folding merge brought in, behind its tail `▸ 4 commits from …`; kept for the session.
 ## jobs::forced
 Which unstoppable writes a stop was forced on, and where each stop left git.
 ## jobs::journal_list
@@ -243,7 +247,7 @@ Facts beside the graph arriving (system git, refs, working-tree counts), their r
 ## update::finish
 The finish summary: `c` on a fully resolved merge shows what will land; `y` commits it.
 ## update::fold_count
-A folded merge's `+N`: counted once by a job, kept for the session, never recounted.
+A folding merge's count: asked at rest for the merges on screen, counted once by a job, kept for the session.
 ## update::geometry
 Pure screen geometry a mouse event needs: where the detail pane, its regions, the context menu and a ref badge land.
 ## update::history
@@ -345,7 +349,7 @@ The conflict resolver's `DocView`: the one sanitisation site for a conflicted fi
 ## view::rewrite_editor
 The rewrite editor's view, its area and its bar's context; every non-refusal word is chosen here.
 ## view::rows
-Building `GraphView`: the rows the walk last sent, folded and painted for this frame.
+Building `GraphView`: the rows the walk last sent, lane-folded, each folding merge given its tail, painted for this frame.
 ## view::stash
 The stash overlay's view model (`S`): rows from the last read; decides nothing.
 ## view::status

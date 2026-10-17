@@ -499,6 +499,8 @@ mod tests {
             laid_out: 2,
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         });
         state
     }

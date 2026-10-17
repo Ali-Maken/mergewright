@@ -117,33 +117,6 @@ fn merged_topic() -> Vec<Commit> {
 }
 
 #[test]
-fn a_folded_merge_hides_its_branch_down_to_the_fork_point() {
-    let folded = Inclusion {
-        folded: [oid(1)].into(),
-        ..Inclusion::default()
-    };
-    let (shown, _) = apply(&merged_topic(), seeds(1), Follow::AllParents, &folded);
-    assert_eq!(ids(&shown), vec![oid(1), oid(2), oid(4)]);
-    assert_eq!(
-        shown[0].parents,
-        vec![oid(2)],
-        "the merge draws first parent only"
-    );
-
-    let (all, _) = apply(
-        &merged_topic(),
-        seeds(1),
-        Follow::AllParents,
-        &Inclusion::default(),
-    );
-    assert_eq!(
-        all,
-        merged_topic(),
-        "nothing hidden draws the walk as it is"
-    );
-}
-
-#[test]
 fn a_hidden_stash_takes_its_own_commits_with_it_but_not_its_base() {
     let walk = vec![
         commit(9, &[2, 8], 50, b"WIP on main: 2 work"),
@@ -237,7 +210,7 @@ fn links_trim_parents_as_the_view_draws_them() {
 
     let mut first = Included::new(
         VecSource::new(&walk),
-        seeds.clone(),
+        seeds,
         Follow::FirstParent,
         Inclusion::default(),
     );
@@ -245,85 +218,6 @@ fn links_trim_parents_as_the_view_draws_them() {
         untrimmed(&mut first),
         1,
         "first-parent view keeps the first"
-    );
-
-    let mut folded = Inclusion::default();
-    folded.folded.insert(merge);
-    let mut folded = Included::new(VecSource::new(&walk), seeds, Follow::AllParents, folded);
-    assert_eq!(
-        untrimmed(&mut folded),
-        1,
-        "a folded merge keeps its first parent"
-    );
-}
-
-#[test]
-fn folding_invalidates_only_the_rows_from_the_merge_down() {
-    let (walk, seeds) = long_history();
-    let source = Included::new(
-        VecSource::new(&walk),
-        seeds,
-        Follow::AllParents,
-        Inclusion::default(),
-    );
-    let view_seeds = source.seeds().clone();
-    let mut layout = StreamingLayout::new(source, view_seeds, small());
-    // The whole history on screen: every chunk is materialised as it is laid
-    // out, so any rebuild below is one the reinclude caused.
-    layout.set_viewport(0..42);
-    let original = all_rows(&mut layout);
-    assert_eq!(original.len(), 42);
-    let merge_row = layout.row_of(oid(19)).expect("the merge is laid out");
-    assert_eq!(merge_row, 18);
-    let checkpoints_before = layout.checkpoint_rows();
-    let pulls_before = layout.source().inner().pulls;
-
-    let folded = Inclusion {
-        folded: [oid(19)].into(),
-        ..Inclusion::default()
-    };
-    let invalidated = reinclude(&mut layout, folded).expect("in memory");
-
-    // The invalidated set, exactly: chunks from the merge's (4, cut back to
-    // rows 16..18) to the last (10, rows 40..42); checkpoints past row 18.
-    assert_eq!(
-        invalidated,
-        Invalidated {
-            from_row: 18,
-            chunks: (4..=10).collect(),
-            checkpoints: vec![24, 32, 40],
-        }
-    );
-    assert_eq!(checkpoints_before, vec![8, 16, 24, 32, 40]);
-    assert_eq!(
-        layout.checkpoint_rows(),
-        vec![8, 16],
-        "checkpoints above the merge survive"
-    );
-    assert_eq!(
-        layout.source().inner().pulls,
-        pulls_before,
-        "a reinclude re-reads; it never walks again"
-    );
-    for row in 0..18 {
-        assert!(layout.is_resident(row), "row {row} above the merge is kept");
-    }
-
-    let refolded = all_rows(&mut layout);
-    assert_eq!(layout.work().chunks_rebuilt, 0, "nothing kept was rebuilt");
-    assert_eq!(&refolded[..18], &original[..18]);
-    assert_eq!(
-        refolded.len(),
-        40,
-        "the topic's two commits are folded away"
-    );
-    assert!(refolded.iter().all(|row| row.commit.id != oid(101)));
-
-    reinclude(&mut layout, Inclusion::default()).expect("in memory");
-    assert_eq!(
-        all_rows(&mut layout),
-        original,
-        "unfolding restores every row"
     );
 }
 
@@ -488,45 +382,6 @@ proptest! {
         let config = StreamConfig { chunk_rows, checkpoint_every: chunk_rows * 2, ..small() };
         let mut streamed = StreamingLayout::new(source, seeds, config);
         prop_assert_eq!(all_rows(&mut streamed), expected);
-    }
-
-    /// Fold a merge by hand, then unfold it: the rows are the original rows.
-    /// While folded, the rows are what the slice form draws and every row
-    /// above the merge is untouched.
-    #[test]
-    fn fold_then_unfold_returns_the_original_rows(
-        (history, _, _) in viewed(),
-        pick in any::<prop::sample::Index>(),
-        chunk_rows in 1usize..=5,
-    ) {
-        let merges: Vec<Oid> = history
-            .commits
-            .iter()
-            .filter(|commit| commit.parents.len() > 1)
-            .map(|commit| commit.id)
-            .collect();
-        prop_assume!(!merges.is_empty());
-        let merge = merges[pick.index(merges.len())];
-        let config = StreamConfig { chunk_rows, checkpoint_every: chunk_rows * 2, ..small() };
-        let source = Included::new(
-            VecSource::new(&history.commits),
-            history.seeds(),
-            Follow::AllParents,
-            Inclusion::default(),
-        );
-        let mut streamed = StreamingLayout::new(source, history.seeds(), config);
-        let original = all_rows(&mut streamed);
-
-        let folded = Inclusion { folded: [merge].into(), ..Inclusion::default() };
-        let invalidated = reinclude(&mut streamed, folded.clone()).expect("in memory");
-        let while_folded = all_rows(&mut streamed);
-        let (commits, seeds) = apply(&history.commits, history.seeds(), Follow::AllParents, &folded);
-        prop_assert_eq!(&while_folded, &layout(&commits, seeds));
-        let kept = invalidated.from_row;
-        prop_assert_eq!(&while_folded[..kept], &original[..kept]);
-
-        reinclude(&mut streamed, Inclusion::default()).expect("in memory");
-        prop_assert_eq!(all_rows(&mut streamed), original);
     }
 
     /// Mark any commits as stashes, then clear them: while marked, the rows

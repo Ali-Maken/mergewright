@@ -488,11 +488,10 @@ pub struct AppState {
     /// Tags rows carry after their subject until the next write starts —
     /// `✎ changed` after a put-in (m7-power-tools/09).
     pub row_tags: super::row_tags::RowTags,
-    /// Each folded merge's `+N`, by merge id (m8-polish-and-ship/17b): a
-    /// fact of the merge commit, so kept for the session and never
-    /// recounted — unfolding keeps it too. Filled by
-    /// `update::fold_count::request`, which **every place that adds to
-    /// `Inclusion::folded` must call** (today one: `Space`).
+    /// Each folding merge's count, by merge id (m8-polish-and-ship/17b,
+    /// ease-pass 06): a fact of the merge commit, so kept for the session
+    /// and never recounted — opening and closing keep it too. Filled at
+    /// rest by `update::fold_count::at_rest`, for the merges on screen.
     pub(crate) fold_counts:
         std::collections::BTreeMap<graft_core::oid::Oid, super::fold_count::FoldCount>,
     /// The cursor is mid-burst (G-settle): `settle` records a moved

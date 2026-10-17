@@ -245,6 +245,11 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
             local_jobs.next_id()
         }));
         next.followed = selection::follow_key(next);
+        // At rest — not merely a burst with no follow owed — the folding
+        // merges on screen get their counts: a held `j` reads none.
+        if !next.defer_follow {
+            fold_count::at_rest(next, commands, &mut || local_jobs.next_id());
+        }
     }
     // The other asks below do not read the cursor (G-settle grep): the
     // radar's context and probes and the remotes are about refs, the

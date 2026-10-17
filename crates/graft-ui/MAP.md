@@ -149,10 +149,11 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `ProblemLine` (struct) — `reason`, `keys`: a failure the footer shows in place of the hints.
 - `MarkerView` (struct) — a Mistake Radar marker's `severity`, painted in the row's marker slot.
 - `GraphicsStatus` (enum) — `Ok` / `Failed(text)`: drawn `gfx ok` / `gfx: <error>`.
-- `Filters` (struct) — `first_parent`, `folded`, `stash_hidden`, `focused`; `Filters::text(keys)` is the header's words.
+- `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`; `Filters::text(keys)` is the header's words.
 - `Compaction` (struct) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept.
 - `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `author`, `when`, `sha`, `compare_marked`, `marker`, `tag`, `fold`.
-- `FoldMark` (enum) — a folded merge's commit count; `FoldMark::words` is what follows the subject.
+- `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `FoldMark::words(ascii)` is `▸ 4 commits from PR 16021`.
+- `FoldCount` (enum) — `Pending`, `Known(n)`, `Failed`: the tail's count, none until it lands, `?` if it failed.
 - `RowTag` (enum) — `Changed`: a row's tag after its subject; `RowTag::words(ascii)` per tier.
 - `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a tag leaves.
 - `AuthorChip` (struct) — `initials` and the `identity` that colours them.

@@ -14,7 +14,7 @@ use graft_git::branches::Branches;
 use graft_git::history::{CHUNK, CommitTable, Order, Walk};
 use graft_git::repo::{RefTarget, RepoHandle};
 use graft_graph::layout::{CommitSource, StreamConfig, StreamingLayout, layout};
-use graft_graph::{BranchIdentity, Follow, Inclusion, Row, Seeds};
+use graft_graph::{BranchIdentity, Follow, Included, Inclusion, Row, Seeds};
 
 use crate::jobs::Delivery;
 use crate::repos::RepoStore;
@@ -56,9 +56,20 @@ fn every_commit(handle: &RepoHandle, shape: Shape) -> Vec<Commit> {
     }
 }
 
+/// `source` laid out as a view that hides nothing, in `SMALL` chunks: what
+/// `answer` lays out (it mends a folding view's repairs as it goes).
+fn unfolded<S: CommitSource>(source: S, seeds: Seeds) -> StreamingLayout<Included<S>> {
+    let included = Included::new(source, seeds, Follow::AllParents, Inclusion::default());
+    let seeds = included.seeds().clone();
+    StreamingLayout::new(included, seeds, SMALL)
+}
+
 /// Asks `layout` for every row there is a chunk at a time, as a screen
 /// paging down would, collecting the answers.
-fn reported_rows<S: CommitSource>(layout: &mut StreamingLayout<S>, shape: Shape) -> Vec<Row> {
+fn reported_rows<S: CommitSource>(
+    layout: &mut StreamingLayout<Included<S>>,
+    shape: Shape,
+) -> Vec<Row> {
     let chunk = layout.config().chunk_rows;
     let mut rows: Vec<Row> = Vec::new();
     for id in 1.. {
@@ -116,7 +127,7 @@ fn the_product_source_lays_out_every_shape_as_the_whole_layout_does() {
 
         let walk =
             Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-        let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), seeds, SMALL);
+        let mut stream = unfolded(WalkSource::new(&handle, walk), seeds);
         let rows = reported_rows(&mut stream, shape);
 
         assert_eq!(rows, whole, "{shape}");
@@ -234,7 +245,7 @@ const HEIGHT: usize = 10;
 /// `history`, as the job and `update` would between them. `newer` stands in
 /// for requests that arrive while it works.
 fn round_trip<S: CommitSource>(
-    layout: &mut StreamingLayout<S>,
+    layout: &mut StreamingLayout<Included<S>>,
     history: &mut History,
     request: RowRequest,
     newer: &mut dyn FnMut() -> Option<RowRequest>,
@@ -261,7 +272,7 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     let handle = RepoHandle::open(&dir).expect("opens");
     let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
     // What the layout may protect at once: the window the screen asks for
     // (seven screens), back to a checkpoint, plus its buffers — in whole
@@ -318,7 +329,7 @@ fn every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
     let mut history = History::started();
     let first = history.show(HEIGHT).expect("asks for the first screen");
@@ -372,7 +383,7 @@ fn scroll_from_launch(step: impl Fn(&mut History) -> Option<RowRequest>) {
     let handle = RepoHandle::open(&dir).expect("opens");
     let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
     let mut history = History::started();
     let mut request = history.show(HEIGHT);
@@ -424,7 +435,7 @@ fn a_withdrawn_jump_stops_walking_and_lands_nothing() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
     let mut history = History::started();
     let first = history
@@ -494,6 +505,8 @@ fn assert_late_jump_answers_are_dropped(history: &mut History, jump: u64) {
         laid_out: 200,
         done: true,
         promoted: false,
+        fold: [].into(),
+        anchor_behind: None,
     };
     history.apply(HistoryUpdate::Window(late), HEIGHT);
     history.apply(
@@ -512,7 +525,7 @@ fn nothing_is_reported_once_stop_is_asked() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
     let stopped = AtomicBool::new(false);
     let mut reports = 0;
@@ -587,8 +600,8 @@ fn rows_in<S: CommitSource>(views: &mut Views<'_, S>, view: &View, shape: Shape)
     rows
 }
 
-/// The app's views of the merge shapes: folding a merge hides its branch and
-/// unfolding brings back the very rows there were; first-parent view is one
+/// The app's views of the merge shapes: folding by default hides the merged
+/// branches and the full view brings back the very rows there were; first-parent view is one
 /// straight lane and is laid out on its own, leaving the full view's rows as
 /// they were. Two sources are opened, one per `Follow`, never more.
 #[test]
@@ -610,19 +623,7 @@ fn views_fold_unfold_and_switch_to_first_parent_over_one_walk() {
 
         let full = View::default();
         let all = rows_in(&mut views, &full, shape);
-        let merge = all
-            .iter()
-            .find(|row| row.commit.parents.len() > 1)
-            .unwrap_or_else(|| panic!("{shape} has a merge"))
-            .commit
-            .id;
-        let folded_view = View {
-            inclusion: Inclusion {
-                folded: [merge].into(),
-                ..Inclusion::default()
-            },
-            ..View::default()
-        };
+        let folded_view = View::folded();
         let folded = rows_in(&mut views, &folded_view, shape);
         assert!(
             folded.len() < all.len(),
@@ -726,7 +727,7 @@ fn selection_stays_on_its_commit_after_its_chunk_is_evicted_and_rebuilt() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
     let mut history = History::started();
     let mut request = history.show(HEIGHT);
@@ -778,6 +779,8 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
             laid_out: whole.len(),
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         })
     };
     history.asked = 1;
@@ -813,6 +816,8 @@ fn a_seek_still_out_survives_a_view_change() {
             laid_out: whole.len(),
             done: false,
             promoted: false,
+            fold: [].into(),
+            anchor_behind: None,
         })
     };
     history.asked = 1;
@@ -1247,6 +1252,8 @@ fn window_of(first: usize, count: usize) -> Window {
         done: true,
         rows: rows.into(),
         promoted: false,
+        fold: [].into(),
+        anchor_behind: None,
     }
 }
 
@@ -1349,7 +1356,7 @@ fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
     let mut history = History::started();
     let first = history
         .show(HEIGHT)

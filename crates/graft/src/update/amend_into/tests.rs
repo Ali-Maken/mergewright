@@ -128,6 +128,8 @@ fn on_screen(at: usize, others: &[(&[u8], u8)]) -> AppState {
         laid_out: 3,
         done: true,
         promoted: false,
+        fold: [].into(),
+        anchor_behind: None,
     };
     let (mut state, _) = update(
         &state,

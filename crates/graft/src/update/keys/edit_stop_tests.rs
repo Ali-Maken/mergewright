@@ -106,13 +106,19 @@ fn space_on_the_uncommitted_row_at_an_edit_stop_stages() {
 }
 
 #[test]
-fn space_on_a_merge_row_at_an_edit_stop_still_folds() {
+fn space_on_a_merge_row_at_an_edit_stop_still_opens_it() {
     let state = screen(MERGE_ROW, true);
     assert!(!space_stages_here(&state));
     let (folded, commands) = space(&state);
     assert!(!stages(&commands), "{commands:?}");
     let merge = Oid::from_bytes(&[2; Oid::SHA1_BYTES]).expect("20 bytes");
-    assert_eq!(asked_view(&commands).inclusion.folded, [merge].into());
+    assert_eq!(
+        asked_view(&commands)
+            .inclusion
+            .opened()
+            .map(|opened| opened.contains(merge)),
+        Some(true)
+    );
     assert_eq!(
         folded.history.as_ref().map(|h| &h.view),
         Some(&asked_view(&commands))
@@ -121,18 +127,24 @@ fn space_on_a_merge_row_at_an_edit_stop_still_folds() {
 
 #[test]
 fn space_outside_an_edit_stop_is_unchanged() {
-    // The Uncommitted row, no stop: nothing staged, the fold's answer.
+    // The Uncommitted row, no stop: nothing staged, the merge opened.
     let mut uncommitted = screen(MERGE_ROW, false);
     uncommitted.on_working_tree = true;
     assert!(!space_stages_here(&uncommitted));
     let (_, commands) = space(&uncommitted);
     assert!(!stages(&commands), "{commands:?}");
 
-    // A merge row, no stop: the fold, as `space_folds_the_merge_under_the_cursor_and_unfolds_it`.
+    // A merge row, no stop: opened, as `space_opens_a_folding_merge_and_closes_it_again`.
     let merge_row = screen(MERGE_ROW, false);
     let (_, commands) = space(&merge_row);
     let merge = Oid::from_bytes(&[2; Oid::SHA1_BYTES]).expect("20 bytes");
-    assert_eq!(asked_view(&commands).inclusion.folded, [merge].into());
+    assert_eq!(
+        asked_view(&commands)
+            .inclusion
+            .opened()
+            .map(|opened| opened.contains(merge)),
+        Some(true)
+    );
 
     // `HEAD`'s row, no stop: off a merge, `space` changes nothing.
     let head_row = screen(HEAD_ROW, false);

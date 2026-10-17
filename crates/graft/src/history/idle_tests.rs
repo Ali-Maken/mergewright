@@ -13,8 +13,8 @@ use graft_core::oid::Oid;
 use graft_fixtures::Shape;
 use graft_git::history::{CommitTable, Order, Walk};
 use graft_git::repo::RepoHandle;
+use graft_graph::Seeds;
 use graft_graph::layout::{CommitSource, Pull, StreamConfig};
-use graft_graph::{Inclusion, Seeds};
 
 use crate::jobs::Delivery;
 
@@ -273,8 +273,8 @@ fn idle_steps_send_no_event() {
     );
 }
 
-/// Folding a merge moves the frontier back to it (`reinclude` → `truncate`);
-/// the next idle steps lay the folded view out to its end and say so.
+/// Switching to the folded view leaves it unfinished after one row; the next
+/// idle steps lay it out to its end (mending its repairs) and say so.
 #[test]
 fn an_inclusion_change_resumes_the_idle_step() {
     let shape = Shape::FoxtrotMerge;
@@ -290,23 +290,9 @@ fn an_inclusion_change_resumes_the_idle_step() {
     let all = views.layout(&full).expect("open").rows_emitted();
     assert_eq!(first, [HistoryUpdate::LaidOut { rows: all }]);
 
-    // Folding the first merge moves the frontier back to its row; asking
-    // for one row then leaves the rest of the folded view to lay out.
-    let layout = views.layout(&full).expect("open");
-    let rows = layout.rows(0..all).expect("rows");
-    let merge = rows
-        .iter()
-        .find(|row| row.commit.parents.len() > 1)
-        .unwrap_or_else(|| panic!("{shape} has a merge"))
-        .commit
-        .id;
-    let folded = View {
-        inclusion: Inclusion {
-            folded: [merge].into(),
-            ..Inclusion::default()
-        },
-        ..View::default()
-    };
+    // Folding by default is a view of its own; asking it for one row leaves
+    // the rest of the folded view to lay out.
+    let folded = View::folded();
     shown(&mut views, &folded, 0..1);
     assert!(
         !views.layout(&folded).expect("open").is_done(),

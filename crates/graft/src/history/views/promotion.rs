@@ -13,6 +13,7 @@ use graft_graph::{Follow, Included};
 
 use crate::jobs::Delivery;
 
+use super::super::fold::{landing, lay_out};
 use super::super::state::{Ended, HistoryUpdate, Promote, RowRequest, View, Wanted};
 use super::{IdleWork, Views};
 
@@ -143,7 +144,7 @@ impl<S: CommitSource> Views<'_, S> {
         let before = pending.layout.rows_emitted();
         if !ready_to_swap(&pending.layout, pending.anchor) {
             let chunk = pending.layout.config().chunk_rows;
-            pending.layout.advance(chunk, stop)?;
+            lay_out(&mut pending.layout, chunk, stop)?;
         }
         let rows = pending.layout.rows_emitted() - before;
         if !ready_to_swap(&pending.layout, pending.anchor) {
@@ -181,6 +182,9 @@ impl<S: CommitSource> Views<'_, S> {
         self.first_parent = None;
         // A new layout, not yet at the end: announced again once it is.
         self.announced = None;
+        // The window last sent is in the order being replaced: never sent
+        // again from the new one.
+        self.sent = None;
         *self.slot(pending.follow) = Some(pending.layout);
         pending.ask
     }
@@ -195,26 +199,33 @@ impl<S: CommitSource> Views<'_, S> {
 /// out answered only the rows asked for, never `done` on a history one chunk
 /// holds — the walk then stayed short of `Complete` for good, where the
 /// normal path, anchored and so a chunk laid out, completed (M7/04b, 12c).
-fn ready_to_swap<S: CommitSource>(layout: &StreamingLayout<S>, anchor: Option<Oid>) -> bool {
+fn ready_to_swap<S: CommitSource>(
+    layout: &StreamingLayout<Included<S>>,
+    anchor: Option<Oid>,
+) -> bool {
     layout.is_done()
         || (layout.rows_emitted() >= layout.config().chunk_rows && has_row(layout, anchor))
 }
 
 /// Whether `anchor` has a row in `layout`: at once with no anchor, and once
-/// history has ended, found or not.
-fn has_row<S: CommitSource>(layout: &StreamingLayout<S>, anchor: Option<Oid>) -> bool {
+/// history has ended, found or not. An anchor the layout folds away counts
+/// once the merge it hides behind has a row: that is where it lands
+/// (ease-pass 06) — and waiting for a row of its own would lay out the
+/// whole history.
+fn has_row<S: CommitSource>(layout: &StreamingLayout<Included<S>>, anchor: Option<Oid>) -> bool {
+    let laid_out = |id| {
+        layout
+            .row_of(id)
+            .is_some_and(|row| row < layout.rows_emitted())
+    };
     layout.is_done()
-        || anchor.is_none_or(|id| {
-            layout
-                .row_of(id)
-                .is_some_and(|row| row < layout.rows_emitted())
-        })
+        || anchor.is_none_or(|id| laid_out(id) || landing(layout, id).is_some_and(laid_out))
 }
 
 /// Lays `layout` out until `anchor` has a row, or history ends. Returns
 /// `false` if `stop` asked it to stop first.
 pub(in crate::history) fn reach<S: CommitSource>(
-    layout: &mut StreamingLayout<S>,
+    layout: &mut StreamingLayout<Included<S>>,
     anchor: Option<Oid>,
     stop: &dyn Fn() -> bool,
 ) -> Result<bool, StreamError<S::Error>> {
@@ -223,7 +234,7 @@ pub(in crate::history) fn reach<S: CommitSource>(
         if has_row(layout, anchor) {
             return Ok(true);
         }
-        let advanced = layout.advance(chunk, stop)?;
+        let advanced = lay_out(layout, chunk, stop)?.advance;
         if advanced.stopped || stop() {
             return Ok(false);
         }

@@ -17,6 +17,7 @@
 //! through (and promotes them), [`serve`](mod@serve) answers requests against them,
 //! and [`scroll`] moves [`History`] on screen.
 
+mod fold;
 mod scroll;
 mod seeds;
 mod serve;
@@ -32,6 +33,7 @@ mod promotion_tests;
 #[cfg(test)]
 mod tests;
 
+pub use fold::{Inside, RowFold};
 pub use scroll::Motion;
 pub use seeds::{preview_seeds, seeds_for};
 pub use serve::serve;
