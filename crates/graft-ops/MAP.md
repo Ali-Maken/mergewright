@@ -36,6 +36,21 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `came_back_from_index` (fn) — `(repo, stash, worktree_before)`: staged-new files he had deleted that a set-aside put-back checked out again.
 - `came_back_words` (fn) — `(paths) -> Option<String>`: the note naming those files.
 
+## branch_status
+- `CandidateKind` (enum) — `Trunk`, `Integration`, `Other`; ordered, the base choice's tie order.
+- `Candidate` (struct) — `name` (full ref), `tip`, `kind`: a branch that could be another's base.
+- `Apart` (struct) — `branch_only`, `base_only` (`usize`): how far a branch and a candidate are apart.
+- `short_name` (fn) — `refs/heads/x` → `x`, `refs/remotes/o/x` → `o/x`, `refs/tags/t` → `t`, else unchanged.
+- `choose_base` (fn) — pure: fewest `branch_only` (never 0, never the branch), ties kind then name.
+- `ROUTE_DEPTH` (const) — 8: the most bases `route` walks.
+- `route` (fn) — `(repo, branch, candidates, stop) -> Result<Vec<Candidate>, RunError>`: bases nearest first, to the trunk; no step back through a walked tip.
+- `BranchStatus` (struct) — `route`, `pushed`, `merged`, `behind`, `who`: the right pane's answers.
+- `Pushed` (enum) — `NoUpstream`, `InSync`, `ToPush(n)`, `ToPull(n)`, `Both { push, pull }`.
+- `Merged` (enum) — `MainLine`, `Into(name)`, `NotYet { into }`; a branch stacked on top is not a merge.
+- `Behind` (enum) — `NoBase`, `UpToDate { base }`, `Behind { base, count }`; the trunk against its upstream.
+- `Who` (struct) — `first` (≤2 author names), `others`, `everyone` (trunk), `last`.
+- `branch_status` (fn) — `(repo, branch, candidates, upstream, stop) -> Result<BranchStatus, RunError>`; reads only. **Fails today for the trunk and a branch with no base** (needs a graft-git read; ease-pass 01 handoff).
+
 ## clash
 - `Clash` (struct) — `stash`, `why: PutBackWhy`, `paths` (unmerged after): `ApplyError::Clashed`'s payload.
 - `StashClash` (struct) — `entry: EntryId`, `stash`, `index: Option<usize>`, `why`.

@@ -10,6 +10,7 @@
 pub mod absorb;
 pub mod apply;
 mod branch_config;
+pub mod branch_status;
 pub mod clash;
 pub mod clone;
 pub mod conflict;

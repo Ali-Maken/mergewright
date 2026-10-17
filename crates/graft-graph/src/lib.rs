@@ -16,6 +16,7 @@ pub mod lane;
 pub mod layout;
 pub mod merge_name;
 pub mod raster;
+pub mod role;
 pub mod row;
 pub mod seeds;
 
@@ -29,5 +30,6 @@ pub use layout::{
     StreamConfig, StreamError, StreamingLayout, Work, layout,
 };
 pub use merge_name::recover_branch_name;
+pub use role::{LaneRole, Route, made_on};
 pub use row::Row;
 pub use seeds::{BranchSeed, Seeds};

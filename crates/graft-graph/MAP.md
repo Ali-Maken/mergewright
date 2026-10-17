@@ -3,7 +3,7 @@ The pure layout engine and the pixel/Unicode/ASCII renderers. May depend on `cor
 One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## lib.rs
-- `ancestry`, `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `raster`, `row`, `seeds` (mod) — the public modules; their main types are re-exported at the root.
+- `ancestry`, `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `raster`, `role`, `row`, `seeds` (mod) — the public modules; their main types are re-exported at the root.
 
 ## ancestry
 - `Kin` (enum) — `Selected`, `Ancestor`, `Descendant`, `Unrelated`: how a row stands to the selection.
@@ -135,6 +135,13 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `StripCache::len` / `is_empty` / `resident_bytes` / `stats` (fn) — introspection.
 - `plain_layout_hash` (fn) — `plain_layout_hash(&PlainStrip) -> u64`; hash of what the rasteriser draws, colours aside.
 - `lit_hash` (fn) — `lit_hash(&Selection) -> u64`; hash of a selection's paint.
+
+## role
+- `LaneRole` (enum) — `This`, `Under`, `Trunk`, `Other`: what a lane's branch is to the focused one; the graph colours by it.
+- `Route` (struct) — trunk, chain of bases (nearest first, trunk excluded), focus; `new(trunk, built_on, focus)`, `unread(trunk, focus)`.
+- `Route::focus` / `trunk` / `chain` (fn) — the parts back.
+- `Route::role` (fn) — `role(BranchIdentity) -> LaneRole`: focus → `This`, trunk → `Trunk`, chain → `Under`, else `Other`.
+- `made_on` (fn) — `made_on(&Row) -> Option<BranchIdentity>`: `row.lanes[row.lane]`; `None` when unnamed or out of range.
 
 ## row
 - `Row` (struct) — one laid-out commit: `commit`, `lane`, `incoming`, `outgoing`, `lanes`, `marker`.
