@@ -1,6 +1,6 @@
 m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the practice graph under the card, `Uncommitted changes` on top, the cursor on `main`. Colour unverified (rule 5).
 
- ◇ workri…ctice-1609459200/work · a throwaway repo, not yours · main  7 commits
+ ◇ workri…ork · a throwaway repo, not yours · main  7 commits  1 commit to push
 ╭─ practice 1 of 8 · stage a change ──────────────────────────────── esc leave ╮
 │ ⏎ on the top row opens your changes · space stages the change under the cur… │
 ╰──────────────────────────────────────────────────────────────────────────────╯

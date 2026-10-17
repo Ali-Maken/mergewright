@@ -70,10 +70,9 @@ pub enum Step {
     Mark(&'static str),
     /// Check a fact only the UI state holds.
     See(&'static str, See),
-    /// `Tab` until `[ Commit ]` has focus (Subject → Body → options →
-    /// button, ADR-0034's path outside the kitty keyboard protocol), then
-    /// `Enter`.
-    CommitButton,
+    /// `Tab` until the subject has focus (the commit screen's `⇥` walks
+    /// subject → body → files), then `Enter`.
+    CommitFromSubject,
 }
 
 /// A pty capture of this scenario (the pieces the user judges by eye).
@@ -263,7 +262,7 @@ fn drive(
                 see(&state).map_err(|why| format!("{what}: {why}"))?;
                 state
             }
-            Step::CommitButton => press_the_button(app, state)?,
+            Step::CommitFromSubject => press_the_button(app, state)?,
         };
     }
     Ok(state)
@@ -283,21 +282,22 @@ fn settle_write(app: &App, state: AppState, what: &str) -> Result<AppState, Stri
     }
 }
 
-/// `Tab` to `[ Commit ]`, then `Enter`.
+/// `Tab` back to the subject, then `Enter` (ease-pass/08: `⏎` from the
+/// subject commits).
 fn press_the_button(app: &App, state: AppState) -> Result<AppState, String> {
     let mut state = state;
-    for _ in 0..8 {
+    for _ in 0..3 {
         let focus = state
             .commit_editor
             .as_ref()
             .ok_or("the commit editor is not open")?
             .focus;
-        if focus == graft_ui::commit_editor::Field::CommitButton {
+        if focus == graft_ui::commit_editor::CommitFocus::Subject {
             return Ok(app.key(&state, KeyCode::Enter));
         }
         state = app.key(&state, KeyCode::Tab);
     }
-    Err("`Tab` never reached `[ Commit ]`".to_owned())
+    Err("`Tab` never reached the subject".to_owned())
 }
 
 fn file_rows(state: &AppState) -> Result<(Vec<String>, usize), String> {
@@ -511,9 +511,9 @@ fn pane_keys() -> Vec<KeyPress> {
     plain(&[ch('k'), KeyCode::Enter])
 }
 
-/// `Tab` to `[ Commit ]`, then `Enter`.
+/// `Tab` to the subject, then `Enter`.
 fn commit_button() -> Vec<Step> {
-    vec![Step::CommitButton]
+    vec![Step::CommitFromSubject]
 }
 
 /// `d`, move off the safe answer, confirm.
@@ -994,14 +994,11 @@ fn commit_refused_nothing_staged() -> Scenario {
             commit_button(),
             vec![Step::See("the editor refuses and stays open", |state| {
                 let editor = state.commit_editor.as_ref().ok_or("the editor closed")?;
-                let refusal = editor.refusal(
-                    state.working_tree.as_deref(),
-                    graft::update::commit_editor::live_operation(state),
-                    graft::update::commit_editor::refusal_way(state),
-                );
-                check(refusal.as_deref() == Some("nothing staged"), || {
-                    format!("refusal {refusal:?}")
-                })?;
+                let refusal = editor.refusal();
+                check(
+                    refusal == Some(graft_ui::commit_editor::Refusal::NoFile),
+                    || format!("refusal {refusal:?}"),
+                )?;
                 check(state.operating.is_none(), || {
                     "a write was queued".to_owned()
                 })

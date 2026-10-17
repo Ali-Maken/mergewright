@@ -53,9 +53,7 @@ use self::layout::{
     pixels_above_overlays, render_graph_screen, render_graph_with_detail, split_for_detail,
     tab_banner_area,
 };
-use self::overlays::{
-    draw_journal, draw_map, draw_place, draw_rewrite, draw_stash, render_overlay_with_detail,
-};
+use self::overlays::{draw_journal, draw_map, draw_place, draw_rewrite, draw_stash};
 
 pub(super) use self::bars::banner_lines;
 pub(crate) use self::layout::{PaletteClick, graph_columns, palette_click, screen_area};
@@ -189,8 +187,8 @@ pub fn view_with_graphics(
             Some(GraphOverlay::Resolver) => {
                 (draw_resolver(session, state, frame, area), Vec::new())
             }
-            // The commit editor replaces the graph and leaves the detail
-            // pane alone — the rule for every M3 overlay (design note, hard
+            // The commit screen covers the graph and the detail pane alike
+            // (ease-pass/08; until then it left the pane alone, M3 hard
             // choice 4). It comes before the Map view because `c` is
             // answered wherever the cursor is, the Map view included;
             // `AppState::graph_overlay` holds that order.

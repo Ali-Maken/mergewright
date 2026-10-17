@@ -251,10 +251,12 @@ pub struct AppState {
     /// The commit editor (`c`, `a`): `None` while closed. Modal like the
     /// confirm box — while it is open every key is the editor's, bar `Ctrl+C`
     /// (m3-working-tree-undo-and-stash/05).
-    pub commit_editor: Option<super::commit_editor::CommitEditor>,
+    pub commit_editor: Option<Box<super::commit_editor::CommitEditor>>,
     /// What `Esc` kept when it closed a non-empty editor, so the next `c`
-    /// this session picks the message back up rather than losing it.
-    pub commit_draft: Option<super::commit_editor::CommitEditor>,
+    /// (or, for an amend, the next `a` on the same `HEAD`) this session
+    /// picks the message back up rather than losing it (ease-pass/08 C15).
+    /// Also where `u` puts the message of the commit it took back (Q9 a).
+    pub commit_draft: Option<super::commit_editor::Draft>,
     /// The merge, rebase, cherry-pick, revert or bisect the repository is
     /// partway through, as the last working-tree read found it, with the step
     /// counts the banner words itself from. Commit and amend refuse while it
@@ -511,6 +513,11 @@ pub struct AppState {
     /// What the pane and the evil probe last followed. Differs from
     /// `super::follow_key` while a follow is owed.
     pub(crate) followed: Option<super::FollowKey>,
+    /// The commit `c` just made, while it is the last thing that happened
+    /// (ease-pass/08 C13): its row's bar says `u` gives the edits back, and
+    /// that undo gives its message back. Cleared by any other write
+    /// landing, an undo, or the commit screen opening.
+    pub last_commit: Option<Box<super::commit_editor::LastCommit>>,
 }
 
 /// The screens Graft can show.

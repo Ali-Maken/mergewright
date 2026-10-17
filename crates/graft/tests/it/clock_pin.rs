@@ -128,7 +128,7 @@ fn stage_and_commit(pty: &mut Pty, left: usize, message: &str) {
         s.has("\u{23ce} changes \u{b7} c commit")
     });
     pty.send(b"c");
-    pty.wait_for("the commit editor", |s| s.has("\u{23ce} commit"));
+    pty.wait_for("the commit editor", |s| s.has("more detail"));
     pty.send(message.as_bytes());
     pty.send(b"\r");
     let tip = format!("main] {message}");
@@ -323,7 +323,7 @@ fn an_in_app_commit_under_the_default_pin_draws_an_age() {
         s.has("\u{23ce} changes \u{b7} c commit")
     });
     pty.send(b"c");
-    pty.wait_for("the commit editor", |s| s.has("\u{23ce} commit"));
+    pty.wait_for("the commit editor", |s| s.has("more detail"));
     pty.send(b"Made in the app");
     pty.send(b"\r");
     let screen = pty.wait_for("the new commit's row", |s| s.has("main] Made in the app"));

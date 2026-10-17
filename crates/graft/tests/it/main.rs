@@ -23,6 +23,7 @@ mod changes_pane_writes;
 mod cli_docs;
 mod clock_pin;
 mod commit_editor_writes;
+mod commit_screen;
 mod conflict_interim;
 mod context_menu;
 mod coverage;

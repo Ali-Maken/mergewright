@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_commit_screen in
+# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# Judge by eye: `⌃S`, then `Skip the commit hooks` from `⌃P`: no option row anywhere; the header ends `· signing off · skipping hooks`.
+=== 120x40 ===
+ committing to main · signing off · skipping hooks
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ▸fix toc                                                                                                        7/72 │
+│  More detail, if it needs it (optional)                                                                              │
+│                                                                                                                      │
+│                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ 3 files go in, +4 −0, as a new commit on main. 1 stays out.
+────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────
+ Going in (3)                               │
+ ›✓ M README.md                          +1 │   1   1   readme
+  ✓ M docs/toc.md                        +2 │       2 + more
+  ✓ M src/a.rs                           +1 │
+ Staying out (1)                            │
+  ! A .env  looks like a secrets file    +1 │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+ ⏎ commit 3 files  ⇥ more detail  ↑/↓ see a file's changes  esc cancel, your message is kept

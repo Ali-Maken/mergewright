@@ -223,6 +223,9 @@ impl<'a> GraphScreen<'a> {
             ),
             None => {}
         }
+        if let Some(words) = &self.view.push {
+            push(words.as_str().to_owned(), muted, Drop::Push);
+        }
         match &self.view.graphics {
             Some(GraphicsStatus::Ok) => push("gfx ok".to_owned(), muted, Drop::Gfx),
             Some(GraphicsStatus::Failed(message)) => push(

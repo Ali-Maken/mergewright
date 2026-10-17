@@ -39,12 +39,12 @@ pub(super) fn chain(parts: Vec<Vec<Step>>) -> Vec<Step> {
     parts.into_iter().flatten().collect()
 }
 
-/// `c`, a subject, `[ Commit ]`, the write, then everything re-read.
+/// `c`, a subject, `⏎`, the write, then everything re-read.
 pub(super) fn commit_by_key(subject: &'static str) -> Vec<Step> {
     vec![
         key(ch('c')),
         Step::Type(subject),
-        Step::CommitButton,
+        Step::CommitFromSubject,
         Step::Write("the commit"),
         Step::WaitFor(Wait::Ready),
     ]

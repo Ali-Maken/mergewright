@@ -247,6 +247,8 @@ pub enum Task {
     Trace,
     /// Read a history place's whole file at one commit (m7-power-tools/21).
     WholeFile,
+    /// Read every change's line counts for the commit screen (ease-pass/08).
+    ReadCommitFiles,
 }
 
 /// What a job brought back.
@@ -533,6 +535,9 @@ pub enum Product {
         /// The answer.
         count: Result<usize, String>,
     },
+    /// Every change against `HEAD` with its line counts
+    /// (`Command::ReadCommitFiles`), or why it could not be read.
+    CommitFiles(Result<std::sync::Arc<graft_git::diff::FileList>, String>),
 }
 
 /// A history place's whole file at one commit (m7-power-tools/21c).

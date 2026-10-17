@@ -216,10 +216,9 @@ fn capture_commit_editor_fresh() {
     let state = app.pump(state, "the working tree", |state| {
         state.working_tree.is_some()
     });
-    let state = app.key(&state, KeyCode::Char('c'));
-    let state = app.pump(state, "the editor, its template asked", |state| {
-        state.commit_editor.is_some() && state.commit_template.is_none()
-    });
+    // The screen with its template asked, its counts and the first file's
+    // changes in: a frame that still says `reading…` is a race.
+    let state = crate::commit_screen::opened(&app, &state);
     let frame = crate::captures::frame_at(
         &state,
         120,
@@ -244,7 +243,8 @@ const EDITOR_HEADER: &str = "\
 # The session fixture with notes.md staged; `c`.
 #
 # What right looks like:
-#  - The commit editor, its subject empty, the cursor in it.
-#  - No `subject empty` anywhere: it is said only after Commit is pressed
-#    with an empty subject (m7-power-tools/15).
+#  - The commit screen (ease-pass/08), its subject empty, the cursor in it;
+#    `notes.md` under `Going in`, its changes on the right.
+#  - No `subject empty` anywhere (m7-power-tools/15); the bar's `⏎` slot
+#    says `type a message first` instead, as the commit mock does.
 ";

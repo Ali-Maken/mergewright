@@ -70,6 +70,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         ascii: false,
         pixel: false,
         graphics: None,
+        push: None,
         notice: None,
         search: None,
         search_tail: None,

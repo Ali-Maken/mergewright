@@ -3,7 +3,7 @@ MERGING
 │ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │
 │ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
-│   gone.txt   kept · yours · main                                                                                Subject Merge branch 'feature'                            ┊       22/50 │
+│   gone.txt   kept · yours · main                                                                                Subject Merge branch 'feature'                                    22/72 │
 │   notes.txt  theirs · feature in 2 of 2 conflicts                                                               Body                                                                    │
 │ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                                                                                                     │
 │ ▸ README.md  modified  +1 −1                                                                                                                                                            │

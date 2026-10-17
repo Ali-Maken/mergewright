@@ -129,3 +129,53 @@ pub(super) fn check_system_git() -> Work {
         Outcome::Produced(Product::SystemGit(check))
     })
 }
+
+/// Untracked files whose lines are counted for the commit screen: each costs
+/// one read of the file, so past this many the rest show no counts.
+const UNTRACKED_COUNTED: usize = 50;
+
+/// The work behind [`Command::ReadCommitFiles`](crate::update::Command::ReadCommitFiles):
+/// every change against `HEAD` with its line counts, for the commit screen's
+/// file rows and its summary (ease-pass/08, C4). `git diff-index` gives the
+/// tracked files' counts; an untracked file has none from git, so it is read
+/// as the all-added diff the screen shows for it and its lines counted. A
+/// file too long to read whole, or binary, keeps `None`.
+pub(super) fn read_commit_files(
+    repos: &RepoStore,
+    stop: &super::Cancel,
+) -> Result<Arc<graft_git::diff::FileList>, String> {
+    use graft_git::diff::{DiffOptions, DiffSpec, FileStatus, LineKind, file_diff, list_files};
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    let options = DiffOptions::default();
+    let mut list = list_files(&handle, &DiffSpec::WorkingTreeVsHead, &options, stop)
+        .map_err(|error| error.to_string())?;
+    for entry in list
+        .files
+        .iter_mut()
+        .filter(|entry| entry.status == FileStatus::Untracked)
+        .take(UNTRACKED_COUNTED)
+    {
+        let diff = file_diff(
+            &handle,
+            &DiffSpec::WorkingTreeVsHead,
+            entry,
+            &options,
+            crate::update::detail::MAX_LINES,
+            stop,
+        )
+        .map_err(|error| error.to_string())?;
+        if diff.binary.is_some() || diff.truncated.is_some() {
+            continue;
+        }
+        let added = diff
+            .hunks
+            .iter()
+            .flat_map(|hunk| &hunk.lines)
+            .filter(|line| line.kind == LineKind::Added)
+            .count();
+        entry.added = u32::try_from(added).ok();
+        entry.removed = Some(0);
+    }
+    Ok(Arc::new(list))
+}

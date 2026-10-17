@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_commit_screen in
+# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# Judge by eye: after `⏎`: the graph, the cursor on `fix toc`; the bottom row is the status `Committed 3 files to main.`, its tick, `u undo · P push` (the row's bar, `u undo the commit, your edits come back · P push · c commit again`, is under it, not drawn while the status stands); the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out. Ids zeroed (made by the run).
+=== 120x40 ===
+ ◆ api  ~/code/api · main                                                                   2 commits  1 commit to push
+
+  ◌    Uncommitted changes (1 untracked)
+▸ ◆  ⓘ [◆ main ↑1] fix toc                                                                              GT now  0000000
+  ◇    [origin/main] start                                                                              GT now  0000000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Committed 3 files to main. ✓ · u undo · P push

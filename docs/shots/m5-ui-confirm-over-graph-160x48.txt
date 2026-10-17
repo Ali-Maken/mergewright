@@ -47,7 +47,7 @@
 
 == `P`: the push confirm, on the graph ==
 
- ◆ api  ~/code/api · main                                                                                                                           200 commits
+ ◆ api  ~/code/api · main                                                                                                         200 commits  1 commit to push
 
 ▸ ◆  ⓘ [◆ main ↑1] Commit 200                                                                                                                   GF 2d   d5ae5fd
   ●    [origin/main] Commit 199                                                                                                                 GF 2d   13e6ab1

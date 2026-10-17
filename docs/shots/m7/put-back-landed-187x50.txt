@@ -1,4 +1,4 @@
- ◆ api  ~/code/api · main                                                                                                                                                        7 commits
+ ◆ api  ~/code/api · main                                                                                                                                      7 commits  1 commit to push
 
   ◌        Uncommitted changes (1 unstaged)
     ■      [stash@{0}] On main: tune metrics                                                                                                                               GF 3m   91dddee

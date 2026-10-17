@@ -359,7 +359,7 @@ fn the_editor_answer_for_the_commit_editor_is_unchanged() {
     // The commit editor's own `$EDITOR` round, with a summary open beside
     // it that is waiting on a different id.
     let mut state = opened();
-    state.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
+    state.commit_editor = Some(Box::new(crate::update::commit_editor::CommitEditor::new()));
     let commit_editor_id = JobId::new(500);
     state.external_editor = Some(commit_editor_id);
     if let Some(open) = state.finish.as_mut() {

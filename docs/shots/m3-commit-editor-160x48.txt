@@ -3,67 +3,62 @@
 # regenerate on purpose). `c` on the scripted dirty tree, a subject typed,
 # then Tab to the body and a sentence typed there.
 #
-# Judge by eye:
-# - The title row reads COMMIT ── ⎇ main ── 1 file staged. Not "looks
-#   right": the count must match the STAGED section of the changes-pane
-#   capture beside it.
-# - The subject row shows ▸Subject, the typed text, and a counter reading
-#   26/50. The ┊ guide is at column 50 of the text, not at the screen edge.
-# - The body row shows Body (no ▸: focus is on the body's text, and the
-#   marker follows the focus) with its own ┊ guide at 72.
-# - The options row: four [ ] boxes — amend, sign-off, no-verify, allow
-#   empty — then [ Commit ]. None is ticked and none is refused, so no
-#   reason follows the button.
-# - The footer offers ⌃⏎/Commit, ⇥, ⌃E, ⌃S and esc.
-# - The detail pane is still there beside the editor, with its own header.
-#   The editor replaced the graph, not the pane.
+# Judge by eye (the commit screen since ease-pass/08; its own captures,
+# next to the commit mock, are docs/shots/ease-pass/commit-*.txt):
+# - The top row reads `committing to main`.
+# - The subject holds the typed text and a counter reading 26/72; the body
+#   below it has the ▸ (focus follows the marker) and a ┊ guide at 72.
+# - No option row anywhere: options are named in the header only when on.
+# - The bar is the body's: esc back to the message line, ⇥ files.
+# - The screen has the whole area: the file list on the left, the cursor
+#   file's changes on the right.
 #
 === 160x48 ===
-"COMMIT ── ⎇ main ── 1 file staged                                                            UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
-"                                                                                             diff vs HEAD 0303030                                               "
-" Subject fix the token refresh race                        ┊                           26/50                                                                    "
-"                                                                                                                                                                "
-"▸Body                                                                                                                                                           "
-"         The old token was refreshed twice when two requests raced.              ┊           STAGED (1)                                                         "
-"                                                                                               ▾ src/                                                           "
-"                                                                                                 ▾ auth/                                                        "
-"                                                                                                   M token.rs                                             +12 −4"
-"                                                                                             UNSTAGED (2)                                                       "
-"                                                                                               ▾ src/                                                           "
-"                                                                                                 ▾ api/                                                         "
-"                                                                                                   M routes.rs                                             +3 −2"
-"                                                                                                 ▾ auth/                                                        "
-"                                                                                                   M token.rs                                              +2 −0"
-"                                                                                             UNTRACKED (1)                                                      "
-"                                                                                               ? notes.md                                                  +0 −0"
-"                                                                                             fn routes()                                                        "
-"                                                                                              18  18       let mut app = Router::new();                         "
-"                                                                                              19     -     app.get("/health", health);                          "
-"                                                                                                  19▎+     app.get("/health", health);                          "
-"                                                                                                  20 +     app.get("/ready", ready);                            "
-"                                                                                              20  21       app                                                  "
-"                                                                                              21  22   }                                                        "
-"                                                                                             fn ready()                                                         "
-"                                                                                              44  45   async fn ready() -> Json<Status> {                       "
-"                                                                                              45     -     Json(Status::Ok)                                     "
-"                                                                                                  46 +     Json(Status::from(&state))                           "
-"                                                                                              46  47   }                                                        "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
-"  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]                                                                                   "
-"⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel                                                                                                   "
+" committing to main                                                                                                                                             "
+"┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐"
+"│  fix the token refresh race                                                                                                                            26/72 │"
+"│ ▸The old token was refreshed twice when two requests raced.              ┊                                                                                   │"
+"│                                                                                                                                                              │"
+"│                                                                                                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘"
+" 1 file goes in, as a new commit on main. 2 stay out.                                                                                                           "
+"────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+" Going in (1)                               │ reading…                                                                                                          "
+" ›✓ M src/auth/token.rs                     │                                                                                                                   "
+" Staying out (2)                            │                                                                                                                   "
+"  · A notes.md                              │                                                                                                                   "
+"  · M src/api/routes.rs                     │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+"                                            │                                                                                                                   "
+" esc back to the message line  ⇥ files                                                                                                                          "

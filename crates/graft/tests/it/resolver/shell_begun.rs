@@ -1036,7 +1036,7 @@ pub(super) fn the_words_fit(state: &AppState, words: &str, columns: u16, rows: u
 }
 
 /// **The 80x24 check (ticket 39, then 40):** over J3 the whole sentence
-/// shows at the narrow breakpoint, on its own row above the options row.
+/// shows at the narrow breakpoint, on the commit screen's bar row.
 #[test]
 fn the_shell_merge_words_fit_at_80_by_24() {
     let scratch = resolved_shell_merge();
@@ -1074,12 +1074,12 @@ fn capture_fix_editor_names_the_banner() {
 # pane with `c` (m6-conflicts/40).
 #
 # Judge by eye:
-# - The row directly above the options row reads, from column 3, exactly
-#   `{SHELL_WORDS}` — whole at {columns} columns.
-# - The options row ends at `[ Commit ]`, nothing after it.
-# - `git commit` and `…` appear nowhere in the editor's rows.
-# - The title row reads `COMMIT ── ⎇ main ── 2 files staged`.
-# - The reason and the button are dimmed; colour is unverified (CLAUDE.md
+# - The bottom row (the commit screen's bar, ease-pass/08) reads, from
+#   column 2, exactly `{SHELL_WORDS}` — whole at {columns} columns.
+# - `git commit` and `…` appear nowhere on the screen.
+# - The top row reads `committing to main · not pushed yet`; both files
+#   are under `Going in`.
+# - The words are in the warning colour; colour is unverified (CLAUDE.md
 #   rule 5), so the words carry it here.
 #
 === {columns}x{rows} ===
@@ -1131,7 +1131,10 @@ fn capture_fix_a_mid_merge_answers_in_words() {
                     && row.contains("⇥ ⇥ banner, then c finishes it")),
             "no footer row holds the reason and the keys whole at {columns}x{rows}:\n{body}"
         );
-        assert!(!body.contains("COMMIT ──"), "an editor is drawn:\n{body}");
+        assert!(
+            !body.contains("committing to"),
+            "an editor is drawn:\n{body}"
+        );
         let header = format!(
             "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:

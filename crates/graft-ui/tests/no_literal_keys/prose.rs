@@ -117,7 +117,6 @@ pub const ROWS: &[(&str, &str, &str)] = &[
         "a write is running",
         "article",
     ),
-    ("graft:view/commit_editor.rs", "1 file staged", "count"),
     ("graft:view/journal/summary.rs", "1 ref", "count"),
     ("graft:view/picker.rs", "1 branch", "count"),
     (

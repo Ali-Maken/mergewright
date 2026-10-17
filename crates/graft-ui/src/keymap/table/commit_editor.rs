@@ -28,7 +28,7 @@ pub(super) const ROWS: &[Binding] = &[
         "commit.sign_off",
         CommitEditor,
         &[ctrl('s')],
-        "Insert a sign-off trailer",
+        "Sign off: on / off",
     ),
     b(
         "commit.co_author",

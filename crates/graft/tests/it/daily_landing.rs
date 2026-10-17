@@ -93,21 +93,13 @@ fn two_commits() -> graft_fixtures::Scratch {
     scratch
 }
 
-/// `c`, a message, the commit button: a commit made by key, so the journal
+/// `c`, a message, `⏎` from the subject: a commit made by key, so the journal
 /// has it to undo.
 fn commit_by_key(app: &App, state: &AppState, message: &str) -> AppState {
     let mut state = app.key(state, KeyCode::Char('c'));
     assert!(state.commit_editor.is_some(), "`c` opens the editor");
     for character in message.chars() {
         state = app.key(&state, KeyCode::Char(character));
-    }
-    for _ in 0..4 {
-        if state.commit_editor.as_ref().map(|editor| editor.focus)
-            == Some(graft_ui::commit_editor::Field::CommitButton)
-        {
-            break;
-        }
-        state = app.key(&state, KeyCode::Tab);
     }
     app.key(&state, KeyCode::Enter)
 }

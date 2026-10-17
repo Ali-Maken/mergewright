@@ -172,20 +172,20 @@ fn ref_in(entries: &str, field: &str) -> String {
     rest.chars().take_while(|c| *c != '"').collect()
 }
 
-/// `Tab` until `[ Commit ]` has focus, then `Enter` — the way ADR-0034 says
-/// a commit is made, rather than the `Ctrl+Enter` shortcut a terminal may
-/// not report.
+/// `Tab` until the subject has focus, then `Enter` — the way ADR-0034 says
+/// a commit is made (ease-pass/08: `⏎` from the subject), rather than the
+/// `Ctrl+Enter` shortcut a terminal may not report.
 fn press_the_button(app: &App, state: AppState) -> AppState {
     let mut state = state;
-    for _ in 0..4 {
+    for _ in 0..3 {
         if state.commit_editor.as_ref().map(|editor| editor.focus)
-            == Some(graft_ui::commit_editor::Field::CommitButton)
+            == Some(graft_ui::commit_editor::CommitFocus::Subject)
         {
             return app.key(&state, KeyCode::Enter);
         }
         state = app.key(&state, KeyCode::Tab);
     }
-    panic!("`Tab` never reached the button");
+    panic!("`Tab` never reached the subject");
 }
 
 /// `c`, a subject, `Tab` to the button, `Enter` — and the commit git made.
@@ -284,8 +284,8 @@ fn the_button_commits_what_was_typed_and_then_amends_it() {
 }
 
 /// The refusal is a preview, and `Operation::check` is the decision — but
-/// with nothing staged neither should let a commit through, and the user
-/// should be told which it is.
+/// with nothing going in neither should let a commit through, and the bar
+/// says why (C9: `put a file in first`).
 #[test]
 fn nothing_staged_makes_no_commit() {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
@@ -296,13 +296,12 @@ fn nothing_staged_makes_no_commit() {
 
     let state = app.key(&state, KeyCode::Char('c'));
     let state = app.typed(&state, "nothing to say");
-    let refused = graft::view::commit_editor_view(&state)
+    let refused = graft::view::commit_screen_view(&state)
         .expect("the editor is open")
-        .refusal
-        .map(|reason| reason.as_str().to_owned());
-    assert_eq!(refused.as_deref(), Some("nothing staged"));
+        .refusal;
+    assert_eq!(refused, Some(graft_ui::commit_editor::Refusal::NoFile));
 
-    // `Ctrl+Enter` too, in case the button's focus is what was refused.
+    // `Ctrl+Enter` too, in case the focus is what was refused.
     let state = app.press(
         &state,
         KeyPress {
@@ -342,6 +341,19 @@ fn fresh_staged_repo() -> tempfile::TempDir {
     scratch
 }
 
+/// `c`, then its counts and the first file's changes in: a frame drawn
+/// after never says `reading…`.
+fn opened(app: &App, state: &AppState) -> AppState {
+    let state = app.key(state, KeyCode::Char('c'));
+    app.pump(state, "the counts and the diff", |state| {
+        state
+            .commit_editor
+            .as_ref()
+            .is_some_and(|editor| editor.counts.is_some() && editor.diff.view.is_some())
+            && state.commit_template.is_none()
+    })
+}
+
 /// The caption of [`capture_fix_subject_enter_commits`]'s files.
 fn subject_enter_header(columns: u16, rows: u16) -> String {
     format!(
@@ -354,11 +366,12 @@ fn subject_enter_header(columns: u16, rows: u16) -> String {
 # with the subject focused (m6-conflicts/51).
 #
 # Judge by eye:
-# - Frame 1: the footer reads exactly
-#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
-#   {columns} columns. The body is empty. The options row ends `[ Commit ]`.
-# - Frame 2: the editor is gone; the status line reads `commit \"fix: x\" ✓`
-#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
+# - Frame 1: the commit screen (ease-pass/08); its bar begins
+#   `⏎ commit 1 file  ⇥ more detail`. The body is empty; `sample.txt` is
+#   under `Going in`.
+# - Frame 2: the screen is gone; the status line reads
+#   `Committed 1 file to main. ✓` and the graph's top row is
+#   `[◆ main] fix: x`, with nothing uncommitted.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === {columns}x{rows} ===
@@ -395,11 +408,11 @@ fn capture_fix_subject_enter_commits() {
     let state = ready(&app, state);
     let parent = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
 
-    let state = app.key(&state, KeyCode::Char('c'));
+    let state = opened(&app, &state);
     let typed = app.typed(&state, "fix: x");
     assert_eq!(
         typed.commit_editor.as_ref().map(|editor| editor.focus),
-        Some(graft_ui::commit_editor::Field::Subject),
+        Some(graft_ui::commit_editor::CommitFocus::Subject),
         "the editor opens on the subject"
     );
     let entered = app.key(&typed, KeyCode::Enter);
@@ -421,10 +434,11 @@ fn capture_fix_subject_enter_commits() {
     let mut captures = graft_fixtures::Captures::new();
     for (columns, rows) in [(120_u16, 40_u16), (80, 24)] {
         let first = crate::captures::frame_at(&typed, columns, rows, None);
-        assert_eq!(
-            first.last().map(String::as_str),
-            Some("⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel"),
-            "the footer, whole at {columns}x{rows}"
+        assert!(
+            first
+                .iter()
+                .any(|row| row.contains("⏎ commit 1 file  ⇥ more detail")),
+            "the bar at {columns}x{rows}: {first:#?}"
         );
         let second = crate::captures::frame_at(&landed, columns, rows, None);
         let body = format!(
@@ -515,7 +529,7 @@ fn stage_one_file_and_commit_is_six_steps() {
     assert!(
         state.operating.is_some(),
         "⏎ started no write; refusal {:?}",
-        graft::view::commit_editor_view(&state).and_then(|view| view.refusal),
+        graft::view::commit_screen_view(&state).and_then(|view| view.refusal),
     );
     let state = app.settled(state);
 

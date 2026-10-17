@@ -9,7 +9,7 @@ use graft_ui::keymap::{ActionId, ContextId, defaults};
 use crate::update::commit_editor::tests::ready;
 use crate::update::palette::{PaletteTarget, rows};
 use crate::update::{AppEvent, AppState, update};
-use graft_ui::commit_editor::Field;
+use graft_ui::commit_editor::CommitFocus;
 
 fn press(state: &AppState, key: KeyPress) -> AppState {
     update(state, AppEvent::Core(Event::Key(key))).0
@@ -29,7 +29,7 @@ fn ctrl_p() -> KeyPress {
 fn editor() -> AppState {
     let open = press(&ready(&["a.rs"]), KeyPress::plain(KeyCode::Char('c')));
     let editor = open.commit_editor.as_ref().expect("`c` opens the editor");
-    assert_eq!(editor.focus, Field::Subject);
+    assert_eq!(editor.focus, CommitFocus::Subject);
     open
 }
 
@@ -101,7 +101,7 @@ fn choosing_an_option_row_flips_it_and_keeps_the_editor() {
     let editor = after.commit_editor.as_ref().expect("the editor stays");
     assert!(editor.no_verify);
     assert!(!editor.amend && !editor.allow_empty);
-    assert_eq!(editor.focus, Field::Subject, "focus kept");
+    assert_eq!(editor.focus, CommitFocus::Subject, "focus kept");
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn question_mark_in_the_subject_types_it() {
 #[test]
 fn question_mark_off_the_text_fields_opens_the_editors_rows() {
     let mut state = editor();
-    state.commit_editor.as_mut().expect("open").focus = Field::Amend;
+    state.commit_editor.as_mut().expect("open").focus = CommitFocus::Files;
     let open = press(&state, KeyPress::plain(KeyCode::Char('?')));
     let rows = action_rows(&open);
     assert!(
@@ -137,4 +137,52 @@ fn from_the_graph_no_commit_editor_row_is_listed() {
             "{rows:?}"
         );
     }
+}
+
+/// Review 03 Minor 5: each keyless option chosen twice from `⌃P` is off
+/// again — one flag per id, no row flipping another.
+#[test]
+fn choosing_each_option_twice_returns_it_to_off() {
+    for (label, id) in [
+        ("Amend the last commit", "commit.toggle_amend"),
+        ("Skip the commit hooks", "commit.toggle_no_verify"),
+        ("Allow an empty commit", "commit.toggle_allow_empty"),
+    ] {
+        let mut state = editor();
+        let option = crate::update::commit_editor::CommitOption::of_id(&ActionId(id))
+            .expect("one of the three");
+        for want in [true, false] {
+            let open = cursor_on(press(&state, ctrl_p()), label);
+            state = press(&open, KeyPress::plain(KeyCode::Enter));
+            let editor = state.commit_editor.as_ref().expect("the editor stays");
+            assert_eq!(editor.option(option), want, "{id}");
+        }
+    }
+}
+
+/// Q8 a: `commit.toggle_no_verify` from `?` in the file list names itself
+/// in the header.
+#[test]
+fn skipping_hooks_from_question_mark_in_the_files_shows_in_the_header() {
+    let mut state = editor();
+    state.commit_editor.as_mut().expect("open").focus = CommitFocus::Files;
+    let open = cursor_on(
+        press(&state, KeyPress::plain(KeyCode::Char('?'))),
+        "Skip the commit hooks",
+    );
+    let after = press(&open, KeyPress::plain(KeyCode::Enter));
+    let header = crate::view::commit_screen_view(&after)
+        .expect("the editor stays")
+        .header;
+    assert_eq!(header.options, ["skipping hooks"]);
+}
+
+/// Q8 a: sign-off is a flag the header names, so its row reads as one.
+#[test]
+fn sign_off_reads_on_off_in_the_keymap() {
+    let row = defaults()
+        .iter()
+        .find(|b| b.action == ActionId("commit.sign_off"))
+        .expect("in the table");
+    assert_eq!(row.label, "Sign off: on / off");
 }

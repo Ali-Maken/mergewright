@@ -248,22 +248,13 @@ fn stage(repo: &Path) {
     git(repo, &["add", "pushed.txt"]);
 }
 
-/// Commit what is staged through the commit editor: `c`, a subject, `Tab`
-/// to `[ Commit ]`, `Enter`. The commit is journaled, so `u` can take it
-/// back.
+/// Commit what is staged through the commit screen: `c`, a subject, `⏎`
+/// from the subject. The commit is journaled, so `u` can take it back.
 fn commit_by_key(app: &App, state: &AppState, subject: &str) -> AppState {
     let mut state = app.key(state, KeyCode::Char('c'));
     assert!(state.commit_editor.is_some(), "`c` opens the editor");
     for character in subject.chars() {
         state = app.key(&state, KeyCode::Char(character));
-    }
-    for _ in 0..4 {
-        if state.commit_editor.as_ref().map(|editor| editor.focus)
-            == Some(graft_ui::commit_editor::Field::CommitButton)
-        {
-            break;
-        }
-        state = app.key(&state, KeyCode::Tab);
     }
     app.key(&state, KeyCode::Enter)
 }

@@ -228,7 +228,7 @@ fn c_needs_nothing_over_the_graph() {
 #[test]
 fn c_in_the_commit_editor_is_typed_there() {
     let mut state = fixture();
-    state.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
+    state.commit_editor = Some(Box::new(crate::update::commit_editor::CommitEditor::new()));
     let (state, commands) = press(&state, KeyCode::Char('C'));
     assert!(state.picker.is_none());
     assert!(

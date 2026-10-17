@@ -21,7 +21,7 @@ use crate::repos::RepoStore;
 ///
 /// The three travel together because they are read together and used
 /// together: the commit editor's refusal preview (ADR-0034) needs the first
-/// two to say whether `[ Commit ]` would do anything, and the operation
+/// two to say whether the commit screen's `⏎` would do anything, and the operation
 /// banner needs all three at once — the kind and step to word itself, and
 /// `mergetool` to know whether `M` has anything to launch before it offers
 /// the key (`m5-history-and-ghost-preview/09`).

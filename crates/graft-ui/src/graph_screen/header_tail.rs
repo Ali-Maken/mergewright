@@ -12,12 +12,14 @@ pub(super) const TAIL_SEPARATOR: &str = "  ";
 
 /// Which items of the header's tail give way first when the row is short
 /// (m8/15b, ticket 15 A2): the graphics status, then the walk (with its
-/// `Esc cancels` and order notice), then the filters, then the search. The
-/// operation banner, when there is one, outlasts them all.
+/// `Esc cancels` and order notice), then the push count (ease-pass/08),
+/// then the filters, then the search. The operation banner, when there is
+/// one, outlasts them all.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum Drop {
     Gfx,
     Walk,
+    Push,
     Filters,
     Search,
 }
@@ -41,7 +43,13 @@ pub(super) fn fitted_tail(mut items: Vec<TailItem>, room: usize) -> Vec<Span<'st
             .sum::<usize>()
             + TAIL_SEPARATOR.len() * items.len().saturating_sub(1)
     };
-    for drop in [Drop::Gfx, Drop::Walk, Drop::Filters, Drop::Search] {
+    for drop in [
+        Drop::Gfx,
+        Drop::Walk,
+        Drop::Push,
+        Drop::Filters,
+        Drop::Search,
+    ] {
         if width(&items) <= room {
             break;
         }

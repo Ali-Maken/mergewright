@@ -6,55 +6,56 @@
 # with the subject focused (m6-conflicts/51).
 #
 # Judge by eye:
-# - Frame 1: the footer reads exactly
-#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
-#   120 columns. The body is empty. The options row ends `[ Commit ]`.
-# - Frame 2: the editor is gone; the status line reads `commit "fix: x" ✓`
-#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
+# - Frame 1: the commit screen (ease-pass/08); its bar begins
+#   `⏎ commit 1 file  ⇥ more detail`. The body is empty; `sample.txt` is
+#   under `Going in`.
+# - Frame 2: the screen is gone; the status line reads
+#   `Committed 1 file to main. ✓` and the graph's top row is
+#   `[◆ main] fix: x`, with nothing uncommitted.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 120x40 ===
 == frame 1: `fix: x` typed, subject focused ==
-COMMIT ── ⎇ main ── 1 file staged
-
-▸Subject fix: x                                            ┊                                                        6/50
-
- Body
-                                                                                 ┊
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+ committing to main · not pushed yet
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ▸fix: x                                                                                                         6/72 │
+│  More detail, if it needs it (optional)                                                                              │
+│                                                                                                                      │
+│                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ 1 file goes in, +1 −0, as a new commit on main.
+────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────
+ Going in (1)                               │
+ ›✓ M sample.txt                         +1 │   1   1   one
+ Staying out (0)                            │       2 + two
+   nothing                                  │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+                                            │
+ ⏎ commit 1 file  ⇥ more detail  ↑/↓ see a file's changes  esc cancel, your message is kept
 
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                                                                     2 commits
@@ -96,4 +97,4 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- commit "fix: x" ✓
+ Committed 1 file to main. ✓ · u undo · P push

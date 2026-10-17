@@ -1,389 +1,218 @@
-//! The commit editor's screen: a title, a subject line, a body, the four
-//! option toggles and the `[ Commit ]` button (DESIGN.md §2.10, design note
-//! "Commit editor", m3-working-tree-undo-and-stash/05).
+//! The commit screen (ease-pass/08, commit mock
+//! `prototypes/ease-mocks/mergewright-commit-screen.html`): a header line
+//! saying where the commit goes, a message box (subject, then three body
+//! rows), one sentence saying what goes in, then the files going in and
+//! staying out beside the diff of the one under the cursor, and a bar of
+//! keys for whichever part has focus.
 //!
 //! Owns no state and reads no repository: [`crate::text_input`] holds the
 //! text, `graft::update::commit_editor` holds the rest, and
-//! `graft::view::commit_editor` turns that into the [`CommitEditorView`] this
-//! draws. Like the Map view, it fills the graph area and leaves the detail
-//! pane alone.
+//! `graft::view::commit_editor` turns that into the [`CommitScreenView`]
+//! this draws over the whole frame.
 //!
 //! Every fact the user needs is in **characters**, never in colour or
-//! weight alone: which field has focus (`▸`), whether an option is on
-//! (`[x]`), why the button will not fire (the reason beside it). A capture
-//! records the character grid and nothing else, so anything that lives only
-//! in an attribute cannot be checked afterwards (CLAUDE.md).
+//! weight alone: which part has focus (`▸`), which file the cursor is on
+//! (`▸` with the files focused, `›` without), whether a file goes in (`✓`)
+//! or stays out (`·`, `!` for a secrets file). A capture records the
+//! character grid and nothing else (CLAUDE.md rules 5 and 6).
 
 use graft_term::SanitizedText;
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
-use ratatui::widgets::Widget;
 
-use crate::fit::fit;
-use crate::keymap::{ActionId, Keymap};
-use crate::paint::foreground;
-use crate::text_input::{AreaView, AreaWidget, FOCUS, FieldView, FieldWidget};
-use crate::theme::{Theme, Token};
+use crate::detail::BodyView;
+use crate::keymap::Keymap;
+use crate::text_input::{AreaView, FieldView};
+use crate::theme::Theme;
 
-/// Characters the subject is meant to stay inside: the `┊` guide sits just
-/// past it, and the counter reads `n/50`.
-pub const SUBJECT_LIMIT: usize = 50;
+mod draw;
+mod words;
+
+pub use words::{bar, summary_line};
+
+/// Characters the subject is meant to stay inside: the counter reads
+/// `n/72` and turns `Warning` past it (C2).
+pub const SUBJECT_LIMIT: usize = 72;
 
 /// Characters a body line is meant to stay inside; its `┊` guide's column.
 pub const BODY_LIMIT: u16 = 72;
 
-/// What has focus in the editor. `Tab` cycles the four **regions** — subject,
-/// body, options, button — and `←`/`→` move between the four options once the
-/// options region has it (DESIGN.md §2.10's "move between subject / body /
-/// options", ADR-0034's `[ Commit ]` button).
+/// The file list's width beside the diff (design note "New UI": `files 44 |
+/// diff`).
+pub const FILES_WIDTH: u16 = 44;
+
+/// Below this many columns the diff is hidden and the files take the width.
+pub const DIFF_COLUMNS: u16 = 100;
+
+/// What has focus. `⇥` walks subject → body → files → subject (C11).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Field {
-    /// The one-line subject.
+pub enum CommitFocus {
+    /// The one-line subject: typing goes here, `⏎` commits.
     Subject,
-    /// The multi-line body.
+    /// The body: `⏎` is a newline.
     Body,
-    /// `[ ] amend`.
+    /// The file list: `space` puts a file in or leaves it out.
+    Files,
+}
+
+impl CommitFocus {
+    /// The next part `⇥` moves to.
+    #[must_use]
+    pub fn next(self) -> Self {
+        match self {
+            CommitFocus::Subject => CommitFocus::Body,
+            CommitFocus::Body => CommitFocus::Files,
+            CommitFocus::Files => CommitFocus::Subject,
+        }
+    }
+
+    /// The previous part, for `⇧⇥`.
+    #[must_use]
+    pub fn previous(self) -> Self {
+        match self {
+            CommitFocus::Subject => CommitFocus::Files,
+            CommitFocus::Body => CommitFocus::Subject,
+            CommitFocus::Files => CommitFocus::Body,
+        }
+    }
+
+    /// The subject or the body: a key there is typed (`?` included).
+    #[must_use]
+    pub fn types(self) -> bool {
+        matches!(self, CommitFocus::Subject | CommitFocus::Body)
+    }
+}
+
+/// Which heading a file sits under (C5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FileGroup {
+    /// `Going in (n)`, marked `✓`.
+    GoingIn,
+    /// `Staying out (n)`, dim, marked `·` (or `!` for a secrets file).
+    StayingOut,
+}
+
+/// One changed file as the list draws it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CommitFileRow {
+    /// The path, as the status lists it.
+    pub path: SanitizedText,
+    /// The one-letter change (`M`, `A`, `D`, `R`), as the mock's second
+    /// column shows it.
+    pub kind: char,
+    /// Which heading it is under.
+    pub group: FileGroup,
+    /// Lines added, once the line counts are read; `None` before then and
+    /// for a binary file.
+    pub added: Option<u32>,
+    /// Lines removed, as `added`.
+    pub removed: Option<u32>,
+    /// A new file whose name looks like keys or credentials (C7): left out
+    /// on its own, marked `!` while it stays out.
+    pub secret: bool,
+}
+
+/// Where the commit goes, as the summary line names it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Onto {
+    /// A new commit on this branch (or `HEAD`'s short SHA when detached).
+    NewCommit(SanitizedText),
+    /// Into the last commit (`a`).
     Amend,
-    /// `[ ] sign-off`.
-    SignOff,
-    /// `[ ] no-verify`.
-    NoVerify,
-    /// `[ ] allow empty`.
-    AllowEmpty,
-    /// `[ Commit ]`.
-    CommitButton,
 }
 
-impl Field {
-    /// The four option toggles, in the order the row draws them.
-    pub const OPTIONS: [Field; 4] = [
-        Field::Amend,
-        Field::SignOff,
-        Field::NoVerify,
-        Field::AllowEmpty,
-    ];
-
-    /// Is this one of the option toggles?
-    #[must_use]
-    pub fn is_option(self) -> bool {
-        Self::OPTIONS.contains(&self)
-    }
-
-    /// The option's label, as the row draws it and as a `--flag` would read.
-    #[must_use]
-    pub fn label(self) -> &'static str {
-        match self {
-            Field::Subject => "Subject",
-            Field::Body => "Body",
-            Field::Amend => "amend",
-            Field::SignOff => "sign-off",
-            Field::NoVerify => "no-verify",
-            Field::AllowEmpty => "allow empty",
-            Field::CommitButton => "Commit",
-        }
-    }
-
-    /// The next region `Tab` moves to: subject → body → options → button →
-    /// subject. Within the options region the first option takes the focus;
-    /// `←`/`→` pick among them.
-    #[must_use]
-    pub fn next(self) -> Field {
-        match self {
-            Field::Subject => Field::Body,
-            Field::Body => Field::Amend,
-            Field::CommitButton => Field::Subject,
-            option => {
-                debug_assert!(option.is_option());
-                Field::CommitButton
-            }
-        }
-    }
-
-    /// The previous region, for `Shift+Tab`.
-    #[must_use]
-    pub fn previous(self) -> Field {
-        match self {
-            Field::Subject => Field::CommitButton,
-            Field::Body => Field::Subject,
-            Field::CommitButton => Field::Amend,
-            option => {
-                debug_assert!(option.is_option());
-                Field::Body
-            }
-        }
-    }
-
-    /// The option one step left or right of this one, staying inside the
-    /// row. `None` when the focus is not on an option at all.
-    #[must_use]
-    pub fn sibling_option(self, forward: bool) -> Option<Field> {
-        let at = Self::OPTIONS.iter().position(|option| *option == self)?;
-        let next = if forward {
-            (at + 1).min(Self::OPTIONS.len() - 1)
-        } else {
-            at.saturating_sub(1)
-        };
-        Some(Self::OPTIONS[next])
-    }
+/// The one sentence above the files (C4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Summary {
+    /// Something goes in: `3 files go in, +60 −3, as a new commit on
+    /// wallet-release. 1 stays out.`
+    Goes {
+        /// Files going in.
+        files: u32,
+        /// `(added, removed)` over the files going in; `None` until every
+        /// one of them has its counts.
+        lines: Option<(u32, u32)>,
+        /// Where they go.
+        onto: Onto,
+        /// Files staying out.
+        out: u32,
+    },
+    /// An amend with no file going in: only the message changes.
+    MessageOnly {
+        /// Files staying out.
+        out: u32,
+    },
+    /// Nothing goes in: `Nothing goes in. Put a file in with space.`
+    Nothing,
 }
 
-/// Everything the commit editor draws.
+/// Why `⏎` would do nothing (C9). The bar's `⏎` slot says it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Refusal {
+    /// The subject is empty: `type a message first`.
+    NoMessage,
+    /// No file goes in: `put a file in first`.
+    NoFile,
+}
+
+/// The header line: where the commit goes, the push state, the options on.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CommitHeader {
+    /// The branch `HEAD` is on (or `HEAD`'s short SHA when detached).
+    pub branch: SanitizedText,
+    /// `<sha7> <subject>` of the commit an amend rewrites; `None` for a
+    /// new commit.
+    pub amending: Option<SanitizedText>,
+    /// `not pushed yet` / `N commits to push`; `None` when there is nothing
+    /// to say (in sync, detached, not read yet) — never a word that reads
+    /// as a problem when nothing is wrong (CLAUDE.md status rule).
+    pub push: Option<SanitizedText>,
+    /// The options that are on, in their order (`signing off`, `skipping
+    /// hooks`, `empty allowed`); empty when all are off (Q8 a).
+    pub options: Vec<&'static str>,
+}
+
+/// Everything the commit screen draws.
 #[derive(Clone, Debug)]
-pub struct CommitEditorView<'a> {
-    /// The title row, already assembled: `COMMIT ── ⎇ main ── 2 files
-    /// staged`, `AMEND a1b2c3d …`, or `committing…`.
-    pub title: SanitizedText,
-    /// The subject line.
+pub struct CommitScreenView<'a> {
+    /// The header line.
+    pub header: CommitHeader,
+    /// The subject: its text, cursor and `n/72` counter (`label` unused).
     pub subject: FieldView<'a>,
-    /// The body.
+    /// The body: its lines and cursor (`label` unused).
     pub body: AreaView<'a>,
-    /// The four toggles and whether each is on, in the row's order.
-    pub options: [(Field, bool); 4],
+    /// The sentence above the files.
+    pub summary: Summary,
+    /// Every changed file, going in first, then staying out.
+    pub files: Vec<CommitFileRow>,
+    /// Index into `files` of the file under the cursor.
+    pub cursor: usize,
     /// What has focus.
-    pub focus: Field,
-    /// Why `[ Commit ]` would do nothing, if it would: drawn beside the
-    /// dimmed button, and repeated on the title row.
-    pub refusal: Option<SanitizedText>,
-
-    /// Why the last write failed, while it is still worth saying: a
-    /// pre-commit hook's refusal, an amend whose `HEAD` could not be read, an
-    /// `$EDITOR` that would not start. It takes the footer row, because a
-    /// reason the user cannot read is the same as no reason at all — and a
-    /// rejected commit is an ordinary day, not an edge case
-    /// (m3/05 review, Major 1).
+    pub focus: CommitFocus,
+    /// The diff of the file under the cursor.
+    pub diff: BodyView,
+    /// Why `⏎` would do nothing, if it would.
+    pub refusal: Option<Refusal>,
+    /// Why the last write failed (a hook, a refusal), while it is worth
+    /// saying: it takes the bar's row until `esc` dismisses it.
     pub status: Option<SanitizedText>,
-    /// A commit is running: the button is dimmed and every key but `Esc` is
+    /// A commit is running: the bar says so, and every key but `esc` is
     /// ignored.
     pub busy: bool,
+    /// A merge, rebase or other operation is live (it began while the
+    /// screen was up): where to finish it, in place of the bar, since `⏎`
+    /// is refused until it is done (m6-conflicts/48).
+    pub live: Option<SanitizedText>,
 }
 
-/// [`CommitEditorView`] drawn into the area it is given — the graph's, with
-/// the detail pane left alone (design note, hard choice 4).
+/// [`CommitScreenView`] drawn over the area it is given: the whole frame.
 #[derive(Debug)]
-pub struct CommitEditorScreen<'a> {
+pub struct CommitScreen<'a> {
     /// What to draw.
-    pub view: &'a CommitEditorView<'a>,
+    pub view: &'a CommitScreenView<'a>,
     /// Colours.
     pub theme: &'a Theme,
-}
-
-/// The key hints under the editor while the subject has focus: `⏎` commits
-/// from there and `⇥` is the way to the body (m6 usability P16, pick 14).
-///
-/// The editor is a text field: every press goes on as typed whatever his
-/// config says (ADR-0055), so its keys spell from the shipped table
-/// (ticket m8/10, decision 5).
-#[must_use]
-pub fn footer_subject() -> String {
-    Keymap::shipped().key_verbs(&[
-        ("app.open", "commit"),
-        ("commit.next_field", "body"),
-        ("commit.edit_outside", "$EDITOR"),
-        ("commit.sign_off", "sign-off"),
-        ("app.back", "cancel"),
-    ])
-}
-
-/// The key hints under the editor anywhere else (design note, "Commit
-/// editor"): in the body `⏎` is a newline, so only `⌃⏎` and the button
-/// commit. `Commit` is the button's name, a word, not a key.
-#[must_use]
-pub fn footer_other() -> String {
-    let keys = Keymap::shipped();
-    let commit = keys
-        .spell_keys(&[ActionId("commit.commit")])
-        .map(|key| format!("{key}/Commit commit"));
-    let rest = keys.key_verbs(&[
-        ("commit.next_field", "next"),
-        ("commit.edit_outside", "$EDITOR"),
-        ("commit.sign_off", "sign-off"),
-        ("app.back", "cancel"),
-    ]);
-    commit
-        .into_iter()
-        .chain([rest])
-        .collect::<Vec<_>>()
-        .join("  ")
-}
-
-/// The footer for whichever field has focus. One word per key, not per mode:
-/// the amend editor says `commit` too, as its button does.
-fn footer(focus: Field) -> String {
-    match focus {
-        Field::Subject => footer_subject(),
-        _ => footer_other(),
-    }
-}
-
-/// Rows the editor needs before the body gets any: title, blank, subject,
-/// blank, then the options row and the footer at the bottom.
-const CHROME_ROWS: u16 = 6;
-
-/// The refusal's own row above the options row (m6-conflicts/40): budgeted
-/// always, so `fits` needs no view; drawn only when refused, and the body
-/// keeps it otherwise.
-const REFUSAL_ROWS: u16 = 1;
-
-impl Widget for &CommitEditorScreen<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        if area.width == 0 || area.height == 0 {
-            return;
-        }
-        // The editor replaces the graph, so it owns its background: without
-        // this the rows it does not write keep whatever was drawn there.
-        buf.set_style(
-            area,
-            Style::new().bg(crate::paint::color(self.theme.token(Token::Bg))),
-        );
-
-        let width = usize::from(area.width);
-        buf.set_string(
-            area.x,
-            area.y,
-            fit(self.view.title.as_str(), width),
-            foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
-        );
-        if area.height == 1 {
-            return;
-        }
-
-        // The footer and the options row sit at the bottom; the body takes
-        // whatever is left between the subject and them.
-        let footer_row = area.bottom() - 1;
-        // A failure takes the footer from the key hints, the way the graph
-        // screen's `problem` does: the hints are still discoverable, the
-        // reason a commit was refused is not (m3/05 review, Major 1).
-        let (footer, token) = match &self.view.status {
-            Some(status) => (
-                format!("{} — esc dismisses", status.as_str()),
-                Token::Warning,
-            ),
-            None => (footer(self.view.focus), Token::TextMuted),
-        };
-        buf.set_string(
-            area.x,
-            footer_row,
-            fit(&footer, width),
-            foreground(self.theme, token),
-        );
-        if area.height == 2 {
-            return;
-        }
-        let options_row = footer_row - 1;
-        self.draw_options(buf, area, options_row);
-        if area.height == 3 {
-            return;
-        }
-
-        // Refused, the reason takes the row above the options and the body
-        // ends one row higher; it never shares the subject's row.
-        let text_bottom = match &self.view.refusal {
-            Some(refusal) if options_row - 1 > area.y + 2 => {
-                buf.set_string(
-                    area.x,
-                    options_row - 1,
-                    fit(&format!("  {}", refusal.as_str()), width),
-                    foreground(self.theme, Token::TextMuted),
-                );
-                options_row - 1
-            }
-            _ => options_row,
-        };
-        self.draw_text(buf, area, text_bottom);
-    }
-}
-
-impl CommitEditorScreen<'_> {
-    /// The subject line, and the body in whatever rows are left between it
-    /// and `bottom`, the first row below them (the refusal's or the
-    /// options'). Either is skipped when there is no room.
-    fn draw_text(&self, buf: &mut Buffer, area: Rect, bottom: u16) {
-        let subject_row = area.y + 2;
-        if subject_row >= bottom {
-            return;
-        }
-        (&FieldWidget {
-            view: &self.view.subject,
-            theme: self.theme,
-            ascii: false,
-        })
-            .render(
-                Rect {
-                    x: area.x,
-                    y: subject_row,
-                    width: area.width,
-                    height: 1,
-                },
-                buf,
-            );
-
-        let body_top = subject_row + 2;
-        let Some(body_height) = bottom.checked_sub(body_top) else {
-            return;
-        };
-        if body_height == 0 {
-            return;
-        }
-        (&AreaWidget {
-            view: &self.view.body,
-            theme: self.theme,
-        })
-            .render(
-                Rect {
-                    x: area.x,
-                    y: body_top,
-                    width: area.width,
-                    height: body_height,
-                },
-                buf,
-            );
-    }
-
-    /// `▸ [x] amend   [ ] sign-off …   ▸ [ Commit ]` — a refusal's reason
-    /// has its own row above (m6-conflicts/40); only `committing…` follows
-    /// the button.
-    fn draw_options(&self, buf: &mut Buffer, area: Rect, row: u16) {
-        let mut line = String::new();
-        for (field, on) in &self.view.options {
-            let marker = if self.view.focus == *field {
-                FOCUS
-            } else {
-                ' '
-            };
-            let box_ = if *on { 'x' } else { ' ' };
-            line.push_str(&format!("{marker} [{box_}] {}  ", field.label()));
-        }
-        let marker = if self.view.focus == Field::CommitButton {
-            FOCUS
-        } else {
-            ' '
-        };
-        line.push_str(&format!("{marker} [ Commit ]"));
-        if self.view.busy && self.view.refusal.is_none() {
-            line.push_str("  committing…");
-        }
-        let token = if self.view.refusal.is_some() || self.view.busy {
-            Token::TextMuted
-        } else {
-            Token::Text
-        };
-        buf.set_string(
-            area.x,
-            row,
-            fit(&line, usize::from(area.width)),
-            foreground(self.theme, token),
-        );
-    }
-}
-
-/// Whether an area is tall enough for the editor to draw a body line at all.
-/// Below this it still draws — title, subject, options, footer — but the body
-/// is off screen, so the caller can say so. The refusal's row is counted
-/// whether or not there is a refusal.
-#[must_use]
-pub fn fits(area: Rect) -> bool {
-    area.height > CHROME_ROWS + REFUSAL_ROWS && area.width > 0
+    /// The keys the bar spells. The screen is a text field, so its keys
+    /// are fixed (ADR-0055): the caller hands the shipped table.
+    pub keys: &'a Keymap,
 }
 
 #[cfg(test)]

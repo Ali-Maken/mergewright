@@ -131,6 +131,7 @@ fn every_field_spelled_out() -> AppState {
         .into(),
         defer_follow: true,
         followed: Some(super::super::FollowKey::WorkingTree),
+        last_commit: None,
     }
 }
 

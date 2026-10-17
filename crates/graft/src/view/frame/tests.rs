@@ -286,7 +286,7 @@ fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
         }
         Some(GraphOverlay::Resolver) => state.resolver = Some(an_open_resolver()),
         Some(GraphOverlay::CommitEditor) => {
-            state.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
+            state.commit_editor = Some(Box::new(crate::update::commit_editor::CommitEditor::new()));
         }
         Some(GraphOverlay::Map) => state.map.shown = true,
         Some(GraphOverlay::Journal) => state.journal.shown = true,
@@ -600,13 +600,13 @@ fn every_screen() -> Vec<(String, AppState)> {
 
 /// A key each screen's own bar offers, one or two per screen: the graph's
 /// row, the resolver, the commit editor, the Map view, the journal, the
-/// stash list, and the detail pane with an overlay behind it. The editor
-/// opens on its subject, whose footer is `⏎ commit  ⇥ body …`
-/// (m6-conflicts/51); `⌃⏎/Commit` is only drawn with another field focused.
+/// stash list, and the detail pane with an overlay behind it. The commit
+/// screen opens on its subject, whose bar is `⏎ … ⇥ more detail …`
+/// (ease-pass/08, the commit mock).
 const BEHIND: [&str; 8] = [
     "b branch",
     "⏎ resolved",
-    "⏎ commit  ⇥ body",
+    "⇥ more detail",
     "zoom to commits",
     "J/esc close",
     "s save",

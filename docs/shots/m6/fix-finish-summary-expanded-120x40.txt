@@ -15,7 +15,7 @@ MERGING
 │           4 + line TWO                                                                                               │
 │       5   5   line three                                                                                             │
 │ MESSAGE · ⇥ edit                                                                                                     │
-│  Subject Merge branch 'feature'                            ┊                                                   22/50 │
+│  Subject Merge branch 'feature'                                                  ┊                             22/72 │
 │  Body                                                                                                                │
 │                                                                                  ┊                                   │
 │                                                                                                                      │

@@ -191,6 +191,18 @@ fn subject_abc(state: &mut AppState, at: usize) {
         .subject = abc_at(at);
 }
 
+fn file_cursor_on_1(state: &mut AppState) {
+    state
+        .commit_editor
+        .as_mut()
+        .expect("the editor is open")
+        .file_cursor = 1;
+}
+
+fn file_cursor(state: &AppState) -> Option<usize> {
+    Some(state.commit_editor.as_ref()?.file_cursor)
+}
+
 fn subject(state: &AppState) -> Option<(String, usize)> {
     let subject = &state.commit_editor.as_ref()?.subject;
     Some((subject.text().to_owned(), subject.cursor()))
@@ -231,7 +243,9 @@ pub(super) const ONE_CHORD_IDLE: &[(ContextId, &str, &str, IdleWhy)] = &[
     (ContextId::Picker, "app.top", "home", Defect { at: "picker.rs:158 swallows home; g is typed (:150)" }),
     (ContextId::Picker, "app.bottom", "end", Defect { at: "picker.rs:158 swallows end; G is typed (:150)" }),
     (ContextId::CommitEditor, "app.undo", "⌃Z", Defect { at: "commit_editor/keys.rs:154 swallows ⌃Z; u is typed" }),
-    (ContextId::CommitEditor, "app.up", "↑", Defect { at: "commit_editor/keys.rs:275 swallows ↑ in the subject" }),
+    (ContextId::CommitEditor, "app.up", "↑", ActsGivenState {
+        at: "commit_editor/keys.rs subject_key: ↑ moves the file cursor up", given: file_cursor_on_1,
+        then: |b, a| file_cursor(b) == Some(1) && file_cursor(a) == Some(0) }),
     (ContextId::CommitEditor, "app.top", "home", ActsGivenState {
         at: "commit_editor/keys.rs:273", given: |s| subject_abc(s, 2),
         then: |b, a| went(subject, b, a, ("abc", 2), ("abc", 0)) }),

@@ -166,6 +166,13 @@ fn undid(
     // A forced run over drift names what it replaced and the key that
     // brings it back (m6-conflicts/77); a clean one adds nothing.
     state.status = landing(what, &applied.replaced, applied_is_redo(applied), 1);
+    // `u` on the commit just made gives its message back to the next `c`
+    // (Q9 a); a redo never takes a commit back.
+    if applied_is_redo(applied) {
+        state.last_commit = None;
+    } else {
+        crate::update::commit_editor::undo_landed(state, &applied.entry);
+    }
     // Taking back a finish or an abort leaves git mid-operation again, and
     // only the read this asks for can say so: it pays the landing
     // (`land_after_undo`, ticket 41). With a merge begun in the shell

@@ -139,8 +139,8 @@ fn u_takes_a_commit_back_and_capital_u_puts_it_again() {
     for letter in "shout three".chars() {
         state = app.key(&state, KeyCode::Char(letter));
     }
-    // `Ctrl+Enter` commits from wherever the focus is. The `[ Commit ]`
-    // button is the binding that works in every terminal (ADR-0034) and has
+    // `Ctrl+Enter` commits from wherever the focus is. `Enter` in the subject
+    // is the binding that works in every terminal (ADR-0034) and has
     // its own tests in `commit_editor_writes`; what matters here is that a
     // commit really lands, so that `u` has one to take back.
     let state = app.press(&state, KeyPress::control(KeyCode::Enter));
