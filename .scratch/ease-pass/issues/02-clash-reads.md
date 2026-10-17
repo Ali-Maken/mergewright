@@ -1,6 +1,6 @@
 # clash-reads — what the merge preview, the pick undo and the look need from git
 
-Status: ready
+Status: done
 Blocked by: none
 Build with: Opus — brownfield reads in one scouted crate; every behaviour is pinned by fixture and property tests, so not Fable (scout recommends `builder-opus`).
 Needs: none
@@ -53,12 +53,12 @@ pub fn line_origins(result: &FileDiff, yours: &FileDiff, theirs: &FileDiff) -> V
 `history_reads/forecast.rs` (new fn beside the old; old untouched), `history_reads` exports; `conflict.rs`/`conflict/document.rs` (`reopen` beside `take`); `Region`/`ConflictFile` users in graft-ops (`apply_take`, `graft-ops/src/conflict.rs:125,160`) and graft-ui (`RegionView`) — `reopen` adds, changes nothing existing; the diff module (`line_origins`); MAP.md. No `CommitSummary` literal changes.
 
 ## Acceptance
-- [ ] `merge_forecast` fixtures: clean merge → `Checked`, no clashes, `changed` = the files theirs changed since the merge-base; one file clashing in 2 places → `places: Some(2)`; a modify/delete clash → that path with `places: None`; unrelated histories → `NotCheckable(UNRELATED)`; git below 2.38 (version stub) → `NotCheckable(_)` with `forecast_merge`'s reason text.
-- [ ] `merge_forecast` with a stopped `Stop` → `Err(RunError::Stopped)`.
-- [ ] Property: `parse → take(i, t) → reopen(i) → render` == original bytes, all `t`, every block.
-- [ ] `reopen` on an open block and on an out-of-range index → `Err(NoSuchBlock(i))`.
-- [ ] `line_origins` table test: line only in yours, only in theirs, in both, in neither (not listed).
-- [ ] Existing `forecast_merge` tests (`tests/it/history_reads.rs:238,286,410`, `src/history_reads/tests.rs:60`) unchanged and passing. Each tick names its test.
+- [x] `merge_forecast` fixtures: clean merge → `Checked`, no clashes, `changed` = the files theirs changed since the merge-base; one file clashing in 2 places → `places: Some(2)`; a modify/delete clash → that path with `places: None`; unrelated histories → `NotCheckable(UNRELATED)`; git below 2.38 (version stub) → `NotCheckable(_)` with `forecast_merge`'s reason text. — **Test:** merge_forecast::{a_clean_merge_lists_what_theirs_changed_and_no_clashes, a_file_clashing_in_two_places_counts_two, a_modify_delete_clash_names_the_path_with_no_count, unrelated_histories_are_not_checkable, an_old_git_is_not_checkable_with_forecast_merges_reason}
+- [x] `merge_forecast` with a stopped `Stop` → `Err(RunError::Stopped)`. — **Test:** merge_forecast::a_raised_stop_is_stopped
+- [x] Property: `parse → take(i, t) → reopen(i) → render` == original bytes, all `t`, every block. — **Test:** reopen_tests::take_then_reopen_renders_the_original (proptest)
+- [x] `reopen` on an open block and on an out-of-range index → `Err(NoSuchBlock(i))`. — **Test:** reopen_tests::reopen_refuses_an_open_block_and_an_index_past_the_end
+- [x] `line_origins` table test: line only in yours, only in theirs, in both, in neither (not listed). — **Test:** origins::tests::each_added_line_names_its_side_and_unclaimed_lines_are_not_listed
+- [x] Existing `forecast_merge` tests (`tests/it/history_reads.rs:238,286,410`, `src/history_reads/tests.rs:60`) unchanged and passing. Each tick names its test. — **Test:** existing tests/it/history_reads.rs + src/history_reads/tests.rs forecast tests, unchanged bodies, green in 6455/6455
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
