@@ -75,3 +75,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - planner-fable 06h rework: split into 06h graph-mode (Sonnet) + 06i graph-mode-in-help (Sonnet; RowKind::Setting, config::write new, dep toml_edit) · 35 tools.
 - planner-fable 06r spec (M1,M2,M4,M5 + 5 minors; Opus) + 06s/06t file splits (M6, user: split not ratchet) · 47 tools. 15 gap rows from review 06; 1 closed; 06d/e/f done. Order: 06r → 06b/06h; 06s after 06r,06c,06h,06i,08,10.
 - builder-fable 05b merge review at y (b10670c8, merged 4ed45107; over_400 conflict resolved by real counts) PARTIAL 8/15: y row, review keys, staging at y (both merge origins), banner c, hook fail. COMPACTED ×3. scout: 05's. skills: tdd, implement · 625 tools. Remainder → 05c (Fable). Broken until 05c: live bar lacks y.
+- gates after 05b (4ed45107): fmt ok, clippy 0, nextest 6708/6708, doc ok; worktree removed. builder-opus 06r dispatched.
