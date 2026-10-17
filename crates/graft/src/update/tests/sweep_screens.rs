@@ -63,8 +63,12 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
         // A standing search is its row's screen too; `states_for` adds the
         // search (`search_standing`, m8/15b).
         HintContext::Searching(row) => screen_for(row),
+        // An ease-pass row bar (03b) is the same screen: the merge row
+        // under the cursor answers `m`, `⏎`, `C`, `x`, `P`, `c`, `space`
+        // and `u` whatever kind the bar says it is.
         HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::GraphRow { .. }
         | HintContext::StashRow
         | HintContext::Marked(_)
         | HintContext::Rewritable(_)
@@ -82,6 +86,7 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             vec![state]
         }
         HintContext::Resolver { .. } => vec![resolver_for(walk, context)],
+        HintContext::Clash(bar) => vec![resolver_for(walk, &clash_as_resolver(bar))],
         // The focused pane, the blame place, a trail under a screen.
         HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
@@ -96,6 +101,9 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             conflicted,
             merge: _,
         } => vec![stopped_operation(walk, *skippable, *conflicted)],
+        // A conflicted merge's banner (ease-pass/03b): its `⏎` opens the
+        // resolver today as it will reopen the paused clash screen after P.
+        HintContext::BannerPaused => vec![stopped_operation(walk, false, true)],
         HintContext::ChangesPane {
             unmerged,
             live,
@@ -338,5 +346,28 @@ fn trace_commit(byte: u8) -> graft_git::trace::TraceCommit {
         added: 1,
         removed: 1,
         range_at: Some((1, 3)),
+    }
+}
+
+/// The resolver state a clash bar's keys are pressed into (ease-pass/03b):
+/// the clash screen is today's resolver until L moves it, and every key
+/// the clash bar draws is one the resolver answers. An open, picked or
+/// solved file is a document (`o t b e u n ⏎ esc` act there); every clash
+/// solved is the done file after the last one, where `c` acts.
+fn clash_as_resolver(bar: &graft_ui::graph_screen::hints::ClashBar) -> HintContext {
+    use graft_ui::conflict_resolver::SideRoles;
+    use graft_ui::graph_screen::hints::{ClashAt, ClashOp};
+    let roles = match bar.op {
+        ClashOp::Merge => SideRoles::Merge,
+        ClashOp::Other(roles) => roles,
+    };
+    let all_solved = bar.at == ClashAt::AllSolved;
+    HintContext::Resolver {
+        base: true,
+        restart: true,
+        whole_file: false,
+        done: all_solved,
+        roles,
+        finishable: all_solved,
     }
 }

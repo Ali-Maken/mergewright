@@ -44,6 +44,13 @@ pub(super) fn run(
                 } else {
                     crate::update::dispatch_key(state, commands, chord.to_press());
                 }
+            } else {
+                // Keyless rows are listed only from the commit editor
+                // (`listed`): its options, flipped as the row's own key
+                // would, focus kept (ease-pass/03b). No other row reaches
+                // here, so `false` has nothing to say.
+                let toggled = crate::update::commit_editor::toggle_from_palette(state, id);
+                debug_assert!(toggled, "only the editor options are keyless: {id:?}");
             }
         }
         PaletteTarget::App(AppAction::Theme(kind)) => commands.push(Command::Retheme(kind)),

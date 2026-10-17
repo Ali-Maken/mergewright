@@ -482,7 +482,8 @@ fn footer_spans_take_the_first_key_from_the_hint() {
     let spaced = [
         Hint {
             keys: &[HintKey::Word("⌃ ⏎")],
-            verb: "commit",
+            verb: "commit".into(),
+            named_short: None,
             state: HintState::Live,
             rung: Rung::Full,
             keeps_words: false,
@@ -490,7 +491,8 @@ fn footer_spans_take_the_first_key_from_the_hint() {
         },
         Hint {
             keys: &[HintKey::Key(crate::keymap::ActionId("app.back"))],
-            verb: "back",
+            verb: "back".into(),
+            named_short: None,
             state: HintState::Live,
             rung: Rung::Key,
             keeps_words: false,

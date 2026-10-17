@@ -1,5 +1,7 @@
 //! A hint and its parts: state, rung, key, the constructors and the shared hints the bar draws (m8/21b-1 split from `hints.rs`).
 
+use std::borrow::Cow;
+
 use super::{ActionId, Keymap, hint_keys};
 
 /// Whether the key a hint names actually does the verb it names, today.
@@ -66,12 +68,21 @@ pub const NOT_A_BINDING: &[(&str, &str)] = &[
 
 /// One hint: the keys that do it, the verb it does, whether it does it yet,
 /// and how much of it the bar drew.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Hint {
     /// The keys, as actions (`app.open`) or words; drawn `/`-joined.
     pub keys: &'static [HintKey],
-    /// The verb it does (`merge`, `open`, `more`).
-    pub verb: &'static str,
+    /// The verb it does (`merge`, `open`, `more`). Borrowed for a table's
+    /// fixed words; owned when the verb names a branch or a count
+    /// (`switch to fix-toc`, `show the 3 commits inside`), built by the list
+    /// function from its [`HintContext`](super::HintContext) — the fitter
+    /// measures this one string, so a name is measured as drawn.
+    pub verb: Cow<'static, str>,
+    /// A named verb's short rung: the words before its name (`switch`
+    /// for `switch to fix-toc`), always a prefix of [`Hint::verb`] — the
+    /// one rule of [`short_form`], held for names too. `None` for a table's
+    /// fixed words, whose short form [`short_form`] looks up.
+    pub(crate) named_short: Option<&'static str>,
     /// Bound today, or still to be built.
     pub state: HintState,
     /// The rung [`hints_for`] drew it at. Every table entry is [`Rung::Full`];
@@ -98,13 +109,15 @@ impl PartialEq for Hint {
     fn eq(&self, other: &Self) -> bool {
         (
             self.keys,
-            self.verb,
+            &self.verb,
+            self.named_short,
             self.state,
             self.rung,
             self.keeps_words,
         ) == (
             other.keys,
-            other.verb,
+            &other.verb,
+            other.named_short,
             other.state,
             other.rung,
             other.keeps_words,
@@ -117,7 +130,7 @@ impl Eq for Hint {}
 impl Hint {
     /// The same hint, marked to keep its words ([`Hint::keeps_words`]).
     #[must_use]
-    pub const fn keeps_words(self) -> Self {
+    pub fn keeps_words(self) -> Self {
         Self {
             keeps_words: true,
             ..self
@@ -125,9 +138,11 @@ impl Hint {
     }
 
     /// The same hint, drawn at `rung`.
-    pub(super) const fn at(mut self, rung: Rung) -> Self {
-        self.rung = rung;
-        self
+    pub(super) fn at(&self, rung: Rung) -> Self {
+        Self {
+            rung,
+            ..self.clone()
+        }
     }
 
     /// The hint's keys as `keys` spells them, `/`-joined; an unbound
@@ -176,12 +191,18 @@ impl Hint {
     /// [`Rung::Key`], where only the key is drawn. What [`Hint::text`] puts
     /// after the key and its space, for a caller that styles the two apart.
     #[must_use]
-    pub fn drawn_verb(&self) -> Option<&'static str> {
+    pub fn drawn_verb(&self) -> Option<&str> {
         match self.rung {
             Rung::Key => None,
-            Rung::Short => Some(short_form(self.verb).unwrap_or(self.verb)),
-            Rung::Full => Some(self.verb),
+            Rung::Short => Some(self.short().unwrap_or(&self.verb)),
+            Rung::Full => Some(&self.verb),
         }
+    }
+
+    /// The short rung's words, if the hint has a short rung: a named
+    /// verb's own ([`Hint::named_short`]), else the user's table's.
+    fn short(&self) -> Option<&'static str> {
+        self.named_short.or_else(|| short_form(&self.verb))
     }
 
     /// The rungs this hint really has, worst to best. A verb with no short
@@ -189,7 +210,7 @@ impl Hint {
     /// ladder from spending a step on nothing, and what keeps a rung from
     /// meaning two different amounts of text.
     pub(super) fn rungs(&self) -> &'static [Rung] {
-        if short_form(self.verb).is_some() {
+        if self.short().is_some() {
             &[Rung::Key, Rung::Short, Rung::Full]
         } else {
             &[Rung::Key, Rung::Full]
@@ -200,7 +221,7 @@ impl Hint {
     /// fall to: its short form where the user's table gives one, and its
     /// whole verb where it does not.
     pub(super) fn floor_rung(&self) -> Rung {
-        if short_form(self.verb).is_some() {
+        if self.short().is_some() {
             Rung::Short
         } else {
             Rung::Full
@@ -289,7 +310,8 @@ pub(super) fn short_form(verb: &str) -> Option<&'static str> {
 pub(super) const fn hint(keys: &'static [HintKey], verb: &'static str) -> Hint {
     Hint {
         keys,
-        verb,
+        verb: Cow::Borrowed(verb),
+        named_short: None,
         state: HintState::Live,
         rung: Rung::Full,
         keeps_words: false,
@@ -311,11 +333,34 @@ pub(super) const fn hint(keys: &'static [HintKey], verb: &'static str) -> Hint {
 pub(super) const fn planned(keys: &'static [HintKey], verb: &'static str) -> Hint {
     Hint {
         keys,
-        verb,
+        verb: Cow::Borrowed(verb),
+        named_short: None,
         state: HintState::Planned,
         rung: Rung::Full,
         keeps_words: false,
         words_only: false,
+    }
+}
+
+/// A hint with its own short rung (ticket ease-pass/03b): a verb that names
+/// a branch or a count (`switch to fix-toc`), or a sentence too long for a
+/// narrow bar (`undo the commit, your edits come back`). `short` is the
+/// words before the name — a prefix of `verb`, so the short rung reads
+/// `C switch` and a long name never splits or crowds out another hint.
+pub(super) fn named(
+    keys: &'static [HintKey],
+    verb: impl Into<Cow<'static, str>>,
+    short: &'static str,
+) -> Hint {
+    let verb = verb.into();
+    debug_assert!(
+        verb.starts_with(short),
+        "the short rung must be a prefix of the verb"
+    );
+    Hint {
+        named_short: Some(short),
+        verb,
+        ..hint(keys, "")
     }
 }
 

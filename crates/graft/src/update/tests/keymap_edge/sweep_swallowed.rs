@@ -27,7 +27,7 @@ pub(super) const R_HISTORY: &str =
 pub(super) const R_PICKER: &str =
     "picker.rs:153-155 the picker field swallows keys it does not own";
 pub(super) const R_EDITOR: &str =
-    "commit_editor/keys.rs:110,231 the commit editor swallows keys it does not own";
+    "commit_editor/keys.rs:154,275 the commit editor swallows keys it does not own";
 pub(super) const R_CREDENTIAL: &str =
     "credential.rs:325-326,383-385 the credential field swallows the rest";
 pub(super) const R_MENU_CLOSE: &str =

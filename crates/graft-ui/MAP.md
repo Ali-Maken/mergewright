@@ -199,6 +199,9 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 Decides which hints the footer draws, per context; `graph_screen`'s footer draws them. Words come from the keymap, never literals.
 - `HintContext` (enum) — where the cursor or focus is, for the footer's hint list; one variant per screen and state (`Picker` / `PickerOnCurrent`: the picker, its cursor off / on HEAD's branch).
 - `RowVerbs` (struct) — which of a commit row's own verbs act on the cursor's row; `RowVerbs::NONE`, `RowVerbs::ALL`.
+- `RowBar` (enum) — `HintContext::GraphRow`'s row kind: `Own`, `Elsewhere { branch }`, `FoldedMerge { inside }`, `Opened`, `JustCommitted`, `JustMerged { inside }`.
+- `ClashBar` (struct), `ClashAt` (enum), `ClashOp` (enum) — `HintContext::Clash`'s state: where the clash stands, and `Merge` or `Other(SideRoles)`.
+- `bar_name` (fn) — a branch's bar form, its last path segment (`sara/fix-toc` → `fix-toc`).
 - `WayToBanner` (enum) — `Forward` / `Back`: which one press reaches the banner from the graph.
 - `LiveC` (enum) — what `c` does while an operation is live: finish, continue, and the rest.
 - `TabWord` (enum) — `Graph`, `Diff`, `Banner`: where `⇥` lands from the changes pane; `TabWord::word`, `TabWord::ALL`.
@@ -207,7 +210,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `Rung` (enum) — `Key` < `Short` < `Full`: how much of a hint the bar had room for.
 - `HintKey` (enum) — one key a hint names, spelled from the keymap.
 - `NOT_A_BINDING` (const) — the words a hint may name that are not a binding, each with why.
-- `Hint` (struct) — keys, verb, state, rung; `Hint::keeps_words`, `Hint::key_text`, `Hint::text`, `Hint::is`, `Hint::drawn_verb`.
+- `Hint` (struct) — keys, verb (`Cow`: owned when it names a branch or count), state, rung; `Hint::keeps_words`, `Hint::key_text`, `Hint::text`, `Hint::is`, `Hint::drawn_verb`.
 - `MARK_RESOLVED`, `MARK_RESOLVED_SHORT` (consts) — `"mark resolved"` / `"mark"`: `space`'s verb on a conflicts row.
 - `Divider` (enum) — whether a detail pane is on screen, so its divider can be dragged.
 - `hints_for` (fn) — `(context, divider, columns)`: as many whole hints for `context` as fit.

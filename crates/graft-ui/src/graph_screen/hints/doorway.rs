@@ -36,7 +36,7 @@ pub(super) fn spelled_bar(
         }
     });
     let trailer = trailer.filter(|door| {
-        spelled(list.iter().copied().chain([*door]).collect(), keys).len() > list.len()
+        spelled(list.iter().cloned().chain([door.clone()]).collect(), keys).len() > list.len()
     });
     (list, trailer)
 }
@@ -91,6 +91,10 @@ pub(super) fn words_for(context: &HintContext) -> Words {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::GraphRow { .. }
+        // The clash screen is modal but words-only: the mocks draw every
+        // key with its words, and each has a short rung (ease-pass/03b).
+        | HintContext::Clash(_)
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. }
@@ -102,6 +106,7 @@ pub(super) fn words_for(context: &HintContext) -> Words {
         HintContext::OperationLive { row, .. } => words_for(row),
         HintContext::Preview
         | HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }

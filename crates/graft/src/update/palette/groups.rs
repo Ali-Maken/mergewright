@@ -40,7 +40,7 @@ pub(super) fn groups(
         keymap
             .in_context(ContextId::Banner)
             .into_iter()
-            .filter(|(b, _)| listed(b))
+            .filter(|(b, _)| listed(b, at))
             // A merge has no step to skip: its banner answers `s` only with
             // a refusal, so the row is not offered.
             .filter(|(b, _)| source.skippable || b.action != ActionId("operation.skip"))
@@ -148,7 +148,7 @@ pub(super) fn place_rows(
     taken: &[ActionId],
 ) -> Vec<Entry> {
     let wanted = |b: &Binding| {
-        listed(b) && (b.context == ContextId::Global) == global && !taken.contains(&b.action)
+        listed(b, at) && (b.context == ContextId::Global) == global && !taken.contains(&b.action)
     };
     let mut out: Vec<Entry> = keymap
         .reachable(at)

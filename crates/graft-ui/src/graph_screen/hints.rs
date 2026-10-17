@@ -44,7 +44,10 @@ use crate::keymap::{ActionId, Keymap};
 use keys as hint_keys;
 
 pub use catalogue::{every_context, every_hint};
-pub use context::{ConfirmYes, HintContext, LiveC, RowVerbs, TabWord, WayToBanner};
+pub use context::{
+    ClashAt, ClashBar, ClashOp, ConfirmYes, HintContext, LiveC, RowBar, RowVerbs, TabWord,
+    WayToBanner, bar_name,
+};
 pub(crate) use doorway::doorway_key;
 pub use doorway::doorway_words;
 use doorway::{doorway_hint, doorway_last, spelled, spelled_bar, words_for};
@@ -60,7 +63,7 @@ pub use fitting::{
 use fitting::{Words, fit_list};
 pub(crate) use fitting::{fit_place_footer, place_close, place_footer_text};
 pub(crate) use hint::{ACTIONS, DOORWAY, DOORWAY_BY_PALETTE};
-use hint::{EXPLAIN, RESIZE, hint};
+use hint::{EXPLAIN, RESIZE, hint, named};
 pub use hint::{Hint, HintKey, HintState, MARK_RESOLVED, MARK_RESOLVED_SHORT, NOT_A_BINDING, Rung};
 #[cfg(test)]
 use hint::{planned, short_form};
@@ -122,9 +125,13 @@ pub fn hints_for(
     // widget draws one line of text instead of the document, and the app
     // answers nothing but `Esc` — there is no document on screen to take a
     // side of. So the bar says the one thing that is true there, which is
-    // also what that line itself says (m6-conflicts/04).
-    if matches!(context, HintContext::Resolver { .. })
-        && columns < crate::conflict_resolver::MIN_COLUMNS
+    // also what that line itself says (m6-conflicts/04). The clash bar
+    // (ease-pass/03b) is that same screen until L moves it, so the same
+    // floor holds for it.
+    if matches!(
+        context,
+        HintContext::Resolver { .. } | HintContext::Clash(_)
+    ) && columns < crate::conflict_resolver::MIN_COLUMNS
     {
         return spelled(vec![hint(hint_keys::BACK, "close")], keys);
     }

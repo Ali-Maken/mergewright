@@ -50,13 +50,22 @@ impl Spelled for Hint {
 /// nobody can act on. G4 removes `Resolver` from this filter in the same
 /// commit that flips the table to `Live`.
 ///
+/// `Clash` (ease-pass/03b) is the resolver's screen until L and shares its
+/// width floor (`hints_for`): below it the bar is `esc close` alone, which
+/// the width sweeps here would read as hints losing ground. Its own tests
+/// are in `tests::ease`.
+///
 /// Taken from `hints::every_context` rather than written out again: this
 /// file's own copy of the list missed `Dragging` for two tickets (m5/31).
 fn all_contexts() -> Vec<HintContext> {
     every_context()
         .into_iter()
         .filter(|context| {
-            *context != HintContext::Preview && !matches!(context, HintContext::Resolver { .. })
+            *context != HintContext::Preview
+                && !matches!(
+                    context,
+                    HintContext::Resolver { .. } | HintContext::Clash(_)
+                )
         })
         .collect()
 }
@@ -151,7 +160,7 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
         let hints = hints_for(context, Divider::Hidden, 80);
         assert!(hints.len() >= 4, "{context:?} at 80 columns: {hints:?}");
         for (got, want) in hints.iter().zip(first_three.iter()) {
-            assert_eq!((got.key(), got.verb), *want, "{context:?}: {hints:?}");
+            assert_eq!((got.key(), &*got.verb), *want, "{context:?}: {hints:?}");
         }
         assert_doorway_leads_the_bare_keys(&hints, &format!("{context:?} at 80 columns"));
         assert!(
@@ -206,10 +215,13 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
         // By key and verb, not by whole `Hint`: the ladder leaves the tail
         // on lower rungs, and the order is what this test is about.
         assert_eq!(
-            drawn.iter().map(|h| (h.key(), h.verb)).collect::<Vec<_>>(),
+            drawn
+                .iter()
+                .map(|h| (h.key(), &*h.verb))
+                .collect::<Vec<_>>(),
             own[..drawn.len()]
                 .iter()
-                .map(|h| (h.key(), h.verb))
+                .map(|h| (h.key(), &*h.verb))
                 .collect::<Vec<_>>(),
             "{context:?} reordered its list: {hints:?}"
         );
@@ -249,8 +261,8 @@ fn marked_leads_with_explain_and_draws_no_actions() {
     for columns in [40, 80, 120, 160, 200] {
         let hints = hints_for(&marked, Divider::Hidden, columns);
         assert_eq!(
-            (hints[0].key(), hints[0].verb),
-            (EXPLAIN.key(), EXPLAIN.verb)
+            (hints[0].key(), &*hints[0].verb),
+            (EXPLAIN.key(), &*EXPLAIN.verb)
         );
         assert!(!hints.contains(&ACTIONS), "{hints:?}");
         // `? keys` is a ranked list hint here since m8/11d (R2), drawn last;
@@ -265,8 +277,8 @@ fn marked_leads_with_explain_and_draws_no_actions() {
         // Key and verb only: the ladder varies the rung, not the order —
         // the drawn hints are the plain row's, in its order, though not
         // always a prefix: `u undo` is fitted second (m8/15 A5).
-        let drawn: Vec<_> = hints[1..].iter().map(|h| (h.key(), h.verb)).collect();
-        let mut plain_keys = plain.iter().map(|h| (h.key(), h.verb));
+        let drawn: Vec<_> = hints[1..].iter().map(|h| (h.key(), &*h.verb)).collect();
+        let mut plain_keys = plain.iter().map(|h| (h.key(), &*h.verb));
         assert!(
             drawn
                 .iter()
@@ -342,7 +354,7 @@ fn no_planned_hint_is_ever_drawn() {
 /// `Err` naming the first drawn hint that is not [`HintState::Live`].
 fn only_live(drawn: &[Hint]) -> Result<(), String> {
     match drawn.iter().find(|hint| hint.state != HintState::Live) {
-        Some(hint) => Err(format!("{} {}", hint.key(), hint.verb)),
+        Some(hint) => Err(format!("{} {}", hint.key(), &*hint.verb)),
         None => Ok(()),
     }
 }
@@ -571,7 +583,10 @@ fn q_quit_is_the_banner_bars_last_hint_and_first_dropped() {
         };
         let full = context_list(&context);
         let wide = hints_for(&context, Divider::Hidden, 187);
-        assert_eq!(wide.last().map(|h| (h.key(), h.verb)), Some(("q", "quit")));
+        assert_eq!(
+            wide.last().map(|h| (h.key(), &*h.verb)),
+            Some(("q", "quit"))
+        );
         assert_eq!(wide.len(), full.len(), "187 draws them all");
         for columns in 20u16..=187 {
             let drawn = hints_for(&context, Divider::Hidden, columns);
@@ -706,9 +721,9 @@ fn every_short_rung_is_the_users_own_word() {
     }
     // No verb the hint tables use has a short form the user did not write.
     for hint in every_hint() {
-        if let Some(short) = short_form(hint.verb) {
+        if let Some(short) = short_form(&hint.verb) {
             assert!(
-                table.contains(&(hint.verb, short)),
+                table.contains(&(&*hint.verb, short)),
                 "`{} {}` has a short rung `{short}` the user's table does not give it",
                 hint.key(),
                 hint.verb
@@ -768,7 +783,7 @@ fn every_short_rung_is_the_users_own_word() {
 #[test]
 fn every_short_form_is_a_prefix_of_its_verb() {
     for hint in every_hint() {
-        if let Some(short) = short_form(hint.verb) {
+        if let Some(short) = short_form(&hint.verb) {
             assert!(
                 hint.verb.starts_with(short),
                 "`{short}` is not a prefix of `{}` — a squeeze or a substitution",
@@ -889,9 +904,17 @@ fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
                 } else {
                     hints.clone()
                 };
+                // The three most relevant are the first three the fitter
+                // fits — `u undo` second wherever the list holds it
+                // (m8/15 A5, `fit_order`) — not the first three drawn.
+                let floor: Vec<_> = super::fitting::fit_order(&whole)
+                    .into_iter()
+                    .take(3)
+                    .map(|at| whole[at].keys)
+                    .collect();
                 let raised = body
                     .iter()
-                    .skip(3)
+                    .filter(|hint| !floor.contains(&hint.keys))
                     .find(|hint| hint.rung != placed_at(hint))
                     .map(Spelled::key);
                 if let Some(key) = raised {
@@ -998,7 +1021,7 @@ fn a_hint_is_dropped_only_when_its_words_will_not_fit() {
                 // fitted second, so the drawn body need not be a prefix).
                 let next = super::fitting::fit_order(&whole)
                     .into_iter()
-                    .map(|at| whole[at])
+                    .map(|at| whole[at].clone())
                     .find(|hint| !body.iter().any(|drawn| drawn.is(hint.keys)))
                     .expect("a hint the bar dropped");
                 with_one_more.push(words(next.at(next.floor_rung())));
@@ -1088,8 +1111,8 @@ fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
 fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
     hints
         .iter()
-        .filter(|hint| (hint.key(), hint.verb) != (DOORWAY.key(), DOORWAY.verb))
-        .copied()
+        .filter(|hint| (hint.key(), &*hint.verb) != (DOORWAY.key(), &*DOORWAY.verb))
+        .cloned()
         .collect()
 }
 
@@ -1103,7 +1126,7 @@ fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
 fn assert_doorway_leads_the_bare_keys(hints: &[Hint], context: &str) {
     let at = hints
         .iter()
-        .position(|hint| (hint.key(), hint.verb) == (DOORWAY.key(), DOORWAY.verb))
+        .position(|hint| (hint.key(), &*hint.verb) == (DOORWAY.key(), &*DOORWAY.verb))
         .unwrap_or_else(|| panic!("{context}: the doorway is never dropped: {hints:?}"));
     assert!(
         hints[..at].iter().all(|hint| hint.rung != Rung::Key),
@@ -1126,7 +1149,9 @@ fn assert_doorway_leads_the_bare_keys(hints: &[Hint], context: &str) {
 fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
     match hints {
         [] => true,
-        [only] => doorway.is_some_and(|door| (only.key(), only.verb) == (door.key(), door.verb)),
+        [only] => {
+            doorway.is_some_and(|door| (only.key(), &*only.verb) == (door.key(), &*door.verb))
+        }
         _ => false,
     }
 }
@@ -1142,6 +1167,7 @@ fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
 fn doorway_of(context: &HintContext) -> Option<Hint> {
     match context {
         HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Preview
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -1150,6 +1176,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Picker
         | HintContext::PickerOnCurrent
         | HintContext::Resolver { .. }
+        | HintContext::Clash(_)
         | HintContext::Finish { .. }
         | HintContext::RewriteEditor { .. }
         | HintContext::RewriteMessage => None,
@@ -1165,6 +1192,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::GraphRow { .. }
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. }
@@ -1399,7 +1427,7 @@ fn document(base: bool, restart: bool) -> HintContext {
 #[test]
 fn resolver_hint_ladder() {
     let list = context_list(&document(false, false));
-    let words: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key(), hint.verb)).collect();
+    let words: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key(), &*hint.verb)).collect();
     assert_eq!(
         words,
         vec![
@@ -1425,7 +1453,7 @@ fn resolver_hint_ladder() {
     let with_base = context_list(&document(true, false));
     let base_at = with_base
         .iter()
-        .position(|hint| (hint.key(), hint.verb) == ("B", "base"))
+        .position(|hint| (hint.key(), &*hint.verb) == ("B", "base"))
         .expect("`B base` after `b both` while `base`");
     // `⌃O/⌃T` sits between (m6-conflicts/16): `B base` follows the takes
     // and `O/T file` (17).
@@ -1439,7 +1467,7 @@ fn resolver_hint_ladder() {
     let with_restart = context_list(&document(false, true));
     let restart_at = with_restart
         .iter()
-        .position(|hint| (hint.key(), hint.verb) == ("d", "start over"))
+        .position(|hint| (hint.key(), &*hint.verb) == ("d", "start over"))
         .expect("`d start over` before `esc close` while `restart`");
     assert_eq!(
         with_restart[restart_at + 1].key(),
@@ -1796,7 +1824,7 @@ fn resolver_offers_take_all() {
             roles,
             finishable: false,
         });
-        let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key(), hint.verb)).collect();
+        let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key(), &*hint.verb)).collect();
         let both = keys
             .iter()
             .position(|pair| *pair == ("b", "both"))
@@ -1855,7 +1883,7 @@ fn operation_live_leads_with_the_way_back() {
         for columns in [80, 120, 187, 200] {
             let drawn = hints_for(&context, Divider::Hidden, columns);
             assert_eq!(
-                drawn.first().map(|hint| (hint.key(), hint.verb)),
+                drawn.first().map(|hint| (hint.key(), &*hint.verb)),
                 Some(("⇥", "banner")),
                 "{row:?} at {columns}: {}",
                 hints_text(&drawn)
@@ -1894,7 +1922,7 @@ fn live_c_is_ranked_ahead_of_the_rows_write_keys() {
             let at = |key: &str| drawn.iter().position(|hint| hint.key() == key);
             let lead = if c == LiveC::ContinueAmends { 2 } else { 1 };
             assert_eq!(
-                drawn.get(lead).map(|hint| (hint.key(), hint.verb)),
+                drawn.get(lead).map(|hint| (hint.key(), &*hint.verb)),
                 Some(("c", verb)),
                 "{c:?} at {columns}: {}",
                 hints_text(&drawn)
@@ -2384,7 +2412,10 @@ mod pane_space {
     fn keys(context: &HintContext) -> Vec<(&'static str, &'static str)> {
         hints_for(context, Divider::Hidden, 400)
             .into_iter()
-            .map(|hint| (hint.key(), hint.verb))
+            .map(|hint| match hint.verb {
+                std::borrow::Cow::Borrowed(verb) => (hint.key(), verb),
+                std::borrow::Cow::Owned(verb) => panic!("no named verb here: {verb}"),
+            })
             .collect()
     }
 
@@ -2513,6 +2544,7 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
     assert_eq!(keys, ["⏎", "a", "b", "t"]);
 }
 
+mod ease;
 mod typed_fields;
 
 // --- m8/11b: the doorway is `? keys`, `. actions` an ordinary candidate ---
@@ -2563,11 +2595,14 @@ fn actions_is_drawn_wide_and_dropped_first() {
     assert_eq!(with[n - 2], ACTIONS, "{:?}", hints_text(&with));
     assert_eq!(with[n - 1], DOORWAY, "{:?}", hints_text(&with));
     let without = hints_for(&row, Divider::Hidden, first - 1);
-    let named = |hints: &[Hint]| -> Vec<(&str, &str)> {
-        hints.iter().map(|hint| (hint.key(), hint.verb)).collect()
+    let named = |hints: &[Hint]| -> Vec<(&'static str, String)> {
+        hints
+            .iter()
+            .map(|hint| (hint.key(), hint.verb.to_string()))
+            .collect()
     };
     let mut expected = named(&with);
-    expected.retain(|pair| *pair != (".", "actions"));
+    expected.retain(|(key, verb)| (*key, verb.as_str()) != (".", "actions"));
     assert_eq!(named(&without), expected);
 }
 
@@ -2756,6 +2791,7 @@ fn modal_bars_draw_no_doorway() {
             matches!(
                 context,
                 HintContext::Banner { .. }
+                    | HintContext::BannerPaused
                     | HintContext::Dragging
                     | HintContext::ConfirmBox { .. }
                     | HintContext::NamePrompt { .. }

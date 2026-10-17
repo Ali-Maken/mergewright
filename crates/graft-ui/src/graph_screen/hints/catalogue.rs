@@ -10,6 +10,7 @@ use super::{
 };
 use crate::conflict_resolver::SideRoles;
 
+mod ease;
 mod forms;
 
 use forms::{marked_form, operation_live_form, pane_focused_form, searching_form};
@@ -85,6 +86,7 @@ pub fn every_context() -> Vec<HintContext> {
     all.extend(changes_pane_live_forms());
     all.extend(resolver_forms());
     all.extend(finish_forms());
+    all.extend(ease::ease_forms());
     // m6-conflicts/50: a box `y` takes, once per acting button.
     all.extend(
         ConfirmYes::ALL
@@ -219,6 +221,7 @@ fn banner_forms() -> Vec<HintContext> {
             });
         }
     }
+    forms.push(HintContext::BannerPaused);
     forms
 }
 
@@ -389,7 +392,7 @@ pub fn every_hint() -> Vec<Hint> {
     all.retain(|hint| {
         let fresh = !seen.contains(hint);
         if fresh {
-            seen.push(*hint);
+            seen.push(hint.clone());
         }
         fresh
     });

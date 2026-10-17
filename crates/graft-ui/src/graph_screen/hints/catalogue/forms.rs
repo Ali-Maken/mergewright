@@ -54,6 +54,7 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         }
         HintContext::ChangesPane { .. }
         | HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Preview
         | HintContext::Picker
         | HintContext::PickerOnCurrent
@@ -63,6 +64,8 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Clash(_)
+        | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
@@ -112,6 +115,7 @@ pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Rewritable(_) => Some(HintContext::Marked(Box::new(context.clone()))),
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
@@ -122,6 +126,8 @@ pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Clash(_)
+        | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
         | HintContext::Marked(_)
         | HintContext::Searching(_)
@@ -151,6 +157,7 @@ pub(super) fn searching_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Rewritable(_)
         | HintContext::Marked(_) => Some(HintContext::Searching(Box::new(context.clone()))),
         HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
@@ -161,6 +168,8 @@ pub(super) fn searching_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Clash(_)
+        | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
         | HintContext::Searching(_)
         | HintContext::PaneFocused { .. }
@@ -226,6 +235,7 @@ pub(super) fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         }
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
+        | HintContext::BannerPaused
         | HintContext::Preview
         | HintContext::ChangesPane { .. }
         | HintContext::Picker
@@ -236,6 +246,8 @@ pub(super) fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Clash(_)
+        | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
         | HintContext::PaneFocused { .. }
         | HintContext::Searching(_)

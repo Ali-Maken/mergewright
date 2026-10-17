@@ -173,7 +173,7 @@ fn the_bar_offers_space_stage_exactly_where_space_stages() {
                 let what = (stop, row, uncommitted, banner_focus);
                 let offered = bar(&state)
                     .iter()
-                    .any(|hint| (hint.key(), hint.verb) == ("space", "stage"));
+                    .any(|hint| (hint.key(), hint.said()) == ("space", "stage"));
                 let (_, commands) = space(&state);
                 assert_eq!(offered, stages(&commands), "{what:?}: {commands:?}");
                 assert_eq!(offered, space_stages_here(&state), "{what:?}");

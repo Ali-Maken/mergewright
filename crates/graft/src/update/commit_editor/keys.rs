@@ -37,6 +37,9 @@ pub(super) fn open_editor_key(
     key: &KeyPress,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
+    if let Some(commands) = opens_the_palette(state, key) {
+        return commands;
+    }
     // Whole-editor keys first: they mean the same wherever the focus is.
     if key.modifiers.control {
         return control_key(state, key, next_id);
@@ -75,6 +78,47 @@ pub(super) fn open_editor_key(
         Field::CommitButton => button_key(state, key, next_id),
         option => option_key(state, key, option),
     }
+}
+
+/// The palette from the commit screen (ease-pass/03b, Q8 a): `⌃P` from
+/// every focus, `?` from every focus that types nothing — in the subject
+/// and the body `?` is typed. Opened on `CommitEditor`, so it lists the
+/// screen's own rows, the keyless options among them. `None`: not a key
+/// that opens it here (`:` types, as it always did).
+fn opens_the_palette(state: &mut AppState, key: &KeyPress) -> Option<Vec<Command>> {
+    use crate::update::palette::{Opens, open, opener};
+    let types = state
+        .commit_editor
+        .as_ref()
+        .is_some_and(|editor| matches!(editor.focus, Field::Subject | Field::Body));
+    let opens = match opener(*key)? {
+        Opens::Everything => key.modifiers.control,
+        Opens::Here => !types,
+    };
+    if !opens {
+        return None;
+    }
+    let how = opener(*key)?;
+    let mut commands = Vec::new();
+    open(state, &mut commands, how);
+    Some(commands)
+}
+
+/// A keyless `commit.toggle_*` row chosen in the palette (ease-pass/03b):
+/// flips the option the editor's own row flips, focus kept. `false` when
+/// `id` is not one of the three or no editor is open.
+pub(crate) fn toggle_from_palette(state: &mut AppState, id: graft_ui::keymap::ActionId) -> bool {
+    let Some(editor) = state.commit_editor.as_mut() else {
+        return false;
+    };
+    let flag = match id.0 {
+        "commit.toggle_amend" => &mut editor.amend,
+        "commit.toggle_no_verify" => &mut editor.no_verify,
+        "commit.toggle_allow_empty" => &mut editor.allow_empty,
+        _ => return false,
+    };
+    *flag = !*flag;
+    true
 }
 
 /// `Ctrl`-held keys: they mean the same wherever the focus is.

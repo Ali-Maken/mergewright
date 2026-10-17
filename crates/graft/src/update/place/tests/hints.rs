@@ -15,7 +15,7 @@ pub(super) fn bar(state: &AppState) -> Vec<(&'static str, &'static str)> {
         graft_ui::keymap::Keymap::shipped(),
     )
     .into_iter()
-    .map(|hint| (hint.key(), hint.verb))
+    .map(|hint| (hint.key(), hint.said()))
     .collect()
 }
 

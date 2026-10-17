@@ -189,9 +189,16 @@ pub(super) fn is_placeholder(row: &PaletteRow, target: PaletteTarget) -> bool {
     row.kind == RowKind::More && target == PaletteTarget::Note
 }
 
-/// Whether a row can be listed at all: something can run it, and it is not
-/// a text field's or the confirm box's.
-pub(super) fn listed(binding: &Binding) -> bool {
+/// Whether a row can be listed at all, opened from `at`: something can run
+/// it, and it is not a text field's or the confirm box's. Opened from the
+/// commit editor (ease-pass/03b, Q8 a) it lists the editor's own rows and
+/// nothing else: every other key would type into the field it lands in,
+/// and its three option rows are keyless, so the palette is their way in
+/// (`run`).
+pub(super) fn listed(binding: &Binding, at: ContextId) -> bool {
+    if at == ContextId::CommitEditor {
+        return binding.context == ContextId::CommitEditor;
+    }
     !binding.default.is_empty() && !NEVER_LISTED.contains(&binding.context)
 }
 

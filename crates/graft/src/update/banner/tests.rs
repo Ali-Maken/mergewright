@@ -1139,7 +1139,7 @@ fn every_hint_the_focused_banner_draws_is_answered_by_banner_key() {
                         hint.key(),
                         hint.verb
                     );
-                    did_the_verb(hint.verb, hint.key(), &base, &state, &commands);
+                    did_the_verb(hint.said(), hint.key(), &base, &state, &commands);
                 }
             }
         }
@@ -1167,7 +1167,7 @@ fn the_banner_always_teaches_continue_and_abort() {
             );
             for want in [("c", "continue"), ("a", "abort")] {
                 assert!(
-                    hints.iter().any(|hint| (hint.key(), hint.verb) == want),
+                    hints.iter().any(|hint| (hint.key(), hint.said()) == want),
                     "{want:?} missing at {columns} columns from {hints:?}"
                 );
             }

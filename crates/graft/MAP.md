@@ -265,7 +265,7 @@ graft-ops' key words spelled from the user's live keymap: the one `KeyNames` ans
 ## update::operate
 Working-tree writes from the changes pane: stage, unstage, stage all, and opening the discard box; one write at a time.
 ## update::palette
-The command palette and help (`?`, `⌃P`, `:`): one state, one listing from the live key table, one filter.
+The command palette and help (`?`, `⌃P`, `:`): one state, one listing from the live key table, one filter. Over the commit editor it lists only its rows, keyless options too.
 ## update::picker
 The branch picker (`C`): type part of a name, `⏎` switches through `switch` (on the branch HEAD is on it closes, as `Tab` does), `Tab` shows it on the graph; `hint_context` picks the bar (`Picker` / `PickerOnCurrent`).
 ## update::place
