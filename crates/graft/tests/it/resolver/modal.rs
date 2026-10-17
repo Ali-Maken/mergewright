@@ -93,10 +93,11 @@ fn mouse_uses_the_key_functions() {
     // A click picks the block under the row it landed on, and **never**
     // reaches the graph behind the resolver. The cursor is put on the last
     // block first and the window wound back to the top, so a click that
-    // lands on the first block's rows is a move this test can see.
-    let state = app.key(&state, KeyCode::Char('n'));
-    let state = app.key(&state, KeyCode::Char('n'));
-    assert_eq!(open(&state).cursor_block, Some(2));
+    // lands on the first block's rows is a move this test can see. No key
+    // walks down past an open block since ease-pass 05 (`n` is the first
+    // open clash), so it is put there.
+    let mut state = state;
+    state.resolver.as_mut().expect("open").cursor_block = Some(2);
     let state = app.key(&state, KeyCode::Char('g'));
     assert_eq!(open(&state).top, 0, "`g` winds the window back");
 

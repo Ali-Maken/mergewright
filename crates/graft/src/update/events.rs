@@ -227,6 +227,8 @@ pub enum Task {
     /// Take one side of one conflict block and write the file back
     /// (m6-conflicts/04).
     TakeSide,
+    /// Put the last pick back and write the file once (ease-pass 05).
+    UntakeSide,
     /// Attach the merge base to every block of the open file (`B`,
     /// m6-conflicts/05).
     LoadBase,
@@ -423,6 +425,14 @@ pub enum Product {
         Result<
             std::sync::Arc<graft_git::conflict::ConflictFile>,
             crate::jobs::conflict::TakeFailure,
+        >,
+    ),
+    /// The last pick was put back and the file written once (ease-pass
+    /// 05): the document as it now stands, or why nothing was written.
+    Untaken(
+        Result<
+            std::sync::Arc<graft_git::conflict::ConflictFile>,
+            crate::jobs::conflict::UntakeFailure,
         >,
     ),
     /// The merge base was attached to every block of the open file, or it

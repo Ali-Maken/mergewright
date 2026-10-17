@@ -368,12 +368,12 @@ fn refusals() -> Vec<Site> {
 fn refusals_more() -> Vec<Site> {
     vec![
         Site {
-            name: "resolver.rs u in the resolver",
+            name: "resolver/unpick.rs U in the resolver",
             ids: &["app.back", "app.undo"],
             words: |k| {
                 let mut state = doc(k);
                 state.in_progress = None;
-                press(&mut state, char_key('u'));
+                press(&mut state, char_key('U'));
                 notice(&state)
             },
             expected: |key| {

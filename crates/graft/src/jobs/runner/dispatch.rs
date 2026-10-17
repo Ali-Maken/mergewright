@@ -78,6 +78,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadIndexState { id } => self.read_index_state(id),
             Command::OpenConflict(id, path) => self.open_conflict(id, path),
             Command::TakeSide(id, request) => self.take_side(id, request),
+            Command::UntakeSide(id, request) => self.untake_side(id, request),
             Command::LoadBase(id, path, file) => self.load_base(id, path, *file),
             Command::ReadConflictSet(id) => self.read_conflict_set(id),
             Command::ReadFinishSummary(id) => self.read_finish_summary(id),

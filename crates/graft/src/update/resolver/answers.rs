@@ -37,6 +37,11 @@ pub fn conflict_opened(
     // existed, so it keeps its words and closes. A done file re-read, or a
     // done row opened from the list, has no unmerged document here.
     let resolved_outside = open.file.is_some() && open.done.is_none();
+    // Staged — here or outside: its picks are over (ease-pass 05).
+    if matches!(result, Ok(Opening::Done(..))) {
+        let path = open.path.clone();
+        state.picks.seal(&path);
+    }
     match result {
         Ok(Opening::Unmerged(opened)) => conflict_arrived(state, &opened),
         Ok(Opening::Done(..)) if resolved_outside => closed_resolved_outside(state),
@@ -55,52 +60,33 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     // A conflicted path is not done, whatever this resolver showed of it
     // before (a `d` on a done file brings its conflict back).
     let keys = Arc::clone(&state.keymap);
-    if let Some(open) = state.resolver.as_mut() {
+    let Some(path) = state.resolver.as_mut().map(|open| {
         open.done = None;
-    }
+        open.path.clone()
+    }) else {
+        return;
+    };
+    // The picks in this file stand only while the bytes are the ones the
+    // last of them wrote: `e`, a mergetool or anything outside that wrote
+    // since leaves every one chosen against a document that is gone.
+    state
+        .picks
+        .reconcile(&path, opened.file.as_ref().map(|file| file.fingerprint));
     let Some(file) = opened.file.clone() else {
-        // A whole-file shape (`UD`, `DU`, `AU`, `UA`, `DD`) or a binary
-        // `UU`/`AA`: there are no blocks to take sides, so the card offers
-        // `o`/`t` over the file itself instead (m6-conflicts/05).
-        let Some(open) = state.resolver.as_mut() else {
-            return;
-        };
-        open.job = None;
-        open.base_job = None;
-        open.how = Some(opened.how);
-        open.file = None;
-        open.whole_file = Some(WholeFileShape {
-            how: opened.how,
-            binary: opened.binary,
-            on_disk: opened.on_disk.clone(),
-            // The job asks ops for every `file: None` open; a missing answer
-            // is a job bug, and hides `d` rather than offer a key ops might
-            // refuse.
-            start_over: opened.start_over.clone().unwrap_or_else(|| {
-                crate::jobs::conflict::StartOver::Cannot {
-                    why: "could not check: not asked".to_owned(),
-                }
-            }),
-        });
-        open.cursor_block = None;
-        open.top = 0;
-        open.base_shown = false;
-        let landing = landing_notice(open);
-        // A file there but unreadable says so as a problem, over any
-        // landing words (`KNOWN_GAPS` :572).
-        open.notice = opened
-            .unreadable
-            .clone()
-            .map(|words| (words, true))
-            .or(landing);
-        remember(open);
+        card_arrived(state, opened);
         return;
     };
     let land_last = state.resolver.as_ref().is_some_and(|open| open.land_last);
     // A fresh read has every block open (a take lives only in memory until
     // written, and the file on disk has it collapsed), so its first block
     // is its first open one. `N` crossed here → its last.
-    let cursor_block = next_block(&file, None, !land_last);
+    let fresh = next_block(&file, None, !land_last);
+    // `u` undid a pick in this file and opened it: the read found the bytes
+    // the untake wrote, so the document is the untake's — every block where
+    // it was, taken ones included — and the cursor on the pick's block.
+    let landing = state.picks.take_landing(&path, file.fingerprint);
+    let scroll = landing.as_ref().and_then(|(_, block)| *block);
+    let (file, cursor_block) = landing.unwrap_or_else(|| (Arc::new(file), fresh));
     let empty = file.blocks().is_empty();
     let Some(open) = state.resolver.as_mut() else {
         return;
@@ -110,7 +96,7 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     // A fresh read replaces the document any base load was loading into.
     open.base_job = None;
     open.how = Some(opened.how);
-    open.file = Some(Arc::new(file));
+    open.file = Some(file);
     open.whole_file = None;
     open.cursor_block = cursor_block;
     open.top = 0;
@@ -121,6 +107,52 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     open.base_shown = false;
     let landing = landing_notice(open);
     open.notice = empty.then(|| (no_markers(&keys), false)).or(landing);
+    remember(open);
+    // An untake's block may sit below the first screen.
+    if let Some(block) = scroll {
+        let top = scrolled_to(state, block);
+        if let Some(open) = state.resolver.as_mut() {
+            open.top = top;
+        }
+    }
+}
+
+/// A whole-file shape (`UD`, `DU`, `AU`, `UA`, `DD`) or a binary `UU`/`AA`
+/// arrived: there are no blocks to take sides, so the card offers `o`/`t`
+/// over the file itself instead (m6-conflicts/05). Moved out of
+/// [`conflict_arrived`] whole (ease-pass 05).
+fn card_arrived(state: &mut AppState, opened: &crate::jobs::conflict::OpenedFile) {
+    let Some(open) = state.resolver.as_mut() else {
+        return;
+    };
+    open.job = None;
+    open.base_job = None;
+    open.how = Some(opened.how);
+    open.file = None;
+    open.whole_file = Some(WholeFileShape {
+        how: opened.how,
+        binary: opened.binary,
+        on_disk: opened.on_disk.clone(),
+        // The job asks ops for every `file: None` open; a missing answer
+        // is a job bug, and hides `d` rather than offer a key ops might
+        // refuse.
+        start_over: opened.start_over.clone().unwrap_or_else(|| {
+            crate::jobs::conflict::StartOver::Cannot {
+                why: "could not check: not asked".to_owned(),
+            }
+        }),
+    });
+    open.cursor_block = None;
+    open.top = 0;
+    open.base_shown = false;
+    let landing = landing_notice(open);
+    // A file there but unreadable says so as a problem, over any
+    // landing words (`KNOWN_GAPS` :572).
+    open.notice = opened
+        .unreadable
+        .clone()
+        .map(|words| (words, true))
+        .or(landing);
     remember(open);
 }
 

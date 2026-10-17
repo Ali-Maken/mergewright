@@ -59,17 +59,17 @@ fn plain(c: char) -> KeyPress {
 /// sends nothing to the job runner.
 #[test]
 fn pull_refusals_are_words_not_commands() {
+    // The branch, not the state: two whole `AppState`s in one array trip
+    // `large_stack_arrays`.
     let cases = [
+        (None, "HEAD is detached — check out a branch first"),
         (
-            with_facts(vec![remote("origin")], None, None),
-            "HEAD is detached — check out a branch first",
-        ),
-        (
-            with_facts(vec![remote("origin")], Some("refs/heads/main"), None),
+            Some("refs/heads/main"),
             "main has no upstream — P pushes and sets one",
         ),
     ];
-    for (state, words) in cases {
+    for (head, words) in cases {
+        let state = with_facts(vec![remote("origin")], head, None);
         let (next, commands) = press(&state, plain('p'));
         assert!(commands.is_empty(), "{words}: {commands:?}");
         assert_eq!(next.operating, None, "{words}");

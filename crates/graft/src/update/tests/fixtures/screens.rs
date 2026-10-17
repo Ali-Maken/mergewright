@@ -94,7 +94,7 @@ pub(crate) fn commit_pane(walk: JobId, opens: bool) -> AppState {
 
 /// The resolver open on a real two-block conflict, the state every one of
 /// `resolver_list`'s live keys has to act in: a cursor on the first block so
-/// `o`/`t`/`b` write, a second open block so `n` moves, a mergetool
+/// `o`/`t`/`b` write, a second open block so a take advances, a mergetool
 /// configured so `M` hands over instead of refusing, and a working tree that
 /// lists the file as unmerged so the title and `⏎` have a file to name —
 /// and a second unmerged file after it, so `j` has a row to step to
@@ -146,7 +146,7 @@ pub(crate) fn resolver_on_screen(walk: JobId) -> AppState {
 
 /// The resolver open on a whole-file card (`deleted by them`), the state
 /// every key a card's bar draws has to act in (m6-05 review, Major 1): a
-/// second conflicted file after it so `n` has somewhere to cross to, and a
+/// second conflicted file after it so `N` has somewhere to cross to, and a
 /// mergetool so `M` hands over.
 pub(crate) fn resolver_card_on_screen(walk: JobId) -> AppState {
     let (mut state, _) = merge_on_screen(walk, MERGE_ROW);

@@ -396,6 +396,9 @@ pub enum Command {
     /// Take one side of one conflict block and write the file back
     /// (m6-conflicts/04), under an id `update` chose.
     TakeSide(JobId, TakeRequest),
+    /// Put the last pick back — `u` in the resolver (ease-pass 05) — and
+    /// write the file once, against the fingerprint of the pick's `after`.
+    UntakeSide(JobId, crate::update::resolver::Pick),
     /// Attach the merge base to every block of the file the resolver has
     /// open (`B`, m6-conflicts/05), under an id `update` chose. The file
     /// rides along — a fresh clone of the resolver's own copy, bases and

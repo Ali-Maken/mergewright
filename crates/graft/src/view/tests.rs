@@ -4772,10 +4772,12 @@ fn the_lane_images_never_cover_the_confirm_box_or_the_credential_prompt() {
     let session = pixel_session();
     for rows in [24u16, 30, 48] {
         for columns in [40u16, 60, 80, 100, 120, 160, 200, 240] {
-            for (name, state) in [
-                ("confirm", confirm_over_graph(columns, rows)),
-                ("credential", graph_behind_a_box(columns, rows)),
+            // Makers, not states: two `AppState`s trip `large_stack_arrays`.
+            for (name, make) in [
+                ("confirm", confirm_over_graph as fn(u16, u16) -> AppState),
+                ("credential", graph_behind_a_box),
             ] {
+                let state = make(columns, rows);
                 let mut terminal = Terminal::new(TestBackend::new(columns, rows))
                     .expect("TestBackend reports its size");
                 let mut lanes = None;

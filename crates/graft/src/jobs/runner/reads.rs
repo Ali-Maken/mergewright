@@ -159,6 +159,23 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Puts the last pick back and writes the file once, under an id
+    /// `update` chose (ease-pass 05). On the take's queue, and not
+    /// cancellable part-way for the take's reason.
+    pub(super) fn untake_side(&self, id: JobId, pick: crate::update::resolver::Pick) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::UntakeSide), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let untaken =
+                    conflict::untake(&repos, &pick.path, &pick.after, &pick.blocks, cancel);
+                Outcome::Produced(Product::Untaken(untaken.map(Arc::new)))
+            })
+        });
+    }
+
     /// Attaches the merge base to every block of the open file, under an id
     /// `update` chose so a stale answer can be dropped (`B`, m6-conflicts/05).
     pub(super) fn load_base(

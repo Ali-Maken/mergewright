@@ -124,6 +124,9 @@ pub(super) fn stopped_again(
         None => progress_unread(&stop).map_or(Status::Ready, Status::sticky),
     };
     state.stopped = Some(stop);
+    // Every pick was made at the stop just left: a new stop starts clean
+    // (ease-pass 05).
+    state.picks.clear();
 }
 
 /// Whether a stop takes the keyboard for the banner: every stop that has a

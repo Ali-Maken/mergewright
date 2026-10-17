@@ -86,6 +86,10 @@ pub fn resolved_advance(
     let done = open.path.clone();
     let from = open.opened_from;
     let whole = open.whole_side;
+    // Staged: the index holds the resolution now, and git's conflict stages
+    // for the path are gone, so its picks are over (ease-pass 05). Only
+    // here, on the stage landing — a refused or failed one seals nothing.
+    state.picks.seal(&done);
     // The write has landed. Cleared here, not left to the fresh resolver
     // `reopen` builds: a refused `reopen` keeps this one, and a stale id
     // would refuse every later switch as "a write is already running".
@@ -165,6 +169,8 @@ pub(crate) fn close_after_last(
 ) {
     state.resolver = None;
     state.banner_focus = false;
+    // The stash clash is over with its last file; no pick outlives it.
+    state.picks.clear();
     if let Some(clash) = state.clash.as_ref().map(|clash| clash.clash.clone()) {
         if !crate::update::clash::drops(clash.why) {
             state.status = crate::update::clash::kept_status(clash.index);

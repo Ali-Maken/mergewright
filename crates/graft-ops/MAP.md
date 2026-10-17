@@ -77,6 +77,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `DoneFile` (enum) / `open_done` (fn) — a path no longer unmerged, read-only for the done card: `Text { file, unstaged }`, `Binary { unstaged }`, `Removed`.
 - `apply_take` (fn) — `(repo, path, file, block, take)`: one block's side written back against `file.fingerprint`; takes the document so blocks stay stable.
 - `apply_take_all` (fn) — `apply_take` for every open block in one write; `Changed` leaves the bytes untouched.
+- `Restore` (struct) — `{ block, before: Option<Take> }`: one block as it was before a pick (`None` = open).
+- `apply_untake` (fn) — `(repo, path, file, restore)`: each block reopened, then re-taken with `before`, one write against `file.fingerprint` — the bytes before the pick; `Changed`/`NoSuchBlock` write nothing.
 - `BaseError` (enum) — `NoBase`, `Mismatch(BaseMismatch)`, `Diff3(Diff3Error)`.
 - `base_for` (fn) — `(repo, path, file)` → `diff3_file` + `attach_base`; how many blocks got a base.
 - `mark_resolved_refusal` (fn) — `(path, file)` → `Some(ConflictsOpen)` while blocks are open; asked before `Stage`.

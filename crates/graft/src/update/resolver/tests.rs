@@ -52,12 +52,14 @@ fn open_path(state: &AppState) -> &Path {
 
 // ------------------------------------------------ Major 1: a whole-file card
 
-/// `n` on a card crosses to the next conflicted file, as it does from a
-/// document's last block — before, it returned silently, and the only way
-/// off a card was `Esc`.
+/// `N` on a card crosses to the next conflicted file in its direction, as
+/// it does from a document's first block — before, it returned silently,
+/// and the only way off a card was `Esc`. (Was `n`; `n` is the first open
+/// clash since ease-pass 05, `tests/first_open.rs`.)
 #[test]
-fn n_on_a_card_crosses_to_the_next_file() {
-    let (state, commands) = press(&resolver_card_on_screen(WALK), KeyCode::Char('n'));
+#[allow(non_snake_case, reason = "`N` is the key, not `n`")]
+fn N_on_a_card_crosses_to_the_next_file() {
+    let (state, commands) = press(&resolver_card_on_screen(WALK), KeyCode::Char('N'));
     assert_eq!(open_path(&state), Path::new("later.rs"));
     assert!(
         commands
@@ -67,7 +69,7 @@ fn n_on_a_card_crosses_to_the_next_file() {
     );
 }
 
-/// On the last conflicted file there is nowhere to cross to: the card's
+/// On the last conflicted file `N` has nowhere to cross to: the card's
 /// notice row says so (m6-conflicts/61), in the words a document uses and
 /// with no keys in them. The side keys a card answers — not `⏎`, which it
 /// does not — stay in the bar under it.
@@ -89,7 +91,7 @@ fn a_card_says_no_more_this_way_and_its_bar_keeps_the_side_keys() {
         }],
     }));
     let before = state.status.clone();
-    let (state, _) = press(&state, KeyCode::Char('n'));
+    let (state, _) = press(&state, KeyCode::Char('N'));
     assert_eq!(open_path(&state), Path::new("gone.txt"));
     assert_eq!(
         state.resolver.as_ref().expect("open").notice,
@@ -129,11 +131,12 @@ fn last_card_in_a_rebase() -> AppState {
 }
 
 /// Review m6-amend-10-22 M2 (`walk.rs`): in a rebase git's `ours` is
-/// upstream, so the card's bar under `n`'s notice offers the rebase's own
+/// upstream, so the card's bar under `N`'s notice offers the rebase's own
 /// role words.
 #[test]
-fn n_on_the_last_card_in_a_rebase_uses_the_side_names() {
-    let (state, _) = press(&last_card_in_a_rebase(), KeyCode::Char('n'));
+#[allow(non_snake_case, reason = "`N` is the key, not `n`")]
+fn N_on_the_last_card_in_a_rebase_uses_the_side_names() {
+    let (state, _) = press(&last_card_in_a_rebase(), KeyCode::Char('N'));
     assert_eq!(
         state
             .resolver
@@ -414,11 +417,13 @@ fn slash_opens_no_search_behind_the_resolver() {
     assert!(state.resolver.is_some(), "the resolver is still open");
 }
 
-/// With a search from before the resolver still live, `n` walks the
-/// resolver's blocks — it does not step the search behind it.
+/// With a search from before the resolver still live, `n` moves the
+/// resolver's cursor — it does not step the search behind it. From the
+/// second block, `n` goes up to the first open one (ease-pass 05).
 #[test]
-fn n_walks_blocks_even_with_a_search_live() {
+fn n_moves_the_resolver_cursor_even_with_a_search_live() {
     let mut state = resolver_on_screen(WALK);
+    state.resolver.as_mut().expect("open").cursor_block = Some(1);
     let query = crate::search::Query::parse("root").expect("a non-empty query");
     let mut search = crate::search::Search::new(query, 0, (0, 0));
     search.state = crate::search::SearchState::Done { hits: 0 };
@@ -427,8 +432,8 @@ fn n_walks_blocks_even_with_a_search_live() {
     let (state, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(
         state.resolver.as_ref().and_then(|open| open.cursor_block),
-        Some(1),
-        "n moved to the second block"
+        Some(0),
+        "n moved to the first open block"
     );
     assert_eq!(state.search, before, "the search was not stepped");
 }
@@ -694,6 +699,7 @@ mod cross;
 mod file_keys;
 mod file_list;
 mod finish_here;
+mod first_open;
 mod opens_itself;
 mod take_all;
 
@@ -855,14 +861,16 @@ fn clash_over(
     }
 }
 
-/// `u`/`U` inside the resolver are not undo (the resolver is modal, §2.1),
-/// and they were swallowed in silence (review m6-usability-2 m-i). They
-/// answer on the notice row, as information: an operation live → §2.6a's
-/// words; a stash or set-aside clash → the clause its landing used; else
-/// that `u` works from the graph. No command, and the status line is
-/// untouched.
+/// `U` inside the resolver is not redo (the resolver is modal, §2.1), and
+/// it was swallowed in silence (review m6-usability-2 m-i). It answers on
+/// the notice row, as information: an operation live → §2.6a's words; a
+/// stash or set-aside clash → the clause its landing used; else that `u`
+/// works from the graph. `u` puts the last pick back (ease-pass 05); with
+/// none, a clash keeps its clause and anywhere else it says
+/// `nothing to undo here`. No command, and the status line is untouched.
 #[test]
 fn u_in_the_resolver_says_where_undo_is() {
+    use crate::update::resolver::unpick::NOTHING_TO_UNDO;
     use graft_core::journal::{OperationKind, PutBackWhy};
 
     let plain = AppState {
@@ -877,24 +885,36 @@ fn u_in_the_resolver_says_where_undo_is() {
         ..plain.clone()
     };
     let clash = |why, kind| clash_over(&plain, why, kind);
+    // (state, `U`'s words, `u`'s words with no pick)
     let cases = vec![
-        (merge.clone(), "finish or abort the merge first"),
+        (
+            merge.clone(),
+            "finish or abort the merge first",
+            NOTHING_TO_UNDO,
+        ),
         (
             clash(PutBackWhy::Pop, OperationKind::StashPop),
+            "esc, u puts it all back",
             "esc, u puts it all back",
         ),
         (
             clash(PutBackWhy::SetAside, OperationKind::Checkout),
             "esc, u undoes the switch too",
+            "esc, u undoes the switch too",
         ),
         (
             clash(PutBackWhy::SetAside, OperationKind::Rebase),
             "esc, u undoes the rebase too",
+            "esc, u undoes the rebase too",
         ),
-        (plain.clone(), "esc first \u{b7} u undoes from the graph"),
+        (
+            plain.clone(),
+            "esc first \u{b7} u undoes from the graph",
+            NOTHING_TO_UNDO,
+        ),
     ];
-    for (state, words) in cases {
-        for code in [KeyCode::Char('u'), KeyCode::Char('U')] {
+    for (state, by_redo, by_undo) in cases {
+        for (code, words) in [(KeyCode::Char('u'), by_undo), (KeyCode::Char('U'), by_redo)] {
             let (next, commands) = press(&state, code);
             // The fixture's selected row is a merge, and every `update` ends
             // by probing it (`selection::follow_selection`) — not the key's.
@@ -914,8 +934,8 @@ fn u_in_the_resolver_says_where_undo_is() {
 }
 
 /// m8/09g C (R2): `⌃Z` is `app.undo`'s other chord, so in the resolver it
-/// answers as `u` does — the notice saying where undo is, no command, the
-/// status left alone (`u_in_the_resolver_says_where_undo_is`). It was
+/// answers as `u` does — with no pick, the notice, no command, the status
+/// left alone (`u_in_the_resolver_says_where_undo_is`). It was
 /// swallowed (`act`'s catch-all). With `suspend_on_ctrl_z` it is not
 /// undo's chord, and gets none of that answer.
 #[test]

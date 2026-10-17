@@ -660,7 +660,7 @@ fn zdiff3_and_base_on_demand() -> Scenario {
         capture: Some(Capture {
             stem: "m6-01-resolver-three",
             headless: vec![],
-            keys: plain(&[open_nth(nth("three.txt")), vec![ch('n'), ch('t'), ch('B')]].concat()),
+            keys: plain(&[open_nth(nth("three.txt")), vec![ch('t'), ch('B')]].concat()),
             on_screen: "took theirs",
             when: When::Settled,
         }),
@@ -687,7 +687,7 @@ fn bases(state: &graft::update::AppState) -> (usize, usize) {
 }
 
 /// `zdiff3.txt` the only file not done (every other path staged by
-/// `setup`): `n` past its one block has no file to cross to, so it wraps to
+/// `setup`): `N` before its one block has no file to cross to, so it wraps to
 /// the block still open; once that is taken, `n` and `N` have nowhere to go
 /// and say what `⏎` does instead (m6-conflicts/15). Nothing is staged.
 fn n_past_the_last_block_says_no_more() -> Scenario {
@@ -701,8 +701,8 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
             vec![
                 Step::WaitFor(Wait::Ready),
                 Step::Resolve("zdiff3.txt"),
-                key(ch('n')),
-                Step::See("n with its block open wraps", |state| {
+                key(ch('N')),
+                Step::See("N with its block open wraps", |state| {
                     notice_is(state, "wrapped · 1 still open")?;
                     let open = state.resolver.as_ref().ok_or("no resolver")?;
                     check(open.cursor_block == Some(0), || {
