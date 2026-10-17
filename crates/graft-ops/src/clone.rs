@@ -170,6 +170,7 @@ pub fn clone(
         args,
         stdin: None,
         remote: true,
+        index: crate::operation::IndexFile::Real,
     };
     let mut cleanup = Vec::new();
     let ran = remote::run(RemoteRun { hooks, stop }, git, &invocation, &mut cleanup);

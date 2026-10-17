@@ -304,7 +304,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         commands.push(engine.command_line());
         engine.run(ctx, &mut commands)?
     } else {
-        commands.extend(to_run.iter().map(Invocation::command_line));
+        commands.extend(to_run.iter().map(|line| run::logged_line(ctx, line)));
         pull::run_rest(ctx, op, ahead, to_run, &mut pending.entry)
     };
     closed(ctx, op, pending, commands, run)

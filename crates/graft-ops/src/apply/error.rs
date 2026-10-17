@@ -303,6 +303,16 @@ pub enum AfterState {
         /// Why.
         error: std::io::Error,
     },
+    /// A commit of chosen files could not remove its scratch index copy when
+    /// the plan ended (ease-pass/04). The commit is as it ran; the next one
+    /// overwrites the file.
+    #[error("the commit's scratch index at {} could not be removed: {error}", path.display())]
+    ScratchIndexLeft {
+        /// The copy.
+        path: PathBuf,
+        /// Why.
+        error: std::io::Error,
+    },
     /// A rewrite ran on the top of the line and `HEAD` could not be switched
     /// back to his branch after it (ADR-0047 §3): `HEAD` is on the top
     /// branch. Every branch is where the entry records it.

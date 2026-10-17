@@ -31,6 +31,9 @@ pub enum Refusal {
     PatchSideMismatch,
     /// A commit with nothing staged and `allow_empty` off.
     NothingStaged,
+    /// A commit or amend of chosen files with none chosen and `allow_empty`
+    /// off. The commit screen refuses first; this is the backstop.
+    NothingChosen,
     /// A message with no subject line.
     EmptySubject,
     /// An amend or a stash push before the first commit.

@@ -363,6 +363,7 @@ fn only_a_remote_invocation_with_hooks_gets_them() {
         args: Vec::new(),
         stdin: None,
         remote,
+        index: crate::operation::IndexFile::Real,
     };
     assert!(remote_invocation(&invocation(true), Some(&hooks)));
     assert!(!remote_invocation(&invocation(false), Some(&hooks)));

@@ -34,6 +34,7 @@ fn commit_at_now(repo: &TempRepo, file: &str, random: [u8; 10]) -> JournalEntry 
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     });
     apply(&mut ctx, &op)
         .unwrap_or_else(|why| panic!("{}", why.explain(&Letters)))

@@ -40,7 +40,21 @@ impl TempIndex {
         repo: &RepoHandle,
         scratch: &Path,
     ) -> Result<TempIndex, SnapshotError> {
-        let path = scratch.join(Self::unique_name("tmp-index"));
+        Self::copied_to(repo, scratch.join(Self::unique_name("tmp-index")))
+    }
+
+    /// The same copy at a name the caller fixes, overwriting a leftover: a
+    /// commit of chosen files keeps one scratch index (ease-pass/04), and
+    /// [`TempIndex::remove`] says when it could not go.
+    pub(crate) fn copied_as(
+        repo: &RepoHandle,
+        scratch: &Path,
+        name: &str,
+    ) -> Result<TempIndex, SnapshotError> {
+        Self::copied_to(repo, scratch.join(name))
+    }
+
+    fn copied_to(repo: &RepoHandle, path: PathBuf) -> Result<TempIndex, SnapshotError> {
         let mut source = match std::fs::File::open(repo.git_dir().join("index")) {
             Ok(source) => source,
             Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
@@ -82,6 +96,21 @@ impl TempIndex {
 
     pub(crate) fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// Remove the copy now and say whether it went, where `Drop` can only
+    /// print. Already gone is gone.
+    pub(crate) fn remove(mut self) -> std::io::Result<()> {
+        let path = std::mem::take(&mut self.path);
+        // Removed here, so `Drop` has nothing to do; the empty path left in
+        // `self` owns no allocation, so forgetting it leaks nothing.
+        std::mem::forget(self);
+        match std::fs::remove_file(&path) {
+            Ok(()) => Ok(()),
+            // Nothing to remove: what was asked for is true.
+            Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(why) => Err(why),
+        }
     }
 }
 

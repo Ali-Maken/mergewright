@@ -19,7 +19,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `ApplyError::stopped_at` (fn) — `Option<StoppedAt>` for an error a stop produced; `None` for any other.
 - `ApplyError::edits_at` (fn) — where a failed set-aside left the edits, when it did.
 - `StoppedAt` (enum) — where a stop left git: `Paused(InProgress)`, `Landed`, `BeforePause { changed }`, `Stopped { changed }`.
-- `AfterState` (enum) — an after-state field that could not be read or kept: `Head`, `Refs`, `Index`, `Worktree`, `MergeState`, `StagingNotKept`, `NotAsTheyWere`, …; `explain`.
+- `AfterState` (enum) — an after-state field that could not be read or kept: `Head`, `Refs`, `Index`, `Worktree`, `MergeState`, `StagingNotKept`, `NotAsTheyWere`, `ScratchIndexLeft { path, error }`, …; `explain`.
 - `RawStepOf` (enum) — `SetAside` | `LostEdit`: whose put-back's raw step failed, on `AfterState::NotAsTheyWere`.
 - `EditsAt` (enum, re-exported at the crate root) — `Stash { n }`, `Back { copy }`, `Backup { copy }`: where a failed set-aside left the edits; `words()`.
 - `askpass_words` (fn) — `(&io::Error) -> String`: one wording for an askpass refusal or socket clean-up failure, remote ops and clone alike.
@@ -215,7 +215,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Operation::starts_in_progress` (fn) — `Some(InProgress)` for merge, rebase, cherry-pick, revert: what a conflict stop would leave.
 - `Operation::sets_aside` (fn) — `Some(SetAside)` when the write sets his changed tracked files aside and puts them back (ADR-0045 §4).
 - `Operation::facts_scope` (fn) — the `FactsScope` its `check` and preview need read.
-- `Refusal` (enum) — every reason a write is refused before git runs, in his words: `Bare`, `InProgress`, `Unmerged`, `Moved`, `InTheWay`, …
+- `Refusal` (enum) — every reason a write is refused before git runs, in his words: `Bare`, `InProgress`, `Unmerged`, `Moved`, `InTheWay`, `NothingStaged`, `NothingChosen`, …
 - `Refusal::explain` (fn) — `(keys) -> String`: `reason · next`, keys named through `KeyNames`.
 - `Refusal::explain_rungs` (fn) — `(keys) -> Vec<RefusalWords>`: every wording, longest first, for a narrow row.
 - `RefusalWords` (struct) — `reason`, `next: Option<String>`: one wording of a refusal.
@@ -234,10 +234,18 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RemoteNames` (struct) — `local`, `remote_side`, `remote`: the names a remote failure line uses.
 - `Target` (enum) — `Paths(Vec<PathBuf>)` or `Patch { path, patch, side }` (a hunk or lines).
 - `PatchSide` (enum) — `Worktree` or `Index`: which diff a hunk was cut from.
-- `CommitParams` (struct) — `message`, `sign_off`, `no_verify`, `allow_empty`.
+- `CommitParams` (struct) — `message`, `sign_off`, `no_verify`, `allow_empty`, `include`; `Default` (empty message, `Include::Staged`).
+- `Include` (enum) — `Staged` (today's commit on the real index) or `Chosen(Vec<Chosen>)` (built on a scratch index; a choice equal to the staged set plans as `Staged`).
+- `Chosen` (struct) — `path`, `part: Part`: one file chosen to go in a commit or amend.
+- `Part` (enum) — `Whole` (the working file) or `StagedPart` (only what is staged).
+- `FileChoice` (struct) / `OutWhy` (enum) — `path`, `goes_in`, `part`, `why_out: Option<OutWhy>`; `LooksLikeSecrets` or `NotStaged`.
+- `first_choice` (fn) — pure, `(&WorkingTreeStatus) -> Vec<FileChoice>`: nothing staged → every change in bar new secrets files; something staged → only staged (a partial file counts).
+- `looks_like_secrets` (fn) — pure, case-insensitive basename: `.env`, `.env.*` (not example/sample/template), `*.pem`, `*.key`, ssh private keys, `.npmrc`, …
 - `StashParams` (struct) — `message`, `scope: StashScope`; `Default`.
 - `StashScope` (enum) — `All { include_untracked }` or `StagedOnly`.
-- `Invocation` (struct) — `args: Vec<GitArg>`, `stdin`, `remote` (askpass and progress); `command_line`.
+- `Invocation` (struct) — `args: Vec<GitArg>`, `stdin`, `remote` (askpass and progress), `index: IndexFile`; `command_line` (a `Scratch` line leads `GIT_INDEX_FILE=<scratch index> `), `command_line_in(path)` (the Command Log's, real path).
+- `IndexFile` (enum) — `Real` (default) or `Scratch`: the executor copies the real index to `<names dir>/commit-index` before the first `Scratch` line, runs those with `GIT_INDEX_FILE`, removes it when the plan ends.
+- `SCRATCH_PLACEHOLDER` (const) — `<scratch index>`: what `command_line` writes for the path only the executor knows.
 - `Tip` (struct) — `name` (full ref) + `oid`: what a history operation was aimed at; `check` refuses `Moved` when it moved.
 - `SetAside` (struct) — `files`: the changed tracked files a write sets aside and puts back.
 - `FactsScope` (struct) — `remotes: bool` + `refs: Vec<String>`: what `read_facts` must answer.

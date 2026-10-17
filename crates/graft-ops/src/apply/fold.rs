@@ -13,11 +13,11 @@ use std::collections::BTreeMap;
 
 use graft_core::journal::{EntryStatus, JournalEntry};
 
-use crate::operation::{Invocation, Operation, RepoFacts};
+use crate::operation::{Operation, RepoFacts};
 use crate::snapshot;
 
 use super::resume::live_entry;
-use super::run::{PlanRun, run_plan};
+use super::run::{PlanRun, logged_line, run_plan};
 use super::{Applied, ApplyError, Context, Refresh, RestartPrep, as_apply_error, run_restart_prep};
 
 /// Run `op` folded into the operation git already has in progress, or answer
@@ -144,7 +144,7 @@ fn inside_live_operation(
     let mut commands = run_restart_prep(ctx, prep)?;
 
     let plan = op.plan(facts);
-    commands.extend(plan.iter().map(Invocation::command_line));
+    commands.extend(plan.iter().map(|line| logged_line(ctx, line)));
     let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
     fold_commands(ctx, span, commands.clone());
 

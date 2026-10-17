@@ -352,6 +352,7 @@ fn a_failed_read_refs_in_seal_after_is_reported() {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     });
     match crate::support::try_run(&repo, &op, NOW) {
         Err(ApplyError::AfterState { unread, .. }) => {

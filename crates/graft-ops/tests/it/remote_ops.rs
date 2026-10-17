@@ -411,6 +411,7 @@ fn commit_through_apply(remote: &LocalRemote, name: &str, at: i64) -> JournalEnt
         sign_off: false,
         no_verify: true,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     });
     run_in(remote.work(), &commit, at + 1)
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)))
@@ -937,6 +938,7 @@ fn a_local_operation_with_hooks_runs_as_before() {
         sign_off: false,
         no_verify: true,
         allow_empty: false,
+        include: graft_ops::operation::Include::Staged,
     });
 
     let applied = run_hooked(remote.work(), &commit, NOW, hooks, &Never)

@@ -101,6 +101,7 @@ fn kinds_and_is_remote() {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: crate::operation::Include::Staged,
     });
     assert!(!commit.is_remote());
     assert_eq!(commit.preview(), None);

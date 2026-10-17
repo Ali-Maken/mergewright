@@ -17,6 +17,7 @@ fn line(remote: bool) -> Invocation {
         args: vec![GitArg::Flag("merge")],
         stdin: None,
         remote,
+        index: crate::operation::IndexFile::Real,
     }
 }
 

@@ -114,6 +114,7 @@ fn commit(message: &str) -> CommitParams {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: crate::operation::Include::Staged,
     }
 }
 
@@ -1210,6 +1211,7 @@ fn working_tree_cases() -> Vec<(Operation, bool)> {
         sign_off: false,
         no_verify: false,
         allow_empty: false,
+        include: crate::operation::Include::Staged,
     };
     let paths = || Target::Paths(vec![PathBuf::from("a")]);
     vec![
@@ -2004,3 +2006,5 @@ fn a_finish_or_abort_of_a_shell_merge_runs_in_that_merge() {
         assert_eq!(runs_in_progress(kind), None, "{kind:?}");
     }
 }
+
+mod chosen;

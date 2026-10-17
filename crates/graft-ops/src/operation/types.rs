@@ -51,7 +51,9 @@ pub enum PatchSide {
 }
 
 /// What a commit or amend needs.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// The default: an empty message, no flags, [`Include::Staged`].
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct CommitParams {
     /// The whole message; the first non-blank line is the subject.
     pub message: String,
@@ -61,6 +63,38 @@ pub struct CommitParams {
     pub no_verify: bool,
     /// `--allow-empty`: a commit with nothing staged.
     pub allow_empty: bool,
+    /// What goes in: the index as he staged it, or the files he chose.
+    pub include: Include,
+}
+
+/// What a commit or amend takes in (ease-pass/04).
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub enum Include {
+    /// The index as it is: today's `git commit`, hooks and all.
+    #[default]
+    Staged,
+    /// These files, each whole or as staged; every other staged entry stays
+    /// staged. Built on a scratch copy of the index ([`IndexFile::Scratch`]).
+    Chosen(Vec<Chosen>),
+}
+
+/// One file chosen to go in.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Chosen {
+    /// The path as the status lists it (the new path for a rename).
+    pub path: PathBuf,
+    /// Which of its changes.
+    pub part: Part,
+}
+
+/// How much of a chosen file goes in. The note's `Take`, renamed so it never
+/// meets `graft_git::Take` in one file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Part {
+    /// The working file as it is: modified, deleted or new alike.
+    Whole,
+    /// Only what is staged; its unstaged changes stay out.
+    StagedPart,
 }
 
 /// What a stash push needs.
@@ -107,7 +141,25 @@ pub struct Invocation {
     /// Talks to a remote: the executor streams its progress and answers its
     /// credential prompts. `false` for everything local.
     pub remote: bool,
+    /// The index this line reads and writes.
+    pub index: IndexFile,
 }
+
+/// Which index a git line reads and writes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IndexFile {
+    /// The repository's own index.
+    #[default]
+    Real,
+    /// A copy of it the executor makes before the plan's first `Scratch`
+    /// line, runs every `Scratch` line on with `GIT_INDEX_FILE`, and removes
+    /// when the plan ends.
+    Scratch,
+}
+
+/// What [`Invocation::command_line`] writes for the scratch index's path,
+/// which only the executor knows ([`Invocation::command_line_in`]).
+pub const SCRATCH_PLACEHOLDER: &str = "<scratch index>";
 
 impl Invocation {
     pub(super) fn new(args: Vec<GitArg>) -> Self {
@@ -115,6 +167,7 @@ impl Invocation {
             args,
             stdin: None,
             remote: false,
+            index: IndexFile::Real,
         }
     }
 
@@ -123,14 +176,47 @@ impl Invocation {
             args,
             stdin: Some(stdin),
             remote: false,
+            index: IndexFile::Real,
         }
     }
 
-    /// `git <args>` as a person would type it, shell-quoted: the Command
-    /// Log's line, and what the plan tests compare.
+    /// The same line, run on the scratch index.
+    pub(super) fn on_scratch(self) -> Self {
+        Self {
+            index: IndexFile::Scratch,
+            ..self
+        }
+    }
+
+    /// `git <args>` as a person would type it, shell-quoted: what the plan
+    /// tests compare and the preview shows. A [`IndexFile::Scratch`] line
+    /// leads with `GIT_INDEX_FILE=<scratch index> `, the path only the
+    /// executor knows.
     #[must_use]
     pub fn command_line(&self) -> String {
-        graft_git::run::command_line(&self.args)
+        self.spelled(SCRATCH_PLACEHOLDER)
+    }
+
+    /// The Command Log's line: [`Invocation::command_line`] with the scratch
+    /// index's real path, so a `Scratch` line runs as shown.
+    #[must_use]
+    pub fn command_line_in(&self, scratch_index: &std::path::Path) -> String {
+        use std::os::unix::ffi::OsStrExt;
+        // graft-git quotes words only inside a whole `git …` line; one path
+        // alone is that line without its `git `.
+        let line = graft_git::run::command_line(&[GitArg::Path(
+            scratch_index.as_os_str().as_bytes().to_vec(),
+        )]);
+        let quoted = line.strip_prefix("git ").unwrap_or(&line);
+        self.spelled(quoted)
+    }
+
+    fn spelled(&self, scratch_index: &str) -> String {
+        let line = graft_git::run::command_line(&self.args);
+        match self.index {
+            IndexFile::Real => line,
+            IndexFile::Scratch => format!("GIT_INDEX_FILE={scratch_index} {line}"),
+        }
     }
 }
 
