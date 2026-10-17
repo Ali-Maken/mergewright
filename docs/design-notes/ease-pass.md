@@ -6,7 +6,8 @@ acceptance line; every departure is in **Questions for the user**, not decided h
 **Pass 2 done** (2026-10-17): 13 specs in `.scratch/ease-pass/issues/`; Q1–13 answered "all a"; Q14 open (build proceeds
 on its recommendation, one-line change if he picks b). **V and W fitted to their scouts** (2026-10-17): no new keymap
 context, existing ids kept with new handlers, bars stay where the code draws them; commit writes through a scratch index
-(executor change in W). No behaviour he accepted changed.
+(executor change in W). No behaviour he accepted changed. **01r** (2026-10-17, after review 01): "built on" and "merged"
+rules corrected — they now say only what git can prove; spec `01r-roles-and-route-fixes.md`; 09 and 14 updated.
 
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
@@ -70,7 +71,7 @@ open-folded-merge    1     space                         SM 1 click
   branch: `C ⏎` (Q1 a).
 
 ## Mock behaviours → specs (acceptance lines)
-Slugs: **R** roles-and-route · **V** ease-vocabulary · **W** commit-what-goes-in · **K** clash-reads · **P** resolver-picks
+Slugs: **R** roles-and-route (+ **Rr** its fixes, 01r) · **V** ease-vocabulary · **W** commit-what-goes-in · **K** clash-reads · **P** resolver-picks
 (pass 1); **F** graph-fold-and-lanes · **G** graph-rows · **B** branch-pane · **X** pixel-roles-and-tall-row · **S**
 commit-screen · **Mp** merge-preview · **L** clash-screen-look · **Fr** finish-review-and-look (pass 2); **A** acceptance.
 
@@ -85,7 +86,7 @@ branch and its upstream are one name (G) · G8 who = first name, own `you` bold;
 A, B] · <sha7>`, lanes continue through it; every row the cursor rests on gets it (ADR-0063 rule; the mock skipped opened
 rows) (G X) · G10 header `on <branch>`, `lanes drawn: N of M`, `K merged branches folded` (F G; Q11, Q14) · G11 lanes only for
 branches with a commit in view (F) · G12 right pane: heading + `(you're here)`; four marked lines `! ✓ ·`; `built on`
-route trunk first ` ─◆ ` (R B) · G13 bar per row kind (G V; Q1 Q2 Q11) · G14 `#` colour off, shapes stay (V G; Q3).
+route trunk first ` ─◆ ` (R Rr B) · G13 bar per row kind (G V; Q1 Q2 Q11) · G14 `#` colour off, shapes stay (V G; Q3).
 
 Commit (commit mock): C1 `c` → cursor in message, placeholder `What did you change? (one line)`; header `committing to
 <branch>` + push state (S) · C2 subject bold, `n/72`, warning past 72 (S) · C3 body placeholder `More detail, if it needs
@@ -118,7 +119,8 @@ option turned on from `?` → its word in the commit header while on, nothing wh
 → the same commit screen, message prefilled, staged files in (one screen, consistency); the review's message field →
 whatever the merge mock shows, else git's `MERGE_MSG` (Fr scout checks); `lanes drawn` / `folded` words shown only while
 something is dropped / folded (status rule); merge preview without buttons only for `m` — other previews keep theirs
-(flag for the usability walk).
+(flag for the usability walk). **01r:** right-pane words for states the mock never shows (merged, no commits of its own,
+unrelated branch) — in 09, mock style.
 
 ADR-0063 departures checked against `docs/design/02-keymap.md`: (1) `⏎` commits from the subject — **already the spec and
 build** (§2.10 :494, P16; `crates/graft-ui/MAP.md:235`), not a departure. (2) `y` finish — resolver is modal, `y` unbound
@@ -132,9 +134,12 @@ Pass-1 signatures (exact in the specs; fitted to the scouts' code facts 2026-10-
 LaneRole { This, Under, Trunk, Other }`, `struct Route` (`new(trunk, built_on: &[BranchIdentity], focus)`, `unread(trunk,
 focus)`, `focus()`, `trunk()`, `chain()`, `role(BranchIdentity) -> LaneRole`), `fn made_on(&Row) -> Option<BranchIdentity>`
 (reads `Row.lanes[row.lane]`); caller: app `view::entries`/`strips`. **graft-ops `branch_status`** — `Candidate` (full ref
-name), `CandidateKind`, `Apart` (`usize`), `short_name`, pure `choose_base`, `route`, `branch_status -> BranchStatus {
-route, pushed, merged, behind, who }`, all reads through `count_between`/`commits_between` (stop, `RunError`); caller: app
-job behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap:
+name), `CandidateKind`, `Apart` (`usize`), `short_name`, pure `choose_base(branch, measured, at_most: CandidateKind)`
+(an `Other` is eligible only with `base_only == 0`), `route`, `branch_status -> BranchStatus { route, pushed, merged:
+Merged { MainLine, Into, NotYet { into: Option<String> }, NothingToMerge }, behind, who: Who { Everyone { last },
+Authors { first, others, last }, NoOwnCommits } }`, all reads through `count_between`/`commits_between`/`compare_span`/
+`entry_into` (stop, `RunError`); rules in 01r ("built on" and "merged" only where git proves them); caller: app job
+behind the right pane and the route. **graft-ui** — theme `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}`; keymap:
 new ids `graph.colours_off` `#`, `resolver.review` `y`, keyless `commit.toggle_{amend,no_verify,allow_empty}`; **no new
 `ContextId`** (incoming list ⊂ `Preview`, look ⊂ `Finish`, commit files a focus of `CommitEditor`); `n`/`esc`/`u`/`c`/review
 `⏎` keep `resolver.next_block`/`app.back`/`app.undo`/`resolver.finish`/`finish.toggle_diff`, their handlers change (P, Fr);
@@ -145,7 +150,8 @@ screen, review, look (V owns `hints.rs`); commit-screen and preview footers stay
 executor runs `Scratch` lines on a copy of the real index; undo unchanged — it already restores HEAD and index) (W). **graft-git** — `merge_forecast(repo, git, ours, theirs, stop) -> MergeCheck {
 Checked(MergeForecast { changed, changed_capped, clashes: Vec<ClashForecast> }), NotCheckable(reason) }`,
 `ConflictFile::reopen` (existing `NoSuchBlock`), pure `line_origins` (K); `CommitSummary` unchanged — the incoming list's
-age is the existing `author.when`. **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`,
+age is the existing `author.when`; `entry_into(repo, onto, line, stop) -> Result<Option<LineEntry { commit, parents }>,
+RunError>` — where a tip entered a line's first-parent chain (Rr). **graft-ops + app** — `Resume` variants carry `solved: Vec<PathBuf>`,
 `FinishMergeParams.solved`, `finish_preview(repo, solved, stop)`; app `Picks` (+`seal`), `next_open_in_file`, `next_open` (P).
 Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `FoldWalk::admit`, `Fold::open_columns`,
 `merge_name` `PR <n>` (F); raster `Stroke::of(LaneRole)`, `PlainStrip.roles`, `rasterise_continuation` (X). **graft-ui**
@@ -157,8 +163,12 @@ Pass 2: **graft-graph** `Opened`, `Inclusion::folded_by_default`, streaming `Fol
 
 ## Hard-to-reverse choices
 1. **What "made on" and "built on" mean.** Options: new attribution pass inside the layout engine; or lane identity for
-   "made on" + git-measured base per focused branch. **Rec: the latter** — no layout change; base = candidate with fewest
-   branch-only commits (merge-base), ties trunk → integration → other; read lazily per focus, cached per tips.
+   "made on" + git-measured base per focused branch. **Rec: the latter** — no layout change; read lazily per focus,
+   cached per tips. **Revised by 01r** (review 01 showed merge-base distance can't tell a base from a sibling between
+   ordinary branches): base = nearest trunk or integration branch, or an ordinary branch only while it lies wholly
+   under this one (CONTEXT "Dependent branch"); "merged" only when a trunk/integration line holds it, or an ordinary base
+   that sat under it took it in by a merge; a branch with no commits of its own says so. Recorded parents stay rejected
+   (ADR-0032; `stacked-branches.md` §4).
 2. **Fold by default as a streaming inclusion predicate** (first-parent closure of trunk, HEAD, integration and refs not
    reachable from trunk; two bitsets filled as the topo walk emits) vs a precomputed fold set. **Rec: predicate** — keeps
    first paint and scroll budgets; fits `Inclusion`/`Included` (§3.6 last bullet). Needs children-before-parents in the
@@ -175,9 +185,10 @@ dropped), §2.6a (`u` inside the resolver), §2.6b (review replaces the summary 
 columns; no SHA/badges; right pane), §1.5 (inline at every width ≥100; three-pane and kept headers retired), §1.7 (merge
 preview without buttons), §1.13 (banner words `merging <from> into <into>`). `03-graph-layout` §3.4 (colour by role),
 §3.5 (`+N lanes` → `lanes drawn: N of M`, drop columns with no node in view). PROMPT §1.3 fold default. Mine: (a) "built
-on" by merge-base distance can name a different base than the team thinks after a rebase onto a sibling — accepted, the
-route is shown, not acted on. (b) The mocks give `⏎` two meanings in file lists: commit (commit screen) vs look (review);
-kept as accepted, flagged for the walk.
+on" names an ordinary (non-integration) branch only while it lies wholly under this one; once that base moves on, the
+pane names the integration branch or trunk instead — true, less specific. Git can't tell a moved base from a sibling
+(review 01 M1); the alternative, guessing, named teammates' branches wrongly. Open question to him (Q15). (b) The mocks
+give `⏎` two meanings in file lists: commit (commit screen) vs look (review); kept as accepted, flagged for the walk.
 
 ## New UI
 Graph (≥120 cols, as mock): `graph | branch 20 | message | who 6 | age 4` + `│` + branch pane 36. 100–119: pane 30, branch
@@ -190,7 +201,8 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
 (`main-…`, `commit-…`, `merge-…`); the contact sheet puts each beside its mock path.
 
 ## Genuinely risky tickets
-- **roles-and-route** — signature: every graph pane draws from it; Fable (signature).
+- **roles-and-route** — signature: every graph pane draws from it; Fable (signature). **01r** continues it on Fable
+  (signature): the corrected rules can't be judged from the diff — four wrong rules passed every tick.
 - **resolver-picks** — the pick stack, staging at `y`, shell-begun merges, relaunch with solved-unstaged files: a wrong
   approach is structural and index states can't be judged from the diff. Passes all three Fable tests (approach decided
   here). **Planner recommends Fable**; `Build with` left to the conductor after the scout.
@@ -218,6 +230,9 @@ branch`. Commit screen: full frame under the header: message box (subject 1, bod
 **Open (pass 2):**
 14. Top line, after your answer to 11: today's top line already names your branch (`◆ reports ~/work/reports · wallet-release`). Adding the mock's words would name it twice (`… · wallet-release … on wallet-release  lanes drawn: 5 of 8`). (a) add only `lanes drawn: 5 of 8 · 3 merged branches folded` at the right end · (b) add `on wallet-release` too, as the mock. **Rec a.** F builds (a); (b) is a one-line change.
 
+**Open (01r):**
+15. A teammate cuts `sara/fix-toc` from your `wallet-release`, then you commit more on `wallet-release`. Git can't tell from then on whether sara was built on yours or the other way round. (a) the right pane says sara is built on `integration` (true, but doesn't name yours); amber goes on `integration` · (b) let you mark `wallet-release` as a long-lived branch once (like `develop`), so it's always named. **Rec a** now; (b) is a later setting, no rule change. 01r builds (a).
+
 ## Groups and waves (≤2 cargo builders)
 W1 R ‖ K · W2 V ‖ W · W3 P ‖ F · W4 G ‖ S · W5 B ‖ Mp · W6 L ‖ Fr · W7 X **alone** (its lag script must run on a quiet
 machine) · W8 A. Every pass-2 group is brownfield: scout first (ADR-0035), `Build with` blank.
@@ -226,5 +241,5 @@ Same-crate pairs (graft app in W3–W6, graft-ui in W4–W6) use disjoint files 
 `update/events.rs`, `jobs/kinds.rs`: the first-named group of each pair owns them; the second adds only at the end of an
 enum/struct and names the lines in its report, for the conductor's merge.
 W2 crate sets: V graft-ui only; W graft-ops plus six `CommitParams` literals in graft (compile fix, `Include::Staged`) — disjoint.
-Dependency order: R, K, V, W (no needs) → P (K, V) · F (none) → G (R, V, F) · S (W, V) → B (R, G, V) · Mp (K, V) → L (P, V)
+Dependency order: R, K, V, W (no needs) → Rr (R; graft-git + graft-ops, before B) → P (K, V) · F (none) → G (R, V, F) · S (W, V) → B (R, Rr, G, V) · Mp (K, V) → L (P, V)
 · Fr (P, K, V, F) → X (R, G, F, V) → A (all).
