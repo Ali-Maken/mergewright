@@ -1405,6 +1405,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/10-ff-merge-tree | A fast-forward merge preview still runs a `merge-tree` it doesn't need (10 NOTES :134); part of ease/10-spawns' cost. graft-git change. | **unverified** | ease-pass release perf |
 | ease/10-nothing-to-merge | What the merge box says when there is nothing to merge (already up to date) is unchecked — no test, no capture. | **question** | ease-pass review |
 | ease/08u-justmerged | `JustMerged` (landing bar after a merge) is never built by app code (08u NOTES) — dead variant or a missing producer? | **question** | ease-pass review |
+| ease/12-file-order | Review lists clash files in git's order, not the order the 12 box names (report.md, notes.md) — which order is right? (12 NOTES) | **question** | ease-pass 12b |
+| ease/12-bar-120 | Review bar at 120 vs the List words: narrow bars use short rungs; `the_floor_fits_at_the_narrowest_bar` drew a blank bar at 47 — spec or code? (12 NOTES) | **question** | ease-pass 12b |
+| ease/12-landing-bar | Landing bar after merge reads `a amend · space show`, not `u undo the merge · P push` once Known (12 NOTES) | **question** | ease-pass 12b |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |
