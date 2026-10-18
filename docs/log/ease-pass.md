@@ -137,3 +137,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - builder-sonnet codename-rename/01 dispatched alone from 507c52e2 (baseline 6918).
 - builder-sonnet codename-rename/01 merged (8da8b6c3, 4da17fa4, 27cd5d0c): 3/5; 6918/6918 in worktree (= baseline); grep 871 hits left, over_400 +95 rows → gaps rename/*, pre-publish cleanup; CLAUDE.md 'was' line done by conductor (ticket scope, user-approved rename); empty crates/graft dirs rmdir'd · 113 tools · skills: none
 - gates after rename (34861856): fmt ok, clippy 0, nextest 6918/6918 (= baseline), doc ok; worktree removed. Old target/ dirs may hold graft-named build output — cargo rebuilds; disk only.
+- 2026-10-18 · user: ease pass resumes ("easepass it is"); cleanup + publish after it. Dispatch: 06h + 11b (builder-sonnet, disjoint: graph/config vs conflict_resolver), scout 07.
