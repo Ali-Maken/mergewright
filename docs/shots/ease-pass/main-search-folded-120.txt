@@ -1,0 +1,39 @@
+ease-pass 06c, 120x36, `/totals` then Enter on the main screen, before any `n`: drawn by `view::view` from a real AppState over the job pool (crates/graft/tests/it/search_folded.rs, `wallet_release`: PR 16021's four `totals: …` commits folded behind its merge). Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+What right looks like: the header's search words read `/totals  5 matches · 4 in folded merges (1/5)` — every hit counted, the four behind the folded merge said once; the cursor on the first hit, the PR's merge, still folded (`▸ 4 commits from PR 16021`). At this width the header's `2 merged branches folded` gives way to the search (the header drops its lane words first).
+
+ ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
+
+    ◆    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rele…  ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
+▸   ◉    Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021                              GF 28h  4eb2a56
+    ●    Start the wallet release                                                                       GF 28h  68f9980
+  ◇─╯    [main] Add the readme                                                                          GF 28h  2b013b5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ n next · N prev · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · ? keys

@@ -329,4 +329,5 @@ fn n_under_an_overlay_leaves_the_graph_where_it_was() {
     );
 }
 
+mod folded;
 mod reveal;

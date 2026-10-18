@@ -139,7 +139,6 @@
 818 crates/graft/src/jobs/undo.rs
 420 crates/graft/src/map.rs
 550 crates/graft/src/repos.rs
-634 crates/graft/src/search.rs
 726 crates/graft/src/terminal.rs
 537 crates/graft/src/trace.rs
 920 crates/graft/src/update/amend_into/tests.rs

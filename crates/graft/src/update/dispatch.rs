@@ -102,7 +102,7 @@ pub(super) fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event
         event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
             if search::searching(next, id) || commit_graph::commit_graph_job(next, id) =>
         {
-            side_job_ended(next, event);
+            side_job_ended(next, commands, event);
         }
         Event::JobFailed(id, failure) => job_failed(next, commands, id, &failure),
         Event::JobFinished(id) => {
@@ -290,13 +290,13 @@ pub(super) fn job_failed(
 
 /// A search or a commit-graph job ended without the answer it was for;
 /// `core_event`'s guard routes only those here.
-pub(super) fn side_job_ended(next: &mut AppState, event: Event) {
+pub(super) fn side_job_ended(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     let (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id)) = &event
     else {
         return;
     };
     if search::searching(next, *id) {
-        search::search_job_ended(next, event);
+        search::search_job_ended(next, commands, event);
     } else {
         commit_graph::commit_graph_job_ended(next, event);
     }
