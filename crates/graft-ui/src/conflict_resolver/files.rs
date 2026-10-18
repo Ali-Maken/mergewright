@@ -31,6 +31,7 @@ use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use column::{column_plan, column_width};
 use strip::strip_plan;
+pub use words::FileRowLook;
 use words::{WordsTone, paint_words, words_at_end};
 
 /// One file in the list.
@@ -40,57 +41,6 @@ pub struct FileRow {
     pub name: SanitizedText,
     /// Where it stands.
     pub state: FileRowLook,
-}
-
-/// Where one listed file stands.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FileRowLook {
-    /// Open in the resolver (or seen there) with `open` of `of` blocks left.
-    Open {
-        /// Blocks still open.
-        open: usize,
-        /// Blocks in the file.
-        of: usize,
-    },
-    /// Every block taken; `⏎` marks it done.
-    AllTaken,
-    /// A merge's file with every clash picked: still unmerged, staged by
-    /// the review's `y` (ease-pass/05b) — `⏎` has nothing to mark.
-    Solved,
-    /// git no longer calls it unmerged.
-    Done,
-    /// A whole-file shape (modify/delete, add/add without markers, …).
-    WholeFile {
-        /// The shape, in words with each side's one name — for ticket 14's
-        /// panes; the list itself draws `keep or delete`.
-        how: SanitizedText,
-    },
-    /// A binary file: kept whole from one side.
-    Binary,
-    /// Not read yet.
-    Unread,
-}
-
-impl FileRowLook {
-    /// The state's words: full, or compact (`1/2 open`, `✓`).
-    fn words(&self, compact: bool, g: Glyphs) -> String {
-        match (self, compact) {
-            (FileRowLook::Open { open, of }, false) => format!("{open} of {of} open"),
-            (FileRowLook::Open { open, of }, true) => format!("{open}/{of} open"),
-            (FileRowLook::AllTaken, false) => format!("{} marks done", g.enter),
-            (FileRowLook::AllTaken, true) => g.enter.to_string(),
-            (FileRowLook::Solved, false) => format!("solved {}", g.check),
-            (FileRowLook::Done, false) => format!("done {}", g.check),
-            // Compact, solved and done draw the same tick; the tone tells
-            // them apart no more than the words do (both muted).
-            (FileRowLook::Solved | FileRowLook::Done, true) => g.check.to_string(),
-            (FileRowLook::WholeFile { .. }, false) => "keep or delete".to_owned(),
-            (FileRowLook::WholeFile { .. }, true) => "keep?".to_owned(),
-            (FileRowLook::Binary, false) => "binary".to_owned(),
-            (FileRowLook::Binary, true) => "bin".to_owned(),
-            (FileRowLook::Unread, _) => g.unread.to_string(),
-        }
-    }
 }
 
 /// The list, ready to draw.
