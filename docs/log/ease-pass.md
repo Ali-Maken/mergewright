@@ -176,3 +176,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 2026-10-19 · user: cut docs/AUTHORSHIP.md regeneration at checkpoints (private file; saves a helper run); log entries stay one line, no write-ups.
 - 2026-10-19 · user: 92% weekly quota used, access ends 2026-10-20 → stop new builds after 07c; licence files added by conductor (Apache text fetched from apache.org); PROGRESS Current step = resume order.
 - 2026-10-19 · user: no Claude/Anthropic mention in commits or project. Commits plain from here (conductor + builders told; CLAUDE.md rule). Old private commits keep theirs; the public repo is one fresh commit. ~109 shipped files cite CLAUDE.md → pre-publish cleanup row.
+- 2026-10-19 · user: history squash = public repo only (one fresh commit); private history kept.
