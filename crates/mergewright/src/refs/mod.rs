@@ -8,8 +8,15 @@
 //!
 //! Names stay bytes here; `view` sanitises them on the way into `ui`.
 
+mod ahead;
+#[cfg(test)]
+mod perf_ahead;
 #[cfg(test)]
 mod tests;
+
+pub use ahead::AheadOfUpstream;
+#[cfg(test)]
+mod tests_ahead;
 
 use std::collections::{HashMap, HashSet};
 use std::hash::BuildHasher;

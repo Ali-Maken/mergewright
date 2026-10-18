@@ -1,6 +1,6 @@
 # ahead-counts — how far every local branch is ahead of its upstream, read once per refs read
 
-Status: ready (planner spec-only pass 2026-10-18, after the user's answer: `↑N to push` on every local branch with unpushed commits)
+Status: partial — perf over budget, stopped per ticket (planner spec-only pass 2026-10-18, after the user's answer: `↑N to push` on every local branch with unpushed commits)
 Blocked by: none for path A (below). Path B appends to `jobs/kinds.rs`, `update/state.rs`, `update/events.rs` → after 06s merges, and not beside 11b/12b if either appends there (11b:10, 12b:14).
 Build with: Sonnet (builder-sonnet) — set by conductor after scout `.scratch/ease-pass/scouts/07a-ahead-counts.md`: counts already in `RefLabel::Branch.upstream` (`refs/mod.rs:295-322`), path A, an accessor plus tests, no new job. **User, 2026-10-18:** a local branch with **no upstream** draws the label `not pushed yet` (no number, no base guess); 07 draws it beside `↑N to push`. Acceptance: one fixture branch without upstream → accessor answers NotPushed; one with upstream at 0 → nothing.
 Needs: none. Feeds: 07 (`RefBadges::ahead_of_upstream`).
@@ -48,15 +48,21 @@ Refs read timing; startup cost (path B: a job after refs, no wait added before t
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] The settle test is committed first. The path taken and why are in NOTES.
-- [ ] `ahead_of_upstream`: 2 for the ahead branch, `Some(0)` in sync, `None` with no upstream, `None` before landing (path B) (unit tests).
-- [ ] `the_ahead_read_asks_once_per_tracked_branch`: 200 calls per refs read, 0 on moves or redraws.
-- [ ] Path B: a result for an older refs read is dropped (state test).
+- [x] The settle test is committed first (`refs::tests_ahead::every_tracked_local_branch_has_its_ahead_count`). The path taken and why are in NOTES.
+- [x] `ahead_of_upstream` (`ahead_of_upstream_counts_the_ahead_branch`, `_is_zero_in_sync`, `_without_an_upstream_is_not_pushed`, `_is_none_off_a_local_branch`; path A, so no "before landing" case): 2 for the ahead branch, `Some(0)` in sync, `None` with no upstream, `None` before landing (path B) (unit tests).
+- [~] `the_ahead_read_asks_once_per_tracked_branch` (200 walks cold, 0 on a warm re-read — ticked part). **0 on moves/redraws not tested**: shown by grep only, `refs::read` has one caller, `jobs/runner/reads.rs:99` (the ReadRefs job): 200 calls per refs read, 0 on moves or redraws.
+- [x] N/A, path A. Path B: a result for an older refs read is dropped (state test).
 - [ ] `docs/perf/07a-ahead-counts.txt` summary line ≤100 ms (release, 2,000 branches). The figure is in NOTES. If it exceeds 100 ms: **stop** and report the figure. No cap or sampling without the user's OK.
-- [ ] HEAD's count from this source equals the header's after both land (state test).
+- [x] (`heads_count_equals_the_headers`) HEAD's count from this source equals the header's after both land (state test).
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 Path A ~25k; path B ~55k.
+
+## NOTES (builder, 2026-10-18)
+- Scout used (`.scratch/ease-pass/scouts/07a-ahead-counts.md`). Path A: settle test shows one refs read already stores every tracked branch's count (`refs/mod.rs` `badges`). No new job, no new read.
+- **Deviation from the signature, on the user's decision:** `RefLabel::ahead_of_upstream(&self) -> Option<AheadOfUpstream>` (`refs/ahead.rs`), `AheadOfUpstream::{NotPushed, By(n)}`. Not on `RefBadges`: the label already holds its upstream (scout point 5), and `Option<usize>` cannot say `not pushed yet` apart from "not a branch". `By(0)` = in sync; 07 draws nothing for it.
+- **Perf: over budget, stopped.** `scripts/ease-ahead-read.sh` summary: cold refs read median 121.4 ms (max 179.1), warm 3.2 ms; 2000 local, 500 tracked; load 15–21 (another builder compiling beside). Cold includes opening the repo and reading 2,500 refs, not only the 500 walks; split not measured. No cap or sampling added. Needs: re-run on an idle machine, then the user/conductor decides.
+- Pre-existing: `--features heavy-tests` breaks `tests/it/heavy.rs:321,347` (`HistoryUpdate::FoldedHits` not covered) — not this ticket.
