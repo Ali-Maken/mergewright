@@ -318,7 +318,7 @@ fn open_on_a_path_git_no_longer_calls_unmerged_shows_it_done() {
     // (m6-conflicts/28).
     let frame = crate::captures::frame(&state, 120, 40);
     assert!(
-        frame
+        crate::captures::doc_rows(&frame)
             .iter()
             .any(|row| row.trim_end() == "▸ added-by-them.txt · done ✓"),
         "{}",

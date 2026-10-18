@@ -145,7 +145,7 @@ fn ready_to_shoot(screen: &str) -> bool {
         .last()
         .and_then(|part| part.split_whitespace().last())
         .is_some_and(|word| word == "commits" || word == "commit");
-    let resolver = header.trim() == "MERGING" && screen.contains("\u{2500}\u{2500} conflict ");
+    let resolver = header.trim() == "MERGING" && screen.contains("Clashing files");
     walked || resolver
 }
 
@@ -462,9 +462,9 @@ impl Walk {
             root,
             "m8-tour-step7-conflict-120x36.txt",
             "task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, \
-             `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: \
-             pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the \
-             resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no \
+             `Clashing files` column with `? menu.txt  1 open`, the clash outlined: `yours · main` \
+             `dessert: pie` beside `theirs · clash` `dessert: ice cream`, unnumbered, the lines \
+             around it numbered, `o take yours (left) · …` at the foot. No practice header, no \
              card and no stop line here, so nothing on this screen says his staged `notes.txt` \
              waits set aside until the merge ends (19d-c NOTES). No age is drawn.",
         );

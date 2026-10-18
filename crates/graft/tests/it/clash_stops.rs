@@ -305,8 +305,9 @@ fn a_relaunch_hands_on_past_a_file_solved_on_disk() {
 }
 
 /// Relaunch, a later file solved on disk and never opened here: its row
-/// reads solved from the set read (`ConflictSet::solved`), drawn
-/// `solved ✓`, while git's first file — open — is where `⏎` lands.
+/// reads solved from the set read (`ConflictSet::solved`), drawn `✓ done`
+/// in a merge (ease-pass/11), while git's first file — open — is where `⏎`
+/// lands.
 #[test]
 fn a_relaunch_reads_an_unopened_file_solved_on_disk_as_solved() {
     let (_scratch, app, state) = relaunched_with("shared.rs", "fn main() { ours() }\n");
@@ -314,11 +315,8 @@ fn a_relaunch_reads_an_unopened_file_solved_on_disk_as_solved() {
     assert_eq!(row(&state, "shared.rs"), RowState::AllTaken);
     assert!(matches!(row(&state, "notes.md"), RowState::Open { .. }));
     let drawn = crate::captures::frame(&state, 200, 40);
-    let listed = drawn
-        .iter()
-        .find(|line| line.contains("shared.rs"))
-        .expect("a row for shared.rs");
-    assert!(listed.contains("solved"), "{}", drawn.join("\n"));
+    let listed = crate::captures::list_row(&drawn, "shared.rs");
+    assert_eq!(listed, "✓ shared.rs done", "{}", drawn.join("\n"));
     drop(state);
     app.close();
 }

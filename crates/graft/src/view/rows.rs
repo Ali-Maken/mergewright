@@ -21,7 +21,7 @@ use crate::update::{AppState, GraphOverlay};
 
 use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 
-mod clash_bars;
+pub(crate) mod clash_bars;
 mod context;
 mod fold;
 pub(crate) use clash_bars::banner_context;

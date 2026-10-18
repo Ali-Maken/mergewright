@@ -19,7 +19,10 @@ pub(super) fn capture_cannot() {
     let state = app.key(&state, KeyCode::PageUp);
     let before = crate::captures::frame(&state, 120, 40);
     let after = crate::captures::frame(&app.key(&state, KeyCode::Char('d')), 120, 40);
-    assert_eq!(before[3].trim_end(), "▸ gone.txt · done ✓");
+    assert_eq!(
+        crate::captures::doc_rows(&before)[1].trim_end(),
+        "▸ gone.txt · done ✓"
+    );
     assert!(
         before
             .last()

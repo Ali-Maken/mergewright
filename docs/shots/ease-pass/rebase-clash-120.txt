@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_clash_screen in
+# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# Judge by eye: a rebase stopped on the same file: the same screen, sides by the rebase's names (`upstream · …` left, `yours · …` right); the bar `o take upstream (left)`.
+=== 120x40 ===
+REBASING                                                                                                                
+Clashing files                │▸ report.md · 2 conflicts · 2 open                                                       
+                              │                                                                                         
+ ? notes.md   1 open          │   1 # Report                                                                            
+▏? report.md  2 open          │   2 intro                                                                               
+                              │┌───────────────────────────────────────────────────────────────────────────────────────┐
+                              ││? upstream · wallet-release                 │yours · 0303030 Fix the TOC               │
+                              ││    let tax = round_cents(total * rate);    │  let tax = (total * rate).round_to(Cents…│
+                              │└───────────────────────────────────────────────────────────────────────────────────────┘
+                              │   4 middle                                                                              
+                              │                                                                                         
+                              │ ? upstream · wallet-release                 │yours · 0303030 Fix the TOC                
+                              │     footer.push_str(&refund_line(r));       │  footer.push_str(&format_refund(r, local… 
+                              │                                                                                         
+                              │   6 end                                                                                 
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+ o take upstream (left) · t take yours (right) · b take both · e edit by hand · u undo pick · esc pause, come back later

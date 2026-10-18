@@ -59,7 +59,7 @@ fn asks_review(key: KeyPress) -> bool {
 
 /// `y` (`resolver.review`), and `c` in a merge: the review, or how many
 /// clashes are still open. Outside a merge, nothing — as an unbound key.
-fn review_pressed(
+pub(crate) fn review_pressed(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
@@ -158,7 +158,7 @@ pub fn notice_once_checked(state: &AppState) -> Option<(String, bool)> {
 /// block of a marker document, and one for each whole-file or binary
 /// conflict (its one clash is the whole file). An unread file counts none
 /// here; the review's read judges it from disk.
-fn open_clashes(state: &AppState) -> usize {
+pub(crate) fn open_clashes(state: &AppState) -> usize {
     listed_files(state)
         .iter()
         .map(|row| row_open(&row.state))

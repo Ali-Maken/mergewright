@@ -86,7 +86,7 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             vec![state]
         }
         HintContext::Resolver { .. } => vec![resolver_for(walk, context)],
-        HintContext::Clash(bar) => vec![resolver_for(walk, &clash_as_resolver(bar))],
+        HintContext::Clash(bar) => vec![clash_for(walk, bar)],
         // The focused pane, the blame place, a trail under a screen.
         HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
@@ -355,24 +355,5 @@ fn trace_commit(byte: u8) -> graft_git::trace::TraceCommit {
         added: 1,
         removed: 1,
         range_at: Some((1, 3)),
-    }
-}
-
-/// The resolver state a clash bar's keys are pressed into (ease-pass/03b):
-/// the clash screen is today's resolver until L moves it, and every key
-/// the clash bar draws is one the resolver answers. An open, picked or
-/// solved file is a document (`o t b e u n ⏎ esc` act there); every clash
-/// solved is the done file after the last one, where `c` acts.
-fn clash_as_resolver(bar: &graft_ui::graph_screen::hints::ClashBar) -> HintContext {
-    use graft_ui::graph_screen::hints::ClashAt;
-    let roles = bar.roles;
-    let all_solved = bar.at == ClashAt::AllSolved;
-    HintContext::Resolver {
-        base: true,
-        restart: true,
-        whole_file: false,
-        done: all_solved,
-        roles,
-        finishable: all_solved,
     }
 }

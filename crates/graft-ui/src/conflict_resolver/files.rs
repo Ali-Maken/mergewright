@@ -1,11 +1,14 @@
 //! The resolver's file list (m6-conflicts/13, ADR-0043 §1): every file this
 //! step conflicted on, with its state and the open one marked.
 //!
-//! Two placements. Below [`super::THREE_PANE_MIN`] columns it is a **strip**
-//! above the document: one row when every `name · state` cell fits, then
-//! the same row with compact states, then a grid of equal cells, at most
-//! three rows, with `… N more` last. At [`super::THREE_PANE_MIN`] and wider
-//! it is a **column** beside the document.
+//! Two placements. Below [`INLINE_FROM`] columns it is a **strip** above
+//! the document: one row when every `name · state` cell fits, then the same
+//! row with compact states, then a grid of equal cells, at most three rows,
+//! with `… N more` last. From [`INLINE_FROM`] it is a **column**
+//! [`LIST_COLUMN`] wide beside the document, headed `Clashing files`, one
+//! `? name  N open` / `✓ name  done` row per file (the merge mock's list,
+//! ease-pass/11), a merge's `✓ Review the merge  y` last once nothing is
+//! open ([`ListTail`]).
 //!
 //! **One geometry.** [`FileList`] draws and [`file_at`] hit-tests through
 //! the same private plan (`strip_plan` / `column_plan`), so a click lands on
@@ -23,14 +26,17 @@ use graft_term::SanitizedText;
 
 mod column;
 mod strip;
+mod tail;
 mod words;
 
 use super::draw::set_text;
-use super::{Arrangement, arrangement};
+use super::{INLINE_FROM, LIST_COLUMN};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
-use column::{column_plan, column_width};
+use column::column_plan;
 use strip::strip_plan;
+pub use tail::{ListTail, review_row_at};
+pub use words::FileRowLook;
 use words::{WordsTone, paint_words, words_at_end};
 
 /// One file in the list.
@@ -42,57 +48,6 @@ pub struct FileRow {
     pub state: FileRowLook,
 }
 
-/// Where one listed file stands.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FileRowLook {
-    /// Open in the resolver (or seen there) with `open` of `of` blocks left.
-    Open {
-        /// Blocks still open.
-        open: usize,
-        /// Blocks in the file.
-        of: usize,
-    },
-    /// Every block taken; `⏎` marks it done.
-    AllTaken,
-    /// A merge's file with every clash picked: still unmerged, staged by
-    /// the review's `y` (ease-pass/05b) — `⏎` has nothing to mark.
-    Solved,
-    /// git no longer calls it unmerged.
-    Done,
-    /// A whole-file shape (modify/delete, add/add without markers, …).
-    WholeFile {
-        /// The shape, in words with each side's one name — for ticket 14's
-        /// panes; the list itself draws `keep or delete`.
-        how: SanitizedText,
-    },
-    /// A binary file: kept whole from one side.
-    Binary,
-    /// Not read yet.
-    Unread,
-}
-
-impl FileRowLook {
-    /// The state's words: full, or compact (`1/2 open`, `✓`).
-    fn words(&self, compact: bool, g: Glyphs) -> String {
-        match (self, compact) {
-            (FileRowLook::Open { open, of }, false) => format!("{open} of {of} open"),
-            (FileRowLook::Open { open, of }, true) => format!("{open}/{of} open"),
-            (FileRowLook::AllTaken, false) => format!("{} marks done", g.enter),
-            (FileRowLook::AllTaken, true) => g.enter.to_string(),
-            (FileRowLook::Solved, false) => format!("solved {}", g.check),
-            (FileRowLook::Done, false) => format!("done {}", g.check),
-            // Compact, solved and done draw the same tick; the tone tells
-            // them apart no more than the words do (both muted).
-            (FileRowLook::Solved | FileRowLook::Done, true) => g.check.to_string(),
-            (FileRowLook::WholeFile { .. }, false) => "keep or delete".to_owned(),
-            (FileRowLook::WholeFile { .. }, true) => "keep?".to_owned(),
-            (FileRowLook::Binary, false) => "binary".to_owned(),
-            (FileRowLook::Binary, true) => "bin".to_owned(),
-            (FileRowLook::Unread, _) => g.unread.to_string(),
-        }
-    }
-}
-
 /// The list, ready to draw.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FileListView {
@@ -102,6 +57,8 @@ pub struct FileListView {
     pub cursor: usize,
     /// git's list could not be read: `rows` are the unmerged paths only.
     pub unavailable: bool,
+    /// What the list draws after its files.
+    pub tail: ListTail,
 }
 
 /// Where the list sits.
@@ -119,31 +76,17 @@ pub enum Placement {
     },
 }
 
-impl Placement {
-    /// The arrangement this placement belongs to: a column beside three
-    /// panes, a strip above the card. The draw and the hit-test both read
-    /// the arrangement here, from the one placement `resolver_split`
-    /// made, so they can never measure a width twice and disagree.
-    #[must_use]
-    pub const fn arrangement(self) -> Arrangement {
-        match self {
-            Placement::Column { .. } => Arrangement::ThreePane,
-            Placement::Strip { .. } => Arrangement::Card,
-        }
-    }
-}
-
-/// Where the list goes at this frame width: a column at
-/// [`super::THREE_PANE_MIN`] and up, else a strip as tall as it needs.
+/// Where the list goes at this frame width: a column [`LIST_COLUMN`] wide
+/// from [`INLINE_FROM`] (three panes or not), else a strip as tall as it
+/// needs.
 #[must_use]
 pub fn placement(view: &FileListView, frame_columns: u16) -> Placement {
-    match arrangement(frame_columns) {
-        Arrangement::ThreePane => Placement::Column {
-            width: column_width(view),
-        },
-        Arrangement::Card => Placement::Strip {
-            rows: strip_plan(view, frame_columns, Glyphs::UNICODE).rows,
-        },
+    if frame_columns >= INLINE_FROM {
+        Placement::Column { width: LIST_COLUMN }
+    } else {
+        Placement::Strip {
+            rows: strip_plan(view, frame_columns, Glyphs::UNICODE).rows + view.tail.rows(),
+        }
     }
 }
 
@@ -268,6 +211,7 @@ impl Widget for FileList<'_> {
             set_text(buf, at.x, at.y, at, &cell.text, style);
             paint_words(buf, at, cell, self.theme);
         }
+        tail::draw_tail(self.view, self.placement, area, buf, self.theme, g);
     }
 }
 

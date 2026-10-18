@@ -3,7 +3,9 @@
 
 use graft_core::event::{KeyCode, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
-use graft_ui::conflict_resolver::{HEADER_ROWS, ScreenRow, file_at, finish_row_at, row_at};
+use graft_ui::conflict_resolver::{
+    HEADER_ROWS, ScreenRow, file_at, finish_row_at, review_row_at, row_at,
+};
 
 use super::files::select_file;
 use super::fits;
@@ -70,14 +72,14 @@ pub(super) fn click(
         column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
     };
     if inside(&split, true) {
-        if let Some(index) = file_at(
-            &files,
-            placed,
-            split.list.width,
-            split.list.height,
-            column - split.list.x,
-            row - split.list.y,
-        ) {
+        let (dx, dy) = (column - split.list.x, row - split.list.y);
+        // The list's `✓ Review the merge  y` does what `y` does
+        // (ease-pass/11) — the review, or why it waits.
+        if review_row_at(&files, placed, split.list.width, split.list.height, dx, dy) {
+            super::review::review_pressed(state, commands, next_id);
+            return;
+        }
+        if let Some(index) = file_at(&files, placed, split.list.width, split.list.height, dx, dy) {
             let answered = select_file(state, commands, index, next_id);
             debug_assert!(answered, "`file_at` named a listed file");
         }
@@ -86,7 +88,8 @@ pub(super) fn click(
     if !inside(&split, false) {
         return;
     }
-    // The finish row does what `c` does (m6-conflicts/60).
+    // The finish row does what `c` does (m6-conflicts/60); a merge draws
+    // none (its way on is the list's last row).
     let area = crate::view::resolver::resolver_area(state, super::banner_rows(state));
     if crate::view::resolver::resolver_view(state, split.doc.width)
         .is_some_and(|doc| finish_row_at(&doc, placed, area, column, row))
@@ -118,11 +121,13 @@ pub(super) fn block_of(row: &ScreenRow) -> Option<usize> {
         | ScreenRow::Labels { block }
         | ScreenRow::Pair { block, .. }
         | ScreenRow::Side { block, .. }
+        | ScreenRow::Kept { block, .. }
         | ScreenRow::End { block } => Some(*block),
         ScreenRow::Aligned { block, .. } => *block,
         ScreenRow::Plain { .. }
         | ScreenRow::WholeFile { .. }
         | ScreenRow::Note { .. }
+        | ScreenRow::Solved { .. }
         | ScreenRow::PaneTitles => None,
     }
 }

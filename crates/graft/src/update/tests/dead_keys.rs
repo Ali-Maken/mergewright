@@ -1,6 +1,8 @@
 //! `update` tests: dead keys. Moved out of `update/tests.rs` (m8/21b-5, move-only).
 
 use super::*;
+use graft_ui::conflict_resolver::SideRoles;
+use graft_ui::graph_screen::hints::{ClashAt, ClashBar};
 
 /// One cell of [`every_key_the_bar_draws_is_answered`]'s sweep: this
 /// context, at this width, with the pane open or not — every hint its bar
@@ -232,14 +234,43 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // A whole-file card (m6-05 review, Major 1) is the one other form.
         // The finish summary is an overlay too, and `overlay_context`
         // answers exactly its form (m6-conflicts/19).
-        same @ (HintContext::Resolver {
+        // A document with a clash open draws the clash bar (ease-pass/11):
+        // the document fixture is that screen.
+        HintContext::Resolver {
             base: true,
             restart: true,
             whole_file: false,
             done: false,
             finishable: false,
-            ..
-        }
+            roles,
+        } => Some(HintContext::Clash(ClashBar {
+            at: ClashAt::Open,
+            roles: *roles,
+        })),
+        // `clash_for`'s screens: `FileSolved` names its fixture's next file;
+        // outside a merge, nothing open anywhere is today's document bar
+        // (`rows::clash_bars::clash_bar`).
+        HintContext::Clash(ClashBar {
+            at: ClashAt::FileSolved { .. },
+            roles,
+        }) => Some(HintContext::Clash(ClashBar {
+            at: ClashAt::FileSolved {
+                next: graft_term::sanitize_line("later.rs"),
+            },
+            roles: *roles,
+        })),
+        HintContext::Clash(ClashBar {
+            at: ClashAt::AllSolved,
+            roles,
+        }) if *roles != SideRoles::Merge => Some(HintContext::Resolver {
+            base: true,
+            restart: true,
+            whole_file: false,
+            done: false,
+            roles: *roles,
+            finishable: false,
+        }),
+        same @ (HintContext::Clash(_)
         | HintContext::Resolver {
             base: false,
             restart: false,
@@ -270,16 +301,15 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
         // never reach the app.
-        // The ease pass's bars (03b) are not yet what the app's footer
-        // answers: G picks `GraphRow` at the row-context choice site and L
-        // moves the resolver to `Clash`. Until then no state classifies as
-        // either; their keys are still pressed (`screen_for`).
+        // The ease pass's row bars (03b) are not yet what the app's footer
+        // answers: G picks `GraphRow` at the row-context choice site. Until
+        // then no state classifies as one; their keys are still pressed
+        // (`screen_for`).
         // ease-pass/12: the m6 `Finish` form the review replaced has no
         // picker left (retiring, 03b's).
         HintContext::Preview
         | HintContext::Resolver { .. }
         | HintContext::GraphRow { .. }
-        | HintContext::Clash(_)
         | HintContext::Finish { .. } => None,
         // A standing search (m8/15b): the row's form, led by `n N`.
         HintContext::Searching(row) => {

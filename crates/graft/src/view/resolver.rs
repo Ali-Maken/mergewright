@@ -19,6 +19,7 @@ use graft_ui::conflict_resolver::{
 use ratatui::layout::Rect;
 
 mod file_list;
+mod solved;
 #[cfg(test)]
 mod tests;
 mod whole_file;
@@ -70,7 +71,14 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
         title: sanitize_line(&resolver_title(&open.path, identity)),
         files: file_list_view(state),
         names: side_names(state),
-        regions: regions(file),
+        regions: {
+            let mut regions = regions(file);
+            // A done file is read-only: its card says so, not this line.
+            if open.done.is_none() {
+                regions.extend(solved::solved_line(state, &open.path, file));
+            }
+            regions
+        },
         cursor_block: open.cursor_block,
         base_shown: open.base_shown,
         notice: open
@@ -108,15 +116,13 @@ pub(crate) fn finish_row(state: &AppState) -> Option<graft_ui::conflict_resolver
         .keymap
         .spell_keys(&[graft_ui::keymap::ActionId("resolver.finish")])?;
     let (full, short) = match kind {
-        InProgress::Merge => (
-            format!("{c} review and finish the merge"),
-            format!("{c} review & finish"),
-        ),
         InProgress::Rebase | InProgress::CherryPick | InProgress::Revert => (
             format!("{c} continue the {}", kind.name()),
             format!("{c} continue"),
         ),
-        InProgress::Bisect => return None,
+        // A merge's way on is the list's last row, `✓ Review the merge
+        // y` (ease-pass/11): the notice row names no finish there.
+        InProgress::Merge | InProgress::Bisect => return None,
     };
     let row = |keys: &str| sanitize_line(&format!("✓ every file done — {keys}"));
     Some(graft_ui::conflict_resolver::FinishRow {
@@ -136,21 +142,27 @@ pub fn resolver_layout(state: &AppState, placed: Placement, columns: u16) -> Opt
     resolver_view(state, columns).map(|doc| layout(&doc, arrangement(state, placed), columns))
 }
 
-/// The arrangement the open file is drawn in: `placed`'s, except that a
-/// done file is always one card (m6-conflicts/25). Its sides are gone — the
-/// three panes would draw the file on disk under `yours`, `result` and
-/// `theirs` alike, claiming it for a side that may have deleted it. The
-/// list keeps its column.
+/// The arrangement the open file is drawn in (ease-pass/11): a strip list
+/// leaves one card; a column list leaves the inline document, its open
+/// clashes side by side, or three panes from
+/// [`THREE_PANE_MIN`](graft_ui::conflict_resolver::THREE_PANE_MIN) columns
+/// of frame. A done file is never three panes (m6-conflicts/25): its sides
+/// are gone, and the panes would draw the file on disk under `yours`,
+/// `result` and `theirs` alike, claiming it for a side that may have
+/// deleted it.
 #[must_use]
 pub fn arrangement(state: &AppState, placed: Placement) -> Arrangement {
-    if state
+    let done = state
         .resolver
         .as_ref()
-        .is_some_and(|open| open.done.is_some())
-    {
-        Arrangement::Card
-    } else {
-        placed.arrangement()
+        .is_some_and(|open| open.done.is_some());
+    match (
+        placed,
+        graft_ui::conflict_resolver::arrangement(state.size.columns),
+    ) {
+        (Placement::Strip { .. }, _) => Arrangement::Card,
+        (Placement::Column { .. }, Arrangement::ThreePane) if !done => Arrangement::ThreePane,
+        (Placement::Column { .. }, _) => Arrangement::Inline,
     }
 }
 
@@ -316,7 +328,19 @@ fn block_view(
     numbers: BlockNumbers,
     state: BlockState,
 ) -> BlockView {
+    let side = |lines: &[graft_git::conflict::Line]| lines.iter().map(text_of).collect::<Vec<_>>();
     BlockView {
+        // What the pick wrote, for its `◀ ▶ ◆` rows (ease-pass/11).
+        kept: match state {
+            BlockState::Open => Vec::new(),
+            BlockState::Took(TakeView::Ours) => side(&block.ours),
+            BlockState::Took(TakeView::Theirs) => side(&block.theirs),
+            BlockState::Took(TakeView::Both) => {
+                let mut both = side(&block.ours);
+                both.extend(side(&block.theirs));
+                both
+            }
+        },
         index,
         of,
         state,

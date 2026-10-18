@@ -5,12 +5,11 @@ mod block;
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
 use super::{
-    BlockState, BlockView, GUTTER, LabelOf, RegionView, ResolverScreen, SIDE_BY_SIDE_MIN,
-    ScreenRow, SideKind, TakeView, number_width,
+    BlockState, BlockView, GUTTER, LabelOf, RegionView, ResolverScreen, ScreenRow, SideKind,
+    number_width,
 };
 
 use crate::fit::fit;
@@ -24,10 +23,6 @@ impl ResolverScreen<'_> {
 
     pub(super) fn divider(&self) -> char {
         if self.ascii { '|' } else { '│' }
-    }
-
-    fn join(&self) -> char {
-        if self.ascii { '+' } else { '┴' }
     }
 
     pub(super) fn cursor_mark(&self) -> &'static str {
@@ -104,37 +99,11 @@ impl ResolverScreen<'_> {
         }
     }
 
-    fn draw_gutter(&self, buf: &mut Buffer, area: Rect, y: u16, block: usize) {
-        if self.is_cursor_block(block) {
-            set_text(
-                buf,
-                area.x,
-                y,
-                area,
-                self.cursor_mark(),
-                foreground(self.theme, Token::Accent),
-            );
-        }
-    }
-
-    /// The plain content style: never reversed. Only [`Self::draw_header`]
-    /// reverses (Major 3, m6-02-03 review) — every other row of the cursor
-    /// block carries the `▏` gutter instead ([`Self::draw_gutter`]), which
-    /// is the design note's own split ("the cursor block's header (reversed,
-    /// `▏` rule on its lines)"). A whole reversed card is a worse version of
-    /// the m5/44 problem this design already fixed once.
+    /// The plain content style: never reversed. The cursor's clash is told
+    /// by its outline (ease-pass/11), not by reversing its text — a whole
+    /// reversed card is the m5/44 problem this design already fixed once.
     pub(super) fn base_style(&self) -> ratatui::style::Style {
         foreground(self.theme, Token::Text)
-    }
-
-    /// [`Self::base_style`], reversed when `cursor` — the header's own
-    /// style, and the only place reversal happens.
-    pub(super) fn header_style(&self, cursor: bool) -> ratatui::style::Style {
-        if cursor {
-            self.base_style().add_modifier(Modifier::REVERSED)
-        } else {
-            self.base_style()
-        }
     }
 
     pub(super) fn draw_row(&self, buf: &mut Buffer, area: Rect, y: u16, row: &ScreenRow) {
@@ -189,7 +158,9 @@ impl ResolverScreen<'_> {
                 theirs,
             } => self.draw_pair(buf, area, y, *block, *ours, *theirs),
             ScreenRow::Side { block, side, i } => self.draw_side(buf, area, y, *block, *side, *i),
+            ScreenRow::Kept { block, i } => self.draw_kept(buf, area, y, *block, *i),
             ScreenRow::End { block } => self.draw_end(buf, area, y, *block),
+            ScreenRow::Solved { name, next } => self.draw_solved(buf, area, y, name, next),
             ScreenRow::PaneTitles | ScreenRow::Aligned { .. } => {
                 self.draw_pane_row(buf, area, y, row);
             }
@@ -203,17 +174,42 @@ impl ResolverScreen<'_> {
             foreground(self.theme, Token::Text)
         }
     }
-}
 
-/// `middle` centred in a rule line `width` cells wide, the rule character
-/// filling what is left; cut with `…` if `middle` alone overflows `width`.
-fn ruled_line(middle: &str, rule: char, width: usize) -> String {
-    let mut s = format!("{rule}{rule}{middle}");
-    let used = s.width();
-    if used < width {
-        s.push_str(&rule.to_string().repeat(width - used));
+    /// `✓ Every clash in <name> is solved.` in `added`, then the way on,
+    /// muted (the merge mock, M9). Colour unverified by capture.
+    fn draw_solved(
+        &self,
+        buf: &mut Buffer,
+        area: Rect,
+        y: u16,
+        name: &graft_term::SanitizedText,
+        next: &graft_term::SanitizedText,
+    ) {
+        let content = Self::content_area(area);
+        let check = if self.ascii { '*' } else { '✓' };
+        let head = format!("{check} Every clash in {name} is solved.");
+        set_text(
+            buf,
+            content.x,
+            y,
+            content,
+            &head,
+            foreground(self.theme, Token::Added),
+        );
+        if !next.as_str().is_empty() {
+            let x = content
+                .x
+                .saturating_add(u16::try_from(head.width() + 2).unwrap_or(u16::MAX));
+            set_text(
+                buf,
+                x,
+                y,
+                content,
+                next.as_str(),
+                foreground(self.theme, Token::TextMuted),
+            );
+        }
     }
-    fit(&s, width)
 }
 
 /// Writes `text`, clipped to what is left of `area` from `(x, y)`; a no-op

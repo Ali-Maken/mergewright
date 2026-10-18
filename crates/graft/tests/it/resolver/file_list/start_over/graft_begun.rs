@@ -27,7 +27,7 @@ fn d_on_a_done_modify_delete_file_reopens_its_card() {
     let done = crate::captures::frame(&state, 120, 40);
     let body = done.join("\n");
     assert_eq!(
-        done[3].trim_end(),
+        crate::captures::doc_rows(&done)[1].trim_end(),
         "▸ gone.txt · done ✓ · d starts it over",
         "{body}"
     );
@@ -236,18 +236,18 @@ fn esc_in_the_box_changes_nothing() {
     drop(scratch);
 }
 
-/// Every file done (the last a whole-file card, staged): the finish row
-/// shows, no summary opened on its own (ease-pass/05b).
+/// Every file done (the last a whole-file card, staged): the list ends with
+/// `✓ Review the merge` (ease-pass/11), no summary opened on its own.
 /// Then `shared.rs` opened from the list and `d y`: a file is open again,
-/// so the finish row is gone (m7-power-tools/17).
+/// so the review row is gone (m7-power-tools/17).
 #[test]
 fn restart_after_the_last_file_hides_the_finish_row() {
-    const FINISH: &str = "every file done";
+    const FINISH: &str = "Review the merge";
     let scratch = crate::resolver::restart::app_merge_with_a_whole_file_conflict();
     let (app, state) = on_gone_card(&scratch);
     let state = shared_done(&app, &state);
     // No summary opens on its own (P11 dropped for a merge, ease-pass/05b):
-    // the last stage lands on the finish row.
+    // the last stage lands on the review row.
     let state = app.key(&state, KeyCode::Char('o'));
     let state = app.pump(state, "gone.txt kept, every file done", |state| {
         state.operating.is_none()

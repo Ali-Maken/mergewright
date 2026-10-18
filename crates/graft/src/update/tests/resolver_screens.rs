@@ -93,3 +93,28 @@ fn in_roles(mut state: AppState, roles: graft_ui::conflict_resolver::SideRoles) 
     }
     state
 }
+
+/// [`screen_for`]'s clash screen for `bar` (ease-pass/11): the two-block
+/// document in `bar.roles`' operation, picked to where `bar.at` stands —
+/// `Picked` its first clash taken, `FileSolved` both (`later.rs`, unread,
+/// is next), `AllSolved` both and `later.rs` solved too.
+pub(super) fn clash_for(walk: JobId, bar: &graft_ui::graph_screen::hints::ClashBar) -> AppState {
+    use graft_git::conflict::Take;
+    use graft_ui::graph_screen::hints::ClashAt;
+    let mut state = resolver_screen_for(walk, false, false, bar.roles);
+    let open = state.resolver.as_mut().expect("open");
+    let file = Arc::make_mut(open.file.as_mut().expect("a document"));
+    match bar.at {
+        ClashAt::Open => {}
+        ClashAt::Picked => file.take(0, Take::Ours).expect("block 0"),
+        ClashAt::FileSolved { .. } => {
+            file.take_all(Take::Ours);
+        }
+        ClashAt::AllSolved => {
+            file.take_all(Take::Ours);
+            open.seen
+                .insert("later.rs".into(), resolver::RowState::AllTaken);
+        }
+    }
+    state
+}

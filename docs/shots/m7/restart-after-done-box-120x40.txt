@@ -1,18 +1,18 @@
 MERGING
-files   gone.txt · keep or delete    ▸ shared.rs · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ shared.rs · done ✓ · d starts it over
-
-  1 fn main() { ours() }
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ shared.rs · done ✓ · d starts it over
+                              │
+ ? gone.txt   keep or delete  │   1 fn main() { ours() }
+▏✓ shared.rs  done            │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
                             ╭ Start shared.rs over ────────────────────────────────────────╮
                             │ the conflict comes back with all its markers                 │
                             │ your choices in shared.rs are dropped · not undoable while   │
@@ -22,19 +22,19 @@ files   gone.txt · keep or delete    ▸ shared.rs · done ✓
                             │                                                              │
                             │ ▸[ Cancel ]   [ Start over ]                                 │
                             ╰──────────────────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  y start over  ←/→ move  ⏎ choose  esc cancel

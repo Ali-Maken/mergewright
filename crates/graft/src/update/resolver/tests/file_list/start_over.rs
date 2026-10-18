@@ -301,13 +301,17 @@ fn d_is_in_the_bar_exactly_when_the_box_opens() {
             !matches!(state.status, Status::Sticky { .. }),
             "{name}: a clean start"
         );
+        // A document with a clash open draws the clash bar, the mock's
+        // keys only (ease-pass/11, M11): `d` still opens the box there,
+        // unnamed — an open question in the ticket's NOTES.
+        let clash_bar = crate::view::rows::clash_bars::clash_bar(state).is_some();
         assert_eq!(
             offers_d(state),
-            d_opens_the_box(state),
+            d_opens_the_box(state) && !clash_bar,
             "{name}: the bar {:?}",
             bar(state)
         );
     }
     let offered = fixtures.iter().filter(|(_, state)| offers_d(state)).count();
-    assert_eq!(offered, 5, "the document and the four `can` shapes");
+    assert_eq!(offered, 4, "the four `can` shapes");
 }

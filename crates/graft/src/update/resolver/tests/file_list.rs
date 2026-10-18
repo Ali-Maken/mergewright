@@ -317,15 +317,16 @@ fn a_click_on_the_document_still_picks_its_block() {
         .collect();
     let mut many: Vec<&str> = vec!["conflicted.rs"];
     many.extend(long.iter().map(String::as_str));
-    for (paths, rows) in [(vec!["conflicted.rs", "later.rs"], 1u16), (many, 3u16)] {
-        let state = listing(&paths, &paths);
+    for (paths, grid) in [(vec!["conflicted.rs", "later.rs"], false), (many, true)] {
+        // Under `INLINE_FROM` the list is a strip (ease-pass/11).
+        let mut state = listing(&paths, &paths);
+        state.size.columns = 90;
         let files = crate::view::resolver::file_list_view(&state);
-        assert_eq!(
-            graft_ui::conflict_resolver::placement(&files, state.size.columns),
-            Placement::Strip { rows },
-            "{} files",
-            paths.len()
-        );
+        let placed = graft_ui::conflict_resolver::placement(&files, state.size.columns);
+        let Placement::Strip { rows } = placed else {
+            panic!("{} files: {placed:?}", paths.len())
+        };
+        assert_eq!(rows > 1, grid, "{} files: {rows} rows", paths.len());
         let (_, placed, split) =
             crate::view::resolver::resolver_split(&state, super::super::banner_rows(&state));
         let laid = crate::view::resolver::resolver_layout(&state, placed, split.doc.width)
@@ -413,86 +414,6 @@ fn a_click_mid_take_is_refused_in_words() {
     }
 }
 
-/// `⏎`'s stage landing on the last file not done.
-fn last_file_lands(kind: Option<InProgress>) -> AppState {
-    let mut state = listing(&["gone.txt", "conflicted.rs"], &["conflicted.rs"]);
-    state.in_progress = kind.map(|kind| crate::update::resolver::fixtures::operation(kind, None));
-    state.banner_focus = false;
-    let staged = JobId::new(4_500);
-    state.resolver.as_mut().expect("open").staging = Some(staged);
-    let mut commands = Vec::new();
-    let mut ids = 4_500;
-    resolved_advance(&mut state, &mut commands, staged, &mut || {
-        ids += 1;
-        JobId::new(ids)
-    });
-    state
-}
-
-/// The resolver stays on the last file (m6-conflicts/31, P8): the status
-/// line says `✓ <file> done  every clash is solved · y reviews the merge`. Nothing
-/// opens on its own (ease-pass/05b dropped m6-conflicts/60's owed open).
-#[test]
-fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {
-    let state = last_file_lands(Some(InProgress::Merge));
-    assert_eq!(super::open_path(&state), Path::new("conflicted.rs"));
-    assert!(!state.banner_focus);
-    let open = state.resolver.as_ref().expect("open");
-    assert_eq!(open.notice, None, "no status read out: nothing to check");
-    assert_eq!(
-        state.status,
-        Status::Done {
-            what: "conflicted.rs done".to_owned(),
-            also: None,
-            keys: Some("every clash is solved · y reviews the merge".to_owned()),
-        }
-    );
-}
-
-/// Rewritten for m6-conflicts/60 (was
-/// `after_the_last_file_of_a_rebase_the_notice_says_c_continues`): no
-/// summary is owed — `c` writes — so the status line names the key.
-#[test]
-fn after_the_last_file_of_a_rebase_the_status_says_c_continues() {
-    for (kind, keys) in [
-        (
-            InProgress::Rebase,
-            "every file done · c continues the rebase",
-        ),
-        (
-            InProgress::CherryPick,
-            "every file done · c continues the cherry-pick",
-        ),
-        (
-            InProgress::Revert,
-            "every file done · c continues the revert",
-        ),
-    ] {
-        let state = last_file_lands(Some(kind));
-        assert_eq!(super::open_path(&state), Path::new("conflicted.rs"));
-        assert!(!state.banner_focus, "{kind:?}");
-        let open = state.resolver.as_ref().expect("open");
-        assert_eq!(open.notice, None, "{kind:?}");
-        assert_eq!(
-            state.status,
-            Status::Done {
-                what: "conflicted.rs done".to_owned(),
-                also: None,
-                keys: Some(keys.to_owned()),
-            },
-            "{kind:?}"
-        );
-    }
-}
-
-#[test]
-fn after_the_last_stash_file_the_status_says_every_file_done() {
-    let state = last_file_lands(None);
-    assert!(state.resolver.is_none());
-    assert!(!state.banner_focus, "no banner: back on the graph");
-    assert_eq!(state.status, Status::done("every file done"));
-}
-
 /// A file done, another left: the resolver lands on it, says so on its
 /// notice row, and asks for the set again.
 #[test]
@@ -553,10 +474,7 @@ fn an_unreadable_set_says_so() {
         "rows from the status"
     );
     let drawn = super::frame_text(&state);
-    assert!(
-        drawn.contains("files: git's list unavailable · the unmerged ones below"),
-        "{drawn}"
-    );
+    assert!(drawn.contains("git's list unavailable"), "{drawn}");
 }
 
 /// Review m6-amend-13, Major 1: `d`'s box is up over the resolver, and a
@@ -694,11 +612,11 @@ fn identity_row(state: &AppState) -> String {
     let drawn = super::frame_text(state);
     drawn
         .lines()
-        .find(|line| line.trim_start().starts_with("▸ gone.txt ·"))
-        .map_or_else(
-            || panic!("no identity row:\n{drawn}"),
-            |line| line.trim().to_owned(),
-        )
+        .find_map(|line| {
+            line.find("▸ gone.txt ·")
+                .map(|at| line[at..].trim().to_owned())
+        })
+        .unwrap_or_else(|| panic!("no identity row:\n{drawn}"))
 }
 
 #[test]
@@ -835,10 +753,11 @@ fn a_done_file_refuses_in_words() {
     // `j` steps files since m6-conflicts/17; `PgDn` is the scroll now.
     let (after, _) = super::press(&state, KeyCode::PageDown);
     // A page is the document window's height less one row of overlap
-    // (`scroll::scroll_key`): 41 in this fixture's window.
+    // (`scroll::scroll_key`): 43 in this fixture's window, the list a
+    // column beside it (ease-pass/11).
     assert_eq!(
         after.resolver.as_ref().expect("open").top,
-        41,
+        43,
         "PgDn scrolls"
     );
 }
@@ -973,4 +892,5 @@ fn a_done_file_handed_back_stays_open() {
     );
 }
 
+mod last_file;
 mod start_over;

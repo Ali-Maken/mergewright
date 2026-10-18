@@ -1,50 +1,50 @@
 MERGING
-FILES · 2 conflicted     │▸ notes.txt · 2 conflicts · 2 open
-                         │
-   gone.txt   •          │ yours · main                                            │ result                                                   │ theirs · feature
-▏▸ notes.txt  2 of 2 open│ 1 one                                                   │ 1 one                                                    │ 1 one
-                         │▏── o take                                               ? ── 1 of 2 · open                                         ? ── t take
-                         │▏2 two from main                                         ┃   ? open · o t b                                         ┃ 2 TWO from feature
-                         │ 3 three                                                 │ 3 three                                                  │ 3 three
-                         │ 4 four                                                  │ 4 four                                                   │ 4 four
-                         │ 5 five                                                  │ 5 five                                                   │ 5 five
-                         │ 6 six                                                   │ 6 six                                                    │ 6 six
-                         │ ── o take                                               ? ── 2 of 2 · open                                         ? ── t take
-                         │ 7 seven from main                                       ┃   ? open · o t b                                         ┃ 7 SEVEN from feature
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
-                         │
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
+Clashing files                │▸ notes.txt · 2 conflicts · 2 open
+                              │
+   gone.txt   •               │ yours · main                                          │ result                                                  │ theirs · feature
+▏? notes.txt  2 open          │ 1 one                                                 │ 1 one                                                   │ 1 one
+                              │▏── o take                                             ? ── 1 of 2 · open                                        ? ── t take
+                              │▏2 two from main                                       ┃   ? open · o t b                                        ┃ 2 TWO from feature
+                              │ 3 three                                               │ 3 three                                                 │ 3 three
+                              │ 4 four                                                │ 4 four                                                  │ 4 four
+                              │ 5 five                                                │ 5 five                                                  │ 5 five
+                              │ 6 six                                                 │ 6 six                                                   │ 6 six
+                              │ ── o take                                             ? ── 2 of 2 · open                                        ? ── t take
+                              │ 7 seven from main                                     ┃   ? open · o t b                                        ┃ 7 SEVEN from feature
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+ o take yours (left) · t take theirs (right) · b take both · e edit by hand · u undo pick · esc pause, come back later

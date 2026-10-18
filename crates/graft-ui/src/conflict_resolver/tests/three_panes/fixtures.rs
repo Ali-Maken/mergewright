@@ -67,6 +67,8 @@ pub(super) fn doc_of(file: &ConflictFile, base_shown: bool) -> DocView {
                     .shown_base()
                     .map(|(base, _)| (text("base"), base.lines.iter().map(text_of).collect())),
                 theirs: block.theirs.iter().map(text_of).collect(),
+                // The panes draw a take from its sides, not these.
+                kept: Vec::new(),
                 first_line: numbers.result,
                 numbers,
             })

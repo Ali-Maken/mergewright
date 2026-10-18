@@ -222,6 +222,39 @@ pub fn at_rest(app: &crate::app_harness::App, state: AppState) -> AppState {
     })
 }
 
+/// One resolver row split at its list column's rule (ease-pass/11): the
+/// list's cell and the document's part. A row with no rule there is all
+/// document — a strip list's frame, or no list at all.
+pub fn split_at_list(row: &str) -> (String, String) {
+    let at = usize::from(graft_ui::conflict_resolver::LIST_COLUMN);
+    let chars: Vec<char> = row.chars().collect();
+    if chars.get(at) == Some(&'│') {
+        (
+            chars[..at].iter().collect(),
+            chars[at + 1..].iter().collect(),
+        )
+    } else {
+        (String::new(), row.to_owned())
+    }
+}
+
+/// The list column's cell naming `name`, its words one space apart
+/// (`✓ gone.txt done`; the open file's starts `▏`). Empty when no cell
+/// names it.
+pub fn list_row(frame: &[String], name: &str) -> String {
+    frame
+        .iter()
+        .map(|row| split_at_list(row).0)
+        .find(|cell| cell.contains(name))
+        .map(|cell| cell.split_whitespace().collect::<Vec<_>>().join(" "))
+        .unwrap_or_default()
+}
+
+/// Every row's document part, right of the list column's rule.
+pub fn doc_rows(frame: &[String]) -> Vec<String> {
+    frame.iter().map(|row| split_at_list(row).1).collect()
+}
+
 /// The walk has stopped moving: complete, its promotion done.
 pub fn walk_has_settled(state: &AppState) -> bool {
     use graft::history::Phase;

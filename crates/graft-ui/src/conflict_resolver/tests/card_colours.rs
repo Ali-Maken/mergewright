@@ -1,6 +1,7 @@
-//! The card's colours below 180 columns (ADR-0044 §2, "Card"): no glyph
-//! changes; an open block's sides in their tints, labels in their hue,
-//! BOLD; a taken block in the taken side's tint with its name in that hue.
+//! The document's colours below 180 columns (ADR-0044 §2, ease-pass/11):
+//! an open clash's sides in their tints, labels in their hue, BOLD, the
+//! cursor's outline in `open`; a taken clash's kept lines in its mark's hue,
+//! its words muted.
 //! Asserted on the buffer; how it looks is unverified by capture (CLAUDE.md
 //! rule 5).
 
@@ -64,7 +65,7 @@ fn card_tints_follow_the_block_state() {
     let theme = theme();
     let doc = three_block_doc(false);
     // 120 columns: block 0 open, paired; block 1 took theirs.
-    let laid = layout(&doc, Arrangement::Card, 120);
+    let laid = layout(&doc, Arrangement::Inline, 120);
     let buf = draw(&doc, &laid, 0, 120, 40, false);
     open_block_paired(&theme, &laid, &buf);
     taken_block_tinted(&theme, &laid, &buf);
@@ -74,7 +75,7 @@ fn card_tints_follow_the_block_state() {
     open_block_stacked(&theme, &laid, &buf);
 }
 
-/// Labels in their hue, BOLD; each half in its tint; the header's `open`.
+/// Labels in their hue, BOLD; each half in its tint; the outline `open`.
 fn open_block_paired(theme: &Theme, laid: &Layout, buf: &Buffer) {
     let labels = row_of(laid, |r| matches!(r, ScreenRow::Labels { block: 0 }));
     assert_eq!(
@@ -105,43 +106,19 @@ fn open_block_paired(theme: &Theme, laid: &Layout, buf: &Buffer) {
     );
 
     let header = row_of(laid, |r| matches!(r, ScreenRow::Header { block: 0 }));
-    let x = find(buf, header, 120, "open");
-    assert_eq!(
-        buf[(x, header)].fg,
-        fg(theme, Token::Open),
-        "the header's `open`"
-    );
-    assert!(
-        buf[(x, header)].modifier.contains(Modifier::REVERSED),
-        "cursor"
-    );
+    assert_eq!(buf[(0, header)].symbol(), "┌");
+    assert_eq!(buf[(0, header)].fg, fg(theme, Token::Open), "the outline");
 }
 
-/// A taken block: its name in the taken side's hue, its lines on its tint;
-/// a plain row untinted.
+/// A taken clash: its mark and kept line in the taken side's hue, its
+/// words muted; a plain row untinted.
 fn taken_block_tinted(theme: &Theme, laid: &Layout, buf: &Buffer) {
-    let header = row_of(laid, |r| matches!(r, ScreenRow::Header { block: 1 }));
-    let x = find(buf, header, 120, "theirs · feature");
-    assert_eq!(
-        buf[(x, header)].fg,
-        fg(theme, Token::Theirs),
-        "took theirs · feature"
-    );
-    let taken = row_of(laid, |r| {
-        matches!(
-            r,
-            ScreenRow::Side {
-                block: 1,
-                side: SideKind::Theirs,
-                ..
-            }
-        )
-    });
-    assert_eq!(
-        buf[(LEFT, taken)].bg,
-        tint(theme, Token::TheirsTint),
-        "taken line"
-    );
+    let taken = row_of(laid, |r| matches!(r, ScreenRow::Kept { block: 1, i: 0 }));
+    assert_eq!(buf[(1, taken)].symbol(), "▶");
+    assert_eq!(buf[(1, taken)].fg, fg(theme, Token::Theirs), "the mark");
+    assert_eq!(buf[(LEFT, taken)].fg, fg(theme, Token::Theirs), "kept line");
+    let x = find(buf, taken, 120, "took theirs");
+    assert_eq!(buf[(x, taken)].fg, fg(theme, Token::TextMuted), "its words");
     let plain = row_of(laid, |r| matches!(r, ScreenRow::Plain { .. }));
     assert_eq!(buf[(LEFT, plain)].bg, Color::Reset);
 }

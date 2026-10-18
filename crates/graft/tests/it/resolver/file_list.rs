@@ -5,6 +5,7 @@
 use graft::update::resolver::{RowState, listed_files};
 
 use super::*;
+use crate::captures::{doc_rows, list_row, split_at_list};
 
 /// A merge of `feature` into `main` stopped on two files: `gone.txt`
 /// (changed on `main`, deleted on `feature` — a whole-file card) and
@@ -97,8 +98,8 @@ fn keep_gone(app: &App, state: &AppState) -> AppState {
     })
 }
 
-/// The column `gone.txt` starts at on the list's row (row 1).
-fn gone_column(frame: &[String]) -> usize {
+/// Where `gone.txt`'s cell starts in the list: row, column.
+fn gone_column(frame: &[String]) -> (usize, usize) {
     gone_like_column(frame, "gone.txt")
 }
 
@@ -120,17 +121,12 @@ fn a_done_file_stays_listed() {
     );
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
+    let list = [list_row(&frame, "gone.txt"), list_row(&frame, "notes.txt")];
+    assert_eq!(list, ["✓ gone.txt done", "▏? notes.txt 2 open"], "{body}");
+    assert_eq!(gone_column(&frame), before, "kept its cell: {body}");
+    let title = &doc_rows(&frame)[1];
     assert!(
-        frame[1].contains("gone.txt · done ✓    ▸ notes.txt · 2 of 2 open"),
-        "{body}"
-    );
-    assert_eq!(
-        gone_column(&frame),
-        before,
-        "gone.txt kept its cell: {body}"
-    );
-    assert!(
-        frame[3].starts_with("▸ notes.txt · 2 conflicts · 2 open"),
+        title.starts_with("▸ notes.txt · 2 conflicts · 2 open"),
         "{body}"
     );
     drop(state);
@@ -162,33 +158,41 @@ fn the_list_survives_a_relaunch() {
         ]
     );
     let frame = crate::captures::frame(&state, 120, 40);
-    assert!(
-        frame[1].contains("gone.txt · done ✓"),
-        "{}",
-        frame.join("\n")
-    );
+    let gone = list_row(&frame, "gone.txt");
+    assert_eq!(gone, "✓ gone.txt done", "{}", frame.join("\n"));
     drop(state);
     app.close();
     drop(scratch);
 }
 
-/// A left click on `name` in the list's row (row 1), at the app's own size.
+/// A left click on `name` in the list, at the app's own size.
 pub(crate) fn click_file(app: &App, state: &AppState, name: &str) -> AppState {
     let frame = crate::captures::frame(state, state.size.columns, state.size.rows);
-    let column = u16::try_from(gone_like_column(&frame, name)).expect("a narrow frame");
-    app.mouse_down(state, graft_core::event::MouseButton::Left, column, 1)
+    let (row, column) = gone_like_column(&frame, name);
+    let at = |n: usize| u16::try_from(n).expect("a small frame");
+    app.mouse_down(
+        state,
+        graft_core::event::MouseButton::Left,
+        at(column),
+        at(row),
+    )
 }
 
-/// The column `name`'s cell starts at on the list's row: its `▸` when it is
-/// the open file, else its name (the list draws no placeholder for `▸`).
-fn gone_like_column(frame: &[String], name: &str) -> usize {
-    frame[1]
-        .find(&format!("▸ {name}"))
-        .or_else(|| frame[1].find(name))
-        .map_or_else(
-            || panic!("no {name} on the list row:\n{}", frame.join("\n")),
-            |byte| frame[1][..byte].chars().count(),
-        )
+/// Where `name`'s cell starts in the list: row and column. A column list
+/// (ease-pass/11) gives each file a row; a strip lists them all on row 1.
+fn gone_like_column(frame: &[String], name: &str) -> (usize, usize) {
+    let strip = |y: usize, row: &String| if y == 1 { row.clone() } else { String::new() };
+    let in_list = |(y, row): (usize, &String)| {
+        let (list, _) = split_at_list(row);
+        let list = if list.is_empty() { strip(y, row) } else { list };
+        list.find(name)
+            .map(|byte| (y, list[..byte].chars().count()))
+    };
+    frame
+        .iter()
+        .enumerate()
+        .find_map(in_list)
+        .unwrap_or_else(|| panic!("no {name} listed:\n{}", frame.join("\n")))
 }
 
 /// The listed paths, in the list's order.
@@ -228,7 +232,11 @@ fn a_shell_merge_done_file_answers_d_in_words() {
     let state = done_open(&app, &state, "gone.txt");
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
-    assert_eq!(frame[3].trim_end(), "▸ gone.txt · done ✓", "{body}");
+    assert_eq!(
+        doc_rows(&frame)[1].trim_end(),
+        "▸ gone.txt · done ✓",
+        "{body}"
+    );
     assert_eq!(listed_names(&state), order, "the row order is unchanged");
     let state = app.key(&state, KeyCode::Char('d'));
     assert!(state.confirm.is_none(), "no box");
@@ -356,7 +364,11 @@ fn a_done_marker_file_starts_over_in_place() {
     assert_eq!(open(&state).cursor_block, Some(0), "the cursor on block 0");
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
-    assert!(frame[1].contains("▸ shared.rs · 1 of 1 open"), "{body}");
+    assert_eq!(
+        list_row(&frame, "shared.rs"),
+        "▏? shared.rs 1 open",
+        "{body}"
+    );
     assert_eq!(
         gone_like_column(&frame, "shared.rs"),
         cell,
@@ -369,126 +381,6 @@ fn a_done_marker_file_starts_over_in_place() {
         before,
         "shared.rs kept its place: {body}"
     );
-    drop(state);
-    app.close();
-    drop(scratch);
-}
-
-/// A done file opened read-only: the list with `▸` on the done row, its
-/// identity row, its plain lines, and the done bar. The merge was begun in
-/// the shell, so nothing kept `gone.txt`'s stages: no `d` on the row or the
-/// bar (m6-conflicts/28).
-#[test]
-fn done_open_capture() {
-    let scratch = gone_and_notes_merge();
-    let (app, state) = opened_on(&scratch);
-    let state = gone_kept(&app, state);
-    let state = done_open(&app, &state, "gone.txt");
-    // The status line (`✓ resolved gone.txt (ours)`) holds the bar's row
-    // until the next key; `PgUp` at the top scrolls nowhere and gives it
-    // back (`k` steps files since m6-conflicts/17).
-    let state = app.key(&state, KeyCode::PageUp);
-    for (columns, rows) in [(120u16, 40u16), (200, 50), (187, 50)] {
-        let frame = crate::captures::frame(&state, columns, rows);
-        let body = frame.join("\n");
-        assert!(body.contains("▸ gone.txt · done ✓"), "{body}");
-        assert!(!body.contains("d starts it over"), "{body}");
-        // `o` kept ours: the file on disk is main's plan.
-        assert!(body.contains("our plan"), "{body}");
-        // A done file has no sides left: one document at every width, never
-        // the three panes, whose `theirs · feature` would put the file on
-        // disk under the side that deleted it.
-        assert!(!body.contains("theirs · feature"), "{body}");
-        assert!(
-            frame
-                .last()
-                .is_some_and(|bar| bar.trim() == "e edit  esc close"),
-            "{body}"
-        );
-        if columns == 120 {
-            assert!(
-                frame[1].contains("▸ gone.txt · done ✓    notes.txt · 2 of 2 open"),
-                "{body}"
-            );
-        }
-        crate::captures::check_shot(
-            &format!("m6/fix-file-list-done-open-{columns}x{rows}.txt"),
-            &format!("{body}\n"),
-        );
-    }
-    drop(state);
-    app.close();
-    drop(scratch);
-}
-
-/// A click acknowledges a finished write's status line the way a key does
-/// (m6-conflicts/42): after the list click that opens the done file, the
-/// bottom row is the bar, not `✓ resolved gone.txt (ours)`.
-#[test]
-fn a_click_clears_the_done_status_like_a_key() {
-    let scratch = gone_and_notes_merge();
-    let (app, state) = opened_on(&scratch);
-    let state = gone_kept(&app, state);
-    assert!(
-        matches!(state.status, graft::update::Status::Done { .. }),
-        "{:?}",
-        state.status
-    );
-    let state = done_open(&app, &state, "gone.txt");
-    let frame = crate::captures::frame(&state, 120, 40);
-    assert_eq!(
-        frame.last().map(|bar| bar.trim()),
-        Some("e edit  esc close"),
-        "{}",
-        frame.join("\n")
-    );
-    drop(state);
-    app.close();
-    drop(scratch);
-}
-
-/// ADR-0043's list at every width the ticket names, and the user's own
-/// 187×50.
-#[test]
-fn file_list_capture() {
-    let scratch = gone_and_notes_merge();
-    let (app, state) = opened_on(&scratch);
-    let state = gone_kept(&app, state);
-    for (columns, rows) in [(120u16, 40u16), (160, 48), (80, 24), (200, 50), (187, 50)] {
-        let frame = crate::captures::frame(&state, columns, rows);
-        let body = frame.join("\n");
-        match columns {
-            // git's path order (m6-conflicts/25): `gone.txt` first.
-            80 => assert!(
-                frame[1].contains("✓ gone.txt   ▸ notes.txt 2/2 open"),
-                "{body}"
-            ),
-            200 | 187 => {
-                // The list's column only: left of its `│`.
-                let at = |name: &str| {
-                    frame.iter().position(|row| {
-                        row.split('│')
-                            .next()
-                            .is_some_and(|list| list.contains(name))
-                    })
-                };
-                assert!(
-                    frame[1].starts_with("FILES · 2 conflicted")
-                        && at("gone.txt").is_some()
-                        && at("gone.txt") < at("▸ notes.txt"),
-                    "{body}"
-                );
-            }
-            _ => assert!(
-                frame[1].contains("gone.txt · done ✓    ▸ notes.txt · 2 of 2 open"),
-                "{body}"
-            ),
-        }
-        crate::captures::check_shot(
-            &format!("m6/fix-file-list-{columns}x{rows}.txt"),
-            &format!("{body}\n"),
-        );
-    }
     drop(state);
     app.close();
     drop(scratch);
@@ -665,5 +557,6 @@ fn a_rebase_lists_only_this_steps_files() {
     drop(scratch);
 }
 
+mod captures;
 mod many_files;
 mod start_over;

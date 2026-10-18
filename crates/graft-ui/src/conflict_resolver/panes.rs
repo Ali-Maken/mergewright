@@ -154,6 +154,9 @@ pub(super) fn pane_rows(doc: &DocView) -> (Vec<ScreenRow>, Vec<usize>) {
                 rows.push(aligned(Some(block.index), [Cell::Rule; 3]));
                 block_rows(doc, block, &mut rows);
             }
+            // The solved line is the inline document's (ease-pass/11); the
+            // three panes, retired next (11b), draw none.
+            RegionView::Solved { .. } => {}
         }
     }
     (rows, block_row)
@@ -346,6 +349,7 @@ pub(super) fn pane_number_widths(doc: &DocView) -> PaneWidths {
                     );
                 }
             }
+            RegionView::Solved { .. } => {}
         }
     }
     let digits = |n: usize| n.max(1).to_string().len();

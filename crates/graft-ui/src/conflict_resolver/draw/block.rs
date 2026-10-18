@@ -1,10 +1,17 @@
-//! A conflict block's rows in the card arrangements: its header, the side
-//! labels, the pair, each side's lines and the end rule.
+//! A conflict block's rows inline, as the merge mock draws a clash
+//! (ease-pass/11, M7–M8): its mark in the gutter, an open clash's two
+//! sides (side by side, or stacked), a taken one shrunk to the lines the
+//! pick wrote, and the outline round the cursor's clash.
 //!
-//! Colour (ADR-0044 §2, "Card"): no glyph changes. An open block's left
-//! side sits on `ours-tint`, its right on `theirs-tint`, each label in its
-//! hue, BOLD; a taken block's lines on the taken side's tint, with the
-//! header's name in that hue; the header's `open` in `open`. Tints come
+//! **Geometry.** Every block row keeps the same cells whether or not it
+//! has the cursor: column 0 for the outline's left edge, column 1 for the
+//! mark, the last column for the outline's right edge, the text between.
+//! Plain lines start in the same column, so a kept line's number sits
+//! under a plain line's.
+//!
+//! Colour (ADR-0044 §2): an open clash's left side on `ours-tint`, its
+//! right on `theirs-tint`, each label in its hue, BOLD; the mark and a
+//! taken clash's lines in the pick's hue; the outline in `open`. Tints come
 //! from [`Theme::tint`](crate::theme::Theme::tint), so they drop out at 16
 //! colours, in high contrast and under `NO_COLOR`. Colour unverified by
 //! capture (CLAUDE.md rule 5).
@@ -14,80 +21,81 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use unicode_width::UnicodeWidthStr;
 
-use super::{
-    BlockState, LabelOf, ResolverScreen, SIDE_BY_SIDE_MIN, SideKind, TakeView, ruled_line, set_text,
-};
+use super::{BlockState, LabelOf, ResolverScreen, SideKind, set_text};
+use crate::conflict_resolver::{BlockView, GUTTER, Mark};
 use graft_term::SanitizedText;
 
 use crate::fit::fit;
 use crate::paint::{color, foreground};
 use crate::theme::Token;
 
+/// Which of a block's rows an outline edge is drawn on.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Edge {
+    Top,
+    Side,
+    Bottom,
+}
+
 impl ResolverScreen<'_> {
-    pub(super) fn draw_header(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
-        let Some(block) = self.block(block_index) else {
-            self.draw_blank(buf, area, y);
-            return;
-        };
-        self.draw_gutter(buf, area, y, block_index);
-        let content = Self::content_area(area);
-        let names = &self.doc.names;
-        let (ours, theirs) = (names.roles.ours(), names.roles.theirs());
-        // The take keys, spelled from his keymap (ticket m8/10c).
-        let take_ours = ("resolver.take_ours", ours);
-        let take_theirs = ("resolver.take_theirs", theirs);
-        let take_both = ("resolver.take_both", "both");
-        let (state_word, keys) = match block.state {
-            BlockState::Open => (
-                "open".to_owned(),
-                self.keys.key_verbs(&[take_ours, take_theirs, take_both]),
-            ),
-            BlockState::Took(TakeView::Ours) => (
-                format!("took {}", names.ours),
-                self.keys.key_verbs(&[take_theirs, take_both]),
-            ),
-            BlockState::Took(TakeView::Theirs) => (
-                format!("took {}", names.theirs),
-                self.keys.key_verbs(&[take_ours, take_both]),
-            ),
-            BlockState::Took(TakeView::Both) => (
-                "took both".to_owned(),
-                self.keys.key_verbs(&[take_ours, take_theirs]),
-            ),
-        };
-        // Where the state words' coloured part starts in them, how wide it
-        // is, and its hue: `open`, or the taken side's name.
-        let hue = match block.state {
-            BlockState::Open => Some((0, "open".width(), Token::Open)),
-            BlockState::Took(TakeView::Ours) => {
-                Some(("took ".width(), names.ours.as_str().width(), Token::Ours))
-            }
-            BlockState::Took(TakeView::Theirs) => Some((
-                "took ".width(),
-                names.theirs.as_str().width(),
-                Token::Theirs,
-            )),
-            BlockState::Took(TakeView::Both) => None,
-        };
-        let rule2 = self.rule().to_string().repeat(2);
-        let lead = format!(
-            " conflict {} of {} {} ",
-            block.index + 1,
-            block.of,
-            self.dot()
-        );
-        let middle = format!("{lead}{state_word} {rule2} {keys} ");
-        // No number: a marker row is not a line of any side (ADR-0043 §5).
-        let line = ruled_line(&middle, self.rule(), usize::from(content.width));
-        let cursor = self.is_cursor_block(block_index);
-        set_text(buf, content.x, y, content, &line, self.header_style(cursor));
-        if let Some((skip, width, token)) = hue {
-            // `ruled_line` leads with two rule cells. Restyled, not redrawn:
-            // the text (and its cut, if any) stays as drawn, and the
-            // cursor's reversal stays under the new colour.
-            let x = 2 + lead.width() + skip;
-            restyle(buf, content, x, y, width, foreground(self.theme, token));
+    /// A block row's text cells: right of the gutter, left of the
+    /// outline's right edge — the same whichever block has the cursor.
+    fn block_content(area: Rect) -> Rect {
+        Rect {
+            x: area.x.saturating_add(GUTTER),
+            width: area.width.saturating_sub(GUTTER + 1),
+            ..area
         }
+    }
+
+    /// The outline's cells on row `y`, only round the cursor's block.
+    fn draw_outline(&self, buf: &mut Buffer, area: Rect, y: u16, block: usize, edge: Edge) {
+        if !self.is_cursor_block(block) || area.width < 2 {
+            return;
+        }
+        let (h, v) = if self.ascii {
+            ('-', '|')
+        } else {
+            ('─', '│')
+        };
+        let (left, right) = match (edge, self.ascii) {
+            (Edge::Side, _) => (v, v),
+            (Edge::Top | Edge::Bottom, true) => ('+', '+'),
+            (Edge::Top, false) => ('┌', '┐'),
+            (Edge::Bottom, false) => ('└', '┘'),
+        };
+        let style = foreground(self.theme, Token::Open);
+        let inner = usize::from(area.width - 2);
+        if edge == Edge::Side {
+            set_text(buf, area.x, y, area, &left.to_string(), style);
+        } else {
+            let line = format!("{left}{}{right}", h.to_string().repeat(inner));
+            set_text(buf, area.x, y, area, &line, style);
+        }
+        set_text(buf, area.right() - 1, y, area, &right.to_string(), style);
+    }
+
+    /// `mark` in the gutter's second cell, in its hue.
+    fn draw_mark(&self, buf: &mut Buffer, area: Rect, y: u16, mark: Mark) {
+        let style = foreground(self.theme, mark.token()).add_modifier(Modifier::BOLD);
+        set_text(
+            buf,
+            area.x.saturating_add(1),
+            y,
+            area,
+            &mark.glyph(self.ascii).to_string(),
+            style,
+        );
+    }
+
+    /// The block's first row: the outline's top round the cursor's block.
+    pub(super) fn draw_header(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
+        self.draw_outline(buf, area, y, block_index, Edge::Top);
+    }
+
+    /// The block's last row: the outline's bottom round the cursor's block.
+    pub(super) fn draw_end(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
+        self.draw_outline(buf, area, y, block_index, Edge::Bottom);
     }
 
     /// Lays `token`'s tint under `width` cells from `x` cells into
@@ -103,23 +111,30 @@ impl ResolverScreen<'_> {
         foreground(self.theme, token).add_modifier(Modifier::BOLD)
     }
 
-    pub(super) fn draw_labels(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
-        if self.block(block_index).is_none() {
+    /// The block `block_index` names, its outline edges drawn on row `y`;
+    /// `None` (a blank row) when a stale layout names a block `doc` lacks.
+    fn block_row(&self, buf: &mut Buffer, area: Rect, y: u16, index: usize) -> Option<&BlockView> {
+        let Some(block) = self.block(index) else {
             self.draw_blank(buf, area, y);
+            return None;
+        };
+        self.draw_outline(buf, area, y, index, Edge::Side);
+        Some(block)
+    }
+
+    pub(super) fn draw_labels(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
+        if self.block_row(buf, area, y, block_index).is_none() {
             return;
         }
-        self.draw_gutter(buf, area, y, block_index);
-        let content = Self::content_area(area);
+        self.draw_mark(buf, area, y, Mark::Open);
+        let content = Self::block_content(area);
         let width = usize::from(content.width);
         let half = width.saturating_sub(1) / 2;
+        let rest = width.saturating_sub(half + 1);
         let left = fit(self.doc.names.ours.as_str(), half);
-        let right = fit(
-            self.doc.names.theirs.as_str(),
-            width.saturating_sub(half + 1),
-        );
+        let right = fit(self.doc.names.theirs.as_str(), rest);
         let line = format!("{left}{}{right}", self.divider());
         set_text(buf, content.x, y, content, &line, self.side_style(false));
-        let rest = width.saturating_sub(half + 1);
         restyle(buf, content, 0, y, half, self.label_style(Token::Ours));
         restyle(
             buf,
@@ -133,6 +148,9 @@ impl ResolverScreen<'_> {
         self.tint(buf, content, half + 1, y, rest, Token::TheirsTint);
     }
 
+    /// One row of an open clash's two sides, side by side and unnumbered:
+    /// the number column stays blank so the code lines up with the plain
+    /// lines around it.
     pub(super) fn draw_pair(
         &self,
         buf: &mut Buffer,
@@ -142,37 +160,28 @@ impl ResolverScreen<'_> {
         ours: Option<usize>,
         theirs: Option<usize>,
     ) {
-        let Some(block) = self.block(block_index) else {
-            self.draw_blank(buf, area, y);
+        let Some(block) = self.block_row(buf, area, y, block_index) else {
             return;
         };
-        self.draw_gutter(buf, area, y, block_index);
-        let content = Self::content_area(area);
+        let content = Self::block_content(area);
         let width = usize::from(content.width);
         let half = width.saturating_sub(1) / 2;
-        // `Pair` rows only exist for an `Open` block (`layout_block`): each
-        // side counts in its own projection.
-        let left_text = ours
-            .and_then(|i| block.ours.get(i))
-            .map_or("", |t| t.as_str());
-        let left = fit(
-            &self.numbered(ours.map(|i| block.numbers.ours + i), left_text),
-            half,
-        );
-        let right_text = theirs
-            .and_then(|i| block.theirs.get(i))
-            .map_or("", |t| t.as_str());
-        let right = fit(
-            &self.numbered(theirs.map(|i| block.numbers.theirs + i), right_text),
-            width.saturating_sub(half + 1),
-        );
+        let rest = width.saturating_sub(half + 1);
+        let text = |lines: &[SanitizedText], i: Option<usize>| {
+            i.and_then(|i| lines.get(i))
+                .map_or("", SanitizedText::as_str)
+                .to_owned()
+        };
+        let left = fit(&self.numbered(None, &text(&block.ours, ours)), half);
+        let right = fit(&self.numbered(None, &text(&block.theirs, theirs)), rest);
         let line = format!("{left}{}{right}", self.divider());
         set_text(buf, content.x, y, content, &line, self.base_style());
         self.tint(buf, content, 0, y, half, Token::OursTint);
-        let rest = width.saturating_sub(half + 1);
         self.tint(buf, content, half + 1, y, rest, Token::TheirsTint);
     }
 
+    /// A stacked row of an open clash: a section's label (yours' carries
+    /// the `?`), or one of its lines, unnumbered.
     pub(super) fn draw_side(
         &self,
         buf: &mut Buffer,
@@ -182,49 +191,31 @@ impl ResolverScreen<'_> {
         side: SideKind,
         i: usize,
     ) {
-        let Some(block) = self.block(block_index) else {
-            self.draw_blank(buf, area, y);
+        let Some(block) = self.block_row(buf, area, y, block_index) else {
             return;
         };
-        self.draw_gutter(buf, area, y, block_index);
-        let content = Self::content_area(area);
+        if side == SideKind::Label(LabelOf::Ours) {
+            self.draw_mark(buf, area, y, Mark::Open);
+        }
+        let content = Self::block_content(area);
         let width = usize::from(content.width);
+        let line_of = |lines: &[SanitizedText]| {
+            self.numbered(None, lines.get(i).map_or("", SanitizedText::as_str))
+        };
         let (line, muted) = match side {
             SideKind::Label(LabelOf::Ours) => (self.doc.names.ours.as_str().to_owned(), true),
             SideKind::Label(LabelOf::Theirs) => (self.doc.names.theirs.as_str().to_owned(), true),
             SideKind::Label(LabelOf::Base) => {
                 (format!("BASE {} merged common ancestor", self.dot()), true)
             }
-            SideKind::Ours => {
-                // Open: the ours projection. Taken: the result, where the
-                // kept lines start at `numbers.result`.
-                let n = match block.state {
-                    BlockState::Open => block.numbers.ours + i,
-                    BlockState::Took(_) => block.numbers.result + i,
-                };
-                let text = block.ours.get(i).map_or("", |t| t.as_str());
-                (self.numbered(Some(n), text), false)
-            }
-            SideKind::Theirs => {
-                // Open: the theirs projection. Taken: the result, after the
-                // ours lines a `Both` take kept first.
-                let n = match block.state {
-                    BlockState::Open => block.numbers.theirs + i,
-                    BlockState::Took(TakeView::Both) => block.numbers.result + block.ours.len() + i,
-                    BlockState::Took(_) => block.numbers.result + i,
-                };
-                let text = block.theirs.get(i).map_or("", |t| t.as_str());
-                (self.numbered(Some(n), text), false)
-            }
+            SideKind::Ours => (line_of(&block.ours), false),
+            SideKind::Theirs => (line_of(&block.theirs), false),
             SideKind::Base => {
                 let base_lines = block
                     .base
                     .as_ref()
                     .map_or(&[][..], |(_, lines)| lines.as_slice());
-                (
-                    self.numbered(None, base_lines.get(i).map_or("", SanitizedText::as_str)),
-                    false,
-                )
+                (line_of(base_lines), false)
             }
         };
         set_text(
@@ -235,8 +226,6 @@ impl ResolverScreen<'_> {
             &fit(&line, width),
             self.side_style(muted),
         );
-        // Stacked, or a taken block's kept lines: each side in its tint,
-        // its label in its hue. BASE stays as built.
         match side {
             SideKind::Label(LabelOf::Ours) => {
                 restyle(buf, content, 0, y, width, self.label_style(Token::Ours));
@@ -250,28 +239,45 @@ impl ResolverScreen<'_> {
         }
     }
 
-    pub(super) fn draw_end(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
-        self.draw_gutter(buf, area, y, block_index);
-        let content = Self::content_area(area);
-        let width = usize::from(content.width);
-        let rule = self.rule();
-        let line = if self.layout.columns >= SIDE_BY_SIDE_MIN {
-            let half = width.saturating_sub(1) / 2;
-            let mut s = rule.to_string().repeat(half);
-            s.push(self.join());
-            s.push_str(&rule.to_string().repeat(width.saturating_sub(half + 1)));
-            s
-        } else {
-            rule.to_string().repeat(width)
+    /// One line a pick wrote, numbered as a plain line from the result's
+    /// count: the first carries the mark, the last ends with its words
+    /// (`kept yours`), muted.
+    pub(super) fn draw_kept(&self, buf: &mut Buffer, area: Rect, y: u16, index: usize, i: usize) {
+        let Some(block) = self.block_row(buf, area, y, index) else {
+            return;
         };
-        set_text(
-            buf,
-            content.x,
-            y,
-            content,
-            &fit(&line, width),
-            self.base_style(),
-        );
+        let BlockState::Took(take) = block.state else {
+            // A stale layout: the block was re-opened since.
+            return;
+        };
+        let mark = Mark::of(BlockState::Took(take));
+        if i == 0 {
+            self.draw_mark(buf, area, y, mark);
+        }
+        let content = Self::block_content(area);
+        let width = usize::from(content.width);
+        let line = match block.kept.get(i) {
+            Some(text) => self.numbered(Some(block.numbers.result + i), text.as_str()),
+            None => String::new(),
+        };
+        let line_w = line.width().min(width);
+        let hue = foreground(self.theme, mark.token());
+        set_text(buf, content.x, y, content, &fit(&line, width), hue);
+        if i + 1 >= block.kept.len().max(1) {
+            let words = mark.words(self.doc.names.roles);
+            let gap = if line.is_empty() { "" } else { "  " };
+            let x = content
+                .x
+                .saturating_add(u16::try_from(line_w).unwrap_or(u16::MAX));
+            set_text(
+                buf,
+                x,
+                y,
+                content,
+                &format!("{gap}{words}"),
+                foreground(self.theme, Token::TextMuted),
+            );
+        }
     }
 }
 

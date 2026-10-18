@@ -155,17 +155,16 @@ fn enter_on_conflicts_row_opens_the_resolver() {
     // The bar under the document is the resolver's own, not the pane's.
     let drawn = crate::captures::frame(&state, 120, 40);
     let footer = drawn.last().expect("a footer row").to_owned();
-    // With `B base` and `d start over` drawn the full line is 135 cells, so
-    // at 120 the way out keeps its words and `j/k`, `M` go bare instead
-    // (m6-conflicts/56, ADR-0044 §4).
+    // An open clash's bar is the merge mock's (ease-pass/11): the picks
+    // with their sides, then the edit, the undo and the way out — every
+    // word, at 120.
     for key in [
-        "o yours",
-        "t theirs",
-        "b both",
-        "⌃O/⌃T all",
-        "n next",
-        "d start over",
-        "esc close",
+        "o take yours (left)",
+        "t take theirs (right)",
+        "b take both",
+        "e edit by hand",
+        "u undo pick",
+        "esc pause",
     ] {
         assert!(footer.contains(key), "{key} missing from {footer:?}");
     }

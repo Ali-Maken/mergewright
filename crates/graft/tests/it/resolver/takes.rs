@@ -169,9 +169,10 @@ fn advance_capture() {
             body.contains("▸ three.txt · 3 conflicts · 2 open"),
             "{body}"
         );
-        // The card's header, or the result pane's rule in the three panes.
+        // The kept line's mark (ease-pass/11), or the result pane's rule in
+        // the three panes.
         let header = if columns < 180 {
-            "conflict 1 of 3 · took theirs · feature"
+            "took theirs"
         } else {
             "── 1 of 3 · took theirs · feature"
         };

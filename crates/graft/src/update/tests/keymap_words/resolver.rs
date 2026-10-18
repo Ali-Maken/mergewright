@@ -393,12 +393,12 @@ fn refusals_more() -> Vec<Site> {
                 state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
                     entries: Vec::new(),
                 }));
-                // A merge of `feature` with a banner (as `take_all`'s).
+                // A rebase with a banner (a merge has the review row instead).
                 {
                     use crate::update::resolver::fixtures::{commit, oid, operation, refs};
                     state.refs = Some(refs(false));
                     state.in_progress = Some(operation(
-                        graft_git::state::InProgress::Merge,
+                        graft_git::state::InProgress::Rebase,
                         Some(commit(oid(3), "Add OAuth provider")),
                     ));
                 }
@@ -416,7 +416,7 @@ fn refusals_more() -> Vec<Site> {
             },
             expected: |key| {
                 format!(
-                    "✓ every file done — {} review and finish the merge",
+                    "✓ every file done — {} continue the rebase",
                     key("resolver.finish")
                 )
             },

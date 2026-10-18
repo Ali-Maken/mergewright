@@ -827,8 +827,8 @@ fn landing_shot(state: &AppState) {
         "branch \u{b7} main",
         "yours \u{b7} edits set aside",
         "your edits clashed in 1 file \u{b7} esc, u undoes the switch too",
-        "o branch",
-        "t yours",
+        "o take branch",
+        "t take yours",
     ] {
         assert!(text.contains(words), "no `{words}`:\n{text}");
     }

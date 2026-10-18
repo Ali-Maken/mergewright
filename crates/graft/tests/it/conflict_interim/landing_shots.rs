@@ -75,7 +75,7 @@ fn capture_a_merge_that_stops() {
             "the first file is marked: {body}"
         );
         let bar = frame.last().expect("a frame has rows");
-        assert!(bar.trim_start().starts_with("o yours"), "{bar}");
+        assert!(bar.trim_start().starts_with("o take yours"), "{bar}");
         check_shot(
             &format!("m6/fix-stop-lands-in-resolver-{columns}x{rows}.txt"),
             &format!("{body}\n"),

@@ -155,11 +155,14 @@ fn next_block_scrolls_three_panes_to_its_rule_row() {
     );
 }
 
-/// The frame shows block `n` (1-based) of 3's own rule or header.
+/// The frame shows block `n` (1-based) of 3: its own rule or header, or —
+/// drawn inline, where an open clash has neither (ease-pass/11) — its
+/// `ours` line.
 fn shows_block(drawn: &[String], n: usize) -> bool {
+    let ours = format!("ours {} ", n - 1);
     drawn
         .iter()
-        .any(|row| row.contains(&format!("{n} of 3 · open")))
+        .any(|row| row.contains(&format!("{n} of 3 · open")) || row.contains(&ours))
 }
 
 #[test]

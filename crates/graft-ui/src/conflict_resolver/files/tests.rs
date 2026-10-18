@@ -27,6 +27,7 @@ fn two_files() -> FileListView {
         ],
         cursor: 1,
         unavailable: false,
+        tail: ListTail::None,
     }
 }
 
@@ -48,6 +49,7 @@ fn twelve_files(cursor: usize) -> FileListView {
             .collect(),
         cursor,
         unavailable: false,
+        tail: ListTail::None,
     }
 }
 
@@ -87,33 +89,29 @@ fn more_cell(buf: &Buffer, rows: u16) -> bool {
 #[test]
 fn placement_by_width() {
     let two = two_files();
-    for columns in [180, 200] {
-        assert!(
-            matches!(placement(&two, columns), Placement::Column { width } if (22..=32).contains(&width)),
-            "{columns}: {:?}",
-            placement(&two, columns)
+    // ease-pass/11: a column `LIST_COLUMN` wide from `INLINE_FROM`.
+    for columns in [100, 120, 179, 180, 200] {
+        assert_eq!(
+            placement(&two, columns),
+            Placement::Column { width: LIST_COLUMN },
+            "{columns}"
         );
     }
-    for columns in [179, 160, 120, 80] {
+    for columns in [99, 80] {
         assert!(
             matches!(placement(&two, columns), Placement::Strip { .. }),
             "{columns}"
         );
     }
     assert_eq!(
-        placement(&two, 120),
+        placement(&two, 99),
         Placement::Strip { rows: 1 },
-        "two files fit one row at 120"
-    );
-    let buf = draw_list(&two, Placement::Strip { rows: 1 }, 120, 1);
-    assert_eq!(
-        line(&buf, 0),
-        "files   gone.txt · done ✓    ▸ notes.txt · 2 of 2 open"
+        "two files fit one row at 99"
     );
     let buf = draw_list(&two, Placement::Strip { rows: 1 }, 80, 1);
     assert_eq!(line(&buf, 0), "files   ✓ gone.txt   ▸ notes.txt 2/2 open");
 
-    for columns in [120, 80] {
+    for columns in [99, 80] {
         for cursor in [0, 5, 11] {
             twelve_files_keep_the_cursor_shown(columns, cursor);
         }
@@ -252,12 +250,13 @@ fn a_long_name_keeps_its_file_name() {
         )],
         cursor: 0,
         unavailable: false,
+        tail: ListTail::None,
     };
     let placed = placement(&view, 200);
     let Placement::Column { width } = placed else {
         panic!("a column at 200")
     };
-    assert_eq!(width, 32, "clamped to the widest");
+    assert_eq!(width, LIST_COLUMN, "one width");
     let buf = draw_list(&view, placed, width, 6);
     let drawn = line(&buf, 2);
     assert!(drawn.contains("…"), "{drawn:?}");
@@ -268,16 +267,25 @@ fn a_long_name_keeps_its_file_name() {
 fn an_unavailable_list_says_so() {
     let mut view = two_files();
     view.unavailable = true;
-    let placed = placement(&view, 120);
+    let placed = placement(&view, 80);
     let Placement::Strip { rows } = placed else {
-        panic!("a strip at 120")
+        panic!("a strip at 80")
     };
-    let buf = draw_list(&view, placed, 120, rows);
+    let buf = draw_list(&view, placed, 80, rows);
     assert!(
         line(&buf, 0).starts_with("files: git's list unavailable · the unmerged ones below"),
         "{:?}",
         line(&buf, 0)
     );
+    // The column says it under its heading, whole (ease-pass/11).
+    let buf = draw_list(
+        &view,
+        Placement::Column { width: LIST_COLUMN },
+        LIST_COLUMN,
+        6,
+    );
+    assert_eq!(line(&buf, 0), "Clashing files");
+    assert_eq!(line(&buf, 1), "git's list unavailable");
 }
 
 /// The whole widget at 200: a list column, its `│`, then the card.
@@ -300,7 +308,11 @@ fn the_column_sits_beside_the_card() {
     let placed = placement(&doc.files, 200);
     let area = Rect::new(0, 0, 200, 20);
     let areas = resolver_areas(area, placed);
-    let laid = layout(&doc, placed.arrangement(), areas.doc.width);
+    let laid = layout(
+        &doc,
+        crate::conflict_resolver::arrangement(200),
+        areas.doc.width,
+    );
     let theme = theme();
     let mut buf = Buffer::empty(area);
     ResolverScreen {
@@ -314,227 +326,14 @@ fn the_column_sits_beside_the_card() {
     }
     .render(area, &mut buf);
     let first = line(&buf, 0);
-    assert!(first.starts_with("FILES · 2 conflicted"), "{first:?}");
+    assert!(first.starts_with("Clashing files"), "{first:?}");
+    let doc_x = usize::from(LIST_COLUMN);
+    let rest: String = first.chars().skip(doc_x).collect();
     assert!(
-        first.contains("│▸ notes.txt · 2 conflicts · 2 open"),
+        rest.starts_with("│▸ notes.txt · 2 conflicts · 2 open"),
         "{first:?}"
     );
-    assert!(line(&buf, 3).contains("▸ notes.txt"), "{:?}", line(&buf, 3));
+    assert!(line(&buf, 3).contains("? notes.txt"), "{:?}", line(&buf, 3));
 }
 
-// ------------------------------------------------ state colours (ADR-0044)
-
-/// Every state once, the cursor on the open file.
-fn six_states() -> FileListView {
-    FileListView {
-        rows: vec![
-            row("a.txt", FileRowLook::Open { open: 1, of: 2 }),
-            row("b.txt", FileRowLook::AllTaken),
-            row(
-                "c.txt",
-                FileRowLook::WholeFile {
-                    how: sanitize_line("deleted by them"),
-                },
-            ),
-            row("d.txt", FileRowLook::Done),
-            row("e.bin", FileRowLook::Binary),
-            row("f.txt", FileRowLook::Unread),
-        ],
-        cursor: 0,
-        unavailable: false,
-    }
-}
-
-fn draw_list_with(
-    view: &FileListView,
-    placement: Placement,
-    (width, height): (u16, u16),
-    ascii: bool,
-) -> Buffer {
-    let area = Rect::new(0, 0, width, height);
-    let mut buf = Buffer::empty(area);
-    let theme = theme();
-    FileList {
-        view,
-        placement,
-        theme: &theme,
-        ascii,
-    }
-    .render(area, &mut buf);
-    buf
-}
-
-/// `(x, y)` of the first cell of `word` anywhere in `buf`.
-fn find_cell(buf: &Buffer, word: &str) -> (u16, u16) {
-    let n = word.chars().count();
-    for y in 0..buf.area.height {
-        let cells: Vec<String> = (0..buf.area.width)
-            .map(|x| buf[(x, y)].symbol().to_owned())
-            .collect();
-        if let Some(x) =
-            (0..=cells.len().saturating_sub(n)).find(|&x| cells[x..x + n].concat() == word)
-        {
-            return (u16::try_from(x).expect("small"), y);
-        }
-    }
-    panic!("{word:?} not drawn")
-}
-
-#[test]
-fn file_list_state_colours() {
-    let theme = theme();
-    let fg = |t: Token| crate::paint::color(theme.token(t));
-    let bold = |c: &ratatui::buffer::Cell| c.modifier.contains(Modifier::BOLD);
-    let view = six_states();
-
-    // Full words, in the column at 180+.
-    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 10), false);
-    let at = |w: &str| &buf[find_cell(&buf, w)];
-    for (words, token) in [
-        ("1 of 2 open", Token::Open),
-        ("⏎ marks done", Token::Open),
-        ("keep or delete", Token::Open),
-        ("done ✓", Token::TextMuted),
-        ("binary", Token::Text),
-        ("•", Token::Text),
-    ] {
-        assert_eq!(at(words).fg, fg(token), "{words:?}");
-    }
-    // The name keeps today's style; the cursor's BOLD is on both parts.
-    assert_eq!(at("a.txt").fg, fg(Token::Text));
-    assert!(bold(at("a.txt")) && bold(at("1 of 2 open")), "cursor bold");
-    assert!(!bold(at("b.txt")) && !bold(at("⏎ marks done")));
-    assert_eq!(at("d.txt").fg, fg(Token::Text), "a done file's name");
-
-    // Compact forms, in the strip below 100 columns.
-    let buf = draw_list_with(&view, Placement::Strip { rows: 3 }, (90, 3), false);
-    let at = |w: &str| &buf[find_cell(&buf, w)];
-    for (words, token) in [
-        ("1/2 open", Token::Open),
-        ("keep?", Token::Open),
-        ("bin", Token::Text),
-    ] {
-        assert_eq!(at(words).fg, fg(token), "{words:?}");
-    }
-    // `⏎` and `✓` alone: find them after their file's name.
-    let (x, y) = find_cell(&buf, "b.txt ⏎");
-    assert_eq!(buf[(x + 6, y)].fg, fg(Token::Open), "compact ⏎");
-    let (x, y) = find_cell(&buf, "✓ d.txt");
-    assert_eq!(buf[(x, y)].fg, fg(Token::TextMuted), "compact ✓");
-    assert_eq!(buf[(x + 2, y)].fg, fg(Token::Text), "its name");
-}
-
-#[test]
-fn unread_file_is_marked_with_a_bullet() {
-    let view = six_states();
-    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 10), false);
-    assert!(line(&buf, 7).ends_with("f.txt  •"), "{:?}", line(&buf, 7));
-    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 10), true);
-    assert!(line(&buf, 7).ends_with("f.txt  ~"), "{:?}", line(&buf, 7));
-
-    // `…` keeps its other jobs: the overflow cell and a left-cut path.
-    for columns in [80, 120] {
-        let buf = draw_list(&twelve_files(3), Placement::Strip { rows: 3 }, columns, 3);
-        assert!(more_cell(&buf, 3), "{columns}: `… N more`");
-        let drawn = (0..3).map(|y| line(&buf, y)).collect::<Vec<_>>().join("\n");
-        assert!(drawn.contains('•'), "{columns}: unread marked\n{drawn}");
-    }
-    let buf = draw_list(&twelve_files(0), Placement::Column { width: 24 }, 24, 6);
-    let drawn = line(&buf, 2);
-    assert!(drawn.contains('…'), "a left-cut path: {drawn:?}");
-}
-
-/// The text a list draws is today's, byte for byte, except the unread
-/// mark: the colour split never moves a character.
-#[test]
-fn file_list_text_is_unchanged_but_the_mark() {
-    let view = six_states();
-    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 8), false);
-    let drawn: Vec<String> = (0..8).map(|y| line(&buf, y)).collect();
-    let wide = draw_list_with(&view, Placement::Strip { rows: 3 }, (170, 3), false);
-    let wide: Vec<String> = (0..3).map(|y| line(&wide, y)).collect();
-    assert_eq!(wide, GOLDEN_WIDE_STRIP, "{wide:#?}");
-    assert_eq!(drawn, GOLDEN_COLUMN, "{drawn:#?}");
-    let buf = draw_list_with(&view, Placement::Strip { rows: 3 }, (90, 3), false);
-    let drawn: Vec<String> = (0..3).map(|y| line(&buf, y)).collect();
-    assert_eq!(drawn, GOLDEN_STRIP, "{drawn:#?}");
-}
-
-/// Drawn before the colour split, with `…` where `•` now stands.
-const GOLDEN_COLUMN: [&str; 8] = [
-    "FILES · 6 conflicted",
-    "",
-    "▏▸ a.txt  1 of 2 open",
-    "   b.txt  ⏎ marks done",
-    "   c.txt  keep or delete",
-    "   d.txt  done ✓",
-    "   e.bin  binary",
-    "   f.txt  •",
-];
-
-/// Drawn before the colour split, with `…` where `•` now stands.
-const GOLDEN_WIDE_STRIP: [&str; 3] = [
-    "files   ▸ a.txt · 1 of 2 open    b.txt · ⏎ marks done    c.txt · keep or delete    d.txt · done ✓    e.bin · binary    f.txt · •",
-    "",
-    "",
-];
-
-/// Drawn before the colour split, with `…` where `•` now stands.
-const GOLDEN_STRIP: [&str; 3] = [
-    "files   ▸ a.txt 1/2 open   b.txt ⏎   c.txt keep?   ✓ d.txt   e.bin bin   f.txt •",
-    "",
-    "",
-];
-
-// ------------------------------------ every file done (m6-conflicts/60)
-
-/// `files` with every row done, the cursor on the last.
-fn all_done(files: FileListView) -> FileListView {
-    FileListView {
-        rows: files
-            .rows
-            .into_iter()
-            .map(|row| FileRow {
-                state: FileRowLook::Done,
-                ..row
-            })
-            .collect(),
-        ..files
-    }
-}
-
-/// Once every file is done the list's head says so: the column
-/// `FILES · all <n> done ✓`, the strip `files · all done ✓`, one row or a
-/// grid alike.
-#[test]
-fn list_head_when_every_file_is_done() {
-    let two = all_done(two_files());
-    let buf = draw_list(&two, Placement::Column { width: 28 }, 28, 6);
-    assert_eq!(line(&buf, 0), "FILES · all 2 done ✓");
-
-    let strip = placement(&two, 120);
-    assert!(matches!(strip, Placement::Strip { rows: 1 }), "{strip:?}");
-    let buf = draw_list(&two, strip, 120, 1);
-    assert!(
-        line(&buf, 0).starts_with("files · all done ✓"),
-        "{:?}",
-        line(&buf, 0)
-    );
-
-    let twelve = all_done(twelve_files(11));
-    let grid = placement(&twelve, 80);
-    let Placement::Strip { rows } = grid else {
-        panic!("80 columns is a strip: {grid:?}")
-    };
-    assert!(rows > 1, "twelve long names make a grid: {rows}");
-    let buf = draw_list(&twelve, grid, 80, rows);
-    let drawn: Vec<String> = (0..rows).map(|y| line(&buf, y)).collect();
-    assert!(
-        drawn.iter().any(|row| row.contains("files · all done ✓")),
-        "{drawn:#?}"
-    );
-
-    // One file still open: the heads as before.
-    let buf = draw_list(&two_files(), Placement::Column { width: 28 }, 28, 6);
-    assert_eq!(line(&buf, 0), "FILES · 2 conflicted");
-}
+mod look;

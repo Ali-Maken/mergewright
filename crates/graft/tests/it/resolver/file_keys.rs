@@ -153,14 +153,17 @@ fn file_keys_capture() {
     // (a) Before `T`, on `notes.txt`: the bar offers both file keys.
     let before = crate::captures::frame(&state, 120, 40);
     let bar = before.last().expect("a bar").clone();
-    assert!(bar.contains("O/T") && bar.contains("j/k"), "{bar}");
+    assert!(
+        bar.trim_start().starts_with("o take yours"),
+        "the clash bar: {bar}"
+    );
     crate::captures::check_shot(
         "m6/fix-file-keys-before-120x40.txt",
         &format!("{}\n", before.join("\n")),
     );
     let before = crate::captures::frame(&state, 200, 50);
     let bar = before.last().expect("a bar").clone();
-    for hint in ["O/T file", "⏎ done", "j/k file"] {
+    for hint in ["o take yours", "u undo pick", "esc pause"] {
         assert!(bar.contains(hint), "{hint}: {bar}");
     }
     crate::captures::check_shot(
@@ -176,16 +179,16 @@ fn file_keys_capture() {
     // bottom row is the card's bar (review m6-amend-17 C1).
     let state = app.key(&state, KeyCode::PageUp);
 
-    // At 120 the files are a strip; at 200 a side list, wide enough for
-    // every name beside the widest state (m6-conflicts/42).
+    // The list a column at both widths; a solved merge file reads done
+    // (ease-pass/11) though git stages it only at the review's `y`.
     for (columns, rows, shot, done_row) in [
-        (120, 40, "m6/fix-file-keys-120x40.txt", "notes.txt · done ✓"),
-        (200, 50, "m6/fix-file-keys-200x50.txt", "notes.txt  done ✓"),
+        (120, 40, "m6/fix-file-keys-120x40.txt", "✓ notes.txt done"),
+        (200, 50, "m6/fix-file-keys-200x50.txt", "✓ notes.txt done"),
     ] {
         let frame = crate::captures::frame(&state, columns, rows);
         let body = frame.join("\n");
-        assert!(!body.contains(done_row), "strip: {body}");
-        assert!(body.contains("notes.txt"), "strip: {body}");
+        let listed = crate::captures::list_row(&frame, "notes.txt");
+        assert_eq!(listed, done_row, "{body}");
         assert!(
             frame
                 .iter()

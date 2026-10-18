@@ -97,8 +97,7 @@
 881 crates/graft-term/src/kitty/tests.rs
 677 crates/graft-ui/src/blame/tests.rs
 667 crates/graft-ui/src/confirm.rs
-540 crates/graft-ui/src/conflict_resolver/files/tests.rs
-775 crates/graft-ui/src/conflict_resolver/tests.rs
+562 crates/graft-ui/src/conflict_resolver/tests.rs
 441 crates/graft-ui/src/context_menu/tests.rs
 413 crates/graft-ui/src/detail.rs
 445 crates/graft-ui/src/detail_pane/header.rs
@@ -183,7 +182,7 @@
 1549 crates/graft/src/update/remote/tests.rs
 538 crates/graft/src/update/remote/tests/lease.rs
 965 crates/graft/src/update/resolver/tests.rs
-976 crates/graft/src/update/resolver/tests/file_list.rs
+896 crates/graft/src/update/resolver/tests/file_list.rs
 1683 crates/graft/src/update/rewrite_editor/tests.rs
 639 crates/graft/src/update/selection.rs
 536 crates/graft/src/update/stash.rs
@@ -261,7 +260,7 @@
 550 crates/graft/tests/it/quit_waits/stuck.rs
 1253 crates/graft/tests/it/remote_by_key.rs
 416 crates/graft/tests/it/resolver/editor_words.rs
-669 crates/graft/tests/it/resolver/file_list.rs
+562 crates/graft/tests/it/resolver/file_list.rs
 1384 crates/graft/tests/it/resolver/shell_begun.rs
 423 crates/graft/tests/it/resolver/whole_file.rs
 597 crates/graft/tests/it/stash_clash.rs

@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_clash_screen in
+# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# Judge by eye: 100 columns, the narrowest with the list column: the clash still two columns side by side.
+=== 100x40 ===
+MERGING                                                                                             
+Clashing files                │▸ report.md · 2 conflicts · 2 open                                   
+                              │                                                                     
+ ? notes.md   1 open          │   1 # Report                                                        
+▏? report.md  2 open          │   2 intro                                                           
+                              │┌───────────────────────────────────────────────────────────────────┐
+                              ││? yours · wallet-release          │theirs · sara/fix-toc           │
+                              ││    let tax = round_cents(total *…│  let tax = (total * rate).roun…│
+                              │└───────────────────────────────────────────────────────────────────┘
+                              │   4 middle                                                          
+                              │                                                                     
+                              │ ? yours · wallet-release          │theirs · sara/fix-toc            
+                              │     footer.push_str(&refund_line(…│  footer.push_str(&format_refun… 
+                              │                                                                     
+                              │   6 end                                                             
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+                              │                                                                     
+ o take yours (left) · t take theirs (right) · b take both · e edit · u undo pick · esc pause       

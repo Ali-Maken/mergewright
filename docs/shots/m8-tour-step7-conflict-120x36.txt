@@ -1,38 +1,38 @@
-m8-polish-and-ship/19c-c: what right looks like — task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn. Colour unverified (rule 5).
+m8-polish-and-ship/19c-c: what right looks like — task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `Clashing files` column with `? menu.txt  1 open`, the clash outlined: `yours · main` `dessert: pie` beside `theirs · clash` `dessert: ice cream`, unnumbered, the lines around it numbered, `o take yours (left) · …` at the foot. No practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn. Colour unverified (rule 5).
 
 MERGING
-files   ▸ menu.txt · 1 of 1 open
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ menu.txt · 1 conflict · 1 open
-
-  1 starter: bread
-  2 soup: tomato
-  3 main: pasta
-▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
-▏ yours · main                                              │theirs · clash
-▏ 4 dessert: pie                                            │4 dessert: ice cream
-▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-  5 drink: water
-  6 side: salad
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
+Clashing files                │▸ menu.txt · 1 conflict · 1 open
+                              │
+▏? menu.txt  1 open           │   1 starter: bread
+                              │   2 soup: tomato
+                              │   3 main: pasta
+                              │┌───────────────────────────────────────────────────────────────────────────────────────┐
+                              ││? yours · main                              │theirs · clash                            │
+                              ││    dessert: pie                            │  dessert: ice cream                      │
+                              │└───────────────────────────────────────────────────────────────────────────────────────┘
+                              │   5 drink: water
+                              │   6 side: salad
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+ o take yours (left) · t take theirs (right) · b take both · e edit by hand · u undo pick · esc pause, come back later

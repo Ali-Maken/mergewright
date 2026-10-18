@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_clash_screen in
+# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# Judge by eye: 90 columns: the list a strip over the file; the clash's sides stacked, each under its `?`-marked name.
+=== 90x40 ===
+MERGING                                                                                   
+files   notes.md 1/1 open   ▸ report.md 2/2 open                                          
+──────────────────────────────────────────────────────────────────────────────────────────
+▸ report.md · 2 conflicts · 2 open                                                        
+                                                                                          
+   1 # Report                                                                             
+   2 intro                                                                                
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│? yours · wallet-release                                                                │
+│    let tax = round_cents(total * rate);                                                │
+│  theirs · sara/fix-toc                                                                 │
+│    let tax = (total * rate).round_to(Cents);                                           │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+   4 middle                                                                               
+                                                                                          
+ ? yours · wallet-release                                                                 
+     footer.push_str(&refund_line(r));                                                    
+   theirs · sara/fix-toc                                                                  
+     footer.push_str(&format_refund(r, locale));                                          
+                                                                                          
+   6 end                                                                                  
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+ o take yours (left) · t take theirs (right) · b take · e edit · u undo pick · esc pause  

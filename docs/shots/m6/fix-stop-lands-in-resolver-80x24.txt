@@ -3,12 +3,12 @@ files   ▸ notes.md 1/1 open   shared.rs •
 ────────────────────────────────────────────────────────────────────────────────
 ▸ notes.md · 1 conflict · 1 open
 
-▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────
-▏ yours · main
-▏ 1 our plan
-▏ theirs · feature
-▏ 1 their plan
-▏ ──────────────────────────────────────────────────────────────────────────────
+┌──────────────────────────────────────────────────────────────────────────────┐
+│? yours · main                                                                │
+│    our plan                                                                  │
+│  theirs · feature                                                            │
+│    their plan                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
 
 
 
@@ -21,4 +21,4 @@ files   ▸ notes.md 1/1 open   shared.rs •
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc
+ o take yours (left) · t take theirs (right) · b take · e edit · u undo pick

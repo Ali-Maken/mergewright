@@ -136,7 +136,8 @@ fn resolver_view_sanitises() {
                 .chain(block.theirs.iter())
                 .map(|line| line.as_str().to_owned())
                 .collect::<Vec<_>>(),
-            graft_ui::conflict_resolver::RegionView::WholeFile { .. } => Vec::new(),
+            graft_ui::conflict_resolver::RegionView::WholeFile { .. }
+            | graft_ui::conflict_resolver::RegionView::Solved { .. } => Vec::new(),
         })
         .collect();
     assert!(
@@ -334,3 +335,7 @@ fn a_card_title_says_what_each_side_did() {
         assert!(!card.title.as_str().contains("0 of 0"), "binary {binary}");
     }
 }
+
+mod clash_bar;
+mod clash_look;
+mod clash_shots;

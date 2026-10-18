@@ -267,33 +267,37 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `Confirm` (struct) — The confirm box itself: a rounded-border frame on a cleared area, so it never shows the cells that were underneath it (row 484).
 
 ## conflict_resolver
-- `SIDE_BY_SIDE_MIN` (const) — Columns at or above which a block's OURS/THEIRS draw side by side.
-- `THREE_PANE_MIN` (const) — Frame columns at or above which the resolver is three panes beside a file-list column (ADR-0043 §1); below it, a strip above the card.
-- `Arrangement` (enum) — The resolver's two arrangements (ADR-0043 §1).
-- `arrangement` (fn) — Which arrangement a frame this wide gets.
+- `INLINE_FROM` (const, `arrange`) — Frame columns from which the list is a column and an open clash draws side by side (ease-pass/11); below, a strip over one card.
+- `LIST_COLUMN` (const, `arrange`) — The list column's width (30).
+- `THREE_PANE_MIN` (const, `arrange`) — Frame columns from which the document is three panes beside the column (ADR-0043 §1).
+- `Arrangement` (enum, `arrange`) — `ThreePane`, `Inline` (open clashes side by side), `Card` (stacked).
+- `arrangement` (fn, `arrange`) — Which arrangement a frame this wide gets.
+- `Mark` (enum, `mark`) — A clash's mark: `?` open, `◀ kept yours`, `▶ took theirs`, `◆ kept both` (ASCII `? < > *`); `glyph(ascii)`, `words(roles)`.
 - `HEADER_ROWS` (const) — Screen rows the widget reserves above the document itself: the title row and one more for the notice (blank while none is set).
 - `MIN_COLUMNS` (const) — The narrowest the resolver draws its document at; below this it draws [`TOO_SMALL`] instead.
 - `MIN_ROWS` (const) — The shortest the resolver draws its document at, on the same terms as [`MIN_COLUMNS`].
 - `DocView` (struct) — Everything the resolver draws for one file.
-- `RegionView` (enum) — One region of the document.
-- `BlockView` (struct) — One conflict block.
+- `RegionView` (enum) — One region of the document; `Solved { name, next }` is the line under a solved file.
+- `BlockView` (struct) — One conflict block; `kept` is what its pick wrote (empty while open).
 - `BlockState` (enum) — Whether a block still has a decision to make.
 - `TakeView` (enum) — Which side a taken block kept.
 - `SideKind` (enum) — Which side a [`ScreenRow::Side`] row draws.
 - `LabelOf` (enum) — Which section a [`SideKind::Label`] row names.
 - `ResolverScreen` (struct) — The resolver, ready to render.
 - `FileRow` (struct) — One file in the list.
-- `FileRowLook` (enum) — Where one listed file stands; `Solved` (a merge's file with every clash picked, not staged) reads `solved ✓`, muted.
-- `FileListView` (struct) — The list, ready to draw.
+- `FileRowLook` (enum) — Where one listed file stands; `Solved` (a merge's file with every clash picked, not staged) reads `✓ done`, as `Done` does (ease-pass/11); `words`/`glyph` in `files/words.rs`.
+- `FileListView` (struct) — The list, ready to draw; `tail` is what follows the files.
+- `ListTail` (enum, `files/tail`) — `None`, or a merge's `✓ Review the merge  y`.
+- `review_row_at` (fn, `files/tail`) — Whether `(dx, dy)` from the list's origin is on the drawn review row; a click there does what `y` does.
 - `Placement` (enum) — Where the list sits.
-- `placement` (fn) — Where the list goes at this frame width: a column at [`super::THREE_PANE_MIN`] and up, else a strip as tall as it needs.
+- `placement` (fn) — Where the list goes at this frame width: a column `LIST_COLUMN` wide from `INLINE_FROM`, else a strip as tall as it needs.
 - `ResolverAreas` (struct) — The resolver's area split between the list and the document.
 - `resolver_areas` (fn) — Splits `area`: a strip, one rule row, the document; or a column, one `│` column, the document at full height.
 - `file_at` (fn) — The file drawn at `(dx, dy)` from the list's origin, in a list `width` x `height` cells — `None` on the label, a blank, or `… N more`.
 - `FileList` (struct) — The list widget.
 - `FinishRow` (struct) — The finish row's words, full and short: `✓ every file done — c review and finish the merge` / `✓ every file done — c review & finish`.
 - `finish_row_at` (fn) — Whether (`col`, `row`) is on the finish row of a resolver drawn in `area` with `placement` — a click there does what `c` does.
-- `ScreenRow` (enum) — One row of the document, as [`layout`] plans it.
+- `ScreenRow` (enum) — One row of the document, as [`layout`] plans it; `Kept` (a taken clash's line), `Solved` (the solved line).
 - `Layout` (struct) — `doc` laid out at `columns`: every row the widget can draw, and where each block's header row is.
 - `layout` (fn) — `doc` laid out in `arrangement` at `columns` (the document's own width).
 - `row_at` (fn) — The row `top + screen_row` names, or `None` past the end.

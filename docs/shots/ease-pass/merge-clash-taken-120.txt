@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_clash_screen in
+# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# Judge by eye: `o` on the first clash: it shrinks to `let tax = round_cents(total * rate);`, numbered 3, marked `◀`, ending `kept yours`; the second clash still open below; the list `report.md  1 open`; the bar `n next open clash · u undo pick`.
+=== 120x40 ===
+MERGING                                                                                                                 
+Clashing files                │▸ report.md · 2 conflicts · 1 open                                                       
+                              │                                                                                         
+ ? notes.md   1 open          │   1 # Report                                                                            
+▏? report.md  1 open          │   2 intro                                                                               
+                              │┌───────────────────────────────────────────────────────────────────────────────────────┐
+                              ││◀ 3 let tax = round_cents(total * rate);  kept yours                                   │
+                              │└───────────────────────────────────────────────────────────────────────────────────────┘
+                              │   4 middle                                                                              
+                              │                                                                                         
+                              │ ? yours · wallet-release                    │theirs · sara/fix-toc                      
+                              │     footer.push_str(&refund_line(r));       │  footer.push_str(&format_refund(r, local… 
+                              │                                                                                         
+                              │   6 end                                                                                 
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+                              │                                                                                         
+ n next open clash · u undo pick                                                                                        

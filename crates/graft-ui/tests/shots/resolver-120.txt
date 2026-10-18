@@ -1,40 +1,40 @@
-files   ▸ src/auth/token.rs · 2 of 3 open    src/api/routes.rs · •
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ src/auth/token.rs · 3 conflicts · 2 open
-
-  38 fn refresh(&mut self) {
-▏ ── conflict 1 of 3 · open ── o upstream  t yours  b both ─────────────────────────────────────────────────────────────
-▏ upstream · main                                           │yours · 3f2a1b7 Add OAuth provider
-▏ 39 if expired() {                                         │39 if is_expired() {
-▏ 40 self.renew();                                          │40 self.do_refresh();
-▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-  41 }
-  ── conflict 2 of 3 · took yours · 3f2a1b7 Add OAuth provider ── o upstream  b both ───────────────────────────────────
-  42 let tok = self.store.get();
-  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ src/auth/token.rs · 3 conflicts · 2 open
+                              │
+▏? src/auth/token.rs  2 open  │   38 fn refresh(&mut self) {
+   src/api/routes.rs  •       │┌───────────────────────────────────────────────────────────────────────────────────────┐
+                              ││? upstream · main                           │yours · 3f2a1b7 Add OAuth provider        │
+                              ││     if expired() {                         │   if is_expired() {                      │
+                              ││     self.renew();                          │   self.do_refresh();                     │
+                              │└───────────────────────────────────────────────────────────────────────────────────────┘
+                              │   41 }
+                              │
+                              │ ▶ 42 let tok = self.store.get();  took yours
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
