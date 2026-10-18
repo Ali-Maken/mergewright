@@ -262,6 +262,9 @@ fn a_connector_to_a_commit_on_the_rail_drops() {
     // The merge on row 0 (column 0) sends its second parent down column 1
     // to the commit on row 1, which sits in column 2. Columns 2, 3 and 4
     // are node columns touched in that order, so column 2 folds first.
+    // The budget alone also drops the connector: with a node column folded,
+    // kept and rail fill all 3 columns, so this cannot isolate the end check
+    // in `plan` (06u box 4).
     let rows = vec![
         edged(1, 0, &[], &[(0, 6), (1, 2)], &[0, 1]),
         edged(2, 2, &[1], &[(2, 7)], &[0, 1, 2]),
@@ -319,4 +322,37 @@ fn a_drawn_connector_draws_all_it_carries() {
         lane_1,
         "a lane line"
     );
+}
+
+/// Two connectors and room for one: column 1 carries the top merge's second
+/// parent to the bottom row, column 2 the second merge's to row 3, every
+/// node in column 0. Column 1 was touched last, so it ranks first.
+fn two_connectors() -> Vec<Row> {
+    vec![
+        edged(1, 0, &[], &[(0, 2), (1, 5)], &[0, 1]),
+        edged(2, 0, &[], &[(0, 3), (2, 4)], &[0, 1, 2]),
+        edged(3, 0, &[], &[(0, 4)], &[0, 1, 2]),
+        edged(4, 0, &[2], &[(0, 5)], &[0, 1]),
+        edged(5, 0, &[1], &[], &[0]),
+    ]
+}
+
+#[test]
+fn connectors_rank_by_the_node_columns_classes_and_tie_break() {
+    let rows = two_connectors();
+
+    let plain = Fold::plan(2, &Keep::default(), &rows);
+    assert_eq!(plain.kept(), [0, 1], "the later touch wins the free column");
+    assert_eq!(plain.folded_count(), 0, "the loser drops, never folds");
+
+    let keep = Keep {
+        reserved: BTreeSet::from([2]),
+        ..Keep::default()
+    };
+    let reserved = Fold::plan(2, &keep, &rows);
+    assert_eq!(reserved.kept(), [0, 2], "a reserved connector outranks it");
+    assert_eq!(reserved.folded_count(), 0);
+
+    let both = Fold::plan(3, &Keep::default(), &rows);
+    assert_eq!(both.kept(), [0, 1, 2], "with room, both draw");
 }

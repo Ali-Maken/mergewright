@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use proptest::prelude::*;
 
 use super::super::*;
+use crate::fold::scan::touched;
 use crate::layout::layout;
 use crate::layout::tests::properties::{History, history};
 
@@ -88,7 +89,7 @@ impl Case {
     /// node in the window, lane 0 aside, each with its edges' end columns
     /// `(upper, lower)`.
     fn connectors(&self) -> BTreeMap<usize, Vec<(usize, usize)>> {
-        let noded: BTreeSet<usize> = self.window().iter().map(|row| row.lane).collect();
+        let has_node: BTreeSet<usize> = self.window().iter().map(|row| row.lane).collect();
         let mut entered: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
         let mut found: BTreeMap<usize, Vec<(usize, usize)>> = BTreeMap::new();
         for row in self.window() {
@@ -109,7 +110,7 @@ impl Case {
                 }
             }
         }
-        found.retain(|column, _| *column != 0 && !noded.contains(column));
+        found.retain(|column, _| *column != 0 && !has_node.contains(column));
         found
     }
 }
@@ -138,15 +139,15 @@ proptest! {
     fn node_columns_draw_or_fold_connectors_draw_or_drop_and_pass_throughs_never_draw(case in case()) {
         let fold = case.plan();
         let open = case.open();
-        let noded: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
-        let nodes: BTreeSet<usize> = open
+        let has_node: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
+        let node_columns: BTreeSet<usize> = open
             .iter()
             .copied()
-            .filter(|&c| c == 0 || noded.contains(&c))
+            .filter(|&c| c == 0 || has_node.contains(&c))
             .collect();
         let connectors = case.connectors();
         let connector_columns: BTreeSet<usize> = connectors.keys().copied().collect();
-        let drawable: BTreeSet<usize> = nodes.union(&connector_columns).copied().collect();
+        let drawable: BTreeSet<usize> = node_columns.union(&connector_columns).copied().collect();
         let required: BTreeSet<usize> = open.iter().copied().filter(|&c| c == 0).collect();
         let kept: BTreeSet<usize> = fold.kept().iter().copied().collect();
         let folded: BTreeSet<usize> = fold.folded().iter().copied().collect();
@@ -154,8 +155,8 @@ proptest! {
         prop_assert!(kept.is_disjoint(&folded));
         let both: BTreeSet<usize> = kept.union(&folded).copied().collect();
         prop_assert!(both.is_subset(&drawable), "a pass-through drawn: {:?}", fold);
-        prop_assert!(nodes.is_subset(&both), "a node column dropped: {:?}", fold);
-        prop_assert!(folded.is_subset(&nodes), "a connector folded: {:?}", fold);
+        prop_assert!(node_columns.is_subset(&both), "a node column dropped: {:?}", fold);
+        prop_assert!(folded.is_subset(&node_columns), "a connector folded: {:?}", fold);
         prop_assert!(required.is_subset(&kept), "lane 0 folded or dropped while open");
         for column in kept.intersection(&connector_columns) {
             let joins_drawn = connectors[column]
@@ -169,8 +170,8 @@ proptest! {
         prop_assert!(fold.open_columns() >= fold.kept().len() + fold.folded_count());
 
         let unbounded = Fold::plan(usize::MAX, &case.keep(), case.window());
-        let kept: BTreeSet<usize> = unbounded.kept().iter().copied().collect();
-        prop_assert_eq!(&kept, &drawable, "with no budget: every node column and connector");
+        let unbounded_kept: BTreeSet<usize> = unbounded.kept().iter().copied().collect();
+        prop_assert_eq!(&unbounded_kept, &drawable, "with no budget: every node column and connector");
         prop_assert!(unbounded.folded().is_empty());
     }
 

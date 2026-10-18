@@ -51,8 +51,6 @@ use crate::identity::BranchIdentity;
 
 mod scan;
 
-#[cfg(test)]
-use scan::touched;
 use scan::{Scan, scan, span};
 
 /// Columns a fold weighs above the ordinary least-recently-touched rank
@@ -102,13 +100,13 @@ impl Fold {
         let columns = rows.iter().map(span).max().unwrap_or(0);
         let Scan {
             open,
-            nodes,
+            node_columns,
             fold_order,
             connectors,
         } = scan(rows, columns, keep);
 
         let mut folded = BTreeSet::new();
-        let mut drawn = nodes.len();
+        let mut drawn = node_columns.len();
         if drawn > max_lanes {
             // Once anything folds, the marker takes a column of its own.
             let mut next = fold_order.into_iter();
@@ -119,11 +117,17 @@ impl Fold {
             }
         }
         debug_assert!(!folded.contains(&0), "lane 0 never folds");
-        let mut kept: BTreeSet<usize> = nodes.into_iter().filter(|c| !folded.contains(c)).collect();
+        let mut kept: BTreeSet<usize> = node_columns
+            .into_iter()
+            .filter(|c| !folded.contains(c))
+            .collect();
 
-        // Connectors take only what the node columns and the rail left, and
-        // only while one of their edges joins two drawn nodes: one past the
-        // budget, or leading to a commit on the rail, drops instead.
+        // Connectors take only what the node columns and the rail left; one
+        // past the budget drops. Once any node column folds, kept and rail
+        // already fill `max_lanes`, so today `room > 0` means nothing folded
+        // and every end is drawn. The end check is §3.5's rule ("a connector
+        // with an end on the rail drops"), kept for a budget that would leave
+        // room after a fold; no case reaches it now.
         let rail = usize::from(!folded.is_empty());
         let mut room = max_lanes.saturating_sub(kept.len() + rail);
         for connector in connectors {

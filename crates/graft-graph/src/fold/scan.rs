@@ -19,10 +19,10 @@ pub(super) struct Scan {
     pub(super) open: usize,
     /// Open columns holding a node in the window, and lane 0 while open,
     /// ascending: every column drawn or folded before any connector.
-    pub(super) nodes: Vec<usize>,
-    /// Every column in `nodes` but lane 0, lowest priority first: the order
-    /// they fold in once the budget runs out (ADR-0025's priority list,
-    /// reversed).
+    pub(super) node_columns: Vec<usize>,
+    /// Every column in `node_columns` but lane 0, lowest priority first:
+    /// the order they fold in once the budget runs out (ADR-0025's priority
+    /// list, reversed).
     pub(super) fold_order: Vec<usize>,
     /// Connectors, highest priority first: the order they are admitted in,
     /// after every node column.
@@ -56,7 +56,7 @@ pub(super) fn scan(rows: &[Row], columns: usize, keep: &Keep) -> Scan {
         }
     }
 
-    let nodes: Vec<usize> = (0..columns)
+    let node_columns: Vec<usize> = (0..columns)
         .filter(|&c| open[c] && (c == 0 || has_node[c]))
         .collect();
 
@@ -67,20 +67,21 @@ pub(super) fn scan(rows: &[Row], columns: usize, keep: &Keep) -> Scan {
         }
     }
 
-    let fold_order = rank(nodes.iter().copied().filter(|&c| c != 0), keep, &last_touch);
+    let fold_order = rank(
+        node_columns.iter().copied().filter(|&c| c != 0),
+        keep,
+        &last_touch,
+    );
     let connected = (0..columns).filter(|&c| !ends[c].is_empty());
-    let connectors = rank(connected, keep, &last_touch)
-        .into_iter()
-        .rev()
-        .map(|column| Connector {
-            column,
-            ends: std::mem::take(&mut ends[column]),
-        })
-        .collect();
+    let mut connectors = Vec::new();
+    for column in rank(connected, keep, &last_touch).into_iter().rev() {
+        let ends = std::mem::take(&mut ends[column]);
+        connectors.push(Connector { column, ends });
+    }
 
     Scan {
         open: open.iter().filter(|&&o| o).count(),
-        nodes,
+        node_columns,
         fold_order,
         connectors,
     }

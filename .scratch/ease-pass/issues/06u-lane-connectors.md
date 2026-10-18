@@ -106,10 +106,10 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 - **Rail reserved:** `plan`, `fold.rs:92-100`: once `drawable.len() > max_lanes`, columns fold while `drawn + 1 > max_lanes` (the `+ 1` is the rail). So whenever anything folds, kept + rail = `max_lanes` exactly (cap ≥ 2): no room is left for a connector.
 - **`╷`/`╵` end marks:** not built. `grep -rn '╷\|╵' crates/` is empty (graft-ui `graph_column` included).
 
-**Scout:** none, as the ticket says; Step 1 above replaced it. **Compacted:** no.
+**Scout:** none, as the ticket says; Step 1 above replaced it. **Compacted:** once, after the build was committed (68018ad8), while the two code-review agents ran. Only the review follow-up remained; it is the second commit (see Code review).
 
 ### What was built
-- `fold/scan.rs` (new, private): the scan moved out of `fold.rs` (370 → 316 lines; `scan.rs` 159) and gained the connector kind. A connector is found by parent id: for each window row's outgoing edge into a column other than its node's, the parent's row in the window has that column in `incoming`. Its ends are recorded as the two node columns `(upper, lower)`. Columns are ranked by one `rank` fn for node columns and connectors alike (same classes, same tie-break).
+- `fold/scan.rs` (new, private): the scan moved out of `fold.rs` (370 → 320 lines after review; `scan.rs` 160) and gained the connector kind. A connector is found by parent id: for each window row's outgoing edge into a column other than its node's, the parent's row in the window has that column in `incoming`. Its ends are recorded as the two node columns `(upper, lower)`. Columns are ranked by one `rank` fn for node columns and connectors alike (same classes, same tie-break).
 - `Fold::plan`: node columns fold as in 06b; then connectors, highest priority first, take the room left after the kept columns and the rail, each only while one of its edges joins two kept columns. A connector never enters `folded`.
 - No public signature changed. graft-ui: no code change (`fold_overlay` puts a node on the rail only when `fold.drawn(line.row.lane)` is `None`, `graph_column/mod.rs:297`; a connector holds no node, so it never lands there).
 
@@ -174,15 +174,33 @@ N = M in every (C) window, so no header keeps `lanes drawn`; `grep 'lanes drawn\
   - `tests/it/lane_cap.rs` `((7,15),(11,15))`;
   - `ancestry/tests.rs`.
 - **`tour_walk.rs` `file_size`:** green, unchanged.
-- **`over_400.txt`:** `crates/graft/tests/it/preview.rs` lowered 1140 → 1102 (capture test moved to `preview/capture.rs`, 74 lines). No row raised.
+- **`over_400.txt`:** `crates/graft/tests/it/preview.rs` lowered 1140 → 1102 (capture test moved to `preview/capture.rs`, 72 lines). No row raised.
 - **Other `Fold::plan` callers** (`git grep -n 'Fold::plan'`): `graph_screen/compaction.rs:41`, `view/strips.rs:362`, tests. No change at any of them.
 - **Keys:** none. **Journal/undo:** none.
 - **For the conductor:** the KNOWN_GAPS row for ADR-0025's residual closes (I did not edit it).
 
+### Code review (two `reviewer` agents, standards and spec, read-only on 68018ad8)
+- **Spec:** Critical 0, Major 0, Minor 3. It spot-checked 4 ticks, and all 4 held. It byte-compared `fix-preview-verb` and `settle-following` against `fcc5b7bd^1` and found both equal.
+  - Minor 1, connector priority unpinned. Reversing `.rev()` in `scan.rs` stayed green. **Fixed:** added `in_view::connectors_rank_by_the_node_columns_classes_and_tie_break`, which has two connectors and room for one. The later touch wins, a `reserved` connector outranks it, and the one left out drops instead of folding. I checked that it catches the reversal: with `.rev()` removed it fails, and it passes once restored.
+  - Minor 2, the end check is unreachable. This is the box 4 limit. Now stated in `plan`'s comment and in the rail test's comment, not hidden.
+  - Minor 3, where "A folded column is a stub" sits in §3.5. The ticket replaces three separate pieces, so I left that paragraph where it was, between them (Docs above). No change.
+- **Standards:** no hard violations; 8 judgement calls.
+  - **Fixed:**
+    - `plan`'s comment no longer says the rail case happens.
+    - `Scan::nodes` and its proptest twin are now `node_columns`, and the proptest's `noded` is now `has_node`, as in production.
+    - The `#[cfg(test)] use scan::touched` is gone from `fold.rs`; `properties.rs` imports it directly.
+    - The connector list is built with a plain `for` loop instead of a `mem::take` inside `.map`.
+    - `capture.rs` uses the imported `Clock`.
+    - The proptest's shadowed `kept` is now `unbounded_kept`.
+  - **Not changed:**
+    - A struct for the `(upper, lower)` tuples: low priority, and the doc names the fields.
+    - `edged`'s five arguments: the reviewer called them acceptable for a test helper.
+    - The rail test's name: the ticket's box names it, so its comment now says that the budget alone also drops the connector.
+
 ### Gates (worktree, own `CARGO_TARGET_DIR`)
 - `cargo fmt --all --check`: clean.
 - `cargo clippy --workspace --all-targets -- -D warnings`: clean.
-- `cargo nextest run --workspace --no-fail-fast`: 6833/6833 passed, 16 skipped.
+- `cargo nextest run --workspace --no-fail-fast`: 6833/6833 passed, 16 skipped at 68018ad8; after the review fix 6834/6834 (the connector-priority test added), 16 skipped. fmt, clippy and doc tests re-run after the fix: clean, ok.
 - `cargo test --workspace --doc`: ok.
 
 ### Broken vs unverified
