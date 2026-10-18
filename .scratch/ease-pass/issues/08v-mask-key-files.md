@@ -1,6 +1,6 @@
 # 08v — mask key files whole (secrets leak from 08t), plus one stale comment
 
-Status: draft (planner, spec-only pass, 2026-10-18; from 08t NOTES questions a and d)
+Status: ready; was draft (planner, spec-only pass, 2026-10-18; from 08t NOTES questions a and d)
 Build with: Sonnet — the rule is fully decided below and a table test judges it; one function and its tests.
 Needs: from 08t (built): `view::commit_editor::mask::{MASK, mask_secret_line}`, `update::commit_editor::files::diff_arrived` (calls it). graft-ops `looks_like_secrets` (unchanged).
 Blocked by: none. Shares `crates/graft/MAP.md` (one row each) with 08u: run after 08u merges, or alongside and the conductor merges the row by hand.

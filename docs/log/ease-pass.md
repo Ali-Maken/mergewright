@@ -96,3 +96,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - builder-opus-xhigh 08t (20e72e32, 252bb098) 6/6 in 08s (Q1×3, 08r, m5, m8): mask.rs, done_line tick first, 45 captures; hunk headings masked too (accepted). 4 questions. No scout (08s Step 1). COMPACTED ×1. skills: tdd, implement · 273 tools. Merge waits on gates.
 - planner-fable 08t rulings: (a) key-shaped prefix only, else whole line masked (PEM leak) → new 08v (Sonnet tier) with (d); (b) resolver ticks stay; (c) m3 pty waiter + stale pty records + contact sheets → 14; 08u gains rulings + secrets box · 20 tools.
 - gates after 06u (92821959): fmt ok, clippy 0, nextest 6834/6834, doc ok; worktree removed. 08t merged 5d32d440 (shared captures auto-merged; gates check). Gates running.
+- gates after 08t (5d32d440): fmt ok, clippy 0, nextest 6838/6838, doc ok; worktree removed. 08v filed ready. builder-opus-xhigh 08u + builder-sonnet 08v dispatched (MAP.md row merged by hand).
