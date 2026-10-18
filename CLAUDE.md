@@ -53,7 +53,7 @@ The planner refuses to write a note without step 2's file; the conductor refuses
 | `docs/field-notes.md` | What the user hit in real use. One line, dated. Feeds the next design pass. |
 | `TESTING.md` "Times I left" | Every reach for the shell (ADR-0033). The only measurement of the promise. |
 | `docs/reviews/`, `docs/design-notes/` | Milestone reviews; one design note per milestone. |
-| `docs/AUTHORSHIP.md` | Regenerated each checkpoint from `docs/log/*.md`. Facts from the log only. |
+| `docs/AUTHORSHIP.md` | Frozen; no longer regenerated at checkpoints (user, 2026-10-19). Private. |
 
 ## Which model, and who decides
 

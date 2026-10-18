@@ -66,7 +66,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
    3. **Review, one round per group** (ADR-0029): when a group is done, send `reviewer` that group's start hash from the live log (it reads the diff and MAP.md files first; CLAUDE.md "Reviewer efficiency").
       - Critical or Major → one builder fixes them, then move on. **Don't re-review.** A second round only for a surviving Critical.
       - Everything left goes to `KNOWN_GAPS.md` with an expiry milestone — marked **broken** or **unverified**, which are not the same thing.
-   4. **Milestone checkpoint:** first dispatch `reviewer` for the whole-app usability walk (CLAUDE.md, Running work) → `docs/reviews/<milestone>-usability.md`; its Criticals and Majors get fix tickets before the stop. Then regenerate `docs/AUTHORSHIP.md` from the session logs (`docs/log/*.md`; facts from the log only) and commit it. Do 4.1 for the next milestone, then stop and report (limits: CLAUDE.md "Checkpoint policy"):
+   4. **Milestone checkpoint:** first dispatch `reviewer` for the whole-app usability walk (CLAUDE.md, Running work) → `docs/reviews/<milestone>-usability.md`; its Criticals and Majors get fix tickets before the stop. (`docs/AUTHORSHIP.md` is frozen — no regeneration, user 2026-10-19.) Do 4.1 for the next milestone, then stop and report (limits: CLAUDE.md "Checkpoint policy"):
       ```
       M<n> done. <one-line result>
       Built: <3–5 one-line bullets>
