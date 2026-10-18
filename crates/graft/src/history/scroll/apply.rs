@@ -19,6 +19,13 @@ impl History {
         match update {
             HistoryUpdate::Started(facts) => self.walk = Some(*facts),
             HistoryUpdate::LaidOut { rows } => self.laid_out = Some(rows),
+            // Answered: requests stop carrying the ask. The count itself is
+            // the search's (`update::search::folded_hits`).
+            HistoryUpdate::FoldedHits { search, .. } => {
+                if self.folded_ask.as_ref().map(|ask| ask.search) == Some(search) {
+                    self.folded_ask = None;
+                }
+            }
             HistoryUpdate::Progress { request, laid_out } => {
                 if request == self.asked {
                     self.rows = self.rows.max(laid_out);
@@ -54,12 +61,7 @@ impl History {
                     && let Some(id) = self.seeking.take()
                 {
                     self.jump = None;
-                    // Not in this view: the cursor keeps its row, and the
-                    // caller sees `selected` is not the commit it sought.
-                    if let Some(at) = window.rows.iter().position(|row| row.commit.id == id) {
-                        self.cursor = window.first + at;
-                        self.top = self.cursor.saturating_sub(height.max(1) / 2);
-                    }
+                    self.land_find(&window, id, height.max(1));
                 }
                 if self.jump == Some(window.request) {
                     self.jump = None;
@@ -138,8 +140,12 @@ impl History {
         }
         // Folded away in the new order (ease-pass 06): the cursor lands on
         // the merge it now hides behind.
-        let landed = |commit| match window.anchor_behind.as_deref() {
-            Some(&(anchor, merge)) if anchor == commit => merge,
+        let behind = window
+            .sought
+            .as_deref()
+            .and_then(|sought| sought.anchor_behind);
+        let landed = |commit| match behind {
+            Some((anchor, merge)) if anchor == commit => merge,
             _ => commit,
         };
         let found = anchor.and_then(|anchor| {
@@ -164,10 +170,7 @@ impl History {
         if self.jump == Some(window.request) {
             if let Some(id) = self.seeking {
                 // Not in this view: the cursor stays on the anchor.
-                if let Some(at) = window.rows.iter().position(|row| row.commit.id == id) {
-                    self.cursor = window.first + at;
-                    self.top = self.cursor.saturating_sub(height / 2);
-                }
+                self.land_find(&window, id, height);
             } else {
                 self.cursor = self.rows.saturating_sub(1);
                 self.top = self.rows.saturating_sub(height);

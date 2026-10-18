@@ -77,12 +77,14 @@ The first-launch line: for his first launches, until he opens the palette, the s
 ## history
 Reading history for the screen: `graft-git`'s walk meets `graft-graph`'s layout here, laid out as it arrives.
 - `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase; `head_pending` while the first request waits for `HEAD` (ease-pass 06 D2).
-- `Window` (struct) — the laid-out rows the screen currently holds; `Window.fold` holds each row's `RowFold`, index for index.
+- `Window` (struct) — the laid-out rows the screen currently holds; `Window.fold` holds each row's `RowFold`, index for index; `Window.sought` what a find learnt, `Window::found` (fn) how it was found.
 - `View` (struct) — `follow`, `inclusion`: the view a walk lays out; `View::folded` (fn) is what the app opens on — merged branches folded, none opened.
 - `RowFold` (struct) — `folds`, `inside`: does a merge row fold a branch; the opened merge a row sits inside.
 - `Inside` (struct) — `merge`, `label`: an opened merge and the branch name its subject gives.
-- `HistoryUpdate` (enum) — what the history worker reports back to `update`.
-- `RowRequest` (struct) — the rows a move needs, sent to the worker.
+- `HistoryUpdate` (enum) — what the history worker reports back to `update`; `FoldedHits` counts asked hits hidden by the default fold.
+- `RowRequest` (struct) — the rows a move needs, sent to the worker; `RowRequest::new` (fn) with nothing riding along; `folded` carries a `FoldedAsk`.
+- `History::take_reveal` (fn) — the merge a find's answer left to open, once (ease-pass 06c).
+- `History::ask_folded` / `folded_ask_out` / `ask_again` (fn) — put a `FoldedAsk` on every request until answered; is one out; the request to carry it when none is due.
 - `Phase` (enum) — where the walk is: streaming, complete, and so on.
 - `preview_seeds` (fn) — ghost lanes' colours from the refs, for Ghost Preview.
 ## history::parents
@@ -101,6 +103,12 @@ The history worker's loop: answers each `RowRequest`, lays out ahead between req
 The product's `CommitSource`: `graft-git`'s walk behind `graft-graph`'s seam.
 ## history::state
 `History` and the requests and updates that flow between it and the worker.
+## history::sought
+What a find learnt and what it leaves the app to do (ease-pass 06c).
+- `Found` (enum) — `Row` / `Folded { behind }` / `NotInView`: how a find's commit was found.
+- `Reveal` (struct) — `merge`, `target`: the merge to open and the commit to seek again.
+- `FoldedAsk` (struct) — `search`, `ids`: which of a search's hits the default fold hides, asked beside the rows.
+- `Sought` (struct) — `anchor_behind`, `found`: a find's or promotion's extras on a `Window`.
 ## history::stream
 Walking a repository's history: opening it and working out the strict topological order it promotes to.
 ## history::views
@@ -262,7 +270,7 @@ Keeping a shown cursor shown when the graph pane loses history rows without a ke
 ## update::journal
 The undo journal screen's state (`J`): cursor, marks, and the read that keeps it current.
 ## update::keys
-The graph's own keys: movement, view changes and toggles other than search and the commit-graph offer.
+The graph's own keys: movement, view changes and toggles other than search and the commit-graph offer. `view_change::open_merge` is `space`'s open half, which a reveal also uses.
 ## update::map
 The Map view's state and keys (`M`): built fresh on open, thrown away on close.
 ## update::mouse

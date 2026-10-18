@@ -450,19 +450,6 @@ fn tab_puts_the_cursor_on_the_tip_and_writes_nothing() {
 }
 
 #[test]
-fn tab_on_an_unloaded_tip_seeks() {
-    let mut state = on_row(&opened(&fixture()), "login-page");
-    state.awaiting = Some(JobId::new(4242));
-    let (_, commands) = press(&state, KeyCode::Tab);
-    assert!(
-        commands.iter().any(
-            |command| matches!(command, Command::ShowRows(walk, _) if *walk == JobId::new(4242))
-        ),
-        "{commands:?}"
-    );
-}
-
-#[test]
 fn esc_closes_and_cancels_the_read() {
     let (state, commands) = press(&fixture(), KeyCode::Char('C'));
     let id = read_id(&commands);
@@ -626,3 +613,4 @@ fn letters_in_the_picker_at_a_live_stop_are_typed() {
 }
 
 mod current_row;
+mod seek;

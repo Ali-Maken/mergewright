@@ -36,7 +36,7 @@ mod included;
 mod tests;
 
 pub use fold_walk::{Admit, FoldWalk, Mark};
-pub use included::{Included, advance_folded, reinclude, repair};
+pub use included::{Included, Whereabouts, advance_folded, reinclude, repair};
 
 /// Which parents a view follows. Fixed for the life of a layout: it changes
 /// the seeds, and so every row from the first — a different view, laid out

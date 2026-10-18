@@ -22,6 +22,7 @@ pub mod parents;
 mod scroll;
 mod seeds;
 mod serve;
+mod sought;
 mod source;
 mod state;
 mod stream;
@@ -32,12 +33,15 @@ mod idle_tests;
 #[cfg(test)]
 mod promotion_tests;
 #[cfg(test)]
+mod reveal_tests;
+#[cfg(test)]
 mod tests;
 
 pub use fold::{Inside, RowFold};
 pub use scroll::Motion;
 pub use seeds::{preview_seeds, seeds_for};
 pub use serve::serve;
+pub use sought::{FoldedAsk, Found, Reveal, Sought};
 pub use source::WalkSource;
 pub use state::{
     Ended, History, HistoryUpdate, Phase, Promote, Promotion, RowRequest, View, WalkFacts, Wanted,

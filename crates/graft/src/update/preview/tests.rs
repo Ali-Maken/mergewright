@@ -94,7 +94,7 @@ fn on_screen_with(rows: Vec<Row>) -> AppState {
         done: true,
         promoted: false,
         fold: [].into(),
-        anchor_behind: None,
+        sought: None,
     };
     let (state, _) = crate::update::update(
         &state,

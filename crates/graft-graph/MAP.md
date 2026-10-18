@@ -57,6 +57,8 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `Included::walked` / `shown` / `fold` (fn) — walked and currently shown handles, as `HandleSet`s; the fold's walk, if folding.
 - `Included::reinclude` (fn) — `reinclude(Inclusion) -> Result<Option<usize>, _>`; switch inclusion, first changed row.
 - `Included::repair` (fn) — `repair() -> Result<Option<usize>, _>`; force late commits shown, redraw rejoined edges; first changed row.
+- `Included::whereabouts` (fn) — `whereabouts(Oid) -> Whereabouts`; where a commit is in this view, from what is walked, without advancing.
+- `Whereabouts` (enum) — `Shown` / `Folded { behind }` (the shown merge, through hidden ones) / `Filtered` (a view he chose hides it) / `NotWalked`.
 - `reinclude` (fn) — switch a `StreamingLayout<Included<_>>`'s inclusion and truncate from the first changed row; `Invalidated`.
 - `repair` (fn) — run `Included::repair` on a `StreamingLayout` and truncate; `Option<Invalidated>`.
 - `advance_folded` (fn) — `advance` then `repair` until neither has work; what a folding view advances with.

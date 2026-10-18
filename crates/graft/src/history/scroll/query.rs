@@ -76,6 +76,10 @@ impl History {
     /// until it has a row ([`Wanted::Find`]). A pending find is a jump: the
     /// header says so and `Esc` withdraws it. `None` when there is nothing to
     /// ask (the rows on hand did it, or the walk has gone).
+    ///
+    /// A commit the default fold hides is revealed: the answer leaves a
+    /// [`Reveal`](crate::history::Reveal) owed (`take_reveal`), and the app
+    /// opens the merge and seeks again (ease-pass 06c).
     pub fn seek(&mut self, commit: Oid, height: usize) -> Option<RowRequest> {
         let height = height.max(1);
         let on_hand = self.window.as_ref().and_then(|window| {
@@ -289,6 +293,7 @@ impl History {
             wanted,
             view: self.view.clone(),
             promote,
+            folded: self.folded_ask.clone(),
         }
     }
 }

@@ -501,7 +501,7 @@ mod tests {
             done: false,
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         });
         state
     }

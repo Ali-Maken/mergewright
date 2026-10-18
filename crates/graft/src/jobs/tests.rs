@@ -526,12 +526,11 @@ fn a_history_job_answers_row_requests_until_cancelled() {
     runner.dispatch(Command::ReadHistory(walk, Order::Topological));
     let id = next_started(&events, &Task::ReadHistory);
     assert_eq!(id, walk, "the walk runs under the id `update` chose");
-    let asked = history::RowRequest {
-        id: 1,
-        wanted: history::Wanted::Rows(190..usize::MAX),
-        view: history::View::default(),
-        promote: None,
-    };
+    let asked = history::RowRequest::new(
+        1,
+        history::Wanted::Rows(190..usize::MAX),
+        history::View::default(),
+    );
     runner.dispatch(Command::ShowRows(id, asked));
 
     let mut started = false;
@@ -546,6 +545,7 @@ fn a_history_job_answers_row_requests_until_cancelled() {
                     history::HistoryUpdate::LaidOut { .. } => {
                         panic!("laid out to the end before the answer")
                     }
+                    history::HistoryUpdate::FoldedHits { .. } => panic!("nothing asked it"),
                 }
             }
             other => panic!("the job is still answering, but it said {other:?}"),

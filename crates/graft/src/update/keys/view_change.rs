@@ -42,15 +42,16 @@ impl ViewChange {
                 let commit = history.selected()?.commit.id;
                 // A view that does not fold (first-parent) has no facts.
                 let fold = history.fold_at(history.cursor)?;
-                let opened = view.inclusion.opened_mut()?;
                 if fold.folds == Some(true) {
                     // A folding merge opens, an opened one closes: the
                     // merge rule wins inside an opened merge too.
-                    if !opened.close(commit) {
-                        opened.open(commit);
+                    if let Some(opened) = open_merge(&view, commit) {
+                        view = opened;
+                    } else {
+                        view.inclusion.opened_mut()?.close(commit);
                     }
                 } else if let Some(inside) = &fold.inside {
-                    opened.close(inside.merge);
+                    view.inclusion.opened_mut()?.close(inside.merge);
                     land_on = Some(inside.merge);
                 } else {
                     return None;
@@ -80,6 +81,14 @@ impl ViewChange {
         }
         Some(Changed { view, land_on })
     }
+}
+
+/// `view` with one folded `merge` opened — `space`'s open half, and a
+/// reveal's (ease-pass 06c): one view change, one re-layout from the merge
+/// down. `None` when it is open already, or the view does not fold.
+pub(in crate::update) fn open_merge(view: &View, merge: Oid) -> Option<View> {
+    let mut opened = view.clone();
+    opened.inclusion.opened_mut()?.open(merge).then_some(opened)
 }
 
 /// `view` knowing `stashes` as the stash entries' own commits

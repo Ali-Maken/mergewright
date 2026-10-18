@@ -14,6 +14,7 @@ use graft_graph::layout::{Anchor, CommitSource, StreamingLayout};
 use graft_graph::{Follow, Included, Inclusion, Row};
 
 use super::fold::RowFold;
+use super::sought::{FoldedAsk, Found, Reveal, Sought};
 
 /// What a walk is, known before its first commit: the order it is in and the
 /// branches its lanes are anchored on.
@@ -50,9 +51,11 @@ pub enum Wanted {
     /// first — on a cold walk of a big repository, that is the long one (`G`).
     Last(usize),
     /// The rows around one commit: `rows` either side of it (search, `n`/`N`).
-    /// The walk is laid out until the commit has a row, or to the end if it
-    /// never gets one (it is not in this view); then `fallback` comes back
-    /// instead, so the viewport keeps its rows.
+    /// The walk is laid out until the commit is walked — then it has a row,
+    /// or the default fold hides it behind a merge that has one, or a view
+    /// he chose hides it — or to the end if it never is. Hidden by a view,
+    /// `fallback` comes back instead, so the viewport keeps its rows. The
+    /// window's [`Window::found`] says which (ease-pass 06c).
     Find {
         /// The commit to reach.
         commit: Oid,
@@ -106,6 +109,24 @@ pub struct RowRequest {
     /// anchor (kept as they are without one); a `G` or a search jump is kept,
     /// and lands in the new order.
     pub promote: Option<Promote>,
+    /// A search's ask for how many of its hits are folded, carried by every
+    /// request until it is answered ([`FoldedAsk`]).
+    pub folded: Option<FoldedAsk>,
+}
+
+impl RowRequest {
+    /// Request `id` for `wanted` in `view`, with nothing riding on it: no
+    /// promotion, no folded ask.
+    #[must_use]
+    pub fn new(id: u64, wanted: Wanted, view: View) -> Self {
+        RowRequest {
+            id,
+            wanted,
+            view,
+            promote: None,
+            folded: None,
+        }
+    }
 }
 
 /// A topological order to swap in, and where the screen is in the order it
@@ -157,11 +178,10 @@ pub struct Window {
     /// What the fold says about each of `rows`, in order; empty when the
     /// view does not fold merged branches (ease-pass 06).
     pub fold: Arc<[RowFold]>,
-    /// On a promoted window: the request's anchor, when the new order folds
-    /// it away, and the shown merge it now hides behind — where the cursor
-    /// lands instead (ease-pass 06). Boxed: rare, and every `AppState`
-    /// clone carries the window.
-    pub anchor_behind: Option<Box<(Oid, Oid)>>,
+    /// What became of the commits the request sought: a promoted anchor
+    /// folded away, a find's answer ([`Sought`]). Boxed: rare, and every
+    /// `AppState` clone carries the window.
+    pub sought: Option<Box<Sought>>,
 }
 
 impl Window {
@@ -169,6 +189,13 @@ impl Window {
     #[must_use]
     pub fn end(&self) -> usize {
         self.first + self.rows.len()
+    }
+
+    /// How the worker found the commit, on the answer to a
+    /// [`Wanted::Find`]; `None` on any other answer.
+    #[must_use]
+    pub fn found(&self) -> Option<&Found> {
+        self.sought.as_deref()?.found.as_ref()
     }
 }
 
@@ -194,6 +221,17 @@ pub enum HistoryUpdate {
     LaidOut {
         /// Every row of the view.
         rows: usize,
+    },
+    /// The answer to a request's [`FoldedAsk`], counted without laying out
+    /// further: of its hits, how many the default fold hides now and how
+    /// many the walk has not reached (counted once it has).
+    FoldedHits {
+        /// The ask's number ([`FoldedAsk::search`]).
+        search: u64,
+        /// Hits hidden behind a folded merge.
+        folded: usize,
+        /// Hits the walk has not decided yet.
+        unwalked: usize,
     },
 }
 
@@ -285,6 +323,12 @@ pub struct History {
     /// with it kept and a launch lays out once (ease-pass 06 D2): `show`
     /// asks nothing until the opening or the refs say where `HEAD` is.
     pub head_pending: bool,
+    /// The reveal the last find's answer left owed (`History::take_reveal`).
+    pub(crate) reveal: Option<Reveal>,
+    /// The search's folded ask every request carries until it is answered.
+    pub(crate) folded_ask: Option<FoldedAsk>,
+    /// How many folded asks have been made: the next one's number.
+    pub(crate) folded_asks: u64,
 }
 
 impl History {
@@ -308,6 +352,9 @@ impl History {
             outstanding: None,
             laid_out: None,
             head_pending: false,
+            reveal: None,
+            folded_ask: None,
+            folded_asks: 0,
         }
     }
 }

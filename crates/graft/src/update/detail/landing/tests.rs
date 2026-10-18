@@ -23,6 +23,7 @@ use super::super::{LineRef, Side, diff_cursor};
 use super::{LandingStage, show_line};
 
 mod disk;
+mod reveal;
 mod select;
 
 const WALK: JobId = JobId::new(4);

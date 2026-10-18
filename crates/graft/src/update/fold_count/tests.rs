@@ -101,7 +101,7 @@ fn every_folding_merge_on_screen_is_counted_one_job_each() {
             done: true,
             promoted: false,
             fold: [RowFold::default(), folds.clone(), folds].into(),
-            anchor_behind: None,
+            sought: None,
         }),
         10,
     );

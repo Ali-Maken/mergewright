@@ -133,7 +133,7 @@
 545 crates/graft/src/event_loop/tests/pace.rs
 650 crates/graft/src/event_loop/tests/pixel_scroll.rs
 710 crates/graft/src/event_loop/tests/settle.rs
-1475 crates/graft/src/history/tests.rs
+1446 crates/graft/src/history/tests.rs
 558 crates/graft/src/jobs/operate.rs
 1285 crates/graft/src/jobs/tests.rs
 818 crates/graft/src/jobs/undo.rs
@@ -167,13 +167,11 @@
 1215 crates/graft/src/update/journal/tests.rs
 487 crates/graft/src/update/keys.rs
 562 crates/graft/src/update/keys/live_c_tests.rs
-403 crates/graft/src/update/map.rs
 468 crates/graft/src/update/name_prompt.rs
 488 crates/graft/src/update/name_prompt/tests.rs
 1501 crates/graft/src/update/operate/tests.rs
 408 crates/graft/src/update/palette/mod.rs
-404 crates/graft/src/update/palette/tests.rs
-628 crates/graft/src/update/picker/tests.rs
+616 crates/graft/src/update/picker/tests.rs
 440 crates/graft/src/update/place.rs
 456 crates/graft/src/update/place/keys.rs
 1065 crates/graft/src/update/place/tests/history.rs

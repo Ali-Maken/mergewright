@@ -73,12 +73,11 @@ fn reported_rows<S: CommitSource>(
     let chunk = layout.config().chunk_rows;
     let mut rows: Vec<Row> = Vec::new();
     for id in 1.. {
-        let request = RowRequest {
+        let request = RowRequest::new(
             id,
-            wanted: Wanted::Rows(rows.len()..rows.len() + chunk),
-            view: View::default(),
-            promote: None,
-        };
+            Wanted::Rows(rows.len()..rows.len() + chunk),
+            View::default(),
+        );
         let mut done = false;
         let ended = answer(layout, request, &mut || None, &never, &mut |update| {
             if let HistoryUpdate::Window(window) = update {
@@ -193,12 +192,7 @@ fn a_configured_default_branch_takes_lane_0() {
         let mut facts = None;
         let mut rows = Vec::new();
         let (asks, requests) = mpsc::channel();
-        let everything = RowRequest {
-            id: 1,
-            wanted: Wanted::Rows(0..usize::MAX),
-            view: View::default(),
-            promote: None,
-        };
+        let everything = RowRequest::new(1, Wanted::Rows(0..usize::MAX), View::default());
         asks.send(everything).expect("the receiver is right here");
         // Nobody asks again, so the walk ends once it has answered.
         drop(asks);
@@ -211,7 +205,9 @@ fn a_configured_default_branch_takes_lane_0() {
                 match update {
                     HistoryUpdate::Started(started) => facts = Some(*started),
                     HistoryUpdate::Window(window) => rows.extend(window.rows.iter().cloned()),
-                    HistoryUpdate::Progress { .. } | HistoryUpdate::LaidOut { .. } => {}
+                    HistoryUpdate::Progress { .. }
+                    | HistoryUpdate::LaidOut { .. }
+                    | HistoryUpdate::FoldedHits { .. } => {}
                 }
                 Delivery::Received
             },
@@ -506,7 +502,7 @@ fn assert_late_jump_answers_are_dropped(history: &mut History, jump: u64) {
         done: true,
         promoted: false,
         fold: [].into(),
-        anchor_behind: None,
+        sought: None,
     };
     history.apply(HistoryUpdate::Window(late), HEIGHT);
     history.apply(
@@ -529,12 +525,7 @@ fn nothing_is_reported_once_stop_is_asked() {
 
     let stopped = AtomicBool::new(false);
     let mut reports = 0;
-    let jump = RowRequest {
-        id: 1,
-        wanted: Wanted::Last(HEIGHT),
-        view: View::default(),
-        promote: None,
-    };
+    let jump = RowRequest::new(1, Wanted::Last(HEIGHT), View::default());
     let ended = answer(
         &mut stream,
         jump,
@@ -583,12 +574,7 @@ fn rows_in<S: CommitSource>(views: &mut Views<'_, S>, view: &View, shape: Shape)
         .layout(view)
         .unwrap_or_else(|why| panic!("{shape}: opening the view: {why}"));
     let mut rows = Vec::new();
-    let everything = RowRequest {
-        id: 1,
-        wanted: Wanted::Rows(0..usize::MAX),
-        view: view.clone(),
-        promote: None,
-    };
+    let everything = RowRequest::new(1, Wanted::Rows(0..usize::MAX), view.clone());
     let ended = answer(layout, everything, &mut || None, &never, &mut |update| {
         if let HistoryUpdate::Window(window) = update {
             rows.extend(window.rows.iter().cloned());
@@ -679,18 +665,8 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
     };
     let straight = rows_in(&mut views, &first_parent, shape);
 
-    let jump = RowRequest {
-        id: 1,
-        wanted: Wanted::Last(HEIGHT),
-        view: View::default(),
-        promote: None,
-    };
-    let switch = RowRequest {
-        id: 2,
-        wanted: Wanted::Rows(0..usize::MAX),
-        view: first_parent,
-        promote: None,
-    };
+    let jump = RowRequest::new(1, Wanted::Last(HEIGHT), View::default());
+    let switch = RowRequest::new(2, Wanted::Rows(0..usize::MAX), first_parent);
     let mut newer = Some(switch.clone());
     let mut windows = 0;
     let layout = views.layout(&jump.view).expect("opens");
@@ -780,7 +756,7 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
             done: false,
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         })
     };
     history.asked = 1;
@@ -817,7 +793,7 @@ fn a_seek_still_out_survives_a_view_change() {
             done: false,
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         })
     };
     history.asked = 1;
@@ -1253,7 +1229,7 @@ fn window_of(first: usize, count: usize) -> Window {
         rows: rows.into(),
         promoted: false,
         fold: [].into(),
-        anchor_behind: None,
+        sought: None,
     }
 }
 
@@ -1448,12 +1424,7 @@ fn a_request_lays_out_only_the_rows_it_names() {
         ))
     };
     let mut views = Views::new(Seeds::default(), SMALL, Box::new(open));
-    let request = RowRequest {
-        id: 1,
-        wanted: Wanted::Rows(0..3),
-        view: View::default(),
-        promote: None,
-    };
+    let request = RowRequest::new(1, Wanted::Rows(0..3), View::default());
     let mut laid_out = None;
     let layout = views.layout(&request.view).expect("opens");
     let ended = answer(layout, request, &mut || None, &never, &mut |update| {

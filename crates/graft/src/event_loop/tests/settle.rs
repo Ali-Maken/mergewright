@@ -207,7 +207,7 @@ fn history_with_merges(cursor: usize) -> History {
             rows: rows.into(),
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         }),
         rows: usize::from(COMMITS),
         phase: Phase::Complete,

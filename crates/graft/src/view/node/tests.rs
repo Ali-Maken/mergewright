@@ -118,7 +118,7 @@ pub(crate) fn every_node(cursor: usize) -> AppState {
                 rows: rows.into(),
                 promoted: false,
                 fold: [].into(),
-                anchor_behind: None,
+                sought: None,
             }),
             rows: count,
             phase: Phase::Complete,
