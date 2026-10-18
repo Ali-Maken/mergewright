@@ -149,3 +149,5 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 06h (4a90c7e0): fmt ok, clippy 0, nextest 6945/6945, doc ok; worktree removed. 07a merged; gates running.
 - scout 06s/06t: 06s needs ruling (AppState 492 lines alone; 5 mismatches); 06t Sonnet, stop_ladder_readers.rs:57 path-list question → planner-fable ruling pass.
 - planner-fable ruling: 06s (AppState stays whole, state.rs row lowered not removed; rest into update/state/*), 06t (test path string follows stopped_line); both Sonnet, unblocked. AppState-by-area → PROGRESS cleanup row (conductor decision; user wants modular code). 06s/06t wait for a free slot (11b, 12b building).
+- gates after 07a (d1de1a59) FAILED: no_literal_keys scanned 07a's tests_ahead.rs/perf_ahead.rs (scan skips *_tests.rs only). Builder's 'gates pass' was false — false gate claim, logged against builder-sonnet 07a. Fixed (cause): renamed ahead_tests.rs / ahead_perf_tests.rs; script + ticket names updated. Gates re-running.
+- gates after 07a fix (b07304b9): fmt ok, clippy 0, nextest 6952/6952, doc ok; worktree removed.
