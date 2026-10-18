@@ -159,44 +159,48 @@ impl MergeParts {
         }
         if self.fast_forward {
             lines.extend(self.fast_forward_lines());
-            lines.extend(edits);
-            lines.push((String::new(), Tone::Text));
-            lines.push((self.after_words(keys), Tone::Text));
-            return lines;
-        }
-        if let Some(line) = &self.not_checkable {
+        } else if let Some(line) = &self.not_checkable {
             lines.push((line.as_str().to_owned(), Tone::Text));
             lines.extend(edits);
             return lines;
+        } else {
+            lines.extend(self.merge_lines());
         }
+        lines.extend(edits);
+        lines.push((String::new(), Tone::Text));
+        lines.push((self.after_words(keys), Tone::Text));
+        lines
+    }
+
+    /// A true merge's three counts: what changes, what git combines on its
+    /// own, and what he decides.
+    fn merge_lines(&self) -> Vec<(String, Tone)> {
         let clashes = self.decide.len();
-        lines.push((
-            labelled(
-                "Changes",
-                &count(self.changed, self.changed_capped, "file", "files"),
-            ),
-            Tone::Text,
-        ));
         let combined = count(
             self.changed.saturating_sub(clashes),
             self.changed_capped,
             "file",
             "files",
         );
-        lines.push((
-            labelled("Git combines", &format!("{combined} on its own")),
-            Tone::Text,
-        ));
         let tone = if clashes == 0 {
             Tone::Text
         } else {
             Tone::Clash
         };
-        lines.push((labelled("You decide", &self.decide_words()), tone));
-        lines.extend(edits);
-        lines.push((String::new(), Tone::Text));
-        lines.push((self.after_words(keys), Tone::Text));
-        lines
+        vec![
+            (
+                labelled(
+                    "Changes",
+                    &count(self.changed, self.changed_capped, "file", "files"),
+                ),
+                Tone::Text,
+            ),
+            (
+                labelled("Git combines", &format!("{combined} on its own")),
+                Tone::Text,
+            ),
+            (labelled("You decide", &self.decide_words()), tone),
+        ]
     }
 
     /// A fast-forward's three counts: what changes (when it was read —

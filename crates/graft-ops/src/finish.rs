@@ -23,7 +23,7 @@ use crate::snapshot::SnapshotError;
 
 mod review;
 use review::summary_of;
-pub use review::{MergeReview, finish_preview, merge_review};
+pub use review::{MergeReview, merge_review};
 
 /// One screen of what a merge will commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -111,6 +111,16 @@ pub enum SummaryError {
     StillUnmerged {
         /// How many paths.
         count: usize,
+    },
+    /// [`merge_review`] only: a clash is still open on disk. Counted in the
+    /// resolver's unit ([`FileState::open_clashes`](crate::conflict::FileState::open_clashes)),
+    /// so his `y` and the read say the same number.
+    #[error("{clashes} clashes still open in {files} files")]
+    ClashesOpen {
+        /// Files with a clash open.
+        files: usize,
+        /// Their open clashes; a whole-file card is one.
+        clashes: usize,
     },
     /// The repository's state could not be read.
     #[error("{}", .0.explain())]

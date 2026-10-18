@@ -9,6 +9,7 @@
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_git::state::InProgress;
+use graft_ops::conflict::FileState;
 use graft_ui::keymap::{ActionId, Keymap};
 
 use super::files::{RowState, listed_files};
@@ -82,8 +83,16 @@ fn review_pressed(
 /// resolver has read is open.
 fn clashes_open(state: &AppState) -> Option<String> {
     let open = open_clashes(state);
-    let clashes = if open == 1 { "clash" } else { "clashes" };
-    (open > 0).then(|| still_open_words(&format!("{open} {clashes} still open"), &state.keymap))
+    (open > 0).then(|| clashes_still_open(open, &state.keymap))
+}
+
+/// `N clash(es) still open · n goes to the next`: the resolver's words for
+/// open clashes, whether it counted them or the review's read did
+/// (ease-pass/05s, Minor 3: one unit for one key).
+#[must_use]
+pub fn clashes_still_open(clashes: usize, keys: &Keymap) -> String {
+    let noun = if clashes == 1 { "clash" } else { "clashes" };
+    still_open_words(&format!("{clashes} {noun} still open"), keys)
 }
 
 /// The notice once the status read a stage asked for has landed
@@ -112,11 +121,12 @@ fn open_clashes(state: &AppState) -> usize {
         .sum()
 }
 
-/// One row's open clashes, as [`open_clashes`] counts them.
+/// One row's open clashes, by the one count the review's read also uses
+/// ([`FileState::open_clashes`]): a whole-file or binary card is one.
 fn row_open(row: &RowState) -> usize {
     match row {
-        RowState::Open { open, .. } => *open,
-        RowState::WholeFile { .. } | RowState::Binary => 1,
+        RowState::Open { open, .. } => FileState::Open { open: *open }.open_clashes(),
+        RowState::WholeFile { .. } | RowState::Binary => FileState::Open { open: 0 }.open_clashes(),
         RowState::AllTaken | RowState::Done | RowState::Unread => 0,
     }
 }

@@ -301,7 +301,7 @@ whether the write can stop halfway:
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
 
-**Decided (ADR-0063; user approved 2026-10-17)** — the merge preview (`m`) has no buttons: `y` merges, `Esc` cancels, `Enter` lists the incoming commits (`Esc` back to the preview, `y` merges from there). Scoped by preview kind (Q6 a): every other preview keeps its buttons and `Enter` takes the choice under the cursor. No table row: `Enter` stays hard-matched in the preview's handler (Mp).
+**Decided (ADR-0063; user approved 2026-10-17)** — the merge preview (`m`) has no buttons: `y` merges, `Esc` cancels, `Enter` lists the incoming commits (`Esc` back to the preview, `y` merges from there). Scoped by preview kind (Q6 a): every other preview keeps its buttons and `Enter` takes the choice under the cursor. No table row: `Enter` stays hard-matched in the preview's handler (Mp). Over unrelated histories the box says `Can't merge: <from> and <into> share no history.` and withholds `y` (`m m` and the list's `y` too); `Esc` and `Enter` still work. A fast-forward says `Git combines  nothing: no merge commit is made` and `After y <into> moves up to <from>.` (ease-pass/05s).
 
 ### 2.3c Confirm box
 

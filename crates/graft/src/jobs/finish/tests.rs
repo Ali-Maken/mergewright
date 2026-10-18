@@ -115,8 +115,8 @@ fn the_review_names_the_files_solved_on_disk_and_stages_nothing() {
     );
 }
 
-/// With a clash still open the review is refused with the count of open
-/// files, so the app can close it and say so.
+/// With a clash still open the review is refused with the open files and
+/// their clashes, so the app can say so.
 #[test]
 fn the_review_with_a_clash_still_open_says_how_many_files() {
     let scratch = solved_merge();
@@ -128,7 +128,10 @@ fn the_review_with_a_clash_still_open_says_how_many_files() {
     let store = crate::repos::RepoStore::new(scratch.path().to_path_buf(), None);
     assert_eq!(
         super::summary(&store),
-        Err(crate::update::finish::ReviewFailed::StillOpen { count: 1 })
+        Err(crate::update::finish::ReviewFailed::StillOpen {
+            files: 1,
+            clashes: 1
+        })
     );
 }
 

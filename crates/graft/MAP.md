@@ -250,7 +250,7 @@ What flows through `update`: events in, commands out (`Command`), a take (`TakeR
 ## update::facts
 Facts beside the graph arriving (system git, refs, working-tree counts), their read failures, and the name prompt's key claim.
 ## update::finish
-The finish summary, a merge's review: resolver `y`/`c` or banner `c` opens it; `y` stages the solved files and commits; `u` undoes the last pick. `Reviewed`: summary and `solved`; `ReviewFailed`: `StillOpen` closes, `Failed` shows.
+The finish summary, a merge's review: resolver `y`/`c` or banner `c` opens it; `y` stages the solved files and commits; `u` undoes the last pick. `ReviewFailed::StillOpen { files, clashes }` closes and says how many; `Failed` shows.
 ## update::fold_count
 A folding merge's count: asked at rest for the merges on screen (an uncounted one keeps the loop's rest wake owed, `update::rest_owed`), counted once by a job, kept for the session.
 ## update::geometry
@@ -298,6 +298,7 @@ Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running w
 ## update::resolver
 The conflict resolver: `o`/`t`/`b` take a side; `u` undoes a pick (`Picks`, `Reread`); `n`/`←`/`→` step clashes; `⏎` done; `y` the merge's review (`still_open_words`, `reviews_the_merge`, `notice_once_checked`).
 - `Picks::resolver_opened` / `resolver_seen` (fns) — the resolver has been open at this stop: the banner is paused.
+- `clashes_still_open` (fn) — `N clash(es) still open · n goes to the next`: the resolver's own `y` refusal and the read's `StillOpen`, one unit.
 - `ResolverState` (struct) — `seek_open`: the banner's `⏎` hands on past solved files to the first open clash (`seek`).
 - `RowState` (enum) — `AllTaken` also for a file `ConflictSet::solved` names: solved on disk, never opened here.
 ## update::rewrite_editor

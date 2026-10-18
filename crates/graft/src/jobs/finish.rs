@@ -20,8 +20,8 @@ use crate::update::finish::{ReviewFailed, Reviewed};
 /// commit and the files solved on disk that its `y` stages, read with
 /// `graft_ops::finish::merge_review` — nothing is staged by reading.
 /// Files with a clash still open come back as
-/// [`ReviewFailed::StillOpen`] so the app can close the review and say
-/// how many; any other failure in `graft_ops`' own words.
+/// [`ReviewFailed::StillOpen`] so the app can say how many, files and
+/// clashes; any other failure in `graft_ops`' own words.
 pub(super) fn summary(repos: &RepoStore) -> Result<Reviewed, ReviewFailed> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     match graft_ops::finish::merge_review(&repo.handle(), &()) {
@@ -29,7 +29,9 @@ pub(super) fn summary(repos: &RepoStore) -> Result<Reviewed, ReviewFailed> {
             summary: Arc::new(review.summary),
             solved: review.solved,
         }),
-        Err(SummaryError::StillUnmerged { count }) => Err(ReviewFailed::StillOpen { count }),
+        Err(SummaryError::ClashesOpen { files, clashes }) => {
+            Err(ReviewFailed::StillOpen { files, clashes })
+        }
         Err(error) => Err(ReviewFailed::Failed(error.to_string())),
     }
 }

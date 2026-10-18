@@ -511,7 +511,7 @@ editor-to-finish              2                     # c y from the changes pane 
 b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2 · approved; keys re-sent by finish-summary-is-a-preview
 b-abort-shell-merge           2                     # batch 3 (approved 2026-09-24): a → ⏎ from the banner · ticket 50 → 2 (a y) · lazygit 3 (?)
 b-undo-a-take-in-the-shell    1                     # batch 3: u from the banner after a whole-file t · JetBrains ⌃Z 1
-last-block-to-finished        3                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Approved 2026-09-24; un-commented at 3 by last-file-opens-the-summary, which adds its scenario
+last-block-to-finished        3                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`; in a merge since ease-pass/05b `o y y`: `y` opens the review, its `y` commits) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Approved 2026-09-24; un-commented at 3 by last-file-opens-the-summary, which adds its scenario
 stash-pop-clash-to-done       5                     # S p y o ⏎ · m6-stash-preview.md Journeys (approved 2026-09-26, was 4) · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs and m5_walk (75, 86)
 stash-apply-clash-to-done     5                     # S ⏎ y o ⏎ · m6-stash-preview.md Journeys (approved 2026-09-26, was 4) · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs and m5_walk (75, 86)
 stash-pop-clean               3                     # S p y · m6-stash-preview.md Journeys (approved 2026-09-26) · lazygit g ⏎ 2 (+ panel switch) · walked in tests/it/m6_stash_put_back/stash_preview.rs (87)

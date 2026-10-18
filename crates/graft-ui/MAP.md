@@ -497,7 +497,7 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `new` (fn) — An empty box titled `title`, choices `Cancel`/`Confirm`, cursor on `Cancel` — the only way to build one, so the safe choice is first and under the cursor in every preview, whatever the plan does (ADR-0038 §1).
 - `with_choices` (fn) — The same box with its own choices — `labels[0]` is the safe one and is where the cursor goes back to (ADR-0038 §1).
 - `with_merge` (fn) — fills the box's `merge` field: no lines, no choices (keys only), footer `y merge  esc cancel  ⏎ see the N commits`. Its `incoming` field draws the incoming list in the box's place.
-- `MergeParts` (struct) — what the merge box says, in counts: incoming commits and who, files changed, clashes with places, his set-aside `edits`; `not_checkable` or `withheld` replace the counts.
+- `MergeParts` (struct) — what the merge box says, in counts: incoming commits and who, files changed, clashes, set-aside `edits`; `not_checkable`/`withheld` replace the counts; `fast_forward` says nothing is combined.
 - `choices` (fn) — The choices, left to right.
 - `selected` (fn) — The choice the cursor is on.
 - `left` (fn) — Moves the cursor one choice left, clamped at the first (no wrap).

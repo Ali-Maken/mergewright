@@ -98,7 +98,7 @@ pub(crate) use resolved::{every_file_done, set_notice};
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
 pub(crate) use review::finish_refused_notice;
-pub use review::{notice_once_checked, reviews_the_merge, still_open_words};
+pub use review::{clashes_still_open, notice_once_checked, reviews_the_merge, still_open_words};
 pub use scroll::resolver_mouse;
 pub(crate) use seek::{open_on_first_open, seek_first_open};
 pub use step::step_in_file;

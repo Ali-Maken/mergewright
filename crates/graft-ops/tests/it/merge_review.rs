@@ -14,9 +14,7 @@ use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_ops::apply::{ApplyError, Resume};
-use graft_ops::finish::{
-    ByGit, ByYou, Change, ResultIs, SummaryError, finish_preview, merge_review,
-};
+use graft_ops::finish::{ByGit, ByYou, Change, ResultIs, SummaryError, merge_review};
 use graft_ops::operation::Refusal;
 
 use crate::conflict_fixtures::{graft_merge_stops, id, paths, run_resume, two_file_conflict};
@@ -71,8 +69,9 @@ fn the_review_reads_solved_files_from_a_copy_and_leaves_the_real_index_alone() {
     let index = index_bytes(&repo);
     let stages = unmerged(&repo);
 
-    let summary = finish_preview(&repo.open(), &paths(&["a.txt", "b.txt"]), &())
-        .unwrap_or_else(|why| panic!("{why}"));
+    let review = merge_review(&repo.open(), &()).unwrap_or_else(|why| panic!("{why}"));
+    assert_eq!(review.solved, paths(&["a.txt", "b.txt"]));
+    let summary = review.summary;
 
     assert_eq!(
         summary.by_you,
@@ -115,24 +114,12 @@ fn the_review_lists_staged_and_solved_files_in_path_order() {
     solve_both(&repo);
     repo.git(&["add", "a.txt"]);
 
-    let summary =
-        finish_preview(&repo.open(), &paths(&["b.txt"]), &()).unwrap_or_else(|why| panic!("{why}"));
+    let review = merge_review(&repo.open(), &()).unwrap_or_else(|why| panic!("{why}"));
+    assert_eq!(review.solved, paths(&["b.txt"]), "a.txt is staged already");
+    let summary = review.summary;
 
     let listed: Vec<PathBuf> = summary.by_you.into_iter().map(|you| you.path).collect();
     assert_eq!(listed, paths(&["a.txt", "b.txt"]));
-}
-
-#[test]
-fn the_review_counts_only_the_unmerged_files_not_named_solved() {
-    let repo = two_file_conflict();
-    graft_merge_stops(&repo);
-    repo.write("a.txt", b"1\nF\n3\n");
-    let why = finish_preview(&repo.open(), &paths(&["a.txt"]), &()).expect_err("b.txt is open");
-    assert!(
-        matches!(why, SummaryError::StillUnmerged { count: 1 }),
-        "{why:?}"
-    );
-    assert!(review_copies(&repo).is_empty());
 }
 
 /// What the review reads with nothing named: every unmerged file sorted by
@@ -146,7 +133,13 @@ fn the_merge_review_sorts_unmerged_files_by_what_is_on_disk() {
     repo.write("a.txt", b"1\nF\n3\n");
     let why = merge_review(&repo.open(), &()).expect_err("b.txt is open");
     assert!(
-        matches!(why, SummaryError::StillUnmerged { count: 1 }),
+        matches!(
+            why,
+            SummaryError::ClashesOpen {
+                files: 1,
+                clashes: 1
+            }
+        ),
         "{why:?}"
     );
 
@@ -154,6 +147,36 @@ fn the_merge_review_sorts_unmerged_files_by_what_is_on_disk() {
     let review = merge_review(&repo.open(), &()).unwrap_or_else(|why| panic!("{why}"));
     assert_eq!(review.solved, paths(&["a.txt", "b.txt"]));
     assert_eq!(review.summary.by_you.len(), 2);
+    assert!(review_copies(&repo).is_empty());
+}
+
+/// The read counts clashes, not files: the resolver's unit, so his `y`
+/// and the read's refusal say the same number.
+#[test]
+fn a_file_with_two_open_clashes_is_refused_with_its_clash_count() {
+    let repo = TempRepo::init();
+    repo.write("two.txt", b"1\n2\n3\n4\n5\n6\n7\n");
+    repo.commit_all("base");
+    repo.git(&["branch", "feature"]);
+    repo.write("two.txt", b"M\n2\n3\n4\n5\n6\nM\n");
+    repo.commit_all("main's side");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("two.txt", b"F\n2\n3\n4\n5\n6\nF\n");
+    repo.commit_all("feature's side");
+    repo.git(&["switch", "-q", "main"]);
+    graft_merge_stops(&repo);
+
+    let why = merge_review(&repo.open(), &()).expect_err("two.txt has two clashes");
+    assert!(
+        matches!(
+            why,
+            SummaryError::ClashesOpen {
+                files: 1,
+                clashes: 2
+            }
+        ),
+        "{why:?}"
+    );
     assert!(review_copies(&repo).is_empty());
 }
 

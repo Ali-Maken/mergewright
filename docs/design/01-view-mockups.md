@@ -295,7 +295,7 @@ argument, until ADR-0061.)
 
 ### 1.7 Ghost Preview (overlaid on the graph, before confirming)
 
-**Ease pass (ADR-0063; user approved 2026-10-17)** — the merge preview has no buttons: `y` merges, `Esc` cancels, `⏎` lists the incoming commits; the faint would-be rows stay (Q5 a, Q6 a). Other previews unchanged.
+**Ease pass (ADR-0063; user approved 2026-10-17)** — the merge preview has no buttons: `y` merges, `Esc` cancels, `⏎` lists the incoming commits; the faint would-be rows stay (Q5 a, Q6 a). Other previews unchanged. Over unrelated histories the box says `Can't merge: <from> and <into> share no history.` and withholds `y` (`m m` and the list's `y` too); `Esc` and `Enter` still work. A fast-forward says `Git combines  nothing: no merge commit is made` and `After y <into> moves up to <from>.` (ease-pass/05s).
 
 ```
 │ ●a      [main]          Fix token refresh race            RM   2m   a1b2c│
