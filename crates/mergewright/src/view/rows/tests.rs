@@ -1,7 +1,10 @@
 use mergewright_term::sanitize_line;
 use mergewright_ui::graph_screen::BannerView;
+use std::path::{Path, PathBuf};
 
+use super::hint_context::hint_context;
 use super::*;
+use crate::repository::{Head, RepositoryFacts};
 
 fn banner(focused: bool, conflict: Option<&str>) -> BannerView {
     BannerView {

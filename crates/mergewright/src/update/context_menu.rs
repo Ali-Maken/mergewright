@@ -45,7 +45,7 @@ pub(super) const WORKING_TREE_ROW: usize = usize::MAX;
 
 /// `.`/right-click on a commit row: open its menu. `marked` asks the same
 /// source of truth the marker column asks (`view::radar::findings_for`,
-/// `view/entries.rs`) rather than a second, hand-maintained flag — a row
+/// `view/entries/cells.rs`) rather than a second, hand-maintained flag — a row
 /// with at least one finding lists `Explain`.
 pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
     let mut marked = false;

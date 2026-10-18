@@ -54,7 +54,7 @@ fn only_the_graph_footer_reads_the_short_stop_rungs() {
             // hands on when nothing is stopped: a definition, not a reader.
             "mergewright/src/update/clash.rs",
             // `stopped_line`, which the graph footer draws.
-            "mergewright/src/view/rows.rs",
+            "mergewright/src/view/rows/hint_context.rs",
         ]
     );
 }
