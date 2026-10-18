@@ -110,7 +110,9 @@ No file is the normal case, and every key is optional. An unknown key is a
 warning, so a file written for a later version still starts this one; a value
 a key does not take stops Mergewright with the line and column — except
 `graph.merged_branches`, whose bad value is a config problem (`?` lists it)
-and opens folded. Every key, its
+and opens folded. That one key is also the only thing Mergewright writes into
+the file: picking a mode under `GRAPH MODE` in `?` on the graph keeps it there
+(every other line and comment left as it was). Every key, its
 values and its default are in the man page's CONFIGURATION section.
 
 In each repository it opens, Mergewright keeps its files in

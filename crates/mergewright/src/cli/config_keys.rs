@@ -89,7 +89,8 @@ pub const CONFIG_KEYS: &[ConfigKeyDoc] = &[
         "folded | shown",
         "(unset)",
         "folded: a merged branch sits behind its merge; space opens it. shown: every branch \
-         on its own lane. Unset: folded. A bad value is a problem, not an error.",
+         on its own lane. Unset: folded. A bad value is a problem, not an error. Picking a \
+         mode under GRAPH MODE in ? writes this key (the only one Mergewright writes).",
     ),
     row(
         "diff",

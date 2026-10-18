@@ -27,6 +27,7 @@ pub(super) fn groups(
                     label: sanitize_line(words),
                     key: None,
                     config: None,
+                    detail: None,
                     kind: RowKind::App,
                 },
                 target: PaletteTarget::Note,
@@ -58,10 +59,14 @@ pub(super) fn groups(
         PaletteMode::Here(_) => {
             out.push(("IN PROGRESS", in_progress));
             out.push(("HERE", here));
+            // On the graph only: the start screen and the panes have none.
+            let on_graph = source.graph_mode.filter(|_| at == ContextId::Graph);
+            out.extend(on_graph.map(|now| (GRAPH_MODE_HEADER, graph_mode_rows(now))));
             out.push(("EVERYWHERE", everywhere));
         }
         PaletteMode::Everything => {
-            let actions = everything(in_progress, here, everywhere);
+            let mut actions = everything(in_progress, here, everywhere);
+            actions.extend(source.graph_mode.into_iter().flat_map(graph_mode_rows));
             let recent = recent_rows(source.recent, &actions);
             // Empty box: recent first; typed: last (ADR-0061).
             if palette.query.text().trim().is_empty() {
@@ -115,6 +120,7 @@ pub(super) fn everything(
             label: sanitize_line(label),
             key: None,
             config: None,
+            detail: None,
             kind: RowKind::App,
         },
         target: PaletteTarget::App(AppAction::Theme(*kind)),
@@ -127,6 +133,7 @@ pub(super) fn everything(
                 label: sanitize_line(TOUR_LABEL),
                 key: None,
                 config: None,
+                detail: None,
                 kind: RowKind::App,
             },
             target: PaletteTarget::App(AppAction::Tour),

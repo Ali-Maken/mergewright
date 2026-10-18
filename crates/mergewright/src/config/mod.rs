@@ -47,6 +47,7 @@ mod theme;
 #[cfg(test)]
 pub(crate) mod theme_tests;
 mod types;
+mod write;
 
 pub(crate) use keys::keymap_from;
 pub use load::{ConfigError, ConfigWarning, Loaded, default_path, load, load_from};
@@ -60,6 +61,7 @@ pub use types::{
 pub(crate) use folder::config_names;
 #[cfg(test)]
 use load::{load_at, load_settling, path_in_environment};
+pub use write::{KeepError, keep_in, keep_merged_branches};
 // The loader's own key lists, for `cli::docs_tests` to pair with
 // `cli::CONFIG_KEYS` both ways.
 #[cfg(test)]

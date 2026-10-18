@@ -71,6 +71,33 @@ pub enum RowKind {
     /// A find group's muted line: `+N more`, `reading…`, `searching…`, a
     /// read failure (ticket 12).
     More,
+    /// One choice of a setting: `●` (on, accent) / `○` (muted) drawn in the
+    /// key column by kind, `(on)` after the chosen one; `⏎` picks it. Its
+    /// [`PaletteRow::key`] is `None`.
+    Setting {
+        /// Whether this choice is the one in force.
+        on: bool,
+    },
+}
+
+/// What the id column shows: an action's config id, or a setting's config key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConfigId {
+    /// An action's id (`graph.merge`).
+    Action(ActionId),
+    /// A setting's key in his config (`graph.merged_branches`).
+    Key(&'static str),
+}
+
+impl ConfigId {
+    /// The id as drawn.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Action(id) => id.0,
+            Self::Key(key) => key,
+        }
+    }
 }
 
 /// One row, worded.
@@ -82,8 +109,12 @@ pub struct PaletteRow {
     /// action with no key there, `None` for a row that has no key at all
     /// (an app row).
     pub key: Option<KeyLabel>,
-    /// Its id in his config (`graph.merge`), drawn muted at the right.
-    pub config: Option<ActionId>,
+    /// Its id in his config (`graph.merge`, `graph.merged_branches`), drawn
+    /// muted at the right.
+    pub config: Option<ConfigId>,
+    /// Muted text after the label (setting rows); cut from its end before
+    /// the label is.
+    pub detail: Option<&'static str>,
     /// What it stands for.
     pub kind: RowKind,
 }

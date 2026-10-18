@@ -51,6 +51,9 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
         // repository screen never submits one, so never hears of one.
         AppEvent::Rested | AppEvent::Produced(_, Product::Cloned(_)) => {}
         AppEvent::Started(id, task) => started(next, commands, id, &task),
+        AppEvent::GraphModeKept { mode, result } => {
+            palette::graph_mode_kept(next, mode, result);
+        }
         // The rewrite editor's jobs, by id, before the handlers that share
         // their products: the preview's, the detail pane's and the stash
         // list's `Files`, the commit editor's `$EDITOR` (m7-power-tools/08).

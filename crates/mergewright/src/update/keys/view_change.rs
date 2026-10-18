@@ -124,13 +124,6 @@ pub(super) fn send(next: &mut AppState, commands: &mut Vec<Command>, changed: Ch
 /// does. Through [`send`], so the cursor lands by `keep` and a live
 /// search's folded count is asked again. Same mode → nothing. Not an
 /// operation: no journal entry.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the `?` list's graph mode row (ease-pass 06i) calls it"
-    )
-)]
 pub(crate) fn switch_graph_mode(state: &mut AppState, to: MergedBranches) -> Vec<Command> {
     state.graph_mode = to;
     let mut commands = Vec::new();

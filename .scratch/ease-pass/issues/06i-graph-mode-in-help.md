@@ -1,6 +1,6 @@
 # graph-mode-in-help — `GRAPH MODE` in the `?` list: `⏎` switches, the app keeps the pick in its config file
 
-Status: ready (reconciled 2026-10-18 with 06c as built and 06h's update; re-planned 2026-10-18 after the scout's 7 mismatches: config column typed, path from `default_path()`, write carried by the loop, setting rows drawn by kind, `✗` pinned by a test)
+Status: partial — built and gated; two boxes open on spec rulings (the `✗` the bar does not draw; `graph` does not reach the group in 4 steps). See NOTES › Open.
 Blocked by: 06h-graph-mode (`MergedBranches`, `as_config`, `History::merged_branches`, `switch_graph_mode`, `AppState.graph_mode`, the folded-count re-ask and the `keep` landing). Build after 06h merges.
 Build with: Sonnet — a listing group, a keyless row kind drawn by kind, one column type widened, and a small file writer the loop runs as it runs `SaveLayout`; each pinned by tests, the writer's cases all observable on a temp dir. Scout (`.scratch/ease-pass/scouts/06i-graph-mode-in-help.md`) held Sonnet pending three rulings; they are made below.
 Needs: from 06h `MergedBranches::{KEY, as_config}`, `History::merged_branches() -> MergedBranches`, `switch_graph_mode(&mut AppState, MergedBranches) -> Vec<Command>` (through `apply_view_change`: lands the cursor by `RowRequest.keep`, re-asks a live search's folded count — 06i adds no ask), `AppState.graph_mode`. Existing (scout): `update/palette/groups.rs:14-77` `groups()` (`HERE` :58-62, `everything()` app rows :100-136); `Entry { row, target, search: &'static [&'static str] }` (`palette/mod.rs` ~:290); `PaletteTarget` (`mod.rs:240-262`), `AppAction { Theme, Tour }` (:228-237); graft-ui `palette.rs` `RowKind` (:56-74), `PaletteRow` (:78-89, `config: Option<ActionId>` :86), row draw `palette/row.rs:60-103`; `config/load.rs` `Loaded.path` (:26, `None` with no file :159-160), `config::default_path()` (:177), `Session.config: Loaded` (`session.rs:27`); `Command` (`update/events/command.rs:18`), `AppEvent` (`update/events.rs:27`), loop-carried writes `SaveLayout` (:94) / `FirstLaunchDone` (:101), `jobs/runner/dispatch.rs:98` `not_a_job`; bar `Status` (`update/state.rs:1188`), `Status::done` (:1282).
@@ -117,25 +117,68 @@ Each checked, and how, in the report's **Touches:** line:
 - Keymap: no key added; `tests/keymap_ids.txt` unchanged (rows aren't actions — test/diff). Journal/undo: none.
 
 ## Acceptance
-- [ ] `?` on the graph, empty query: `HERE`, then `GRAPH MODE` with `● Folded merges … (on)` and `○ Every branch`, then `EVERYWHERE`; id column `graph.merged_branches` at 120, dropped at 90; at 90 the detail is cut before the title and `(on)` stays whole. — names its test.
-- [ ] Setting row draw: `●` cell accent+bold, `○` cell muted, a `RowKind::Action` row's key still accent+bold (style asserted on the buffer cells, not by eye). — names its test.
-- [ ] `ConfigId`: an action row draws its id as before (existing palette tests pass unchanged); a `Key` row draws the key. — names its test and the run.
-- [ ] Typed `graph`, `fold`, `branch` each keep both rows; `⌃P` typed `graph` lists the group; start-screen palette never does. — names its tests.
-- [ ] `⏎` on `Every branch`: palette closed, `History::merged_branches() == Shown`, one `KeepGraphMode(Shown)` command, cursor commit unchanged; `⏎` on the on row: closed, no command; neither recorded as recently run; journal unchanged. Click on a mode row = `⏎`. — names its tests.
-- [ ] With a finished search, 3 of 4 hits folded: `⏎` on `Every branch` → the request the switch sends carries a `FoldedAsk` (06h's); fed `folded: 0`, the footer has no suffix and the search is still live. — names its test.
-- [ ] Event ok → bar reads `✓ Graph: every branch · kept for next launch`; event err → the drawn bar line starts `✗ Graph: every branch for this run · not kept: ` + reason, mode stays `Shown`. The `✗` asserted on the rendered row, not the `Status` value (scout: unconfirmed; stop and report the line if `Failed` doesn't draw it). — names its test.
-- [ ] Loop arm: `KeepGraphMode` is not dispatched as a job; with `Loaded.path = Some(p)` it writes `p`; with `None` it writes `default_path()`; with neither → event err `NoFolder`'s words. — names its test.
-- [ ] Writer, temp dir each: missing folder + file → file is exactly `[graph]\nmerged_branches = "shown"\n`; a file with comments, `[ui]`, `[keys.graph]` and no `[graph]` → original bytes then the appended table; `[graph]` with other keys and comments → only the inserted line differs; existing key with a trailing comment, and `= "open"` → only the value differs; dotted `graph.merged_branches` edited in place; each result `config::load`s to the mode with no warning. — names its tests.
-- [ ] Writer refusals: an unparsable file and `graph = 3` → `Err`, file bytes unchanged. Read-only folder → `Io`, file unchanged. No temp file left in the folder after any case. — names its tests.
-- [ ] Symlinked `config.toml` → still a symlink, target updated; 0600 file stays 0600. — names its tests.
-- [ ] Pty walk (`XDG_CONFIG_HOME` = temp dir, no file, so `Loaded.path` is `None`): `?` · `graph` · `↓` · `⏎` → top line `every branch shown`, flash; **≤ 4 steps**; file at `$XDG_CONFIG_HOME/mergewright/config.toml` says `"shown"`; relaunch → opens shown with no keys pressed; `?` `graph` `⏎` → folded, file says `"folded"`. — names its test.
-- [ ] `cargo tree -d`: no duplicate `toml_parser` / `toml_datetime`; `dependency_edges` passes with the new entries. — names the command output path and the test.
-- [ ] Captures: `docs/shots/ease-pass/help-graph-mode-120.txt` (`?` on `wallet_release`, typed `graph`, cursor on `Every branch`), `help-graph-mode-90.txt` (same, id column dropped), `graph-mode-switched-120.txt` (after `⏎`: top line and flash), in the contact sheet after 06h's. Look unjudged (rule 6), colour unverified (rule 5).
-- [ ] NOTES: every `.config` reader and how it handles `Key`, `SaveLayout`'s result route and the one `KeepGraphMode` uses, every re-shot capture with its D3 class, the design-doc wording, `cargo tree -d` result.
-- [ ] Each tick names its test.
+- [x] `?` on the graph, empty query: `HERE`, then `GRAPH MODE` with `● Folded merges … (on)` and `○ Every branch`, then `EVERYWHERE`; id column at 120, dropped at 90; `(on)` whole. — `update::tests::graph_mode_help::help_on_the_graph_lists_graph_mode_after_here_the_on_row_marked` (order, kinds, targets); `mergewright-ui palette::tests::setting_tests::the_graph_mode_group_sits_after_here_with_its_key_at_120`, `…::narrow_the_id_drops_then_the_detail_is_cut_and_on_stays_whole` (90: no id, `(on)` whole; 50: detail cut, `(on)` whole); pty `graph_mode_keep::typed_graph_lists_the_group_after_here_at_120_and_90`. **Deviation:** at 120 the detail is cut (`…merge …   (on)  graph.merged_branches`) while the id stays: the spec's "id dropped first" and "id column at 120" can't both hold in a 96-cell box (title 16 + detail 41 + `(on)` 7 + id 23 > 85). Kept the id, cut the detail (NOTES › Open 3).
+- [x] Setting row draw: `●` accent+bold, `○` muted (not bold), an action row's key accent+bold; detail and `(on)` muted — buffer cells. — `palette::tests::setting_tests::setting_rows_draw_their_dot_by_kind_and_action_keys_stay_accent_bold`.
+- [x] `ConfigId`: action rows draw as before; a `Key` row draws the key. — every pre-existing `mergewright-ui palette::tests::*` passes unchanged (23/23 in the run); `setting_tests::the_graph_mode_group_sits_after_here_with_its_key_at_120` (both `graph.merge` and `graph.merged_branches` drawn).
+- [x] Typed `graph`, `fold`, `branch` keep both rows; `⌃P` typed `graph` lists them; start screen never. — `graph_mode_help::typed_graph_fold_and_branch_each_keep_both_rows_and_ctrl_p_finds_them`; `empty_state::palette_tests::the_start_screen_never_lists_graph_mode`.
+- [x] `⏎` on Every branch: closed, `merged_branches() == Shown`, one `KeepGraphMode(Shown)`, row request `keep` = the cursor commit, not recent, only `ShowRows` + `KeepGraphMode` emitted (no journal command). On row: closed, no command. Double-click = `⏎` (a single click only moves the cursor, §2.12 decision 6). — `graph_mode_help::enter_on_every_branch_switches_keeps_and_records_nothing`, `…::enter_on_the_on_row_closes_and_does_nothing`, `…::a_double_click_on_a_mode_row_is_enter`.
+- [x] Finished search, 3 folded: `⏎` on Every branch → the request carries a `FoldedAsk`; fed `folded: 0`, no suffix, search live. — `graph_mode_help::a_live_search_is_recounted_by_the_switch_and_stays_live`.
+- [ ] Event ok → `✓ Graph: every branch · kept for next launch` (**holds**); event err → drawn line starts `✗ Graph: …` — **does not hold: `Status::Failed` draws no `✗`** (`crates/mergewright/src/view/status.rs:108`, the `ProblemLine` built from the bare message). Drawn: `Graph: every branch for this run · not kept: <reason> · esc dismiss`. Stopped as the spec says; no new variant. Mode stays `Shown` (holds). — `graph_mode_help::the_bar_says_kept_or_why_not_with_its_mark_drawn` (pins the words as drawn today).
+- [x] Loop arm: not a job; `Loaded.path = Some(p)` writes `p`; `None` writes `default_path()`; neither → `NoFolder`'s words. — `jobs/runner/dispatch.rs` `not_a_job` arm (compiler-exhaustive); `config::write::write_tests::the_loop_writes_the_file_read_else_the_default_else_no_folder` (`keep_in`, the function the arm calls with `outside.config_path` and `config::default_path()`); pty walk (`Loaded.path` `None`).
+- [x] Writer cases on temp dirs, each `load_from`s to the mode with no warning, no temp left. — `write_tests::a_missing_folder_and_file_are_created_holding_only_the_key`, `…::no_graph_table_appends_one_after_every_original_byte`, `…::a_graph_table_with_other_keys_gains_only_the_line`, `…::an_existing_value_changes_alone_its_comment_kept_and_a_bad_one_replaced`, `…::a_dotted_key_is_edited_in_place`.
+- [x] Refusals: unparsable and `graph = 3` → `Err`, bytes unchanged; read-only folder → `Io`, unchanged; no temp left. — `write_tests::an_unparsable_file_and_a_graph_that_isnt_a_table_are_refused_untouched`, `…::a_read_only_folder_is_an_io_error_and_the_file_is_unchanged`.
+- [x] Symlink stays a link, target updated; 0600 stays 0600. — `write_tests::a_symlink_stays_a_link_its_target_updated_and_0600_stays_0600`.
+- [ ] Pty walk ≤ 4 steps — **holds only with `every`, not `graph`**: `? · every · ↓ · ⏎` = 4 → `every branch shown`, flash, file `"shown"`; relaunch opens shown, no key; `? · every · ⏎` → folded, file `"folded"`. With `graph` the list keeps three HERE rows first (renderer, commit-graph offer's two), so `? · graph · ↓×4 · ⏎` = 7, and `? · graph · ⏎` runs `F3` (Cycle the graph renderer), not Folded merges. `graph mode` matches nothing. — `graph_mode_keep::picking_a_graph_mode_in_help_switches_keeps_and_reopens_in_it` (asserts `steps.taken <= 4` with `every`); the `graph` list asserted and captured in `graph_mode_keep::typed_graph_lists_the_group_after_here_at_120_and_90`.
+- [x] `cargo tree -d -e normal`: no duplicate `toml_parser`/`toml_datetime`/`toml_writer`; `toml_edit 0.25.15+spec-1.1.0` shares them with `toml 1.1.6`. — `docs/perf/06i-cargo-tree-d.txt`; `dependency_edges` passes (it checks internal crate edges only; no row to add — NOTES).
+- [x] Captures `help-graph-mode-120.txt`, `help-graph-mode-90.txt`, `graph-mode-switched-120.txt` under `docs/shots/ease-pass/`, captioned after 06h's; sheet regenerated (`scripts/contact-sheet.sh --captions-order ease-pass docs/shots/ease-pass`, now 2 parts). Look unjudged (rule 6), colour unverified (rule 5). — written by `graph_mode_keep::*`.
+- [x] NOTES below. — document box.
+- [x] Each tick names its test.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~50k (the column retype touches every palette producer; the rest as before).
+
+## NOTES (builder, 2026-10-18)
+
+Scout: used `.scratch/ease-pass/scouts/06i-graph-mode-in-help.md` (no re-scout). Not compacted.
+
+### Open (conductor / user rulings)
+1. **`✗` not drawn.** `Status::Failed` → `view/status.rs:108` builds the problem line from the message alone. The failure bar reads `Graph: every branch for this run · not kept: <reason> · esc dismiss`. Options: prefix `✗ ` in the message (words only, no variant), or draw `✗` for every `Failed` (touches every failure capture). Spec said stop; stopped.
+2. **Journey count.** `graph` also fuzzy-matches `Cycle the graph renderer`, `Write the commit-graph file`, `Decline the commit-graph offer` (HERE, listed before GRAPH MODE by fixed group order, decision 4): `? graph ↓ ⏎` lands on the commit-graph offer row. Real counts with `graph`: switch `? graph ↓×4 ⏎` = 7, back `? graph ↓×3 ⏎` = 6; with `every`: 4 and 3, as the spec counts. `fold` keeps one HERE row first (`Expand / collapse folded lanes`); `graph mode` matches nothing (space in the query). Options: GRAPH MODE before HERE when the query matches its words; rank a group whose hidden word matches exactly first; or teach `every` as the word.
+3. **Room order at 120.** The 96-cell box can't hold title + detail + `(on)` + id; built: id kept at ≥100 columns, detail cut. Spec's "id dropped first" would drop the id at 120 too, contradicting the 120 box.
+
+### Decisions / deviations
+- `KeepError::Io { path, error }` instead of `Io(io::Error)`: `Display` must say `can't write <path>`.
+- `NoFolder` words (spec gave none): `no config folder could be found`.
+- `Outside` gains `config_path: Option<&Path>` (`event_loop/outside.rs`), set from `Loaded.path` in `startup::run_repo`; `listen::outside` takes it. `Session` has no `config` field (scout's `session.rs:27` is `Startup.config`).
+- Click: one click moves the cursor (decision 6); a second click on the row runs it, as `⏎`.
+- `setting.rs` (new, `update/palette/`) holds `AppAction` (moved out of `mod.rs`), `GRAPH_MODE`, `GRAPH_MODE_WORDS`, `graph_mode_rows`, `graph_mode_kept`.
+
+### `.config` readers / producers
+- Producers: `listing.rs` action rows → `ConfigId::Action(binding.action)`; every other producer (`groups.rs` notes/themes/tour, `find.rs`, `listing.rs` find placeholders) `config: None`, `detail: None`; setting rows `ConfigId::Key("graph.merged_branches")`.
+- Readers: `mergewright-ui palette/row.rs` draw (`ConfigId::as_str`, either variant, dropped below `WIDE_FROM`); `update/resolver/tests/help_words.rs` (matches `ConfigId::Action`). No other reader (compiler-checked: the retype broke only these).
+
+### Result route
+`SaveLayout` reports nothing back (`event_loop/running/carry.rs`, `drop(save_split)`). `KeepGraphMode`'s arm in the same `carry_out` calls `config::keep_in(outside.config_path, config::default_path(), mode)` and feeds `AppEvent::GraphModeKept` straight to `update`, queuing what it answers — the route `handed_over` events take. No event channel.
+
+### Captures (D3 class)
+- New: `ease-pass/help-graph-mode-120.txt`, `help-graph-mode-90.txt`, `graph-mode-switched-120.txt`.
+- Re-shot: `m8-look-help-graph-187x50.txt` — list content (GRAPH MODE added; `u`/`U`/`⌃R` scrolled below the box).
+- Unchanged (their check passes): `m8-help-graph-120x36.txt`, `m8-help-80x24.txt`, `m8-keymap-config-problem-120x36.txt`, `ease-pass/config-merged-branches-problem-120.txt` (the group falls below their box's fold), `m8/help-at-map-120x36.txt` (map: no group). Proto `m8-proto-2*` historical, not re-shot.
+- `m8-contact-sheet-{1,2,3}`: **not** reassembled — `scripts/contact-sheet.sh m8` rewrites 3304 lines of them (stale from earlier tickets' re-shots), out of scope; conductor's call.
+- No insta `.snap` holds `EVERYWHERE` (grep).
+
+### Dependencies
+`toml_edit = 0.25.3` (locked 0.25.15+spec-1.1.0, features `parse`, `display`), `tempfile` dev → normal. `cargo tree -d -e normal` (`docs/perf/06i-cargo-tree-d.txt`): no toml duplicate. `dependency_edges.rs` checks only internal edges against ARCHITECTURE.md; nothing to add.
+
+### Size ratchet
+Over-400 files kept from growing by splits: `update/events/progress.rs` (Progress out of `events.rs`, 584→551), `event_loop/outside/stop.rs` (`stop_this_process`, 625→608), `update/palette/setting.rs` (`mod.rs` 408→402); `command.rs` held at 459 by tightening two doc comments. `over_400.txt` rows lowered. `startup::run_repo` held under 60 lines by `graphics_for`.
+
+### Design-doc wording (for the conductor)
+- keymap §2.12 :580-581: add "`GRAPH MODE` after `HERE` on the graph: two keyless rows, `⏎` picks and keeps it in config".
+- `01-view-mockups.md` §1.16 :524-528: the group and the `●`/`○` row form (`● title(16) detail (on)  graph.merged_branches`); the drawing gains the group.
+
+### Pre-existing failure
+`published_repo::nothing_a_commit_would_carry_names_this_machine` fails on `docs/release/export-inventory.md:114,121` (home directory), a file this ticket does not touch.

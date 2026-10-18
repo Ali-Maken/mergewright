@@ -153,7 +153,11 @@ pub(super) fn commit_graph_event(next: &mut AppState, event: AppEvent) {
             commit_graph_declined(next, id, result);
         }
         // Not an offer event: `answer`'s pattern keeps these from arriving.
-        AppEvent::Core(_) | AppEvent::Progress(..) | AppEvent::Produced(..) | AppEvent::Rested => {}
+        AppEvent::Core(_)
+        | AppEvent::Progress(..)
+        | AppEvent::Produced(..)
+        | AppEvent::Rested
+        | AppEvent::GraphModeKept { .. } => {}
     }
 }
 

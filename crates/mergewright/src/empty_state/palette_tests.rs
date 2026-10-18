@@ -279,3 +279,26 @@ fn opening_the_palette_ends_the_first_launch_line() {
         assert!(s.palette.is_some(), "{opener:?}");
     }
 }
+
+/// 06i: the start screen has no graph, so neither `?` nor `⌃P` lists
+/// `GRAPH MODE`, even typed `graph`.
+#[test]
+fn the_start_screen_never_lists_graph_mode() {
+    for key in [ch('?'), KeyPress::control(KeyCode::Char('p'))] {
+        let mut s = state();
+        assert_eq!(press(&mut s, key), OutsideStep::Stay);
+        for word in ["", "graph"] {
+            typed(&mut s, word);
+            let listed = palette_rows(&s, keys());
+            assert!(
+                listed
+                    .iter()
+                    .all(|(header, rows)| header.as_str() != "GRAPH MODE"
+                        && rows
+                            .iter()
+                            .all(|(row, _)| row.label.as_str() != "Every branch")),
+                "{key:?} {word:?}"
+            );
+        }
+    }
+}

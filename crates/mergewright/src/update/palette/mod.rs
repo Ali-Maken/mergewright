@@ -28,7 +28,7 @@ use mergewright_term::{SanitizedText, sanitize_line};
 use mergewright_ui::keymap::{
     ActionId, Binding, ContextId, KeyChord, KeyLabel, Keymap, Translated, defaults,
 };
-use mergewright_ui::palette::{PaletteMode, PaletteRow, PaletteView, RowKind, WIDE_FROM};
+use mergewright_ui::palette::{ConfigId, PaletteMode, PaletteRow, PaletteView, RowKind, WIDE_FROM};
 use mergewright_ui::text_input::TextField;
 use mergewright_ui::theme::ThemeKind;
 
@@ -42,6 +42,7 @@ mod groups;
 mod input;
 mod listing;
 mod run;
+mod setting;
 
 pub(super) use self::find::*;
 #[allow(
@@ -57,6 +58,8 @@ pub(crate) use self::run::first_runnable;
     reason = "the palette's parts read as one module"
 )]
 use self::run::*;
+pub(crate) use self::setting::{AppAction, graph_mode_kept};
+use self::setting::{GRAPH_MODE_HEADER, graph_mode_rows};
 
 /// The most distinct commands COMMANDS RUN RECENTLY keeps (ADR-0061).
 pub const RECENT_CAP: usize = 8;
@@ -224,17 +227,6 @@ fn same_command(a: PaletteTarget, b: PaletteTarget) -> bool {
 /// No recent runs: the empty state's.
 static NO_RECENT: RecentRuns = RecentRuns(VecDeque::new());
 
-/// What an app row does: not a key-table action.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum AppAction {
-    /// `Theme: dark` / `light` / `high contrast`, for this run only.
-    Theme(ThemeKind),
-    /// `Practice tour` (m8/19b): from a repository, into the practice
-    /// tour, coming back to the commit under the cursor. Outside one, the
-    /// empty state's own `empty_state.tour` row is listed instead.
-    Tour,
-}
-
 /// What `⏎` on a row does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PaletteTarget {
@@ -285,6 +277,8 @@ pub(crate) struct Source<'a> {
     pub tags_read: bool,
     /// The resolver is open: its side keys named as its bar does (`side_label`).
     pub sides: Option<mergewright_ui::conflict_resolver::SideRoles>,
+    /// The graph's mode, when there is a graph: `GRAPH MODE` is listed.
+    pub graph_mode: Option<crate::config::MergedBranches>,
 }
 
 /// One row before filtering: its words to match on, besides the label.

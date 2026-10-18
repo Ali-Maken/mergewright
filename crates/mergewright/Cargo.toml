@@ -61,9 +61,10 @@ ratatui = { version = "0.30", default-features = false, features = [
     "crossterm_0_29",
 ] }
 # The config file (PROMPT.md Technology: "TOML via `serde`"). `toml`'s
-# `display` default is off — Mergewright reads config and never writes it, so the
-# serializer would be dead weight — and its error `Display` is what gives a bad
-# config file its line, column and quoted source line.
+# `display` default is off — Mergewright writes only one key, through
+# `toml_edit` below, so the serializer would be dead weight — and its error
+# `Display` is what gives a bad config file its line, column and quoted source
+# line.
 serde = { version = "1.0.229", features = ["derive"] }
 # Signals, without a signal handler of Mergewright's own: signal-hook's handler only
 # writes to a self-pipe, so the loop can treat `SIGINT`/`SIGTERM`/`SIGHUP` like
@@ -75,6 +76,17 @@ toml = { version = "1.1.6", default-features = false, features = [
     "serde",
     "std",
 ] }
+# The one key the app writes into his config (`[graph] merged_branches`,
+# ease-pass 06i, `config::write`): every comment and byte around it kept.
+# The same toml-rs family and spec as `toml` above (shares `toml_parser`,
+# `toml_datetime`, `toml_writer`).
+toml_edit = { version = "0.25.3", default-features = false, features = [
+    "parse",
+    "display",
+] }
+# That write is atomic: a temp file in the config file's own folder, renamed
+# over it. Moved up from dev-dependencies (ease-pass 06i).
+tempfile = "3.27.0"
 # The relaunch notice's ladder measures in display cells, with the same crate
 # and version the footer's cut (`mergewright_ui::fit`) uses (30d); moved up from
 # dev-dependencies.
@@ -94,9 +106,6 @@ zeroize.workspace = true
 mergewright-fixtures.workspace = true
 insta = "1"
 serde_json = "1.0.151"
-# Config files under test go in a temporary directory, never in a real home
-# (PROMPT.md Technology; ticket 07).
-tempfile = "3.27.0"
 # `tests/it/ghostty_shot.rs` (m7-power-tools/47) writes the Ghostty-path
 # capture as a PNG over a background, as `mergewright-graph`'s raster tests do; the
 # same version and features as there, so no new package.

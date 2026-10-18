@@ -87,18 +87,18 @@ pub enum Command {
     /// Written by the loop itself, to the terminal, through the session's
     /// transport: it is output, not a job, and never reaches the job runner.
     CopyToClipboard(String),
-    /// Persist the detail pane's split (ADR-0028: `<`/`>` or a divider drag
-    /// changed it). Written by the loop itself, to `<common_dir>/graft/
-    /// layout` (`crate::layout::save_split`); a failure is expected and
-    /// non-fatal (see that module's doc), never dispatched to jobs.
+    /// Persist the detail pane's split (ADR-0028: `<`/`>` or a divider drag),
+    /// by the loop, to `<common_dir>/graft/layout` (`layout::save_split`);
+    /// a failure is expected and non-fatal, never dispatched to jobs.
     SaveLayout(PaneSize),
     /// The first palette open of the process (m8/18d): end the shell's
-    /// first-launch switch, so no later place shows the line (18e), and
-    /// write `done` to `<this config dir>/graft/launches`
-    /// (`first_launch::first_launch_done`). Carried by the loop itself, as
-    /// `SaveLayout` is; a failure is said once on the status row, never
-    /// dispatched to jobs.
+    /// first-launch switch (18e) and write `done` to `<config dir>/graft/
+    /// launches` (`first_launch::first_launch_done`). Carried by the loop,
+    /// as `SaveLayout` is; a failure is said once on the status row.
     FirstLaunchDone(std::path::PathBuf),
+    /// Keep the graph mode in his config file (ease-pass 06i). Carried by
+    /// the loop, as `SaveLayout` is; it answers `AppEvent::GraphModeKept`.
+    KeepGraphMode(crate::config::MergedBranches),
     /// Run `git commit-graph write --reachable` as a job (`B` on the offer).
     /// Never cancelled once git starts (`mergewright_git::commit_graph`).
     WriteCommitGraph,

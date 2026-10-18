@@ -64,13 +64,14 @@ pub(super) fn palette_key(state: &mut OutsideState, keymap: &Keymap, key: KeyPre
             OutsideStep::Stay
         }
         // No find rows outside a repository: a seek or `+N more` is never
-        // listed here, so never run.
+        // listed here, so never run; nor `GRAPH MODE` — there is no graph.
         Edited::Close
         | Edited::Run(
             PaletteTarget::Note
             | PaletteTarget::Seek(_)
             | PaletteTarget::File(_)
-            | PaletteTarget::More(_),
+            | PaletteTarget::More(_)
+            | PaletteTarget::App(AppAction::GraphMode(_)),
         ) => OutsideStep::Stay,
         // `Ctrl+C`: quits, as everywhere (§2.1).
         Edited::Pass => {
