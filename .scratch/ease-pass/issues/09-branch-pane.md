@@ -1,7 +1,7 @@
 # branch-pane — the right pane's four answers, the route behind the colours, `C` on a teammate's row
 
 Status: ready (Needs and words revised 2026-10-17 for 01r; opened-row focus added 2026-10-17 after 06's scout)
-Blocked by: 01-roles-and-route, 01r-roles-and-route-fixes, 07-graph-rows, 03-ease-vocabulary
+Blocked by: 01-roles-and-route, 01r-roles-and-route-fixes, 07-graph-rows, 07b-graph-rows-cursor, 03-ease-vocabulary
 Build with: (blank — brownfield; conductor sets after the scout)
 Needs: `branch_status`, `BranchStatus`, `Pushed`, `Merged` (`MainLine`, `Into`, `NotYet { into: Option<String> }`, `NothingToMerge`), `Behind`, `Who` (enum: `Everyone { last }`, `Authors { first, others, last }`, `NoOwnCommits`), `Candidate` (`name` = full ref name), `CandidateKind`, `route`, `short_name` (graft-ops, roles-and-route as fixed by 01r; counts are `usize`, `Who::Authors.first` is author-name bytes); `Route::new`, `LaneRole`, `made_on` (graft-graph, roles-and-route); `BranchIdentity::of_name(&[u8])` (graft-graph, existing); `AppState.route`, row layout with `GraphEntry` (graph-rows); `InsideMerge` per row (graph-fold-and-lanes, 06); role tokens (ease-vocabulary).
 

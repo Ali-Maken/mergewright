@@ -1,99 +1,92 @@
-# graph-rows — colour by role, branch / who / age columns, the cursor row's second line (Unicode tier)
+# graph-rows — colour by role, branch / who / age columns, labels, `#` (Unicode tier)
 
-Status: ready (Needs revised 2026-10-17 after ease-vocabulary's scout; `graph.colours_off` row moved here from 03 and row bars named after 03b, 2026-10-17; fold names and the folded bar's count fitted to 06's scout, 2026-10-17; opened-merge bar and inner rows fixed after review 03 Major 1, names after 03r, 2026-10-17; this group's own scout not yet run)
-Blocked by: 01-roles-and-route, 03-ease-vocabulary, 03b-ease-vocabulary-rest, 03r-vocabulary-fixes, 06-graph-fold-and-lanes, 06b-lanes-on-screen-and-header, 06r-fold-fixes, 06s-split-update-files, 06t-split-view-files (06r/06s/06t added 2026-10-18: they fix and split `view/entries.rs`, `view/rows.rs`, `update/keys.rs`, `update/state.rs` first; the scout reads the split layout)
-Build with: (blank — brownfield; conductor sets after the scout)
-Needs: `LaneRole`, `Route::{unread, role, focus}`, `made_on(&Row) -> Option<BranchIdentity>` (roles-and-route; reads `Row.lanes[row.lane]`, `Row.lanes: Vec<Option<BranchIdentity>>`, `graft-graph/src/row.rs:24,45`); `Token::Role*` (ease-vocabulary); `HintContext::GraphRow { row: RowBar, verbs: RowVerbs }` with `RowBar::{Own, Elsewhere { branch: SanitizedText }, FoldedMerge { inside: u32 }, OpenedMerge}` and `bar_name` (03b, 03r; names and counts ride in the context, the verb is `Cow<'static, str>`; `RowBar::Opened` no longer exists); from 06: `OpenedMerges`, `InsideMerge { merge: Oid, label: Option<Vec<u8>> }` per row, `FoldMark { open, count: FoldCount, from }`, `FoldCount::{Pending, Known(u32), Failed}`; from 06b: the window's drawn columns (node-less lanes dropped). **This group adds the `graph.colours_off` row itself** (below).
+Status: ready (re-planned 2026-10-18, spec-only pass after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12: its 6 mismatches settled below; **split at the old (a)/(b) point** — the cursor row's second line, scroll and hit-test, and the bar per row kind are now **07b-graph-rows-cursor**). History: Needs revised after 03's scout, `graph.colours_off` moved here from 03, fold names fitted to 06, opened-merge bar after review 03 Major 1 (all 2026-10-17).
+Blocked by: 06h-graph-mode (edits `view::rows`, `update::keys`), 06s-split-update-files, 06t-split-view-files. Built and merged, no longer blocking: 01, 01r, 03, 03b, 03r (its open box is Minor 5's `commit.toggle_*` words; nothing here reads them), 06 (closed for building), 06b, 06r (open boxes are questions), 06u.
+**Anchors below are the scout's, pre-split (e9b08d12). Before starting, map each through 06s's and 06t's NOTES old-line → new-home tables.**
+Build with: Opus — two crates, ~12 touch points; the drawn row's cells, the lane colours and the drag source change together (scout's call).
+Needs: mergewright-graph `LaneRole` (`role.rs:14`), `Route::{new, unread, role, focus}` (:28–58), `made_on(&Row) -> Option<BranchIdentity>` (:96), `Row.lanes: Vec<Option<BranchIdentity>>` (`row.rs:52`), `Fold::view(&Row) -> DrawnRow` (06b's drawn columns); mergewright-ui `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}` (`theme/mod.rs:126+`); from 06: `InsideMerge { merge: Oid, label: Option<Vec<u8>> }` (`view/rows/fold.rs:27`, `pub(crate)`, dead until now), `FoldMark { open, count, from }` and `FoldMark::words`; app `refs::RefBadges`, `refs::RefLabel`; HEAD's ahead count `counts.ahead: usize` (`mergewright-git/src/history/divergence.rs:29`, read by `push_words`, `update/commit_editor/landing.rs:141`). **This group adds the `graph.colours_off` row itself.**
 
 ## Read first
-- `docs/design-notes/ease-pass.md`: Prior art rows "Which line is which" → "Who"; Mock behaviours G1–G9, G13, G14; New UI (graph widths); Questions 2, 3, 4, 10, 11 (answered a).
-- `docs/design/01-view-mockups.md` §1.0 (chrome) and §1.1–1.3 (the rows only). `docs/design/02-keymap.md` §2.3.
-- `crates/graft-ui/MAP.md`: `graph_column`, `graph_screen` (+ `::columns`, `::badges`, `::hints`), `theme`, `keymap`. `crates/graft/MAP.md`: `view::entries`, `view::rows`, `history::scroll`, `update::keys`, `update::geometry`, `update::mouse`, `update::drag`, `update::in_view`, `refs`, `jobs::detail` (contains read), `event_loop::rest`. `crates/graft-graph/MAP.md`: `row` (`Row.lanes`, `Row.lane`).
-- `.scratch/ease-pass/issues/03-ease-vocabulary.md` Handoff blocker 1 (the exact row line); `03b-ease-vocabulary-rest.md` Signatures; `03r-vocabulary-fixes.md` Decided (the opened merge row); `06-graph-fold-and-lanes.md` Signatures.
-- `docs/reviews/ease-pass-03.md` Major 1, Minor 10.
+- `docs/design-notes/ease-pass.md`: Prior art rows "Which line is which" → "Who"; Mock behaviours G1–G8, G14 (:116–127); New UI (graph widths); Questions 2, 3, 4, 10, 11 (answered a).
+- `docs/design/01-view-mockups.md` §1.0 (chrome) and §1.1–1.3 (the rows only). `docs/design/02-keymap.md` §2.3, §2.15 (drag).
+- `ARCHITECTURE.md` the layer table (:252–263): `ui` may depend on `graph`.
+- `crates/mergewright-ui/MAP.md`: `graph_column`, `graph_screen` (+ `::columns`, `::badges`, `::hints`), `theme`, `keymap`. `crates/mergewright/MAP.md`: `view::entries`, `view::rows`, `refs`, `update::keys`, `update::drag`. `crates/mergewright-graph/MAP.md`: `role` (:158–162), `row` (:165), `Fold::view` (:26).
+- `.scratch/ease-pass/issues/03-ease-vocabulary.md` Handoff blocker 1 (the exact row line).
 - The main mock's visible text: `prototypes/ease-mocks/mergewright-main-screen.html`.
-- The scout's file.
+- The scout's file, items "Roles", "Row.lanes", "Token::Role*", "Glyphs", "Row cells", "Keys", "↑N to push".
 
-## Scout questions (≤1 page)
-- How a row's cells are built and laid out today (`GraphEntry` → `Columns`), what draws the SHA, author chip and badges, and every test/capture pinning them.
-- How the lane glyph table is chosen (Unicode/ASCII), and where a lane's colour comes from (`Theme::branch`/`lane`).
-- What `history::scroll` assumes about one row per screen line; every hit-test (`row_at`, `geometry`, `badge_spans`, drag) that maps a screen line to a row.
-- What the contains read (`jobs::detail`) costs and whether it runs only at rest.
-- Where today's `↑N to push` count comes from and its integer type.
-- **Same kind of mismatch as V's scout:** where the graph picks today's row `HintContext` (`WorkingTreeRow` / `BranchRow { current }` / `PlainRow`, `graft-ui/src/graph_screen/hints/context.rs:47+`) — 03b's `GraphRow` is chosen at that same place; how `update::keys` dispatches Graph keys (translated ids vs `KeyCode` matches) so `#` reaches `graph.colours_off`; which key `y` (copy SHA) is and whether anything reads the SHA column's cells. Whether an `InsideMerge.label` can be resolved to a live branch (local or remote-tracking) at the choice site.
+## Decided here (the scout's mismatches)
+- **M3 `Row.lanes`** is at `mergewright-graph/src/row.rs:52` (not :24/:45).
+- **M6 `LaneRole` stays in `mergewright-graph`.** ui's fns take `mergewright_graph::LaneRole` — the layer table lets `ui` depend on `graph` (ARCHITECTURE.md:252, :261). No ui copy of the enum, no conversion.
+- **M2/M4/M5 are 07b's** (the bar). This ticket leaves `cursor_row_context` (`view/rows/context.rs:107`) reading what it reads today, its tests unedited. Its `BranchRow` input is `cursor.badges` (:131–139): if that is `GraphEntry.badges`, the field **stays, undrawn**, with `/// Read by cursor_row_context until 07b; not drawn.` — 07b removes it.
+- **Lane colour on the Unicode tier** comes from `Token::Role*` by `LaneRole`. `Theme::lane(usize)`, `Theme::branch`, `branch_muted` (`theme/lanes.rs:86,149,110`) stay: the pixel tier (13) and Ghost Preview's ghost lanes (`refs` → `preview_seeds`) still call them. NOTES lists their callers after the change.
+- **`colourless` is new** (scout: none exists). It equals what `NO_COLOR` resolves to today if the theme has that path (grep `NO_COLOR` in mergewright-ui `theme`; NOTES names it); if none, every token → the terminal's default colour, bold/dim/underline kept.
+- **`↑N to push`: HEAD's branch only**, on the row its tip sits on, N = `counts.ahead` (`usize`, confirmed). Other local branches' ahead counts are not drawn — no per-branch count source was confirmed (usability-walk question in NOTES, not a build decision).
+- **`#` dispatch** follows the bound-action pattern: listed in `update/keys/bound.rs:78` like `is_copy_key → copy_selected_sha` (`update/keys/actions.rs:45`).
+- **Drag source (§2.15):** `badge_spans` (`graph_screen/render.rs:547`, test `tests.rs:1943`) is renamed `ref_spans`, same shape; its spans are now each label's and the branch-column name's, each with the ref it names. `drag.rs` starts a drag from those. Line → row stays one row per line here (07b changes it).
 
 ## Scope
-In (graft-ui `graph_column`, `graph_screen` row drawing and `columns`, `theme` (colourless resolve only), `keymap/table.rs` or the `keymap/table/<context>.rs` file 03r put `Graph` rows in (one row), `tests/keymap_ids.txt`, `keymap/tests/screen_keys.rs`; graft `view::entries`, `view::rows`, `history::scroll`, `update::keys` (`#`), `update::geometry`/`mouse`/`drag` hit-test, the row-`HintContext` choice site, `AppState` fields `colours_off`, `route`). **This group owns `update/state.rs`, `update/events.rs`, `jobs/kinds.rs` in wave 4**; S adds only at the end of those enums/structs.
-- **`graph.colours_off` row, with its handler, in one commit** (03 blocker 1): `b("graph.colours_off", Graph, &[k('#')], "Turn colours off / on (lines keep their shapes)")` after `graph.journal`; the id added to `tests/keymap_ids.txt`; the `None` assert in `keymap::tests::screen_keys::hash_is_free_on_the_graph` flipped to `graph.colours_off` (rename the test to say so).
-- **Roles (G1, G2):** each lane drawn by `route.role(identity)` with `identity = row.lanes[i]`; a lane with no identity (`None`) → `Other`. This `┃`, Under `│`, Trunk `║`, Other `┊` (grey). Connectors `╯ ╮` with `━ ─ ═ ┄` in the **joining** branch's role. ASCII tier: `|` for This/Under/Trunk, `:` for Other. Focus = the cursor row's `made_on`; on a row with an `InsideMerge`, the made-on branch of that merge's row (G4); `Route::unread` until B's read lands (Under shows nothing extra before then). Moves with `j/k`.
-- **Nodes (G3):** `●` commit, `◉` merge; other node kinds (HEAD, stash, uncommitted, root) as today.
-- **Columns (New UI):** `graph | branch | message | who 6 | age 4`, branch 20 (≥120), 14 (100–119), 12 (<100). No SHA column, no author chip, no ref badges (G8). The fold mark (`FoldMark::words`, 06) follows the message.
-- **Branch column (G5):** written on the first row of each run of the same `made_on`, in its role colour, bold unless Other, `(you)` after HEAD's branch; rows with an `InsideMerge`: its `label`'s last path segment, dim (no label → the column is blank on those rows).
-- **Message (G6):** dimmed on Other rows. **Labels (G7):** muted, after the message: `↑N to push`, `not merged`, `<branch> is here` (a branch and its upstream one name; a remote-only branch `origin/x is here`); tags as `tag <name>` (badge replacement, planner decision — the mock shows no tags). Today's row tags (`✎ changed`), radar marker and compare mark stay.
-- **Who / age (G8):** first name of the author; own commits `you`, bold; age `23h`, `9d`, `2w` (4 cells).
-- **Second line (G9):** the row under the cursor — every row, opened ones included — grows one line: `<who> · <N hours> ago · made on <branch>[ · <label>][ · merged N from <b>][ · also in A, B] · <sha7>`, words and `<who>` form as the mock; lanes continue straight through it. `also in` comes from the contains read, at rest only (`event_loop::rest`); before it lands the clause is absent, never `reading…`. `merged N from <b>` on a merge row uses 06's count when `Known`, else the clause is absent. The uncommitted row's second line: `not committed yet · N files · on <branch>` (planner decision; it has no who/hash). The viewport shows one fewer commit while the cursor is in view; held `j/k` never scrolls the cursor off.
-- **Bar per row kind (G13):** at the row-context choice site, pick `HintContext::GraphRow { row, verbs }` for commit rows (mock `mergewright-main-screen.html:206`):
-  - `RowBar::FoldedMerge { inside }` — a merge row whose fold is **closed** and whose count is `Known`; while `Pending` or `Failed` the row takes the bar its branch would give (`space` still acts, it is only not offered, because the words need the number; NOTES lists this for the usability walk).
-  - `RowBar::OpenedMerge` — a merge row whose fold is **open** (in `OpenedMerges`): `space hide the commits inside · ⏎ open · x compare`.
-  - `RowBar::Own` — a row made on HEAD's branch; `RowBar::Elsewhere { branch }` — teammate's and trunk rows, `branch` = the row's `made_on` name, full (03b's `bar_name` shortens it).
-  - **Rows inside an opened merge** (a row with an `InsideMerge`) take the bar of their own branch, as the mock's inner rows draw the teammate bar: `Own` if the `InsideMerge.label` names HEAD's branch, `Elsewhere { branch }` if it names a live branch (local or remote-tracking), else the bar a row with no branch gets (name it in NOTES — a deleted PR branch must never draw `C switch to <b>`). `space` acts there (closes the merge, cursor on its row — G4, 06's handler) but is **not drawn** (the mock's bar does not draw it).
-  - `WorkingTreeRow`, `StashRow`, `Marked`, `Searching` stay as today. `JustCommitted`/`JustMerged` are picked by S and Fr. Never edit the hint lists' words. After the switch, if nothing picks `BranchRow`/`PlainRow`, remove them with their list arms and their graft sweep arms (the one edit this group makes in hints files); else name who still does.
-  - **Transient (review 03 Minor 10):** `C switch to <b>` runs ahead of B's `open_on` (09, blocked by this ticket): until 09 lands, `C` opens the picker, not on that branch. NOTES says so; 09's acceptance closes it; a KNOWN_GAPS row only if the milestone ends before 09.
-- **`#` (G14, Q3 a):** `graph.colours_off` toggles `colours_off`; the whole screen resolves its theme with no colour (as `NO_COLOR`) until quit; shapes, bold and dim stay. Not saved.
-- Drag source (§2.15): the `<branch> is here` label and the branch column name replace the badge as the thing dragged.
-Out: the branch pane and route read (B), pixel tier (X — this group's Unicode second line is X's model), header and lane drop (06b), fold words (06), the picker opening on a branch (B), hint list words (03b, 03r).
+In — mergewright-ui: `graph_column` (glyphs, connectors, nodes), `graph_screen` row drawing, `columns`, `row_columns`, `render.rs` `ref_spans`, `theme` (`colourless` only), `keymap/table.rs` (one row after `graph.journal`, :194), `tests/keymap_ids.txt`, `keymap/tests/screen_keys.rs`. mergewright app: `view::entries` (cells, labels, `lane_roles`), `view::rows` (route focus per window), `update::keys` (`#` handler), `update::drag` (source from `ref_spans`), `AppState` fields `colours_off`, `route` (appended at the struct's end).
+- **`graph.colours_off` row, with its handler, in one commit** (03 blocker 1): `b("graph.colours_off", Graph, &[k('#')], "Turn colours off / on (lines keep their shapes)")` after `graph.journal`; the id added to `tests/keymap_ids.txt`; the `None` assert in `keymap::tests::screen_keys::hash_is_free_on_the_graph` (:59) flipped to `graph.colours_off`, test renamed to say so; its module doc (:4) already names it.
+- **Roles (G1, G2):** each drawn column's lane by `route.role(identity)`, `identity = row.lanes[i]` for that column's open index; `None` → `Other`. This `┃`, Under `│`, Trunk `║`, Other `┊` (grey). Connectors `╯ ╮` with `━ ─ ═ ┄` in the **joining** branch's role. ASCII tier (`to_ascii`, `style.rs:111`): `|` for This/Under/Trunk, `:` for Other. Focus = the cursor row's `made_on`; on a row with an `InsideMerge`, the made-on branch of that merge's row (G4); `Route::unread` until 09's read lands. Moves with `j/k`.
+- **Nodes (G3):** `●` commit, `◉` merge (`NodeKind::glyph`, `kinds.rs:59`; 06r's `Node::of` decides the kind); HEAD, stash, uncommitted, root as today.
+- **Columns (New UI):** `graph | branch | message | who 6 | age 4`, branch 20 (≥120), 14 (100–119), 12 (<100). No SHA column (`SHA_WIDTH`, `sha_x` `row_columns.rs:39`), no author chip, no ref badges drawn (G8). `short_sha` (`columns.rs:214`) stays if `y` or the detail pane calls it. The fold mark follows the message.
+- **Branch column (G5):** first row of each run of the same `made_on`, role colour, bold unless Other, `(you)` after HEAD's branch. Rows with an `InsideMerge`: its `label`'s last path segment, dim; no label → blank. Display only: it claims nothing about the branch still existing (07b's bar does that).
+- **Message (G6):** dimmed on Other rows. **Labels (G7):** muted, after the message: `↑N to push` (above), `not merged`, `<branch> is here` (a branch and its upstream one name; remote-only `origin/x is here`), `tag <name>` — all from `RefBadges`. Today's row tags (`✎ changed`), radar marker and compare mark stay.
+- **Who / age (G8):** first name; own commits `you`, bold; age `23h`, `9d`, `2w` (4 cells).
+- **`#` (G14, Q3 a):** toggles `colours_off`; the whole screen resolves `colourless()` until quit; shapes, bold and dim stay. Not saved.
+Out: second line, scroll, every screen-line → row hit-test, the bar per row kind, `BranchRow`/`PlainRow` (07b); branch pane and route read (09); pixel tier (13); header and lane drop (06b); fold words (06); hint list words (03b, 03r); merging the two `FoldCount` enums (`graph_screen/fold_mark.rs:9`, `update/fold_count.rs:19` — not this ticket's; NOTES lists it for the review).
 
 ## Signatures
-graft-ui keymap (new row, `defaults()`): `graph.colours_off  Graph  [KeyChord::key('#')]`.
+mergewright-ui keymap (new row, `defaults()`): `graph.colours_off  Graph  [KeyChord::key('#')]`.
 
-graft-ui:
+mergewright-ui:
 ```rust
+use mergewright_graph::LaneRole;
 pub fn lane_glyph(role: LaneRole, ascii: bool) -> char;          // ┃ │ ║ ┊ / | :
 pub fn join_glyph(role: LaneRole, ascii: bool) -> char;          // ━ ─ ═ ┄ / - .
 pub struct BranchCell { pub name: SanitizedText, pub role: LaneRole, pub you: bool, pub dim: bool }
 pub struct WhoCell { pub name: SanitizedText, pub own: bool }
 pub enum RowLabel { ToPush(usize), NotMerged, Here(SanitizedText), Tag(SanitizedText) }
-pub struct SecondLine { pub words: SanitizedText, pub sha7: SanitizedText }
-pub struct GraphEntry { /* kept: line, subject, when, marker, tag, fold: Option<FoldMark> (06), compare_marked */
+pub struct GraphEntry { /* kept: line, subject, when, marker, tag, fold: Option<FoldMark>, compare_marked
+                          (+ badges, undrawn, only if cursor_row_context reads them — Decided) */
     pub branch: Option<BranchCell>, pub who: Option<WhoCell>, pub labels: Vec<RowLabel>,
-    pub second: Option<SecondLine>, pub dim_message: bool, pub inside: bool }   // badges, sha, author chip removed
+    pub dim_message: bool, pub inside: bool }                        // sha, author chip removed
 pub const BRANCH_WIDE: u16 = 20; pub const BRANCH_MIDDLE: u16 = 14; pub const BRANCH_NARROW: u16 = 12;
 pub const WHO_WIDTH: u16 = 6; pub const AGE_WIDTH: u16 = 4;
 pub fn age(then: Timestamp, now: Timestamp) -> String;           // "23h" "9d" "2w"
 impl Theme { pub fn colourless(&self) -> Theme; }
+// graph_screen::render: `badge_spans` → `ref_spans`, same parameters and return shape.
 ```
-`RowLabel::ToPush` carries the count in whatever integer type its source holds today (`usize` expected — git-side counts are `usize`); say which in NOTES. `RowBar` counts are `u32` (03b) — `FoldCount::Known` is already `u32`.
-graft app:
+mergewright app:
 ```rust
-pub fn lane_roles(row: &Row, route: &Route) -> Vec<LaneRole>;    // view::entries, per drawn column; None lane → Other
-/// Screen lines the body shows commits on, given the cursor row's second line.
-pub fn commit_rows(body_rows: u16, cursor_in_view: bool) -> u16; // history::scroll
-// AppState: pub colours_off: bool, pub route: Route
+/// One role per drawn column; an unnamed lane is `Other`.
+pub(crate) fn lane_roles(row: &Row, drawn: &DrawnRow, route: &Route) -> Vec<LaneRole>;   // view::entries
+// AppState (appended): pub(crate) colours_off: bool, pub(crate) route: Route
 ```
 
 ## Touches
-Every capture of the graph screen (list them; recaptured here at 120/100/90); `history::scroll` and `in_view`; mouse hit-tests and drag (§2.15); Ghost Preview slice (`view::preview` — ghost rows keep today's look but take the new columns); search highlight; overview strip viewport; Map `⏎` landing; tour card (`view::tour` words naming badges?); `y` copy SHA (still works without a SHA column); `?`/palette entries that mention badges; the row `HintContext` choice site; `space` on inner rows (acts, undrawn — 06's handler, unchanged); key table golden and clash check (`keymap/clash.rs:21`); `?`/`⌃P` listing (`#` now listed); graft dead-key sweeps (`sweep.rs:185`, `palette_live.rs:222`); man page key table (regenerate and diff: one row); `docs/design/01-view-mockups.md` §1.1–1.3 (approved edit, text in NOTES); X depends on the second-line model; 09 (`C`'s interim word).
+Every capture of the graph screen (list them; recaptured at 120/100/90); Ghost Preview slice (`view::preview` — ghost rows keep today's lane colours, take the new columns); search highlight (now on the message column); overview strip; tour card (`view::tour` words naming badges?); `y` copy SHA (works with no SHA column); `?`/palette entries mentioning badges; `cursor_row_context` (unchanged — its tests unedited); drag (§2.15, `drag.rs:180`); key table golden and clash check (`keymap/clash.rs:21`); `?`/`⌃P` listing (`#` now listed); dead-key sweeps (`sweep.rs:185`, `palette_live.rs:222`); man page key table (regenerate, diff: one row); `docs/design/01-view-mockups.md` §1.1–1.3 (approved edit, text in NOTES); 07b (second line, bar), 13 (role model), 09 (route).
 
 ## Acceptance
-- [ ] `#` → `graph.colours_off` in `Graph`; no key bound twice in one scope (`keymap::tests::table::every_action_has_a_default_and_no_context_binds_one_chord_twice`); the `keymap::tests::screen_keys` hash test asserts `graph.colours_off` (was `None`). Closes 03's open boxes for `#`.
+Each tick names its test inline.
+- [ ] `#` → `graph.colours_off` in `Graph`; no key bound twice in one scope (`keymap::tests::table::every_action_has_a_default_and_no_context_binds_one_chord_twice`); the renamed `keymap::tests::screen_keys` hash test asserts `graph.colours_off`.
 - [ ] `tests/keymap_ids.txt` gains exactly `graph.colours_off`, nothing renamed or removed (`keymap::tests::table::action_ids_match_the_golden_list`).
-- [ ] graft sweeps green with the row live: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`.
-- [ ] Role table test: fixture `main ← wallet-release ← sara/fix-toc`, cursor on a `sara/fix-toc` row with `Route::new(main, [wallet-release], sara)`: its lane `┃`, wallet-release `│`, main `║`, `ops/ci` `┊`; cursor to an `ops/ci` row → `ops/ci` `┃`, sara `┊`.
-- [ ] `lane_roles` on a row with an unnamed lane (`lanes[i] == None`) → `Other` at `i`.
-- [ ] Connector test: a merge of `sara/fix-toc` into `wallet-release` draws `╯`/`╮` with `━` when sara is This, `┄` when Other.
-- [ ] Branch column test: written once per run, `(you)` on HEAD's, last path segment of the `InsideMerge` label on opened rows; widths 20/14/12 at 120/110/90.
+- [ ] Sweeps green with the row live: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`.
+- [ ] Role table test: fixture `main ← wallet-release ← sara/fix-toc` + `ops/ci`, cursor on a `sara/fix-toc` row, `Route::new(main, [wallet-release], sara)`: its lane `┃`, wallet-release `│`, main `║`, `ops/ci` `┊`; cursor to an `ops/ci` row → `ops/ci` `┃`, sara `┊`.
+- [ ] `lane_roles` with `lanes[i] == None` → `Other` at that column; a column 06b dropped gets no entry.
+- [ ] Connector test: a merge of `sara/fix-toc` into `wallet-release` draws `╯`/`╮` with `━` when sara is This, `┄` when Other. ASCII tier: `|` and `:` only.
 - [ ] Focus on an opened row = the merge row's branch (role test with an opened merge).
-- [ ] No SHA column and no `[branch]` badge text on any row (capture grep); labels `↑1 to push`, `not merged`, `wallet-release is here`, `tag v1.2` present on the fixture.
+- [ ] Branch column: once per run, `(you)` on HEAD's, last path segment of the `InsideMerge` label (dim) on opened rows, blank with no label; widths 20/14/12 at 120/110/90.
+- [ ] No SHA column and no `[branch]` badge text on any row (capture grep); labels `↑1 to push` (on HEAD's tip row only), `not merged`, `wallet-release is here`, `tag v1.2` present on the fixture.
 - [ ] Who/age: own rows read `you`; others a first name; age cells match `\d+[mhdwy]`.
-- [ ] Second line: only the cursor row has one; it starts with the author name, contains `made on `, ends with a 7-hex hash; the line below it continues every lane glyph straight; moving `j` moves it; uncommitted row reads `not committed yet`.
-- [ ] Scroll: 40 held `j` from the top never leaves the cursor or its second line off screen; click on the second line selects the cursor row.
-- [ ] `#`: after `#`, the frame's cells carry no colour attributes (buffer test), glyphs unchanged; `#` again restores; survives screen changes until quit.
-- [ ] Bar per row kind (state tests through the choice site, words from 03b/03r): own row `⏎ open · P push · c commit`; a `sara/fix-toc` row `C switch to fix-toc` and `x compare`; a folded merge with `Known(3)` `space show the 3 commits inside`, with `Pending` its branch's bar; **the opened merge row** `space hide the commits inside · ⏎ open · x compare`; **an inner row** of a merge from a live `sara/fix-toc` → `⏎ open · C switch to fix-toc · x compare` and no `space` hint; an inner row of a merge whose branch was deleted → no `C switch to` (the no-branch bar NOTES names); `space` on that inner row still closes the merge, cursor on the merge row.
-- [ ] `BranchRow`/`PlainRow`: removed with their arms, or NOTES names what still picks them.
-- [ ] Captures next to the main mock: `docs/shots/ease-pass/main-cursor-own-120.txt`, `main-cursor-teammate-120.txt`, `main-opened-merge-120.txt` (cursor on the opened merge row), `main-100.txt`, `main-90.txt`, `main-colours-off-120.txt`; colour unverified. Each tick names its test.
+- [ ] `#`: after `#`, the frame's cells carry no colour attributes (buffer test), glyphs unchanged; `#` again restores; survives a screen change and back.
+- [ ] Drag: starting a drag on a `<branch> is here` label and on a branch-column name picks that branch (`ref_spans` test, renamed from `tests.rs:1943`; drag state test).
+- [ ] The bar is unchanged: every `cursor_row_context` and hint test passes unedited (`git diff --stat` on them empty, in NOTES).
+- [ ] Captures next to the main mock: `docs/shots/ease-pass/main-120.txt`, `main-100.txt`, `main-90.txt`, `main-colours-off-120.txt` (07b re-shoots them with the second line); colour unverified (rule 5).
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
-Large (~80k). Split point if it overruns: (a) roles, glyphs, columns, labels, `#` row and handler; (b) second line, scroll and hit-test, bar per row kind.
+~70k. Split point if it overruns: the `#` row, handler and `colourless` as their own commit first; then roles, glyphs, columns, labels, drag.

@@ -1,7 +1,7 @@
 # pixel-roles-and-tall-row — the Pixel tier draws roles and the cursor row's second line; then the Ghostty lag is measured
 
 Status: ready (Blocked by / Needs fitted to the 06 split, 2026-10-17)
-Blocked by: 01-roles-and-route, 07-graph-rows, 06-graph-fold-and-lanes, 06b-lanes-on-screen-and-header, 03-ease-vocabulary
+Blocked by: 01-roles-and-route, 07-graph-rows, 07b-graph-rows-cursor, 06-graph-fold-and-lanes, 06b-lanes-on-screen-and-header, 03-ease-vocabulary
 Build with: (blank — brownfield; conductor sets after the scout). Not Fable: correctness is judged by trace and tests, not by eye.
 Needs: `LaneRole`, `Route` (roles-and-route); `lane_roles`, `SecondLine`, `commit_rows`, `AppState.{route, colours_off}` (graph-rows); fold rows and `InsideMerge` (06); the window's drawn columns with node-less lanes dropped (06b — strips draw what `Fold` keeps); role tokens (ease-vocabulary).
 
