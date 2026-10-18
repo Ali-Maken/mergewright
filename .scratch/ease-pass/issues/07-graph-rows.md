@@ -1,17 +1,17 @@
 # graph-rows — colour by role, branch / who / age columns, labels, `#` (Unicode tier)
 
-Status: ready (re-planned 2026-10-18, spec-only pass after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12: its 6 mismatches settled below; **split at the old (a)/(b) point** — the cursor row's second line, scroll and hit-test, and the bar per row kind are now **07b-graph-rows-cursor**). History: Needs revised after 03's scout, `graph.colours_off` moved here from 03, fold names fitted to 06, opened-merge bar after review 03 Major 1 (all 2026-10-17).
-Blocked by: 06h-graph-mode (edits `view::rows`, `update::keys`), 06s-split-update-files, 06t-split-view-files. Built and merged, no longer blocking: 01, 01r, 03, 03b, 03r (its open box is Minor 5's `commit.toggle_*` words; nothing here reads them), 06 (closed for building), 06b, 06r (open boxes are questions), 06u.
+Status: ready (re-planned 2026-10-18, spec-only pass after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12: its 6 mismatches settled below; **split at the old (a)/(b) point** — the cursor row's second line, scroll and hit-test, and the bar per row kind are now **07b-graph-rows-cursor**; amended 2026-10-18 for the user's `↑N to push` answer: per-branch counts read by **07a-ahead-counts**). History: Needs revised after 03's scout, `graph.colours_off` moved here from 03, fold names fitted to 06, opened-merge bar after review 03 Major 1 (all 2026-10-17).
+Blocked by: 06h-graph-mode (edits `view::rows`, `update::keys`), 06s-split-update-files, 06t-split-view-files, 07a-ahead-counts (`RefBadges::ahead_of_upstream`). Built and merged, no longer blocking: 01, 01r, 03, 03b, 03r (its open box is Minor 5's `commit.toggle_*` words; nothing here reads them), 06 (closed for building), 06b, 06r (open boxes are questions), 06u.
 **Anchors below are the scout's, pre-split (e9b08d12). Before starting, map each through 06s's and 06t's NOTES old-line → new-home tables.**
 Build with: Opus — two crates, ~12 touch points; the drawn row's cells, the lane colours and the drag source change together (scout's call).
-Needs: mergewright-graph `LaneRole` (`role.rs:14`), `Route::{new, unread, role, focus}` (:28–58), `made_on(&Row) -> Option<BranchIdentity>` (:96), `Row.lanes: Vec<Option<BranchIdentity>>` (`row.rs:52`), `Fold::view(&Row) -> DrawnRow` (06b's drawn columns); mergewright-ui `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}` (`theme/mod.rs:126+`); from 06: `InsideMerge { merge: Oid, label: Option<Vec<u8>> }` (`view/rows/fold.rs:27`, `pub(crate)`, dead until now), `FoldMark { open, count, from }` and `FoldMark::words`; app `refs::RefBadges`, `refs::RefLabel`; HEAD's ahead count `counts.ahead: usize` (`mergewright-git/src/history/divergence.rs:29`, read by `push_words`, `update/commit_editor/landing.rs:141`). **This group adds the `graph.colours_off` row itself.**
+Needs: mergewright-graph `LaneRole` (`role.rs:14`), `Route::{new, unread, role, focus}` (:28–58), `made_on(&Row) -> Option<BranchIdentity>` (:96), `Row.lanes: Vec<Option<BranchIdentity>>` (`row.rs:52`), `Fold::view(&Row) -> DrawnRow` (06b's drawn columns); mergewright-ui `Token::{RoleThis, RoleUnder, RoleTrunk, RoleOther}` (`theme/mod.rs:126+`); from 06: `InsideMerge { merge: Oid, label: Option<Vec<u8>> }` (`view/rows/fold.rs:27`, `pub(crate)`, dead until now), `FoldMark { open, count, from }` and `FoldMark::words`; app `refs::RefBadges`, `refs::RefLabel`; from 07a: `RefBadges::ahead_of_upstream(&self, branch: &RefLabel) -> Option<usize>`. **This group adds the `graph.colours_off` row itself.**
 
 ## Read first
 - `docs/design-notes/ease-pass.md`: Prior art rows "Which line is which" → "Who"; Mock behaviours G1–G8, G14 (:116–127); New UI (graph widths); Questions 2, 3, 4, 10, 11 (answered a).
 - `docs/design/01-view-mockups.md` §1.0 (chrome) and §1.1–1.3 (the rows only). `docs/design/02-keymap.md` §2.3, §2.15 (drag).
 - `ARCHITECTURE.md` the layer table (:252–263): `ui` may depend on `graph`.
 - `crates/mergewright-ui/MAP.md`: `graph_column`, `graph_screen` (+ `::columns`, `::badges`, `::hints`), `theme`, `keymap`. `crates/mergewright/MAP.md`: `view::entries`, `view::rows`, `refs`, `update::keys`, `update::drag`. `crates/mergewright-graph/MAP.md`: `role` (:158–162), `row` (:165), `Fold::view` (:26).
-- `.scratch/ease-pass/issues/03-ease-vocabulary.md` Handoff blocker 1 (the exact row line).
+- `.scratch/ease-pass/issues/03-ease-vocabulary.md` Handoff blocker 1 (the exact row line). `07a-ahead-counts.md` Decided and NOTES (the path taken).
 - The main mock's visible text: `prototypes/ease-mocks/mergewright-main-screen.html`.
 - The scout's file, items "Roles", "Row.lanes", "Token::Role*", "Glyphs", "Row cells", "Keys", "↑N to push".
 
@@ -21,7 +21,7 @@ Needs: mergewright-graph `LaneRole` (`role.rs:14`), `Route::{new, unread, role, 
 - **M2/M4/M5 are 07b's** (the bar). This ticket leaves `cursor_row_context` (`view/rows/context.rs:107`) reading what it reads today, its tests unedited. Its `BranchRow` input is `cursor.badges` (:131–139): if that is `GraphEntry.badges`, the field **stays, undrawn**, with `/// Read by cursor_row_context until 07b; not drawn.` — 07b removes it.
 - **Lane colour on the Unicode tier** comes from `Token::Role*` by `LaneRole`. `Theme::lane(usize)`, `Theme::branch`, `branch_muted` (`theme/lanes.rs:86,149,110`) stay: the pixel tier (13) and Ghost Preview's ghost lanes (`refs` → `preview_seeds`) still call them. NOTES lists their callers after the change.
 - **`colourless` is new** (scout: none exists). It equals what `NO_COLOR` resolves to today if the theme has that path (grep `NO_COLOR` in mergewright-ui `theme`; NOTES names it); if none, every token → the terminal's default colour, bold/dim/underline kept.
-- **`↑N to push`: HEAD's branch only**, on the row its tip sits on, N = `counts.ahead` (`usize`, confirmed). Other local branches' ahead counts are not drawn — no per-branch count source was confirmed (usability-walk question in NOTES, not a build decision).
+- **`↑N to push` on every local branch with unpushed commits** (user, 2026-10-18). Drawn on the row its tip sits on, N = `RefBadges::ahead_of_upstream(branch)` (07a; `usize`). `Some(0)` and `None` (no upstream, or 07a's count not landed) draw nothing. No `↑?` and no `reading…`. When a row holds more than one local branch, each one's `↑N to push` follows that branch's `<branch> is here`. When the branch's name is the one in the branch column, `↑N to push` comes first among the labels. This ticket adds no read and calls nothing per frame beyond the accessor.
 - **`#` dispatch** follows the bound-action pattern: listed in `update/keys/bound.rs:78` like `is_copy_key → copy_selected_sha` (`update/keys/actions.rs:45`).
 - **Drag source (§2.15):** `badge_spans` (`graph_screen/render.rs:547`, test `tests.rs:1943`) is renamed `ref_spans`, same shape; its spans are now each label's and the branch-column name's, each with the ref it names. `drag.rs` starts a drag from those. Line → row stays one row per line here (07b changes it).
 
@@ -35,7 +35,7 @@ In — mergewright-ui: `graph_column` (glyphs, connectors, nodes), `graph_screen
 - **Message (G6):** dimmed on Other rows. **Labels (G7):** muted, after the message: `↑N to push` (above), `not merged`, `<branch> is here` (a branch and its upstream one name; remote-only `origin/x is here`), `tag <name>` — all from `RefBadges`. Today's row tags (`✎ changed`), radar marker and compare mark stay.
 - **Who / age (G8):** first name; own commits `you`, bold; age `23h`, `9d`, `2w` (4 cells).
 - **`#` (G14, Q3 a):** toggles `colours_off`; the whole screen resolves `colourless()` until quit; shapes, bold and dim stay. Not saved.
-Out: second line, scroll, every screen-line → row hit-test, the bar per row kind, `BranchRow`/`PlainRow` (07b); branch pane and route read (09); pixel tier (13); header and lane drop (06b); fold words (06); hint list words (03b, 03r); merging the two `FoldCount` enums (`graph_screen/fold_mark.rs:9`, `update/fold_count.rs:19` — not this ticket's; NOTES lists it for the review).
+Out: the ahead-count read (07a); second line, scroll, every screen-line → row hit-test, the bar per row kind, `BranchRow`/`PlainRow` (07b); branch pane and route read (09); pixel tier (13); header and lane drop (06b); fold words (06); hint list words (03b, 03r); merging the two `FoldCount` enums (`graph_screen/fold_mark.rs:9`, `update/fold_count.rs:19` — not this ticket's; NOTES lists it for the review).
 
 ## Signatures
 mergewright-ui keymap (new row, `defaults()`): `graph.colours_off  Graph  [KeyChord::key('#')]`.
@@ -63,10 +63,11 @@ mergewright app:
 /// One role per drawn column; an unnamed lane is `Other`.
 pub(crate) fn lane_roles(row: &Row, drawn: &DrawnRow, route: &Route) -> Vec<LaneRole>;   // view::entries
 // AppState (appended): pub(crate) colours_off: bool, pub(crate) route: Route
+// calls (07a): RefBadges::ahead_of_upstream(&self, branch: &RefLabel) -> Option<usize>
 ```
 
 ## Touches
-Every capture of the graph screen (list them; recaptured at 120/100/90); Ghost Preview slice (`view::preview` — ghost rows keep today's lane colours, take the new columns); search highlight (now on the message column); overview strip; tour card (`view::tour` words naming badges?); `y` copy SHA (works with no SHA column); `?`/palette entries mentioning badges; `cursor_row_context` (unchanged — its tests unedited); drag (§2.15, `drag.rs:180`); key table golden and clash check (`keymap/clash.rs:21`); `?`/`⌃P` listing (`#` now listed); dead-key sweeps (`sweep.rs:185`, `palette_live.rs:222`); man page key table (regenerate, diff: one row); `docs/design/01-view-mockups.md` §1.1–1.3 (approved edit, text in NOTES); 07b (second line, bar), 13 (role model), 09 (route).
+Every capture of the graph screen (list them; recaptured at 120/100/90); Ghost Preview slice (`view::preview` — ghost rows keep today's lane colours, take the new columns); search highlight (now on the message column); overview strip; tour card (`view::tour` words naming badges?); `y` copy SHA (works with no SHA column); `?`/palette entries mentioning badges; `cursor_row_context` (unchanged — its tests unedited); drag (§2.15, `drag.rs:180`); the header's `N commits to push` (own source, unchanged; 07a pins it equal to HEAD's label); key table golden and clash check (`keymap/clash.rs:21`); `?`/`⌃P` listing (`#` now listed); dead-key sweeps (`sweep.rs:185`, `palette_live.rs:222`); man page key table (regenerate, diff: one row); `docs/design/01-view-mockups.md` §1.1–1.3 (approved edit, text in NOTES); 07b (second line, bar), 13 (role model), 09 (route).
 
 ## Acceptance
 Each tick names its test inline.
@@ -78,15 +79,18 @@ Each tick names its test inline.
 - [ ] Connector test: a merge of `sara/fix-toc` into `wallet-release` draws `╯`/`╮` with `━` when sara is This, `┄` when Other. ASCII tier: `|` and `:` only.
 - [ ] Focus on an opened row = the merge row's branch (role test with an opened merge).
 - [ ] Branch column: once per run, `(you)` on HEAD's, last path segment of the `InsideMerge` label (dim) on opened rows, blank with no label; widths 20/14/12 at 120/110/90.
-- [ ] No SHA column and no `[branch]` badge text on any row (capture grep); labels `↑1 to push` (on HEAD's tip row only), `not merged`, `wallet-release is here`, `tag v1.2` present on the fixture.
+- [ ] No SHA column and no `[branch]` badge text on any row (capture grep). Labels present on the fixture: `↑1 to push` on HEAD's branch tip, `↑2 to push` on a second local branch `wallet-release` (2 ahead, not checked out), no `to push` on an in-sync branch, a branch with no upstream, or any branch before 07a's count lands; `not merged`, `wallet-release is here`, `tag v1.2`. Covered by state tests through `view::entries` and the capture grep.
 - [ ] Who/age: own rows read `you`; others a first name; age cells match `\d+[mhdwy]`.
 - [ ] `#`: after `#`, the frame's cells carry no colour attributes (buffer test), glyphs unchanged; `#` again restores; survives a screen change and back.
 - [ ] Drag: starting a drag on a `<branch> is here` label and on a branch-column name picks that branch (`ref_spans` test, renamed from `tests.rs:1943`; drag state test).
 - [ ] The bar is unchanged: every `cursor_row_context` and hint test passes unedited (`git diff --stat` on them empty, in NOTES).
-- [ ] Captures next to the main mock: `docs/shots/ease-pass/main-120.txt`, `main-100.txt`, `main-90.txt`, `main-colours-off-120.txt` (07b re-shoots them with the second line); colour unverified (rule 5).
+- [ ] Captures next to the main mock: `docs/shots/ease-pass/main-120.txt` (shows a non-HEAD `↑N to push`), `main-100.txt`, `main-90.txt`, `main-colours-off-120.txt` (07b re-shoots them with the second line); colour unverified (rule 5).
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~70k. Split point if it overruns: the `#` row, handler and `colourless` as their own commit first; then roles, glyphs, columns, labels, drag.
+
+## NOTES
+- **User, 2026-10-18 (through the conductor):** `↑N to push` shows on **every** local branch with unpushed commits, not HEAD's only. Applied in Decided and Acceptance. The per-branch count source is unconfirmed (07's scout found only HEAD's `counts.ahead`), so the read is a ticket of its own, **07a-ahead-counts**. It settles with a test whether `refs` already holds the counts; if not, it adds a job. It also carries the many-branch cost bound. 07 only draws.
