@@ -71,7 +71,7 @@ escalation and checkpoint policy are the conductor's — they live in
 - **Measurement never runs in a helper's context.** Perf runs, benchmarks, memory curves run from a script writing to `docs/perf/<ticket>.txt`; the helper reads summary lines.
 - **Captures stay small:** `docs/shots/` trimmed to the point, **hard cap 200 KB per file**. Raw terminal streams never committed. The repo may be published.
 - **Commit** after each ticket. **Never push or force.**
-- **No Claude or Anthropic mention** in commit messages (no Co-Authored-By, Claude-Session or "Generated with" lines) or in any file that ships (user, 2026-10-19). Plain commit messages.
+- **No AI-attribution wording** — nothing saying work was made, written or co-authored by Claude/Anthropic: no Co-Authored-By, Claude-Session or "Generated with" lines in commits, no such words in files (user, 2026-10-19). References to `CLAUDE.md` itself are fine. Plain commit messages.
 
 ## Running work
 
