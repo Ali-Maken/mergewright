@@ -1417,6 +1417,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/11-tdd-order | Some 11 code written before its test; the click test could not fail on old scroll.rs (11 NOTES) | **unverified** | ease-pass review |
 | rename/over400-raised | Rename raised 95 over_400 rows (+466 lines), all rustfmt reflow from longer names; user rule is split, not raise | **broken** | pre-publish cleanup |
 | rename/graft-leftovers | 871 `graft` hits remain: migration names (kept on purpose), fixture identities `Graft Fixture/Test/Perf` (seed fixture oids; renaming needs hard-coded oids + snapshots redone), lowercase comments/temp prefixes, .snap `source:` headers. Public repo must not carry the codename | **broken** | pre-publish cleanup |
+| ease/06h-edit-stop-space | Every branch: `space` at an edit stop (§2.6a) untested (06h box open) | **unverified** | ease-pass 14 |
+| ease/06h-search-every | Every branch: `n` visiting hits untested (06h box open) | **unverified** | ease-pass 14 |
+| ease/06h-mode-lost | A graph mode switched at run time is lost when another repo opens (06h NOTES) | **question** | ease-pass review |
+| ease/06h-landed-bar | Every branch: after-merge bar (undo the merge, push) never shows, finish.rs:208-224 (06h Q1) | **question** | ease-pass 12b/review |
+| ease/06h-fork-rows-flaky | `fork_rows` test failed once then passed; code untouched by 06h | **unverified** | ease-pass review |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |

@@ -144,3 +144,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - planner-fable amend: 07 ↑N every local branch; new 07a-ahead-counts (before 07; refs-read or job on refs landing; 500-branch test + ≤100 ms/2000 release script; nothing draws before it lands; scout first).
 - scout 07a: counts already per branch (RefLabel::Branch.upstream, refs/mod.rs:295-322), path A; 4 mismatches; Build with set Sonnet. Open: no-upstream branches draw no ↑N.
 - user: no-upstream branch → `not pushed yet`; written into 07a Build with/acceptance note.
+- builder-sonnet 06h merged: 22/24 (space at edit stop, n in Every branch untested → gaps); Q1 landed bar in Every branch; fork_rows flaky once. 6945/6945 in worktree · 192 tools · skills: implement. builder-sonnet 07a dispatched beside 11b.
