@@ -40,13 +40,13 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
                                              │ <     Shrink the detail pane                                                    diff.shrink  │
                                              │ >     Grow the detail pane                                                        diff.grow  │
                                              │ L     Load the full file                                                      diff.load_all  │
+                                             │ GRAPH MODE                                                                                   │
+                                             │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
+                                             │ ○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
                                              │ EVERYWHERE                                                                                   │
                                              │ ⌃P    Command palette                                                           app.palette  │
                                              │ ?     Help for this place                                                          app.help  │
                                              │ ⇥     Next pane                                                               app.next_pane  │
                                              │ ⇧⇥    Previous pane                                                           app.prev_pane  │
-                                             │ esc   Back out / close / cancel                                                    app.back  │
-                                             │ u     Undo                                                                         app.undo  │
-                                             │ U     Redo                                                                         app.redo  │
 ─────────────────────────────────────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯──────────────────────────────────────────────
  ↑↓ move  ⏎ run  esc close
