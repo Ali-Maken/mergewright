@@ -153,3 +153,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 07a fix (b07304b9): fmt ok, clippy 0, nextest 6952/6952, doc ok; worktree removed.
 - builder-sonnet 11b merged (4fc96acf): 8/8; three panes gone, inline from 100 cols, combined list, banner names; ~30 captures regenerated (colour unverified); Q1 title row open; stale three-pane shots + frame_budget unrun → gaps · 194 tools · skills: none · COMPACTED. builder-sonnet 06t dispatched beside 12b.
 - gates after 11b (4fc96acf): fmt ok, clippy 0, nextest 6947/6947 (−5 vs 6952: 26 fns removed, mostly three-pane; band/no-colour ones → gap ease/11b-dropped-tests), doc ok; worktree removed.
+- builder-sonnet 12b merged: 7/7; merge_look widget, inline diff removed from review; questions (no colour marks per pick, no scroll), m6 sheet stale → gaps; its 1 red = 07a's literal-key, fixed on main already · 111 tools · skills: implement. builder-sonnet 06s dispatched beside 06t.

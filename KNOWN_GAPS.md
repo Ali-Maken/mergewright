@@ -1428,6 +1428,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/11b-three-pane-shots | Old `docs/shots/m6/fix-three-panes-*` captures show the removed three-pane layout | **broken** (stale) | pre-publish cleanup |
 | ease/11b-frame-budget | Heavy `frame_budget` re-pointed to inline layout, not run | **unverified** | ease-pass review (heavy run) |
 | ease/11b-dropped-tests | 11b removed 26 test fns (net −5): mostly three-pane, but `band_ascii_glyphs`, `band_at_sixteen_colours_has_no_background`, `band_in_high_contrast_has_no_background`, `band_under_no_color_is_glyphs_and_modifiers`, `four_states`, `a_whole_file_shape_shows_each_side` — not checked whether the inline view keeps that coverage | **unverified** | ease-pass review |
+| ease/12b-clashed-no-marks | Merge look: clashed files show no per-pick colour marks (12b NOTES) | **question** | ease-pass review |
+| ease/12b-look-no-scroll | Merge look cannot scroll — long merges cut off? (12b NOTES) | **question** | ease-pass review |
+| ease/12b-m6-sheet-stale | m6 contact sheet stale after 12b's captures | **broken** (stale) | ease-pass 14 |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |
