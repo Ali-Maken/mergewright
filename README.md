@@ -194,4 +194,4 @@ with `cargo run -q -p mergewright -- --generate-man > docs/man/mwr.1`.
 
 ## Licence
 
-MIT.
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
