@@ -180,3 +180,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 2026-10-19 · user: after 07c merges + gates green: remove its worktree and cargo clean (~42 GB).
 - 2026-10-19 · user correction: CLAUDE.md references stay; the rule is only no 'made/co-authored by Claude' wording. Shipped files checked (git grep): none. PROGRESS cleanup item removed, CLAUDE.md rule narrowed.
 - researcher name clearance: medium risk; 2 GitHub repos 'MergeWright' (git/AI merge tools, 2026); mergewright.com taken; npm mwr taken; crates/PyPI/brew/AUR free; trademark DBs not checked (browser-only) → user.
+- builder-opus 07c merged (c830d7a8): 07 13/14 (not merged → 09); columns, ↑N/not pushed yet, you via mailmap, drag, preview, ~200 captures; 7000/7000 in worktree · 500 tools · skills: tdd, implement · COMPACTED ×2. Capture conflicts (2) resolved by regeneration, no diff. 4 questions + 1 unverified → gaps. Gates running; then worktree rm + cargo clean.

@@ -1435,6 +1435,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/06i-graph-query-steps | Typing `graph` in help: three HERE rows match first, `? graph ↓ ⏎` lands on "Write the commit-graph file"; switch takes 7 steps vs ≤4 (`? every ↓ ⏎` = 4). Ranking: a setting whose name starts with the query should list before HERE rows | **broken** | ease-pass review fixes |
 | ease/06i-detail-120 | At 120 cols the setting row's detail is cut and the id stays (box too narrow for both) | **question** | ease-pass review |
 | ease/06i-m8-sheets | m8 contact sheets not reassembled after 06i captures | **broken** (stale) | pre-publish cleanup (delete, not rebuild — user 2026-10-19) |
+| ease/07c-merge-labels | Opened merges: labels push the subject (`Merge …`) out (07 NOTES) | **question** | ease-pass review |
+| ease/07c-wallet-no-column | wallet-release never gets a branch-column name (07 NOTES) | **question** | ease-pass review |
+| ease/07c-name-repeats | Branch named again when runs alternate (07 NOTES) | **question** | ease-pass review |
+| ease/07c-future-dates | Future commit dates read `fut…` (07 NOTES) | **question** | ease-pass review |
+| ease/07c-upstream-name | Lane named after `origin/x` takes the local name assuming upstream has the same name (07 NOTES) | **unverified** | ease-pass review |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |
