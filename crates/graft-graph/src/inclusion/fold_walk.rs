@@ -31,6 +31,8 @@ use graft_core::commit_handle::{CommitHandle, HandleSet, Link, Parents};
 
 mod pointing;
 #[cfg(test)]
+mod rule_pinned;
+#[cfg(test)]
 mod tests;
 
 /// One admitted commit's verdict.

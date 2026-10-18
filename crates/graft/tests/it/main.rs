@@ -41,6 +41,7 @@ mod file_size;
 mod finish;
 mod first_launch;
 mod fold_by_default;
+mod fold_rule_pinned;
 mod fold_tail_narrow;
 mod frame_trace;
 #[cfg(feature = "heavy-tests")]

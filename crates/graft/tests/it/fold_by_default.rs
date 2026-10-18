@@ -94,17 +94,17 @@ pub fn wallet_release() -> tempfile::TempDir {
     scratch
 }
 
-fn drawn(state: &AppState) -> Vec<String> {
+pub(crate) fn drawn(state: &AppState) -> Vec<String> {
     frame_at(state, COLUMNS, ROWS, Some(Clock::Fixed(NOW)))
 }
 
-fn window(state: &AppState) -> Option<&graft::history::Window> {
+pub(crate) fn window(state: &AppState) -> Option<&graft::history::Window> {
     state.history.as_ref().and_then(|h| h.window.as_ref())
 }
 
 /// The repository opened at 120×36, up to its first window with rows: the
 /// first paint.
-fn first_paint(repo: &Path) -> (App, AppState) {
+pub(crate) fn first_paint(repo: &Path) -> (App, AppState) {
     let (app, state) = App::open(repo);
     let state = app.resize(&state, COLUMNS, ROWS);
     let state = app.pump(state, "the first rows", |state| {
@@ -114,7 +114,7 @@ fn first_paint(repo: &Path) -> (App, AppState) {
 }
 
 /// The window's row whose subject is `subject`, with its index.
-fn row_of<'w>(
+pub(crate) fn row_of<'w>(
     window: &'w graft::history::Window,
     subject: &str,
 ) -> (usize, &'w graft_graph::row::Row) {
