@@ -53,7 +53,6 @@
 425 crates/graft-ops/src/operation/refusal.rs
 548 crates/graft-ops/src/operation/remote/tests.rs
 2011 crates/graft-ops/src/operation/tests.rs
-434 crates/graft-ops/src/preview/effects.rs
 407 crates/graft-ops/src/restore.rs
 750 crates/graft-ops/src/restore/steps.rs
 477 crates/graft-ops/src/rewrite/progress.rs
@@ -70,7 +69,7 @@
 1202 crates/graft-ops/tests/it/fork_follows.rs
 2712 crates/graft-ops/tests/it/history_ops.rs
 681 crates/graft-ops/tests/it/journal_list_oracle.rs
-980 crates/graft-ops/tests/it/merge_set_aside.rs
+953 crates/graft-ops/tests/it/merge_set_aside.rs
 472 crates/graft-ops/tests/it/ops_execution.rs
 1156 crates/graft-ops/tests/it/ops_execution_hard.rs
 551 crates/graft-ops/tests/it/pull_set_aside.rs
@@ -185,7 +184,7 @@
 440 crates/graft/src/update/place.rs
 456 crates/graft/src/update/place/keys.rs
 1065 crates/graft/src/update/place/tests/history.rs
-445 crates/graft/src/update/preview.rs
+429 crates/graft/src/update/preview.rs
 431 crates/graft/src/update/preview/slice.rs
 448 crates/graft/src/update/preview/slice/tests.rs
 2150 crates/graft/src/update/preview/tests.rs
@@ -227,7 +226,7 @@
 650 crates/graft/tests/it/budget_run.rs
 448 crates/graft/tests/it/clock_pin.rs
 546 crates/graft/tests/it/commit_editor_writes.rs
-2006 crates/graft/tests/it/conflict_interim.rs
+2005 crates/graft/tests/it/conflict_interim.rs
 875 crates/graft/tests/it/context_menu.rs
 419 crates/graft/tests/it/credential_by_key.rs
 405 crates/graft/tests/it/drain_sink.rs
@@ -247,7 +246,7 @@
 1818 crates/graft/tests/it/m3_walk.rs
 434 crates/graft/tests/it/m4_walk/push.rs
 1396 crates/graft/tests/it/m5_walk/conflict_journeys.rs
-673 crates/graft/tests/it/m5_walk/conflicts.rs
+670 crates/graft/tests/it/m5_walk/conflicts.rs
 613 crates/graft/tests/it/m5_walk/fixture.rs
 442 crates/graft/tests/it/m5_walk/journeys.rs
 411 crates/graft/tests/it/m5_walk/pick_revert_reset.rs
@@ -269,7 +268,7 @@
 420 crates/graft/tests/it/m7_walk/switch.rs
 686 crates/graft/tests/it/name_and_drag.rs
 587 crates/graft/tests/it/outside_repo.rs
-1143 crates/graft/tests/it/preview.rs
+1140 crates/graft/tests/it/preview.rs
 614 crates/graft/tests/it/pty.rs
 401 crates/graft/tests/it/quit_waits/hangup.rs
 550 crates/graft/tests/it/quit_waits/stuck.rs

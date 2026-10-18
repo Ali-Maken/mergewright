@@ -284,7 +284,9 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `NoPutBack` (enum) — why a journal-list row has nothing for `⏎`: `Graft`, `Switch { back_to }`, `Created { name }`, `Nothing`.
 
 ## preview
-- `PreviewPlan` (struct) — what a write would do: `description`, `commands`, `ghosts`, `ref_moves`, `head`, `worktree`, `conflicts`, `undo`, `against`, `set_aside`, `forks`, …
+- `PreviewPlan` (struct) — what a write would do: `description`, `commands`, `ghosts`, `ref_moves`, `head`, `worktree`, `conflicts`, `undo`, `against`, `set_aside`, `forks`, `merge`, …
+- `MergeLook` (struct) — `check`, `incoming`: a merge plan's own reads, on any merge that changes something; `conflicts` derives from `check` (one forecast). `unrelated()`: git refuses it, `y` is withheld.
+- `INCOMING_CAP` (const) — 200: incoming commits read before `capped`.
 - `Target` (enum) — `Real(Oid)` or `Ghost(usize)`: how a row points at a commit not written yet.
 - `GhostCommit` (struct) — `oid`, `parents: Vec<Target>`, `subject`, `author`, `replays: Option<Oid>`.
 - `RefMove` (struct) — `name`, `from`, `to: Option<Target>` (`None`: the ref goes away).

@@ -104,11 +104,8 @@ fn stop_then_esc_lists_files() -> Scenario {
         capture: Some(Capture {
             stem: "m5-06-stop-lands-in-resolver",
             headless: vec![],
-            keys: plain(&[
-                ch('m'),
-                graft_core::event::KeyCode::Right,
-                graft_core::event::KeyCode::Enter,
-            ]),
+            // The merge box has keys, not buttons (ease-pass 10): `y` runs it.
+            keys: plain(&[ch('m'), ch('y')]),
             // The stop lands in the resolver (m6-conflicts/18); the header
             // row still says `MERGING`.
             on_screen: "MERGING",

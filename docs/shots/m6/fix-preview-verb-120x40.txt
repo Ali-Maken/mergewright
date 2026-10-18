@@ -6,9 +6,9 @@
 # TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).
 #
 # What right looks like:
-#  - The box's bottom border reads
-#    `y confirm  m merge  ←/→ choose  ⏎ act  esc cancel`.
-#  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.
+#  - The merge box (ease-pass 10); its bottom border reads
+#    `y merge  esc cancel  ⏎ see the N commits`.
+#  - No buttons row, no `m merge` on the footer.
 #
 
  ◆ api  ~/code/api · feature                                                                                  8 commits
@@ -39,15 +39,15 @@
 
 
 
-
-╭ Preview: merge main into feature ────────────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit                                                                                                       │
-│ feature 8d6cd28 → 1 new commit                                                                                       │
-│ working tree: 2 files updated                                                                                        │
-│ no conflicts expected                                                                                                │
-│ undo: u takes this back                                                                                              │
-│ git merge --no-edit --ff -m 'Merge branch '\''main'\'' into feature' main                                            │
-│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  m merge  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+╭ Merge main into feature ─────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Nothing has changed yet.                                                                                             │
+│                                                                                                                      │
+│ Comes in      2 commits from main (Graft)                                                                            │
+│ Changes       2 files                                                                                                │
+│ Git combines  2 files on its own                                                                                     │
+│ You decide    nothing: no file clashes                                                                               │
+│                                                                                                                      │
+│ After y the merge is committed.                                                                                      │
+╰ y merge  esc cancel  ⏎ see the 2 commits ────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

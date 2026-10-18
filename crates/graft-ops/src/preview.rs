@@ -49,11 +49,16 @@ pub(crate) use landing::is_ancestor;
 use landing::{Landing, Replay, dirty_tracked, forecast_one, worktree};
 
 mod effects;
+mod error;
+mod merge_look;
 use effects::PATHS_CAP;
 pub use effects::{
     ConflictForecast, FORECAST_CAP, Fork, ForkFate, GhostCommit, HeadMove, LEFT_BEHIND_CAP,
-    LeftBehind, PreviewError, PreviewPlan, RefMove, Target, UndoNote, WhyStays, WorktreeEffect,
+    LeftBehind, PreviewPlan, RefMove, Target, UndoNote, WhyStays, WorktreeEffect,
 };
+pub use error::PreviewError;
+pub(crate) use merge_look::conflicts_from;
+pub use merge_look::{INCOMING_CAP, MergeLook};
 
 #[cfg(test)]
 use ghost::sha1;
@@ -233,6 +238,16 @@ fn blank() -> PreviewPlan {
         forks: Vec::new(),
         forks_more: 0,
         messages: Vec::new(),
+        merge: None,
+    }
+}
+
+/// The blank plan every kind starts from: nothing moves, nothing is
+/// written, `Clean`, undoable. For a caller building a plan by hand (a
+/// test's fixture) without naming every field.
+impl Default for PreviewPlan {
+    fn default() -> Self {
+        blank()
     }
 }
 

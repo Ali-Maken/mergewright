@@ -3,10 +3,10 @@
 use super::{
     AppState, Arc, BadgeOverlay, Command, HISTORY_CANNOT_STOP, HashMap, JobId, Loading, Operation,
     PUT_BACK_CANNOT_STOP, Planned, PreviewBox, PreviewFailure, PreviewState, PreviewSubject, Row,
-    SliceError, Status, badges_for_preview, build_slice, choice_at, closing_box, enter,
-    footer_keys, keeps_drops_here, planning_title, preview_box_rect, put_back_box, put_in_words,
-    ready_box, sanitize_line, short, stash_box, stash_put_back, stash_put_back_op, take_title_of,
-    with_cursor,
+    Showing, SliceError, Status, badges_for_preview, build_slice, choice_at, closing_box, enter,
+    footer_keys, keeps_drops_here, merge_box, planning_title, preview_box_rect, put_back_box,
+    put_in_words, ready_box, sanitize_line, short, stash_box, stash_put_back, stash_put_back_op,
+    take_title_of, with_cursor,
 };
 use crate::update::op_keys::OpKeys;
 
@@ -347,6 +347,8 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                 stash_box(&planned.plan, index, pop, &state.keymap)
             } else if let Some(Operation::Recover(params)) = preview.subject.operation() {
                 put_back_box(state, &planned.plan, params)
+            } else if let Some(view) = merge_box(preview) {
+                view
             } else {
                 ready_box(
                     &planned.plan,
@@ -369,6 +371,9 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
         view.title = sanitize_line(&crate::update::recover::preview_title(params, |oid| {
             crate::update::recover::subject_in(state, oid)
         }));
+    }
+    if let Showing::Incoming(list) = &preview.showing {
+        view.incoming = Some(list.clone());
     }
     let keep = keeps_drops_here(state).is_some();
     let view = put_in_words(footer_keys(view, preview, keep), state, preview);

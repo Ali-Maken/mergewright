@@ -36,6 +36,16 @@ pub(super) fn written_paths(
         Operation::BranchCreate(params) if params.checkout => {
             from_head(repo, facts, GitArg::Oid(params.at), stop)?
         }
+        // Unrelated histories: git refuses the merge (no
+        // `--allow-unrelated-histories`), so it writes nothing, and
+        // `diff-tree --merge-base` has no base to diff from (ease-pass 10).
+        Operation::Merge(params)
+            if graft_git::history_reads::merge_base(repo, params.into.oid, params.source_tip)
+                .map_err(super::reads::run_error)?
+                .is_none() =>
+        {
+            BTreeSet::new()
+        }
         Operation::Merge(params) => incoming(repo, facts, params.source_tip, stop)?,
         // A fast-forward, so the incoming side, as for a merge (review 28
         // M1: `HEAD`'s whole diff to the tip also counted his own unpushed

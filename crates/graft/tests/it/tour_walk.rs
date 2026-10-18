@@ -542,9 +542,9 @@ impl Walk {
         self.cursor_to("[feature]");
         self.send(b"m");
         self.wait("the merge preview, set-aside row and forecast read", |s| {
-            s.has("Preview: merge feature into main")
+            s.has("Merge feature into main")
                 && s.has("your edits: 1 file set aside, put back after")
-                && s.has("no conflicts expected")
+                && s.has("nothing: no file clashes")
         });
         self.send(b"y");
         self.wait("the merge on main, his edits back", |s| {
@@ -560,9 +560,9 @@ impl Walk {
         self.cursor_to("[clash]");
         self.send(b"m");
         self.wait("the merge preview, set-aside row and forecast read", |s| {
-            s.has("Preview: merge clash into main")
+            s.has("Merge clash into main")
                 && s.has("your edits: 1 file set aside, put back after")
-                && s.has("may conflict: menu.txt")
+                && s.has("1 file clashes: menu.txt")
         });
         self.send(b"y");
         self.wait("the resolver on menu.txt, settled", |s| {

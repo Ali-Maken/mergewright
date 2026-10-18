@@ -26,11 +26,12 @@ use crate::facts::FactsError;
 use crate::rewrite::{BranchLine, line_picks};
 
 use super::chain::{self, Step};
+use super::merge_look;
 use super::rewrite;
 use super::{
     ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, Landing, PreviewError, PreviewPlan,
-    RefMove, Replay, Target, UndoNote, WorktreeEffect, blank, dirty_tracked, fold, forecast_one,
-    ghost_oid, identity_now, is_ancestor, worktree,
+    RefMove, Replay, Target, UndoNote, WorktreeEffect, blank, conflicts_from, dirty_tracked, fold,
+    forecast_one, ghost_oid, identity_now, is_ancestor, worktree,
 };
 
 mod rebase;
@@ -75,6 +76,9 @@ pub(super) fn merge(
                 to: source,
             },
         )?;
+        // The same box as any merge; the forecast stays `Clean`, as a
+        // fast-forward joins nothing.
+        plan.merge = Some(merge_look::look(repo, git, into, source, stop)?);
         return Ok(plan);
     }
     if params.ff == FastForward::Only {
@@ -104,7 +108,11 @@ pub(super) fn merge(
             theirs: source,
         },
     )?;
-    plan.conflicts = forecast_one(repo, git, None, into, source, stop)?;
+    // One read for the box and the forecast both (ease-pass 10): the
+    // conflicts are derived from the look, never forecast a second time.
+    let look = merge_look::look(repo, git, into, source, stop)?;
+    plan.conflicts = conflicts_from(&look.check);
+    plan.merge = Some(look);
     Ok(plan)
 }
 

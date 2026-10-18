@@ -78,6 +78,7 @@ mod m8_walk;
 mod many_refs;
 mod map_coverage;
 mod merge_one_file;
+mod merge_preview;
 mod name_and_drag;
 mod not_a_repo;
 mod offer_and_blame;

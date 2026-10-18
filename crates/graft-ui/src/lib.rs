@@ -22,6 +22,7 @@ mod frame_box;
 pub mod graph_column;
 pub mod graph_screen;
 pub mod history;
+pub mod incoming_list;
 pub mod journal_screen;
 pub mod keymap;
 pub mod map_screen;

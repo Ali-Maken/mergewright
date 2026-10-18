@@ -1,0 +1,35 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_merge_preview in
+# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# Judge by eye: the same box at 90 columns: the lines whole where they fit, the footer's widest rung that fits.
+=== 90x30 ===
+ ◆ api  ~/code/api · wallet-release                                             8 commits
+
+      │    after merge
+    ◎┈╮    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-relea… —    —
+▸   │ ●    [sara/fix-toc] Check every link                                   55m  c95c84c
+    │ ●    Link the contents                                                 56m  ec3eb1b
+    │ ●    Add a table of contents                                           57m  c1b9826
+    ● │    Number the report                                                 58m  27d980c
+    ●─╯    Add the report                                                    59m  1ac2b32
+  ●─╯      [main] Correct the note                                           1y   a82960b
+  ●        Add the first note                                                1y   fadcfb3
+  ◇        Add a readme                                                      1y   64ded19
+
+
+
+
+
+
+╭ Merge sara/fix-toc into wallet-release ────────────────────────────────────────────────╮
+│ Nothing has changed yet.                                                               │
+│                                                                                        │
+│ Comes in      3 commits from sara/fix-toc (Sara, Omar)                                 │
+│ Changes       3 files                                                                  │
+│ Git combines  2 files on its own                                                       │
+│ You decide    1 file clashes: report.md (2 places)                                     │
+│                                                                                        │
+│ After y you go straight to the first clash.                                            │
+╰ y merge  esc cancel  ⏎ see the 3 commits ──────────────────────────────────────────────╯
+──────────────────────────────────────────────────────────────────────────────────────────
+

@@ -82,7 +82,7 @@ fn merging(
     });
     session.send(b"m");
     session.wait_for("the merge preview's plan", |s| {
-        s.has("no conflicts expected")
+        s.has("nothing: no file clashes")
     });
     session.send(b"y");
     let git = pid(repo, "git.pid");

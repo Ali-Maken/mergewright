@@ -168,6 +168,7 @@ fn the_prelude_holds_a_key_while_a_preview_plan_is_pending() {
         cursor: 0,
         return_to_journal: false,
         refused: false,
+        showing: super::super::preview::Showing::Box,
     });
 
     let (state, _) = update(&state, working_tree_read(JobId::new(10)));

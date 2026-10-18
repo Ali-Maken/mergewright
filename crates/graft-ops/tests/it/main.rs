@@ -34,6 +34,7 @@ mod journal_names;
 mod journal_tie;
 mod journal_two_writers;
 mod lost_work;
+mod merge_look;
 #[cfg(unix)]
 mod merge_review;
 mod merge_set_aside;

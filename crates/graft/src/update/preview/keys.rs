@@ -3,8 +3,8 @@
 use super::{
     Again, AppState, Command, DropSuggestion, HistoryKey, JobId, KeyCode, KeyPress, Modifiers,
     Operation, PREVIEW_MIN, PreviewBox, PreviewPlan, PreviewState, PreviewSubject, RebaseParams,
-    close_preview, confirm_preview, current_branch, is_history_key, preview_box, stash_put_back,
-    stash_verb,
+    close_preview, confirm_preview, current_branch, is_history_key, merge_key, preview_box,
+    stash_put_back, stash_verb, withheld,
 };
 
 /// The preview's keys, while it is open.
@@ -31,6 +31,11 @@ pub fn preview_key(
     if key.code == KeyCode::Char('c') && key.modifiers == Modifiers::CONTROL {
         return false;
     }
+    // A merge's `⏎` opens its incoming list, and the list has its own keys
+    // (ease-pass 10). By op kind, whatever opened it.
+    if merge_key(state, commands, key, next_id).is_some() {
+        return true;
+    }
     // Counted before the borrow, since it reads the whole state; the `else`
     // then covers the same case the check above did, without a panic
     // standing between the two (review 08 Minor 3).
@@ -38,8 +43,11 @@ pub fn preview_key(
     let Some(preview) = state.preview.as_mut() else {
         return false;
     };
+    // Over unrelated histories git refuses the merge: `y` and `m m` are
+    // withheld, swallowed like any other key, and the box stays open.
     if let PreviewSubject::Operation { opened_by, .. } = &preview.subject
         && confirm_key(key, opened_by)
+        && !withheld(preview)
     {
         confirm_by_key(state, commands, next_id);
         return true;

@@ -13,7 +13,8 @@ use super::fixture::{
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::vocabulary::{
     box_choices, box_says, branch, ch, chain, claim_and_confirm, key, last_entry_committed,
-    nothing_open, plain, redo, same_files, same_refs, status_containing, title_names, undo,
+    merge_clashes, nothing_open, plain, redo, same_files, same_refs, status_containing,
+    title_names, undo,
 };
 use crate::repo_truth::check;
 
@@ -123,7 +124,7 @@ fn merge_no_ff_ghost_equals_git() -> Scenario {
             stem: "m5-02-preview-merge",
             headless: vec![],
             keys: plain(&[ch('m')]),
-            on_screen: "Preview: merge",
+            on_screen: "Merge feature into main",
             when: When::Settled,
         }),
     }
@@ -141,9 +142,8 @@ fn merge_forecast_names_the_conflicting_path() -> Scenario {
             Step::CursorTo("feature"),
             key(ch('m')),
             Step::WaitFor(Wait::PreviewReady),
-            Step::See("the box names shared.txt as conflicting", |state| {
-                box_says(state, "may conflict")?;
-                box_says(state, "shared.txt")
+            Step::See("the box names shared.txt as a clash", |state| {
+                merge_clashes(state, "shared.txt")
             }),
             key(graft_core::event::KeyCode::Escape),
             Step::Mark("closed"),

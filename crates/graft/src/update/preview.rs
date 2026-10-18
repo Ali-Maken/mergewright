@@ -71,38 +71,19 @@ pub use history::{HistoryKey, history_key, is_history_key};
 pub(super) use history::{current_branch, short_name_of, source_at};
 #[cfg(test)]
 use keys::confirm_key;
-use keys::{enter, footer_keys, keeps_drops_here};
+use keys::{confirm_by_key, enter, footer_keys, keeps_drops_here};
 pub use keys::{fits, preview_key};
 use plan_lines::{
     capped_list, conflict_line, list, plan_lines, ref_line, short, undo_line, with_cursor,
     worktree_line,
 };
+mod merge_view;
+pub use merge_view::Showing;
+use merge_view::{merge_box, merge_key, withheld};
 use rect::choice_at;
-pub use rect::{preview_box_rect, preview_rows_taken};
+pub use rect::{BoxRect, preview_box_rect, preview_rows_taken};
 use take::take_title_of;
 pub(crate) use take::{is_take_key, take_key};
-
-/// Where the preview box goes on screen, in plain screen coordinates —
-/// `update` draws nothing and names no drawing type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct BoxRect {
-    /// Leftmost column.
-    pub x: u16,
-    /// Topmost row.
-    pub y: u16,
-    /// How wide.
-    pub width: u16,
-    /// How tall.
-    pub height: u16,
-}
-
-impl BoxRect {
-    /// One past the last row.
-    #[must_use]
-    pub fn bottom(self) -> u16 {
-        self.y.saturating_add(self.height)
-    }
-}
 
 pub use self::slice::{BadgeOverlay, PREVIEW_ANCHOR_CAP};
 
@@ -292,6 +273,8 @@ pub struct PreviewState {
     /// [`PreviewState::plan`] is then `Failed(<the refusal's words>)`,
     /// drawn without the `preview failed:` prefix.
     pub refused: bool,
+    /// A merge preview's box or its incoming list (ease-pass 10).
+    pub showing: Showing,
 }
 
 impl PreviewState {
@@ -436,6 +419,7 @@ pub fn open_preview(
         cursor: 0,
         return_to_journal,
         refused: false,
+        showing: Showing::Box,
     });
     commands.push(Command::PlanPreview(id, Box::new(request)));
     true
