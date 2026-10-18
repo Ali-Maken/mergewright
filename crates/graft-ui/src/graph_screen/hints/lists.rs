@@ -9,7 +9,7 @@ use super::keys::{
     NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT, PULL, PUSH, QUIT, RELEASE, RENDERER,
     REWRITE as REWRITE_KEY, SKIP, STAGE, STAGE_ALL, STASH, STATUS, SWITCH, TAKE, UNDO, WHITESPACE,
 };
-use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint, named};
+use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
 
 mod clash;
 mod editors;
@@ -17,7 +17,9 @@ mod live;
 mod resolver;
 mod rows;
 
-use clash::clash_list;
+#[cfg(test)]
+pub(super) use clash::paused;
+use clash::{clash_list, paused_banner_list};
 use editors::{picker_list, picker_on_current_list, rewrite_editor_list};
 use live::said_live;
 pub(super) use live::said_live_on_the_graph;
@@ -303,7 +305,7 @@ fn pane_over_overlay_list(opens: bool) -> Vec<Hint> {
 ///
 /// On a merge `c` opens the finish summary, so it says `c finish`
 /// (m6-conflicts/70, n2).
-fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
+pub(super) fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
     let mut list = vec![hint(CONTINUE, if merge { "finish" } else { "continue" })];
     if skippable {
         list.push(hint(SKIP, "skip"));
@@ -321,22 +323,6 @@ fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
     // matter more than a way out he can always reach by `⇥` (m8-13b).
     // `q` boxes from here (`graft::update::banner::banner_key`).
     list.push(hint(QUIT, "quit"));
-    list
-}
-
-/// The banner after `esc pause` (Q7 a, Q17 a): `⏎` says where it goes, back to
-/// the clash screen `esc` paused (first landing says `resolve`). `s` stays: all but a merge skip.
-fn paused_banner_list(merge: bool) -> Vec<Hint> {
-    paused(banner_list(!merge, true, merge))
-}
-
-/// `list` with its `⏎` hint, found by key, saying `back to the clashes`.
-pub(super) fn paused(mut list: Vec<Hint>) -> Vec<Hint> {
-    for hint in &mut list {
-        if hint.is(OPEN) {
-            *hint = named(OPEN, "back to the clashes", "back");
-        }
-    }
     list
 }
 
