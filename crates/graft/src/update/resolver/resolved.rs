@@ -6,7 +6,6 @@
 use crate::update::op_keys::OpKeys;
 use std::path::{Path, PathBuf};
 
-use graft_core::event::KeyCode;
 use graft_core::job::JobId;
 
 use super::files::{RowState, listed_files, reread_set};
@@ -217,17 +216,12 @@ pub(crate) fn close_after_last(
 /// reopened on the file just staged, which its read now answers as done
 /// and shows read-only (m6-conflicts/25).
 ///
-/// A **merge** then owes its finish summary (m6-conflicts/60, P11): the
-/// flag goes on the state `reopen` just built — set before it, it would be
-/// lost with the old one — and [`finish_if_owed`] opens the summary once
-/// everything this stage started has landed. A refused `reopen` owes
-/// nothing: its words are on the line, and `c` is the way on. A rebase,
-/// cherry-pick or revert owes nothing either, since its `c` writes: the
-/// finish row offers it instead.
+/// Nothing opens on its own (m6-conflicts/60's P11, dropped by
+/// ease-pass/05b): a merge's review is `y`; a rebase, cherry-pick or
+/// revert's `c` writes, and the finish row offers it.
 ///
 /// The status line names the file and that every file is done, plus the
-/// key to press wherever no summary is coming (`… · c continues the
-/// rebase`).
+/// key to press (`… · c continues the rebase`).
 fn stay_after_last(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -235,15 +229,9 @@ fn stay_after_last(
     from: super::OpenedFrom,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    // Only a merge whose last open file was a whole-file card gets here
+    // at all — every other merge file stays unmerged until the review.
     let opened = reopen(state, commands, done.to_path_buf(), from, next_id);
-    // P11 is dropped for a merge (ease-pass/05b): its review is `y`, and
-    // nothing else owed it. Only a merge whose last open file was a
-    // whole-file card gets here at all — every other merge file stays
-    // unmerged until the review.
-    let owes = false;
-    if let Some(open) = state.resolver.as_mut() {
-        open.finish_owed = owes;
-    }
     // The stage changed what git calls unmerged: the list is read again.
     reread_set(state, commands, next_id);
     // The status the `Stage` asked for is still out and still calls this
@@ -257,20 +245,20 @@ fn stay_after_last(
         open.notice = checking;
     }
     if opened {
-        state.status = last_done(state, done, owes);
+        state.status = last_done(state, done);
     }
 }
 
-/// `<file> done ✓ · every file done`, and — where no summary is coming —
-/// the key that carries the operation on (m6-conflicts/60). A merge says
+/// `<file> done ✓ · every file done`, and the key that carries the
+/// operation on (m6-conflicts/60). A merge says
 /// `<file> done ✓ · every clash is solved · y reviews the merge`.
-fn last_done(state: &AppState, done: &Path, summary_coming: bool) -> Status {
+fn last_done(state: &AppState, done: &Path) -> Status {
     let (every, keys) = every_file_done_parts(state);
     // A merge's solved files wait, unstaged, for the review (ease-pass/05b).
     let keys = if super::review::in_a_merge(state) {
         super::review::reviews_the_merge("every clash is solved", &state.keymap)
     } else {
-        match keys.filter(|_| !summary_coming) {
+        match keys {
             Some(keys) => format!("{every} · {keys}"),
             None => every.to_owned(),
         }
@@ -280,68 +268,6 @@ fn last_done(state: &AppState, done: &Path, summary_coming: bool) -> Status {
         also: None,
         keys: Some(keys),
     }
-}
-
-/// A key that takes him somewhere else cancels the summary the last file
-/// owes (m6-conflicts/60): it opens on the event, never later over what he
-/// moved on to. A file switch also rebuilds the state, which drops it.
-pub(super) fn cancel_owed_finish(state: &mut AppState, code: KeyCode, plain: bool) {
-    if plain
-        && matches!(
-            code,
-            KeyCode::Escape
-                | KeyCode::Char('j' | 'k' | 'n' | 'N' | 'd' | 'e' | 'M')
-                | KeyCode::Down
-                | KeyCode::Up
-        )
-        && let Some(open) = state.resolver.as_mut()
-    {
-        open.finish_owed = false;
-    }
-}
-
-/// Spend the owed open (m6-conflicts/60) at the first moment everything the
-/// last stage started has landed: no take settling, in flight or queued, no
-/// write out, the resolver's own read in, and the status read the stage
-/// asked for answered. Then `c`'s one path opens the summary, with the same
-/// refusals. A status that still shows a file conflicted drops the owed
-/// open instead: `status_read::settle` has already put `c`'s refusal on the
-/// notice row.
-///
-/// State-only, and called once at the tail of every answer
-/// (`update::answer`), so it does not matter which of the stage, a take or
-/// a read lands last.
-pub(crate) fn finish_if_owed(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    let Some(open) = state.resolver.as_ref() else {
-        return;
-    };
-    if !open.finish_owed
-        || open.settling.is_some()
-        || open.in_flight.is_some()
-        || !open.queued.is_empty()
-        || open.staging.is_some()
-        || open.restarting.is_some()
-        || open.job.is_some()
-        || crate::update::status_read::owed(state)
-    {
-        return;
-    }
-    if let Some(open) = state.resolver.as_mut() {
-        open.finish_owed = false;
-    }
-    if crate::update::banner::continue_refusal(state).is_some() {
-        return;
-    }
-    crate::update::banner::continue_pressed(
-        state,
-        commands,
-        crate::update::finish::ReturnTo::Resolver,
-        next_id,
-    );
 }
 
 /// `every file done`, and the key that carries the operation on when there

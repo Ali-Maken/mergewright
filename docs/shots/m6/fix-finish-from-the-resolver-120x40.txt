@@ -40,7 +40,7 @@ MERGING
 
 --- after Esc ---
 MERGING
-files   a.txt · ⏎ marks done    ▸ b.txt · ⏎ marks done
+files   a.txt · solved ✓    ▸ b.txt · solved ✓
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ b.txt · 1 conflict · 0 open
 all blocks taken · y reviews the merge
@@ -78,4 +78,4 @@ all blocks taken · y reviews the merge
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
+ y review the merge · u undo pick · esc pause, come back later · ←/→ clashes

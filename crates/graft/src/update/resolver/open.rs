@@ -122,7 +122,7 @@ pub(in crate::update) fn box_open(state: &AppState) -> bool {
 ///
 /// `true` when `path` was opened afresh; `false` when refused (or there was
 /// no resolver to reopen). Only the file list carries over: anything else
-/// the old state held — `finish_owed` included — is the old file's.
+/// the old state held is the old file's.
 pub(super) fn reopen(
     state: &mut AppState,
     commands: &mut Vec<Command>,

@@ -119,16 +119,6 @@ fn finish_row(state: &AppState) -> Option<String> {
     crate::view::resolver::finish_row(state).map(|row| row.full.as_str().to_owned())
 }
 
-/// `state` with no summary owed: the words the row and `c` say wherever it
-/// does not open on its own — after `Esc` from it, or a rebase
-/// (m6-conflicts/60).
-fn unowed(mut state: AppState) -> AppState {
-    if let Some(open) = state.resolver.as_mut() {
-        open.finish_owed = false;
-    }
-    state
-}
-
 const FINISH_ROW: &str = "✓ every file done — c review and finish the merge";
 
 /// `c` ran `--continue` — or, on a merge, opened the finish summary whose
@@ -245,7 +235,7 @@ fn a_status_read_out_shows_checking_on_the_notice_row() {
 fn the_notice_and_c_agree_before_and_after_the_read_lands() {
     let (landed, commands) = last_stage_lands();
     let owed = owed_read(&commands);
-    let landed = unowed(done_read_lands(&landed, &commands));
+    let landed = done_read_lands(&landed, &commands);
 
     // The read is out: the notice says it is checking, and so does `c`.
     assert_eq!(notice(&landed), Some(checking()));

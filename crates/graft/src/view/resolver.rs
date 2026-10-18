@@ -13,25 +13,23 @@ use graft_git::conflict::{Block, ConflictFile, Projection, Region, Take};
 use graft_git::status::UnmergedHow;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::conflict_resolver::{
-    Arrangement, BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileState,
-    Layout, Placement, RegionView, ResolverAreas, SideNames, TakeView, layout, placement,
-    resolver_areas,
+    Arrangement, BlockNumbers, BlockState, BlockView, DocView, FileListView, Layout, Placement,
+    RegionView, ResolverAreas, SideNames, TakeView, layout, placement, resolver_areas,
 };
 use ratatui::layout::Rect;
 
+mod file_list;
 #[cfg(test)]
 mod tests;
 mod whole_file;
 
+pub use file_list::file_list_view;
 #[cfg(test)]
 pub(crate) use tests::drawn_for_tests;
 use whole_file::{done_card, whole_file_view};
 
 use crate::update::AppState;
-use crate::update::detail::Loading;
-use crate::update::resolver::{
-    DoneShape, RowState, file_cursor, listed_files, side_names, start_over_refusal,
-};
+use crate::update::resolver::{DoneShape, side_names, start_over_refusal};
 
 /// Everything the resolver draws for the file it has open, laid out for a
 /// document `columns` wide, or `None` when it is closed or still waiting
@@ -263,36 +261,6 @@ pub fn resolver_area(state: &AppState, banner_rows: u16) -> Rect {
             .saturating_sub(banner_rows)
             // The hint bar / status line the resolver draws under itself.
             .saturating_sub(1),
-    }
-}
-
-/// The resolver's file list, sanitised: [`listed_files`] in the widget's
-/// terms. The draw and the mouse both build it here.
-#[must_use]
-pub fn file_list_view(state: &AppState) -> FileListView {
-    let Some(open) = state.resolver.as_ref() else {
-        return FileListView::default();
-    };
-    let names = side_names(state);
-    FileListView {
-        rows: listed_files(state)
-            .into_iter()
-            .map(|file| FileRow {
-                name: sanitize_line(&file.path.display().to_string()),
-                state: match file.state {
-                    RowState::Open { open, of } => FileState::Open { open, of },
-                    RowState::AllTaken => FileState::AllTaken,
-                    RowState::Done => FileState::Done,
-                    RowState::WholeFile { how } => FileState::WholeFile {
-                        how: sanitize_line(&how_words(how, false, &names)),
-                    },
-                    RowState::Binary => FileState::Binary,
-                    RowState::Unread => FileState::Unread,
-                },
-            })
-            .collect(),
-        cursor: file_cursor(state),
-        unavailable: matches!(open.files, Loading::Failed(_)),
     }
 }
 

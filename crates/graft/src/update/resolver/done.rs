@@ -119,9 +119,6 @@ pub(super) fn done_unreadable(state: &mut AppState, why: &str, start_over: Start
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
-    // A failed read cancels the owed summary: the failure is what he sees
-    // (m6-conflicts/60).
-    open.finish_owed = false;
     let shape = DoneShape::Unreadable {
         why: why.to_owned(),
     };

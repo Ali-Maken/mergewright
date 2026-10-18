@@ -84,14 +84,8 @@ pub(super) fn settle(state: &mut AppState) {
 /// resolver's notice — stops saying it is checking. Nothing is claimed
 /// either way — the next read decides.
 ///
-/// A finish summary owed by the last file (m6-conflicts/60) is cancelled,
-/// never spent: with no status to judge by, opening it could stand on a
-/// stale conflict or a stale "all done" (rule 3). The caller puts the
-/// failure's own words on the status line.
+/// The caller puts the failure's own words on the status line.
 pub(super) fn abandon(state: &mut AppState) {
-    if let Some(open) = state.resolver.as_mut() {
-        open.finish_owed = false;
-    }
     if notice_checking(state)
         && let Some(open) = state.resolver.as_mut()
     {

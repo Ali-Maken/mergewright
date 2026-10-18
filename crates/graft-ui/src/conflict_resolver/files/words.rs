@@ -19,7 +19,7 @@ use crate::theme::{Theme, Token};
 pub(super) enum WordsTone {
     /// `open`: `n of m open`, `keep or delete`, `⏎ marks done`.
     Open,
-    /// `text-muted`: `done ✓`.
+    /// `text-muted`: `done ✓`, `solved ✓`.
     Muted,
     /// The name's own style: `binary`, the unread `•`.
     Plain,
@@ -27,13 +27,13 @@ pub(super) enum WordsTone {
 
 impl FileState {
     /// The colour the state's words take (ADR-0044 §1): the work still to
-    /// do in `open`, a done file's `done ✓` muted, the rest as the name.
+    /// do in `open`, a done or solved file's words muted, the rest as the name.
     pub(super) fn tone(&self) -> WordsTone {
         match self {
             FileState::Open { .. } | FileState::AllTaken | FileState::WholeFile { .. } => {
                 WordsTone::Open
             }
-            FileState::Done => WordsTone::Muted,
+            FileState::Done | FileState::Solved => WordsTone::Muted,
             FileState::Binary | FileState::Unread => WordsTone::Plain,
         }
     }
@@ -61,5 +61,19 @@ pub(super) fn paint_words(buf: &mut Buffer, at: Rect, cell: &Cell, theme: &Theme
         }
         .intersection(at);
         buf.set_style(words, Style::new().fg(color(theme.token(token))));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::{FileState, Glyphs};
+    use super::WordsTone;
+
+    /// A merge's solved file says so; `⏎` marks nothing there (ease-pass/05c).
+    #[test]
+    fn a_solved_file_reads_solved_muted_and_names_no_key() {
+        assert_eq!(FileState::Solved.words(false, Glyphs::UNICODE), "solved ✓");
+        assert_eq!(FileState::Solved.words(true, Glyphs::UNICODE), "✓");
+        assert_eq!(FileState::Solved.tone(), WordsTone::Muted);
     }
 }

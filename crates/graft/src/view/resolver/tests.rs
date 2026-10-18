@@ -102,7 +102,6 @@ fn open_on(bytes: &[u8], path: &str) -> AppState {
             dropped: 0,
             settling: None,
             whole_side: None,
-            finish_owed: false,
         }),
         ..AppState::default()
     }

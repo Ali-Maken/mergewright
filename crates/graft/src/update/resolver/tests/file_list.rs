@@ -442,7 +442,6 @@ fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {
     assert!(!state.banner_focus);
     let open = state.resolver.as_ref().expect("open");
     assert_eq!(open.notice, None, "no status read out: nothing to check");
-    assert!(!open.finish_owed, "nothing owed");
     assert_eq!(
         state.status,
         Status::Done {
@@ -477,7 +476,6 @@ fn after_the_last_file_of_a_rebase_the_status_says_c_continues() {
         assert!(!state.banner_focus, "{kind:?}");
         let open = state.resolver.as_ref().expect("open");
         assert_eq!(open.notice, None, "{kind:?}");
-        assert!(!open.finish_owed, "{kind:?}: nothing opens on its own");
         assert_eq!(
             state.status,
             Status::Done {
