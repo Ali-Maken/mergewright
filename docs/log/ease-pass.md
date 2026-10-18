@@ -167,3 +167,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 06s (9bd053d2): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
 - 03r merged; gates running. builder-sonnet 06i dispatched beside 07.
 - gates after 03r (817bee6a): 6954/6955 — the 1 red was published_repo: my export-inventory.md quoted a home path/account in its search pattern (conductor's own leak). Reworded; that test green; rest of the run unaffected (doc-only change). Worktree removed.
+- builder-sonnet 06i merged (4214e52b): 14/16; open: failed bar has no ✗ (status.rs:108), 'graph' query 7 steps vs ≤4 → both broken, review-fix round; detail cut at 120; toml_edit added + tempfile promoted (specced). 6977/6978 in worktree (1 = my inventory leak, fixed on main) · 159 tools · skills: none. Gates batched with 07.
