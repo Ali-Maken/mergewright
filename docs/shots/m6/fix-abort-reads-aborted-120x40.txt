@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- aborted: rebase feature onto main ✓
+ ✓ aborted: rebase feature onto main
 COMMIT 9d44f42 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 9571fc9 · diff vs firs…
 Change every file on feature
 R added-by-them.txt     +0 −0

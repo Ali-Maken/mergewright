@@ -7,6 +7,8 @@
 //! `graft_term::sanitize_line` here, because the widget takes
 //! [`SanitizedText`] and nothing else.
 
+pub(crate) mod mask;
+
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::commit_editor::{
     BODY_LIMIT, CommitFileRow, CommitFocus, CommitHeader, CommitScreenView, FileGroup, Onto,

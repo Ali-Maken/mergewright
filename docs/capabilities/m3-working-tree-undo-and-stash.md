@@ -181,7 +181,7 @@ status: works
   `graft::update::commit_editor::tests::enter_from_the_files_commits_the_subject_and_the_body`
   `graft::update::commit_editor::tests::a_asks_for_heads_message_and_opens_on_the_answer`
   `graft::update::commit_editor::tests::esc_keeps_a_draft_and_the_next_c_picks_it_back_up`
-  `graft::tests::it::commit_editor_writes::the_button_commits_what_was_typed_and_then_amends_it`
+  `graft::tests::it::commit_editor_writes::enter_commits_what_was_typed_and_then_amends_it`
   `graft::tests::it::commit_editor_writes::nothing_staged_makes_no_commit`
 - **Looks like:** `docs/shots/m3-04-commit-editor-80x24.txt`, `docs/shots/m3-05-commit-refused-80x24.txt`, `docs/shots/m3-commit-editor-80x24.txt`, `docs/shots/m3-commit-editor-refused.txt`, `docs/shots/m3-amend.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §New UI "Commit editor"; ADR-0034 (Tab order is 3 stops, not the original spec's 4)

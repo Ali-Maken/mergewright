@@ -430,7 +430,7 @@ fn last_file_lands(kind: Option<InProgress>) -> AppState {
 }
 
 /// The resolver stays on the last file (m6-conflicts/31, P8): the status
-/// line says `<file> done ✓ · every clash is solved · y reviews the merge`. Nothing
+/// line says `✓ <file> done  every clash is solved · y reviews the merge`. Nothing
 /// opens on its own (ease-pass/05b dropped m6-conflicts/60's owed open).
 #[test]
 fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {

@@ -384,7 +384,7 @@ fn done_open_capture() {
     let (app, state) = opened_on(&scratch);
     let state = gone_kept(&app, state);
     let state = done_open(&app, &state, "gone.txt");
-    // The status line (`resolved gone.txt (ours) ✓`) holds the bar's row
+    // The status line (`✓ resolved gone.txt (ours)`) holds the bar's row
     // until the next key; `PgUp` at the top scrolls nowhere and gives it
     // back (`k` steps files since m6-conflicts/17).
     let state = app.key(&state, KeyCode::PageUp);
@@ -423,7 +423,7 @@ fn done_open_capture() {
 
 /// A click acknowledges a finished write's status line the way a key does
 /// (m6-conflicts/42): after the list click that opens the done file, the
-/// bottom row is the bar, not `resolved gone.txt (ours) ✓`.
+/// bottom row is the bar, not `✓ resolved gone.txt (ours)`.
 #[test]
 fn a_click_clears_the_done_status_like_a_key() {
     let scratch = gone_and_notes_merge();

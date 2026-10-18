@@ -326,6 +326,8 @@ mod draft_tests;
 #[cfg(test)]
 mod landing_tests;
 #[cfg(test)]
+mod mask_tests;
+#[cfg(test)]
 mod screen_tests;
 #[cfg(test)]
 pub(crate) mod tests;

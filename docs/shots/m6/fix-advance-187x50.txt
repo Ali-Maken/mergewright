@@ -47,4 +47,4 @@ FILES · 13 conflicted           │▸ three.txt · 3 conflicts · 2 open
                                 │
                                 │
                                 │
- took theirs · feature in three.txt · 2 of 3 open ✓
+ ✓ took theirs · feature in three.txt · 2 of 3 open

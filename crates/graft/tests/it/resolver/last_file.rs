@@ -195,7 +195,7 @@ fn resolving_the_last_listed_file_first_goes_back_for_the_rest() {
 /// the resolver, the resolver closed back to the banner, and the banner's
 /// `c` pressed while the status that stage asked for is still out: the
 /// line says it is checking, and the read landing settles it to
-/// `every file done ✓ · c finishes the merge`. Read from the drawn footer,
+/// `✓ every file done  c finishes the merge`. Read from the drawn footer,
 /// not from `Status`: the renderer owns the tick, so only the frame shows
 /// where it lands.
 #[test]
@@ -222,13 +222,13 @@ fn the_last_file_done_draws_one_tick_on_the_footer() {
         .find(|row| row.contains("every file done"))
         .unwrap_or_else(|| panic!("no row names it:\n{body}"));
     assert!(
-        footer.contains("every file done ✓ · c continues the cherry-pick"),
+        footer.contains("✓ every file done  c continues the cherry-pick"),
         "{footer:?}"
     );
     assert_eq!(footer.matches('✓').count(), 1, "one tick: {footer:?}");
     assert_eq!(
         footer.trim_end(),
-        " every file done ✓ · c continues the cherry-pick",
+        " ✓ every file done  c continues the cherry-pick",
         "nothing after `cherry-pick`"
     );
     // Trimmed to the two rows the check is about: the header with the

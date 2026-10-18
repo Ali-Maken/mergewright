@@ -57,7 +57,7 @@
   ●      Commit 170                                                                                     GF 7y   8ea98be
   ●      Commit 169                                                                                     GF 7y   4926766
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- pushed main → origin/main ✓
+ ✓ pushed main → origin/main
 
 == 2. Cursor on stash@{0}: no ⚠ ==
 

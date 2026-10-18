@@ -140,11 +140,11 @@ Each tick names its test inline (names are proposals; a rename is said in NOTES)
 - [x] **m2 + m11:** incomplete undo that moved the ref off → words given back, `last_commit` `None`; a ref equal before and after → `last_commit` kept, nothing given. — unit `…::an_incomplete_undo_gives_the_words_back`, `landing::tests::undo_landed_needs_the_ref_moved_off_the_commit` — **ticked:** `landing_tests::an_incomplete_undo_gives_the_words_back`, `landing::tests::undo_landed_needs_the_ref_moved_off_the_commit` pass
 - [x] **M2:** real git, `c`, type `fix toc`, `⌃P` amend, `⏎` → HEAD's parent unchanged, HEAD's message `fix toc`, its tree holds the 3 shown files, `.env` out; header read before `⏎` is `amending <sha7> <subject>`, summary ends `into the last commit.` `a` + amend off + `⏎` → a new commit of the rows shown. — it `commit_screen::amend_from_ctrl_p_amends_with_the_rows_shown`, `…::amend_turned_off_commits_the_rows_shown`; unit `include_of_table` (every `WayIn` × `amend` × `touched`) — **ticked:** it `commit_screen::rows::amend_from_ctrl_p_amends_with_the_rows_shown`, `commit_screen::rows::amend_turned_off_commits_the_rows_shown`, unit `commit_editor::files::tests::include_of_table` (8 literal rows) pass
 - [x] **M3:** real git, `src/a.rs` with one staged and one unstaged added line → row `+1` and ` part`, summary `+1 −0`, diff holds the staged line only and starts with the `only the part you staged…` line; `⏎` → HEAD's diff for `src/a.rs` is that line; the unstaged line still in the file. — it `commit_screen::a_partly_staged_file_shows_and_commits_only_its_staged_part`; unit `…::a_staged_part_reads_the_staged_section`; graft-ui `a_staged_part_row_says_part` — **ticked:** it `commit_screen::rows::a_partly_staged_file_shows_and_commits_only_its_staged_part`, unit `screen_tests::a_staged_part_reads_the_staged_section`, graft-ui `commit_editor::part_tests::a_staged_part_row_says_part` (note level with the first heading: the diff's top line) pass
-- [ ] **Q1 lines:** (Part B — not built) `mask_secret_line`: `PAYMENT_KEY=abc123` → `PAYMENT_KEY=••••••••`; `token: abc` → `token:••••••••` (the key and separator kept, the rest masked); `a=b=c` → `a=••••••••`; `abc123` → `••••••••`; `` → `••••••••`; a 200-char value → 8 bullets. — unit `view::commit_editor::mask::tests::a_secret_line_keeps_its_key_and_hides_its_value`
-- [ ] **Q1 screen:** (Part B — not built) real git, `.env` = `TOKEN=s3cr3t-value-q1`; `c`, cursor on `.env` → its diff line reads `+ TOKEN=••••••••`; `space` puts it in → still masked; `CommitScreenView` (every `SanitizedText` in it, by a `Debug` dump) holds no `s3cr3t`; a non-secrets file's diff unmasked. — it `commit_screen::a_secrets_files_values_never_reach_the_screen`; unit `…::a_secrets_row_is_masked_in_and_out`, `…::an_ordinary_file_is_not_masked`
-- [ ] **Q1 captures:** (Part B — not built) `commit-secrets-120.txt` re-shot shows `TOKEN=••••••••`; `git grep -n 's3cr3t' docs/shots` and the old raw value `git grep -n 'TOKEN=x' docs/shots` both empty. — `commit_screen::shots::capture_the_commit_screen` asserts the written file lacks the fixture value; grep in NOTES
+- [x] **Q1 lines:** `mask_secret_line`: `PAYMENT_KEY=abc123` → `PAYMENT_KEY=••••••••`; `token: abc` → `token:••••••••` (the key and separator kept, the rest masked); `a=b=c` → `a=••••••••`; `abc123` → `••••••••`; `` → `••••••••`; a 200-char value → 8 bullets. — unit `view::commit_editor::mask::tests::a_secret_line_keeps_its_key_and_hides_its_value` — **ticked (08t):** `view::commit_editor::mask::tests::a_secret_line_keeps_its_key_and_hides_its_value` passes (all six rows; seen red first, an assertion failing at `mask.rs:31` against a stub)
+- [x] **Q1 screen:** real git, `.env` = `TOKEN=s3cr3t-value-q1`; `c`, cursor on `.env` → its diff line reads `+ TOKEN=••••••••`; `space` puts it in → still masked; `CommitScreenView` (every `SanitizedText` in it, by a `Debug` dump) holds no `s3cr3t`; a non-secrets file's diff unmasked. — it `commit_screen::a_secrets_files_values_never_reach_the_screen`; unit `…::a_secrets_row_is_masked_in_and_out`, `…::an_ordinary_file_is_not_masked` — **ticked (08t):** it `commit_screen::a_secrets_files_values_never_reach_the_screen` (out, then in after `⇥ ⇥ space`: frame has `+ TOKEN=••••••••`, frame and `Debug` of `commit_screen_view` lack the value; README.md's `+ more` unmasked), unit `update::commit_editor::mask_tests::a_secrets_row_is_masked_in_and_out`, `…::mask_tests::an_ordinary_file_is_not_masked` pass; each seen red first
+- [x] **Q1 captures:** `commit-secrets-120.txt` re-shot shows `TOKEN=••••••••`; `git grep -n 's3cr3t' docs/shots` and the old raw value `git grep -n 'TOKEN=x' docs/shots` both empty. — `commit_screen::shots::capture_the_commit_screen` asserts the written file lacks the fixture value; grep in NOTES — **ticked (08t):** `commit-secrets-120.txt` re-shot, its diff column `+ TOKEN=••••••••`; `commit_screen::shots::capture_the_commit_screen` asserts no frame row holds `SECRET_VALUE`; `grep -rn 's3cr3t' docs/shots` → 0, `grep -rn 'TOKEN=x' docs/shots` → 0 (08t NOTES)
 - [x] **m3 + m10:** a re-read with the same set of files → a new counts read asked, the old one cancelled, the cursor diff re-asked. — unit `…::a_reread_while_open_reads_counts_and_diff_again` — **ticked:** `screen_tests::a_reread_while_open_reads_counts_and_diff_again` passes
-- [ ] **08r:** (Part B — not built) a commit's done line renders `✓ Committed 3 files to main.  u undo · P push`; every `Done` producer renders tick first through one renderer. — graft-ui `the_done_line_leads_with_its_tick`; one table test over the producers or the grep proving one renderer (NOTES)
+- [x] **08r:** a commit's done line renders `✓ Committed 3 files to main.  u undo · P push`; every `Done` producer renders tick first through one renderer. — graft-ui `the_done_line_leads_with_its_tick`; one table test over the producers or the grep proving one renderer (NOTES) — **ticked (08t):** `view::status::tests::the_done_line_leads_with_its_tick` (the renderer is graft's `view/status.rs done_line`, not graft-ui: name corrected) and `…::done_line_places_also_before_keys` pass, seen red first; one renderer by grep: the only non-test `✓` beside a `Status::Done` is `view/status.rs:65` (08t NOTES)
 - [ ] **M4:** (Part B — not built) after a commit at 120×40: second-last row the done line, last row `u undo the commit, your edits come back · P push · c commit again`; a key that clears the status → bar alone, graph one row taller; a `Done` off a landing bar → in the bar's row. — graft-ui `status_row_is_above_only_for_a_landing_bar`; graft `view::frame::tests::a_commit_landing_draws_the_done_line_above_its_bar`
 - [ ] **M5 + Q2:** (Part B — not built) click a file row → Files focus, cursor there, its diff asked; click a heading → nothing; click subject/body → focus there; left click on a graph row's place, right click, drag, wheel → graph cursor, menu and drag state unchanged. Palette open → it takes the click. — unit `…::mouse::a_click_on_a_file_row_picks_it`, `…::mouse::clicks_in_the_message_move_focus`, `…::mouse::nothing_reaches_the_graph_under_the_screen`, `…::mouse::the_palette_over_the_screen_takes_the_click`; graft-ui `file_at_skips_headings_and_follows_the_scroll`
 - [ ] **M6:** (open: 6 of the 8 rows done, see NOTES; `graph_screen/layout.rs` 653 and `mod.rs` 578 are held by 06b, not lowered) `commit_editor.rs` < 400, row gone; the seven rows at or under their pre-08 values; no row raised or added. — it `file_size` ratchet; `wc -l` + `git diff over_400.txt` in NOTES
@@ -152,10 +152,10 @@ Each tick names its test inline (names are proposals; a rename is said in NOTES)
 - [ ] **m4:** (Part B — not built) at 90 columns the subject bar has no `↑ ↓` and keeps `esc cancel, your message is kept`; at a width fitting two parts: `⏎` and `esc`. — graft-ui `the_narrow_bar_drops_by_rank`
 - [x] **m6:** `undoing_something_else_leaves_the_draft_alone` seeds `Some`; `another_write_landing_clears_the_last_commit` lands a stage `Operated` through `update`. — those two tests (diff in NOTES) — **ticked:** `landing_tests::undoing_something_else_leaves_the_draft_alone`, `landing_tests::another_write_landing_clears_the_last_commit` pass
 - [x] **m7:** a clean and an incomplete commit landing run the same hooks; `recover::tag_rows` called only in `after_landing`. — unit `…::every_landing_path_runs_the_same_hooks`; grep count in NOTES — **ticked:** `draft_tests::every_landing_path_runs_the_same_hooks` passes (Done, Incomplete, StagingNotKept)
-- [ ] **m8:** (Part B — not built) `TESTING.md` :1419-1421, :1473-1484, :1537 describe `⏎` from the subject and today's refusal words (as the walk's tests assert; name them); 02-keymap :527 as above; `press_the_button` renamed for what it does; if `keymap/table/commit_editor.rs`'s `Tab` description names options, reworded and the man page regenerated (diff in NOTES). — `git grep -n '\[ Commit \]' TESTING.md docs/design` empty
+- [x] **m8:** `TESTING.md` :1419-1421, :1473-1484, :1537 describe `⏎` from the subject and today's refusal words (as the walk's tests assert; name them); 02-keymap :527 as above; `press_the_button` renamed for what it does; if `keymap/table/commit_editor.rs`'s `Tab` description names options, reworded and the man page regenerated (diff in NOTES). — `git grep -n '\[ Commit \]' TESTING.md docs/design` empty — **ticked (08t):** `grep -rn '\[ Commit \]' TESTING.md docs/design` → empty; TESTING.md items name `m3_walk::every_scenario::{commit,commit_refused_nothing_staged,amend}`; 02-keymap :527 verbatim (cycle checked against `update::commit_editor::tests::tab_walks_subject_body_files_and_back`); `press_the_button` → `tab_to_the_subject_and_enter` (also in `m3_walk.rs`, `m4_walk/run.rs`); `Tab` reads `Next field` — no reword, man page unchanged
 - [ ] **m12:** (Part B — not built) header at 120 reads `<repo words>  committing to main  1 commit to push`-shaped (the repo words as the graph's top line); at 80 the path is cut first. — graft-ui `the_header_names_the_repository_first`
-- [ ] **m5:** (Part B — not built) `commit-files-focus-120.txt` caption reads `⏎ commit`. — grep in NOTES
-- [ ] (Part B — not built) Captures (look unjudged, rule 6; colour unverified, rule 5), each with its "what right looks like" line: re-shot `commit-landed-120.txt` (two rows as M4), `commit-open-120.txt` (repo words), `commit-90.txt` (narrow bar), `commit-secrets-120.txt` (masked); new `docs/shots/ease-pass/commit-partial-120.txt` (M3), `commit-amend-from-c-120.txt` (M2 header and summary); every done-line capture re-shot (list). — `commit_screen::shots::capture_the_commit_screen` and each writer named in NOTES
+- [x] **m5:** `commit-files-focus-120.txt` caption reads `⏎ commit`. — grep in NOTES — **ticked (08t):** caption reads `⏎ commit  esc back to the message`, re-shot by `commit_screen::shots::capture_the_commit_screen` (grep in 08t NOTES)
+- [ ] Captures (look unjudged, rule 6; colour unverified, rule 5), each with its "what right looks like" line: re-shot `commit-landed-120.txt` (two rows as M4), `commit-open-120.txt` (repo words), `commit-90.txt` (narrow bar), `commit-secrets-120.txt` (masked); new `docs/shots/ease-pass/commit-partial-120.txt` (M3), `commit-amend-from-c-120.txt` (M2 header and summary); every done-line capture re-shot (list). — `commit_screen::shots::capture_the_commit_screen` and each writer named in NOTES — **open (08u):** 08t did `commit-secrets-120.txt` (masked) and every done-line re-shot (list in 08t NOTES; tick place only). `commit-landed-120.txt`'s two rows, `commit-open`, `commit-90`, `commit-partial`, `commit-amend-from-c` are 08u's.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
@@ -296,3 +296,93 @@ Gotchas:
 - The worktree guard refuses complex bash. Use the Edit tool or a JSON-pairs replace script.
 - The app crate's package is `mergewright`.
 - `JustMerged`: whether app code ever picks it is not checked yet.
+
+## NOTES (builder, part B1 = ticket 08t — 2026-10-18)
+
+**Compacted once** mid-ticket (08t's session), after Q1 was committed and 08r's re-shoots were done. Nothing of 08t's scope remains. 08u's boxes (M4, M5+Q2, m4, m12, M6) are untouched. **No scout:** 08s's Step 1 answers stand in, as the conductor said.
+
+### Test-first, what was seen red
+- Q1: `a_secret_line_keeps_its_key_and_hides_its_value` (assert at `mask.rs:31`), `a_secrets_row_is_masked_in_and_out` (`mask_tests.rs:70`), `an_ordinary_file_is_not_masked`, it `a_secrets_files_values_never_reach_the_screen`: each failed before its code.
+- 08r: `the_done_line_leads_with_its_tick` and `done_line_places_also_before_keys` failed before `done_line` changed. The ~40 existing tests that quote a done line then failed on the old literal and were rewritten to the tick-first one.
+
+### Deviations
+- **Hunk headings are masked too** (spec: "Hunk headers … stay as they are"). git's default funcname copies the nearest `KEY=value` line into the `@@ … @@ <heading>`. Checked with real git: `.env` = `A_KEY=first-secret`, six lines, `B=2`→`B=3` gives `@@ -5,4 +5,4 @@ A_KEY=first-secret`. The ranges stay; only the heading text goes through `mask_secret_line`. Pinned by `mask_tests::a_secrets_row_is_masked_in_and_out` (`OLD_KEY=••••••••`).
+- **08r's test is in graft, not graft-ui:** the one renderer is graft's `view/status.rs done_line`.
+- **Staging-not-kept** (a `Sticky`, not a `Done`): rungs 1-2 are now built from `done_line`, so they lead with the tick too. Its key keeps ` · ` because a Sticky draws `reason · keys`.
+- **`done_width`** (`update/undo/consequence.rs`) counts the new shape: `2 + what + (2 + keys)`. The 80-column cut still keeps the key (`consequence::tests::the_time_machine_landing_fits_80_columns_and_keeps_its_key`).
+- **m8, wider than named:**
+  - The same stale helper was renamed in `m3_walk.rs` and `m4_walk/run.rs` (`tab_to_the_subject_and_enter`, `commit_from_the_subject`).
+  - The test `the_button_commits_what_was_typed_and_then_amends_it` is now `enter_commits_what_was_typed_and_then_amends_it`. Capability M3-09's citation was updated and `gen-capabilities` rerun. The html also picked up 06b's M1 text, which had not been regenerated.
+- **TESTING.md:** 41 quoted done lines are now tick-first, not just m8's lines, because they describe captures this ticket re-shot. Resolver rows and strips (`done ✓ · ▸`, `files · all done ✓`) are not done lines and stay as they are.
+
+### Questions (not built)
+- **a. PEM/ssh keys:** the spec's rule keeps a key file's last base64 line up to its `=` padding. `mask.rs:21` splits at `line.find(['=', ':'])`, and `looks_like_secrets` flags `id_rsa`, `*.pem` and `*.key` (`graft-ops/src/operation/choice.rs:70,81`). So `…IDAQAB==` stays readable up to its first `=`. Should non-`KEY=value` secrets files mask whole lines?
+- **b. Resolver lines keep the tick after:** `update/resolver/resolved.rs:158` (`{} done ✓ · ▸ {}`, a notice), `view/resolver.rs:209`, `view/resolver/whole_file.rs:65-69`. None is a `Status::Done`, so 08r does not reach them. Should they follow?
+- **c. m3 pty walk:**
+  - `m3_walk.rs:1018` waits for `nothing staged`. Since ease-pass 08 the commit screen draws that nowhere: in `graft-ui/src` it is only `context_menu.rs:246`. The refusal words are `type a message first` / `put a file in first` (`graft-ui/src/commit_editor/words.rs:44-46`).
+  - The next pty acceptance run will probably time out on `m3-05-commit-refused`. Unverified: no pty walk was run.
+- **d. Stale comment:** `tests/it/m5_walk/resolving.rs:50` calls the last file's answer a `Sticky`, but `update/resolver/resolved.rs:266` builds a `Status::Done`. Only the quote was updated.
+
+### One renderer (08r)
+- `grep -rnE '\\u\{2713\}|✓' crates/graft/src crates/graft-ui/src`, tests and comments excluded, finds one tick beside a `Status::Done`: `view/status.rs:65` (`format!("✓ {what}")`).
+- The rest are resolver rows and notices, the tour card, and the commit screen's `GoingIn` glyph.
+
+### Captures
+**Re-shot, done line moved, tick place only (45).** `scratchpad tick_only.py` diffed each against HEAD with the tick and `·` normalised.
+- 29 are frame-only.
+- 16 also carry their caption's quote turned tick-first. The two commit captions were also reworded: m5's `⏎ commit`, and commit-landed's `✓ Committed 3 files to main.  u undo · P push`, tick first.
+- No other diff.
+
+The 45 files:
+- `ease-pass/`: commit-files-focus-120, commit-landed-120.
+- `m6/fix-`: abort-reads-aborted-120x40; advance-{120x40,187x50}; every-file-done-footer-120x40; file-list-{80x24,120x40,160x48,187x50,200x50}; finish-shell-merge-120x40; landing-after-continue-rebase-{120x40,187x50}; last-file-opens-summary-187x50; radar-bookkeeping-120x40; shell-merge-abort-and-undo-120x40; start-over-whole-file-120x40; status-under-a-box-{80x24,120x40}; subject-enter-commits-{80x24,120x40}; three-panes-{180x50,187x50,200x50}; undo-drift-way-back-{80x24,120x40}; undo-shell-merge-{80x24,120x40}.
+- `m6/`: set-aside-done-120x40, stash-clash-done-120x40.
+- `m7/`: 30b-staging-not-kept-{80x24,187x50}, amend-into-landed-120x40, landed-after-merge-120x40, picker-remote-landed-120x40, pull-over-edits-120x40, put-back-{,edit-,staged-}landed-187x50, switch-landed-120x40, switch-menu-clean-landed-120x40.
+- `docs/shots/`: m8-landing-undo-120x36, m8-tour-finished-120x36.
+- `m8/`: came-back-landed-120x40.
+- Plus `ease-pass/commit-secrets-120` (masked; Q1 commit).
+
+**06u overlap:** `m7/landed-after-merge-120x40`, `m8-landing-undo-120x36`, and the ease-pass contact sheet. The conductor regenerates them after both merge.
+
+**Not re-shot: old-shape done lines remain (records, not asserted; pty walks and contact sheets).**
+- Pty walk records:
+  - m3-01-stage-file-{80x24,160x48}, m3-02-stage-hunk-{80x24,160x48}
+  - m4-08-undo-after-push-{80x24,160x48}
+  - m6/m6-{01,08,11,12,17,21,24}-* at every size
+  - m6/fix-band-{120x40,187x50}
+- Contact sheets and caption TSVs: m3, m4, m6 (1-5 + captions), m7 (1-2 + captions), m8-contact-sheet-2 (+ captions), ease-pass-contact-sheet.
+- Prototype record: m6/prototype-journeys.
+- They will drift at the next acceptance run and need a `MWR_UPDATE_SHOTS=1` walk plus `scripts/contact-sheet.sh`.
+- **Pty waiters:** none waits on an old-shape done line. `pty-walk-m{3,4,5,6}.py` and `m7-accept.sh` hold no `✓`. The one `on_screen` holding one, `m5_walk/resolved_operations.rs:244`, is already `✓ every file done`.
+
+### Touches (and how each was checked)
+- **Every `Status::Done` producer:** through `done_line` (grep above). Unit and it expectations were updated, and the full nextest run is green.
+- **Undo consequence fitting:** consequence tests.
+- **Staging-not-kept rungs:** its 6 tests.
+- **Captures:** the lists above.
+- **Docs:**
+  - TESTING.md (m8 lines and done-line quotes) and 02-keymap :527 verbatim. The Tab cycle was checked against `graft-ui/src/commit_editor.rs:58-75` and `tab_walks_subject_body_files_and_back`.
+  - Capability M3-09 and its generated html.
+  - The man page has no done line, and its `Tab` row reads `Next field`, so it is unchanged. CAPABILITIES.md is unchanged.
+- **Keymap:** nothing bound.
+- **Journal/undo:** `done_width` only.
+- **Ratchet:**
+  - The `journal_put_back.rs` row went down 507→505 (rustfmt).
+  - No row was raised or added.
+  - `update/state.rs` is net zero (+7/−7, doc comments).
+  - `view/rows.rs` is untouched.
+- **MAP.md:** the mask row (Q1 commit).
+- **Doc comments:** ~45 that quoted the old shape now read tick-first, each line-count neutral.
+
+### Broken vs unverified
+- **Broken (known):** the stale records above will fail a pty acceptance run until re-shot. See also question c.
+- **Unverified:**
+  - colour (rule 5)
+  - every capture's look (rule 6, the user's eye)
+  - pty walks (not run)
+
+### Gates (part B1, workspace-wide, final tree)
+- `cargo fmt --check`: clean
+- `cargo clippy --all-targets -- -D warnings`: clean
+- `cargo nextest run --workspace --no-fail-fast`: 6832/6832 passed, 16 skipped
+- `cargo test --doc --workspace`: ok (3 passed)

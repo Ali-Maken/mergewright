@@ -5,7 +5,7 @@
 #
 # Right: `. ⏎` on feature-b's row, the tree clean — no preview box; the
 # cursor on the new HEAD's row (feature-b, `◆`); the status line
-# `on feature-b ✓ · u goes back`.
+# `✓ on feature-b  u goes back`.
  ◆ api  ~/code/api · feature-b                                                                                6 commits
 
 ▸   ◆    [◆ feature-b] fix the bug                                                                      GF 3m   fbb2394
@@ -45,4 +45,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- on feature-b ✓ · u goes back
+ ✓ on feature-b  u goes back

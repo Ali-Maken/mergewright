@@ -68,7 +68,7 @@ fn says_skipped(state: &AppState, rebase: &JournalEntry) {
     let body = crate::captures::frame(state, 120, 40).join("\n");
     assert!(
         body.contains(&format!(
-            "{}, skipped a commit \u{2713}",
+            "\u{2713} {}, skipped a commit",
             rebase.description
         )),
         "{body}"

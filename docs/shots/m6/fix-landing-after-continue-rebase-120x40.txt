@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- rebase feature onto main ✓
+ ✓ rebase feature onto main
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 274c7d4 · diff vs firs…
 Change every file on feature
 A added-by-them.txt     +1 −0 ▎

@@ -7,18 +7,18 @@
 # 1. The drift box: under what moved, `Undo replaces your edit to fix.txt;
 #    a backup keeps it, and U brings it back.` — whole, not cut. The graph
 #    under it has settled: no `sorting…` (asserted; m6-conflicts/80).
-# 2. After `y`: no changes row, and the bottom row reads `undo: checkout
-#    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
+# 2. After `y`: no changes row, and the bottom row reads `✓ undo: checkout
+#    fix  U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
 #    m6-conflicts/79). `fix`'s row reads `[fix] fix the bug`, no mark
 #    after the badge (this line said a Radar `ⓘ` until m8/28).
-# 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
-#    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
+# 3. After `U`: the changes row is back, `(1 unstaged)`, and `✓ redo:
+#    checkout fix`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
 # 4. A second repository: `fix`, then `fix2`, checked out, `fix.txt`
 #    edited, and the journal's time machine run back to before `checkout
-#    fix` past its drift box. The bottom row reads `reverted to before
-#    “checkout fix” (2 steps) ✓ · U (2 times) brings it back`, whole at 80
+#    fix` past its drift box. The bottom row reads `✓ reverted to before
+#    “checkout fix” (2 steps)  U (2 times) brings it back`, whole at 80
 #    columns: the path is dropped before the key (asserted; m6-conflicts/80).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
@@ -104,7 +104,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- undo: checkout fix ✓ · U brings back your edit to fix.txt
+ ✓ undo: checkout fix  U brings back your edit to fix.txt
 
 === frame 3: `U`, the edit back ===
  ◆ api  ~/code/api · fix                                                                                      6 commits
@@ -146,7 +146,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- redo: checkout fix ✓
+ ✓ redo: checkout fix
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                                                                     7 commits
@@ -188,4 +188,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back
+ ✓ reverted to before “checkout fix” (2 steps)  U (2 times) brings it back

@@ -21,4 +21,4 @@ gone.txt done ✓ · ▸ notes.txt
   7 SEVEN from feature
   ──────────────────────────────────────────────────────────────────────────────
 
- resolved gone.txt (ours) ✓
+ ✓ resolved gone.txt (ours)

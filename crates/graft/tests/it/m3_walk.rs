@@ -262,7 +262,7 @@ fn drive(
                 see(&state).map_err(|why| format!("{what}: {why}"))?;
                 state
             }
-            Step::CommitFromSubject => press_the_button(app, state)?,
+            Step::CommitFromSubject => tab_to_the_subject_and_enter(app, state)?,
         };
     }
     Ok(state)
@@ -284,7 +284,7 @@ fn settle_write(app: &App, state: AppState, what: &str) -> Result<AppState, Stri
 
 /// `Tab` back to the subject, then `Enter` (ease-pass/08: `⏎` from the
 /// subject commits).
-fn press_the_button(app: &App, state: AppState) -> Result<AppState, String> {
+fn tab_to_the_subject_and_enter(app: &App, state: AppState) -> Result<AppState, String> {
     let mut state = state;
     for _ in 0..3 {
         let focus = state
@@ -512,7 +512,7 @@ fn pane_keys() -> Vec<KeyPress> {
 }
 
 /// `Tab` to the subject, then `Enter`.
-fn commit_button() -> Vec<Step> {
+fn commit_from_the_subject() -> Vec<Step> {
     vec![Step::CommitFromSubject]
 }
 
@@ -930,7 +930,7 @@ fn commit() -> Scenario {
                 Step::Await("the commit editor", editor_open),
                 Step::Type("shout three"),
             ],
-            commit_button(),
+            commit_from_the_subject(),
             vec![
                 Step::Write("the commit"),
                 Step::Mark("committed"),
@@ -991,7 +991,7 @@ fn commit_refused_nothing_staged() -> Scenario {
                 Step::Await("the commit editor", editor_open),
                 Step::Type("nothing to commit"),
             ],
-            commit_button(),
+            commit_from_the_subject(),
             vec![Step::See("the editor refuses and stays open", |state| {
                 let editor = state.commit_editor.as_ref().ok_or("the editor closed")?;
                 let refusal = editor.refusal();
@@ -1035,7 +1035,7 @@ fn amend() -> Scenario {
             // `add sample.txt` is HEAD's subject, prefilled.
             keys(&[KeyCode::Backspace; 14]),
             vec![Step::Type("amended sample")],
-            commit_button(),
+            commit_from_the_subject(),
             vec![
                 Step::Write("the amend"),
                 Step::Mark("amended"),
@@ -1095,7 +1095,7 @@ fn commit_on_unborn_head() -> Scenario {
                 Step::Await("the commit editor", editor_open),
                 Step::Type("first"),
             ],
-            commit_button(),
+            commit_from_the_subject(),
             vec![
                 Step::Write("the commit"),
                 Step::Mark("committed"),
@@ -1163,7 +1163,7 @@ fn undo_drift_guard() -> Scenario {
                 Step::Await("the commit editor", editor_open),
                 Step::Type("before the drift"),
             ],
-            commit_button(),
+            commit_from_the_subject(),
             vec![
                 Step::Write("the commit"),
                 Step::Shell(|repo| write(repo, "sample.txt", DRIFTED.as_bytes())),

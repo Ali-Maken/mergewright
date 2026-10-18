@@ -454,7 +454,7 @@ pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> StopLadder
 }
 
 /// The close after the last file of an **apply** clash: nothing runs, the
-/// stash stays. `every file done · stash@{0} kept ✓` (the tick is the
+/// stash stays. `✓ every file done · stash@{0} kept` (the tick is the
 /// renderer's).
 #[must_use]
 pub(crate) fn kept_status(index: Option<usize>) -> Status {
@@ -466,10 +466,10 @@ pub(crate) fn kept_status(index: Option<usize>) -> Status {
 }
 
 /// The `DropPutBack` the close launched answered `Done`:
-/// `every file done · stash@{0} dropped ✓ · u brings it back`. A
+/// `✓ every file done · stash@{0} dropped  u brings it back`. A
 /// set-aside's names what it dropped the same way, never the stash's
-/// position — he never named it: `every file done · set-aside copy dropped
-/// ✓ · u brings it back` (ADR-0045 §3 amended, m6-conflicts/84). Not `your
+/// position — he never named it: `✓ every file done · set-aside copy
+/// dropped  u brings it back` (ADR-0045 §3 amended, m6-conflicts/84). Not `your
 /// edits are back`: after `o branch` in every block they are not, and `u`
 /// brings the copy back.
 #[must_use]
@@ -493,7 +493,7 @@ pub(crate) fn dropped_status(
 /// `Done`: the put-back ran clean and the set-aside copy is dropped
 /// (ADR-0045 §4). `None` for every other entry, so a clean-tree rebase's
 /// line is unchanged (m6-conflicts/74). Drawn after the tick, as
-/// `Status::Done::also`: `rebase main onto origin/main ✓ · your edits are
+/// `Status::Done::also`: `✓ rebase main onto origin/main · your edits are
 /// back`. The one place the clause is worded: the op's own done line and a
 /// stopped rebase's close both take it from here.
 ///

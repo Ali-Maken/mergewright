@@ -6,8 +6,8 @@
 #
 # Right: `. ⏎ y` to feature-b over edits, with notes.md staged new and then
 # deleted from disk — on feature-b, the status line
-# `on feature-b ✓ · your edits are back · notes.md came back from the index
-# · u goes back` (a file back on disk is never silent).
+# `✓ on feature-b · your edits are back · notes.md came back from the index
+#   u goes back` (a file back on disk is never silent).
  ◆ api  ~/code/api · feature-b                                                                                6 commits
 
     ◌    Uncommitted changes (2 staged, 1 unstaged)
@@ -47,4 +47,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- on feature-b ✓ · your edits are back · notes.md came back from the index · u goes back
+ ✓ on feature-b · your edits are back · notes.md came back from the index  u goes back

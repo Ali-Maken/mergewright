@@ -9,10 +9,10 @@
 #   `main goes back to before the merge` and `u puts the merge back`, the
 #   cursor on `[ Cancel ]`.
 # - Frame 2 (`→ ⏎`): no `MERGING` in the header; the footer row reads
-#   `abort merge of feature ✓`.
+#   `✓ abort merge of feature`.
 # - Frame 3 (`u`): `MERGING` again, the graph's top row
 #   `Uncommitted changes (2 unmerged)`; the footer row reads
-#   `undo: abort merge of feature ✓ · c finishes the merge`.
+#   `✓ undo: abort merge of feature  c finishes the merge`.
 # - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
 #
 === 1. a: the abort box ===
@@ -80,7 +80,7 @@ CONFLICTS (2)                 ▎
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- abort merge of feature ✓
+ ✓ abort merge of feature
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
 M notes.md              +1 −1 ▎
@@ -121,7 +121,7 @@ M shared.rs             +1 −1   1     - the plan
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- undo: abort merge of feature ✓ · c finishes the merge
+ ✓ undo: abort merge of feature  c finishes the merge
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
 M notes.md              +1 −1 ▎

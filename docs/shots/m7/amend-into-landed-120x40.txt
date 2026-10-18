@@ -37,4 +37,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- put into "Add OAuth callback" ✓ · your unstaged edits are back · u undoes
+ ✓ put into "Add OAuth callback" · your unstaged edits are back  u undoes

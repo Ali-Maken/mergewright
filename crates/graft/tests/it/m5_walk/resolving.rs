@@ -47,7 +47,7 @@ fn take(side: char) -> Vec<Step> {
 
 /// `⏎`: the stage, run to its answer, and git no longer listing `path`.
 /// `Settle`, not `Write`: the last file's answer is a `Sticky`
-/// (`every file done ✓ · c finishes the merge`), not a `Done`.
+/// (`✓ every file done  c finishes the merge`), not a `Done`.
 fn mark_resolved(path: &'static str) -> Vec<Step> {
     vec![
         key(KeyCode::Enter),

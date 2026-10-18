@@ -45,4 +45,4 @@ gone.txt done ✓ · ▸ notes.txt
 
 
 
- resolved gone.txt (ours) ✓
+ ✓ resolved gone.txt (ours)

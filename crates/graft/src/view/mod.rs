@@ -43,6 +43,7 @@ pub mod strips;
 pub(crate) mod tests;
 
 pub use commit_editor::commit_screen_view;
+pub(crate) use commit_editor::mask::mask_diff;
 pub use credential::credential_view;
 pub use detail::detail_view;
 pub(crate) use entries::uncommitted_shown;

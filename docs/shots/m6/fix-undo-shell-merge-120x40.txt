@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- undo: finish merge of feature ✓ · c finishes the merge
+ ✓ undo: finish merge of feature  c finishes the merge
 COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
 main's take
 M notes.md              +1 −1 ▎

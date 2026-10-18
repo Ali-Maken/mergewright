@@ -162,7 +162,7 @@ fn the_take_is_back_inside_the_merge(repo: &Path, before: usize) {
 /// shell** (keymap §2.6a's one exception; `b-undo-a-take-in-the-shell`, 1
 /// key). The take is an entry of its own there, and ops' gate lets its undo
 /// through because its after-state is this same merge. The banner keeps the
-/// keyboard, and the status reads `undo: <the take> ✓`.
+/// keyboard, and the status reads `✓ undo: <the take>`.
 #[test]
 fn u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
@@ -265,7 +265,7 @@ const ABORT_LINES: [&str; 2] = [
 ];
 
 /// The `u` landing's row after the abort is taken back (ticket 41's landing).
-const ABORT_UNDONE_WORDS: &str = "undo: abort merge of feature ✓ · c finishes the merge";
+const ABORT_UNDONE_WORDS: &str = "✓ undo: abort merge of feature  c finishes the merge";
 
 /// **`a` on the banner aborts a merge begun in the shell** (keymap §2.6a,
 /// `b-abort-shell-merge`: `a → ⏎`, 3 keys), and `u` puts it back.
@@ -275,8 +275,8 @@ const ABORT_UNDONE_WORDS: &str = "undo: abort merge of feature ✓ · c finishes
 /// `MERGE_MSG` byte for byte and both files' stages are back. App: the box
 /// says `main goes back to before the merge` / `u puts the merge back` with
 /// the cursor on `[ Cancel ]`; the abort lands on the graph with
-/// `abort merge of feature ✓`; `J` lists the entry; `u` lands on the banner
-/// with `undo: abort merge of feature ✓ · c finishes the merge`. The three
+/// `✓ abort merge of feature`; `J` lists the entry; `u` lands on the banner
+/// with `✓ undo: abort merge of feature  c finishes the merge`. The three
 /// frames are the capture the user judges.
 #[test]
 fn a_on_the_banner_aborts_a_shell_merge() {
@@ -328,7 +328,7 @@ fn a_shows_the_abort_box(app: &App, state: &AppState) -> (AppState, Vec<String>)
 
 /// Frame 2, `→ ⏎` (two keys, three with `a`: the note's
 /// `b-abort-shell-merge`, walked by `m5_walk`): git aborted, `HEAD` unmoved, one `AbortMerge`
-/// entry, the graph focused with `abort merge of feature ✓`.
+/// entry, the graph focused with `✓ abort merge of feature`.
 fn right_enter_aborts(
     app: &App,
     state: &AppState,
@@ -365,7 +365,7 @@ fn right_enter_aborts(
     assert!(!aborted[0].contains("MERGING"), "{}", aborted.join("\n"));
     assert_eq!(
         row_with(&aborted, "abort merge of feature"),
-        "abort merge of feature ✓"
+        "✓ abort merge of feature"
     );
     (state, aborted)
 }
@@ -445,10 +445,10 @@ const ABORT_CAPTION: &str = "\
 #   `main goes back to before the merge` and `u puts the merge back`, the
 #   cursor on `[ Cancel ]`.
 # - Frame 2 (`→ ⏎`): no `MERGING` in the header; the footer row reads
-#   `abort merge of feature ✓`.
+#   `✓ abort merge of feature`.
 # - Frame 3 (`u`): `MERGING` again, the graph's top row
 #   `Uncommitted changes (2 unmerged)`; the footer row reads
-#   `undo: abort merge of feature ✓ · c finishes the merge`.
+#   `✓ undo: abort merge of feature  c finishes the merge`.
 # - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
 #
 ";
@@ -639,8 +639,8 @@ fn shot_at(
 /// **J6b: `c y`, two keys from the resolved banner** (the `b-finish` count
 /// of 2). git: a merge commit whose second parent is `feature`, no
 /// `MERGE_HEAD`, one `FinishMerge` entry. App: B3's first landing — the
-/// graph focused, the cursor on the merge commit, `merged feature into
-/// main ✓`, the summary closed.
+/// graph focused, the cursor on the merge commit, `✓ merged feature into
+/// main`, the summary closed.
 #[test]
 fn c_y_finishes_a_shell_begun_merge() {
     let scratch = resolved_shell_merge();
@@ -683,7 +683,7 @@ fn c_y_finishes_a_shell_begun_merge() {
     assert!(
         frame
             .iter()
-            .any(|row| row.trim_end() == " merged feature into main ✓"),
+            .any(|row| row.trim_end() == " ✓ merged feature into main"),
         "{body}"
     );
     crate::captures::check_shot("m6/fix-finish-shell-merge-120x40.txt", &body);
@@ -692,7 +692,7 @@ fn c_y_finishes_a_shell_begun_merge() {
 }
 
 /// The words the `u` landing's footer row reads (ticket 41): 55 columns.
-const UNDO_LANDING_WORDS: &str = "undo: finish merge of feature ✓ · c finishes the merge";
+const UNDO_LANDING_WORDS: &str = "✓ undo: finish merge of feature  c finishes the merge";
 
 /// Where `u` on a shell-begun finish lands, with what the tests below need
 /// to check it against.
@@ -747,7 +747,7 @@ fn the_undo_row(frame: &[String], body: &str) {
 /// is back, naming `feature`, and `main` is on its pre-merge tip. App: the
 /// `u` landing (ticket 41) — `in_progress` a merge again after the refresh,
 /// the header `MERGING`, **the banner focused**, as J3's launch into the
-/// same state is, and the footer row `undo: finish merge of feature ✓ · c
+/// same state is, and the footer row `✓ undo: finish merge of feature  c
 /// finishes the merge`; no stop line (`stopped` stays unset, an undo is not
 /// a stop). Captured at 120x40 and 80x24.
 #[test]

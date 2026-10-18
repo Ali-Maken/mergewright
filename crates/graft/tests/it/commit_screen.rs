@@ -53,10 +53,10 @@ pub(crate) fn three_changed_and_a_secret() -> tempfile::TempDir {
         ("docs/toc.md", "# Contents\n\n- one\n"),
         ("README.md", "readme\nmore\n"),
         ("src/a.rs", "fn a() {}\nfn b() {}\n"),
-        (".env", "TOKEN=x\n"),
     ] {
         std::fs::write(repo.join(path), text).expect("writable");
     }
+    std::fs::write(repo.join(".env"), format!("TOKEN={SECRET_VALUE}\n")).expect("writable");
     scratch
 }
 
@@ -241,6 +241,54 @@ fn a_commit_made_with_sign_off_on_carries_the_trailer() {
         message.contains("Signed-off-by: Graft Test <test@example.invalid>"),
         "{message}"
     );
+    app.close();
+}
+
+/// The value [`three_changed_and_a_secret`] writes into `.env`.
+pub(crate) const SECRET_VALUE: &str = "s3cr3t-value-q1";
+
+/// Wait until the file under the cursor is `path` and its changes are in.
+fn diff_of(app: &App, state: AppState, path: &str) -> AppState {
+    app.pump(state, "the cursor file's changes", |state| {
+        state.commit_editor.as_ref().is_some_and(|editor| {
+            editor.diff.view.is_some() && editor.diff.path.as_deref() == Some(Path::new(path))
+        })
+    })
+}
+
+/// 08s Q1 over real git: `.env`'s value is drawn `••••••••`, staying out
+/// and gone in; nothing the view hands graft-ui holds it; an ordinary
+/// file's changes are drawn as they are.
+#[test]
+fn a_secrets_files_values_never_reach_the_screen() {
+    let scratch = three_changed_and_a_secret();
+    let (app, state) = App::open(scratch.path());
+    let open = opened(&app, &ready(&app, state));
+    let frame = crate::captures::frame_at(&open, 120, 40, None).join("\n");
+    assert!(frame.contains("+ more"), "README.md as it is:\n{frame}");
+
+    let assert_masked = |state: &AppState| {
+        let frame = crate::captures::frame_at(state, 120, 40, None).join("\n");
+        assert!(frame.contains("+ TOKEN=••••••••"), "{frame}");
+        let model = format!("{:?}", graft::view::commit_screen_view(state));
+        for drawn in [&frame, &model] {
+            assert!(!drawn.contains(SECRET_VALUE), "{drawn}");
+        }
+    };
+    // `.env` is the fourth row, under `Staying out`.
+    let out = (0..3).fold(open, |state, _| app.key(&state, KeyCode::Down));
+    let out = diff_of(&app, out, ".env");
+    assert_masked(&out);
+
+    // `⇥ ⇥ space` puts it in; `k j` reads its changes again.
+    let went_in = [KeyCode::Tab, KeyCode::Tab, KeyCode::Char(' ')]
+        .into_iter()
+        .chain([KeyCode::Char('k'), KeyCode::Char('j')])
+        .fold(out, |state, code| app.key(&state, code));
+    let went_in = diff_of(&app, went_in, ".env");
+    let editor = went_in.commit_editor.as_ref().expect("open");
+    assert!(editor.files[editor.file_cursor].goes_in, "`.env` goes in");
+    assert_masked(&went_in);
     app.close();
 }
 

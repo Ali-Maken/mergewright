@@ -841,8 +841,8 @@ fn a_put_back_clash_stop_line_says_your_edits() {
     assert!(stop_wordings(&clash, 2).before_keys);
 }
 
-/// The drop after a set-aside's last file answered: `every file done ·
-/// set-aside copy dropped ✓ · u brings it back` (ADR-0045 §3 amended) —
+/// The drop after a set-aside's last file answered: `✓ every file done ·
+/// set-aside copy dropped  u brings it back` (ADR-0045 §3 amended) —
 /// what was dropped, never the stash's position (he never named it), and
 /// not `your edits are back`, which `o branch` everywhere makes false.
 #[test]
@@ -866,7 +866,7 @@ fn a_put_back_clash_done_names_the_dropped_copy() {
             None,
             Some("u brings it back")
         ),
-        "every file done \u{b7} set-aside copy dropped \u{2713} \u{b7} u brings it back"
+        "\u{2713} every file done \u{b7} set-aside copy dropped  u brings it back"
     );
     // Through the close: the last file done launches the drop, and its
     // answer is worded as the set-aside's end.

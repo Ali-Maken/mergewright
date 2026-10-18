@@ -40,7 +40,7 @@ pub(super) fn incomplete_answered(
 }
 
 /// The line a clean write leaves: a clash's drop words the end of the clash;
-/// a remote op its own words; a switch to a branch `on <b> ✓ · u goes back`
+/// a remote op its own words; a switch to a branch `✓ on <b>  u goes back`
 /// (10b); else the entry's description — then, after the tick, `· your
 /// edits are back` when the write set edits aside and they came back clean
 /// (m6-conflicts/74).

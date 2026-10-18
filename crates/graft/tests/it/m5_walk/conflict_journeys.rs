@@ -309,8 +309,8 @@ fn every_file_done() -> Vec<Step> {
 }
 
 /// After `y` in the summary: the graph has the keyboard, its cursor on the
-/// merge commit (`main`'s tip, `HEAD`), the status `merged feature into
-/// main ✓`, and git agrees: `HEAD^2` is `feature`, nothing in progress.
+/// merge commit (`main`'s tip, `HEAD`), the status `✓ merged feature into
+/// main`, and git agrees: `HEAD^2` is `feature`, nothing in progress.
 fn merged_landing() -> Vec<Step> {
     vec![
         Step::See("the graph, cursor on the merge commit", |state| {
@@ -328,7 +328,7 @@ fn merged_landing() -> Vec<Step> {
         }),
         Step::Frame(
             "the merge's status, drawn",
-            &[Sees::Has("merged feature into main ✓")],
+            &[Sees::Has("✓ merged feature into main")],
         ),
         Step::Shell(second_parent_is_feature),
     ]

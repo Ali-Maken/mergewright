@@ -4,7 +4,7 @@
 # unverified).
 #
 # Right: `C sara ⏎` on `origin/sara/login-page` — the status line
-# `on sara/login-page (new, tracks origin/sara/login-page) ✓ · u
+# `✓ on sara/login-page (new, tracks origin/sara/login-page)  u
 # goes back`; the cursor on the new HEAD's row.
  ◆ api  ~/code/api · sara/login-page                                                                          6 commits
 
@@ -45,4 +45,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- on sara/login-page (new, tracks origin/sara/login-page) ✓ · u goes back
+ ✓ on sara/login-page (new, tracks origin/sara/login-page)  u goes back

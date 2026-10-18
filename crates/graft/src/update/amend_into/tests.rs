@@ -622,7 +622,7 @@ fn landing_words_are_done_line_shaped() {
     };
     assert_eq!(
         crate::view::status::done_line(what, also.as_deref(), keys.as_deref()),
-        "put into \"commit 2\" \u{2713} \u{b7} u undoes"
+        "\u{2713} put into \"commit 2\"  u undoes"
     );
 }
 
@@ -763,7 +763,7 @@ fn a_failed_tag_read_says_so_in_the_status() {
     };
     assert_eq!(
         crate::view::status::done_line(what, also.as_deref(), keys.as_deref()),
-        "put into \"commit 2\" \u{2713} \u{b7} couldn't mark the changed commit: rev-list failed \u{b7} u undoes"
+        "\u{2713} put into \"commit 2\" \u{b7} couldn't mark the changed commit: rev-list failed  u undoes"
     );
     assert_eq!(state.row_tags.on(oid(2)), None);
 }
@@ -812,7 +812,7 @@ fn landing_line(state: &AppState) -> String {
 fn a_put_in_over_unstaged_edits_says_they_are_back() {
     assert_eq!(
         landing_line(&previewed_from(&with_unstaged(on_screen(1, &[])))),
-        "put into \"commit 2\" \u{2713} \u{b7} your unstaged edits are back \u{b7} u undoes"
+        "\u{2713} put into \"commit 2\" \u{b7} your unstaged edits are back  u undoes"
     );
 }
 
@@ -820,7 +820,7 @@ fn a_put_in_over_unstaged_edits_says_they_are_back() {
 fn a_put_in_with_nothing_unstaged_says_nothing_about_edits() {
     assert_eq!(
         landing_line(&previewed()),
-        "put into \"commit 2\" \u{2713} \u{b7} u undoes"
+        "\u{2713} put into \"commit 2\"  u undoes"
     );
 }
 
@@ -853,7 +853,7 @@ fn absorb_over_unstaged_edits_says_they_are_back() {
     );
     assert_eq!(
         landing_line(&state),
-        "put 2 hunks into 2 commits \u{2713} \u{b7} 1 stays staged \u{b7} your unstaged edits are back \u{b7} u undoes"
+        "\u{2713} put 2 hunks into 2 commits \u{b7} 1 stays staged \u{b7} your unstaged edits are back  u undoes"
     );
 }
 

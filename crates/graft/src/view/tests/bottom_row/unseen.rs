@@ -84,7 +84,7 @@ fn a_failure_under_a_box_is_shown_when_it_closes() {
         let dismissed = press(&closed, KeyCode::Escape);
         assert_eq!(dismissed.unseen, None);
         let row = bottom_row(&dismissed, columns, rows);
-        assert!(row.contains("fetched ✓"), "{columns}x{rows}: {row}");
+        assert!(row.contains("✓ fetched"), "{columns}x{rows}: {row}");
     }
 }
 
@@ -161,7 +161,7 @@ fn a_done_under_a_box_is_not_acknowledged_unseen() {
             let closed = press(&typed, KeyCode::Escape);
             assert!(!closed.modal_owns_bottom_row(), "{modal}: esc closed it");
             let row = bottom_row(&closed, columns, rows);
-            assert!(row.contains("fetched ✓"), "{modal} {columns}x{rows}: {row}");
+            assert!(row.contains("✓ fetched"), "{modal} {columns}x{rows}: {row}");
             let next = press(&closed, KeyCode::Char('j'));
             assert_eq!(next.status, Status::Ready, "{modal} {columns}x{rows}");
         }

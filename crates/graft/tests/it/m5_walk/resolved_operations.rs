@@ -248,7 +248,7 @@ fn rebase_stops_twice_resolved_twice() -> Scenario {
 }
 
 /// A conflicted `git stash pop` — no operation, no banner — resolved from
-/// the changes pane: `every file done ✓` with nothing to continue, and
+/// the changes pane: `✓ every file done` with nothing to continue, and
 /// `⏎` is one journaled `stage p`.
 fn stash_pop_conflict_resolves_without_a_banner() -> Scenario {
     Scenario {

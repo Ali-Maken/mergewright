@@ -57,7 +57,7 @@ fn the_time_machine_landing_fits_80_columns_and_keeps_its_key() {
     let status = landing(long, &one("fix.txt"), false, 2);
     let line = drawn(&status);
     assert!(
-        line.ends_with(" \u{b7} U (2 times) brings it back"),
+        line.ends_with("\u{2026}  U (2 times) brings it back"),
         "{line}"
     );
     assert_eq!(line.chars().count(), STATUS_COLUMNS, "{line}");

@@ -47,4 +47,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- your edit to src/a.rs is back ✓ · u undoes
+ ✓ your edit to src/a.rs is back  u undoes

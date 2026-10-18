@@ -37,4 +37,4 @@ files · 13     added-by-us.txt •         both-added.txt •          both-del
 
 
 
- took theirs · feature in three.txt · 2 of 3 open ✓
+ ✓ took theirs · feature in three.txt · 2 of 3 open

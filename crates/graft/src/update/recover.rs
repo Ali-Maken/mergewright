@@ -14,9 +14,9 @@ use graft_ui::graph_screen::RowTag;
 use super::state::{AppState, Status};
 
 /// The line a put-back's `Done` leaves (note "Where he lands" 2b):
-/// `put back ✓ · main has "<subject>" again · u undoes`,
-/// `spike is back at "<subject>" ✓ · u undoes`,
-/// `your edit to src/a.rs is back ✓ · u undoes`.
+/// `✓ put back · main has "<subject>" again  u undoes`,
+/// `✓ spike is back at "<subject>"  u undoes`,
+/// `✓ your edit to src/a.rs is back  u undoes`.
 ///
 /// The tick is the renderer's (`Status::Done`), so it follows `what`. A
 /// subject nobody can name is the commit's sha7, never a blank.

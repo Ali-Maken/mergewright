@@ -175,7 +175,7 @@ fn ref_in(entries: &str, field: &str) -> String {
 /// `Tab` until the subject has focus, then `Enter` — the way ADR-0034 says
 /// a commit is made (ease-pass/08: `⏎` from the subject), rather than the
 /// `Ctrl+Enter` shortcut a terminal may not report.
-fn press_the_button(app: &App, state: AppState) -> AppState {
+fn tab_to_the_subject_and_enter(app: &App, state: AppState) -> AppState {
     let mut state = state;
     for _ in 0..3 {
         if state.commit_editor.as_ref().map(|editor| editor.focus)
@@ -188,13 +188,13 @@ fn press_the_button(app: &App, state: AppState) -> AppState {
     panic!("`Tab` never reached the subject");
 }
 
-/// `c`, a subject, `Tab` to the button, `Enter` — and the commit git made.
+/// `c`, a subject, `⏎` from the subject — and the commit git made.
 fn make_the_commit(app: &App, repo: &Path, state: &AppState) -> AppState {
     let before = git(repo, &["rev-list", "--count", "HEAD"]);
     let state = app.key(state, KeyCode::Char('c'));
     assert!(state.commit_editor.is_some(), "`c` opens the editor");
     let state = app.typed(&state, "the typed subject");
-    let state = press_the_button(app, state);
+    let state = tab_to_the_subject_and_enter(app, state);
     let state = app.settled(state);
 
     assert_eq!(
@@ -241,7 +241,7 @@ fn make_the_commit(app: &App, repo: &Path, state: &AppState) -> AppState {
 /// One test rather than two because the amend needs a commit of Graft's own
 /// to amend — splitting them would mean building the first commit twice.
 #[test]
-fn the_button_commits_what_was_typed_and_then_amends_it() {
+fn enter_commits_what_was_typed_and_then_amends_it() {
     let scratch = staged_repo();
     let repo = scratch.path();
     let (app, state) = App::open(repo);
@@ -266,7 +266,7 @@ fn the_button_commits_what_was_typed_and_then_amends_it() {
         state = app.key(&state, KeyCode::Backspace);
     }
     let state = app.typed(&state, "the reworded subject");
-    let state = press_the_button(&app, state);
+    let state = tab_to_the_subject_and_enter(&app, state);
     let state = app.settled(state);
 
     assert_eq!(
@@ -370,7 +370,7 @@ fn subject_enter_header(columns: u16, rows: u16) -> String {
 #   `⏎ commit 1 file  ⇥ more detail`. The body is empty; `sample.txt` is
 #   under `Going in`.
 # - Frame 2: the screen is gone; the status line reads
-#   `Committed 1 file to main. ✓` and the graph's top row is
+#   `✓ Committed 1 file to main.` and the graph's top row is
 #   `[◆ main] fix: x`, with nothing uncommitted.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
