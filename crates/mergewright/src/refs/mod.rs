@@ -10,13 +10,13 @@
 
 mod ahead;
 #[cfg(test)]
-mod perf_ahead;
+mod ahead_perf_tests;
 #[cfg(test)]
 mod tests;
 
 pub use ahead::AheadOfUpstream;
 #[cfg(test)]
-mod tests_ahead;
+mod ahead_tests;
 
 use std::collections::{HashMap, HashSet};
 use std::hash::BuildHasher;

@@ -18,7 +18,7 @@ LOAD_BEFORE=$(sysctl -n vm.loadavg)
 # Build first, so the build's load is not in the numbers.
 cargo test --release --manifest-path "$ROOT/Cargo.toml" -p mergewright --features heavy-tests --lib --no-run 2>/dev/null
 LINES=$(cargo test --release --manifest-path "$ROOT/Cargo.toml" -p mergewright --features heavy-tests --lib \
-  -- --nocapture --test-threads=1 --exact refs::perf_ahead::perf_ahead_read_2000_branches 2>/dev/null | grep '^ease-07a')
+  -- --nocapture --test-threads=1 --exact refs::ahead_perf_tests::perf_ahead_read_2000_branches 2>/dev/null | grep '^ease-07a')
 LOAD_AFTER=$(sysctl -n vm.loadavg)
 
 {

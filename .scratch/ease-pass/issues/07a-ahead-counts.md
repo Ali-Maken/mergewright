@@ -48,7 +48,7 @@ Refs read timing; startup cost (path B: a job after refs, no wait added before t
 
 ## Acceptance
 Each tick names its test inline.
-- [x] The settle test is committed first (`refs::tests_ahead::every_tracked_local_branch_has_its_ahead_count`). The path taken and why are in NOTES.
+- [x] The settle test is committed first (`refs::ahead_tests::every_tracked_local_branch_has_its_ahead_count`). The path taken and why are in NOTES.
 - [x] `ahead_of_upstream` (`ahead_of_upstream_counts_the_ahead_branch`, `_is_zero_in_sync`, `_without_an_upstream_is_not_pushed`, `_is_none_off_a_local_branch`; path A, so no "before landing" case): 2 for the ahead branch, `Some(0)` in sync, `None` with no upstream, `None` before landing (path B) (unit tests).
 - [~] `the_ahead_read_asks_once_per_tracked_branch` (200 walks cold, 0 on a warm re-read — ticked part). **0 on moves/redraws not tested**: shown by grep only, `refs::read` has one caller, `jobs/runner/reads.rs:99` (the ReadRefs job): 200 calls per refs read, 0 on moves or redraws.
 - [x] N/A, path A. Path B: a result for an older refs read is dropped (state test).
