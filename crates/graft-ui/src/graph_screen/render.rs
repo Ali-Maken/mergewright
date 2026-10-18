@@ -12,7 +12,7 @@ use unicode_width::UnicodeWidthStr;
 
 use super::layout::{Columns, graph_width};
 use super::{
-    Badge, BadgeKind, GraphEntry, GraphScreen, Icons, RULE_WIDTH, SUBJECT_GAP, TAG_GAP,
+    Badge, BadgeKind, GraphEntry, GraphScreen, Icons, LaneTally, RULE_WIDTH, SUBJECT_GAP, TAG_GAP,
     TAG_MIN_SUBJECT, badges,
 };
 use crate::fit::fit;
@@ -81,13 +81,12 @@ impl Widget for GraphScreen<'_> {
         // One carve for the whole screen, so no two of these draws can claim
         // the same row at any height (`GraphScreen::screen_rows`).
         let chrome = self.screen_rows(area);
-        let (body, rows, applied) = self.body_layout(area);
-        let folded_lanes = applied.as_ref().map_or(0, Fold::folded_count);
+        let (body, rows, fold) = self.body_layout(area);
         if chrome.header.height > 0 {
             buf.set_line(
                 area.x,
                 chrome.header.y,
-                &self.header(area.width, folded_lanes),
+                &self.header(area.width, LaneTally::of(&fold, rows)),
                 area.width,
             );
         }
@@ -109,7 +108,7 @@ impl Widget for GraphScreen<'_> {
             // Gutter cell 0, where the cursor's `▸` goes — absent on a screen
             // too narrow to spare the gutter (`layout::inset`).
             let gutter = (body.x >= area.x + super::GUTTER).then(|| body.x - super::GUTTER);
-            self.body(body, gutter, rows, applied.as_ref(), buf);
+            self.body(body, gutter, rows, &fold, buf);
         }
 
         // One cell of right margin on the bottom rows, as on every other.
@@ -117,7 +116,7 @@ impl Widget for GraphScreen<'_> {
             .saturating_sub(usize::from(super::RIGHT_MARGIN))
             .max(1);
         if chrome.footer.height > 0 {
-            let (text, token) = self.footer_line(body, rows, applied.as_ref(), bar_width);
+            let (text, token) = self.footer_line(body, rows, &fold, bar_width);
             let footer = Line::styled(fit(&text, bar_width), foreground(self.theme, token));
             buf.set_line(area.x, chrome.footer.y, &footer, area.width);
         }
@@ -158,20 +157,17 @@ impl GraphScreen<'_> {
         area: Rect,
         gutter: Option<u16>,
         rows: &[GraphEntry<'_>],
-        fold: Option<&Fold>,
+        fold: &Fold,
         buf: &mut Buffer,
     ) {
-        let graph_width = graph_width(area, rows, fold);
+        let graph_width = graph_width(area, fold);
         // At the pixel tier the cells stay blank: text drawn there would sit
         // on top of the terminal's images.
         if !self.view.pixel {
             let graph_lines: Vec<GraphLine<'_>> =
                 rows.iter().map(|entry| entry.line.clone()).collect();
-            let mut column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
-            if let Some(fold) = fold {
-                column = column.through(fold);
-            }
-            column.render(
+            let column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
+            column.through(fold).render(
                 Rect {
                     width: graph_width,
                     ..area

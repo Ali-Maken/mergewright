@@ -1,4 +1,4 @@
-"                                                                                                          2 rows so far "
+"                                                                                  2 rows so far  1 merged branch folded "
 "            ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮            "
 "  ◆    [◆ ma│ ›                                                                                            │7y  0101010 "
 "▸ ◉    [feat│ HERE                                                                                         │7y  0202020 "

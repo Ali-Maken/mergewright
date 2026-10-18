@@ -15,7 +15,7 @@ use graft_term::kitty::EMPHASIS_ID_BIT;
 
 use super::*;
 use crate::view::strips::pixel_rows;
-use crate::view::strips::tests::{capped, fan, fold_plan};
+use crate::view::strips::tests::{fan, fold_plan, woven};
 use emphasis_pieces::{emphasis_placed, placed};
 use graft_graph::fold::Keep;
 
@@ -181,7 +181,7 @@ fn j_inside_resident_strips_sends_no_strip() {
     }
 }
 
-/// m8 04: held `j` down a wide graph (13 lanes, 241 rows, past seven
+/// m8 04: held `j` down a wide graph (12 lanes woven, 241 rows, past seven
 /// strips) under a budget of the viewport floor plus two strips — the
 /// regime the user's 17×37 cell runs in, where the budget binds and the
 /// floor does not (review Major 1: at 1.5 frames the floor won 210 of 230
@@ -192,7 +192,7 @@ fn j_inside_resident_strips_sends_no_strip() {
 fn held_j_on_wide_strips_stays_within_the_byte_budget() {
     let (mut session, mut state) = at_pixel_tier();
     session.capabilities.pixel_protocol = Some(PixelProtocol::Kitty);
-    let mut history = fan(12, 20);
+    let mut history = woven(12, 20);
     history.strip_rows = Some(STRIP_ROWS);
     state.history = Some(history);
     state.size = Size {
@@ -315,12 +315,12 @@ fn keep_differs(before: &Keep, now: &Keep) -> Vec<&'static str> {
     classes
 }
 
-/// `capped(16, 50, 70)` at the pixel tier on Kitty with deflate, 120x40,
-/// cursor on the first merge.
+/// `woven(16, 6)` at the pixel tier on Kitty with deflate, 120x40,
+/// cursor on the octopus merge at the top.
 fn capped_at_pixel_tier() -> (Session, AppState) {
     let (mut session, mut state) = at_pixel_tier();
     session.capabilities.kitty_deflate = true;
-    let mut history = capped(16, 50, 70);
+    let mut history = woven(16, 6);
     history.strip_rows = Some(STRIP_ROWS);
     history.cursor = 0;
     state.history = Some(history);
@@ -331,17 +331,16 @@ fn capped_at_pixel_tier() -> (Session, AppState) {
     (session, state)
 }
 
-/// On a graph wider than the lane cap the fold keeps the selection's thread
-/// lanes (ADR-0025 Decision 2, `Keep::preferred`), so a `j` that moves the
-/// thread may change which lanes draw, and every strip goes again. That is
-/// layout, not paint. What ADR-0053 promises, and this guards: a backdrop is
-/// re-sent only on a frame whose fold plan or strip window changed (a), the
-/// fixture really does change the fold (b), and a changed selection paint
-/// always changes the emphasis placed (c).
-///
-/// Step 0 (46c), the old bound "no backdrop on any j" run red first: 16 red
-/// frames (1–16), every one a plan change, `preferred` the only class that
-/// moved; frames 17–24 changed neither plan nor paint and sent nothing.
+/// On a graph wider than the lane cap the fold keeps the selected column
+/// and the selection's thread lanes first (ADR-0025, `Keep::selected`,
+/// `preferred`), so a `j` that moves the selection may change which lanes
+/// draw, and every strip goes again. That is layout, not paint. What
+/// ADR-0053 promises, and this guards: a backdrop is re-sent only on a frame
+/// whose fold plan or strip window changed (a), the fixture really does
+/// change the fold (b), and a changed selection paint always changes the
+/// emphasis placed (c). Step 0 (46c) ran the old bound "no backdrop on any
+/// j" red first, on a fixture whose side lanes held no node; those drop
+/// since ease-pass 06b, so `woven` keeps a node in every column in view.
 #[test]
 fn a_capped_graph_resends_strips_only_when_the_fold_changes() {
     let (session, state) = capped_at_pixel_tier();

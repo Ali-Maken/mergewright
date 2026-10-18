@@ -1,4 +1,4 @@
-"                                                                                                          2 rows so far "
+"                                                                                  2 rows so far  1 merged branch folded "
 "            ╭─ find anything ─────────────────────────────────────────────────────────────────── esc close ╮            "
 "▸ ◆    [◆ ma│ › rebase                                                                                     │7y  0101010 "
 "  ◉    [feat│ ACTIONS                                                                                      │7y  0202020 "

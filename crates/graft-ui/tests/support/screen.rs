@@ -4,9 +4,11 @@ use graft_graph::identity::BranchIdentity;
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::graph_column::{GraphLine, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Compaction, Filters, GraphEntry, GraphView, HintContext, Icons, Location, WalkView,
-    initials, relative_date, short_sha,
+    AuthorChip, Compaction, Filters, GraphEntry, GraphScreen, GraphView, HintContext, Icons,
+    Location, WalkView, initials, relative_date, short_sha,
 };
+use graft_ui::theme::Theme;
+use ratatui::layout::Rect;
 
 /// A fixed clock reading, so the "how long ago" column is deterministic —
 /// nothing to do with the fixture's own fixed commit clock
@@ -87,4 +89,14 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         pending: None,
         tour: None,
     }
+}
+
+/// Cells the graph column takes when `view` draws into a `columns`×`rows`
+/// screen: the screen's own geometry, through the fold it draws — a lane
+/// with no commit in view is not drawn (ease-pass 06b), so the laid-out
+/// width overstates it.
+pub fn graph_width(view: &GraphView<'_>, theme: &Theme, columns: u16, rows: u16) -> u16 {
+    GraphScreen::new(view, theme)
+        .graph_area(Rect::new(0, 0, columns, rows))
+        .width
 }

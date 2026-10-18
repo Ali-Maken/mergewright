@@ -1,4 +1,4 @@
-"                                                                  2 rows so far "
+"                                          2 rows so far  1 merged branch folded "
 "  ◆    [◆ main] a commit                                           57y  0101010 "
 "▸ ◉    [feature] a commit  ▸ 1 commit                              57y  0202020 "
 "                                                                                "
@@ -23,7 +23,7 @@
 "                                                                                "
 " m merge · r rebase · ⏎ open · b branch · t tag · P push · u undo · ? keys      "
 
-"                                                                  2 rows so far "
+"                                          2 rows so far  1 merged branch folded "
 "╭─ keys here ─────────────────────────────────────────────────────── esc close ╮"
 "│ ›                                                                            │"
 "│ HERE                                                                         │"

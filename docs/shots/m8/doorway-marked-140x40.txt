@@ -6,7 +6,7 @@
 # radar, the pane shut. Right (m8/11e F1): at 140 columns, past the 137 a marked branch tip
 # needs, the bar ends `? keys`.
 
- ◆ api  ~/code/api · main                                                                                                         3 commits
+ ◆ api  ~/code/api · main                                                                                 3 commits  1 merged branch folded
 
 ▸ ◆  ⚠ [◆ main] Merge branch 'alpha'  ▸ 1 commit from alpha                                                                 GF 1y   cc1103b
   ●    Advance main                                                                                                         GF 1y   0631550

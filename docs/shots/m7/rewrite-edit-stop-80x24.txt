@@ -9,16 +9,16 @@
 │ +1 more                                                                      │
 │ feature-b (Sara): 2 commits follow, on top                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-    ●    [feature-b] b2                                            2d   1f42193
-    ●    b1                                                        2d   2fce5ac
-    ●    [feature-a] a10                                           2d   edb2b45
-    ●    a9                                                        2d   426bb5b
-    ●    a8                                                        2d   a85e882
-    ●    a7                                                        2d   fe09125
-    ●    a6                                                        2d   03794c8
-    ●    a5                                                        2d   90e1a32
-    ●    a4                                                        2d   a00e43d
-▸   ◆    [HEAD] a3  HEAD · stopped here                            2d   7326de5
-    ●    a2                                                        2d   15335d9
-    ●    a1                                                        2d   0395451
+  ●    [feature-b] b2                                              2d   1f42193
+  ●    b1                                                          2d   2fce5ac
+  ●    [feature-a] a10                                             2d   edb2b45
+  ●    a9                                                          2d   426bb5b
+  ●    a8                                                          2d   a85e882
+  ●    a7                                                          2d   fe09125
+  ●    a6                                                          2d   03794c8
+  ●    a5                                                          2d   90e1a32
+  ●    a4                                                          2d   a00e43d
+▸ ◆    [HEAD] a3  HEAD · stopped here                              2d   7326de5
+  ●    a2                                                          2d   15335d9
+  ●    a1                                                          2d   0395451
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys

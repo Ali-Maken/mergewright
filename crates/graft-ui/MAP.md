@@ -128,7 +128,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 
 ## graph_column
 - `CELLS_PER_LANE` (const) — 2: a lane's own cell, then the gap.
-- `STUB_BELOW`, `STUB_ABOVE`, `RAIL` (consts) — `▾` / `▴` / `⋮`: folded edges and the rail folded lanes sit behind.
+- `STUB_BELOW`, `STUB_ABOVE`, `RAIL` (consts) — `▾` / `▴` / `⋮`: folded or dropped edges, and the rail folded lanes sit behind (a folded column's node draws on it in place of `⋮`).
 - `NodeKind` (enum, re-exported from `graph_column/kinds.rs`) — commit, merge, root, HEAD, stash, uncommitted, `StashOnly`, `Absent`.
 - `NodeKind::of`, `NodeKind::glyph` (fns) — the shape from git's parents (`Row::is_merge`: a folded merge is still `◉`), stash-blind; the node's character.
 - `RowPaint` (enum) — `Normal`, `Dimmed`, `Highlighted`, `DropTarget`…: how a row is painted.
@@ -150,7 +150,8 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `MarkerView` (struct) — a Mistake Radar marker's `severity`, painted in the row's marker slot.
 - `GraphicsStatus` (enum) — `Ok` / `Failed(text)`: drawn `gfx ok` / `gfx: <error>`.
 - `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`; `Filters::text(keys)` is the header's words.
-- `Compaction` (struct) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept.
+- `Compaction` (struct, from `compaction.rs`) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept; planned with no cap while expanded, so node-less columns drop either way.
+- `LaneTally` (struct, from `header_tail.rs`) — `drawn` N, `open` M, `folded_in_view` K; `LaneTally::of(fold, window)`: the top line's `lanes drawn: N of M · K merged branches folded`, counted at render.
 - `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `author`, `when`, `sha`, `compare_marked`, `marker`, `tag`, `fold`.
 - `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`).
 - `FoldCount` (enum) — `Pending`, `Known(n)`, `Failed`: the tail's count, none until it lands, `?` if it failed.

@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use graft_core::capabilities::ColorDepth;
 use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::mistake_radar::Severity;
@@ -18,14 +16,15 @@ use super::footer::{commit_graph_segments, grouped, segments_width};
 use super::hints::{HintContext, RowVerbs, TabWord};
 use super::layout::walk_text;
 use super::*;
-use crate::graph_column::{GraphColumn, RowPaint};
+use crate::graph_column::RowPaint;
 use crate::keymap::Keymap;
 use crate::paint::color;
-use crate::test_support::{terminal, wide_history};
+use crate::test_support::terminal;
 use crate::theme::{Theme, ThemeKind, Token};
 
 mod cursor_row;
 mod fold_tail;
+mod lanes_in_view;
 
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
@@ -812,118 +811,6 @@ fn cells(line: &str, count: usize) -> String {
     line.chars().skip(usize::from(GUTTER)).take(count).collect()
 }
 
-/// The twelve merge rows of a twelve-topic history: thirteen columns open,
-/// more than `graph.max_lanes` allows.
-fn wide_merges() -> Vec<Row> {
-    let mut rows = wide_history(12);
-    rows.truncate(12);
-    rows
-}
-
-#[test]
-fn more_lanes_than_the_limit_fold_behind_a_rail_and_leave_the_subject_readable() {
-    let rows = wide_merges();
-    let screen = text(&draw(
-        &view(&rows, WalkView::Complete { rows: 12 }, 0),
-        80,
-        24,
-    ));
-
-    // Seven lanes plus the rail: 16 cells, the subject right after. The
-    // count is the header's, never a row's.
-    assert_eq!(cells(&screen[1], 16), "◉▾            ⋮ ", "{screen:#?}");
-    assert!(screen[0].trim_end().ends_with("+6 lanes"), "{screen:#?}");
-    assert!(
-        !screen[1..23].iter().any(|line| line.contains("+6")),
-        "{screen:#?}"
-    );
-    assert!(screen[1].contains("Merge branch 'topic-12'"), "{screen:#?}");
-    assert!(screen[12].contains("Merge branch 'topic-1'"), "{screen:#?}");
-    // The lane-fold hint (`+ expand lanes`) is not in the design note's
-    // hint-bar table for any context (`hint-bar-redesign`) and is dropped
-    // from the footer with this ticket — `+` still works, but is no longer
-    // hinted (flagged as a gap in the ticket's NOTES, not fixed here: the
-    // note's table is followed verbatim per the ticket's own instruction).
-    assert!(screen[23].contains("⏎ open"), "{screen:#?}");
-}
-
-/// ADR-0025: a thread twenty columns wide is a priority, not a veto — the
-/// configured cap still holds. Twenty-two rows (twenty merges plus two
-/// topics), the cursor on the topmost merge, its whole thread kept: the
-/// column still stops at `max_lanes = 8`, the rail is the last column drawn
-/// on every row, and the header's count is exact.
-#[test]
-fn a_thread_of_twenty_columns_still_fits_the_configured_cap() {
-    let mut rows = wide_history(20);
-    rows.truncate(22);
-    let opened_on = |k: usize| rows[k].outgoing[1].0;
-    let selected = opened_on(0);
-    let thread: BTreeSet<usize> = (0..20).map(opened_on).collect();
-
-    let mut screen_view = view(&rows, WalkView::Complete { rows: 22 }, 0);
-    screen_view.compaction = Compaction {
-        max_lanes: 8,
-        expanded: false,
-        keep: Keep {
-            selected: Some(selected),
-            reserved: BTreeSet::new(),
-            preferred: thread,
-        },
-    };
-    let fold = screen_view.compaction.plan(rows.iter());
-    let width = usize::from(GraphColumn::width_through(&fold));
-    assert!(width <= 40, "graph column {width} cells wide");
-
-    let open = fold.kept().len() + fold.folded().len();
-    let screen = text(&draw(&screen_view, 80, 24));
-    assert!(
-        screen[0]
-            .trim_end()
-            .ends_with(&format!("+{} lanes", open - 7)),
-        "{screen:#?}"
-    );
-
-    // The rail is the drawn column right after every kept lane: nothing but
-    // the marker and padding sits between the graph and the subject.
-    let rail = fold.marker().expect("the thread does not fit unfolded");
-    assert_eq!(rail, fold.kept().len());
-    for line in &screen[1..23] {
-        assert_eq!(
-            cells(line, width).chars().count(),
-            width,
-            "row shorter than the column it was given: {line:?}"
-        );
-    }
-}
-
-#[test]
-fn expanded_every_lane_draws_in_its_real_column_from_the_same_rows() {
-    let rows = wide_merges();
-    let mut expanded = view(&rows, WalkView::Complete { rows: 12 }, 0);
-    expanded.compaction.expanded = true;
-    let screen = text(&draw(&expanded, 80, 24));
-
-    assert_eq!(
-        cells(&screen[1], 26),
-        "◉─╮                       ",
-        "{screen:#?}"
-    );
-    assert_eq!(
-        cells(&screen[12], 26),
-        "◉─│─│─│─│─│─│─│─│─│─│─│─╮ ",
-        "{screen:#?}"
-    );
-    assert!(
-        !screen
-            .iter()
-            .any(|line| line.contains("+6") || line.contains('⋮')),
-        "expanded: no count and no rail: {screen:#?}"
-    );
-    // See `more_lanes_than_the_limit_fold_behind_a_rail_and_leave_the_subject_readable`:
-    // the lane-fold hint is no longer drawn (`hint-bar-redesign`).
-    assert!(screen[23].contains("⏎ open"), "{screen:#?}");
-}
-
 #[test]
 fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
     let rows = linear(3);
@@ -1227,55 +1114,6 @@ fn max_lanes_for_follows_the_width_breakpoints_when_unconfigured() {
 fn max_lanes_for_clamps_a_configured_value_to_what_the_screen_holds() {
     assert_eq!(max_lanes_for(80, Some(30)), lanes_that_fit(80));
     assert_eq!(max_lanes_for(80, Some(30)), 19);
-}
-
-/// A history wide enough that its open columns exceed even the screen's own
-/// bound at 80 columns (more than `lanes_that_fit(80) == 19`).
-fn very_wide_merges() -> Vec<Row> {
-    let mut rows = wide_history(30);
-    rows.truncate(30);
-    rows
-}
-
-#[test]
-fn a_resize_from_80_to_160_columns_changes_the_folds_lane_count() {
-    let rows = very_wide_merges();
-    let mut view = view(&rows, WalkView::Complete { rows: rows.len() }, 0);
-    view.compaction = Compaction::at(max_lanes_for(80, None));
-    let narrow = text(&draw(&view, 80, 24));
-    let narrow_header = narrow[0].clone();
-
-    view.compaction = Compaction::at(max_lanes_for(160, None));
-    let wide = text(&draw(&view, 160, 40));
-    let wide_header = wide[0].clone();
-
-    // 30 topics open 31 columns; 8 lanes at 80 columns and 10 at 160 both
-    // fold most of them, but the wider screen folds fewer.
-    assert!(narrow_header.contains("lanes"), "{narrow_header}");
-    assert!(wide_header.contains("lanes"), "{wide_header}");
-    assert_ne!(narrow_header, wide_header);
-}
-
-#[test]
-fn a_configured_cap_larger_than_the_screen_never_cuts_the_graph_column() {
-    let rows = very_wide_merges();
-    let mut view = view(&rows, WalkView::Complete { rows: rows.len() }, 0);
-    let cap = max_lanes_for(80, Some(30));
-    assert_eq!(cap, 19, "clamped to what 80 columns can hold");
-    view.compaction = Compaction::at(cap);
-    let screen = text(&draw(&view, 80, 24));
-
-    // 19 lanes (rail included) at 2 cells each is 38 cells — exactly the
-    // half-of-the-body bound `graph_width` enforces, so the column is not
-    // cut. The body starts after the two-cell gutter.
-    assert!(screen[1].contains('⋮'), "no rail drawn: {screen:#?}");
-    let rail_at = screen[1]
-        .chars()
-        .position(|c| c == '⋮')
-        .expect("rail is drawn");
-    // The rail is the last drawn column: column (cap - 1), 2 cells wide.
-    assert_eq!(rail_at, (cap - 1) * 2 + 2, "{screen:#?}");
-    assert!(rail_at <= 40, "cut past the half-screen bound: {screen:#?}");
 }
 
 #[test]

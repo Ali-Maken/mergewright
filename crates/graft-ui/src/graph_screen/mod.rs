@@ -19,6 +19,7 @@ pub mod badges;
 mod banner;
 mod carve;
 pub mod columns;
+mod compaction;
 mod fold_mark;
 mod footer;
 mod header;
@@ -30,17 +31,17 @@ mod render;
 mod tests;
 
 use graft_core::mistake_radar::Severity;
-use graft_graph::fold::{Fold, Keep};
 use graft_graph::identity::BranchIdentity;
-use graft_graph::row::Row;
 use graft_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use carve::{CarveInputs, RowCarve, row_carve};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
+pub use compaction::Compaction;
 pub use fold_mark::{FoldCount, FoldMark};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
+pub use header_tail::LaneTally;
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintKey, HintState, LiveC, NOT_A_BINDING, Rung,
     StopWording, TabWord, WayToBanner, blame_place_list, every_context, every_hint,
@@ -163,8 +164,7 @@ pub struct GraphView<'a> {
     pub rows: Vec<GraphEntry<'a>>,
     /// Which glyphs ref badges draw with (`ui.icons`).
     pub icons: Icons,
-    /// How many lanes the graph may draw before folding the rest behind
-    /// `+N`, and whether the user has expanded them (DESIGN.md §3.5).
+    /// The lane cap, and whether the user lifted it (DESIGN.md §3.5).
     pub compaction: Compaction,
     /// What the history shown leaves out; said in the header so a folded or
     /// first-parent graph is never mistaken for the whole one.
@@ -332,40 +332,6 @@ impl Filters {
             });
         }
         parts.join(" · ")
-    }
-}
-
-/// Lane compaction as the screen applies it (DESIGN.md §3.5).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Compaction {
-    /// `graph.max_lanes`: the most lanes drawn, the `+N` marker included.
-    pub max_lanes: usize,
-    /// The user pressed the expand key: every lane draws in its real column
-    /// until they press it again. The rows are the same either way — the
-    /// fold is a lens over them, never a re-layout.
-    pub expanded: bool,
-    /// Columns a fold weighs above the ordinary rank: the selected commit's
-    /// own column, reserved integration lanes and the selection's thread
-    /// (ADR-0025). A priority, not a veto — one still folds if the budget
-    /// cannot hold it.
-    pub keep: Keep,
-}
-
-impl Compaction {
-    /// Compaction at `max_lanes`, collapsed, with nothing kept but lane 0.
-    #[must_use]
-    pub fn at(max_lanes: usize) -> Self {
-        Compaction {
-            max_lanes,
-            expanded: false,
-            keep: Keep::default(),
-        }
-    }
-
-    /// The fold for `rows`, whether or not it is applied.
-    pub(super) fn plan<'a>(&self, rows: impl IntoIterator<Item = &'a Row>) -> Fold {
-        let rows: Vec<Row> = rows.into_iter().cloned().collect();
-        Fold::plan(self.max_lanes, &self.keep, &rows)
     }
 }
 

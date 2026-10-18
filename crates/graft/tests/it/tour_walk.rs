@@ -136,11 +136,12 @@ fn ready_to_shoot(screen: &str) -> bool {
         return false;
     }
     let header = screen.lines().next().unwrap_or_default();
-    // The walk's count, before the push words when the branch is ahead
-    // (`N commits  1 commit to push`, ease-pass/08).
+    // The walk's count, before the push words (`1 commit to push`,
+    // ease-pass/08) and the lane words (`2 merged branches folded`, 06b).
     let walked = header
         .split("  ")
-        .filter(|part| !part.trim().is_empty() && !part.trim_end().ends_with("to push"))
+        .filter(|part| !part.trim().is_empty() && !part.contains(" to push"))
+        .filter(|part| !part.contains("lanes drawn") && !part.trim_end().ends_with("folded"))
         .last()
         .and_then(|part| part.split_whitespace().last())
         .is_some_and(|word| word == "commits" || word == "commit");
@@ -921,16 +922,13 @@ fn a_screen_still_sorting_is_not_ready_to_shoot() {
     assert!(ready_to_shoot(&finished), "{finished}");
     assert!(ready_to_shoot(&conflict), "{conflict}");
 
-    // The walk done (`6 commits`, merged branches folded) but the sort
-    // not: still not ready.
+    // The walk done (`6 commits`, merged branches folded) but the sort not.
     let (header, rest) = finished.split_once('\n').expect("a header and a body");
-    assert!(header.ends_with("  6 commits"), "{header}");
-    let sorting = format!("{header}  date order, sorting\u{2026}\n{rest}");
+    let (walk, lanes) = header.split_once("6 commits").expect("the walk's count");
+    assert_eq!(lanes, "  2 merged branches folded", "{header}");
+    let sorting = format!("{walk}6 commits  date order, sorting\u{2026}{lanes}\n{rest}");
     assert!(!ready_to_shoot(&sorting), "{sorting}");
-    let reading = format!(
-        "{}reading\u{2026} 5 rows\n{rest}",
-        header.trim_end_matches("6 commits")
-    );
+    let reading = format!("{walk}reading\u{2026} 5 rows{lanes}\n{rest}");
     assert!(!ready_to_shoot(&reading), "{reading}");
     // A folded merge's count not landed yet (ease-pass 06f): not ready.
     let counting = finished.replacen("\u{25b8} 2 commits", "\u{25b8} commits", 1);

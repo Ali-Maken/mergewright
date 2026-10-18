@@ -4,14 +4,14 @@ expression: text
 ---
 shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
- ◆ api  ~/code/api · main                                             7 commits
-    ●          beta: carry on                                      4y   be27a12
-  ◆─╎─╮        Merge branch 'alpha'                                4y   e44c042
-  │ ◉╌│╌╮      beta: merge alpha                                   4y   f77039c
-  │ ╎ ◉─╎─╮    alpha: merge beta                                   4y   89c164d
-▸ │ ●─│─╎─╯    beta: work                                          4y   4cfd7d9
-  │ ╎ ●╌╯      alpha: work                                         4y   bd20b78
-  ◇╌┴─╯        Add the base                                        4y   68d5d19
+ ◆ api  ~/code/api · main                        7 commits  lanes drawn: 3 of 5
+    ●      beta: carry on                                          4y   be27a12
+  ◆─╎─╮    Merge branch 'alpha'                                    4y   e44c042
+  │ ◉▾│    beta: merge alpha                                       4y   f77039c
+  │ ╎ ◉▾   alpha: merge beta                                       4y   89c164d
+▸ │ ●▴│    beta: work                                              4y   4cfd7d9
+  │ ╎ ●▴   alpha: work                                             4y   bd20b78
+  ◇╌┴─╯    Add the base                                            4y   68d5d19
 
 
 
@@ -30,10 +30,10 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 modifiers: graph | subject
-..b.......| .
-bbbbb.....| .
-d.bdbdd...| .
-d.b.bbdbb.| .
-d.bbdbdbb.| b
-d.b.ddd...| .
-bbbdd.....| .
+..b...| .
+bbbbb.| .
+d.bdb.| .
+d.b.bd| .
+d.bdd.| b
+d.b.dd| .
+bbbdd.| .
