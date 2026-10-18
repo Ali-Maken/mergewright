@@ -1,6 +1,6 @@
 # 08u — commit fixes, part B2: the landing's last row, mouse, narrow bars
 
-Status: ready (split by the conductor from 08s, 2026-10-18; no new decision. Amended by the planner 2026-10-18 after 08t's NOTES: rulings below, one acceptance box added)
+Status: done (2026-10-18, builder; look unjudged, colour unverified). Was: ready (split by the conductor from 08s, 2026-10-18; no new decision. Amended by the planner 2026-10-18 after 08t's NOTES: rulings below, one acceptance box added)
 Blocked by: 08t (same files: `view/frame`, captures), 06b-lanes-on-screen-and-header (holds graft-ui `graph_screen/layout.rs` and `mod.rs`, which M4 may need and M6 lowers)
 Build with: Opus (`builder-opus-xhigh`), as 08s.
 
@@ -24,4 +24,7 @@ Decision lines: `docs/design-notes/ease-pass.md`, paragraph "**Commit secrets an
 ## Acceptance
 Tick in **08s's file**, each naming its test: **M4**, **M5 + Q2**, **m4**, **m12**, **M6**, and the rest of the captures box.
 Plus, ticked here:
-- [ ] **Secrets stay masked through 08u's re-shoots:** after the last capture, `grep -rn 's3cr3t\|SECRET_VALUE' docs/shots` → empty, and `commit-secrets-120.txt` still reads `+ TOKEN=••••••••` (re-shot or not — say which). — `commit_screen::shots::capture_the_commit_screen` (its no-fixture-value assert) passes; grep in NOTES.
+- [x] **Secrets stay masked through 08u's re-shoots:** after the last capture, `grep -rn 's3cr3t\|SECRET_VALUE' docs/shots` → empty, and `commit-secrets-120.txt` still reads `+ TOKEN=••••••••` (re-shot or not — say which). — `commit_screen::shots::capture_the_commit_screen` (its no-fixture-value assert) passes; grep in NOTES. — **ticked:** `commit_screen::shots::capture_the_commit_screen` passes; after the last re-shoot `grep -rn 's3cr3t\|SECRET_VALUE' docs/shots | wc -l` → 0; `commit-secrets-120.txt` **re-shot** (its header gained the repo words; that is its only changed line) and still reads `+ TOKEN=••••••••` (`grep -c` → 1).
+
+## NOTES (builder, 2026-10-18)
+**Compacted twice** during this ticket; everything in scope is done (nothing remains to split). No new scout: 08s Step 1 stands in (as told). The boxes are ticked in `08s-commit-fixes.md`; the detail is under its "NOTES (builder, part B2 = ticket 08u)".

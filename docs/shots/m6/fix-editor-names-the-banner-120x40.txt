@@ -8,13 +8,13 @@
 # - The bottom row (the commit screen's bar, ease-pass/08) reads, from
 #   column 2, exactly `merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it` — whole at 120 columns.
 # - `git commit` and `…` appear nowhere on the screen.
-# - The top row reads `committing to main · not pushed yet`; both files
+# - Top row `◆ api  ~/code/api  committing to main · not pushed yet`; both files
 #   are under `Going in`.
 # - The words are in the warning colour; colour is unverified (CLAUDE.md
 #   rule 5), so the words carry it here.
 #
 === 120x40 ===
- committing to main · not pushed yet
+ ◆ api  ~/code/api  committing to main · not pushed yet
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ ▸What did you change? (one line)                                                                                     │
 │  More detail, if it needs it (optional)                                                                              │

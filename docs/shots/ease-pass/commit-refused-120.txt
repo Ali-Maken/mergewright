@@ -3,7 +3,7 @@
 # crates/graft/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: every file left out with `space`, then `⏎`: nothing committed; all four under `Staying out`; the line above the files reads `Nothing goes in. Put a file in with space.`; the bar's `⏎` slot reads `put a file in first`.
 === 120x40 ===
- committing to main
+ ◆ api  ~/code/api  committing to main
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │  fix toc                                                                                                        7/72 │
 │  More detail, if it needs it (optional)                                                                              │

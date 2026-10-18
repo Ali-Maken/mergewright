@@ -1077,7 +1077,7 @@ fn capture_fix_editor_names_the_banner() {
 # - The bottom row (the commit screen's bar, ease-pass/08) reads, from
 #   column 2, exactly `{SHELL_WORDS}` — whole at {columns} columns.
 # - `git commit` and `…` appear nowhere on the screen.
-# - The top row reads `committing to main · not pushed yet`; both files
+# - Top row `◆ api  ~/code/api  committing to main · not pushed yet`; both files
 #   are under `Going in`.
 # - The words are in the warning colour; colour is unverified (CLAUDE.md
 #   rule 5), so the words carry it here.

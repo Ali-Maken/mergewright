@@ -1,9 +1,9 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
 # crates/graft/tests/it/commit_screen/shots.rs, real git.
-# Judge by eye: `c` on three edits and a new `.env`. Cursor in the subject, placeholder `What did you change? (one line)`; header `committing to main`; files `Going in (3)` then `Staying out (1)`; the first file's changes on the right; bar `⏎ type a message first  ⇥ more detail …`.
+# Judge by eye: `c` on three edits and a new `.env`. Header `◆ api  ~/code/api  committing to main` (level with `origin/main`: no push words): the repository words the graph's top line starts with, then the branch. Cursor in the subject, placeholder `What did you change? (one line)`; files `Going in (3)` then `Staying out (1)`; the first file's changes on the right; bar `⏎ type a message first  ⇥ more detail …`.
 === 120x40 ===
- committing to main
+ ◆ api  ~/code/api  committing to main
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ ▸What did you change? (one line)                                                                                     │
 │  More detail, if it needs it (optional)                                                                              │

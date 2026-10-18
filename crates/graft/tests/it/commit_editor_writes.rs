@@ -366,11 +366,11 @@ fn subject_enter_header(columns: u16, rows: u16) -> String {
 # with the subject focused (m6-conflicts/51).
 #
 # Judge by eye:
-# - Frame 1: the commit screen (ease-pass/08); its bar begins
-#   `⏎ commit 1 file  ⇥ more detail`. The body is empty; `sample.txt` is
-#   under `Going in`.
-# - Frame 2: the screen is gone; the status line reads
-#   `✓ Committed 1 file to main.` and the graph's top row is
+# - Frame 1: the commit screen; header from `◆ api  ~/code/api`, bar from
+#   `⏎ commit 1 file  ⇥ more detail`; body empty, `sample.txt` going in.
+# - Frame 2: the screen gone; second-last row the done line `✓ Committed
+#   1 file to main.  u undo · P push`, last row the bar `u undo the commit,
+#   your edits come back · P push · c commit again`; the graph's top row
 #   `[◆ main] fix: x`, with nothing uncommitted.
 # - Colour is unverified (CLAUDE.md rule 5).
 #

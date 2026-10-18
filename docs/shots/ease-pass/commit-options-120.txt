@@ -3,7 +3,7 @@
 # crates/graft/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: `⌃S`, then `Skip the commit hooks` from `⌃P`: no option row anywhere; the header ends `· signing off · skipping hooks`.
 === 120x40 ===
- committing to main · signing off · skipping hooks
+ ◆ api  ~/code/api  committing to main · signing off · skipping hooks
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ ▸fix toc                                                                                                        7/72 │
 │  More detail, if it needs it (optional)                                                                              │

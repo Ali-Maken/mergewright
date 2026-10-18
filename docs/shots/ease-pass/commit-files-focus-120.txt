@@ -3,7 +3,7 @@
 # crates/graft/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: `fix toc` typed, `⇥ ⇥`: the file list has focus; bar `space leave it out  j/k move  ⏎ commit  esc back to the message`.
 === 120x40 ===
- committing to main
+ ◆ api  ~/code/api  committing to main
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │  fix toc                                                                                                        7/72 │
 │  More detail, if it needs it (optional)                                                                              │
