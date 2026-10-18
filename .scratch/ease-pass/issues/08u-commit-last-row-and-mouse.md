@@ -1,6 +1,6 @@
 # 08u — commit fixes, part B2: the landing's last row, mouse, narrow bars
 
-Status: ready (split by the conductor from 08s, 2026-10-18; no new decision)
+Status: ready (split by the conductor from 08s, 2026-10-18; no new decision. Amended by the planner 2026-10-18 after 08t's NOTES: rulings below, one acceptance box added)
 Blocked by: 08t (same files: `view/frame`, captures), 06b-lanes-on-screen-and-header (holds graft-ui `graph_screen/layout.rs` and `mod.rs`, which M4 may need and M6 lowers)
 Build with: Opus (`builder-opus-xhigh`), as 08s.
 
@@ -13,5 +13,15 @@ Build with: Opus (`builder-opus-xhigh`), as 08s.
 
 Everything else is 08s's spec; read it first, plus its Step 1 answers.
 
+## Rulings on 08t's NOTES (planner, 2026-10-18) — what is and isn't 08u's
+Decision lines: `docs/design-notes/ease-pass.md`, paragraph "**Commit secrets and done-line follow-ups settled**".
+- **a (key files leak) and d (stale comment):** not 08u's files → `08v-mask-key-files.md`. 08u does not edit `mask.rs` or `mask_tests.rs`.
+- **Hunk headings masked (08t deviation):** accepted as built. Nothing to build.
+- **b (resolver `done ✓ · ▸` lines):** stay as they are. Nothing to build.
+- **c (m3 pty waiter) and the stale pty records / contact sheets:** go to **14 (acceptance)**, which re-walks after every product ticket has landed. 08u re-shoots only the in-process captures its own boxes name (08s's captures box); it does **not** run pty walks or regenerate the m3/m4/m6/m7/m8 contact sheets — its M4 would move those landings again.
+- **Out (08u):** `tests/it/m3_walk.rs`, `tests/it/m5_walk/*`, pty records under `docs/shots/m3`, `m4`, `m6/m6-*`, `m6/fix-band-*`, contact sheets.
+
 ## Acceptance
 Tick in **08s's file**, each naming its test: **M4**, **M5 + Q2**, **m4**, **m12**, **M6**, and the rest of the captures box.
+Plus, ticked here:
+- [ ] **Secrets stay masked through 08u's re-shoots:** after the last capture, `grep -rn 's3cr3t\|SECRET_VALUE' docs/shots` → empty, and `commit-secrets-120.txt` still reads `+ TOKEN=••••••••` (re-shot or not — say which). — `commit_screen::shots::capture_the_commit_screen` (its no-fixture-value assert) passes; grep in NOTES.

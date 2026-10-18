@@ -1,7 +1,7 @@
 # ease-acceptance — walk the three mocks in the real app
 
-Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17)
-Blocked by: all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c
+Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17; 2026-10-18 planner: the m3 pty waiter and the stale pty records / contact sheets from 08t's NOTES added — "Earlier milestones' records" below; 08u, 08v added to Blocked by)
+Blocked by: all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c, 06u, 08s–08v
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
 ease-vocabulary-rest (03b), vocabulary-fixes (03r), commit-what-goes-in, clash-reads, resolver-picks, merge-review-at-y (05b),
@@ -11,8 +11,9 @@ pixel-roles-and-tall-row, commit-screen, merge-preview, clash-screen-look, finis
 ## Read first
 - `docs/design-notes/ease-pass.md`: Promise, Journeys (including the `journeys` fence), Mock behaviours (G1–G14,
   C1–C15, M1–M19), New UI, Hard-to-reverse choices 2 and 3 (as amended 2026-10-17), Questions (1–17 answered a; the
-  later answers at :254).
+  later answers at :254); the paragraph "**Commit secrets and done-line follow-ups settled**" (2026-10-18).
 - `.scratch/ease-pass/issues/01r-roles-and-route-fixes.md`: "The rules, corrected" (R1–R3, Known limits).
+- `.scratch/ease-pass/issues/08s-commit-fixes.md`: NOTES (part B1 = 08t) → Questions c, Captures "Not re-shot", Broken vs unverified.
 - Each pass-2 spec's Acceptance captures list (file names only).
 - `TESTING.md`: the M8 acceptance section only, for its form. `scripts/m8-accept.sh` usage line;
   `scripts/contact-sheet.sh` usage; `crates/graft/MAP.md` entry for `m8_walk`.
@@ -89,6 +90,20 @@ In:
   - Captions file `docs/shots/ease-pass/ease-pass-contact-sheet-captions.tsv`: filename, what right looks like,
     matching mock path.
   - Sheet from `scripts/contact-sheet.sh --captions-order ease-pass docs/shots/ease-pass`.
+- **Earlier milestones' records** (08t NOTES; done here because this runs after every product ticket — 08u's M4 and
+  06u still move these frames, so re-walking earlier would be wasted). Test tree and records only:
+  - **The m3 pty waiter (08t question c):** `tests/it/m3_walk.rs:1018` waits for `nothing staged`, which the commit
+    screen no longer draws (only `graft-ui/src/context_menu.rs:246` holds it). Change the waiter to the refusal words
+    the in-process scenario `m3_walk::every_scenario::commit_refused_nothing_staged` asserts (read them there; the
+    candidates are `graft-ui/src/commit_editor/words.rs:44-46`). Unverified until the pty walk runs: run it, and report
+    `m3-05-commit-refused` timing out before the change (or say it didn't) and passing after.
+  - Re-walk with `MWR_UPDATE_SHOTS=1`: the m3, m4 and m6 pty walks (`scripts/pty-walk-m{3,4,6}.py` or their wrappers),
+    `scripts/m7-accept.sh`, `scripts/m8-accept.sh`. Regenerate with `scripts/contact-sheet.sh`: m3, m4, m6 (1-5 +
+    captions), m7 (1-2 + captions), m8-contact-sheet-2 (+ captions), ease-pass.
+  - Every re-shot record's diff against HEAD is listed in NOTES as one of: tick-first done line, 08u's landing row,
+    06b/06u lanes, other. **Other → stop and file it** to the owning ticket with file and line (rule 7); never
+    re-shoot over it.
+  - `docs/shots/m6/prototype-journeys*` stays as recorded: it is the prototype he tried, not the app.
 - `TESTING.md` "## Ease pass acceptance": per scenario, concrete words, never "looks correct". For example:
   - "cursor row has a second line starting with the author's name and ending with a 7-char hash";
   - "`lanes drawn: 5 of 8` at the top line's right end";
@@ -99,7 +114,8 @@ In:
 
   Every line where colour carries meaning says **colour: unverified** (rule 5).
 
-Out: fixing what fails. File it back to the owning ticket with file and line (rule 7).
+Out: fixing what fails (except the m3 waiter above, a test-tree line). File it back to the owning ticket with file and
+line (rule 7).
 
 ## Signatures
 ```rust
@@ -116,7 +132,8 @@ Captures, perf output and raw pty streams go to files. The builder reads summary
 capture into the report.
 
 ## Touches
-`TESTING.md`, `scripts/`, `docs/shots/ease-pass/`, the app's test tree. No product code.
+`TESTING.md`, `scripts/`, `docs/shots/ease-pass/`, `docs/shots/{m3,m4,m6,m7,m8}` records and sheets, the app's test
+tree (`tests/it/m3_walk.rs` waiter). No product code.
 
 ## Acceptance
 - [ ] `scripts/ease-accept.sh` exits 0 and prints 9 journey lines with walked/allowed counts, including exactly
@@ -129,10 +146,18 @@ capture into the report.
 - [ ] The `TESTING.md` section is present, with one entry per capture and colour marked unverified.
 - [ ] Pixel summary lines quoted from `docs/perf/ease-pixel.txt`, or the gap recorded in `KNOWN_GAPS.md` as
   **unverified**.
+- [ ] **m3 waiter:** the m3 pty walk passes `m3-05-commit-refused` waiting on the in-process scenario's refusal words
+  (name them); before/after result in NOTES. — the m3 pty walk's summary line for that scenario.
+- [ ] **Earlier records current:** every m3/m4/m6/m7/m8 walk named above exits 0 with `MWR_UPDATE_SHOTS=1`; each
+  regenerated sheet assembles with no `NOT RECORDED`; `grep -rn ' ✓ ·\|✓ ·' docs/shots` finds no done line in the old
+  shape (resolver `done ✓ · ▸` rows and `files · all done ✓` strips excepted — they are not done lines); every diff
+  classified in NOTES, none "other". — each walk's exit line; the grep in NOTES.
 - [ ] Each tick names its test.
 
 ## Gates
-fmt, clippy `-D warnings`, nextest, `cargo test --doc`, all workspace-wide; plus `scripts/ease-accept.sh`.
+fmt, clippy `-D warnings`, nextest, `cargo test --doc`, all workspace-wide; plus `scripts/ease-accept.sh`, and the
+earlier milestones' walks above.
 
 ## Size
-Large (~75k). If it overruns, split by screen (main / commit / merge).
+Large (~75k), plus ~15k for the earlier records. If it overruns, split the earlier records off first (they need no
+judgement against the mocks), then by screen (main / commit / merge).
