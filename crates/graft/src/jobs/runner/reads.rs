@@ -271,8 +271,9 @@ impl<S: JobEvents> JobRunner<S> {
     }
 
     /// Reads every change's line counts for the commit screen, under an id
-    /// `update` chose (ease-pass/08).
-    pub(super) fn read_commit_files(&self, id: JobId) {
+    /// `update` chose (ease-pass/08); `staged_parts` counted index against
+    /// `HEAD` (08s M3).
+    pub(super) fn read_commit_files(&self, id: JobId, staged_parts: Vec<std::path::PathBuf>) {
         let repos = Arc::clone(&self.repos);
         self.queue_as(id, Some(Task::ReadCommitFiles), move |_| {
             Box::new(move |cancel: &Cancel| {
@@ -280,7 +281,9 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::CommitFiles(crate::jobs::kinds::read_commit_files(
-                    &repos, cancel,
+                    &repos,
+                    &staged_parts,
+                    cancel,
                 )))
             })
         });

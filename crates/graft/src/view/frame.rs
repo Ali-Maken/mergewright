@@ -34,25 +34,28 @@ use super::status::status_view;
 
 pub(crate) mod bars;
 mod boxes;
+mod commit_screen;
 mod conflicts;
 mod layout;
+mod notices;
 mod overlays;
 
 // Each child reaches its siblings, and these files' own imports, through
 // `use super::*`; what is named here is what more than one of them uses.
 use self::bars::{
-    bar_rows, draw_box_bars, draw_status_or_hints, draw_tab_banner, draw_tab_hints, draw_tab_strip,
-    first_launch_line, footer_notice,
+    bar_rows, config_notice, draw_box_bars, draw_status_or_hints, draw_tab_banner, draw_tab_hints,
+    draw_tab_strip,
 };
 use self::boxes::{
-    draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_over_graph, draw_palette,
-    draw_preview, row_columns,
+    draw_context_menu, draw_modal_boxes, draw_over_graph, draw_palette, draw_preview, row_columns,
 };
+use self::commit_screen::draw_commit_editor;
 use self::conflicts::{draw_finish, draw_resolver};
 use self::layout::{
     pixels_above_overlays, render_graph_screen, render_graph_with_detail, split_for_detail,
     tab_banner_area,
 };
+use self::notices::{first_launch_line, footer_notice};
 use self::overlays::{draw_journal, draw_map, draw_place, draw_rewrite, draw_stash};
 
 pub(super) use self::bars::banner_lines;

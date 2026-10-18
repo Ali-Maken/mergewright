@@ -97,7 +97,6 @@
 406 crates/graft-term/src/iterm2.rs
 881 crates/graft-term/src/kitty/tests.rs
 677 crates/graft-ui/src/blame/tests.rs
-412 crates/graft-ui/src/commit_editor/tests.rs
 667 crates/graft-ui/src/confirm.rs
 540 crates/graft-ui/src/conflict_resolver/files/tests.rs
 775 crates/graft-ui/src/conflict_resolver/tests.rs
@@ -152,8 +151,6 @@
 537 crates/graft/src/update/banner/tests/resume_words.rs
 552 crates/graft/src/update/clash.rs
 892 crates/graft/src/update/clash/tests.rs
-489 crates/graft/src/update/commit_editor.rs
-483 crates/graft/src/update/commit_editor/screen_tests.rs
 1190 crates/graft/src/update/commit_editor/tests.rs
 878 crates/graft/src/update/confirm.rs
 1535 crates/graft/src/update/context_menu/tests.rs
@@ -166,8 +163,8 @@
 412 crates/graft/src/update/detail/state.rs
 1023 crates/graft/src/update/detail/tests.rs
 576 crates/graft/src/update/drag/tests.rs
-603 crates/graft/src/update/events.rs
-487 crates/graft/src/update/events/command.rs
+576 crates/graft/src/update/events.rs
+457 crates/graft/src/update/events/command.rs
 896 crates/graft/src/update/finish/tests.rs
 511 crates/graft/src/update/geometry.rs
 1215 crates/graft/src/update/journal/tests.rs
@@ -176,7 +173,6 @@
 403 crates/graft/src/update/map.rs
 468 crates/graft/src/update/name_prompt.rs
 488 crates/graft/src/update/name_prompt/tests.rs
-430 crates/graft/src/update/operate/outcome.rs
 1501 crates/graft/src/update/operate/tests.rs
 408 crates/graft/src/update/palette/mod.rs
 428 crates/graft/src/update/palette/tests.rs
@@ -211,8 +207,7 @@
 441 crates/graft/src/update/undo/tests/set_aside.rs
 407 crates/graft/src/view/detail.rs
 428 crates/graft/src/view/entries.rs
-418 crates/graft/src/view/frame/bars.rs
-462 crates/graft/src/view/frame/boxes.rs
+439 crates/graft/src/view/frame/boxes.rs
 694 crates/graft/src/view/frame/tests.rs
 720 crates/graft/src/view/journal/tests.rs
 732 crates/graft/src/view/radar.rs

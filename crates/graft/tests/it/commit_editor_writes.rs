@@ -207,7 +207,7 @@ fn make_the_commit(app: &App, repo: &Path, state: &AppState) -> AppState {
         state.commit_editor.is_none(),
         "the editor closes on a commit that landed",
     );
-    assert!(state.commit_draft.is_none(), "and the draft goes with it");
+    assert!(state.drafts.commit.is_none(), "and the draft goes with it");
     assert!(
         matches!(state.status, Status::Done { .. }),
         "{:?}",

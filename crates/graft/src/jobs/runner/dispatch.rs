@@ -50,7 +50,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::BuildMap(id, req) => self.build_map(id, req),
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
             Command::ReadHeadMessage(id) => self.read_head_message(id),
-            Command::ReadCommitFiles(id) => self.read_commit_files(id),
+            Command::ReadCommitFiles(id, staged_parts) => self.read_commit_files(id, staged_parts),
             Command::PlanRewrite { id, request, head } => self.plan_rewrite(id, request, head),
             Command::OpenRewrite { id, req } => self.open_rewrite(id, req),
             Command::ResolveRowTags(id, offsets) => self.resolve_row_tags(id, offsets),

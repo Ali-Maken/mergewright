@@ -1,6 +1,6 @@
 # 08s — commit screen fixes (review ease-pass-08: Majors 1–7, minors 1–8, 11, 12 in part; Q1, Q2; absorbs 08r)
 
-Status: ready
+Status: partial — Part A built and committed (`ease-pass-08s: part A …`); Part B not started, handoff in NOTES. M6 open (two rows are 06b's).
 Blocked by: 05c-merge-review-rest (its wave owns `update/state.rs`, `update/events.rs`, `jobs/kinds.rs` and edits the clash-stop landing in `update::operate`; all edited here), 06r-fold-fixes (shared registries: `docs/man/mwr.1`, `TESTING.md`, `docs/design/02-keymap.md`, `over_400.txt`, re-shot captures). **Conductor:** 06s's Blocked by gains 08s (`update/state.rs`, `update/events.rs` lowered here); 06b also edits graft-ui `graph_screen/layout.rs` (M4 may too), so order them.
 Build with: Opus (`builder-opus-xhigh`) — every decision is made below and pinned by a state, real-git or render test; no cross-crate signature for another ticket; no correctness that hides from the tests. Not Fable.
 Needs: from 08 (built): `Draft`, `LastCommit`, `include_of`, `landed_bar`, `CommitEditor::from_draft`, `commit_landed`, `CommitScreenView`, `CommitFileRow`, `Summary`, `CommitHeader`, `push_words`, `whole_parts`. From 04/04r (graft-ops): `Include`, `FileChoice`, `Part` (`Part::StagedPart`), `first_choice`, `looks_like_secrets`, `commit_chosen`. graft-git `DiffSpec`. graft-ui `RowBar::{JustCommitted, JustMerged}`, `fit_status_line`.
@@ -131,31 +131,31 @@ pub fn status_row(done: bool, context: &HintContext) -> StatusRow;
 
 ## Acceptance
 Each tick names its test inline (names are proposals; a rename is said in NOTES).
-- [ ] **M1 (a):** `c`, `half`, `esc`; `a`, answer, `esc`; `c` → subject `half`. — unit `draft_tests::a_peek_at_the_last_commit_keeps_the_c_words`
-- [ ] **M1 (a) reverse:** `a`, edit to `better`, `esc`; `c`, `esc`; `a` → `better`. `a`, `esc` unchanged → `drafts.amend` `None`. — unit `…::an_empty_c_screen_keeps_the_amend_words`, `…::an_unchanged_amend_keeps_no_words`
-- [ ] **M1 older HEAD:** amend words kept, a commit lands, `a` → those words, header `amending <new sha7>`, status row `your words from amending <old sha7>`. — unit `…::amend_words_for_an_older_head_come_back_on_a_and_say_so`
-- [ ] **M1 (b):** a kept `c` draft; a stage write lands through `update` → `drafts` equal. Screen open, a fetch lands → screen open, words equal. Screen's own commit lands → screen closed, `drafts.commit` `None`. — unit `…::another_write_landing_keeps_the_words`, `…::another_write_landing_keeps_the_open_screen`, `…::the_screens_own_commit_closes_it_and_keeps_nothing`
-- [ ] **Q9 + give_back:** `u` after a commit with `drafts.commit` holding `half` → next `c`: subject `half`, body holds the commit's subject and body after a blank line. — unit `…::undo_gives_back_without_replacing_typed_words`; it `commit_screen::u_after_the_commit_gives_its_message_to_the_next_c` passes
-- [ ] **m1:** `u`, `U` → `drafts.commit` `None`; `u`, edit the draft, `U` → kept. — unit `…::redo_takes_back_only_the_unchanged_returned_words`
-- [ ] **m2 + m11:** incomplete undo that moved the ref off → words given back, `last_commit` `None`; a ref equal before and after → `last_commit` kept, nothing given. — unit `…::an_incomplete_undo_gives_the_words_back`, `landing::tests::undo_landed_needs_the_ref_moved_off_the_commit`
-- [ ] **M2:** real git, `c`, type `fix toc`, `⌃P` amend, `⏎` → HEAD's parent unchanged, HEAD's message `fix toc`, its tree holds the 3 shown files, `.env` out; header read before `⏎` is `amending <sha7> <subject>`, summary ends `into the last commit.` `a` + amend off + `⏎` → a new commit of the rows shown. — it `commit_screen::amend_from_ctrl_p_amends_with_the_rows_shown`, `…::amend_turned_off_commits_the_rows_shown`; unit `include_of_table` (every `WayIn` × `amend` × `touched`)
-- [ ] **M3:** real git, `src/a.rs` with one staged and one unstaged added line → row `+1` and ` part`, summary `+1 −0`, diff holds the staged line only and starts with the `only the part you staged…` line; `⏎` → HEAD's diff for `src/a.rs` is that line; the unstaged line still in the file. — it `commit_screen::a_partly_staged_file_shows_and_commits_only_its_staged_part`; unit `…::a_staged_part_reads_the_staged_section`; graft-ui `a_staged_part_row_says_part`
-- [ ] **Q1 lines:** `mask_secret_line`: `PAYMENT_KEY=abc123` → `PAYMENT_KEY=••••••••`; `token: abc` → `token:••••••••` (the key and separator kept, the rest masked); `a=b=c` → `a=••••••••`; `abc123` → `••••••••`; `` → `••••••••`; a 200-char value → 8 bullets. — unit `view::commit_editor::mask::tests::a_secret_line_keeps_its_key_and_hides_its_value`
-- [ ] **Q1 screen:** real git, `.env` = `TOKEN=s3cr3t-value-q1`; `c`, cursor on `.env` → its diff line reads `+ TOKEN=••••••••`; `space` puts it in → still masked; `CommitScreenView` (every `SanitizedText` in it, by a `Debug` dump) holds no `s3cr3t`; a non-secrets file's diff unmasked. — it `commit_screen::a_secrets_files_values_never_reach_the_screen`; unit `…::a_secrets_row_is_masked_in_and_out`, `…::an_ordinary_file_is_not_masked`
-- [ ] **Q1 captures:** `commit-secrets-120.txt` re-shot shows `TOKEN=••••••••`; `git grep -n 's3cr3t' docs/shots` and the old raw value `git grep -n 'TOKEN=x' docs/shots` both empty. — `commit_screen::shots::capture_the_commit_screen` asserts the written file lacks the fixture value; grep in NOTES
-- [ ] **m3 + m10:** a re-read with the same set of files → a new counts read asked, the old one cancelled, the cursor diff re-asked. — unit `…::a_reread_while_open_reads_counts_and_diff_again`
-- [ ] **08r:** a commit's done line renders `✓ Committed 3 files to main.  u undo · P push`; every `Done` producer renders tick first through one renderer. — graft-ui `the_done_line_leads_with_its_tick`; one table test over the producers or the grep proving one renderer (NOTES)
-- [ ] **M4:** after a commit at 120×40: second-last row the done line, last row `u undo the commit, your edits come back · P push · c commit again`; a key that clears the status → bar alone, graph one row taller; a `Done` off a landing bar → in the bar's row. — graft-ui `status_row_is_above_only_for_a_landing_bar`; graft `view::frame::tests::a_commit_landing_draws_the_done_line_above_its_bar`
-- [ ] **M5 + Q2:** click a file row → Files focus, cursor there, its diff asked; click a heading → nothing; click subject/body → focus there; left click on a graph row's place, right click, drag, wheel → graph cursor, menu and drag state unchanged. Palette open → it takes the click. — unit `…::mouse::a_click_on_a_file_row_picks_it`, `…::mouse::clicks_in_the_message_move_focus`, `…::mouse::nothing_reaches_the_graph_under_the_screen`, `…::mouse::the_palette_over_the_screen_takes_the_click`; graft-ui `file_at_skips_headings_and_follows_the_scroll`
-- [ ] **M6:** `commit_editor.rs` < 400, row gone; the seven rows at or under their pre-08 values; no row raised or added. — it `file_size` ratchet; `wc -l` + `git diff over_400.txt` in NOTES
-- [ ] **M7:** `head_message_arrived` guard-and-dispatch, nesting ≤3. — by reading, line count in NOTES; clippy `cognitive_complexity` clean
-- [ ] **m4:** at 90 columns the subject bar has no `↑ ↓` and keeps `esc cancel, your message is kept`; at a width fitting two parts: `⏎` and `esc`. — graft-ui `the_narrow_bar_drops_by_rank`
-- [ ] **m6:** `undoing_something_else_leaves_the_draft_alone` seeds `Some`; `another_write_landing_clears_the_last_commit` lands a stage `Operated` through `update`. — those two tests (diff in NOTES)
-- [ ] **m7:** a clean and an incomplete commit landing run the same hooks; `recover::tag_rows` called only in `after_landing`. — unit `…::every_landing_path_runs_the_same_hooks`; grep count in NOTES
-- [ ] **m8:** `TESTING.md` :1419-1421, :1473-1484, :1537 describe `⏎` from the subject and today's refusal words (as the walk's tests assert; name them); 02-keymap :527 as above; `press_the_button` renamed for what it does; if `keymap/table/commit_editor.rs`'s `Tab` description names options, reworded and the man page regenerated (diff in NOTES). — `git grep -n '\[ Commit \]' TESTING.md docs/design` empty
-- [ ] **m12:** header at 120 reads `<repo words>  committing to main  1 commit to push`-shaped (the repo words as the graph's top line); at 80 the path is cut first. — graft-ui `the_header_names_the_repository_first`
-- [ ] **m5:** `commit-files-focus-120.txt` caption reads `⏎ commit`. — grep in NOTES
-- [ ] Captures (look unjudged, rule 6; colour unverified, rule 5), each with its "what right looks like" line: re-shot `commit-landed-120.txt` (two rows as M4), `commit-open-120.txt` (repo words), `commit-90.txt` (narrow bar), `commit-secrets-120.txt` (masked); new `docs/shots/ease-pass/commit-partial-120.txt` (M3), `commit-amend-from-c-120.txt` (M2 header and summary); every done-line capture re-shot (list). — `commit_screen::shots::capture_the_commit_screen` and each writer named in NOTES
+- [x] **M1 (a):** `c`, `half`, `esc`; `a`, answer, `esc`; `c` → subject `half`. — unit `draft_tests::a_peek_at_the_last_commit_keeps_the_c_words` — **ticked:** `update::commit_editor::draft_tests::a_peek_at_the_last_commit_keeps_the_c_words` passes
+- [x] **M1 (a) reverse:** `a`, edit to `better`, `esc`; `c`, `esc`; `a` → `better`. `a`, `esc` unchanged → `drafts.amend` `None`. — unit `…::an_empty_c_screen_keeps_the_amend_words`, `…::an_unchanged_amend_keeps_no_words` — **ticked:** `draft_tests::an_empty_c_screen_keeps_the_amend_words`, `draft_tests::an_unchanged_amend_keeps_no_words` pass
+- [x] **M1 older HEAD:** amend words kept, a commit lands, `a` → those words, header `amending <new sha7>`, status row `your words from amending <old sha7>`. — unit `…::amend_words_for_an_older_head_come_back_on_a_and_say_so` — **ticked:** `draft_tests::amend_words_for_an_older_head_come_back_on_a_and_say_so` passes (header `0808080 next`, status `your words from amending 0707070`)
+- [x] **M1 (b):** a kept `c` draft; a stage write lands through `update` → `drafts` equal. Screen open, a fetch lands → screen open, words equal. Screen's own commit lands → screen closed, `drafts.commit` `None`. — unit `…::another_write_landing_keeps_the_words`, `…::another_write_landing_keeps_the_open_screen`, `…::the_screens_own_commit_closes_it_and_keeps_nothing` — **ticked:** `draft_tests::another_write_landing_keeps_the_words`, `draft_tests::another_write_landing_keeps_the_open_screen`, `draft_tests::the_screens_own_commit_closes_it_and_keeps_nothing` pass
+- [x] **Q9 + give_back:** `u` after a commit with `drafts.commit` holding `half` → next `c`: subject `half`, body holds the commit's subject and body after a blank line. — unit `…::undo_gives_back_without_replacing_typed_words`; it `commit_screen::u_after_the_commit_gives_its_message_to_the_next_c` passes — **ticked:** `landing_tests::undo_gives_back_without_replacing_typed_words` and it `commit_screen::u_after_the_commit_gives_its_message_to_the_next_c` pass
+- [x] **m1:** `u`, `U` → `drafts.commit` `None`; `u`, edit the draft, `U` → kept. — unit `…::redo_takes_back_only_the_unchanged_returned_words` — **ticked:** `landing_tests::redo_takes_back_only_the_unchanged_returned_words` passes
+- [x] **m2 + m11:** incomplete undo that moved the ref off → words given back, `last_commit` `None`; a ref equal before and after → `last_commit` kept, nothing given. — unit `…::an_incomplete_undo_gives_the_words_back`, `landing::tests::undo_landed_needs_the_ref_moved_off_the_commit` — **ticked:** `landing_tests::an_incomplete_undo_gives_the_words_back`, `landing::tests::undo_landed_needs_the_ref_moved_off_the_commit` pass
+- [x] **M2:** real git, `c`, type `fix toc`, `⌃P` amend, `⏎` → HEAD's parent unchanged, HEAD's message `fix toc`, its tree holds the 3 shown files, `.env` out; header read before `⏎` is `amending <sha7> <subject>`, summary ends `into the last commit.` `a` + amend off + `⏎` → a new commit of the rows shown. — it `commit_screen::amend_from_ctrl_p_amends_with_the_rows_shown`, `…::amend_turned_off_commits_the_rows_shown`; unit `include_of_table` (every `WayIn` × `amend` × `touched`) — **ticked:** it `commit_screen::rows::amend_from_ctrl_p_amends_with_the_rows_shown`, `commit_screen::rows::amend_turned_off_commits_the_rows_shown`, unit `commit_editor::files::tests::include_of_table` (8 literal rows) pass
+- [x] **M3:** real git, `src/a.rs` with one staged and one unstaged added line → row `+1` and ` part`, summary `+1 −0`, diff holds the staged line only and starts with the `only the part you staged…` line; `⏎` → HEAD's diff for `src/a.rs` is that line; the unstaged line still in the file. — it `commit_screen::a_partly_staged_file_shows_and_commits_only_its_staged_part`; unit `…::a_staged_part_reads_the_staged_section`; graft-ui `a_staged_part_row_says_part` — **ticked:** it `commit_screen::rows::a_partly_staged_file_shows_and_commits_only_its_staged_part`, unit `screen_tests::a_staged_part_reads_the_staged_section`, graft-ui `commit_editor::part_tests::a_staged_part_row_says_part` (note level with the first heading: the diff's top line) pass
+- [ ] **Q1 lines:** (Part B — not built) `mask_secret_line`: `PAYMENT_KEY=abc123` → `PAYMENT_KEY=••••••••`; `token: abc` → `token:••••••••` (the key and separator kept, the rest masked); `a=b=c` → `a=••••••••`; `abc123` → `••••••••`; `` → `••••••••`; a 200-char value → 8 bullets. — unit `view::commit_editor::mask::tests::a_secret_line_keeps_its_key_and_hides_its_value`
+- [ ] **Q1 screen:** (Part B — not built) real git, `.env` = `TOKEN=s3cr3t-value-q1`; `c`, cursor on `.env` → its diff line reads `+ TOKEN=••••••••`; `space` puts it in → still masked; `CommitScreenView` (every `SanitizedText` in it, by a `Debug` dump) holds no `s3cr3t`; a non-secrets file's diff unmasked. — it `commit_screen::a_secrets_files_values_never_reach_the_screen`; unit `…::a_secrets_row_is_masked_in_and_out`, `…::an_ordinary_file_is_not_masked`
+- [ ] **Q1 captures:** (Part B — not built) `commit-secrets-120.txt` re-shot shows `TOKEN=••••••••`; `git grep -n 's3cr3t' docs/shots` and the old raw value `git grep -n 'TOKEN=x' docs/shots` both empty. — `commit_screen::shots::capture_the_commit_screen` asserts the written file lacks the fixture value; grep in NOTES
+- [x] **m3 + m10:** a re-read with the same set of files → a new counts read asked, the old one cancelled, the cursor diff re-asked. — unit `…::a_reread_while_open_reads_counts_and_diff_again` — **ticked:** `screen_tests::a_reread_while_open_reads_counts_and_diff_again` passes
+- [ ] **08r:** (Part B — not built) a commit's done line renders `✓ Committed 3 files to main.  u undo · P push`; every `Done` producer renders tick first through one renderer. — graft-ui `the_done_line_leads_with_its_tick`; one table test over the producers or the grep proving one renderer (NOTES)
+- [ ] **M4:** (Part B — not built) after a commit at 120×40: second-last row the done line, last row `u undo the commit, your edits come back · P push · c commit again`; a key that clears the status → bar alone, graph one row taller; a `Done` off a landing bar → in the bar's row. — graft-ui `status_row_is_above_only_for_a_landing_bar`; graft `view::frame::tests::a_commit_landing_draws_the_done_line_above_its_bar`
+- [ ] **M5 + Q2:** (Part B — not built) click a file row → Files focus, cursor there, its diff asked; click a heading → nothing; click subject/body → focus there; left click on a graph row's place, right click, drag, wheel → graph cursor, menu and drag state unchanged. Palette open → it takes the click. — unit `…::mouse::a_click_on_a_file_row_picks_it`, `…::mouse::clicks_in_the_message_move_focus`, `…::mouse::nothing_reaches_the_graph_under_the_screen`, `…::mouse::the_palette_over_the_screen_takes_the_click`; graft-ui `file_at_skips_headings_and_follows_the_scroll`
+- [ ] **M6:** (open: 6 of the 8 rows done, see NOTES; `graph_screen/layout.rs` 653 and `mod.rs` 578 are held by 06b, not lowered) `commit_editor.rs` < 400, row gone; the seven rows at or under their pre-08 values; no row raised or added. — it `file_size` ratchet; `wc -l` + `git diff over_400.txt` in NOTES
+- [x] **M7:** `head_message_arrived` guard-and-dispatch, nesting ≤3. — by reading, line count in NOTES; clippy `cognitive_complexity` clean — **ticked:** `open.rs:76-113`, 38 lines, guards at depth 1, nothing deeper than the `match` arm (depth 2); clippy `-D warnings` with `cognitive_complexity = "warn"` (root `Cargo.toml:59`) clean
+- [ ] **m4:** (Part B — not built) at 90 columns the subject bar has no `↑ ↓` and keeps `esc cancel, your message is kept`; at a width fitting two parts: `⏎` and `esc`. — graft-ui `the_narrow_bar_drops_by_rank`
+- [x] **m6:** `undoing_something_else_leaves_the_draft_alone` seeds `Some`; `another_write_landing_clears_the_last_commit` lands a stage `Operated` through `update`. — those two tests (diff in NOTES) — **ticked:** `landing_tests::undoing_something_else_leaves_the_draft_alone`, `landing_tests::another_write_landing_clears_the_last_commit` pass
+- [x] **m7:** a clean and an incomplete commit landing run the same hooks; `recover::tag_rows` called only in `after_landing`. — unit `…::every_landing_path_runs_the_same_hooks`; grep count in NOTES — **ticked:** `draft_tests::every_landing_path_runs_the_same_hooks` passes (Done, Incomplete, StagingNotKept)
+- [ ] **m8:** (Part B — not built) `TESTING.md` :1419-1421, :1473-1484, :1537 describe `⏎` from the subject and today's refusal words (as the walk's tests assert; name them); 02-keymap :527 as above; `press_the_button` renamed for what it does; if `keymap/table/commit_editor.rs`'s `Tab` description names options, reworded and the man page regenerated (diff in NOTES). — `git grep -n '\[ Commit \]' TESTING.md docs/design` empty
+- [ ] **m12:** (Part B — not built) header at 120 reads `<repo words>  committing to main  1 commit to push`-shaped (the repo words as the graph's top line); at 80 the path is cut first. — graft-ui `the_header_names_the_repository_first`
+- [ ] **m5:** (Part B — not built) `commit-files-focus-120.txt` caption reads `⏎ commit`. — grep in NOTES
+- [ ] (Part B — not built) Captures (look unjudged, rule 6; colour unverified, rule 5), each with its "what right looks like" line: re-shot `commit-landed-120.txt` (two rows as M4), `commit-open-120.txt` (repo words), `commit-90.txt` (narrow bar), `commit-secrets-120.txt` (masked); new `docs/shots/ease-pass/commit-partial-120.txt` (M3), `commit-amend-from-c-120.txt` (M2 header and summary); every done-line capture re-shot (list). — `commit_screen::shots::capture_the_commit_screen` and each writer named in NOTES
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
@@ -165,3 +165,134 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## For KNOWN_GAPS (conductor; ready rows in the planner's scratch file)
 m9 headroom, m10 per-file failure, m12 unverified items, secrets shown outside the commit screen, wheel on the screen.
+
+## NOTES (builder, part A — 2026-10-18)
+
+**Compacted twice** mid-ticket. Part A is built and committed. Part B is not started; the handoff is below. **No scout:** the ticket says "No new scout: the review names every line", and Step 1 stands in for one.
+
+### Step 1 answers (line numbers at base `b7168e5e`)
+1. **`StagedPart` commits the index's blob.** `crates/graft-ops/src/operation/commit.rs:62-81, :91-95, :114-116`; test `commit_chosen.rs:145`. Not blocked.
+2. **The screen stays open while its write runs.** With `state.operating` set, `update/commit_editor/keys.rs:23-31` takes every key (`Esc` stops the write); `paste` at :191 does the same. It closes only in `close()`, in `committed()`, and at the reword take. Not blocked.
+3. **Done renderer and last row.**
+   - One renderer: `view/status.rs:62 done_line`. Two draw sites: `view/frame/bars.rs:314` (now `view/frame/notices.rs:49`) and `view/stash.rs:101`.
+   - The graph's last-row sharing (M4) is not traced. That is Part B.
+4. **Mouse dispatch order** (`update/mouse.rs`):
+   1. palette at :28
+   2. the modal chain at :42-47 (`finish_mouse`, then `rewrite_mouse`)
+   3. place at :52
+   4. resolver at :58
+   5. picker at :65
+   6. preview at :68
+   7. context menu at :74
+   8. badge drag at :84
+   9. the graph arms at :88-99 (wheel, left, right, divider drag, hover)
+
+   The commit screen is in none of them, so its clicks fall through to the graph (Q2). Plan: add `|| super::commit_editor::mouse(…)` to the chain at :42.
+5. **The premise is wrong.** The diff text is sanitised in the job: `jobs/detail/assemble.rs:170-181 line_text`. The commit screen receives `(view, raw FileDiff)` at `update/answer.rs:87-92`, already sanitised. Q1's mask therefore goes in at arrival, in `update/commit_editor/files.rs diff_arrived`, when the file is a secrets choice. `AppState` never holds the raw value past that point.
+
+### Built (part A)
+- **M1 — two draft slots.**
+  - `state.commit_draft` becomes `state.drafts: Drafts { commit, amend, given_back }`, each `Option<Box<…>>`. **For 06s/06t:** this is the new home of `commit_draft`; the field stays in place at `state.rs:255-259`, net 0 lines.
+  - `CommitEditor` gains `way_in: WayIn` and `prefilled`. `close()` keeps words only when `words_typed()`.
+- **M2.** `include_of(choices, way_in, amend, touched)` returns `Staged` only for `Amend && amend && !touched`. `message_only()` drives both the refusal and the summary.
+- **M3.**
+  - `shown_section(&Part)` picks what counts and diffs read: `ReadCommitFiles(id, staged_parts)` counts those paths from the index (`jobs/kinds.rs`), and the diff asks for `section: Some(Staged)`.
+  - The row's ` part` shows only when the file also has an unstaged rest, because `first_choice` marks every staged file `StagedPart` (deviation).
+  - The note is the diff pane's top line.
+- **M7.** `open.rs`: `head_message_arrived` (guard-and-dispatch, 38 lines), `amend_screen`, `resume_amend_draft`. The older-`HEAD` words note is `Status::sticky`.
+- **m1, m2, m11, Q9.**
+  - `give_back` keeps typed words first and puts the commit's text in the body.
+  - `redo_landed` / `redo_took_back` take back only unchanged words; this needed the `Drafts.given_back` field (deviation).
+  - `undo_landed` acts only when a ref moved off the commit. Otherwise it keeps `last_commit` (m11).
+  - Both `Undone` arms call `commit_words` (`undo/answers.rs:155, :180, :224`).
+- **m7.** `operate/outcome/after_landing.rs after_landing(state, launched, applied, lands, next_id) -> (Vec<Command>, Option<Status>)`.
+  - The signature is wider than the ticket's.
+  - It lives under `outcome/`, because `operate.rs` is at exactly 400.
+  - Grep count: `tag_rows(` 1, `commit_landed(` 1, `amend_into::landed(` 1, all in `after_landing.rs:27-29`.
+  - The incomplete and staging-not-kept paths drop the done words with `_commit_words` and a comment. The staging-not-kept path now also runs `commit_landed` (it did not before).
+- **m3, m10.** `tree_read` always resets the diff and re-asks the counts and the diff. `ask_counts` cancels the old count read.
+- **m6.**
+  - `undoing_something_else_leaves_the_draft_alone` seeds `drafts.commit = Some("half")` and asserts the draft is unchanged. It no longer asserts `last_commit` is `None`: under m11 it is kept.
+  - `another_write_landing_clears_the_last_commit` lands `Operated::Done` for a Stage through `update`.
+- **M6 sizes** (`wc -l`):
+
+  | File | Before | Now | Row in `over_400.txt` |
+  |---|---|---|---|
+  | `update/commit_editor.rs` | 489 | 331 | removed |
+  | `commit_editor/screen_tests.rs` | 483 | 368 | removed |
+  | graft-ui `commit_editor/tests.rs` | 412 | 280 | removed |
+  | `operate/outcome.rs` | 430 | 388 | removed |
+  | `view/frame/bars.rs` | 418 | 331 | removed |
+  | `update/events.rs` | 603 | 576 | lowered |
+  | `events/command.rs` | 487 | 457 | lowered |
+  | `view/frame/boxes.rs` | 462 | 439 | lowered |
+
+  - Rows were only removed or lowered; none was added.
+  - New modules:
+    - `events/{commit_graph_offer,take}.rs`
+    - `frame/notices.rs` (`footer_notice`, `first_launch_line`)
+    - `frame/commit_screen.rs`
+    - `commit_editor/{drafts,open,options}.rs` and `draft_tests.rs`, `landing_tests.rs`, `files/tests.rs`, `landing/tests.rs`
+    - graft-ui `commit_editor/{fixture,part_tests}.rs`
+  - **Not done:** graft-ui `graph_screen/layout.rs` (653, needs ≤650) and `mod.rs` (578, needs ≤573). 06b holds both files. The M6 box stays open.
+- **AppState** is 7968 bytes now, measured with a temporary `size_of` test that was then removed. Before it was about 8032: `Option<Draft>` (88) became `Drafts` (24). That figure is computed, not measured at base.
+
+### Deviations from the ticket
+- `Drafts.given_back` was added for m1.
+- `after_landing`'s signature and file are as above.
+- `part_only` needs an unstaged rest.
+- `include_of_table` lives in `files::tests`.
+- m11 keeps `last_commit` when no ref moved off the commit.
+- The edit-stop `Err` path keeps its sticky, and the guard order is unchanged.
+
+### TDD
+Part A was mostly written code-first, before the second compaction. Only `a_staged_part_row_says_part` was observed red. Every other test was written alongside the code and passed when first run, so the expected values come from the ticket's literals, not from the code.
+
+### Touches (how each was checked)
+- **Callers of `include_of`, `close()`, `committed()` and `landed()`:** grep. The old `landed()` is gone; `after_landing` is its only successor.
+- **The landing paths and the undo answers:** the three `Operated` paths are covered by `every_landing_path_runs_the_same_hooks`. `Product::Undone` has one arm (`update/answer.rs:208`), so the journal screen's undo takes the same path.
+- **08's tests**, all passing in the full run:
+
+  | Test | Change |
+  |---|---|
+  | `esc_keeps_subject_and_body_…` | moved verbatim to `draft_tests` |
+  | `an_amend_draft_resumes_on_a_not_on_c` | moved, the `drafts` rename, rewritten through the `amend_open` helper (same keys and answer), and one assert added (`Status::Ready`) |
+  | `u_after_the_commit_gives_its_message_to_the_next_c` | unchanged |
+  | `an_amend_names_its_commit_and_takes_the_index_until_space` | unchanged |
+  | `the_secrets_file_stays_out_marked_and_space_puts_it_in` | unchanged |
+  | graft-ui `the_secrets_files_diff_starts_with_why_it_is_left_out` | unchanged (moved with `tests.rs`'s fixture split) |
+  | `choosing_each_option_twice_returns_it_to_off` | unchanged |
+
+  The other rename edits: `update/commit_editor/tests.rs:716, :728`, `tests/it/commit_editor_writes.rs:210`, `tests/it/resolver/editor_words.rs:241, :245`.
+- **Journeys** `commit-all-subject` 3, `commit-with-body` 6, `commit-leave-first` 6: their tests (`screen_tests.rs:160-230`) are untouched by the diff and pass.
+- **Finish summary:** its tests pass in the full run.
+- **`over_400.txt`:** rows only removed or lowered (`git diff`). `file_size` passes.
+- **MAP.md:** rows updated for graft `update::commit_editor` and `update::events`, and for graft-ui `CommitFileRow`. `map_coverage` passes.
+- **`no_literal_keys`:** passes; the fixture's panic words were reworded.
+- **Captures:** `docs/shots/m3-commit-editor-{160x48,80x24,rejected}.txt` were regenerated (M3). They now show ` part` on `src/auth/token.rs` and the part note as the diff's top line. **Look unjudged (rule 6); colour unverified (rule 5).**
+
+### Gates (part A)
+- fmt and clippy `-D warnings`: clean.
+- nextest, workspace-wide: 6815/6817.
+  - The 2 failures were mine: a MAP line over 240 characters, and the fixture's `a test backend…` panic words.
+  - Both are fixed. A rerun of `map_*`, `no_literal_keys`, `file_size` and the part test passed (192/192).
+- `cargo test --doc`: passes.
+
+### Handoff: Part B (not started)
+Next step, Q1 first:
+- `view/commit_editor/mask.rs` gets `MASK` and `mask_secret_line`, with the unit table from the ticket.
+- In `files.rs diff_arrived`, when the cursor file's choice `looks_like_secrets`, map each Added/Removed/Context line's text to `sanitize_line(&mask_secret_line(text))` and clear its `words` and `syntax`.
+
+Then, in order:
+1. **08r:** `done_line` → `✓ <what>[ · <also>]  <keys>`, then re-shoot every capture matching `grep -rn '✓ ·\| ✓ ·' docs/shots crates/*/tests`.
+2. **M4:**
+   - graft-ui `hints/status_row.rs`: `RowBar::is_landing`, `StatusRow`, `status_row`. `hints/context.rs` is in the ratchet at 489.
+   - graft `view/frame`: the graph area loses a row while a landing bar and a Done line share it.
+   - If `graph_screen/layout.rs` is truly needed, report `blocked: needs layout.rs`.
+3. **M5/Q2:** a new `update/commit_editor/mouse.rs`; graft-ui `commit_layout` and `file_at`. Keep `mouse.rs` ≤400; it is at 399.
+4. **m4, m5, m8, m12**, then the captures.
+
+Gotchas:
+- The worktree guard refuses complex bash. Use the Edit tool or a JSON-pairs replace script.
+- The app crate's package is `mergewright`.
+- `JustMerged`: whether app code ever picks it is not checked yet.

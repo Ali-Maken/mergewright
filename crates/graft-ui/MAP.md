@@ -234,7 +234,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `previous` (fn) — the previous part, for `⇧⇥`.
 - `types` (fn) — whether the focus is a text field (`?` is typed there, not the palette).
 - `FileGroup` (enum) — `GoingIn` or `StayingOut`.
-- `CommitFileRow` (struct) — one file row: path, kind letter, group, line counts, secrets mark.
+- `CommitFileRow` (struct) — one file row: path, kind letter, group, line counts, secrets mark, `part_only` (only its staged part goes in: the row says ` part`, the files' foot says what stays).
 - `Onto` (enum) — where the commit goes: a new commit on a branch, or an amend of a commit.
 - `Summary` (enum) — the sentence above the files: what goes in (files, lines, onto, how many stay out) or nothing.
 - `Refusal` (enum) — why `⏎` would do nothing: `NoMessage`, `NoFile`.

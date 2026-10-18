@@ -67,7 +67,7 @@ fn every_field_spelled_out() -> AppState {
         name_prompt: None,
         drag: None,
         commit_editor: None,
-        commit_draft: None,
+        drafts: crate::update::commit_editor::Drafts::default(),
         in_progress: None,
         mergetool: None,
         banner_focus: false,

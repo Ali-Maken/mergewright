@@ -7,21 +7,8 @@ use graft_core::oid::Oid;
 use graft_ops::operation::{Include, Operation};
 use graft_ui::graph_screen::hints::RowBar;
 
-use super::{AppState, Status};
+use super::{AppState, Draft, Status, give_back, redo_took_back};
 use crate::refs::Upstream;
-
-/// The words `esc` keeps from the message line (C15), and the message `u`
-/// gives back after a commit (Q9 a).
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Draft {
-    /// The subject line.
-    pub subject: String,
-    /// The body.
-    pub body: String,
-    /// `Some(head)` when kept from an amend of `head`: it resumes on `a`
-    /// while `HEAD` is still that commit, never on `c`.
-    pub amending: Option<Oid>,
-}
 
 /// The commit just made, while it is the last thing that happened: the
 /// cursor resting on it shows [`RowBar::JustCommitted`], and `u` taking it
@@ -105,24 +92,45 @@ fn branch_of(entry: &JournalEntry) -> Option<&str> {
     }
 }
 
-/// An undo landed (Q9 a): when it took back the commit just made, that
-/// commit's message becomes the draft the next `c` opens with. Any other
-/// undo leaves the draft alone. Either way the commit is no longer the
-/// last thing that happened.
+/// An undo landed (Q9 a): when it moved a ref off the commit just made,
+/// that commit's message goes to the `c` slot ([`give_back`]) and the
+/// commit stops being the last thing that happened. An undo that left
+/// every ref on it (a stage taken back) keeps both as they are (08s m11).
 pub fn undo_landed(state: &mut AppState, entry: &JournalEntry) {
+    let Some(last) = state.last_commit.as_deref() else {
+        return;
+    };
+    let moved_off = entry.refs_before.iter().any(|(name, before)| {
+        *before == Some(last.commit) && after(entry, name) != Some(last.commit)
+    });
+    if !moved_off {
+        return;
+    }
     let Some(last) = state.last_commit.take() else {
         return;
     };
-    let took_it_back = entry
-        .refs_before
-        .values()
-        .any(|at| *at == Some(last.commit));
-    if took_it_back {
-        state.commit_draft = Some(Draft {
-            amending: None,
-            ..last.message
-        });
+    give_back(&mut state.drafts, last.message.clone());
+    state.drafts.given_back = Some(last);
+}
+
+/// A redo landed: it never takes a commit back, and one that re-creates
+/// the commit `u` gave the words of lets go of them while unedited (m1).
+pub fn redo_landed(state: &mut AppState, entry: &JournalEntry) {
+    state.last_commit = None;
+    let Some(given) = state.drafts.given_back.as_deref().map(|given| given.commit) else {
+        return;
+    };
+    let recreated = entry.refs_after.iter().any(|(name, after)| {
+        *after == Some(given) && entry.refs_before.get(name).copied().flatten() != Some(given)
+    });
+    if recreated {
+        redo_took_back(&mut state.drafts, given);
     }
+}
+
+/// Where the entry left ref `name`; `None` when it deleted or never had it.
+fn after(entry: &JournalEntry, name: &str) -> Option<Oid> {
+    entry.refs_after.get(name).copied().flatten()
 }
 
 /// `N commit(s) to push` while `HEAD`'s branch is ahead of its upstream;
@@ -146,3 +154,6 @@ pub fn push_words(state: &AppState, with_unpushed: bool) -> Option<String> {
         Upstream::Apart(_) | Upstream::InSync { .. } | Upstream::None => None,
     }
 }
+
+#[cfg(test)]
+mod tests;

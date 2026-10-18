@@ -16,7 +16,9 @@ use graft_ui::detail::BodyView;
 use graft_ui::text_input::{AreaView, FieldView};
 
 use crate::update::AppState;
-use crate::update::commit_editor::{CommitEditor, CommitOption, kind_of, push_words};
+use crate::update::commit_editor::{
+    CommitEditor, CommitOption, head_oid, kind_of, push_words, short_sha, shown_section,
+};
 
 /// The screen as it draws now, or `None` when none is open.
 #[must_use]
@@ -75,19 +77,15 @@ fn row(state: &AppState, editor: &CommitEditor, at: usize) -> CommitFileRow {
         .counts
         .as_deref()
         .and_then(|list| crate::update::commit_editor::counted(list, &choice.path));
-    let kind = state
-        .working_tree
-        .as_deref()
-        .and_then(|status| {
-            status
-                .entries
-                .iter()
-                .find(|entry| entry.path == choice.path)
-        })
-        .map_or('M', kind_of);
+    let entry = state.working_tree.as_deref().and_then(|status| {
+        status
+            .entries
+            .iter()
+            .find(|entry| entry.path == choice.path)
+    });
     CommitFileRow {
         path: sanitize_line(&choice.path.to_string_lossy()),
-        kind,
+        kind: entry.map_or('M', kind_of),
         group: if choice.goes_in {
             FileGroup::GoingIn
         } else {
@@ -99,6 +97,10 @@ fn row(state: &AppState, editor: &CommitEditor, at: usize) -> CommitFileRow {
             choice.why_out,
             Some(graft_ops::operation::OutWhy::LooksLikeSecrets)
         ),
+        // Only a part goes in when there is a rest left behind: a file
+        // staged whole is all of it (08s M3).
+        part_only: shown_section(&choice.part).is_some()
+            && entry.is_some_and(|entry| entry.unstaged.is_some()),
     }
 }
 
@@ -110,7 +112,7 @@ fn summary(state: &AppState, editor: &CommitEditor, files: &[CommitFileRow]) -> 
     let going = count(FileGroup::GoingIn);
     let out = count(FileGroup::StayingOut);
     if going == 0 {
-        return if editor.amend && !editor.touched {
+        return if editor.message_only() {
             Summary::MessageOnly { out }
         } else {
             Summary::Nothing
@@ -143,9 +145,7 @@ fn summary(state: &AppState, editor: &CommitEditor, files: &[CommitFileRow]) -> 
 fn header(state: &AppState, editor: &CommitEditor) -> CommitHeader {
     CommitHeader {
         branch: branch(state),
-        amending: editor
-            .amend
-            .then(|| sanitize_line(editor.head_short.as_deref().unwrap_or("HEAD"))),
+        amending: amending(state, editor).map(|words| sanitize_line(&words)),
         push: push_words(state, true).map(|words| sanitize_line(&words)),
         options: CommitOption::HEADER_ORDER
             .iter()
@@ -153,6 +153,34 @@ fn header(state: &AppState, editor: &CommitEditor) -> CommitHeader {
             .filter_map(|option| option.header_word())
             .collect(),
     }
+}
+
+/// `<sha7> <subject>` of the commit `⏎` rewrites while amend is on: what
+/// `a` read, or — amend turned on from `c` (08s M2) — `HEAD` from the refs
+/// on hand and its subject from its loaded row, no new read. `None` while
+/// amend is off: the header says `committing to <branch>`.
+fn amending(state: &AppState, editor: &CommitEditor) -> Option<String> {
+    if !editor.amend {
+        return None;
+    }
+    if let Some(short) = &editor.head_short {
+        return Some(short.clone());
+    }
+    let Some(head) = head_oid(state) else {
+        return Some("HEAD".to_owned());
+    };
+    let short = short_sha(head);
+    let history = state.history.as_ref();
+    let row = history
+        .and_then(|history| history.window.as_ref())
+        .and_then(|window| window.rows.iter().find(|row| row.commit.id == head));
+    Some(match row {
+        Some(row) => format!(
+            "{short} {}",
+            String::from_utf8_lossy(row.commit.subject()).trim()
+        ),
+        None => short,
+    })
 }
 
 /// The branch `HEAD` is on, or `HEAD`'s short SHA when detached.

@@ -10,7 +10,10 @@ use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
 use graft_ops::operation::{Chosen, FileChoice, Include, OutWhy, first_choice};
 use graft_ui::detail::DiffView;
 
-use super::{AppState, Command, CommitEditor, JobId};
+use graft_ops::operation::Part;
+use graft_ui::detail::WorkingTreeSection;
+
+use super::{AppState, Command, CommitEditor, JobId, WayIn};
 use crate::update::detail::{DetailSpec, DiffKey};
 
 /// The diff of the file under the cursor: asked for each time the cursor
@@ -25,15 +28,18 @@ pub struct FileDiffState {
     pub view: Option<Result<Arc<DiffView>, String>>,
 }
 
-/// Untouched amend → the index as it is ([`Include::Staged`]): a
-/// message-only amend stays possible. Otherwise the files going in, each
-/// whole or as staged ([`Include::Chosen`]).
+/// The rows are the commit (08s M2): the rows going in, each whole or as
+/// staged ([`Include::Chosen`]) — except on a screen `a` opened, still
+/// amending, its rows untouched (`space` never pressed), which takes the
+/// index as it is ([`Include::Staged`]): there the rows going in *are* the
+/// index, and a message-only amend stays possible.
 ///
-/// `touched` is "he chose": `space` was pressed, or this is a plain commit,
-/// which always takes what the screen shows going in.
+/// Keyed on how the screen was opened, not on the amend flag: `c` with
+/// amend turned on amends with the rows shown, and `a` with it turned off
+/// commits them.
 #[must_use]
-pub fn include_of(choices: &[FileChoice], touched: bool) -> Include {
-    if !touched {
+pub fn include_of(choices: &[FileChoice], way_in: WayIn, amend: bool, touched: bool) -> Include {
+    if way_in == WayIn::Amend && amend && !touched {
         return Include::Staged;
     }
     Include::Chosen(
@@ -53,7 +59,7 @@ pub fn include_of(choices: &[FileChoice], touched: bool) -> Include {
 /// only the message changes.
 fn first_for(editor: &CommitEditor, status: &WorkingTreeStatus) -> Vec<FileChoice> {
     let mut choices = first_choice(status);
-    if editor.amend && status.staged().next().is_none() {
+    if editor.way_in == WayIn::Amend && status.staged().next().is_none() {
         for choice in &mut choices {
             choice.goes_in = false;
             choice.why_out = Some(OutWhy::NotStaged);
@@ -102,19 +108,53 @@ pub fn tree_read(
     } else {
         fresh
     };
-    if files == editor.files {
-        return;
-    }
+    // Asked again even when the same files came back (08s m3, m10): one of
+    // them may have changed under the counts and the diff on show.
     editor.files = files;
     editor.file_cursor = cursor_path
         .and_then(|path| editor.files.iter().position(|file| file.path == path))
         .or_else(|| display_order(&editor.files).first().copied())
         .unwrap_or(0);
+    editor.diff = FileDiffState::default();
+    ask_counts(state, commands, next_id);
+    ask_diff(state, commands, next_id);
+}
+
+/// Ask for every row's line counts, each read the way its row's [`Part`]
+/// says ([`shown_section`]), cancelling a count read still running: only
+/// the newest answer is taken, so the old one is work for nothing.
+pub(super) fn ask_counts(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(editor) = state.commit_editor.as_mut() else {
+        return;
+    };
+    if let Some(old) = editor.counts_job.take() {
+        commands.push(Command::CancelJob(old));
+    }
+    let staged_parts = editor
+        .files
+        .iter()
+        .filter(|file| shown_section(&file.part).is_some())
+        .map(|file| file.path.clone())
+        .collect();
     let id = next_id();
     editor.counts_job = Some(id);
-    commands.push(Command::ReadCommitFiles(id));
-    editor.diff = FileDiffState::default();
-    ask_diff(state, commands, next_id);
+    commands.push(Command::ReadCommitFiles(id, staged_parts));
+}
+
+/// Which half of a row's changes the screen shows, counts and diff alike
+/// (08s M3): what goes in. A staged part is the index against `HEAD`
+/// (`Some(Staged)`); anything else the working tree against `HEAD`
+/// (`None`, both halves at once).
+#[must_use]
+pub fn shown_section(part: &Part) -> Option<WorkingTreeSection> {
+    match part {
+        Part::StagedPart => Some(WorkingTreeSection::Staged),
+        Part::Whole => None,
+    }
 }
 
 /// The files as the list draws them: going in first, then staying out,
@@ -197,9 +237,8 @@ pub(super) fn ask_diff(
     let key = DiffKey {
         spec: DetailSpec::WorkingTree,
         entry: 0,
-        // No section: the working tree against `HEAD`, both halves at once
-        // (`jobs::detail::diff_spec_for`).
-        section: None,
+        // The half that goes in (`jobs::detail::diff_spec_for`).
+        section: shown_section(&file.part),
         options,
         max_lines,
     };
@@ -302,3 +341,6 @@ pub(crate) fn kind_of(entry: &StatusEntry) -> char {
         Some(Change::Modified) | None => 'M',
     }
 }
+
+#[cfg(test)]
+mod tests;

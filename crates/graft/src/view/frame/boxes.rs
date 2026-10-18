@@ -1,6 +1,6 @@
-//! Everything drawn over a screen: the commit editor, the Ghost Preview, the
-//! context menu and the modal boxes, and the bands they cover or clear
-//! (ADR-0040).
+//! Everything drawn over a screen: the Ghost Preview, the context menu and
+//! the modal boxes, and the bands they cover or clear (ADR-0040). The
+//! commit screen is `commit_screen`.
 
 // One file of `frame`, split for size (m6-07 review, Major 4): it shares
 // the parent's imports and siblings rather than restating them.
@@ -9,29 +9,6 @@
     reason = "one module split in files: its parent is its prelude"
 )]
 use super::*;
-
-/// The commit screen, over the whole frame (ease-pass/08, the commit mock):
-/// it shows the diff of the file under its cursor itself, so the detail
-/// pane is not drawn beside it. Always `None`: it draws no pixels,
-/// whatever the terminal can do.
-pub(super) fn draw_commit_editor(
-    session: &Session,
-    state: &AppState,
-    frame: &mut Frame,
-    area: Rect,
-) -> Option<Rect> {
-    let view = crate::view::commit_screen_view(state)?;
-    // A text field's keys are fixed (ADR-0055): its bar spells the shipped
-    // table, never a user's rebinding of the same letters.
-    let screen = graft_ui::commit_editor::CommitScreen {
-        view: &view,
-        theme: &session.theme,
-        keys: graft_ui::keymap::Keymap::shipped(),
-    };
-    frame.render_widget(Clear, area);
-    frame.render_widget(&screen, area);
-    None
-}
 
 /// The palette and help (§2.12, m8-polish-and-ship/11), over the pane the
 /// keys go to, and its own keys on the bar rows. Under the modal boxes:

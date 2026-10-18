@@ -16,6 +16,7 @@ use graft_ui::graph_screen::hints::{HintContext, RowBar};
 
 use crate::app_harness::{App, git, pin_identity};
 
+mod rows;
 mod shots;
 
 /// A repository on `main` with `docs/toc.md`, `README.md` and `src/a.rs`
@@ -92,7 +93,7 @@ pub(crate) fn opened(app: &App, state: &AppState) -> AppState {
 }
 
 /// The files `HEAD` changed, sorted.
-fn committed_files(repo: &Path) -> Vec<String> {
+pub(crate) fn committed_files(repo: &Path) -> Vec<String> {
     let mut files: Vec<String> = git(repo, &["show", "--name-only", "--format=", "HEAD"])
         .lines()
         .map(str::to_owned)
