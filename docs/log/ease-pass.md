@@ -157,3 +157,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 12b (c34ad595): 1 red, finish::captures::summary_captures — 12b's capture predates 11b's banner words (MERGING → merging feature into main). Regenerated, 1-line diff, committed; gates re-running.
 - builder-sonnet 06t done (53456ee7): 5/5; rows.rs → rows/{header,footer,window,hint_context}, entries/cells, radar/detail tests out; 4 over_400 rows removed; 6947/6947 in worktree (19 moved, count same) · 77+ tools · skills: none. Merge after 12b gates. Stale comment geometry.rs:485 handed to 06s.
 - gates after 12b fix (2b0b777e): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
+- 06t merged; gates running. builder-sonnet 03r Minor 5 continuation dispatched beside 06s.
