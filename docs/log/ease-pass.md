@@ -132,3 +132,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - builder-opus 11 merged (22c92a05): 12/13, capture box → 14 (pty walk writes m5-06); 5 questions + tdd-order to gaps; conflict dead_keys.rs resolved (12's Finish → None kept, 11's Clash classified kept). 6912/6912 in worktree · 446 tools · skills: implement, tdd, code-review · COMPACTED ×2
 - 2026-10-18 · user: also publish on GitHub → added to the licence/release row (secrets scan, README, history-keeps-Graft question).
 - 2026-10-18 · user: clean start for the public repo (one fresh commit); private keeps history. In PROGRESS release row.
+- 2026-10-18 · user: clean redundant/unused files before publishing → release row.
