@@ -160,3 +160,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 06t merged; gates running. builder-sonnet 03r Minor 5 continuation dispatched beside 06s.
 - builder-sonnet 06s done (98d7d79e, ed5a3c92): 6/6; state.rs 1318→531 (row lowered), keys 283, selection 258, preview 242; worktree 6953/6955 (summary_captures = fixed on main; map_coverage fixed, rerun partial) · skills: none. Merge after 06t gates.
 - gates after 06t (7b3d5964): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
+- 06s merged; gates running. builder-opus 07 dispatched beside 03r.
