@@ -142,3 +142,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - planner-fable spec pass · 29 tools: 06s/06t ready (after 06h; 06s not beside 06i, after 11b/12b if appending state.rs); 07 reconciled (Opus); 07b new (second line, scroll, hit-tests, bar; Opus; 3 facts test-first); 07b added to 09/13/14 Blocked by; 03r Minor 5 runnable, before 06i. Q to user: ↑N on other local branches (mock shows it on checked-out W only).
 - user: ↑N on every local branch → planner-fable amending 07 (per-branch ahead read).
 - planner-fable amend: 07 ↑N every local branch; new 07a-ahead-counts (before 07; refs-read or job on refs landing; 500-branch test + ≤100 ms/2000 release script; nothing draws before it lands; scout first).
+- scout 07a: counts already per branch (RefLabel::Branch.upstream, refs/mod.rs:295-322), path A; 4 mismatches; Build with set Sonnet. Open: no-upstream branches draw no ↑N.

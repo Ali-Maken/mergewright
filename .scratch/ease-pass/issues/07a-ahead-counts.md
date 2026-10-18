@@ -2,7 +2,7 @@
 
 Status: ready (planner spec-only pass 2026-10-18, after the user's answer: `↑N to push` on every local branch with unpushed commits)
 Blocked by: none for path A (below). Path B appends to `jobs/kinds.rs`, `update/state.rs`, `update/events.rs` → after 06s merges, and not beside 11b/12b if either appends there (11b:10, 12b:14).
-Build with: (blank — brownfield; scout first, conductor sets it after). Planner's guess: Sonnet for path A; Opus for path B (a new job and its staleness).
+Build with: Sonnet (builder-sonnet) — set by conductor after scout `.scratch/ease-pass/scouts/07a-ahead-counts.md`: counts already in `RefLabel::Branch.upstream` (`refs/mod.rs:295-322`), path A, an accessor plus tests, no new job. Open (NOTES, not a build decision): a local branch with **no upstream** has no ahead count — it draws nothing today.
 Needs: none. Feeds: 07 (`RefBadges::ahead_of_upstream`).
 
 ## Why
