@@ -39,12 +39,12 @@ pub struct FileRow {
     /// The path, as git names it.
     pub name: SanitizedText,
     /// Where it stands.
-    pub state: FileState,
+    pub state: FileRowLook,
 }
 
 /// Where one listed file stands.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FileState {
+pub enum FileRowLook {
     /// Open in the resolver (or seen there) with `open` of `of` blocks left.
     Open {
         /// Blocks still open.
@@ -71,24 +71,24 @@ pub enum FileState {
     Unread,
 }
 
-impl FileState {
+impl FileRowLook {
     /// The state's words: full, or compact (`1/2 open`, `✓`).
     fn words(&self, compact: bool, g: Glyphs) -> String {
         match (self, compact) {
-            (FileState::Open { open, of }, false) => format!("{open} of {of} open"),
-            (FileState::Open { open, of }, true) => format!("{open}/{of} open"),
-            (FileState::AllTaken, false) => format!("{} marks done", g.enter),
-            (FileState::AllTaken, true) => g.enter.to_string(),
-            (FileState::Solved, false) => format!("solved {}", g.check),
-            (FileState::Done, false) => format!("done {}", g.check),
+            (FileRowLook::Open { open, of }, false) => format!("{open} of {of} open"),
+            (FileRowLook::Open { open, of }, true) => format!("{open}/{of} open"),
+            (FileRowLook::AllTaken, false) => format!("{} marks done", g.enter),
+            (FileRowLook::AllTaken, true) => g.enter.to_string(),
+            (FileRowLook::Solved, false) => format!("solved {}", g.check),
+            (FileRowLook::Done, false) => format!("done {}", g.check),
             // Compact, solved and done draw the same tick; the tone tells
             // them apart no more than the words do (both muted).
-            (FileState::Solved | FileState::Done, true) => g.check.to_string(),
-            (FileState::WholeFile { .. }, false) => "keep or delete".to_owned(),
-            (FileState::WholeFile { .. }, true) => "keep?".to_owned(),
-            (FileState::Binary, false) => "binary".to_owned(),
-            (FileState::Binary, true) => "bin".to_owned(),
-            (FileState::Unread, _) => g.unread.to_string(),
+            (FileRowLook::Solved | FileRowLook::Done, true) => g.check.to_string(),
+            (FileRowLook::WholeFile { .. }, false) => "keep or delete".to_owned(),
+            (FileRowLook::WholeFile { .. }, true) => "keep?".to_owned(),
+            (FileRowLook::Binary, false) => "binary".to_owned(),
+            (FileRowLook::Binary, true) => "bin".to_owned(),
+            (FileRowLook::Unread, _) => g.unread.to_string(),
         }
     }
 }
@@ -276,7 +276,7 @@ impl Widget for FileList<'_> {
 /// Every listed file is done (and there is at least one): the list's head
 /// says `all … done ✓` (m6-conflicts/60).
 fn all_done(view: &FileListView) -> bool {
-    !view.rows.is_empty() && view.rows.iter().all(|row| row.state == FileState::Done)
+    !view.rows.is_empty() && view.rows.iter().all(|row| row.state == FileRowLook::Done)
 }
 
 /// The widget's own glyphs, one cell each in both tiers.

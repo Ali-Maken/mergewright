@@ -282,7 +282,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `LabelOf` (enum) — Which section a [`SideKind::Label`] row names.
 - `ResolverScreen` (struct) — The resolver, ready to render.
 - `FileRow` (struct) — One file in the list.
-- `FileState` (enum) — Where one listed file stands; `Solved` (a merge's file with every clash picked, not staged) reads `solved ✓`, muted.
+- `FileRowLook` (enum) — Where one listed file stands; `Solved` (a merge's file with every clash picked, not staged) reads `solved ✓`, muted.
 - `FileListView` (struct) — The list, ready to draw.
 - `Placement` (enum) — Where the list sits.
 - `placement` (fn) — Where the list goes at this frame width: a column at [`super::THREE_PANE_MIN`] and up, else a strip as tall as it needs.

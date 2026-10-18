@@ -10,7 +10,7 @@ use ratatui::layout::Rect;
 use ratatui::style::Style;
 use unicode_width::UnicodeWidthStr;
 
-use super::{Cell, FileState, cells_u16};
+use super::{Cell, FileRowLook, cells_u16};
 use crate::paint::color;
 use crate::theme::{Theme, Token};
 
@@ -25,16 +25,16 @@ pub(super) enum WordsTone {
     Plain,
 }
 
-impl FileState {
+impl FileRowLook {
     /// The colour the state's words take (ADR-0044 §1): the work still to
     /// do in `open`, a done or solved file's words muted, the rest as the name.
     pub(super) fn tone(&self) -> WordsTone {
         match self {
-            FileState::Open { .. } | FileState::AllTaken | FileState::WholeFile { .. } => {
+            FileRowLook::Open { .. } | FileRowLook::AllTaken | FileRowLook::WholeFile { .. } => {
                 WordsTone::Open
             }
-            FileState::Done | FileState::Solved => WordsTone::Muted,
-            FileState::Binary | FileState::Unread => WordsTone::Plain,
+            FileRowLook::Done | FileRowLook::Solved => WordsTone::Muted,
+            FileRowLook::Binary | FileRowLook::Unread => WordsTone::Plain,
         }
     }
 }
@@ -66,14 +66,17 @@ pub(super) fn paint_words(buf: &mut Buffer, at: Rect, cell: &Cell, theme: &Theme
 
 #[cfg(test)]
 mod tests {
-    use super::super::{FileState, Glyphs};
+    use super::super::{FileRowLook, Glyphs};
     use super::WordsTone;
 
     /// A merge's solved file says so; `⏎` marks nothing there (ease-pass/05c).
     #[test]
     fn a_solved_file_reads_solved_muted_and_names_no_key() {
-        assert_eq!(FileState::Solved.words(false, Glyphs::UNICODE), "solved ✓");
-        assert_eq!(FileState::Solved.words(true, Glyphs::UNICODE), "✓");
-        assert_eq!(FileState::Solved.tone(), WordsTone::Muted);
+        assert_eq!(
+            FileRowLook::Solved.words(false, Glyphs::UNICODE),
+            "solved ✓"
+        );
+        assert_eq!(FileRowLook::Solved.words(true, Glyphs::UNICODE), "✓");
+        assert_eq!(FileRowLook::Solved.tone(), WordsTone::Muted);
     }
 }

@@ -7,7 +7,7 @@ use unicode_width::UnicodeWidthStr;
 
 use super::super::SIDE_BY_SIDE_MIN;
 use super::{
-    Cell, FileListView, FileRow, FileState, Glyphs, Plan, WordsTone, cells_u16, fit_left, window,
+    Cell, FileListView, FileRow, FileRowLook, Glyphs, Plan, WordsTone, cells_u16, fit_left, window,
     words_at_end,
 };
 use crate::fit::fit;
@@ -41,7 +41,7 @@ fn strip_label(view: &FileListView, grid: bool, g: Glyphs) -> String {
     let done = view
         .rows
         .iter()
-        .filter(|row| row.state == FileState::Done)
+        .filter(|row| row.state == FileRowLook::Done)
         .count();
     let n = view.rows.len();
     if done == 0 {
@@ -66,7 +66,7 @@ fn one_row_cell(
     };
     let name = row.name.as_str();
     match (compact, &row.state) {
-        (true, FileState::Done) => (
+        (true, FileRowLook::Done) => (
             format!("{mark}{} {name}", g.check),
             Some((cells_u16(mark.width()), 1)),
         ),

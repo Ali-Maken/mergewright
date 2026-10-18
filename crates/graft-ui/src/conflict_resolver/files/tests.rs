@@ -11,7 +11,7 @@ use crate::conflict_resolver::{
 use crate::test_support::terminal as test_capabilities;
 use crate::theme::ThemeKind;
 
-fn row(name: &str, state: FileState) -> FileRow {
+fn row(name: &str, state: FileRowLook) -> FileRow {
     FileRow {
         name: sanitize_line(name),
         state,
@@ -22,8 +22,8 @@ fn row(name: &str, state: FileState) -> FileRow {
 fn two_files() -> FileListView {
     FileListView {
         rows: vec![
-            row("gone.txt", FileState::Done),
-            row("notes.txt", FileState::Open { open: 2, of: 2 }),
+            row("gone.txt", FileRowLook::Done),
+            row("notes.txt", FileRowLook::Open { open: 2, of: 2 }),
         ],
         cursor: 1,
         unavailable: false,
@@ -36,12 +36,12 @@ fn twelve_files(cursor: usize) -> FileListView {
         rows: (0..12)
             .map(|i| {
                 let state = match i % 4 {
-                    0 => FileState::Done,
-                    1 => FileState::Open { open: 1, of: 3 },
-                    2 => FileState::WholeFile {
+                    0 => FileRowLook::Done,
+                    1 => FileRowLook::Open { open: 1, of: 3 },
+                    2 => FileRowLook::WholeFile {
                         how: sanitize_line("modified on yours · main"),
                     },
-                    _ => FileState::Unread,
+                    _ => FileRowLook::Unread,
                 };
                 row(&format!("src/module_{i:02}/handler.rs"), state)
             })
@@ -248,7 +248,7 @@ fn a_long_name_keeps_its_file_name() {
     let view = FileListView {
         rows: vec![row(
             "a/very/long/directory/path/that/goes/on/and/on/final_name.rs",
-            FileState::Open { open: 1, of: 1 },
+            FileRowLook::Open { open: 1, of: 1 },
         )],
         cursor: 0,
         unavailable: false,
@@ -328,17 +328,17 @@ fn the_column_sits_beside_the_card() {
 fn six_states() -> FileListView {
     FileListView {
         rows: vec![
-            row("a.txt", FileState::Open { open: 1, of: 2 }),
-            row("b.txt", FileState::AllTaken),
+            row("a.txt", FileRowLook::Open { open: 1, of: 2 }),
+            row("b.txt", FileRowLook::AllTaken),
             row(
                 "c.txt",
-                FileState::WholeFile {
+                FileRowLook::WholeFile {
                     how: sanitize_line("deleted by them"),
                 },
             ),
-            row("d.txt", FileState::Done),
-            row("e.bin", FileState::Binary),
-            row("f.txt", FileState::Unread),
+            row("d.txt", FileRowLook::Done),
+            row("e.bin", FileRowLook::Binary),
+            row("f.txt", FileRowLook::Unread),
         ],
         cursor: 0,
         unavailable: false,
@@ -495,7 +495,7 @@ fn all_done(files: FileListView) -> FileListView {
             .rows
             .into_iter()
             .map(|row| FileRow {
-                state: FileState::Done,
+                state: FileRowLook::Done,
                 ..row
             })
             .collect(),

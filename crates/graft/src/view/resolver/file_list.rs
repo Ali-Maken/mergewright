@@ -2,7 +2,7 @@
 //! sanitised. The draw and the mouse both build it here.
 
 use graft_term::sanitize_line;
-use graft_ui::conflict_resolver::{FileListView, FileRow, FileState};
+use graft_ui::conflict_resolver::{FileListView, FileRow, FileRowLook};
 
 use super::how_words;
 use crate::update::AppState;
@@ -26,15 +26,15 @@ pub fn file_list_view(state: &AppState) -> FileListView {
             .map(|file| FileRow {
                 name: sanitize_line(&file.path.display().to_string()),
                 state: match file.state {
-                    RowState::Open { open, of } => FileState::Open { open, of },
-                    RowState::AllTaken if merge => FileState::Solved,
-                    RowState::AllTaken => FileState::AllTaken,
-                    RowState::Done => FileState::Done,
-                    RowState::WholeFile { how } => FileState::WholeFile {
+                    RowState::Open { open, of } => FileRowLook::Open { open, of },
+                    RowState::AllTaken if merge => FileRowLook::Solved,
+                    RowState::AllTaken => FileRowLook::AllTaken,
+                    RowState::Done => FileRowLook::Done,
+                    RowState::WholeFile { how } => FileRowLook::WholeFile {
                         how: sanitize_line(&how_words(how, false, &names)),
                     },
-                    RowState::Binary => FileState::Binary,
-                    RowState::Unread => FileState::Unread,
+                    RowState::Binary => FileRowLook::Binary,
+                    RowState::Unread => FileRowLook::Unread,
                 },
             })
             .collect(),
