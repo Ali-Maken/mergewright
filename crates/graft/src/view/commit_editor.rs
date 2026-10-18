@@ -15,6 +15,7 @@ use graft_ui::commit_editor::{
     SUBJECT_LIMIT, Summary,
 };
 use graft_ui::detail::BodyView;
+use graft_ui::graph_screen::Location;
 use graft_ui::text_input::{AreaView, FieldView};
 
 use crate::update::AppState;
@@ -143,9 +144,11 @@ fn summary(state: &AppState, editor: &CommitEditor, files: &[CommitFileRow]) -> 
     }
 }
 
-/// The header: branch, amend, push state, options on (Q8 a).
+/// The header: the repository words, branch, amend, push state, options
+/// on (Q8 a).
 fn header(state: &AppState, editor: &CommitEditor) -> CommitHeader {
     CommitHeader {
+        location: repo_words(state),
         branch: branch(state),
         amending: amending(state, editor).map(|words| sanitize_line(&words)),
         push: push_words(state, true).map(|words| sanitize_line(&words)),
@@ -155,6 +158,18 @@ fn header(state: &AppState, editor: &CommitEditor) -> CommitHeader {
             .filter_map(|option| option.header_word())
             .collect(),
     }
+}
+
+/// The words the graph's top line starts with (08s m12), from the two
+/// functions `view::rows::graph_view` takes them from, so the two screens
+/// cannot name the repository differently.
+fn repo_words(state: &AppState) -> Option<Location> {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    let facts = state.repository.as_ref()?;
+    Some(super::rows::practised(
+        super::rows::location(facts, home.as_deref()),
+        state,
+    ))
 }
 
 /// `<sha7> <subject>` of the commit `⏎` rewrites while amend is on: what

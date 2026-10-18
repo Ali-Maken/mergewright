@@ -158,7 +158,7 @@ pub fn banner_line(banner: &BannerView, width: u16, keys: &Keymap) -> String {
             line.push_str(" · ");
             line.push_str(hint);
         }
-        if super::layout::text_width(&line) <= usize::from(width) {
+        if super::walk_text::text_width(&line) <= usize::from(width) {
             return line;
         }
     }

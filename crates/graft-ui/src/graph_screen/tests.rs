@@ -2,6 +2,7 @@ use graft_core::capabilities::ColorDepth;
 use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::mistake_radar::Severity;
 use graft_core::oid::Oid;
+use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
 use graft_graph::row::Row;
 use graft_graph::seeds::Seeds;
@@ -14,9 +15,9 @@ use unicode_width::UnicodeWidthStr;
 
 use super::footer::{commit_graph_segments, grouped, segments_width};
 use super::hints::{HintContext, RowVerbs, TabWord};
-use super::layout::walk_text;
+use super::walk_text::walk_text;
 use super::*;
-use crate::graph_column::RowPaint;
+use crate::graph_column::{GraphLine, RowPaint};
 use crate::keymap::Keymap;
 use crate::paint::color;
 use crate::test_support::terminal;
@@ -57,7 +58,7 @@ pub(super) fn linear(count: u8) -> Vec<Row> {
 
 #[allow(
     clippy::too_many_lines,
-    reason = "one struct literal naming every `GraphView` field; it grows with the view"
+    reason = "one literal naming every `GraphView` field"
 )]
 pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     GraphView {
@@ -108,6 +109,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
         graphics: None,
         push: None,
         notice: None,
+        status_row: StatusRow::InBar,
         search: None,
         search_tail: None,
         compare_footer: None,
@@ -1086,34 +1088,6 @@ fn the_changes_pane_hints_replace_the_row_context() {
         !unmerged_footer.contains("space stage"),
         "{unmerged_footer}"
     );
-}
-
-// m1-the-graph/44: the lane cap follows the terminal's width (ADR-0022
-// decision 3, ADR-0025 decision 3).
-
-#[test]
-fn lanes_that_fit_matches_graph_widths_half_screen_bound() {
-    // Half of 8 columns is 4 cells, one lane at 2 cells each — but the rail
-    // always fits alongside lane 0, so the floor is 2, not 1.
-    assert_eq!(lanes_that_fit(8), 2);
-    // 80 columns less the gutter and margin is 77; half of that is 38
-    // cells, 19 lanes at 2 cells each (ADR-0058 §4).
-    assert_eq!(lanes_that_fit(80), 19);
-}
-
-#[test]
-fn max_lanes_for_follows_the_width_breakpoints_when_unconfigured() {
-    assert_eq!(max_lanes_for(79, None), 8);
-    assert_eq!(max_lanes_for(100, None), 10);
-    assert_eq!(max_lanes_for(159, None), 10);
-    assert_eq!(max_lanes_for(160, None), 12);
-    assert_eq!(max_lanes_for(200, Some(5)), 5);
-}
-
-#[test]
-fn max_lanes_for_clamps_a_configured_value_to_what_the_screen_holds() {
-    assert_eq!(max_lanes_for(80, Some(30)), lanes_that_fit(80));
-    assert_eq!(max_lanes_for(80, Some(30)), 19);
 }
 
 #[test]

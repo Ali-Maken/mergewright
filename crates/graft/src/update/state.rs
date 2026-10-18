@@ -588,12 +588,12 @@ impl AppState {
             .saturating_add(super::banner::tab_rows_above_graph(self))
             // The tour card's three rows (m8/19b), carved under the banner.
             .saturating_add(super::tour::card_rows(self))
-            // The Ghost Preview's box takes rows out of the graph the same
-            // way the footer and the commit-graph line do, so the rows it
-            // covers are rows the graph never drew — rather than rows drawn
-            // and then painted over, which is how a preview box ends up
-            // hiding the very ghosts it is describing.
+            // The Ghost Preview's box takes rows out of the graph as the footer
+            // and the commit-graph line do: rows the graph never drew, not rows
+            // drawn and painted over, which hid the very ghosts it describes.
             .saturating_add(super::preview::preview_rows_taken(self))
+            // The done line's own row above a landing bar (ease-pass/08s M4).
+            .saturating_add(super::commit_editor::done_row(self).rows_taken())
             // A rewrite stop's still-to-apply block, drawn between the
             // header and the rows (review m7-10-to-07c Major 2).
             .saturating_add(super::banner::pending_rows_taken(self));
@@ -601,12 +601,12 @@ impl AppState {
     }
 
     /// What the graph screen's row carve (`graft_ui::graph_screen::row_carve`)
-    /// asks of this state, as plain values: the same reads the view's
-    /// `GraphView` is built from for these five, so `geometry::graph_carve`
-    /// carves the rows the frame draws.
+    /// asks of this state, as plain values: the reads the view's `GraphView`
+    /// is built from, so `geometry::graph_carve` carves the rows drawn.
     #[must_use]
     pub(crate) fn carve_inputs(&self) -> graft_ui::graph_screen::CarveInputs {
         graft_ui::graph_screen::CarveInputs {
+            status_row: super::commit_editor::done_row(self),
             spaced: graft_ui::graph_screen::spaced(self.size.rows),
             banner_rows: self.harness.banner_rows(),
             commit_graph: self.commit_graph_line().is_some(),

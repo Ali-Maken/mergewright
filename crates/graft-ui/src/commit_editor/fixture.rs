@@ -53,6 +53,7 @@ pub(super) fn view<'a>(subject: &str, focus: CommitFocus) -> CommitScreenView<'a
     let typed = subject.chars().count();
     CommitScreenView {
         header: CommitHeader {
+            location: None,
             branch: sanitize_line("wallet-release"),
             amending: None,
             push: Some(sanitize_line("not pushed yet")),

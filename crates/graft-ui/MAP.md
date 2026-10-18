@@ -172,7 +172,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `CarveInputs` (struct, from `carve.rs`) — what the row carve reads of a `GraphView`, as plain values; `CarveInputs::of(view)`.
 - `RowCarve` (struct) — `ScreenRows` in `Cells`: same bands, same names.
 - `row_carve` (fn) — `(area: Cells, inputs) -> RowCarve`: the one carve of the screen's rows, shared with `graft::update`.
-- `ScreenRows` (struct, from `layout.rs`) — header, gap, banner, tour, pending, body, offer, rule, footer rects.
+- `ScreenRows` (struct, from `layout.rs`) — header, gap, banner, tour, pending, body, offer, rule, status (a done line above a landing bar), footer rects.
 - `screen_rows` (fn) — `(view, area) -> ScreenRows`; also `GraphScreen::screen_rows(area)`.
 - `GraphScreen::graph_area`, `GraphScreen::column_boundaries` (fns) — where the graph column lands; every x where a row column ends.
 - `RowLayout` (struct), `row_layout` (fn) — `body` rect and resolved `Columns` for a frame.
@@ -223,6 +223,8 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `doorway_words` (fn) — `(keys) -> Option<String>`: the bar's doorway, `? keys` as the keymap spells it.
 - `blame_place_list`, `history_place_list` (fns) — the blame and history places' bars.
 - `every_context`, `every_hint` (fns) — every footer context and every hint, for sweeps.
+- `StatusRow` (enum, `hints/status_row.rs`) — `InBar` / `AboveBar`: where the status line stands; `StatusRow::rows_taken` is the rows it takes from the graph.
+- `status_row` (fn) — `(done, context)`: `AboveBar` only for a done line over a landing bar (`RowBar::is_landing`: just committed or merged).
 
 
 ## commit_editor
@@ -239,11 +241,14 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `Onto` (enum) — where the commit goes: a new commit on a branch, or an amend of a commit.
 - `Summary` (enum) — the sentence above the files: what goes in (files, lines, onto, how many stay out) or nothing.
 - `Refusal` (enum) — why `⏎` would do nothing: `NoMessage`, `NoFile`.
-- `CommitHeader` (struct) — the top row: committing to / amending, the push state, the options that are on.
+- `CommitHeader` (struct) — the top row: the repository words as the graph's top line says them (`location`), committing to / amending, the push state, the options on.
 - `CommitScreenView` (struct) — everything the screen draws: header, subject/body, summary, files and cursor, the cursor file's changes, focus, refusal, status, busy, and a live operation's words.
 - `CommitScreen` (struct) — `view`, `theme`, `keys`; `Widget`: the whole-area commit screen (header, message box, summary, files | changes, bar).
 - `bar` (fn) — the bar's words for the focused part, keys spelled from the keymap.
 - `summary_line` (fn) — the sentence above the files.
+- `CommitLayout` (struct, from `layout.rs`) — where each part of the screen stands, in `Cells`: header, message box, subject, body, summary, rule, files, diff, bar.
+- `commit_layout` (fn) — `(area) -> CommitLayout`: the one layout the screen draws to and a click is read against.
+- `file_at` (fn) — `(view, files, row) -> Option<usize>`: the file drawn on a screen row of the list, by display order; a heading or empty row is `None`.
 
 ## confirm
 - `ConfirmView` (struct) — Everything the confirm box draws: what is about to happen, in plain words, and the exact command that will run.

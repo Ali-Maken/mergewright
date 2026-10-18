@@ -1,9 +1,9 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
 # crates/graft/tests/it/commit_screen/shots.rs, real git.
-# Judge by eye: `fix toc` typed, at 90 columns: under 100 the changes pane is hidden and the files take the width; the bar keeps whole keys, the last dropped rather than cut.
+# Judge by eye: `fix toc` typed, at 90 columns: under 100 the changes pane is hidden and the files take the width; the bar has no `↑ ↓` (no changes beside the files to look at) and keeps `⏎ commit 3 files` and `esc cancel, your message is kept`.
 === 90x30 ===
- committing to main
+ ◆ api  ~/code/api  committing to main
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ ▸fix toc                                                                          7/72 │
 │  More detail, if it needs it (optional)                                                │
@@ -32,4 +32,4 @@
 
 
 
- ⏎ commit 3 files  ⇥ more detail  ↑/↓ see a file's changes
+ ⏎ commit 3 files  ⇥ more detail  esc cancel, your message is kept

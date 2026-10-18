@@ -28,16 +28,15 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     if super::palette::palette_mouse(next, commands, mouse) {
         return;
     }
-    // The conflict resolver first, and it claims **every** mouse event
-    // while it is open (m6-conflicts/04). Nothing below this line checks
-    // `graph_overlay()`: `left_click` goes straight to `graph_row_at`, so a
-    // click over the Map, the journal or the stash list still selects a row
-    // of the graph behind them (`docs/reviews/m5-10-30-31.md:291-296`, open
-    // since m5). Fixing those three is a separate change; what this does is
-    // make sure the resolver is not a fourth.
-    // The finish summary before it, and for the same reason: modal, every
-    // mouse event is its own (m6-conflicts/19). The rewrite editor after it,
-    // modal the same way (m7-power-tools/08).
+    // The commit screen: every event its own while drawn (ease-pass/08s M5).
+    if super::commit_editor::mouse(next, commands, mouse) {
+        return;
+    }
+    // Modal screens claim **every** mouse event while open: the finish
+    // summary (m6-conflicts/19), the rewrite editor (m7-power-tools/08), the
+    // resolver (m6-conflicts/04). The Map, the journal and the stash list do
+    // not: a click there still selects the graph row behind them
+    // (`docs/reviews/m5-10-30-31.md:291-296`, open since m5).
     let mut local_jobs = next.local_jobs;
     let modal = super::finish::finish_mouse(next, commands, mouse, &mut || local_jobs.next_id())
         || super::rewrite_editor::rewrite_mouse(next, commands, mouse, &mut || {

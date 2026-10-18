@@ -21,7 +21,7 @@ fn ctrl(c: char) -> KeyPress {
 }
 
 /// `⌃P`, `Amend the last commit`, `⏎`: the option flipped from the palette.
-fn amend_toggled(app: &App, state: &AppState) -> AppState {
+pub(super) fn amend_toggled(app: &App, state: &AppState) -> AppState {
     let palette = app.press(state, ctrl('p'));
     app.key(
         &typed(app, &palette, "Amend the last commit"),

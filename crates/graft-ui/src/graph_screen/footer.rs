@@ -4,6 +4,7 @@
 //! alternatives: it is drawn by `commit_graph_line` on its own row above.
 
 use graft_graph::fold::Fold;
+use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
@@ -11,8 +12,10 @@ use unicode_width::UnicodeWidthStr;
 use super::hints::{
     Divider, fit_status_line, hints_for, hints_text, stopped_row, stopped_row_before_keys,
 };
-use super::layout::{Columns, graph_width};
+use super::lanes::graph_width;
+use super::layout::ScreenRows;
 use super::render::subject_truncated;
+use super::row_columns::Columns;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
 use crate::keymap::{ActionId, Keymap};
@@ -40,16 +43,45 @@ impl GraphScreen<'_> {
         )
     }
 
-    /// The footer's text and token: a problem, a search line, a notice, the
-    /// pinned compare base's line, the reveal (a truncated subject, named by
-    /// hover), or — when none of those apply — the context's key hints
+    /// The bottom rows: the bar's, and — while the carve gave it one — the
+    /// done line's own row directly above it (ease-pass/08s M4). The notice
+    /// is then off the bar's row, so the bar shows the landing's keys.
+    pub(super) fn bottom_rows(
+        &self,
+        chrome: &ScreenRows,
+        drawn: (Rect, &[GraphEntry<'_>], &Fold),
+        width: usize,
+        x: u16,
+        buf: &mut Buffer,
+    ) {
+        let (body, rows, fold) = drawn;
+        let above = chrome.status.height > 0;
+        if let Some(notice) = self.view.notice.as_ref().filter(|_| above) {
+            let line = Line::styled(
+                fit(&format!(" {notice}"), width),
+                foreground(self.theme, Token::Info),
+            );
+            buf.set_line(x, chrome.status.y, &line, chrome.status.width);
+        }
+        if chrome.footer.height > 0 {
+            let (text, token) = self.footer_line(body, rows, fold, width, above);
+            let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
+            buf.set_line(x, chrome.footer.y, &footer, chrome.footer.width);
+        }
+    }
+
+    /// The footer's text and token: a problem, a search line, a notice (not
+    /// when `notice_above` drew it on its own row), the pinned compare
+    /// base's line, the reveal (a truncated subject, named by hover), or —
+    /// when none of those apply — the context's key hints
     /// (`hints::hints_for`, `hint-bar-redesign`).
-    pub(super) fn footer_line(
+    fn footer_line(
         &self,
         body: Rect,
         rows: &[GraphEntry<'_>],
         fold: &Fold,
         width: usize,
+        notice_above: bool,
     ) -> (String, Token) {
         // Same columns the body just drew through: the reveal must agree
         // with the body on which subjects the `…` actually landed on.
@@ -68,10 +100,11 @@ impl GraphScreen<'_> {
             })
             .map(|entry| entry.subject.as_str().to_owned());
 
+        let notice = self.view.notice.as_ref().filter(|_| !notice_above);
         match (
             &self.view.problem,
             &self.view.search,
-            &self.view.notice,
+            notice,
             &self.view.compare_footer,
         ) {
             (Some(problem), _, _, _) => {

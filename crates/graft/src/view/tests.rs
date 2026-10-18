@@ -2648,7 +2648,7 @@ const COMMIT_EDITOR_HEADER: &str = "\
 #
 # Judge by eye (the commit screen since ease-pass/08; its own captures,
 # next to the commit mock, are docs/shots/ease-pass/commit-*.txt):
-# - The top row reads `committing to main`.
+# - The top row reads `◆ api  /code/api  committing to main`.
 # - The subject holds the typed text and a counter reading 26/72; the body
 #   below it has the ▸ (focus follows the marker) and a ┊ guide at 72.
 # - No option row anywhere: options are named in the header only when on.

@@ -10,7 +10,8 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier};
 
-use super::super::layout::{Columns, graph_width};
+use super::super::lanes::graph_width;
+use super::super::row_columns::Columns;
 use super::super::{GUTTER, GraphScreen, GraphView, Tracking, WalkView};
 use super::{branch, linear, view};
 use crate::graph_column::RowPaint;

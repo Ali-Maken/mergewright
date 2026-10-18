@@ -6,17 +6,17 @@
 # with the subject focused (m6-conflicts/51).
 #
 # Judge by eye:
-# - Frame 1: the commit screen (ease-pass/08); its bar begins
-#   `⏎ commit 1 file  ⇥ more detail`. The body is empty; `sample.txt` is
-#   under `Going in`.
-# - Frame 2: the screen is gone; the status line reads
-#   `✓ Committed 1 file to main.` and the graph's top row is
+# - Frame 1: the commit screen; header from `◆ api  ~/code/api`, bar from
+#   `⏎ commit 1 file  ⇥ more detail`; body empty, `sample.txt` going in.
+# - Frame 2: the screen gone; second-last row the done line `✓ Committed
+#   1 file to main.  u undo · P push`, last row the bar `u undo the commit,
+#   your edits come back · P push · c commit again`; the graph's top row
 #   `[◆ main] fix: x`, with nothing uncommitted.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 80x24 ===
 == frame 1: `fix: x` typed, subject focused ==
- committing to main · not pushed yet
+ ◆ api  ~/code/api  committing to main · not pushed yet
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ ▸fix: x                                                                 6/72 │
 │  More detail, if it needs it (optional)                                      │
@@ -39,7 +39,7 @@
 
 
 
- ⏎ commit 1 file  ⇥ more detail  ↑/↓ see a file's changes
+ ⏎ commit 1 file  ⇥ more detail  esc cancel, your message is kept
 
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                             2 commits
@@ -64,5 +64,5 @@
 
 
 
-
  ✓ Committed 1 file to main.  u undo · P push
+ u undo the commit, your edits come back · P push · c commit again · ? keys

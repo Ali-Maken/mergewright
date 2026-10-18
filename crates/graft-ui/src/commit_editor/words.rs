@@ -77,12 +77,10 @@ pub fn bar(view: &CommitScreenView<'_>, keys: &Keymap) -> String {
             .join(GAP);
     }
     let parts: Vec<Option<String>> = match view.focus {
-        CommitFocus::Subject => vec![
-            pair(keys, "app.open", &enter_words(view, true)),
-            pair(keys, "commit.next_field", "more detail"),
-            Some(format!("{} see a file's changes", arrows())),
-            pair(keys, "app.back", "cancel, your message is kept"),
-        ],
+        CommitFocus::Subject => subject_parts(view, keys)
+            .into_iter()
+            .map(|(_, part)| part)
+            .collect(),
         CommitFocus::Body => vec![
             pair(keys, "app.back", "back to the message line"),
             pair(keys, "commit.next_field", "files"),
@@ -103,6 +101,64 @@ pub fn bar(view: &CommitScreenView<'_>, keys: &Keymap) -> String {
         }
     };
     parts.into_iter().flatten().collect::<Vec<_>>().join(GAP)
+}
+
+/// The subject bar's parts by rank (08s m4): short of room, the lowest
+/// goes first.
+const SEE_CHANGES: u8 = 0;
+const MORE_DETAIL: u8 = 1;
+const CANCEL: u8 = 2;
+const COMMIT: u8 = 3;
+
+/// The subject's bar parts in drawn order, each with its rank.
+fn subject_parts(view: &CommitScreenView<'_>, keys: &Keymap) -> [(u8, Option<String>); 4] {
+    [
+        (COMMIT, pair(keys, "app.open", &enter_words(view, true))),
+        (MORE_DETAIL, pair(keys, "commit.next_field", "more detail")),
+        (
+            SEE_CHANGES,
+            Some(format!("{} see a file's changes", arrows())),
+        ),
+        (
+            CANCEL,
+            pair(keys, "app.back", "cancel, your message is kept"),
+        ),
+    ]
+}
+
+/// The bar as drawn in `width` columns, whole parts only. The subject's
+/// leaves out `↑/↓ see a file's changes` while no diff is on screen
+/// (`diff_shown` false) and, short of room, drops its parts by rank, lowest
+/// first: `↑/↓`, `⇥ more detail`, `esc cancel…`, `⏎` (08s m4). The other
+/// bars drop from the right ([`whole_parts`]).
+pub(super) fn fitted_bar(
+    view: &CommitScreenView<'_>,
+    keys: &Keymap,
+    width: usize,
+    diff_shown: bool,
+) -> String {
+    if view.busy || view.focus != CommitFocus::Subject {
+        return whole_parts(&bar(view, keys), width);
+    }
+    let mut parts: Vec<(u8, String)> = subject_parts(view, keys)
+        .into_iter()
+        .filter(|(rank, _)| diff_shown || *rank != SEE_CHANGES)
+        .filter_map(|(rank, part)| Some((rank, part?)))
+        .collect();
+    loop {
+        let line = parts
+            .iter()
+            .map(|(_, part)| part.as_str())
+            .collect::<Vec<_>>()
+            .join(GAP);
+        let lowest = (0..parts.len()).min_by_key(|at| parts[*at].0);
+        match lowest {
+            Some(at) if unicode_width::UnicodeWidthStr::width(line.as_str()) > width => {
+                parts.remove(at);
+            }
+            _ => return line,
+        }
+    }
 }
 
 /// The sentence above the files (C4).

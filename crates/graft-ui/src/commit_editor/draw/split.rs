@@ -6,97 +6,73 @@ use ratatui::layout::Rect;
 use ratatui::style::Style;
 use unicode_width::UnicodeWidthStr;
 
+use super::super::layout::{CommitLayout, ListLine, list_lines, list_top};
 use super::super::words::{PART, PART_NOTE, SECRET_WHY, counts, mark, secret_note};
-use super::super::{CommitFocus, CommitScreen, DIFF_COLUMNS, FILES_WIDTH, FileGroup};
+use super::super::{CommitFocus, CommitScreen, FileGroup};
 use super::CURSOR_AWAY;
 use crate::detail::BodyView;
 use crate::detail_pane::{DiffFocus, diff_body};
 use crate::fit::fit;
 use crate::paint::foreground;
+use crate::rect_of;
 use crate::text_input::FOCUS;
 use crate::theme::Token;
 
 impl CommitScreen<'_> {
-    /// The rule, then `files | diff` (files alone under [`DIFF_COLUMNS`]).
-    pub(super) fn draw_split(&self, buf: &mut Buffer, area: Rect) {
+    /// The rule, then `files | diff` (files alone under
+    /// [`DIFF_COLUMNS`](super::super::DIFF_COLUMNS)).
+    pub(super) fn draw_split(&self, buf: &mut Buffer, layout: &CommitLayout) {
         let rule = foreground(self.theme, Token::Border);
-        let with_diff = area.width >= DIFF_COLUMNS;
-        let files_width = if with_diff { FILES_WIDTH } else { area.width };
+        let (area, files) = (rect_of(layout.rule), rect_of(layout.files));
         let mut line = "\u{2500}".repeat(usize::from(area.width));
-        if with_diff {
+        if layout.diff.is_some() {
             let at = line
                 .char_indices()
-                .nth(usize::from(files_width))
+                .nth(usize::from(files.width))
                 .map_or(line.len(), |(at, _)| at);
             line.replace_range(at..at + '\u{2500}'.len_utf8(), "\u{252c}");
         }
         buf.set_string(area.x, area.y, line, rule);
-        if area.height < 2 {
+        if files.height == 0 {
             return;
         }
-        let body = Rect {
-            y: area.y + 1,
-            height: area.height - 1,
-            ..area
+        self.draw_files(buf, files);
+        let Some(diff) = layout.diff.map(rect_of) else {
+            return;
         };
-        self.draw_files(
-            buf,
-            Rect {
-                width: files_width,
-                ..body
-            },
-        );
-        if !with_diff {
-            return;
+        for y in files.y..files.bottom() {
+            buf.set_string(files.right(), y, "\u{2502}", rule);
         }
-        for y in body.y..body.bottom() {
-            buf.set_string(body.x + files_width, y, "\u{2502}", rule);
-        }
-        let diff_x = body.x + files_width + 2;
-        self.draw_diff(
-            buf,
-            Rect {
-                x: diff_x,
-                width: body.right().saturating_sub(diff_x + 1),
-                ..body
-            },
-        );
+        self.draw_diff(buf, diff);
     }
 
     /// `Going in (n)` and its rows, then `Staying out (n)` and its rows,
-    /// scrolled so the cursor's row is on screen (C5, C7).
+    /// scrolled so the cursor's row is on screen (C5, C7) — the lines and
+    /// scroll [`file_at`](super::super::file_at) reads a click against.
     fn draw_files(&self, buf: &mut Buffer, area: Rect) {
-        let mut lines: Vec<(String, Style, Option<usize>)> = Vec::new();
         let muted = foreground(self.theme, Token::TextMuted);
-        for (group, heading, none) in [
-            (FileGroup::GoingIn, "Going in", "nothing yet"),
-            (FileGroup::StayingOut, "Staying out", "nothing"),
-        ] {
-            let members: Vec<usize> = (0..self.view.files.len())
-                .filter(|at| self.view.files[*at].group == group)
-                .collect();
-            lines.push((format!(" {heading} ({})", members.len()), muted, None));
-            if members.is_empty() {
-                lines.push((format!("   {none}"), muted, None));
-            }
-            for at in members {
-                lines.push((
+        let lines = list_lines(self.view);
+        let top = list_top(&lines, self.view.cursor, area.height);
+        let height = usize::from(area.height);
+        for (row, line) in lines.iter().skip(top).take(height).enumerate() {
+            let (text, style, at) = match *line {
+                ListLine::Heading(group, count) => {
+                    let (heading, _) = Self::group_words(group);
+                    (format!(" {heading} ({count})"), muted, None)
+                }
+                ListLine::Nothing(group) => {
+                    let (_, none) = Self::group_words(group);
+                    (format!("   {none}"), muted, None)
+                }
+                ListLine::File(at) => (
                     self.file_line(at, area.width),
                     self.file_style(at),
                     Some(at),
-                ));
-            }
-        }
-        let cursor_line = lines
-            .iter()
-            .position(|(_, _, at)| *at == Some(self.view.cursor))
-            .unwrap_or(0);
-        let height = usize::from(area.height);
-        let top = cursor_line.saturating_sub(height.saturating_sub(1));
-        for (row, (text, style, at)) in lines.iter().skip(top).take(height).enumerate() {
+                ),
+            };
             let y = area.y + u16::try_from(row).unwrap_or(0);
-            let text = fit(text, usize::from(area.width));
-            buf.set_string(area.x, y, &text, *style);
+            let text = fit(&text, usize::from(area.width));
+            buf.set_string(area.x, y, &text, style);
             // A staged part's word is dim whatever the row's colour: it
             // says how much goes in, not what the file is (08s M3).
             let part = at.is_some_and(|at| self.view.files[at].part_only);
@@ -145,6 +121,14 @@ impl CommitScreen<'_> {
         let pad =
             usize::from(width).saturating_sub(head.width() + middle.width() + tail.width() + 1);
         format!("{head}{middle}{}{tail}", " ".repeat(pad))
+    }
+
+    /// A group's heading word, and the line under it with no file in it.
+    const fn group_words(group: FileGroup) -> (&'static str, &'static str) {
+        match group {
+            FileGroup::GoingIn => ("Going in", "nothing yet"),
+            FileGroup::StayingOut => ("Staying out", "nothing"),
+        }
     }
 
     /// Going in reads as text; staying out is dim, a secrets file's in the

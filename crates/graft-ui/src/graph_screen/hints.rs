@@ -39,6 +39,7 @@ mod fitting;
 mod hint;
 mod keys;
 mod lists;
+mod status_row;
 
 use crate::keymap::{ActionId, Keymap};
 use keys as hint_keys;
@@ -69,6 +70,7 @@ pub use hint::{Hint, HintKey, HintState, MARK_RESOLVED, MARK_RESOLVED_SHORT, NOT
 use hint::{planned, short_form};
 use lists::{TAIL, context_list};
 pub use lists::{blame_place_list, history_place_list};
+pub use status_row::{StatusRow, status_row};
 
 /// Whether a detail pane is on screen, so its divider can be dragged.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

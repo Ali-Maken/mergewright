@@ -229,6 +229,42 @@ fn the_header_names_the_options_and_the_amend() {
     );
 }
 
+/// 08s m12: the header starts with the words the graph's top line starts
+/// with — `◆ <repo>  <~/path>` — then where the commit goes; short of room
+/// the path is cut first, from the left, as the top line cuts it.
+#[test]
+fn the_header_names_the_repository_first() {
+    let mut screen = view("fix toc", CommitFocus::Subject);
+    screen.header.location = Some(crate::graph_screen::Location {
+        repo: sanitize_line("wallet"),
+        path: sanitize_line("~/work/clients/acme/wallet"),
+        branch: sanitize_line("wallet-release"),
+        practice: false,
+    });
+    let header_at = |columns| {
+        draw(&screen, columns, 30)
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_owned()
+    };
+    assert_eq!(
+        header_at(120),
+        " ◆ wallet  ~/work/clients/acme/wallet  committing to wallet-release · not pushed yet"
+    );
+    assert_eq!(
+        header_at(80),
+        " ◆ wallet  …/clients/acme/wallet  committing to wallet-release · not pushed yet"
+    );
+    // No room for any of the path: the name, then the commit's words.
+    let narrow = header_at(50);
+    assert!(
+        narrow.starts_with(" ◆ wallet  committing to wallet-release"),
+        "{narrow}"
+    );
+    assert!(!narrow.contains('/'), "{narrow}");
+}
+
 #[test]
 fn under_100_columns_the_diff_is_hidden() {
     let mut on_secret = view("fix toc", CommitFocus::Files);
@@ -261,8 +297,16 @@ fn tab_walks_subject_body_files_and_back() {
 
 #[test]
 fn a_tiny_area_draws_without_panicking() {
+    let mut located = view("fix toc", CommitFocus::Files);
+    located.header.location = Some(crate::graph_screen::Location {
+        repo: sanitize_line("wallet"),
+        path: sanitize_line("~/work/wallet"),
+        branch: sanitize_line("main"),
+        practice: false,
+    });
     for (columns, rows) in [(1, 1), (10, 2), (40, 5), (120, 8), (120, 9)] {
         let _drawn: String = draw(&view("fix toc", CommitFocus::Files), columns, rows);
+        let _drawn: String = draw(&located, columns, rows);
     }
 }
 
@@ -277,4 +321,28 @@ fn a_bar_too_wide_keeps_whole_parts() {
     );
     assert_eq!(words::whole_parts(line, 200), line);
     assert_eq!(words::whole_parts(line, 5), "");
+}
+
+/// 08s m4: with no diff on screen the subject bar leaves out `↑/↓ see a
+/// file's changes`; short of room its parts go by rank, lowest first —
+/// `↑/↓`, `⇥ more detail`, `esc cancel…`, then `⏎` — whole parts only.
+#[test]
+fn the_narrow_bar_drops_by_rank() {
+    let subject = view("fix toc", CommitFocus::Subject);
+    let bar_at = |columns| last_line(&draw(&subject, columns, 30)).trim().to_owned();
+    assert_eq!(
+        bar_at(120),
+        "⏎ commit 3 files  ⇥ more detail  ↑/↓ see a file's changes  esc cancel, your message is kept"
+    );
+    assert_eq!(
+        bar_at(90),
+        "⏎ commit 3 files  ⇥ more detail  esc cancel, your message is kept"
+    );
+    // The two are 50 cells, after the bar's leading space.
+    assert_eq!(
+        bar_at(51),
+        "⏎ commit 3 files  esc cancel, your message is kept"
+    );
+    assert_eq!(bar_at(50), "⏎ commit 3 files");
+    assert_eq!(bar_at(10), "");
 }
