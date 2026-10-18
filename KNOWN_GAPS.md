@@ -1409,3 +1409,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |
 | ease/06g-trunk-development | 06g pins the fold rule with trunk = fixture `main`; a team repo whose trunk is `development` is not pinned (trunk detection for it unverified). | **unverified** | ease-pass (14) |
+| ease/06c-suffix-stale | Search's folded-hits suffix isn't re-asked after `space` / `1` (fold opened/closed, view switch), so it can read stale until the next request (06c NOTES). | **broken** | ease-pass (06h) |
+| ease/06c-search-hint-shot | 06c's last box: re-shooting `m8/search-hint` also drops `1 merged branch folded` from the 120-col header (lane words give way first, 06b's accepted rule). Re-shoot owed by 14. | **unverified** | ease-pass (14) |
