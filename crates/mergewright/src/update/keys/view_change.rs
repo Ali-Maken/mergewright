@@ -206,3 +206,22 @@ pub(super) fn view_change(key: KeyPress) -> Option<ViewChange> {
         _ => None,
     }
 }
+
+/// A view key (order, filter, stash visibility): asks the history job for
+/// the rows the changed view shows.
+pub(super) fn apply_view_change(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    change: ViewChange,
+) {
+    let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
+        refs.stashes().iter().map(|&(commit, _)| commit).collect()
+    });
+    let changed = next
+        .history
+        .as_ref()
+        .and_then(|history| change.apply(history, &stashes));
+    if let Some(changed) = changed {
+        send(next, commands, changed);
+    }
+}

@@ -15,7 +15,7 @@ const R_SWALLOWED: &str = "swallowed there: SWALLOWED_BY_DESIGN";
 const R_NO_EFFECT: &str = "nothing to act on in the fixture: NO_EFFECT_IN_FIXTURE";
 /// A pane focused over the Map, the stash list or J: `context_of` says
 /// `Diff`/`Changes`, which keep the graph's section, and the overlay
-/// swallows the key (`keys.rs:309-313`, the overlays after the pane).
+/// swallows the key (`keys/panes.rs:26-32`, the overlays after the pane).
 const R_OVERLAY: &str = "pane focused over an overlay: the overlay swallows it";
 /// `?` over the Map with the changes pane focused lists `g` for
 /// `app.top`; that place's files cursor is already on the first file, so

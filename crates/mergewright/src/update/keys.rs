@@ -3,10 +3,6 @@
 //! `commit_graph`).
 
 use mergewright_core::event::{KeyCode, KeyPress, Modifiers};
-use mergewright_core::oid::Oid;
-
-use crate::history::Motion;
-use mergewright_ui::detail::DetailFocus;
 
 use super::events::Command;
 use super::state::{AppState, Status};
@@ -22,8 +18,12 @@ mod edit_stop_tests;
 mod escape;
 #[cfg(test)]
 mod live_c_tests;
+mod modal;
+mod movement;
+mod panes;
 mod predicates;
 mod refresh;
+mod remote;
 #[cfg(test)]
 mod tab_words_tests;
 #[cfg(test)]
@@ -40,122 +40,19 @@ use actions::{copy_selected_sha, cycle_tier, toggle_compare_selected};
 pub(crate) use bound::bound_actions;
 use commit::commit_key;
 use escape::escape_key;
+use modal::{
+    banner_key, boxes_key, finish_key, place_claim, resolver_key, rewrite_key, undo_key_anywhere,
+};
+use movement::move_cursor;
+use panes::{editor_key, pane_and_overlay_key};
 use predicates::{
-    RemoteKey, is_commit_key, is_compare_key, is_context_menu_key, is_copy_key, is_focus_toggle,
+    is_commit_key, is_compare_key, is_context_menu_key, is_copy_key, is_focus_toggle,
     is_lane_toggle, is_name_key, is_quit, is_refresh, is_remote_key, is_rewrite_key,
     is_screen_toggle, is_tier_cycle, is_undo_key, motion_for,
 };
 pub(in crate::update) use refresh::refresh_key;
-use view_change::{ViewChange, view_change};
-
-/// The two modal boxes drawn over everything, in the order they claim keys.
-///
-/// The confirm box (`d` discard, m3-working-tree-undo-and-stash/04) wins
-/// even over the context menu: a menu key opened it, but it never opens one
-/// back over itself, so there is no ordering conflict — only whether it is
-/// `Some`.
-///
-/// The Ghost Preview sits **between** the confirm box and the context menu
-/// (m5-history-and-ghost-preview/08). A confirm box may open over a preview
-/// and never the reverse, so the box answers first; the menu is one of the
-/// things that opens a preview, and closes as it does, so the two are never
-/// up together. Modal: while a preview is open every key but `Ctrl+C` is its
-/// own — `u` included, because nothing may act over a picture the user is
-/// still reading.
-fn boxes_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let opened = super::confirm::confirm_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    if opened {
-        return true;
-    }
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::preview::preview_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
-/// The rewrite editor (`R`, m7-power-tools/08), right after the boxes:
-/// modal, every key but `Ctrl+C` is its own while it is up (§2.7), and
-/// `Esc` while its read is out cancels the read.
-fn rewrite_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let claimed =
-        super::rewrite_editor::rewrite_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
-/// The finish summary, right after the boxes and before the resolver
-/// (m6-conflicts/19): modal, every key but `Ctrl+C` is its own. Before the
-/// resolver because finish-from-the-resolver opens it over one.
-fn finish_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::finish::finish_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
-/// The conflict resolver, right after the preview and before the banner
-/// (m6-conflicts/04). Modal: while it is open every key but `Ctrl+C` is
-/// its own.
-///
-/// **Before the banner on purpose.** `⏎` on the focused banner is what
-/// opens it, and the banner is modal too — leaving it first would mean the
-/// resolver's own `c`, `s`, `a`, `M` and `e` reached the operation instead
-/// of the file, with a document on screen saying otherwise.
-fn resolver_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::resolver::resolver_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
-/// The operation banner, right after the preview and before the menu
-/// (m5-history-and-ghost-preview/09). Modal while focused: a merge or
-/// rebase stopped on a conflict is a state the user has to resolve or
-/// leave, and every key that would start a *second* thing on top of it —
-/// `u`, `S`, `m`, `r` — is swallowed rather than obeyed. `Ctrl+C` passes,
-/// and `Tab`/`Esc` give the keyboard back, so the mode always has a door.
-/// A blame place on screen claims every key but the live globals, before
-/// the menu, undo, a write's `Esc` and the panes — so the graph's verbs,
-/// `u` and `Tab` are inert in it, and its `Esc` never stops a running
-/// write (m7-power-tools/20).
-fn place_claim(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    if !super::place::owns_keys(next) || super::place::live_global(key) {
-        return false;
-    }
-    commands.extend(super::place::place_key(next, key));
-    true
-}
-
-fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    if super::banner::take_focus(next, key) {
-        return true;
-    }
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::banner::banner_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
-/// The global `u`/`U`, on every screen. In J it is `⏎` on the `← u`/`← U`
-/// row: both are `journal::undo_from_j`, which reads the launch's one
-/// outcome (m7/30o R3) — J closes once the undo is launched; the push box
-/// and a refusal leave J where he pressed the key.
-fn undo_key_anywhere(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
-    let mut local_jobs = next.local_jobs;
-    let mut next_id = || local_jobs.next_id();
-    if next.journal.shown {
-        super::journal::undo_from_j(next, commands, redo, &mut next_id);
-    } else {
-        // The outcome is on the state (`operating`, the box or the words);
-        // off J there is nothing to close.
-        let _started: super::undo::UndoStart =
-            super::undo::start_undo(next, commands, redo, &mut next_id);
-    }
-    next.local_jobs = local_jobs;
-}
+use remote::remote_key;
+use view_change::{apply_view_change, view_change};
 
 /// What every key does to the bottom row before anything answers it — the
 /// edge's unbound keys included (`edge::unanswered`). `true` when the key is
@@ -294,52 +191,6 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     graph_key(next, commands, key);
 }
 
-/// The detail pane, each overlay, then the overview strip: the panes that
-/// claim a key before the graph sees it. `true` when one of them took it.
-///
-/// An open overlay stands where the graph does, so it takes the keys the
-/// graph would — **before** the detail pane, which otherwise claims
-/// `Enter`, `s`, `d` and `Space` for itself and leaves `⏎ apply` doing
-/// nothing but opening the pane. While the pane has focus the pane keeps
-/// them, and `Tab` is never claimed by an overlay, so focus can always get
-/// back there (m3-working-tree-undo-and-stash/06).
-fn pane_and_overlay_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let overlay_first = next.detail.focus == DetailFocus::Graph;
-    if overlay_first && (journal_key(next, commands, key) || stash_key(next, commands, key)) {
-        return true;
-    }
-    super::detail::detail_key(next, commands, key)
-        || super::map::map_key(next, commands, key)
-        || (!overlay_first && (journal_key(next, commands, key) || stash_key(next, commands, key)))
-        || super::strip::strip_key(next, key)
-}
-
-/// The commit editor's keys, with `local_jobs` borrowed out the same way.
-fn editor_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::commit_editor::editor_key(next, &key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-        .map(|editor_commands| commands.extend(editor_commands))
-        .is_some()
-}
-
-/// The journal browser's keys, the same way.
-fn journal_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::journal::journal_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
-/// The stash overlay's keys, the same way.
-fn stash_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let mut local_jobs = next.local_jobs;
-    let claimed = super::stash::stash_key(next, commands, key, &mut || local_jobs.next_id());
-    next.local_jobs = local_jobs;
-    claimed
-}
-
 /// The graph's own keys, once the detail pane has passed on the key.
 fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
@@ -429,46 +280,4 @@ fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
         return true;
     }
     false
-}
-
-/// A view key (order, filter, stash visibility): asks the history job for
-/// the rows the changed view shows.
-fn apply_view_change(next: &mut AppState, commands: &mut Vec<Command>, change: ViewChange) {
-    let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
-        refs.stashes().iter().map(|&(commit, _)| commit).collect()
-    });
-    let changed = next
-        .history
-        .as_ref()
-        .and_then(|history| change.apply(history, &stashes));
-    if let Some(changed) = changed {
-        view_change::send(next, commands, changed);
-    }
-}
-
-/// One remote key, with `local_jobs` borrowed out for the closure.
-fn remote_key(next: &mut AppState, commands: &mut Vec<Command>, remote: RemoteKey) {
-    let mut local_jobs = next.local_jobs;
-    let mut next_id = || local_jobs.next_id();
-    let _claimed: bool = match remote {
-        RemoteKey::Fetch => super::remote::fetch_key(next, commands, &mut next_id),
-        RemoteKey::Pull => super::remote::pull_key(next, commands, &mut next_id),
-        RemoteKey::Push => super::remote::push_key(next),
-    };
-    next.local_jobs = local_jobs;
-}
-
-/// A graph motion key: the working-tree row's flag (`update::selection`)
-/// sees it first, then whatever motion is left goes to `History`.
-fn move_cursor(next: &mut AppState, commands: &mut Vec<Command>, motion: Motion) {
-    let Some(motion) = super::selection::move_from_graph(next, motion) else {
-        return;
-    };
-    let height = next.graph_rows();
-    if let Some(history) = next.history.as_mut()
-        && let Some(request) = history.move_cursor(motion, height)
-        && let Some(id) = next.awaiting
-    {
-        commands.push(Command::ShowRows(id, request));
-    }
 }

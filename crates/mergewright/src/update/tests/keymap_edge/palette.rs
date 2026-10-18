@@ -344,7 +344,7 @@ fn config_problems_head_the_list() {
     }
 }
 
-/// Blame's find prompt drops `?`: `place_claim` (update/keys.rs:125) lets
+/// Blame's find prompt drops `?`: `place_claim` (update/keys/modal.rs:91) lets
 /// `live_global` (place/keys.rs:23-29) pass `?` and `q` up while the
 /// prompt is open, and nothing types them. Found by this ticket, not fixed
 /// here: it predates the palette (09e's ground).
