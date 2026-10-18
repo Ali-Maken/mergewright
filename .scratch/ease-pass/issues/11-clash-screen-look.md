@@ -1,11 +1,11 @@
 # clash-screen-look — the clash screen as the mock: inline file, only clashes split, `?` vs `◀ ▶ ◆`
 
 Status: ready (ids revised 2026-10-17 after ease-vocabulary's scout; clash bar states named after 03b, 2026-10-17; Needs fitted to the 05/05b split, 2026-10-17; `ClashBar { at, roles }` and file-name shortening after 03r, Q16 acceptance line, 2026-10-17; amended 2026-10-18 after review ease-pass-05-10: Minor 8 question for the user, Minor 11 split-first, 05s/05t knock-ons; this group's own scout not yet run)
-Blocked by: 05-resolver-picks, 05b-merge-review-at-y, 03-ease-vocabulary, 03b-ease-vocabulary-rest, 03r-vocabulary-fixes, 05s-merge-screens-fixes (`open_clashes`, the review's door the review row's click goes through), 05t-merge-screens-ratchet (renames the type this group draws rows from); **the user's answer to the question below** (the M6 row word)
+Blocked by: 05-resolver-picks, 05b-merge-review-at-y, 03-ease-vocabulary, 03b-ease-vocabulary-rest, 03r-vocabulary-fixes, 05s-merge-screens-fixes (`open_clashes`, the review's door the review row's click goes through), 05t-merge-screens-ratchet (renames the type this group draws rows from); ~~the user's answer~~ (answered: `done`)
 Build with: (blank — brownfield; conductor sets after the scout)
 Needs: from 05: `Picks`, `BlockAt`, `next_open_in_file`, `next_open`, resolver state after a pick; from 05b: `resolver.review` (`y`) for the list's review row, `FileState::{Open { open }, Solved, Done}` and `file_state` (graft-ops) — the list's `?`/`✓` and the review row come from it, never from "no markers"; from 05s: `FileState::open_clashes` (a row's `N open`; a whole-file card counts 1); from 05t: graft-ui `FileRowLook` (was `conflict_resolver::FileState`); from 03b/03r: `HintContext::Clash(ClashBar { at: ClashAt, roles: SideRoles })` — `ClashAt::{Open, Picked, FileSolved { next: SanitizedText }, AllSolved}`, `ClashBar::is_merge()` (merge-ness read from `roles`; there is no `ClashOp`); the merge `AllSolved` words are 05b's `y review the merge …`; `FileSolved { next }` takes the **full path** and the bar draws its last segment (03r); hint verbs are `Cow<'static, str>`.
 
-## Question for the user (review 05-10 Minor 8 — conductor asks before this group builds)
+## Question for the user (review 05-10 Minor 8) — **answered 2026-10-18: a) `done` for both, as the mock** (field-notes)
 Words he accepted in the mock change in the build, so they go back to him:
 
 > Clash screen, file list: a file with every clash picked (not yet committed) reads `✓ done` in your mock, `✓ solved` in the build — which keeps `done` for a file git already took whole. Which?
