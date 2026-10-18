@@ -161,7 +161,6 @@
 459 crates/mergewright/src/update/events/command.rs
 511 crates/mergewright/src/update/geometry.rs
 1234 crates/mergewright/src/update/journal/tests.rs
-474 crates/mergewright/src/update/keys.rs
 579 crates/mergewright/src/update/keys/live_c_tests.rs
 470 crates/mergewright/src/update/name_prompt.rs
 488 crates/mergewright/src/update/name_prompt/tests.rs
@@ -171,7 +170,6 @@
 440 crates/mergewright/src/update/place.rs
 456 crates/mergewright/src/update/place/keys.rs
 1069 crates/mergewright/src/update/place/tests/history.rs
-429 crates/mergewright/src/update/preview.rs
 431 crates/mergewright/src/update/preview/slice.rs
 448 crates/mergewright/src/update/preview/slice/tests.rs
 2152 crates/mergewright/src/update/preview/tests.rs
@@ -183,10 +181,9 @@
 964 crates/mergewright/src/update/resolver/tests.rs
 868 crates/mergewright/src/update/resolver/tests/file_list.rs
 1689 crates/mergewright/src/update/rewrite_editor/tests.rs
-639 crates/mergewright/src/update/selection.rs
 536 crates/mergewright/src/update/stash.rs
 668 crates/mergewright/src/update/stash/tests.rs
-1318 crates/mergewright/src/update/state.rs
+531 crates/mergewright/src/update/state.rs
 492 crates/mergewright/src/update/switch/tests.rs
 633 crates/mergewright/src/update/tests/keymap_edge/palette.rs
 880 crates/mergewright/src/update/tests/keymap_edge/palette_find.rs

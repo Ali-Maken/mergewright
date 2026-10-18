@@ -4,7 +4,7 @@
 //! and what a previewed operation *does* is `ops`' and is proved against
 //! real git in `tests/it/`.
 
-use mergewright_core::commit::{Identity, Timestamp};
+use mergewright_core::commit::{Commit, Identity, Timestamp};
 use mergewright_core::ref_name::RefName;
 use mergewright_git::repo::HeadState;
 use mergewright_ops::operation::{FastForward, MergeParams, RebaseParams};
