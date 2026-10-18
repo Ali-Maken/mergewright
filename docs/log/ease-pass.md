@@ -165,3 +165,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 2026-10-18 · speed-up (user: "how can we fasten things up"): (1) gates batched — two merges per full run, a red run bisected by merging one at a time; (2) public cleanup by export allow-list, not deletion — researcher writes docs/release/export-inventory.md now (no cargo): SHIP / PRIVATE / STALE with grep proof; deletions only after user approves the STALE list.
 - researcher export inventory · 9 tools: docs/release/export-inventory.md; 32 stale-looking captures (filename grep, needs shot-drift), 7 stale scripts; no LICENSE; personal names in 2 tests; test key fake (checked by conductor). Rulings appended.
 - gates after 06s (9bd053d2): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
+- 03r merged; gates running. builder-sonnet 06i dispatched beside 07.
