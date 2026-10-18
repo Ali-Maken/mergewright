@@ -1408,3 +1408,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/08u-justmerged | `JustMerged` (landing bar after a merge) is never built by app code (08u NOTES) — dead variant or a missing producer? | **question** | ease-pass review |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
+| ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |
