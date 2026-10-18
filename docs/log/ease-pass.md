@@ -135,3 +135,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 2026-10-18 · user: clean redundant/unused files before publishing → release row.
 - gates after 11 (dfe8a965): fmt ok, clippy 0, nextest 6918/6918, doc ok (first run broke: 11's click test used 12's removed FinishFocus — fixed, compares cursor); worktree removed. Rename baseline: 6918.
 - builder-sonnet codename-rename/01 dispatched alone from 507c52e2 (baseline 6918).
+- builder-sonnet codename-rename/01 merged (8da8b6c3, 4da17fa4, 27cd5d0c): 3/5; 6918/6918 in worktree (= baseline); grep 871 hits left, over_400 +95 rows → gaps rename/*, pre-publish cleanup; CLAUDE.md 'was' line done by conductor (ticket scope, user-approved rename); empty crates/graft dirs rmdir'd · 113 tools · skills: none

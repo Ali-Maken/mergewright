@@ -1415,6 +1415,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/11-arrow-key | `←/→ clashes` key on screen is not in the mock (11 NOTES) | **question** | ease-pass 11b |
 | ease/11-gutters | Left/right gutters uneven (11 NOTES) | **question** | ease-pass 11b |
 | ease/11-tdd-order | Some 11 code written before its test; the click test could not fail on old scroll.rs (11 NOTES) | **unverified** | ease-pass review |
+| rename/over400-raised | Rename raised 95 over_400 rows (+466 lines), all rustfmt reflow from longer names; user rule is split, not raise | **broken** | pre-publish cleanup |
+| rename/graft-leftovers | 871 `graft` hits remain: migration names (kept on purpose), fixture identities `Graft Fixture/Test/Perf` (seed fixture oids; renaming needs hard-coded oids + snapshots redone), lowercase comments/temp prefixes, .snap `source:` headers. Public repo must not carry the codename | **broken** | pre-publish cleanup |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |

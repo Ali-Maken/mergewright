@@ -2,7 +2,7 @@
 
 Why behind every rule here: [`docs/rules-rationale.md`](docs/rules-rationale.md) — not auto-loaded, read it when a rule seems wrong.
 
-"Graft" is the project's **codename** (another Git GUI's name): never publish, register or tag anything under it. The product is **Mergewright**, command `mwr` (ADR-0057); nothing goes public under that either until the trademark search is done.
+"Graft" was the project's **codename** (another Git GUI's name); crates and paths were renamed to `mergewright*` on 2026-10-18 (codename-rename/01). Never publish, register or tag anything under it. The product is **Mergewright**, command `mwr` (ADR-0057); nothing goes public under that either until the trademark search is done.
 
 ## The seven that pay
 
