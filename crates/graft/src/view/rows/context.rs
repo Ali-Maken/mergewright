@@ -125,6 +125,7 @@ pub(super) fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> H
         .and_then(crate::history::History::selected)
         .map(|row| row.commit.id);
     let landed = crate::update::commit_editor::landed_bar(state.last_commit.as_deref(), selected)
+        .or_else(|| crate::update::finish::just_merged_bar(state, selected))
         .map(|row| HintContext::GraphRow { row, verbs });
     let base = landed.unwrap_or_else(|| {
         cursor

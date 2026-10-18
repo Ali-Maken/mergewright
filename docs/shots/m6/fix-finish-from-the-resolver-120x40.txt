@@ -1,15 +1,13 @@
 MERGING
-╭ Preview: finish merging side into main ──────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit on main · nothing is committed until y                                                                │
-│ undo: u takes this back                                                                                              │
-│ RESOLVED BY YOU · 2                                                                                                  │
-│ ▸ a.txt  yours · main in 1 of 1 conflicts                                                                            │
-│   b.txt  yours · main in 1 of 1 conflicts                                                                            │
-│ COMBINED BY GIT ON ITS OWN · none                                                                                    │
-│ MESSAGE · ⇥ edit                                                                                                     │
-│  Subject Merge branch 'side'                                                     ┊                             19/72 │
-│  Body                                                                                                                │
-│                                                                                  ┊                                   │
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ All 2 clashes solved. Nothing committed yet.                                                                         │
+│                                                                                                                      │
+│ This merge will put into main:                                                                                       │
+│   1 commit from side                                                                                                 │
+│ ▸ ✓ a.txt  you chose: ◀ yours                                                                                        │
+│   ✓ b.txt  you chose: ◀ yours                                                                                        │
+│                                                                                                                      │
+│ Message  Merge branch 'side'                                                                                         │
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
@@ -36,7 +34,9 @@ MERGING
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
-╰ y commit  j/k move  ⇥ message  esc back ─────────────────────────────────────────────────────────────────────────────╯
+│                                                                                                                      │
+│                                                                                                                      │
+╰ y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again) ─╯
 
 --- after Esc ---
 MERGING

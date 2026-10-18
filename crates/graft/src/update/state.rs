@@ -480,10 +480,6 @@ pub struct AppState {
     /// The finish summary (m6-conflicts/19), `None` while closed; modal, first
     /// in [`AppState::graph_overlay`]. Boxed for the reason `picks` is.
     pub finish: Option<Box<super::finish::FinishState>>,
-    /// The summary's message as `Esc` left it, `(subject, body)`, when it
-    /// was the user's: the next `c` puts it back. Apart from
-    /// `drafts` (ticket 19 S7). Cleared when the operation ends.
-    pub finish_draft: Option<(String, String)>,
     /// The conflicted path the banner's or changes pane's `e` handed to
     /// `$EDITOR`, until the terminal comes back: `Product::HandedOver`
     /// carries no path, and a clean return marks the file `edited` in
@@ -518,6 +514,11 @@ pub struct AppState {
     /// that undo gives its message back. Cleared by any other write
     /// landing, an undo, or the commit screen opening.
     pub last_commit: Option<Box<super::commit_editor::LastCommit>>,
+    /// The merge commit the review's `y` just made (ease-pass/12 M18):
+    /// while the cursor rests on it, it is still `HEAD` and its count is
+    /// known, its row's bar is `RowBar::JustMerged`. Cleared by any other
+    /// write landing.
+    pub last_merge: Option<graft_core::oid::Oid>,
 }
 
 /// The screens Graft can show.
@@ -973,10 +974,6 @@ impl AppState {
             || self.name_prompt.is_some()
             || super::picker::shown(self)
             || super::rewrite_editor::field_open(self)
-            || self
-                .finish
-                .as_ref()
-                .is_some_and(|finish| finish.focus != super::finish::FinishFocus::Files)
     }
 
     /// Is a modal pane or box taking the keyboard right now

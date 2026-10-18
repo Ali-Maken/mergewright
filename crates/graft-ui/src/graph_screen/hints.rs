@@ -46,8 +46,8 @@ use keys as hint_keys;
 
 pub use catalogue::{every_context, every_hint};
 pub use context::{
-    ClashAt, ClashBar, ConfirmYes, HintContext, LiveC, RowBar, RowVerbs, TabWord, WayToBanner,
-    bar_name,
+    ClashAt, ClashBar, ConfirmYes, HintContext, LiveC, ReviewBar, RowBar, RowVerbs, TabWord,
+    WayToBanner, bar_name,
 };
 pub(crate) use doorway::doorway_key;
 pub use doorway::doorway_words;

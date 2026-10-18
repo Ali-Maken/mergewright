@@ -27,7 +27,7 @@ pub(super) fn bar_hints(
     divider: Divider,
     columns: u16,
 ) -> Vec<graft_ui::graph_screen::Hint> {
-    if matches!(bar, HintContext::Finish { .. }) {
+    if matches!(bar, HintContext::Finish { .. } | HintContext::Review(_)) {
         crate::view::finish::finish_hints(state, columns)
     } else {
         graft_ui::graph_screen::hints_for(
@@ -247,8 +247,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             done: false,
             finishable: false,
             ..
-        }
-        | HintContext::Finish { .. }) => Some(same.clone()),
+        }) => Some(same.clone()),
         // A done file (m6-conflicts/25): `resolver_context` answers the
         // document's flags with `done` set. Finishable (m6-conflicts/31)
         // is the done file after the last one, every file done — the one
@@ -275,10 +274,13 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // answers: G picks `GraphRow` at the row-context choice site and L
         // moves the resolver to `Clash`. Until then no state classifies as
         // either; their keys are still pressed (`screen_for`).
+        // ease-pass/12: the m6 `Finish` form the review replaced has no
+        // picker left (retiring, 03b's).
         HintContext::Preview
         | HintContext::Resolver { .. }
         | HintContext::GraphRow { .. }
-        | HintContext::Clash(_) => None,
+        | HintContext::Clash(_)
+        | HintContext::Finish { .. } => None,
         // A standing search (m8/15b): the row's form, led by `n N`.
         HintContext::Searching(row) => {
             classified_form(row).map(|row| HintContext::Searching(Box::new(row)))
@@ -320,6 +322,9 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::History { .. }
         // The rewrite editor's own bar (`view::rewrite_editor::rewrite_context`).
         | HintContext::RewriteEditor { .. }
-        | HintContext::RewriteMessage => Some(context.clone()),
+        | HintContext::RewriteMessage
+        // ease-pass/12: the merge review is an overlay, and
+        // `overlay_context` answers its one bar.
+        | HintContext::Review(_) => Some(context.clone()),
     }
 }

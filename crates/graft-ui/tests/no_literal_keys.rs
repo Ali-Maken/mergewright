@@ -68,9 +68,19 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "`?` is the undecided file's mark, not the help key; the take keys after it are spelled",
     ),
     (
-        "finish_summary/frame.rs",
-        "1 merge commit on {into} · nothing is committed {until}",
-        "`1` is a count, not a tab key",
+        "finish_summary.rs",
+        "1 clash solved. Nothing committed yet.",
+        "`1` is the review's clash count, not a tab key",
+    ),
+    (
+        "finish_summary.rs",
+        "1 commit from {from}",
+        "`1` is the review's incoming count, not a tab key",
+    ),
+    (
+        "finish_summary.rs",
+        "? commits from {from}",
+        "`?` is a count git could not give, not the help key",
     ),
     (
         "graph_screen/fold_mark.rs",
@@ -81,11 +91,6 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "graph_screen/fold_mark.rs",
         "? commits",
         "`?` is a count git could not give, not the help key",
-    ),
-    (
-        "finish_summary/frame.rs",
-        "1 merge commit · nothing is committed {until}",
-        "`1` is a count, not a tab key",
     ),
     (
         "stash_screen/view.rs",

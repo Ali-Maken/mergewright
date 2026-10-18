@@ -30,7 +30,6 @@ pub fn operation_ended(state: &mut AppState) {
     // What the finish summary remembered belongs to the operation that
     // just ended (m6-conflicts/19): the next merge starts clean.
     state.choices.clear();
-    state.finish_draft = None;
     // And its picks (ease-pass 05).
     state.picks.clear();
 }

@@ -4,8 +4,8 @@ use super::*;
 
 /// Every text field `text_field_open` names, each open and empty: the
 /// search prompt, blame's find, J's find, the stash prompt, the commit
-/// editor, the credential box, the name prompt, the picker, the rewrite
-/// editor's `r` field and the finish screen's subject.
+/// editor, the credential box, the name prompt, the picker and the rewrite
+/// editor's `r` field. (The merge review's subject left with ease-pass/12.)
 pub(in super::super) fn every_field() -> Vec<(&'static str, AppState)> {
     let typed = |state: AppState, c: char| update(&state, key(KeyCode::Char(c))).0;
     let mut rewrite = on_a_branch_row();
@@ -38,10 +38,6 @@ pub(in super::super) fn every_field() -> Vec<(&'static str, AppState)> {
         ),
         ("picker", fixture(ContextId::Picker).expect("picker")),
         ("rewrite field", rewrite),
-        (
-            "finish subject",
-            finish_screen_for(walk(), SummaryFocus::Subject, true),
-        ),
     ];
     fields
         .into_iter()

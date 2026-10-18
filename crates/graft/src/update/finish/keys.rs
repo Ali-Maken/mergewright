@@ -1,12 +1,17 @@
-//! The summary's keys (keymap §2.6b) and bracketed paste.
+//! The review's keys (keymap §2.6b, ease-pass/12): matched by action id,
+//! so a remapped key acts and the old one does not. The edge hands a
+//! handler shipped chords only (`update/edge.rs`).
+
+use graft_ui::keymap::{ActionId, KeyChord, Keymap};
 
 use super::{
-    AppState, Command, FinishFocus, FinishState, JobId, KeyCode, KeyPress, Loading, PathBuf,
-    Resume, ReturnTo, compose, fits, keep_cursor_on_screen, with_finish,
+    AppState, Command, FinishState, JobId, KeyCode, KeyPress, Loading, PathBuf, Resume, ReturnTo,
+    fits, keep_cursor_on_screen, with_finish,
 };
 
-/// The summary's keys while it is open. `false` only for `Ctrl+C` (and
-/// when it is closed): every other key is the summary's (§2.1).
+/// The review's keys while it is open. `false` only for `Ctrl+C` (and
+/// when it is closed): every other key is the review's (§2.1), and one
+/// the review does not bind does nothing.
 pub fn finish_key(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -19,7 +24,7 @@ pub fn finish_key(
     if key.code == KeyCode::Char('c') && key.modifiers.control {
         return false;
     }
-    // The text on screen is what is being written: nothing changes it.
+    // The review on screen is what is being committed: nothing changes it.
     // (`Esc` while Graft waits to quit on that commit never reaches here:
     // `keys::key_event` spends it on the wait first, m8/13b review M2.)
     if finish.committing.is_some() {
@@ -28,103 +33,41 @@ pub fn finish_key(
     // Below the widget's floor only one line is drawn: nothing on screen to
     // act on, so only `Esc` acts.
     if !fits(state) {
-        if key.code == KeyCode::Escape && !key.modifiers.control && !key.modifiers.alt {
+        if asks(key, "app.back") {
             escape(state);
         }
         return true;
     }
-    if key.modifiers.control {
-        control_key(state, commands, key, next_id);
-        return true;
-    }
-    if key.modifiers.alt {
-        return true;
-    }
-    match key.code {
-        KeyCode::Escape => escape(state),
-        // `Shift+Tab` arrives as `BackTab` from most terminals and as a
-        // shifted `Tab` from some: both step the focus back (§2.6b).
-        KeyCode::Tab if key.modifiers.shift => with_finish(state, |finish| {
-            finish.focus = finish.focus.prev();
-        }),
-        KeyCode::BackTab => with_finish(state, |finish| {
-            finish.focus = finish.focus.prev();
-        }),
-        KeyCode::Tab => with_finish(state, |finish| {
-            finish.focus = finish.focus.next();
-        }),
-        _ => match finish.focus {
-            FinishFocus::Files => files_key(state, commands, key, next_id),
-            FinishFocus::Subject => subject_key(state, commands, key, next_id),
-            FinishFocus::Body => body_key(state, key),
-        },
+    if asks(key, "app.back") {
+        escape(state);
+    } else if asks(key, "confirm.yes") {
+        commit(state, commands, next_id);
+    } else if asks(key, "app.undo") {
+        undo_pick(state, commands, next_id);
+    } else if asks(key, "finish.toggle_diff") {
+        toggle_diff(state, commands, next_id);
+    } else if asks(key, "app.down") {
+        move_cursor(state, 1);
+    } else if asks(key, "app.up") {
+        move_cursor(state, -1);
+    } else if asks(key, "app.page_down") {
+        move_cursor(state, page(state));
+    } else if asks(key, "app.page_up") {
+        move_cursor(state, -page(state));
     }
     true
 }
 
-/// `Ctrl`-held keys: they mean the same wherever the focus is.
-pub(super) fn control_key(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    key: KeyPress,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    match key.code {
-        KeyCode::Enter => commit(state, commands, next_id),
-        KeyCode::Char('e') => edit_outside(state, commands, next_id),
-        // `⌃Z`, `app.undo`'s other chord: never text, so from any focus.
-        _ if asks_undo(key) => undo_pick(state, commands, next_id),
-        // §2.10's word moves, in whichever field has focus.
-        KeyCode::Left => with_finish(state, |finish| match finish.focus {
-            FinishFocus::Subject => finish.subject.word_left(),
-            FinishFocus::Body => finish.body.word_left(),
-            FinishFocus::Files => {}
-        }),
-        KeyCode::Right => with_finish(state, |finish| match finish.focus {
-            FinishFocus::Subject => finish.subject.word_right(),
-            FinishFocus::Body => finish.body.word_right(),
-            FinishFocus::Files => {}
-        }),
-        _ => {}
-    }
+/// `key` is one of `action`'s chords as shipped.
+fn asks(key: KeyPress, action: &'static str) -> bool {
+    KeyChord::from_press(&key)
+        .is_some_and(|chord| Keymap::shipped().chords(&ActionId(action)).contains(&chord))
 }
 
-/// Keys while the file lists have focus: `y` commits, the one confirm key
-/// of every preview (P12, ADR-0044 §3); `⏎` and `space` show the cursor
-/// file's change.
-pub(super) fn files_key(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    key: KeyPress,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    match key.code {
-        KeyCode::Char('y') => commit(state, commands, next_id),
-        _ if asks_undo(key) => undo_pick(state, commands, next_id),
-        KeyCode::Enter | KeyCode::Char(' ') => toggle_diff(state, commands, next_id),
-        KeyCode::Char('j') | KeyCode::Down => move_cursor(state, 1),
-        KeyCode::Char('k') | KeyCode::Up => move_cursor(state, -1),
-        KeyCode::PageDown => move_cursor(state, page(state)),
-        KeyCode::PageUp => move_cursor(state, -page(state)),
-        _ => {}
-    }
-}
-
-/// `key` is one of `app.undo`'s chords as shipped (`u`, `⌃Z`): the edge
-/// hands a handler shipped chords only (`update/edge.rs`).
-fn asks_undo(key: KeyPress) -> bool {
-    use graft_ui::keymap::{ActionId, KeyChord, Keymap};
-    KeyChord::from_press(&key).is_some_and(|chord| {
-        Keymap::shipped()
-            .chords(&ActionId("app.undo"))
-            .contains(&chord)
-    })
-}
-
-/// `u` in the review's file list (ease-pass/05b): back to the resolver with
-/// the last pick put back and the cursor on it — the resolver under the
-/// review, or one opened on the pick when the review was asked for from
-/// the banner. Nothing to undo: said, and the review stays.
+/// `u` in the review (ease-pass/05b): back to the resolver with the last
+/// pick put back and the cursor on it — the resolver under the review, or
+/// one opened on the pick when the review was asked for from the banner.
+/// Nothing to undo: said, and the review stays.
 fn undo_pick(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -140,14 +83,14 @@ fn undo_pick(
         .finish
         .as_ref()
         .is_some_and(|finish| finish.return_to == ReturnTo::Banner);
-    close_keeping_draft(state);
+    close(state);
     if from_banner {
         state.banner_focus = crate::update::banner::banner_view(state).is_some();
     }
     crate::update::resolver::undo_from_review(state, commands, from_banner, next_id);
 }
 
-/// One page: the list's visible height, the lines the frame leaves it.
+/// One page: the list's visible height.
 fn page(state: &AppState) -> isize {
     let Some(view) = crate::view::finish::finish_view(state) else {
         return 0;
@@ -157,61 +100,21 @@ fn page(state: &AppState) -> isize {
     isize::try_from(height.max(1)).unwrap_or(isize::MAX)
 }
 
-/// Keys while the subject has focus: `⏎` commits (§2.6b).
-pub(super) fn subject_key(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    key: KeyPress,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    if key.code == KeyCode::Enter {
-        commit(state, commands, next_id);
-        return;
+/// Rows the cursor moves over: the clashed files, then one for what git
+/// combined, when it combined anything.
+fn row_count(finish: &FinishState) -> usize {
+    match &finish.summary {
+        Loading::Ready(summary) => summary.by_you.len() + usize::from(!summary.by_git.is_empty()),
+        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => 0,
     }
-    with_finish(state, |finish| {
-        let field = &mut finish.subject;
-        match key.code {
-            KeyCode::Char(character) => field.insert(character),
-            KeyCode::Backspace => field.backspace(),
-            KeyCode::Delete => field.delete(),
-            KeyCode::Left => field.left(),
-            KeyCode::Right => field.right(),
-            KeyCode::Home => field.home(),
-            KeyCode::End => field.end(),
-            _ => {}
-        }
-    });
 }
 
-/// Keys while the body has focus: `⏎` is a newline (§2.6b).
-pub(super) fn body_key(state: &mut AppState, key: KeyPress) {
-    with_finish(state, |finish| {
-        let area = &mut finish.body;
-        match key.code {
-            KeyCode::Enter => area.newline(),
-            KeyCode::Char(character) => area.insert(character),
-            KeyCode::Backspace => area.backspace(),
-            KeyCode::Delete => area.delete(),
-            KeyCode::Left => area.left(),
-            KeyCode::Right => area.right(),
-            KeyCode::Up => area.up(),
-            KeyCode::Down => area.down(),
-            KeyCode::Home => area.home(),
-            KeyCode::End => area.end(),
-            _ => {}
-        }
-    });
-}
-
-/// `j`/`k`: the cursor over both lists, kept on screen.
+/// `j`/`k`: the cursor over the rows, kept on screen.
 pub(super) fn move_cursor(state: &mut AppState, by: isize) {
     let Some(finish) = state.finish.as_mut() else {
         return;
     };
-    let rows = match &finish.summary {
-        Loading::Ready(summary) => summary.by_you.len() + summary.by_git.len(),
-        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => 0,
-    };
+    let rows = row_count(finish);
     if rows == 0 {
         return;
     }
@@ -219,18 +122,13 @@ pub(super) fn move_cursor(state: &mut AppState, by: isize) {
     keep_cursor_on_screen(state);
 }
 
-/// The path the cursor row names, when the summary is read.
+/// The clashed file row `row` names; `None` on the combined row, whose
+/// look is ticket 12b's.
 pub(super) fn row_path(finish: &FinishState, row: usize) -> Option<PathBuf> {
     let Loading::Ready(summary) = &finish.summary else {
         return None;
     };
-    match summary.by_you.get(row) {
-        Some(file) => Some(file.path.clone()),
-        None => summary
-            .by_git
-            .get(row - summary.by_you.len())
-            .map(|file| file.path.clone()),
-    }
+    summary.by_you.get(row).map(|file| file.path.clone())
 }
 
 /// `⏎`/`space`: show the cursor row's staged diff under it, or hide it.
@@ -258,7 +156,7 @@ pub(super) fn toggle_diff(
     keep_cursor_on_screen(state);
 }
 
-/// `y` (files), `⏎` (subject) or `Ctrl+Enter`: commit.
+/// `y`: commit the merge with git's own message (ticket decision 5).
 pub(super) fn commit(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -272,31 +170,12 @@ pub(super) fn commit(
             finish.notice = Some(("still reading · wait".to_owned(), false));
             return;
         }
-        // Nothing to compare against: git's own message, as the line says.
+        // Nothing read to stage inside the finish: git's own message, as
+        // the unavailable line says.
         Loading::Failed(_) => Resume::Continue { solved: Vec::new() },
-        Loading::Ready(summary) => {
-            let solved = finish.solved.clone();
-            if finish.subject.text().trim().is_empty() {
-                finish.notice = Some((
-                    state.keymap.after(
-                        "the message is empty",
-                        graft_ui::keymap::ActionId("app.next_pane"),
-                        "to write one",
-                    ),
-                    true,
-                ));
-                return;
-            }
-            let message = compose(finish.subject.text(), &finish.body.text());
-            if message.trim_end() == String::from_utf8_lossy(&summary.message).trim_end() {
-                Resume::Continue { solved }
-            } else {
-                Resume::ContinueWith {
-                    message: message.into_bytes(),
-                    solved,
-                }
-            }
-        }
+        Loading::Ready(_) => Resume::Continue {
+            solved: finish.solved.clone(),
+        },
     };
     if crate::update::operate::operation_in_flight(state) {
         with_finish(state, |finish| {
@@ -317,74 +196,20 @@ pub(super) fn commit(
     }
 }
 
-/// `Ctrl+E`: the whole message to `$EDITOR`, the way the commit editor
-/// hands it over.
-pub(super) fn edit_outside(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    let Some(finish) = state.finish.as_mut() else {
-        return;
-    };
-    let id = next_id();
-    let message = compose(finish.subject.text(), &finish.body.text());
-    finish.editing = Some(id);
-    state.external_editor = Some(id);
-    commands.push(Command::EditCommitMessage { id, message });
-}
-
-/// `Esc`: close. What the user typed goes to `finish_draft`; from the
-/// banner, the banner gets the keyboard back.
+/// `Esc`: close; from the banner, the banner gets the keyboard back.
 pub(super) fn escape(state: &mut AppState) {
     let back_to_banner = state
         .finish
         .as_ref()
         .is_some_and(|finish| finish.return_to == ReturnTo::Banner);
-    close_keeping_draft(state);
+    close(state);
     if back_to_banner {
         state.banner_focus = true;
     }
 }
 
-/// Close the summary, keeping the message as `finish_draft` when it is the
-/// user's — changed from git's, or typed before git's arrived.
-pub(super) fn close_keeping_draft(state: &mut AppState) {
-    let Some(finish) = state.finish.take() else {
-        return;
-    };
-    // Whatever `$EDITOR` is about to hand back belongs to a summary that is
-    // no longer on screen.
-    if finish.editing.is_some() {
-        state.external_editor = None;
-    }
-    let body = finish.body.text();
-    let composed = compose(finish.subject.text(), &body);
-    let the_users = match &finish.summary {
-        Loading::Ready(summary) => {
-            composed.trim_end() != String::from_utf8_lossy(&summary.message).trim_end()
-        }
-        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => {
-            !finish.subject.is_empty() || !finish.body.is_empty()
-        }
-    };
-    state.finish_draft = the_users.then(|| (finish.subject.text().to_owned(), body));
-}
-
-/// A bracketed paste, into the focused field. `true` whenever the summary
-/// is open: it is modal, so a paste is meant for it even with the file
-/// lists focused and nowhere to put the text.
-pub(crate) fn paste(state: &mut AppState, text: &str) -> bool {
-    let Some(finish) = state.finish.as_mut() else {
-        return false;
-    };
-    if finish.committing.is_some() {
-        return true;
-    }
-    match finish.focus {
-        FinishFocus::Subject => finish.subject.insert_str(text),
-        FinishFocus::Body => finish.body.insert_str(text),
-        FinishFocus::Files => {}
-    }
-    true
+/// Close the review. Nothing in it is the user's to keep: the message is
+/// git's, read-only.
+pub(super) fn close(state: &mut AppState) {
+    state.finish = None;
 }

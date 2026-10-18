@@ -1,5 +1,5 @@
-//! What the summary's rows say you chose (m6-conflicts/35), and when
-//! those choices and the draft are forgotten.
+//! What the review's rows say you chose (m6-conflicts/35; the words since
+//! ease-pass/12), and when those choices are forgotten.
 
 use super::*;
 
@@ -64,17 +64,13 @@ pub(super) fn c_for_the_summary(app: &App, state: AppState) -> AppState {
     state
 }
 
-/// The drawn line naming `path` under `RESOLVED BY YOU`, at 120×40.
+/// The drawn review row naming `path` (`✓ <name>  you chose: …`), at
+/// 120×40.
 fn row_for(state: &AppState, path: &str) -> String {
     let drawn = crate::captures::frame(state, 120, 40);
-    let from = drawn
-        .iter()
-        .position(|line| line.contains("RESOLVED BY YOU"))
-        .unwrap_or_else(|| panic!("no RESOLVED BY YOU section:\n{}", drawn.join("\n")));
     drawn
         .iter()
-        .skip(from)
-        .find(|line| line.contains(path))
+        .find(|line| line.contains('✓') && line.contains(path))
         .cloned()
         .unwrap_or_else(|| panic!("no row for {path}:\n{}", drawn.join("\n")))
 }
@@ -101,12 +97,9 @@ fn the_summary_words_what_you_chose() {
     let state = c_for_the_summary(&app, state);
 
     let notes = row_for(&state, "notes.txt");
-    assert!(
-        notes.contains("theirs · feature in 2 of 2 conflicts"),
-        "{notes}"
-    );
+    assert!(notes.contains("you chose: ▶ theirs"), "{notes}");
     let gone = row_for(&state, "gone.txt");
-    assert!(gone.contains("kept · yours · main"), "{gone}");
+    assert!(gone.contains("you chose: ◀ yours, whole file"), "{gone}");
     drop(state);
     app.close();
 
@@ -118,9 +111,9 @@ fn the_summary_words_what_you_chose() {
     assert!(state.choices.is_empty(), "nothing carried across");
     let state = c_for_the_summary(&app, state);
     let notes = row_for(&state, "notes.txt");
-    assert!(notes.contains("same as theirs · feature"), "{notes}");
+    assert!(notes.contains("solved in the file"), "{notes}");
     let gone = row_for(&state, "gone.txt");
-    assert!(gone.contains("same as yours · main"), "{gone}");
+    assert!(gone.contains("solved in the file"), "{gone}");
     drop(state);
     app.close();
 }
@@ -132,10 +125,7 @@ fn shift_t_records_its_choices() {
     let state = c_for_the_summary(&app, state);
 
     let notes = row_for(&state, "notes.txt");
-    assert!(
-        notes.contains("theirs · feature in 2 of 2 conflicts"),
-        "{notes}"
-    );
+    assert!(notes.contains("you chose: ▶ theirs"), "{notes}");
     drop(state);
     app.close();
     drop(scratch);
@@ -266,25 +256,22 @@ fn every_file_theirs(app: &App, state: AppState) -> AppState {
     })
 }
 
-/// [`every_file_theirs`], then the summary opened, a subject typed, `Esc`:
-/// the draft is kept.
-fn choices_and_a_draft(app: &App, state: AppState) -> AppState {
+/// [`every_file_theirs`], then the review opened and `Esc`: the choices
+/// are kept.
+fn choices_recorded(app: &App, state: AppState) -> AppState {
     let state = every_file_theirs(app, state);
     let state = c_for_the_summary(app, state);
-    let state = app.key(&state, KeyCode::Tab);
-    let state = typed(app, state, " (draft)");
     let state = app.key(&state, KeyCode::Escape);
     assert_eq!(state.choices.len(), 2, "{:?}", state.choices);
-    assert!(state.finish_draft.is_some(), "the draft is kept");
     state
 }
 
 #[test]
-fn choices_and_draft_clear_when_the_merge_ends() {
+fn choices_clear_when_the_merge_ends() {
     // Done: the merge commits.
     let scratch = about_to_merge();
     let (app, state) = App::open(scratch.path());
-    let state = choices_and_a_draft(&app, state);
+    let state = choices_recorded(&app, state);
     let state = c_for_the_summary(&app, state);
     let state = committed(&app, &state, KeyPress::plain(KeyCode::Char('y')));
     assert!(
@@ -293,7 +280,6 @@ fn choices_and_draft_clear_when_the_merge_ends() {
         state.finish.as_ref().map(|open| &open.notice)
     );
     assert!(state.choices.is_empty(), "after Done: {:?}", state.choices);
-    assert_eq!(state.finish_draft, None, "after Done");
     drop(state);
     app.close();
     drop(scratch);
@@ -301,7 +287,7 @@ fn choices_and_draft_clear_when_the_merge_ends() {
     // Abort: the merge is thrown away.
     let scratch = about_to_merge();
     let (app, state) = App::open(scratch.path());
-    let state = choices_and_a_draft(&app, state);
+    let state = choices_recorded(&app, state);
     // `Esc` from the summary went back to the resolver; its own `Esc`
     // lands on the banner, where `a` aborts.
     let state = app.key(&state, KeyCode::Escape);
@@ -320,7 +306,6 @@ fn choices_and_draft_clear_when_the_merge_ends() {
         "after an abort: {:?}",
         state.choices
     );
-    assert_eq!(state.finish_draft, None, "after an abort");
     drop(state);
     app.close();
     drop(scratch);
@@ -328,14 +313,14 @@ fn choices_and_draft_clear_when_the_merge_ends() {
 
 /// Review m6-amend-35 Major 1: a merge finished outside the app (`git
 /// commit` in the shell) ends the operation too. The next read that finds
-/// no merge must drop its choices and draft, or the next merge's summary
-/// words old choices and an unedited `⏎` commits the old draft.
+/// no merge must drop its choices, or the next merge's review words old
+/// choices.
 #[test]
-fn choices_and_draft_clear_when_the_merge_ends_outside() {
+fn choices_clear_when_the_merge_ends_outside() {
     let scratch = about_to_merge();
     let repo = scratch.path();
     let (app, state) = App::open(repo);
-    let state = choices_and_a_draft(&app, state);
+    let state = choices_recorded(&app, state);
     // The solved files are still unmerged until the review's `y`
     // (ease-pass/05b): finishing in the shell stages them first, as git asks.
     git(repo, &["add", "-u"]);
@@ -359,7 +344,6 @@ fn choices_and_draft_clear_when_the_merge_ends_outside() {
         "after the shell's commit: {:?}",
         state.choices
     );
-    assert_eq!(state.finish_draft, None, "after the shell's commit");
     drop(state);
     app.close();
     drop(scratch);

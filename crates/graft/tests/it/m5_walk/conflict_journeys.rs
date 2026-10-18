@@ -93,14 +93,14 @@ fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
             "took theirs",
         ),
         // The last file done opens the summary on its own (m6-conflicts/60).
-        "m6-14-last-file-done" => (both_done(), "RESOLVED BY YOU"),
+        "m6-14-last-file-done" => (both_done(), "Nothing committed yet."),
         // `Esc` from it: the resolver, the finish row on its notice row.
         "m6-15-finish-row-after-esc" => {
             (then(both_done(), &[KeyCode::Escape]), "✓ every file done")
         }
         // `⏎` on `README.md` opens its diff (the footer's `⏎/space diff`, 59).
         "m6-16-summary-expanded" => (then(both_done(), &[KeyCode::Enter]), "feature's line"),
-        "m6-17-after-commit" => (then(both_done(), &[ch('y')]), "merged feature into main"),
+        "m6-17-after-commit" => (then(both_done(), &[ch('y')]), "Merged feature into main."),
         // The launch's first frame: the app opens on the shell-begun merge.
         "m6-18-launch-shell-begun" => (vec![], "CONFLICTS"),
         "m6-19-after-esc-esc" => (then(mm(), &[KeyCode::Escape, KeyCode::Escape]), "⇥ banner"),
@@ -301,7 +301,7 @@ fn every_file_done() -> Vec<Step> {
             "the summary, drawn",
             // The summary takes the whole frame: the status is set (above),
             // not drawn while it is open.
-            &[Sees::Has("RESOLVED BY YOU")],
+            &[Sees::Has("Nothing committed yet.")],
         ),
         // The review stages nothing: the solved text files stay unmerged in
         // the real index until its `y` (ease-pass/05b, Hard choice 3).
@@ -315,8 +315,8 @@ fn every_file_done() -> Vec<Step> {
 }
 
 /// After `y` in the summary: the graph has the keyboard, its cursor on the
-/// merge commit (`main`'s tip, `HEAD`), the status `✓ merged feature into
-/// main`, and git agrees: `HEAD^2` is `feature`, nothing in progress.
+/// merge commit (`main`'s tip, `HEAD`), the status `✓ Merged feature into
+/// main.`, and git agrees: `HEAD^2` is `feature`, nothing in progress.
 fn merged_landing() -> Vec<Step> {
     vec![
         Step::See("the graph, cursor on the merge commit", |state| {
@@ -330,11 +330,11 @@ fn merged_landing() -> Vec<Step> {
             check(on_badge(state, "main"), || {
                 "the cursor is not on HEAD (main's tip)".to_owned()
             })?;
-            status_containing(state, "merged feature into main")
+            status_containing(state, "Merged feature into main.")
         }),
         Step::Frame(
             "the merge's status, drawn",
-            &[Sees::Has("✓ merged feature into main")],
+            &[Sees::Has("✓ Merged feature into main.")],
         ),
         Step::Shell(second_parent_is_feature),
     ]
@@ -732,12 +732,12 @@ fn the_summary() -> Step {
     Step::Frame(
         "the finish summary",
         &[
-            Sees::Has("RESOLVED BY YOU · 2"),
-            Sees::Row("gone.txt", "kept · yours · main"),
-            Sees::Row("notes.txt", "theirs · feature in 2 of 2 conflicts"),
-            Sees::Has("COMBINED BY GIT ON ITS OWN · 1"),
-            Sees::Row("▸", "README.md"),
-            Sees::Above("COMBINED BY GIT ON ITS OWN", "README.md"),
+            Sees::Has("Nothing committed yet."),
+            Sees::Row("✓ gone.txt", "you chose: ◀ yours"),
+            Sees::Row("✓ notes.txt", "you chose: ▶ theirs"),
+            Sees::Has("✓ 1 file git combined on its own"),
+            Sees::Above("notes.txt", "git combined on its own"),
+            Sees::Above("git combined on its own", "Message"),
         ],
     )
 }
@@ -954,22 +954,20 @@ fn summary_open_git_combined() -> Scenario {
                 key(ch('c')),
                 Step::WaitFor(Wait::FinishReady),
                 the_summary(),
-                Step::Frame(
-                    "README.md's change not shown yet",
-                    &[
-                        Sees::Lacks("feature's line"),
-                        Sees::Above("README.md", "MESSAGE"),
-                    ],
-                ),
+                // `j j` (not counted) past the two clashed files to the
+                // combined row, whose `space` does nothing until 12b's look
+                // shows what git combined (ease-pass/12 decision 10).
+                key(ch('j')),
+                key(ch('j')),
                 route(),
                 key(ch(' ')),
                 Step::WaitFor(Wait::FrameSettled),
                 end(),
                 Step::Frame(
-                    "README.md's change under its row, the rest moved down",
+                    "the combined row: nothing opens until ease-pass/12b",
                     &[
-                        Sees::Above("README.md", "feature's line"),
-                        Sees::Above("feature's line", "MESSAGE"),
+                        Sees::Row("▸", "git combined"),
+                        Sees::Lacks("feature's line"),
                     ],
                 ),
             ],

@@ -13,7 +13,7 @@ pub(super) const R_CONFIRM: &str =
 pub(super) const R_CONFIRM_PALETTE: &str = "palette.rs:153 the palette refuses over a confirm box, which \
      then swallows the key (confirm.rs:192-196)";
 pub(super) const R_FINISH: &str =
-    "finish/keys.rs:84,104 the finish summary swallows keys it does not own";
+    "finish/keys.rs:31,58 the merge review swallows keys it does not own";
 pub(super) const R_RESOLVER: &str =
     "resolver.rs:380-383, resolver/scroll.rs:152 the resolver is modal";
 pub(super) const R_BANNER: &str =
@@ -100,6 +100,11 @@ pub(super) const SWALLOWED_BY_DESIGN: &[(ContextId, &str, &str)] = &[
     (ContextId::Finish, "app.next_match", R_FINISH),
     (ContextId::Finish, "app.prev_match", R_FINISH),
     (ContextId::Finish, "app.menu", R_FINISH),
+    // ease-pass/12: the review's message is read-only — no field to open
+    // in $EDITOR, none to move between.
+    (ContextId::Finish, "finish.edit_outside", R_FINISH),
+    (ContextId::Finish, "app.next_pane", R_FINISH),
+    (ContextId::Finish, "app.prev_pane", R_FINISH),
     (ContextId::Rewrite, "app.next_pane", "rewrite_editor/keys.rs:181-182,185 Tab swallowed at >=120 cols"),
     (ContextId::Rewrite, "app.prev_pane", R_REWRITE),
     (ContextId::Rewrite, "app.undo", R_REWRITE),

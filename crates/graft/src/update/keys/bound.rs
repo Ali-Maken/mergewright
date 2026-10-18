@@ -44,7 +44,7 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("app.up"),        // the same
     id("app.top"),       // `motion_for`
     id("app.bottom"),    // `motion_for`
-    id("app.page_down"), // `motion_for`; the finish summary's `files_key` → `page`
+    id("app.page_down"), // `motion_for`; the review's `finish_key` → `page`
     id("app.page_up"),   // the same
     id("app.refresh"),   // `is_refresh` → `refresh_key`
     id("app.undo"),      // `is_undo_key` → `undo::undo_key`
@@ -148,14 +148,16 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("confirm.right"),  // the same
     id("confirm.choose"), // the choice under the cursor
     // The acting button (`PendingConfirm::yes`); also the finish list's
-    // commit (`files_key` → `commit`, P12) and the rewrite editor's start
+    // commit (`finish_key` → `commit`, P12) and the rewrite editor's start
     // (`row_key` → `after::start`) — the one confirm key (m8/09c, D3).
     id("confirm.yes"),
     id("credential.send"), // `credential::credential_key`: the answer to git
     // The finish summary (`finish::finish_key`).
-    id("finish.toggle_diff"),  // `files_key` → `toggle_diff`
-    id("finish.edit_outside"), // `control_key` → `edit_outside`
-    id("commit.commit"),       // `control_key` → `commit`, from any focus
+    id("finish.toggle_diff"), // `finish_key` → `toggle_diff`
+    // Its `⌃E` now acts only in the rewrite message field
+    // (`rewrite_editor::keys::field`), whose `$EDITOR` hint names this row.
+    id("finish.edit_outside"),
+    id("commit.commit"), // the commit editor's `control_key` → `commit`
     // The blame and history places (`place::place_key`, `history_key`).
     id("blame.parent"),        // `place::keys::caret`
     id("blame.line_history"),  // `place::keys::history_of_lines`

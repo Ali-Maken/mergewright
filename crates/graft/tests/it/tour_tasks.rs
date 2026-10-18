@@ -262,11 +262,9 @@ impl Tour {
         self.send(b"t");
         self.wait("theirs taken", |s| s.has("took theirs"));
         self.send(b"y");
-        self.wait("the finish preview", |s| {
-            s.has("Preview: finish merging clash into main")
-        });
+        self.wait("the merge review", |s| s.has("Nothing committed yet."));
         self.send(b"y");
-        self.wait("merged", |s| s.has("\u{2713} merged clash into main"));
+        self.wait("merged", |s| s.has("\u{2713} Merged clash into main."));
     }
 
     /// 8: `P`, `y`.

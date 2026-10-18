@@ -14,8 +14,8 @@
 //! (`mergewright-merge-screen.html:150`).
 
 use super::super::keys::{
-    BACK, BOTH, MARK_DONE, NEXT_BLOCK, OPEN, OURS, RESOLVER_EDIT, RESOLVER_FINISH, RESOLVER_REVIEW,
-    STEP_CLASHES, THEIRS, UNDO,
+    BACK, BOTH, CONFIRM_YES, DOWN_UP, LOOK, MARK_DONE, NEXT_BLOCK, OPEN, OURS, RESOLVER_EDIT,
+    RESOLVER_FINISH, RESOLVER_REVIEW, STEP_CLASHES, THEIRS, UNDO,
 };
 use super::super::{ClashAt, ClashBar, Hint, bar_name, hint, named};
 use super::banner_list;
@@ -95,6 +95,24 @@ fn take_words(roles: SideRoles) -> ((&'static str, &'static str), (&'static str,
         SideRoles::StashPop => ("take stashed (right)", "take stashed"),
     };
     (ours, theirs)
+}
+
+/// The merge review's bar (ease-pass/12, 03 Handoff; mock
+/// `mergewright-merge-screen.html:162`): the mock's words, each with a
+/// one-word short rung so the floor of three fits the narrowest bar (47). `⏎` is `finish.toggle_diff`'s first
+/// chord: today's inline diff until 12b's look.
+pub(super) fn review_list() -> Vec<Hint> {
+    vec![
+        named(CONFIRM_YES, "commit the merge", "commit"),
+        hint(DOWN_UP, "move"),
+        named(LOOK, "look at it", "look"),
+        named(UNDO, "undo last pick", "undo"),
+        named(
+            BACK,
+            "back to the clashes (y brings you here again)",
+            "back",
+        ),
+    ]
 }
 
 /// The banner after `esc pause` (Q7 a, Q17 a): `⏎` says where it goes, back to

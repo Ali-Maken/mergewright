@@ -1,0 +1,40 @@
+MERGING
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ All 3 clashes solved. Nothing committed yet.                                                                         │
+│                                                                                                                      │
+│ This merge will put into wallet-release:                                                                             │
+│   2 commits from sara/fix-toc                                                                                        │
+│ ▸ ✓ notes.md   you chose: ◀ yours                                                                                    │
+│   ✓ report.md  you chose: ◀ yours (1) · ▶ theirs (1)                                                                 │
+│   ✓ 2 files git combined on its own                                                                                  │
+│                                                                                                                      │
+│ Message  Merge branch 'sara/fix-toc' into wallet-release                                                             │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰ y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again) ─╯
+

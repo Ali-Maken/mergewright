@@ -30,7 +30,8 @@ pub(crate) fn done_shown(state: &AppState) -> bool {
 }
 
 /// The cursor row's bar as far as a landing goes: the commit just made's
-/// ([`landed_bar`]) while the graph's bar is the cursor row's at all — the
+/// ([`landed_bar`]) or the merge just made's (`finish::just_merged_bar`,
+/// ease-pass/12; the same order as `view::rows::context`) while the graph's bar is the cursor row's at all — the
 /// graph drawn, no badge in the air, no picker, the cursor on a history row
 /// and the changes pane not holding the keyboard (`view::rows::hint_context`'s
 /// own order). Any other bar is a plain row's here: not a landing.
@@ -47,7 +48,9 @@ fn bar_row(state: &AppState) -> HintContext {
         .as_ref()
         .and_then(crate::history::History::selected)
         .map(|row| row.commit.id);
-    match landed_bar(state.last_commit.as_deref(), selected).filter(|_| row_bar_drawn) {
+    let landing = landed_bar(state.last_commit.as_deref(), selected)
+        .or_else(|| crate::update::finish::just_merged_bar(state, selected));
+    match landing.filter(|_| row_bar_drawn) {
         Some(row) => HintContext::GraphRow {
             row,
             verbs: RowVerbs::NONE,

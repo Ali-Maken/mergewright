@@ -189,16 +189,6 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
         AppEvent::Produced(id, Product::FinishDiff(result)) => {
             finish::diff_landed(next, id, result);
         }
-        // `Ctrl+E` from the finish summary: its own answer, with nothing
-        // stripped (ticket 19 S3). Any other id is the commit editor's.
-        AppEvent::Produced(id, Product::ExternalEditor(result))
-            if next
-                .finish
-                .as_ref()
-                .is_some_and(|open| open.editing == Some(id)) =>
-        {
-            let _finishes: bool = finish::editor_returned(next, id, result);
-        }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);
         }

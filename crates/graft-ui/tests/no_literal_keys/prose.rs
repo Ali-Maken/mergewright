@@ -3,6 +3,11 @@
 
 pub const ROWS: &[(&str, &str, &str)] = &[
     (
+        "graft:update/finish/words.rs",
+        "delete the file",
+        "the review's words for a file solved by deleting it, not the delete key",
+    ),
+    (
         "graft:view/tour.rs",
         "practice · {shown} · a throwaway repo, not yours",
         "article",

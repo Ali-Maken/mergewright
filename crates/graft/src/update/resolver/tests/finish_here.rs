@@ -197,21 +197,9 @@ fn summary_open() -> AppState {
 #[test]
 fn esc_from_the_summary_returns_to_the_resolver() {
     let state = summary_open();
-    // `⇥` to the subject, and a word typed onto git's message.
-    let (mut state, _) = press(&state, KeyCode::Tab);
-    for character in " now".chars() {
-        state = press(&state, KeyCode::Char(character)).0;
-    }
     let (state, _) = press(&state, KeyCode::Escape);
     assert!(state.finish.is_none());
     assert_eq!(open_path(&state), Path::new("conflicted.rs"));
-    assert_eq!(
-        state
-            .finish_draft
-            .as_ref()
-            .map(|(subject, _)| subject.as_str()),
-        Some("Merge branch 'feature' now")
-    );
     // The next key reaches the resolver: `n` with every clash solved says
     // where the review is.
     let (after, _) = press(&state, KeyCode::Char('n'));
@@ -240,7 +228,7 @@ fn a_merge_committed_from_the_resolver_lands_on_the_graph() {
     );
     assert!(state.finish.is_none(), "the summary closed");
     assert!(state.resolver.is_none(), "and the resolver with it");
-    assert_eq!(state.status, Status::done("merged feature into main"));
+    assert_eq!(state.status, Status::done("Merged feature into main."));
 }
 
 /// The commit ran but its record is short: the merge is over, so the

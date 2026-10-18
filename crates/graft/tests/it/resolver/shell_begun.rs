@@ -672,7 +672,7 @@ fn c_y_finishes_a_shell_begun_merge() {
     assert!(state.graph_has_focus(), "the graph has the keyboard");
     let head = crate::app_harness::git(&repo, &["rev-parse", "HEAD"]);
     assert_eq!(cursor_commit(&state).as_deref(), Some(head.trim()));
-    assert_eq!(state.status, Status::done("merged feature into main"));
+    assert_eq!(state.status, Status::done("Merged feature into main."));
 
     let (frame, body) = shot(&app, &state, &repo, head.trim());
     assert!(!frame[0].contains("MERGING"), "{body}");
@@ -681,7 +681,7 @@ fn c_y_finishes_a_shell_begun_merge() {
     assert!(
         frame
             .iter()
-            .any(|row| row.trim_end() == " ✓ merged feature into main"),
+            .any(|row| row.trim_end() == " ✓ Merged feature into main."),
         "{body}"
     );
     crate::captures::check_shot("m6/fix-finish-shell-merge-120x40.txt", &body);
@@ -913,18 +913,9 @@ fn a_hook_refusal_keeps_the_summary_on_a_shell_begun_merge() {
     let before = journal_entries(&repo).len();
     let (app, state) = launched_into(&repo);
     let state = c_on_the_banner(&app, state);
-    let state = app.key(&state, KeyCode::Tab);
-    let state = " (kept)"
-        .chars()
-        .fold(state, |state, typed| app.key(&state, KeyCode::Char(typed)));
-    let subject = state
-        .finish
-        .as_ref()
-        .map(|open| open.subject.text().to_owned())
-        .expect("open");
 
-    let state = app.key(&state, KeyCode::Enter);
-    assert!(state.operating.is_some(), "`⏎` commits");
+    let state = app.key(&state, KeyCode::Char('y'));
+    assert!(state.operating.is_some(), "`y` commits");
     let state = app.pump(state, "the refused finish", |state| {
         state.operating.is_none()
     });
@@ -938,7 +929,6 @@ fn a_hook_refusal_keeps_the_summary_on_a_shell_begun_merge() {
         words.contains("a ticket number is required"),
         "the hook's own words: {words:?}"
     );
-    assert_eq!(open.subject.text(), subject, "the message is kept");
     assert!(
         repo.join(".git/MERGE_HEAD").exists(),
         "git is still merging"
@@ -1256,9 +1246,9 @@ fn capture_fix_c_in_pane_finishes() {
     let after = frame_187(&state);
     let summary = after.join("\n");
     assert!(
-        after.iter().any(|row| row
-            .trim_start()
-            .starts_with("╭ Preview: finish merging feature into main")),
+        after
+            .iter()
+            .any(|row| row.contains("Nothing committed yet.")),
         "{summary}"
     );
     assert!(
@@ -1275,9 +1265,8 @@ fn capture_fix_c_in_pane_finishes() {
 #
 # Judge by eye:
 # - Frame 1: the pane's bar offers `c finish` and no `c commit`.
-# - Frame 2 (after `c`): the summary's top border reads
-#   `╭ Preview: finish merging feature into main`, its bottom border starts
-#   `╰ y commit`.
+# - Frame 2 (after `c`): the merge review, its first line `All 2 clashes
+#   solved. Nothing committed yet.`, its bottom border starts `╰ y commit`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 187x50 ===

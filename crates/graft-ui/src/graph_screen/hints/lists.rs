@@ -9,7 +9,7 @@ use super::keys::{
     NEXT_PREV_CHANGE, NEXT_PREV_MATCH, OPEN, OVERVIEW, PARENT, PULL, PUSH, QUIT, RELEASE, RENDERER,
     REWRITE as REWRITE_KEY, SKIP, STAGE, STAGE_ALL, STASH, STATUS, SWITCH, TAKE, UNDO, WHITESPACE,
 };
-use super::{Hint, HintContext, LiveC, RowVerbs, TabWord, hint};
+use super::{Hint, HintContext, LiveC, ReviewBar, RowVerbs, TabWord, hint};
 
 mod clash;
 mod editors;
@@ -85,6 +85,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         } => changes_pane_list(*unmerged, *live, *tab, *over_overlay),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
+        HintContext::Review(ReviewBar::List) => clash::review_list(),
         HintContext::Blame {
             finding,
             ignore_file,
