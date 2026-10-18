@@ -161,3 +161,6 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - builder-sonnet 06s done (98d7d79e, ed5a3c92): 6/6; state.rs 1318→531 (row lowered), keys 283, selection 258, preview 242; worktree 6953/6955 (summary_captures = fixed on main; map_coverage fixed, rerun partial) · skills: none. Merge after 06t gates.
 - gates after 06t (7b3d5964): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
 - 06s merged; gates running. builder-opus 07 dispatched beside 03r.
+- builder-sonnet 03r Minor 5 done (08b9fbe5): 03r 9/9; 3 palette labels '…: on / off', man page regenerated; 6955/6955 in worktree · skills: none. Merge after 06s gates.
+- 2026-10-18 · speed-up (user: "how can we fasten things up"): (1) gates batched — two merges per full run, a red run bisected by merging one at a time; (2) public cleanup by export allow-list, not deletion — researcher writes docs/release/export-inventory.md now (no cargo): SHIP / PRIVATE / STALE with grep proof; deletions only after user approves the STALE list.
+- researcher export inventory · 9 tools: docs/release/export-inventory.md; 32 stale-looking captures (filename grep, needs shot-drift), 7 stale scripts; no LICENSE; personal names in 2 tests; test key fake (checked by conductor). Rulings appended.
