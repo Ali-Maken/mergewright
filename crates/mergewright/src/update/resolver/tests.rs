@@ -701,7 +701,6 @@ mod opens_itself;
 mod review_at_y;
 mod step;
 mod take_all;
-mod three_panes;
 mod undo_ends;
 mod words_and_c;
 

@@ -1,4 +1,4 @@
-MERGING
+merging side into main
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ All 2 clashes solved. Nothing committed yet.                                                                         │
 │                                                                                                                      │
@@ -39,14 +39,14 @@ MERGING
 ╰ y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again) ─╯
 
 --- after Esc ---
-MERGING
+merging side into main
 Clashing files                │▸ b.txt · 1 conflict · 0 open
                               │all blocks taken · y reviews the merge
  ✓ a.txt  done                │┌───────────────────────────────────────────────────────────────────────────────────────┐
 ▏✓ b.txt  done                ││◀ 1 main  kept yours                                                                   │
 ✓ Review the merge  y         │└───────────────────────────────────────────────────────────────────────────────────────┘
                               │   ✓ Every clash in b.txt is solved.  y review the merge
-                              │
+Combined by git · reading…    │
                               │
                               │
                               │

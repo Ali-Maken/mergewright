@@ -1,7 +1,6 @@
-//! `finish::finish_summary` and `Resume::ContinueWith` (m6-conflicts/09):
-//! what a merge will commit, split into what the user resolved and what git
-//! combined on its own, and an edited message reaching git through
-//! `commit -F`. Truth is git's own answer in a throwaway repository.
+//! `finish::finish_summary` and `Resume::ContinueWith` (m6-conflicts/09): what a
+//! merge will commit, split into what the user resolved and what git combined on
+//! its own, and an edited message reaching git through `commit -F`. Truth is git's.
 
 #![allow(
     clippy::expect_used,
@@ -418,4 +417,5 @@ fn an_unedited_message_lands_as_shown() {
     );
 }
 
+mod combined;
 mod comment_lines;

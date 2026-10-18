@@ -1,5 +1,5 @@
 [Graph]  Detail
- ◆ api  ~/code/api · main                                               MERGING
+ ◆ api  ~/code/api · main                             merging feature into main
   ◌      Uncommitted changes (2 staged)
 ▸ ◆      [◆ main] main's take                                      2h   ddeed32
   │ ●    [feature] the feature's take                              2h   f43f326

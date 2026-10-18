@@ -1,4 +1,4 @@
-MERGING
+merging feature into main
 Clashing files                │▸ gone.txt · done ✓ · d starts it over
                               │
 ▏✓ gone.txt   done            │   1 our plan
@@ -39,7 +39,7 @@ Clashing files                │▸ gone.txt · done ✓ · d starts it over
                               │
  d start over  e edit  esc close
 ── d ──
-MERGING
+merging feature into main
 Clashing files                │▸ gone.txt · done ✓ · d starts it over
                               │
 ▏✓ gone.txt   done            │   1 our plan
@@ -80,13 +80,13 @@ Clashing files                │▸ gone.txt · done ✓ · d starts it over
                               │
  y start over  ←/→ move  ⏎ choose  esc cancel
 ── → ⏎ ──
-MERGING
+merging feature into main
 Clashing files                │▸ gone.txt · modified on yours · main, deleted on theirs · feature
                               │
 ▏? gone.txt   keep or delete  │deleted by them · o keeps the file  t deletes it
  ? shared.rs  1 open          │   1 our plan
                               │
-                              │
+Combined by git · reading…    │
                               │
                               │
                               │

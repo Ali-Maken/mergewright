@@ -3,14 +3,14 @@
 # crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: both clashes taken (`◀ kept yours`, `▶ took theirs`): under the file `✓ Every clash in report.md is solved.  n next file, 1 clash left`; the list `✓ report.md  done`; the bar names `n next file: notes.md`.
 === 120x40 ===
-MERGING                                                                                                                 
+merging sara/fix-toc into wallet-release                                                                                
 Clashing files                │▸ report.md · 2 conflicts · 0 open                                                       
                               │                                                                                         
  ? notes.md   1 open          │   1 # Report                                                                            
 ▏✓ report.md  done            │   2 intro                                                                               
                               │┌───────────────────────────────────────────────────────────────────────────────────────┐
-                              ││◀ 3 let tax = round_cents(total * rate);  kept yours                                   │
-                              │└───────────────────────────────────────────────────────────────────────────────────────┘
+Combined by git (2)           ││◀ 3 let tax = round_cents(total * rate);  kept yours                                   │
+✓ refund.rs, locale.rs        │└───────────────────────────────────────────────────────────────────────────────────────┘
                               │   4 middle                                                                              
                               │                                                                                         
                               │ ▶ 5 footer.push_str(&format_refund(r, locale));  took theirs                            

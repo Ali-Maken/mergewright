@@ -165,7 +165,7 @@ pub const ROWS: &[(&str, &str, &str)] = &[
         "article",
     ),
     (
-        "mergewright-ops:finish.rs",
+        "mergewright-ops:finish/combined.rs",
         "a rename with no old path: {}",
         "article",
     ),

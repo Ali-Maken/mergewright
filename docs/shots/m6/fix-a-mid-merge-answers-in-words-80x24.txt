@@ -12,7 +12,7 @@
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 80x24 ===
-MERGING
+merging feature into main
 Graph  [Detail]
 UNCOMMITTED · 2 staged
 diff vs HEAD ddeed32

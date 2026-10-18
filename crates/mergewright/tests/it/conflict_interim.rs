@@ -1367,12 +1367,12 @@ fn the_banner_and_its_keys_are_on_the_frame_at_every_width() {
         let drawn = frame(&state, columns, rows);
         let at = format!("at {columns}x{rows}:\n{}", drawn.join("\n"));
         assert!(
-            drawn.iter().any(|line| line.contains("MERGING")),
+            drawn.iter().any(|line| line.contains("merging ")),
             "the banner names the operation {at}"
         );
         let banner = drawn
             .iter()
-            .find(|line| line.contains("MERGING"))
+            .find(|line| line.contains("merging "))
             .unwrap_or_else(|| panic!("no banner {at}"));
         assert!(
             !banner.contains("notes.md") && !banner.contains("conflict"),
@@ -1426,10 +1426,10 @@ fn the_banner_reads_the_same_at_every_width() {
         let drawn = frame(&state, columns, rows);
         let line = drawn
             .iter()
-            .find(|line| line.contains("MERGING"))
+            .find(|line| line.contains("merging "))
             .unwrap_or_else(|| panic!("no banner at {columns}x{rows}:\n{}", drawn.join("\n")))
             .clone();
-        let at = line.find("MERGING").expect("just matched");
+        let at = line.find("merging ").expect("just matched");
         // The banner's own run of text: up to the gap that separates it
         // from whatever else shares the row (the pane, at 160).
         let tail = &line[at..];
@@ -1442,7 +1442,7 @@ fn the_banner_reads_the_same_at_every_width() {
         wordings.push((columns, wording));
     }
     let first = wordings[0].1.clone();
-    assert_eq!(first, "MERGING", "{wordings:?}");
+    assert!(first.starts_with("merging "), "{wordings:?}");
     for (columns, wording) in &wordings {
         assert_eq!(
             wording, &first,
@@ -1506,7 +1506,7 @@ fn below_a_hundred_columns_the_banner_draws_above_the_tab_line() {
 
     let drawn = frame(&state, 80, 24);
     assert!(
-        drawn[0].contains("MERGING"),
+        drawn[0].contains("merging "),
         "the top row is the banner's: {drawn:?}"
     );
     assert!(
@@ -1796,7 +1796,7 @@ fn capture_banner_for_docs_shots() {
         let drawn = frame_at(&sized, columns, rows, Some(Clock::Fixed(CONFLICT_NOW)));
         let body = drawn.join("\n");
         assert!(
-            body.contains("MERGING"),
+            body.contains("merging "),
             "every banner capture is of a stopped merge: {label}"
         );
         if graph_tab {
@@ -1806,7 +1806,7 @@ fn capture_banner_for_docs_shots() {
                  (m5/20 item 6): {label}\n{body}"
             );
             assert!(
-                drawn[0].contains("/code/api") && drawn[0].contains("MERGING"),
+                drawn[0].contains("/code/api") && drawn[0].contains("merging "),
                 "on the graph tab the banner shares the header row: {label}\n{body}"
             );
         } else {
@@ -1910,7 +1910,7 @@ fn the_banner_and_its_keys_draw_once_on_the_graph_tab() {
             drawn.iter().any(|line| line.contains("[Graph]")),
             "the graph tab is the one shown {at}"
         );
-        let banners = drawn.iter().filter(|line| line.contains("MERGING")).count();
+        let banners = drawn.iter().filter(|l| l.contains("merging ")).count();
         assert_eq!(banners, 1, "the banner draws once {at}");
         let key_rows = drawn
             .iter()

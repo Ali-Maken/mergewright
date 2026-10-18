@@ -145,7 +145,7 @@ fn ready_to_shoot(screen: &str) -> bool {
         .last()
         .and_then(|part| part.split_whitespace().last())
         .is_some_and(|word| word == "commits" || word == "commit");
-    let resolver = header.trim() == "MERGING" && screen.contains("Clashing files");
+    let resolver = header.trim().starts_with("merging ") && screen.contains("Clashing files");
     walked || resolver
 }
 
@@ -568,7 +568,7 @@ impl Walk {
         });
         self.send(b"y");
         self.wait("the resolver on menu.txt, settled", |s| {
-            s.has("MERGING")
+            s.has("merging ")
                 && s.has("menu.txt \u{b7} 1 conflict")
                 && s.has("pie")
                 && s.has("ice cream")

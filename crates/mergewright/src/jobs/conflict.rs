@@ -8,7 +8,7 @@
 //! itself — that is the seam `tests/it/seam_rule.rs` locks.
 
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use mergewright_git::conflict::ConflictFile;
@@ -352,6 +352,21 @@ pub fn conflict_set(
         .map_err(|error| error.to_string())?;
     mergewright_ops::conflict::operation_conflicts(&handle, &facts)
         .map_err(|error| error.to_string())
+}
+
+/// A stopped merge's files git combined on its own, for the list's
+/// `Combined by git (N)` (ease-pass/11b), read in the conflict set's job:
+/// `None` when the operation is not a merge (no section), else the paths
+/// or why they could not be read.
+pub fn combined_by_git(store: &RepoStore, stop: &dyn Stop) -> Option<Result<Vec<PathBuf>, String>> {
+    let repo = match store.shared() {
+        Ok(repo) => repo,
+        Err(error) => return Some(Err(error.to_string())),
+    };
+    match mergewright_ops::finish::combined_by_git(&repo.handle(), stop) {
+        Err(mergewright_ops::finish::SummaryError::NotMerging) => None,
+        read => Some(read.map_err(|error| error.to_string())),
+    }
 }
 
 /// `B`'s refusal as the resolver's notice: the words, and whether they are

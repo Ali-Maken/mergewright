@@ -1,10 +1,10 @@
-MERGING
+merging feature into main
 Clashing files                │▸ notes.txt · 2 conflicts · 2 open
                               │
    gone.txt   •               │   1 one
 ▏? notes.txt  2 open          │┌───────────────────────────────────────────────────────────────────────────────────────┐
                               ││? yours · main                              │theirs · feature                          │
-                              ││    two from main                           │  TWO from feature                        │
+Combined by git · reading…    ││    two from main                           │  TWO from feature                        │
                               │└───────────────────────────────────────────────────────────────────────────────────────┘
                               │   3 three
                               │   4 four

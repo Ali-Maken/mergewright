@@ -1,4 +1,4 @@
-MERGING
+merging feature into main
 Clashing files                │▸ three.txt · 3 conflicts · 0 open
                               │took theirs · feature in 3 blocks · n goes to the next
    added-by-them.txt   •      │    1 alpha

@@ -1,4 +1,4 @@
- ◆ api  ~/code/api · main                                                                                       MERGING
+ ◆ api  ~/code/api · main                                                                     merging feature into main
 
   ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                           GF 2h   ddeed32

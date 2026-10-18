@@ -76,9 +76,9 @@ pub(super) fn body(state: &AppState) -> Option<(Layout, u16)> {
 
 /// After a resize: the cursor block back in view, and the window no
 /// further down than the document goes. Crossing
-/// [`THREE_PANE_MIN`](mergewright_ui::conflict_resolver::THREE_PANE_MIN) swaps the
-/// card's rows for the panes' (or back), so the old `top` can land
-/// anywhere.
+/// [`INLINE_FROM`](mergewright_ui::conflict_resolver::INLINE_FROM) swaps
+/// stacked sides for side-by-side ones (or back), so the old `top` can
+/// land anywhere.
 pub fn resized(state: &mut AppState) {
     let Some(block) = state.resolver.as_ref().and_then(|open| open.cursor_block) else {
         return;

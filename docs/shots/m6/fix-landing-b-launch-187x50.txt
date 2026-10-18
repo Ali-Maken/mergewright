@@ -1,4 +1,4 @@
- ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED
+ ◆ api  ~/code/api · main                                                         merging feature into main  UNCOMMITTED
                                                                                                              diff vs HEAD 274c7d4
 ▸ ◌      Uncommitted changes (13 unmerged)
   ◆      [◆ main] Change every file on main                                                 GF 2h   274c7d4

@@ -10,9 +10,8 @@
 //! taken block shrinks to the lines the pick wrote, numbered as plain
 //! lines and marked `◀ kept yours` / `▶ took theirs` / `◆ kept both`.
 //!
-//! From [`THREE_PANE_MIN`] the same document is **three panes** — yours |
-//! result | theirs, rows level by git's own regions (`panes`, ADR-0043
-//! §2) — beside the file-list column; [`arrangement`] says which.
+//! The three panes are retired (ease-pass/11b): from [`INLINE_FROM`] the
+//! document is inline at every width; [`arrangement`] says which.
 //!
 //! [`layout`] is pure and total: it lays out `doc` into [`ScreenRow`]s for
 //! any `columns >= 1`, and [`ResolverScreen`] — the [`Widget`] — draws only
@@ -51,19 +50,17 @@ mod finish_row;
 mod layout;
 mod mark;
 mod names;
-mod panes;
 
-pub use arrange::{Arrangement, INLINE_FROM, LIST_COLUMN, THREE_PANE_MIN, arrangement};
+pub use arrange::{Arrangement, INLINE_FROM, LIST_COLUMN, arrangement};
 use draw::set_text;
 pub use files::{
-    FileList, FileListView, FileRow, FileRowLook, ListTail, Placement, ResolverAreas, file_at,
-    placement, resolver_areas, review_row_at,
+    CombinedList, FileList, FileListView, FileRow, FileRowLook, ListTail, Placement, ResolverAreas,
+    file_at, placement, resolver_areas, review_row_at,
 };
 pub use finish_row::{FinishRow, finish_row_at};
 pub use layout::{Layout, ScreenRow, layout, row_at};
 pub use mark::Mark;
 pub use names::{BlockNumbers, SideNames, SideRoles, number_width};
-pub use panes::{Cell, LineRef, three_panes};
 
 /// Screen rows the widget reserves above the document itself: the title row
 /// and one more for the notice (blank while none is set).
@@ -127,8 +124,8 @@ pub struct DocView {
 pub enum RegionView {
     /// Lines outside any conflict block, drawn as-is.
     Plain {
-        /// This region's first line in each projection: the card draws
-        /// `numbers.result`, each of the three panes its own.
+        /// This region's first line in each projection: the document
+        /// draws `numbers.result`.
         numbers: BlockNumbers,
         /// The lines themselves.
         lines: Vec<SanitizedText>,
@@ -150,12 +147,6 @@ pub enum RegionView {
         /// file's size in place of its bytes. Not a line of the file, so
         /// it never carries a line number that would claim it is one.
         note: Option<SanitizedText>,
-        /// What the yours pane says in place of the file when the file is
-        /// not on that side (`(deleted on yours · main)`); `None` when it is.
-        /// The app words it; only the three panes draw it.
-        ours_absent: Option<SanitizedText>,
-        /// `ours_absent`'s twin, for the theirs pane.
-        theirs_absent: Option<SanitizedText>,
     },
     /// After the last block of a file with none left open, the file
     /// stays on screen and says so (the merge mock, M9): `✓ Every clash in

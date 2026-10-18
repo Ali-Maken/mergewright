@@ -461,8 +461,8 @@ pub enum Product {
     ),
     /// The files the operation in progress conflicted on
     /// (`mergewright_ops::conflict::operation_conflicts`, m6-conflicts/13), or why
-    /// they could not be read, in `mergewright_ops`' own words.
-    ConflictSet(Result<std::sync::Arc<mergewright_ops::conflict::ConflictSet>, String>),
+    /// not; and a merge's files git combined (ease-pass/11b).
+    ConflictSet(crate::update::resolver::files::SetRead),
     /// What the merge about to be committed changes and the solved files
     /// its finish stages (`mergewright_ops::finish::merge_review`,
     /// m6-conflicts/19, ease-pass/05b), or why it could not be read.

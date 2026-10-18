@@ -31,7 +31,6 @@ mod shell_begun;
 mod stash_pop;
 mod take_all;
 mod takes;
-mod three_panes;
 mod whole_file;
 
 use std::path::Path;

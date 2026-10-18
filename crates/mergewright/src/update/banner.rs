@@ -33,7 +33,7 @@ use mergewright_core::event::{KeyCode, KeyPress};
 use mergewright_core::job::JobId;
 use mergewright_git::state::{InProgress, InProgressDetail};
 use mergewright_ops::apply::Resume;
-use mergewright_term::sanitize_line;
+use mergewright_term::{SanitizedText, sanitize_line};
 use mergewright_ui::graph_screen::{BannerView, RewriteBannerView};
 
 use crate::jobs::operate::Operated;
@@ -218,6 +218,9 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
         // not exist.
         skippable: detail.kind != InProgress::Merge,
         rewrite: None,
+        names: (detail.kind == InProgress::Merge)
+            .then(|| merge_names(state))
+            .flatten(),
     };
     // A rewrite's stop words itself from the todo (07b): the step counts his
     // rows only, and the row and branch follow it. A failed read, or none,
@@ -363,6 +366,25 @@ pub(crate) fn continue_words(kind: InProgress) -> Option<String> {
         }
         InProgress::Bisect => None,
     }
+}
+
+/// A merge's `(from, into)` for the banner (ease-pass/11b): the bare names
+/// from [`side_names`](crate::update::resolver::side_names), role words
+/// off — no new read. `None` while either side has no name yet (refs not
+/// read), so the banner keeps `MERGING` rather than half a sentence.
+fn merge_names(state: &AppState) -> Option<(SanitizedText, SanitizedText)> {
+    let names = crate::update::resolver::side_names(state);
+    let bare = |named: &SanitizedText, role: &str| {
+        named
+            .as_str()
+            .strip_prefix(role)
+            .and_then(|rest| rest.strip_prefix(" · "))
+            .map(sanitize_line)
+    };
+    Some((
+        bare(&names.theirs, names.roles.theirs())?,
+        bare(&names.ours, names.roles.ours())?,
+    ))
 }
 
 #[cfg(test)]

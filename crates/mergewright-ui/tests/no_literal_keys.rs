@@ -58,16 +58,6 @@ fn allowed() -> impl Iterator<Item = &'static (&'static str, &'static str, &'sta
 /// and the literal's exact text.
 const ALLOWED: &[(&str, &str, &str)] = &[
     (
-        "conflict_resolver/panes/draw.rs",
-        "? open {dot} {keys}",
-        "`?` is the undecided block's mark, not the help key; the take keys after it are spelled",
-    ),
-    (
-        "conflict_resolver/panes/draw.rs",
-        "? keep or delete {dot} {keys}",
-        "`?` is the undecided file's mark, not the help key; the take keys after it are spelled",
-    ),
-    (
         "finish_summary.rs",
         "1 clash solved. Nothing committed yet.",
         "`1` is the review's clash count, not a tab key",

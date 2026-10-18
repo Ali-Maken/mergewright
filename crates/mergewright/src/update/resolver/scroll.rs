@@ -123,12 +123,10 @@ pub(super) fn block_of(row: &ScreenRow) -> Option<usize> {
         | ScreenRow::Side { block, .. }
         | ScreenRow::Kept { block, .. }
         | ScreenRow::End { block } => Some(*block),
-        ScreenRow::Aligned { block, .. } => *block,
         ScreenRow::Plain { .. }
         | ScreenRow::WholeFile { .. }
         | ScreenRow::Note { .. }
-        | ScreenRow::Solved { .. }
-        | ScreenRow::PaneTitles => None,
+        | ScreenRow::Solved { .. } => None,
     }
 }
 

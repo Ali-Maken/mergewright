@@ -108,7 +108,7 @@ fn stop_then_esc_lists_files() -> Scenario {
             keys: plain(&[ch('m'), ch('y')]),
             // The stop lands in the resolver (m6-conflicts/18); the header
             // row still says `MERGING`.
-            on_screen: "MERGING",
+            on_screen: "merging ",
             when: When::Settled,
         }),
     }

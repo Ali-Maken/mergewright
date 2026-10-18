@@ -17,16 +17,8 @@ use crate::paint::foreground;
 use crate::theme::Token;
 
 impl ResolverScreen<'_> {
-    pub(super) fn rule(&self) -> char {
-        if self.ascii { '-' } else { '─' }
-    }
-
     pub(super) fn divider(&self) -> char {
         if self.ascii { '|' } else { '│' }
-    }
-
-    pub(super) fn cursor_mark(&self) -> &'static str {
-        if self.ascii { "|" } else { "\u{258f}" }
     }
 
     /// The separator the widget's own labels use (`OURS · HEAD`,
@@ -36,16 +28,6 @@ impl ResolverScreen<'_> {
     /// `term::sanitize`'s job, not this widget's.
     pub(super) fn dot(&self) -> &'static str {
         if self.ascii { "-" } else { "\u{b7}" }
-    }
-
-    /// The take keys alone, space apart (`o t b`), spelled from his keymap;
-    /// an unbound one left out.
-    pub(super) fn take_keys(&self, actions: &[&'static str]) -> String {
-        actions
-            .iter()
-            .filter_map(|action| self.keys.spell_keys(&[crate::keymap::ActionId(action)]))
-            .collect::<Vec<_>>()
-            .join(" ")
     }
 
     /// `n` right-aligned in the number column, then a space; a blank column
@@ -161,9 +143,6 @@ impl ResolverScreen<'_> {
             ScreenRow::Kept { block, i } => self.draw_kept(buf, area, y, *block, *i),
             ScreenRow::End { block } => self.draw_end(buf, area, y, *block),
             ScreenRow::Solved { name, next } => self.draw_solved(buf, area, y, name, next),
-            ScreenRow::PaneTitles | ScreenRow::Aligned { .. } => {
-                self.draw_pane_row(buf, area, y, row);
-            }
         }
     }
 

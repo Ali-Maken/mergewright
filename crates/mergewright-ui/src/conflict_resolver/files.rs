@@ -8,7 +8,8 @@
 //! [`LIST_COLUMN`] wide beside the document, headed `Clashing files`, one
 //! `? name  N open` / `✓ name  done` row per file (the merge mock's list,
 //! ease-pass/11), a merge's `✓ Review the merge  y` last once nothing is
-//! open ([`ListTail`]).
+//! open ([`ListTail`]), and in a merge the files git combined on its own
+//! ([`CombinedList`]).
 //!
 //! **One geometry.** [`FileList`] draws and [`file_at`] hit-tests through
 //! the same private plan (`strip_plan` / `column_plan`), so a click lands on
@@ -25,6 +26,7 @@ use unicode_width::UnicodeWidthStr;
 use mergewright_term::SanitizedText;
 
 mod column;
+mod combined;
 mod strip;
 mod tail;
 mod words;
@@ -34,6 +36,7 @@ use super::{INLINE_FROM, LIST_COLUMN};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use column::column_plan;
+pub use combined::CombinedList;
 use strip::strip_plan;
 pub use tail::{ListTail, review_row_at};
 pub use words::FileRowLook;
@@ -59,6 +62,8 @@ pub struct FileListView {
     pub unavailable: bool,
     /// What the list draws after its files.
     pub tail: ListTail,
+    /// A merge's files git combined on its own, last in the column.
+    pub combined: CombinedList,
 }
 
 /// Where the list sits.
@@ -77,7 +82,7 @@ pub enum Placement {
 }
 
 /// Where the list goes at this frame width: a column [`LIST_COLUMN`] wide
-/// from [`INLINE_FROM`] (three panes or not), else a strip as tall as it
+/// from [`INLINE_FROM`], else a strip as tall as it
 /// needs.
 #[must_use]
 pub fn placement(view: &FileListView, frame_columns: u16) -> Placement {
@@ -212,6 +217,7 @@ impl Widget for FileList<'_> {
             paint_words(buf, at, cell, self.theme);
         }
         tail::draw_tail(self.view, self.placement, area, buf, self.theme, g);
+        combined::draw_combined(self.view, self.placement, area, buf, self.theme, g);
     }
 }
 

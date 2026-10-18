@@ -50,7 +50,7 @@ pub(super) fn draw_resolver(
     let doc = crate::view::resolver::resolver_view(state, split.doc.width)?;
     let laid_out = mergewright_ui::conflict_resolver::layout(
         &doc,
-        crate::view::resolver::arrangement(state, placed),
+        crate::view::resolver::arrangement(placed),
         split.doc.width,
     );
     let tier = tier_in_force(session, state);

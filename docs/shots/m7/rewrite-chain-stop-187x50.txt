@@ -1,10 +1,10 @@
 REBASING  step 3 of 5 · pick a05fa97 b1 · feature-b, branch 2 of 3
 Clashing files                │▸ shared.txt · 1 conflict · 1 open
                               │
-▏? shared.txt  1 open         │ upstream · main                                   │ result                                             │ yours · a05fa97 b1
-                              │▏── o take                                         ? ── 1 of 1 · open                                   ? ── t take
-                              │▏1 ours                                            ┃   ? open · o t b                                   ┃ 1 theirs
-                              │
+▏? shared.txt  1 open         │┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+                              ││? upstream · main                                                            │yours · a05fa97 b1                                                          │
+                              ││    ours                                                                     │  theirs                                                                    │
+                              │└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                               │
                               │
                               │

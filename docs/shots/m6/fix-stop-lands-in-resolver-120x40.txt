@@ -1,4 +1,4 @@
-MERGING
+merging feature into main
 Clashing files                │▸ notes.md · 1 conflict · 1 open
                               │
 ▏? notes.md   1 open          │┌───────────────────────────────────────────────────────────────────────────────────────┐

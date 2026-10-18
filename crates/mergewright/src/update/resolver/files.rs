@@ -18,6 +18,26 @@ use crate::update::detail::Loading;
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
+/// The conflict set's job's answer (m6-conflicts/13, ease-pass/11b).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SetRead {
+    /// The files the operation conflicted on, or why not.
+    pub set: Result<Arc<mergewright_ops::conflict::ConflictSet>, String>,
+    /// A merge's files git combined on its own, or why not; `None` when the
+    /// operation is not a merge.
+    pub combined: Option<Result<Vec<PathBuf>, String>>,
+}
+
+impl From<Result<Arc<mergewright_ops::conflict::ConflictSet>, String>> for SetRead {
+    /// A set read alone, with nothing combined: a non-merge's answer.
+    fn from(set: Result<Arc<mergewright_ops::conflict::ConflictSet>, String>) -> Self {
+        SetRead {
+            set,
+            combined: None,
+        }
+    }
+}
+
 /// Where one listed file stands.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RowState {
@@ -267,16 +287,15 @@ pub(super) fn reread_set(
         if matches!(open.files, Loading::Idle) {
             open.files = Loading::Pending(id);
         }
+        if matches!(open.combined, Loading::Idle) {
+            open.combined = Loading::Pending(id);
+        }
     }
     commands.push(Command::ReadConflictSet(id));
 }
 
 /// The conflict set answered.
-pub fn conflict_set_read(
-    state: &mut AppState,
-    id: JobId,
-    result: Result<Arc<mergewright_ops::conflict::ConflictSet>, String>,
-) {
+pub fn conflict_set_read(state: &mut AppState, id: JobId, read: SetRead) {
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -287,8 +306,14 @@ pub fn conflict_set_read(
         return;
     }
     open.set_job = None;
-    open.files = match result {
+    open.files = match read.set {
         Ok(set) => Loading::Ready(set),
         Err(why) => Loading::Failed(why),
+    };
+    open.combined = match read.combined {
+        // Not a merge: nothing combined, and the view draws no section.
+        None => Loading::Ready(Arc::new(Vec::new())),
+        Some(Ok(paths)) => Loading::Ready(Arc::new(paths)),
+        Some(Err(why)) => Loading::Failed(why),
     };
 }

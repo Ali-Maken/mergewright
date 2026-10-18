@@ -362,7 +362,7 @@ fn right_enter_aborts(
     assert!(state.graph_has_focus(), "the graph has the keyboard");
     assert_eq!(state.status, Status::done("abort merge of feature"));
     let aborted = frame_120(app, &state);
-    assert!(!aborted[0].contains("MERGING"), "{}", aborted.join("\n"));
+    assert!(!aborted[0].contains("merging "), "{}", aborted.join("\n"));
     assert_eq!(
         row_with(&aborted, "abort merge of feature"),
         "✓ abort merge of feature"
@@ -423,7 +423,7 @@ fn u_puts_the_merge_back(
     );
     let undone = frame_120(app, &state);
     let body = undone.join("\n");
-    assert!(undone[0].trim_end().ends_with("MERGING"), "{body}");
+    assert!(undone[0].contains("merging "), "{body}");
     // Ticket 41's landing (kept unchanged) focuses the banner and leaves the
     // detail pane on the commit, so the two conflicts show as the graph's
     // working-tree row, not as `CONFLICTS (2)` (the conductor's call, 2026-09-25).
@@ -675,7 +675,7 @@ fn c_y_finishes_a_shell_begun_merge() {
     assert_eq!(state.status, Status::done("Merged feature into main."));
 
     let (frame, body) = shot(&app, &state, &repo, head.trim());
-    assert!(!frame[0].contains("MERGING"), "{body}");
+    assert!(!frame[0].contains("merging "), "{body}");
     // The status is the graph's footer row: the detail pane the landing
     // opens sits below it, so it is not the frame's last row.
     assert!(
@@ -782,13 +782,13 @@ fn u_after_a_shell_begun_finish_puts_the_merge_back() {
     assert!(state.commit_editor.is_none(), "no commit editor");
 
     let (frame, body) = shot(&app, &state, repo, merge.trim());
-    assert!(frame[0].trim_end().ends_with("MERGING"), "{body}");
+    assert!(frame[0].contains("merging "), "{body}");
     the_undo_row(&frame, &body);
     crate::captures::check_shot("m6/fix-undo-shell-merge-120x40.txt", &body);
 
     let (frame, body) = shot_at(&app, &state, repo, merge.trim(), (80, 24));
     // The narrow tier's tab strip is row 0; the header is under it.
-    assert!(frame[1].trim_end().ends_with("MERGING"), "{body}");
+    assert!(frame[1].contains("merging "), "{body}");
     the_undo_row(&frame, &body);
     assert!(
         !body.contains(&format!("{}…", &UNDO_LANDING_WORDS[..20])),
@@ -1108,7 +1108,7 @@ fn capture_fix_a_mid_merge_answers_in_words() {
             )),
         );
         let body = frame.join("\n");
-        assert!(body.contains("MERGING"), "{body}");
+        assert!(body.contains("merging "), "{body}");
         assert!(
             frame
                 .iter()

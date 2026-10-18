@@ -1,21 +1,4 @@
-//! The resolver view's tests, and the frame helper `update`'s tests draw
-//! through.
-
-/// The whole frame as `view` draws it at `state.size`, one string per row
-/// — for `update`'s tests, which must not name the terminal library
-/// themselves (`update::tests::purity::update_cannot_reach_the_world`).
-pub(crate) fn drawn_for_tests(state: &AppState) -> Vec<String> {
-    let (columns, rows) = (state.size.columns, state.size.rows);
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))
-        .expect("TestBackend reports its size");
-    terminal
-        .draw(|frame| crate::view::view(&crate::session::for_tests::session(), state, frame))
-        .expect("TestBackend cannot fail to draw");
-    let buffer = terminal.backend().buffer();
-    (0..rows)
-        .map(|y| (0..columns).map(|x| buffer[(x, y)].symbol()).collect())
-        .collect()
-}
+//! The resolver view's tests.
 
 use std::sync::Arc;
 
@@ -93,6 +76,7 @@ fn open_on(bytes: &[u8], path: &str) -> AppState {
             restarting: None,
             notice: None,
             files: crate::update::detail::Loading::Idle,
+            combined: crate::update::detail::Loading::Idle,
             set_job: None,
             seen: std::collections::BTreeMap::new(),
             done: None,
@@ -337,5 +321,6 @@ fn a_card_title_says_what_each_side_did() {
 }
 
 mod clash_bar;
+mod clash_header;
 mod clash_look;
 mod clash_shots;

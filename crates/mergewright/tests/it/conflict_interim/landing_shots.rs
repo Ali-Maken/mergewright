@@ -67,7 +67,7 @@ fn capture_a_merge_that_stops() {
     for (columns, rows) in [(80u16, 24u16), (120, 40), (187, 50)] {
         let frame = drawn(&app, &state, columns, rows);
         let body = frame.join("\n");
-        assert!(frame[0].trim_end().ends_with("MERGING"), "{body}");
+        assert!(frame[0].contains("merging "), "{body}");
         assert!(
             frame
                 .iter()

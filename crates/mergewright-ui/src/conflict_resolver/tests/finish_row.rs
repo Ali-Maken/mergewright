@@ -34,6 +34,7 @@ fn every_file_done(finish: bool) -> DocView {
             cursor: 1,
             unavailable: false,
             tail: ListTail::None,
+            combined: CombinedList::NotMerge,
         },
         names: SideNames {
             ours: text("main"),

@@ -1359,6 +1359,7 @@ fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>) -> BannerView
         focused: false,
         skippable: true,
         rewrite: None,
+        names: None,
     }
 }
 
@@ -1418,11 +1419,8 @@ fn the_banner_is_worded_the_same_whatever_the_header_it_lands_in() {
 fn banner_line_with_no_step_names_only_the_operation() {
     let banner = BannerView {
         kind: sanitize_line("MERGING"),
-        step: None,
-        conflict: Some(sanitize_line("src/x.rs")),
-        focused: false,
         skippable: false,
-        rewrite: None,
+        ..rebase_banner(None, Some("src/x.rs"))
     };
     assert_eq!(
         banner_line(&banner, u16::MAX, crate::keymap::Keymap::shipped()),

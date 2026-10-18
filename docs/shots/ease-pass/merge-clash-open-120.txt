@@ -1,16 +1,16 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
 # crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
-# Judge by eye: the list a column 30 wide headed `Clashing files`: `? notes.md  1 open`, `▏? report.md  2 open` (the open file); the first clash outlined, `? yours · wallet-release` left, `theirs · sara/fix-toc` right, its lines unnumbered, the plain lines numbered; the bar starts `o take yours (left)`.
+# Judge by eye: the top row `merging sara/fix-toc into wallet-release`; the list a column 30 wide headed `Clashing files`: `? notes.md  1 open`, `▏? report.md  2 open` (the open file), then a blank row, `Combined by git (2)`, `✓ refund.rs, locale.rs`; the first clash outlined, `? yours · wallet-release` left, `theirs · sara/fix-toc` right, its lines unnumbered, the plain lines numbered; the bar starts `o take yours (left)`.
 === 120x40 ===
-MERGING                                                                                                                 
+merging sara/fix-toc into wallet-release                                                                                
 Clashing files                │▸ report.md · 2 conflicts · 2 open                                                       
                               │                                                                                         
  ? notes.md   1 open          │   1 # Report                                                                            
 ▏? report.md  2 open          │   2 intro                                                                               
                               │┌───────────────────────────────────────────────────────────────────────────────────────┐
-                              ││? yours · wallet-release                    │theirs · sara/fix-toc                     │
-                              ││    let tax = round_cents(total * rate);    │  let tax = (total * rate).round_to(Cents…│
+Combined by git (2)           ││? yours · wallet-release                    │theirs · sara/fix-toc                     │
+✓ refund.rs, locale.rs        ││    let tax = round_cents(total * rate);    │  let tax = (total * rate).round_to(Cents…│
                               │└───────────────────────────────────────────────────────────────────────────────────────┘
                               │   4 middle                                                                              
                               │                                                                                         

@@ -4,7 +4,7 @@
 
 use mergewright_term::SanitizedText;
 
-use super::{Arrangement, BlockState, BlockView, Cell, DocView, LabelOf, RegionView, SideKind};
+use super::{Arrangement, BlockState, BlockView, DocView, LabelOf, RegionView, SideKind};
 
 /// One row of the document, as [`layout`] plans it. Carries indices into
 /// `doc`, not text: the widget (and any other reader, e.g. a hit test)
@@ -87,21 +87,6 @@ pub enum ScreenRow {
         /// The way on, in the app's words.
         next: SanitizedText,
     },
-    /// Three panes: the titles row, `yours · main │ result │ theirs ·
-    /// feature`. A body row: it scrolls with the document.
-    PaneTitles,
-    /// Three panes: one row, level across them. `block` is the block it
-    /// belongs to (its rule row included), `None` for a plain line.
-    Aligned {
-        /// The block this row belongs to, if any.
-        block: Option<usize>,
-        /// The yours pane's cell.
-        ours: Cell,
-        /// The result pane's cell.
-        result: Cell,
-        /// The theirs pane's cell.
-        theirs: Cell,
-    },
 }
 
 /// `doc` laid out at `columns`: every row the widget can draw, and where
@@ -110,9 +95,7 @@ pub enum ScreenRow {
 pub struct Layout {
     /// Every row, in draw order.
     pub rows: Vec<ScreenRow>,
-    /// `block_row[i]` is the row index of block `i`'s [`ScreenRow::Header`]
-    /// inline, of its rule row ([`ScreenRow::Aligned`], all
-    /// [`Cell::Rule`]) in the three panes.
+    /// `block_row[i]` is the row index of block `i`'s [`ScreenRow::Header`].
     pub block_row: Vec<usize>,
     /// The width this layout was built for.
     pub columns: u16,
@@ -127,7 +110,6 @@ pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout {
     let (rows, block_row) = match arrangement {
         Arrangement::Inline => inline_rows(doc, true),
         Arrangement::Card => inline_rows(doc, false),
-        Arrangement::ThreePane => super::panes::pane_rows(doc),
     };
     Layout {
         rows,

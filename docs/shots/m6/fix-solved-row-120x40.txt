@@ -1,12 +1,12 @@
-MERGING
+merging feature into main
 Clashing files                │▸ notes.txt · 2 conflicts · 0 open
                               │all blocks taken · y reviews the merge
  ✓ gone.txt   done            │   1 one
 ▏✓ notes.txt  done            │
 ✓ Review the merge  y         │ ◀ 2 two from main  kept yours
                               │
-                              │   3 three
-                              │   4 four
+Combined by git (1)           │   3 three
+✓ README.md                   │   4 four
                               │   5 five
                               │   6 six
                               │┌───────────────────────────────────────────────────────────────────────────────────────┐

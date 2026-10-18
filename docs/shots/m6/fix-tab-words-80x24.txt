@@ -99,7 +99,7 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 5: a merge stop, the banner focused: `c finish`, not `c continue`
-MERGING
+merging feature into main
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4

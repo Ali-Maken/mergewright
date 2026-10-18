@@ -315,7 +315,8 @@ The conflict resolver: `o`/`t`/`b` take a side; `u` undoes a pick (`Picks`, `Rer
 - `Picks::ask_review` / `review_asked` / `review_answered` (fns) — the merge review's read out and where it was asked for; spent by its answer, cleared with the stop.
 - `clashes_still_open` (fn) — `N clash(es) still open · n goes to the next`: the door's refusal and the read's `StillOpen`, one unit (`review_door` refuses at once when the count is whole).
 - `review::review_pressed` (fn, crate) — the one entry `y`, a merge's `c` and a click on the list's review row share; `review::open_clashes` (fn, crate) — open clashes in the files read.
-- `ResolverState` (struct) — `seek_open`: the banner's `⏎` hands on past solved files to the first open clash (`seek`).
+- `ResolverState` (struct) — `seek_open`: the banner's `⏎` hands on past solved files to the first open clash (`seek`); `combined`: a merge's files git combined, read with `files`.
+- `SetRead` (struct, `files`) — the conflict set's job's answer: `set`, and `combined` (`None` when not a merge); `From<Result<..>>` for a set alone.
 - `RowState` (enum) — `AllTaken` also for a file `ConflictSet::solved` names: solved on disk, never opened here.
 ## update::rewrite_editor
 The rewrite editor (`R`): the branch as rows, the plan and squashed message shown before `y` runs the rewrite.
@@ -376,8 +377,8 @@ Drawing an open Ghost Preview: the slice around the cursor with ghosts laid in a
 `AppState` facts turned into radar `Finding`s, then into the graph marker and the detail pane's radar lines.
 ## view::resolver
 The conflict resolver's `DocView`: the one sanitisation site for a conflicted file.
-`file_list_view` (fn, `file_list`): list rows from mergewright-ops' `FileState`; `ListTail::Review` once a merge has nothing open.
-`arrangement` (fn): strip → card, column → inline, three panes from `THREE_PANE_MIN` (never for a done file).
+`file_list_view` (fn, `file_list`): list rows from mergewright-ops' `FileState`; `ListTail::Review` once a merge has nothing open; `CombinedList` from `ResolverState::combined` (merge only).
+`arrangement` (fn): `(placed)`: strip → card, column → inline at every width (three panes retired, ease-pass/11b).
 `solved` (mod): the `✓ Every clash in <f> is solved.` line and its way on.
 ## view::rewrite_editor
 The rewrite editor's view, its area and its bar's context; every non-refusal word is chosen here.
