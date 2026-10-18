@@ -13,16 +13,45 @@ use graft_ui::detail::{DiffView, HunkView, LineKindView, LineView};
 /// real length, so the mask says nothing about the value either.
 pub(crate) const MASK: &str = "••••••••";
 
-/// One diff line of a secrets-looking file: the key kept, the value after
-/// the first `=` or `:` → [`MASK`]; no separator → [`MASK`]. Runs before
-/// sanitising.
+/// One diff line of a secrets-looking file. `<prefix><sep>` is kept and the
+/// rest drawn [`MASK`] only when all three hold; otherwise the whole line is
+/// [`MASK`] (08v):
+/// 1. `sep` is the line's first `=` or `:`;
+/// 2. the prefix is a key: optional leading whitespace, optional `export `,
+///    a name `[A-Za-z_][A-Za-z0-9_.-]*` of at most 64 chars, optional
+///    whitespace;
+/// 3. a character follows `sep` and it is not `=`.
+///
+/// Base64 has no `:` and `=` only at its end (`…AB==`), so every line of a
+/// PEM or OpenSSH key masks whole by (2) or (3). Runs before sanitising.
 #[must_use]
 pub(crate) fn mask_secret_line(line: &str) -> String {
-    match line.find(['=', ':']) {
-        // The separator is one byte, so `at + 1` is a char boundary.
-        Some(at) => format!("{}{MASK}", &line[..=at]),
-        None => MASK.to_owned(),
+    let Some(at) = line.find(['=', ':']) else {
+        return MASK.to_owned();
+    };
+    // The separator is one byte, so `at + 1` is a char boundary.
+    let after = line[at + 1..].chars().next();
+    if is_key(&line[..at]) && after.is_some_and(|c| c != '=') {
+        format!("{}{MASK}", &line[..=at])
+    } else {
+        MASK.to_owned()
     }
+}
+
+/// Condition 2 of [`mask_secret_line`]: `prefix` is a key name.
+fn is_key(prefix: &str) -> bool {
+    let trimmed = prefix.trim_start();
+    let name = trimmed
+        .strip_prefix("export ")
+        .unwrap_or(trimmed)
+        .trim_end();
+    let mut chars = name.chars();
+    let starts = chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
+    starts
+        && name.len() <= 64
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-'))
 }
 
 /// `view` with every added, removed and context line masked, and each
@@ -82,6 +111,10 @@ mod tests {
             ("a=b=c", "a=••••••••"),
             ("abc123", "••••••••"),
             ("", "••••••••"),
+            // 08v: keys still kept.
+            ("export API_KEY=abc", "export API_KEY=••••••••"),
+            ("  password: hunter2", "  password:••••••••"),
+            ("Proc-Type: 4,ENCRYPTED", "Proc-Type:••••••••"),
         ];
         for (line, masked) in table {
             assert_eq!(mask_secret_line(line), masked, "{line:?}");
@@ -89,5 +122,25 @@ mod tests {
         let long = format!("KEY={}", "v".repeat(200));
         assert_eq!(mask_secret_line(&long), "KEY=••••••••");
         assert_eq!(MASK.chars().count(), 8);
+    }
+
+    /// 08v: a PEM / OpenSSH key's lines, and anything whose prefix is not a
+    /// key, mask whole.
+    #[test]
+    fn a_key_files_lines_are_masked_whole() {
+        let table = [
+            "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7",
+            "x5dhkAbCdEfGhIDAQAB==",
+            "x5dhkAbCdEfGhIDAQAB=",
+            "-----BEGIN RSA PRIVATE KEY-----",
+            "-----BEGIN OPENSSH PRIVATE KEY-----",
+            "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
+            "KEY=",
+            "my secret=x",
+            "ssh-rsa AAAAB3NzaC1yc2E== me@host",
+        ];
+        for line in table {
+            assert_eq!(mask_secret_line(line), MASK, "{line:?}");
+        }
     }
 }

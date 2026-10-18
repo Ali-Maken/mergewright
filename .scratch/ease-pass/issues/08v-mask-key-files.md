@@ -1,6 +1,6 @@
 # 08v — mask key files whole (secrets leak from 08t), plus one stale comment
 
-Status: ready; was draft (planner, spec-only pass, 2026-10-18; from 08t NOTES questions a and d)
+Status: done (2026-10-18); was ready; was draft (planner, spec-only pass, 2026-10-18; from 08t NOTES questions a and d)
 Build with: Sonnet — the rule is fully decided below and a table test judges it; one function and its tests.
 Needs: from 08t (built): `view::commit_editor::mask::{MASK, mask_secret_line}`, `update::commit_editor::files::diff_arrived` (calls it). graft-ops `looks_like_secrets` (unchanged).
 Blocked by: none. Shares `crates/graft/MAP.md` (one row each) with 08u: run after 08u merges, or alongside and the conductor merges the row by hand.
@@ -40,14 +40,19 @@ pub(crate) fn mask_secret_line(line: &str) -> String;
 
 ## Acceptance
 Each tick names its test inline. Seen red first for the new rows.
-- [ ] **Table:** in `view::commit_editor::mask::tests::a_key_files_lines_are_masked_whole` — `MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7` → `MASK`; `x5dhkAbCdEfGhIDAQAB==` → `MASK`; `x5dhkAbCdEfGhIDAQAB=` → `MASK`; `-----BEGIN RSA PRIVATE KEY-----` → `MASK`; `-----BEGIN OPENSSH PRIVATE KEY-----` → `MASK`; `b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW` → `MASK`; `KEY=` → `MASK`; `my secret=x` → `MASK`; `ssh-rsa AAAAB3NzaC1yc2E== me@host` → `MASK`.
-- [ ] **Keys still kept:** in `…::a_secret_line_keeps_its_key_and_hides_its_value` (rows added, old six untouched) — `export API_KEY=abc` → `export API_KEY=••••••••`; `  password: hunter2` → `  password:••••••••`; `Proc-Type: 4,ENCRYPTED` → `Proc-Type:••••••••`.
-- [ ] **Row:** a secrets choice for path `id_rsa` whose diff has a heading `…IDAQAB==` and added lines `-----BEGIN OPENSSH PRIVATE KEY-----`, `b3Bl…ZW`, `…IDAQAB==` → after `diff_arrived`, every line and the heading text read `••••••••`, and a `Debug` dump of the screen's view holds none of `IDAQAB`, `b3Bl`, `BEGIN`. — unit `update::commit_editor::mask_tests::a_key_file_is_masked_whole` (also proves `looks_like_secrets` flags `id_rsa`; if it doesn't, stop and report — graft-ops is out).
-- [ ] **d:** `tests/it/m5_walk/resolving.rs:50` comment calls the last file's answer a `Status::Done` (as `update/resolver/resolved.rs:266` builds), not a `Sticky`. — by reading; quote the new line in NOTES.
-- [ ] MAP.md mask row states the rule in one line.
+- [x] **Table:** (seen red first, now green) in `view::commit_editor::mask::tests::a_key_files_lines_are_masked_whole` — `MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7` → `MASK`; `x5dhkAbCdEfGhIDAQAB==` → `MASK`; `x5dhkAbCdEfGhIDAQAB=` → `MASK`; `-----BEGIN RSA PRIVATE KEY-----` → `MASK`; `-----BEGIN OPENSSH PRIVATE KEY-----` → `MASK`; `b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW` → `MASK`; `KEY=` → `MASK`; `my secret=x` → `MASK`; `ssh-rsa AAAAB3NzaC1yc2E== me@host` → `MASK`.
+- [x] **Keys still kept:** in `…::a_secret_line_keeps_its_key_and_hides_its_value` (rows added, old six untouched) — `export API_KEY=abc` → `export API_KEY=••••••••`; `  password: hunter2` → `  password:••••••••`; `Proc-Type: 4,ENCRYPTED` → `Proc-Type:••••••••`.
+- [x] **Row:** (seen red first on the all-MASK assert; `looks_like_secrets(id_rsa)` asserted true in the test) a secrets choice for path `id_rsa` whose diff has a heading `…IDAQAB==` and added lines `-----BEGIN OPENSSH PRIVATE KEY-----`, `b3Bl…ZW`, `…IDAQAB==` → after `diff_arrived`, every line and the heading text read `••••••••`, and a `Debug` dump of the screen's view holds none of `IDAQAB`, `b3Bl`, `BEGIN`. — unit `update::commit_editor::mask_tests::a_key_file_is_masked_whole` (also proves `looks_like_secrets` flags `id_rsa`; if it doesn't, stop and report — graft-ops is out).
+- [x] **d:** `tests/it/m5_walk/resolving.rs:50` comment calls the last file's answer a `Status::Done` (as `update/resolver/resolved.rs:266` builds), not a `Sticky`. — by reading; quote the new line in NOTES.
+- [x] MAP.md mask row states the rule in one line. — by reading; length checked by it `map_coverage::map_lines_are_short_and_carry_no_ticket_ids`.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 Small (~25k).
+
+## NOTES (builder, 2026-10-18)
+- No scout: the ticket names the lines. No compaction.
+- d, new line: "`Settle`, not `Write`: the last file's answer is a `Status::Done` (`✓ every file done  c finishes the merge`, `update/resolver/resolved.rs`)." The "Settle, not Write" reason itself was not re-derived.
+- Touches: `mask_secret_line` callers (grep): only `mask.rs` (`mask_heading`, `mask_line`), reached from `files.rs diff_arrived`. Old rows + existing mask/commit_screen tests pass unedited (full nextest). `git diff --stat docs/shots` empty: capture unchanged. Keymap, journal/undo, other crates untouched.
