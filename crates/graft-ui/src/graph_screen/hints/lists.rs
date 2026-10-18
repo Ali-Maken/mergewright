@@ -324,10 +324,10 @@ fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
     list
 }
 
-/// The banner after `esc pause` (Q7 a, Q17 a): `⏎` says where it goes,
-/// back to the clash screen `esc` paused (first landing says `resolve`).
+/// The banner after `esc pause` (Q7 a, Q17 a): `⏎` says where it goes, back to
+/// the clash screen `esc` paused (first landing says `resolve`). `s` stays: all but a merge skip.
 fn paused_banner_list(merge: bool) -> Vec<Hint> {
-    paused(banner_list(false, true, merge))
+    paused(banner_list(!merge, true, merge))
 }
 
 /// `list` with its `⏎` hint, found by key, saying `back to the clashes`.

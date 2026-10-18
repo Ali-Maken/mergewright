@@ -101,10 +101,14 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             conflicted,
             merge: _,
         } => vec![stopped_operation(walk, *skippable, *conflicted)],
-        // A conflicted operation's banner (ease-pass/03b, 03r): its `⏎`
-        // opens the resolver today as it will reopen the paused clash
-        // screen after P.
-        HintContext::BannerPaused { merge: _ } => vec![stopped_operation(walk, false, true)],
+        // A conflicted operation's banner once the resolver has been open at
+        // this stop (ease-pass/05c, Q7 a): its `⏎` goes back to the first
+        // open clash. Every operation but a merge is skippable.
+        HintContext::BannerPaused { merge } => {
+            let mut state = stopped_operation(walk, !*merge, true);
+            state.picks.resolver_opened();
+            vec![state]
+        }
         HintContext::ChangesPane {
             unmerged,
             live,

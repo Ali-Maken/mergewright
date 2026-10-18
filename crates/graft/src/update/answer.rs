@@ -281,4 +281,9 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
             | Product::HandedOver(_),
         ) => commit_editor_answer(next, commands, event),
     }
+    // The banner's `⏎` back to the first open clash hands on once the
+    // reads it waits on have landed — whichever lands last (Q7 a).
+    let mut local_jobs = next.local_jobs;
+    resolver::seek_first_open(next, commands, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
 }

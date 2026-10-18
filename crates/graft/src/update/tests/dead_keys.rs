@@ -274,13 +274,11 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // The ease pass's bars (03b) are not yet what the app's footer
         // answers: G picks `GraphRow` at the row-context choice site and L
         // moves the resolver to `Clash`. Until then no state classifies as
-        // either; their keys are still pressed (`screen_for`). P picks
-        // `BannerPaused` once the resolver's `esc` pauses.
+        // either; their keys are still pressed (`screen_for`).
         HintContext::Preview
         | HintContext::Resolver { .. }
         | HintContext::GraphRow { .. }
-        | HintContext::Clash(_)
-        | HintContext::BannerPaused { .. } => None,
+        | HintContext::Clash(_) => None,
         // A standing search (m8/15b): the row's form, led by `n N`.
         HintContext::Searching(row) => {
             classified_form(row).map(|row| HintContext::Searching(Box::new(row)))
@@ -309,6 +307,9 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::PaneOverOverlay { .. }
         | HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
+        // Picked once the resolver has been open at this stop (ease-pass/05c,
+        // Q7 a: `rows::clash_bars::banner_context`).
+        | HintContext::BannerPaused { .. }
         | HintContext::ChangesPane { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }

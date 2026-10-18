@@ -42,10 +42,16 @@ pub(super) fn status(entries: &[(&str, bool)]) -> Arc<WorkingTreeStatus> {
 }
 
 fn set(paths: &[&str]) -> Loading<Arc<ConflictSet>> {
-    Loading::Ready(Arc::new(ConflictSet {
+    Loading::Ready(set_of(paths))
+}
+
+/// A recorded set of `paths`, none solved on disk.
+pub(super) fn set_of(paths: &[&str]) -> Arc<ConflictSet> {
+    Arc::new(ConflictSet {
         paths: paths.iter().map(PathBuf::from).collect(),
         recorded: true,
-    }))
+        solved: Vec::new(),
+    })
 }
 
 fn merging(state: &mut AppState) {
@@ -282,13 +288,7 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
         &state,
         AppEvent::Produced(
             reread,
-            Product::ConflictSet(Ok(Arc::new(ConflictSet {
-                paths: ["b.rs", "a.rs", "conflicted.rs", "0.rs"]
-                    .iter()
-                    .map(PathBuf::from)
-                    .collect(),
-                recorded: true,
-            }))),
+            Product::ConflictSet(Ok(set_of(&["b.rs", "a.rs", "conflicted.rs", "0.rs"]))),
         ),
     );
     // `0.rs` sorts in above it.
@@ -301,10 +301,7 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
         &state,
         AppEvent::Produced(
             JobId::new(6_999),
-            Product::ConflictSet(Ok(Arc::new(ConflictSet {
-                paths: vec!["zzz.rs".into()],
-                recorded: true,
-            }))),
+            Product::ConflictSet(Ok(set_of(&["zzz.rs"]))),
         ),
     );
     assert!(
@@ -631,13 +628,7 @@ fn a_file_keeps_its_row_when_it_is_done() {
         &state,
         AppEvent::Produced(
             reread,
-            Product::ConflictSet(Ok(Arc::new(ConflictSet {
-                paths: ["a.rs", "z.rs", "conflicted.rs"]
-                    .iter()
-                    .map(PathBuf::from)
-                    .collect(),
-                recorded: true,
-            }))),
+            Product::ConflictSet(Ok(set_of(&["a.rs", "z.rs", "conflicted.rs"]))),
         ),
     );
     let after: Vec<(String, RowState)> = states(&state);

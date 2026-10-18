@@ -295,6 +295,9 @@ Landing on an operation git is part-way through: the banner takes the keyboard a
 Fetch, pull and push (`f`, `p`, `P`): the push box, `Esc` cancelling a running write, progress and failure lines. `esc_stops_write` (fn): whether `Esc` goes to the running write now; J, stash and Map bars read it.
 ## update::resolver
 The conflict resolver: `o`/`t`/`b` take a side; `u` undoes a pick (`Picks`, `Reread`); `n`/`←`/`→` step clashes; `⏎` done; `y` the merge's review (`still_open_words`, `reviews_the_merge`, `notice_once_checked`).
+- `Picks::resolver_opened` / `resolver_seen` (fns) — the resolver has been open at this stop: the banner is paused.
+- `ResolverState` (struct) — `seek_open`: the banner's `⏎` hands on past solved files to the first open clash (`seek`).
+- `RowState` (enum) — `AllTaken` also for a file `ConflictSet::solved` names: solved on disk, never opened here.
 ## update::rewrite_editor
 The rewrite editor (`R`): the branch as rows, the plan and squashed message shown before `y` runs the rewrite.
 ## update::row_tags
@@ -350,11 +353,12 @@ Drawing an open Ghost Preview: the slice around the cursor with ghosts laid in a
 ## view::radar
 `AppState` facts turned into radar `Finding`s, then into the graph marker and the detail pane's radar lines.
 ## view::resolver
-The conflict resolver's `DocView`: the one sanitisation site for a conflicted file.
+The conflict resolver's `DocView`: the one sanitisation site for a conflicted file. `file_list_view` (fn, `file_list`): the list rows; a merge's all-taken file reads `FileState::Solved`.
 ## view::rewrite_editor
 The rewrite editor's view, its area and its bar's context; every non-refusal word is chosen here.
 ## view::rows
 Building `GraphView`: the rows the walk last sent, lane-folded, each folding merge given its tail, painted for this frame.
+- `resolver_context` (fn, `clash_bars`) — a merge's solved file draws `Clash`; the banner is `BannerPaused` once the resolver was open.
 ## view::stash
 The stash overlay's view model (`S`): rows from the last read; decides nothing.
 ## view::status

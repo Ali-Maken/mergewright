@@ -17,16 +17,25 @@ use crate::update::resolver::review::{in_a_merge, next_open_file};
 /// `merge` comes from the live operation's kind, begun in Graft or in the
 /// shell: `c` opens the finish summary on both, so the bar says `c finish`
 /// (m6-conflicts/70, n2).
+///
+/// A conflicted stop whose resolver has been open is **paused** (Q7 a,
+/// ease-pass/05c): `BannerPaused`, leading `⏎ back to the clashes`. A
+/// launch onto a live operation has not opened it yet: `⏎ resolve`.
 pub(crate) fn banner_context(
     state: &AppState,
     banner: &graft_ui::graph_screen::BannerView,
 ) -> HintContext {
     use graft_git::state::InProgress;
+    let merge = crate::update::commit_editor::live_operation(state)
+        .is_some_and(|(kind, _)| kind == InProgress::Merge);
+    let conflicted = banner.conflict.is_some();
+    if conflicted && state.picks.resolver_seen() {
+        return HintContext::BannerPaused { merge };
+    }
     HintContext::Banner {
         skippable: banner.skippable,
-        conflicted: banner.conflict.is_some(),
-        merge: crate::update::commit_editor::live_operation(state)
-            .is_some_and(|(kind, _)| kind == InProgress::Merge),
+        conflicted,
+        merge,
     }
 }
 

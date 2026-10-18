@@ -20,6 +20,7 @@ mod box_owns_the_bar;
 mod budget_run;
 mod captures;
 mod changes_pane_writes;
+mod clash_stops;
 mod cli_docs;
 mod clock_pin;
 mod commit_editor_writes;
@@ -75,6 +76,7 @@ mod m8_walk;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
 mod map_coverage;
+mod merge_one_file;
 mod name_and_drag;
 mod not_a_repo;
 mod offer_and_blame;

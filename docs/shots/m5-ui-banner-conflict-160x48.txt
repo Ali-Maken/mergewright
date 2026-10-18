@@ -115,4 +115,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────
- merge stopped · 16 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph

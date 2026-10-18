@@ -80,9 +80,10 @@ impl FileState {
             (FileState::AllTaken, false) => format!("{} marks done", g.enter),
             (FileState::AllTaken, true) => g.enter.to_string(),
             (FileState::Solved, false) => format!("solved {}", g.check),
-            (FileState::Solved, true) => g.check.to_string(),
             (FileState::Done, false) => format!("done {}", g.check),
-            (FileState::Done, true) => g.check.to_string(),
+            // Compact, solved and done draw the same tick; the tone tells
+            // them apart no more than the words do (both muted).
+            (FileState::Solved | FileState::Done, true) => g.check.to_string(),
             (FileState::WholeFile { .. }, false) => "keep or delete".to_owned(),
             (FileState::WholeFile { .. }, true) => "keep?".to_owned(),
             (FileState::Binary, false) => "binary".to_owned(),

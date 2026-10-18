@@ -742,16 +742,16 @@ fn a_stop_with_edits_aside_shows_in_the_stop_line_s_and_j() {
     let state = resolver_on(&app, state, &f);
 
     let state = quiet(&app, app.key(&state, KeyCode::Escape));
-    // At 120 columns the banner's seven keys leave no room for the part, so
-    // the ladder drops it first, as the note orders; at 187 it shows.
+    // At 120 columns the paused banner's keys (05c Q7 a) leave no room for the
+    // step or the part, so the ladder drops them, as the note orders; at 187 both show.
     for (columns, rows, shown) in [(187, 50, true), (120, 40, false)] {
         let drawn = frame_at(&state, columns, rows, None);
         let stop = drawn
             .iter()
-            .find(|row| row.contains("rebase stopped at step 1 of 1 \u{b7} 1 "))
+            .find(|row| row.contains("rebase stopped"))
             .unwrap_or_else(|| panic!("no stop line:\n{}", drawn.join("\n")));
         assert_eq!(
-            stop.contains("conflicted \u{b7} edits aside \u{b7}"),
+            stop.contains("step 1 of 1 \u{b7} 1 file conflicted \u{b7} edits aside \u{b7}"),
             shown,
             "{columns}: {stop}"
         );

@@ -36,6 +36,8 @@ pub fn open_resolver(
         return true;
     }
     start(state, commands, path, from, next_id);
+    // The banner reads as a pause from here on (Q7 a).
+    state.picks.resolver_opened();
     // A new resolver reads the set afresh: nothing carries over from a
     // resolver opened on an earlier step.
     files::reread_set(state, commands, next_id);

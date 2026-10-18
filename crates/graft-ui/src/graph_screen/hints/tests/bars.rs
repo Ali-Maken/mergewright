@@ -125,7 +125,7 @@ fn every_short_rung_is_a_prefix_of_its_verb() {
 fn the_paused_banner_leads_back_to_the_clashes() {
     for merge in [true, false] {
         let banner = HintContext::Banner {
-            skippable: false,
+            skippable: !merge,
             conflicted: true,
             merge,
         };

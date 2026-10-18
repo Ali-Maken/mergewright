@@ -1,6 +1,6 @@
 # m8-banner-bar-q-80x24.txt: 80x24, a merge stopped at a conflict, the banner focused (m8-polish-and-ship/13b). Drawn by
 # `view::view` from a real AppState over a real repository (conflict_interim::capture_banner_bar_with_q). Not a pty capture: no colour (rule 5).
-# What right looks like: the bottom row reads `merge stopped · …` and ends `e edit  ⇥ graph`.
+# What right looks like: the bottom row ends `⇥ graph  q quit`; it leads `merge stopped · …` where that fits beside the whole bar.
 
  ◆ api  ~/code/api · main                                               MERGING
   ◌      Uncommitted changes (2 unmerged)
@@ -25,4 +25,4 @@
 
 
 
- merge stopped · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit

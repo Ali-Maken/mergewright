@@ -58,6 +58,7 @@ mod resolved;
 mod restart;
 pub(crate) mod review;
 mod scroll;
+mod seek;
 mod settle;
 mod step;
 mod take;
@@ -99,6 +100,7 @@ pub(crate) use restart::start_over_refusal;
 pub(crate) use review::finish_refused_notice;
 pub use review::{notice_once_checked, reviews_the_merge, still_open_words};
 pub use scroll::resolver_mouse;
+pub(crate) use seek::{open_on_first_open, seek_first_open};
 pub use step::step_in_file;
 pub(crate) use unpick::{NOTHING_TO_UNDO, undo_from_review};
 pub use unpick::{dropped_words, untake_ended, untaken};
@@ -217,6 +219,11 @@ pub struct ResolverState {
     /// `N` crossed to this file: when its opening read lands the cursor goes
     /// to the last block rather than the first.
     pub land_last: bool,
+    /// Opened to the first **open** clash (the banner's `⏎`, Q7 a): once
+    /// this file's read and the set's have landed, a file with no clash
+    /// open hands on to the next file one may be open in
+    /// ([`seek::seek_first_open`]).
+    pub seek_open: bool,
     /// Queued takes a failed take dropped while its re-read is out: said
     /// once the re-read lands, which clears the failure's own words (review
     /// m6-amend-15 M2). `0` otherwise.
@@ -263,6 +270,7 @@ impl ResolverState {
             in_flight: None,
             queued: VecDeque::new(),
             land_last: false,
+            seek_open: false,
             dropped: 0,
             settling: None,
             whole_side: None,
@@ -308,6 +316,7 @@ pub fn resolver_key(
     if state.resolver.is_none() {
         return false;
     }
+    seek::he_acted(state);
     if key.code == KeyCode::Char('c') && key.modifiers.control {
         return false;
     }

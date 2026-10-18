@@ -401,13 +401,13 @@ fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
 /// The focused banner's bar: all eight of `hints::banner_list`'s hints and
 /// no `? keys`, because they fit. `⏎ resolve` joined them in
 /// m6-conflicts/04 and leads the list (design note, Proposed change 2a);
-/// `q quit` joined last in m8-13b.
+/// `q quit` joined last in m8-13b. Paused (05c Q7 a), `⇥`/`q` lose words.
 fn the_banners_whole_list(state: &AppState) -> Result<(), String> {
     check(state.banner_focus, || {
         "⇥ did not take the banner's keyboard back".to_owned()
     })?;
     let drawn = bar_by(state, "c continue")?;
-    let wanted = " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph  q quit";
+    let wanted = " ⏎ back to the clashes  c continue  s skip  a abort  M mergetool  e edit  ⇥  q";
     check(drawn.trim_end() == wanted, || {
         format!("the banner's bar is {drawn:?}, not {wanted:?}")
     })?;
