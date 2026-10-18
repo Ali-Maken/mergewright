@@ -1405,3 +1405,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/10-flaky-undo-cancel | graft-ops `undo_cancel::cancel_at_every_step_boundary_is_clean` failed once in 10's full run (leftover lock), passed alone and in the run before. Cause not looked for. | **unverified** | ease-pass review |
 | ease/10-ff-merge-tree | A fast-forward merge preview still runs a `merge-tree` it doesn't need (10 NOTES :134); part of ease/10-spawns' cost. graft-git change. | **unverified** | ease-pass release perf |
 | ease/10-nothing-to-merge | What the merge box says when there is nothing to merge (already up to date) is unchecked — no test, no capture. | **question** | ease-pass review |
+| ease/08u-justmerged | `JustMerged` (landing bar after a merge) is never built by app code (08u NOTES) — dead variant or a missing producer? | **question** | ease-pass review |
+| ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
+| ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
