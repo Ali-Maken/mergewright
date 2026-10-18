@@ -359,7 +359,7 @@ Drawing an open Ghost Preview: the slice around the cursor with ghosts laid in a
 ## view::radar
 `AppState` facts turned into radar `Finding`s, then into the graph marker and the detail pane's radar lines.
 ## view::resolver
-The conflict resolver's `DocView`: the one sanitisation site for a conflicted file. `file_list_view` (fn, `file_list`): the list rows; a merge's all-taken file reads `FileState::Solved`.
+The conflict resolver's `DocView`: the one sanitisation site for a conflicted file. `file_list_view` (fn, `file_list`): the list rows; a merge's all-taken file reads `FileRowLook::Solved`.
 ## view::rewrite_editor
 The rewrite editor's view, its area and its bar's context; every non-refusal word is chosen here.
 ## view::rows

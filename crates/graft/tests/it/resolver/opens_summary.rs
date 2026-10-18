@@ -92,7 +92,7 @@ fn y_on_a_solved_shell_merge_opens_the_review_over_the_resolver() {
         before.join("\n"),
         after.join("\n")
     );
-    crate::captures::check_shot("m6/fix-last-file-opens-summary-187x50.txt", &shot);
+    crate::captures::check_shot("m6/fix-y-opens-the-review-187x50.txt", &shot);
     let state = esc_back_to_the_resolver(&app, &state);
     drop(state);
     app.close();
@@ -117,7 +117,7 @@ fn esc_back_to_the_resolver(app: &App, state: &AppState) -> AppState {
         !frame.iter().any(|row| row.contains("every file done")),
         "{body}"
     );
-    crate::captures::check_shot("m6/fix-finish-row-120x40.txt", &body);
+    crate::captures::check_shot("m6/fix-solved-row-120x40.txt", &body);
     state
 }
 

@@ -28,6 +28,12 @@ use super::vocabulary::{
 };
 use crate::repo_truth::check;
 
+#[path = "merge_review_journeys.rs"]
+mod merge_review_journeys;
+use merge_review_journeys::{
+    a_whole_one_file, a_whole_two_files, b_whole_two_files, last_block_to_finished,
+};
+
 /// The card layout (strip + card), and the column + three panes.
 const CARD: (u16, u16) = (120, 40);
 const WIDE: (u16, u16) = (200, 50);
@@ -1152,88 +1158,6 @@ fn walk_back_a_whole_file_choice() -> Scenario {
                     })
                 }),
             ],
-        ],
-    )
-}
-
-// ───────────────────────────── whole rows ─────────────────────────────
-
-fn a_whole_one_file() -> Scenario {
-    journey(
-        "a-whole-one-file",
-        conflicting,
-        vec![
-            on_feature(),
-            vec![route()],
-            m_m(),
-            done_by('O', "shared.txt"),
-            review_then_commit(),
-            vec![end()],
-            merged_landing(),
-        ],
-    )
-}
-
-/// J13 (amendment 2026-09-24): `gone.txt` done, the cursor on `notes.txt`'s
-/// last open block — `o` solves the last clash, `y` opens the review and
-/// its `y` commits. No `⏎`: a merge stages at the review's `y`
-/// (ease-pass/05b; the stage and the summary opening on its own were
-/// m6-conflicts/60's).
-fn last_block_to_finished() -> Scenario {
-    journey(
-        "last-block-to-finished",
-        two_files,
-        vec![
-            on_feature(),
-            m_m(),
-            done_by('o', "gone.txt"),
-            // `notes.txt`'s first block taken: the cursor moves on to the
-            // last one (m6-conflicts/15).
-            vec![key(ch('o')), Step::WaitFor(Wait::ConflictOpened)],
-            vec![
-                route(),
-                key(ch('o')),
-                Step::WaitFor(Wait::ConflictOpened),
-                Step::WaitFor(Wait::ResolvedPath("notes.txt")),
-            ],
-            review_then_commit(),
-            vec![end()],
-            merged_landing(),
-        ],
-    )
-}
-
-fn a_whole_two_files() -> Scenario {
-    journey(
-        "a-whole-two-files",
-        two_files,
-        vec![
-            on_feature(),
-            vec![route()],
-            m_m(),
-            both_files_done(),
-            review_then_commit(),
-            vec![end()],
-            merged_landing(),
-        ],
-    )
-}
-
-fn b_whole_two_files() -> Scenario {
-    journey(
-        "b-whole-two-files",
-        two_files_in_the_shell,
-        vec![
-            launched(),
-            vec![
-                route(),
-                key(KeyCode::Enter),
-                Step::WaitFor(Wait::ConflictOpened),
-            ],
-            both_files_done(),
-            review_then_commit(),
-            vec![end()],
-            merged_landing(),
         ],
     )
 }

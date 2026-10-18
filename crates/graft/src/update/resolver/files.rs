@@ -29,6 +29,7 @@ pub enum RowState {
         of: usize,
     },
     /// Every block taken; `⏎` has not marked it done yet.
+    /// In a merge, a merge's solved file (CONTEXT `Solved (file)`).
     AllTaken,
     /// git's status no longer calls it unmerged.
     Done,

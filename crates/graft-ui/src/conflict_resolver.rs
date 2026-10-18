@@ -53,7 +53,7 @@ mod panes;
 
 use draw::set_text;
 pub use files::{
-    FileList, FileListView, FileRow, FileState, Placement, ResolverAreas, file_at, placement,
+    FileList, FileListView, FileRow, FileRowLook, Placement, ResolverAreas, file_at, placement,
     resolver_areas,
 };
 pub use finish_row::{FinishRow, finish_row_at};

@@ -4,7 +4,7 @@
 //! `solved`, never `⏎ marks done`. A rebase keeps today's bar and row.
 
 use graft_git::conflict::{ConflictFile, Take};
-use graft_ui::conflict_resolver::FileState;
+use graft_ui::conflict_resolver::FileRowLook;
 
 use super::advance::{on, three};
 use super::bar;
@@ -17,7 +17,7 @@ fn solved() -> ConflictFile {
     file
 }
 
-fn row_of(state: &AppState, path: &str) -> FileState {
+fn row_of(state: &AppState, path: &str) -> FileRowLook {
     crate::view::resolver::file_list_view(state)
         .rows
         .into_iter()
@@ -86,7 +86,7 @@ fn a_merge_still_open_keeps_the_take_bar() {
 #[test]
 fn a_solved_merge_file_s_row_reads_solved_and_a_rebase_s_still_marks_done() {
     let merge = on("a", solved(), &["a"], &["a"]);
-    assert_eq!(row_of(&merge, "a"), FileState::Solved);
+    assert_eq!(row_of(&merge, "a"), FileRowLook::Solved);
     let rebase = as_rebase(merge);
-    assert_eq!(row_of(&rebase, "a"), FileState::AllTaken);
+    assert_eq!(row_of(&rebase, "a"), FileRowLook::AllTaken);
 }

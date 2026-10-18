@@ -24,11 +24,11 @@ fn every_file_done(finish: bool) -> DocView {
             rows: vec![
                 FileRow {
                     name: text("gone.txt"),
-                    state: FileState::Done,
+                    state: FileRowLook::Done,
                 },
                 FileRow {
                     name: text("notes.txt"),
-                    state: FileState::Done,
+                    state: FileRowLook::Done,
                 },
             ],
             cursor: 1,

@@ -30,7 +30,7 @@ use std::path::Path;
 use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize_line;
 use graft_ui::conflict_resolver::{
-    Arrangement, BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileState,
+    Arrangement, BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileRowLook,
     RegionView, ResolverScreen, SideNames, SideRoles, TakeView, layout, placement, resolver_areas,
 };
 use graft_ui::theme::ThemeKind;
@@ -53,11 +53,11 @@ fn mockup_files() -> FileListView {
         rows: vec![
             FileRow {
                 name: text("src/auth/token.rs"),
-                state: FileState::Open { open: 2, of: 3 },
+                state: FileRowLook::Open { open: 2, of: 3 },
             },
             FileRow {
                 name: text("src/api/routes.rs"),
-                state: FileState::Unread,
+                state: FileRowLook::Unread,
             },
         ],
         cursor: 0,

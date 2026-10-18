@@ -1,6 +1,6 @@
 # 05t — merge screens: lower 05b's ratchet rows (review ease-pass-05-10 M2), one name per state (Minor 9), capture names (Minor 10)
 
-Status: ready (planner, spec-only pass, 2026-10-18, from `docs/reviews/ease-pass-05-10.md`)
+Status: done (2026-10-18; Captures box open, see NOTES)
 Blocked by: none. **Disjoint by file from 05s and 08u** — either order. Shares only registries, row by row: `crates/graft/tests/it/over_400.txt` (05s and 08u lower other rows), graft-ui `MAP.md` (one row) — the conductor merges rows by hand.
 Build with: Sonnet — moves of whole tests, one rename and two file renames; nothing to decide, the ratchet test and the test count judge it.
 Scout: none — the ratchet file and `git diff` name every file.
@@ -49,11 +49,43 @@ pub enum FileRowLook { /* was FileState: AllTaken, Solved, Done, … */ }
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] Every row 05b raised (but 05s's three) is ≤ its `4ed45107^` value; `tests/it/resolver.rs` and `…/start_over.rs` rows gone; no new row — graft's ratchet test in `tests/it/file_size.rs` (name the fn). NOTES: table `path · pre-05b · before · after`.
-- [ ] The four named splits exist as named (`m5_walk/merge_review_journeys.rs`, `resolver/fixtures.rs`, two `start_over/` files) — by `ls` in NOTES.
-- [ ] Test count unchanged (`cargo nextest list`, both numbers in NOTES); full nextest green.
-- [ ] `FileRowLook`: the grep above shows no graft-ui `FileState`; `CONTEXT.md` `Solved (file)` entry as written — by reading, quote it; `map_coverage::map_lines_are_short_and_carry_no_ticket_ids` green.
-- [ ] Captures: `git diff -M --stat` shows two renames, 100 % similar; the writing tests green and write the new names (name them); `rg 'fix-finish-row|fix-last-file-opens-summary' -g '!docs/log/**' -g '!docs/reviews/**'` empty.
+- [x] Every row 05b raised (but 05s's three) is ≤ its `4ed45107^` value; `tests/it/resolver.rs` and `…/start_over.rs` rows gone; no new row — graft's ratchet test in `tests/it/file_size.rs` (name the fn). NOTES: table `path · pre-05b · before · after`. — `file_size::every_file_over_400_lines_is_listed_with_its_count` green.
+- [x] The four named splits exist as named (`m5_walk/merge_review_journeys.rs`, `resolver/fixtures.rs`, two `start_over/` files) — by `ls` in NOTES; all ≤400 by `file_size::every_file_over_400_lines_is_listed_with_its_count`.
+- [x] Test count unchanged (`cargo nextest list`, both numbers in NOTES); full nextest green. — `cargo nextest run --workspace`: 6853/6853 passed.
+- [x] `FileRowLook`: the grep above shows no graft-ui `FileState`; `CONTEXT.md` `Solved (file)` entry as written — by reading, quote it; `map_coverage::map_lines_are_short_and_carry_no_ticket_ids` green (in the 6853).
+- [ ] Captures: `git diff -M --stat` shows two renames, 100 % similar; the writing tests green and write the new names (name them); `rg 'fix-finish-row|fix-last-file-opens-summary' -g '!docs/log/**' -g '!docs/reviews/**'` empty. — renames 100 % and writer `resolver::opens_summary::y_on_a_solved_shell_merge_opens_the_review_over_the_resolver` green with new stems; **open**: rg not empty (see NOTES).
+
+## NOTES (builder 05t, 2026-10-18)
+Scout: none — ticket named rows; `git diff 4ed45107^ 4ed45107` gave the rest.
+
+Ratchet (path · pre-05b · before · after):
+- graft-ops src/operation/tests.rs · 2010 · 2011 · 1981
+- graft-ops it/absorb_staged.rs · 642 · 643 · 609
+- graft-ops it/finish_merge.rs · 814 · 819 · 787
+- graft-ops it/history_ops.rs · 2705 · 2712 · 2631
+- graft-ops it/set_aside.rs · 1352 · 1356 · 1327
+- graft-ops it/stop_hooks.rs · 916 · 917 · 857
+- graft src/update/banner/tests/resume_words.rs · 536 · 537 · 510
+- graft src/update/palette/tests.rs · 425 · 428 · 404
+- graft it/conflict_interim.rs · 1994 · 2005 · 1906
+- graft it/finish/choices.rs · 430 · 442 · 370 (row dropped)
+- graft it/m5_walk/conflict_journeys.rs · 1355 · 1396 · 1320
+- graft it/m5_walk/run.rs · 781 · 820 · 700
+- graft it/resolver/file_list.rs · 705 · 717 · 669
+- graft it/resolver.rs · — · 419 · 397 (dropped)
+- graft it/resolver/file_list/start_over.rs · — · 407 · 57 (dropped)
+- merge_set_aside.rs (953) and m5_walk/conflicts.rs (670) already under pre-05b; untouched.
+
+New files: m5_walk/merge_review_journeys.rs (`#[path]` child of conflict_journeys.rs), m5_walk/run/secrets.rs, resolver/fixtures.rs, resolver/file_list/start_over/{graft_begun,shell_begun}.rs, resolver/file_list/many_files.rs, conflict_interim/clicks.rs, finish/choices/handover.rs; graft-ops it/{absorb_staged/continued_elsewhere, finish_merge/autostash_abort, history_ops/refusals, set_aside/relaunch, stop_hooks/resume}.rs, src/operation/tests/shell_merge.rs; graft src/update/banner/tests/resume_words/finish_merge.rs, src/update/palette/tests/placeholder.rs.
+Edits beyond moving: `pub(super)` on moved fns the parent calls; `super::super::restart` → `crate::resolver::restart` in start_over children; explicit `use super::{…}` in the two m5_walk files (the m5_walk example compiles them outside cfg(test), where `clippy::wildcard_imports` fires).
+
+Test count: nextest list 6853 before, 6853 after. Moved tests gain one module segment (e.g. `start_over::y_restores_…` → `start_over::graft_begun::y_restores_…`); m5_walk scenarios are string-named, unchanged. Grep of every moved fn in `.scratch/ease-pass/` and `TESTING.md`: no hits.
+
+Rename: `rg '\bFileState\b' crates/graft-ui crates/graft` → none. Also renamed in graft MAP.md `file_list_view` row (it names the UI type). `files.rs` 397. CONTEXT entry added verbatim from spec; `RowState::AllTaken` doc line added.
+
+Captures, open box: remaining rg hits are history or sheets: `docs/shots/m6/m6-contact-sheet-3.txt` (no regenerating, 14's), `.scratch/m6-conflicts/issues/{60,63}`, `.scratch/ease-pass/issues/{05b,05c}` + `scouts/05c-bar-and-rows.md` (records of what was regenerated then). Captions tsv updated. Conductor decides.
+
+Touches: keymap/journal/undo none — no behaviour change; only `src` edits are the rename (view mapping, graft-ui) and a doc line. 05s/08u files: none in diff.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
