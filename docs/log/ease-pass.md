@@ -98,3 +98,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 06u (92821959): fmt ok, clippy 0, nextest 6834/6834, doc ok; worktree removed. 08t merged 5d32d440 (shared captures auto-merged; gates check). Gates running.
 - gates after 08t (5d32d440): fmt ok, clippy 0, nextest 6838/6838, doc ok; worktree removed. 08v filed ready. builder-opus-xhigh 08u + builder-sonnet 08v dispatched (MAP.md row merged by hand).
 - builder-sonnet 08v mask key files (d6b9333d, merged 4e6dc034) 5/5: key-shaped prefix rule, PEM/ssh lines masked whole; both tests seen red first. No scout (ticket names lines). skills: none · 30 tools. Gates running.
+- gates after 08v (4e6dc034): fmt ok, clippy 0, nextest 6840/6840, doc ok; worktree removed. reviewer dispatched: 05b+05c+10 (merge screens) at 4e6dc034.
