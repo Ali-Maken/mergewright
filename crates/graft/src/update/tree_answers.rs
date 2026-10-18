@@ -177,7 +177,6 @@ pub(super) fn working_tree_read(
         // word — and an unedited `⏎` commit — the next merge
         // (m6-conflicts/36, review m6-amend-35 Major 1).
         next.choices.clear();
-        next.finish_draft = None;
     } else {
         // The launch lands on git's word alone; the journal only says whose
         // operation it is (m6-conflicts/12).

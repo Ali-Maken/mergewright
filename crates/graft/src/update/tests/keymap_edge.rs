@@ -30,7 +30,6 @@ pub(super) use fields::every_field;
 use std::collections::HashMap;
 
 use graft_core::ref_name::RefName;
-use graft_ui::finish_summary::SummaryFocus;
 use graft_ui::graph_screen::every_context;
 use graft_ui::keymap::{ActionId, Binding, ContextId, KeyChord, KeyWarning, Keymap, defaults};
 
@@ -146,7 +145,7 @@ pub(super) fn fixture(ctx: ContextId) -> Option<AppState> {
         C::Diff => mid_list(commit_pane(walk(), false)),
         C::Resolver => resolver_on_screen(walk()),
         C::Banner => stopped_operation(walk(), true, true),
-        C::Finish => finish_screen_for(walk(), SummaryFocus::Files, true),
+        C::Finish => finish_screen_for(walk(), true),
         C::Rewrite => {
             let mut state = merge_on_screen(walk(), MERGE_ROW).0;
             super::rewrite_editor::tests::open_an_editor_planned(&mut state, true);

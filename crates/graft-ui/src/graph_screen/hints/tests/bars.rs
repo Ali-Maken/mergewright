@@ -272,3 +272,36 @@ fn each_clash_bar_draws_its_words() {
         assert_eq!(bar(&context, 200), want, "{context:?}");
     }
 }
+
+/// The review's bar (ticket ease-pass/12, 03 Handoff, mock
+/// `mergewright-merge-screen.html:162`): its words whole at 120 columns,
+/// keys spelled from the shipped keymap (`j/k`, as every two-key hint is
+/// spelled); narrower, each hint steps down to its one-word rung before
+/// any drops, and `u` is kept second (`fitting::fit_order`). Never a word
+/// cut.
+#[test]
+fn the_review_bar_draws_the_mock_words() {
+    let review = HintContext::Review(ReviewBar::List);
+    let hints = [
+        "y commit the merge",
+        "j/k move",
+        "⏎ look at it",
+        "u undo last pick",
+        "esc back to the clashes (y brings you here again)",
+    ];
+    assert_eq!(bar(&review, 120), format!(" {}", hints.join(" · ")));
+    // The review draws from 62 columns (`FINISH_MIN`), its border 58 of them.
+    let cases = [
+        (
+            58,
+            " y commit the merge · j/k move · ⏎ look · u undo last pick",
+        ),
+        (
+            80,
+            " y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back",
+        ),
+    ];
+    for (columns, want) in cases {
+        assert_eq!(bar(&review, columns), want, "{columns}");
+    }
+}

@@ -112,7 +112,6 @@ fn every_field_spelled_out() -> AppState {
         choices: std::collections::BTreeMap::new(),
         picks: Box::default(),
         finish: None,
-        finish_draft: None,
         conflict_editing: Some(std::path::PathBuf::from("notes.txt")),
         amend_into: super::super::amend_into::AmendInto::default(),
         rewrite: super::super::rewrite_editor::RewriteState::default(),
@@ -132,6 +131,7 @@ fn every_field_spelled_out() -> AppState {
         defer_follow: true,
         followed: Some(super::super::FollowKey::WorkingTree),
         last_commit: None,
+        last_merge: None,
     }
 }
 

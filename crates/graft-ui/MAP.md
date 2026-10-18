@@ -14,7 +14,7 @@ One line per public item. Update when a public item changes.
 - `detail_pane` (mod) — the detail pane's layout and widget.
 - `diff_words` (mod) — word-level highlighting inside a paired diff line.
 - `empty_state` (mod) — the screen outside a repository: recent repositories, open and clone prompts.
-- `finish_summary` (mod) — the screen that sums up an operation before it is finished.
+- `finish_summary` (mod) — the merge's review: what lands before `y` commits it.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `graph_screen` (mod) — the graph screen Graft opens on: header, banner, rows, footer hints.
@@ -202,6 +202,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `HintContext` (enum) — where the cursor or focus is, for the footer's hint list; one variant per screen and state (`Picker` / `PickerOnCurrent`: the picker, its cursor off / on HEAD's branch).
 - `RowVerbs` (struct) — which of a commit row's own verbs act on the cursor's row; `RowVerbs::NONE`, `RowVerbs::ALL`.
 - `RowBar` (enum) — `HintContext::GraphRow`'s row kind: `Own`, `Elsewhere { branch }`, `FoldedMerge { inside }`, `OpenedMerge` (the merge row whose fold is open), `JustCommitted`, `JustMerged { inside }`.
+- `ReviewBar` (enum) — `HintContext::Review`'s state: `List` (the merge review's bar, ease-pass/12; 12b adds `Look`).
 - `ClashBar` (struct), `ClashAt` (enum) — `Clash`'s state `{ at, roles }`; `is_merge` reads `roles`; the next file is drawn by its last segment.
 - `bar_name` (fn) — a branch's or path's bar form, its last path segment (`sara/fix-toc` → `fix-toc`; `hints/context/row_bar.rs`).
 - `WayToBanner` (enum, `hints/context/live_op.rs`) — `Forward` / `Back`: which one press reaches the banner from the graph.
@@ -341,29 +342,28 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `CloneShown` (enum) — Where the clone prompt's clone is, as drawn.
 
 ## finish_summary
-- `FINISH_MIN` (const) — The smallest area the summary draws in, `(columns, rows)`.
-- `TWO_COLUMN_MIN` (const) — From this width the file lists take the left 60 % and the message the right; below it, one column.
+The merge's review (ease-pass/12, mock `mergewright-merge-screen.html:155-162`): every clashed file and how it was solved, what git combined, the message read-only.
+- `FINISH_MIN` (const) — The smallest area the review draws in, `(columns, rows)`.
 - `DIFF_ROWS_MAX` (const) — The most rows an expanded diff draws under its row.
-- `SummaryRow` (struct) — One file row: its path and what the summary says about it.
-- `SummaryFocus` (enum) — What has the keyboard in the summary.
+- `SummaryFocus` (enum) — The m6 summary's field focus: kept only as the retiring `HintContext::Finish`'s field, which nothing picks.
 - `ExpandedDiff` (enum) — The diff drawn under an expanded row.
-- `SummaryState` (enum) — Whether the summary itself has been read.
-- `FinishView` (struct) — Everything the summary draws.
-- `row_count` (fn) — Rows in both lists together: what the cursor counts over.
-- `FinishScreen` (struct) — [`FinishView`] drawn into the area under the header and above the bar.
-- `preview_title` (fn) — The top border's words for a frame `width` cells wide.
-- `preview_line` (fn) — The first line inside the frame: what lands, and that nothing does until `y` (`confirm.yes`'s key, spelled from `keys`).
-- `footer_hints` (fn) — The keys the bottom border draws in a frame `width` cells wide: the `HintContext::Finish` list for the focus, fitted to the border.
+- `SummaryState` (enum) — Whether the review itself has been read.
+- `PickCounts` (struct) — One clashed file's picks by kind: `yours`, `theirs`, `both`.
+- `HowSolved` (enum) — `Picks(PickCounts)`, `Whole(word)`, `ByHand`; `words` (`you chose: ◀ yours (1) · ▶ theirs (1)`, `solved in the file`) and `clashes` (the title's count) (fns).
+- `ReviewFile` (struct) — One clashed file's row: `path`, `how`.
+- `ReviewRow` (enum) — What the cursor can be on: `Clashed(index)`, `Combined`.
+- `ReviewView` (struct) — Everything the review draws; `row_count`, `row` (fns).
+- `review_title` (fn) — `All N clashes solved. Nothing committed yet.` (singular and zero forms).
+- `count_line` (fn) — `N commits from <from>`; `?` when the count failed.
+- `FinishScreen` (struct) — [`ReviewView`] drawn into the area under the header and above the bar.
+- `footer_hints` (fn) — The keys the bottom border draws in a frame `width` cells wide: the `HintContext::Review(ReviewBar::List)` bar, fitted to the border.
 - `footer_spans` (fn) — The bottom border's words as `(text, style)` spans, built from the hints themselves: the first hint's key in `strong`, everything after it in `muted`.
-- `undo_line` (fn) — The second line inside the frame: `undo: u takes this back`, `app.undo` spelled from `keys`.
-- `ListLine` (enum) — One line of the scrolled file list.
-- `Section` (enum) — Which section heading a [`ListLine::Section`] is.
-- `FinishLayout` (struct) — Where each part of the summary goes in an area.
-- `fits` (fn) — Whether `area` is big enough for the summary ([`FINISH_MIN`]).
-- `list_lines` (fn) — The file list, line by line, from the top: section headings, rows, and the diff under the expanded row.
+- `ListLine` (enum) — One line of the scrolled list: a row, a diff line, `… N more lines`, or the status line.
+- `FinishLayout` (struct) — Where each part of the review goes in an area: frame, head, list, message, notice.
+- `fits` (fn) — Whether `area` is big enough for the review ([`FINISH_MIN`]).
+- `list_lines` (fn) — The list, line by line, from the top: the rows, and the diff under the expanded row.
 - `layout` (fn) — Where each part goes in `area`, or `None` below [`FINISH_MIN`].
-- `FinishHit` (enum) — What a click at `(column, row)` landed on.
-- `hit` (fn) — What a click at `(column, row)` in `area` landed on, if anything the summary answers.
+- `hit` (fn) — The row a click at `(column, row)` in `area` landed on, if any.
 - `list_height` (fn) — The list's height in `area`, or 0 below [`FINISH_MIN`].
 - `max_top` (fn) — The largest `top` that still fills the list: the wheel stops there.
 - `top_for_cursor` (fn) — The `top` that puts the cursor row — and the diff under it, as much as fits — on screen, moving `view.top` as little as it must.

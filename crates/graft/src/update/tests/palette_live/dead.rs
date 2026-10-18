@@ -24,8 +24,17 @@ const R_OVERLAY: &str = "pane focused over an overlay: the overlay swallows it";
 /// is not the press `?` lists.
 const R_FIRST_FILE: &str = "files cursor already on the first file";
 /// `IN PROGRESS` spells the banner's keys while an operation is live; the
-/// finish summary swallows them (`finish/keys.rs:84,104`).
+/// finish summary swallows them (`finish/keys.rs:31,58`).
 const R_IN_PROGRESS: &str = "IN PROGRESS lists the banner's keys over the finish summary";
+
+/// The merge's review (ease-pass/12) dropped the m6 summary's message
+/// fields: its message is git's, read-only, so `⌃E` and `Tab` have nothing
+/// to open or move between (`finish/keys.rs`, by id). `finish.edit_outside`
+/// keeps its row for the rewrite message field, which acts on it.
+const R_REVIEW_READ_ONLY: &str = "the review's message is read-only: nothing to edit or focus";
+/// The sweep's review sits on the `git combined` row, whose `⏎` is 12b's
+/// look; until then it does nothing there (`finish/keys.rs` `row_path`).
+const R_COMBINED_ROW: &str = "⏎ on the git-combined row waits for ease-pass/12b's look";
 
 /// `(place ? opened on, action, why)`.
 #[rustfmt::skip]
@@ -243,4 +252,8 @@ pub(super) const DEAD_ELSEWHERE: &[(ContextId, ActionId, &str)] = &[
     (ContextId::Rewrite, ActionId("app.undo"), R_SWALLOWED),
     (ContextId::Rewrite, ActionId("app.up"), R_NO_EFFECT),
     (ContextId::Rewrite, ActionId("rewrite.move_up"), R_NO_EFFECT),
+    (ContextId::Finish, ActionId("finish.toggle_diff"), R_COMBINED_ROW),
+    (ContextId::Finish, ActionId("finish.edit_outside"), R_REVIEW_READ_ONLY),
+    (ContextId::Finish, ActionId("app.next_pane"), R_REVIEW_READ_ONLY),
+    (ContextId::Finish, ActionId("app.prev_pane"), R_REVIEW_READ_ONLY),
 ];

@@ -5,9 +5,8 @@
 #
 # Judge by eye:
 # - Frame 1: the pane's bar offers `c finish` and no `c commit`.
-# - Frame 2 (after `c`): the summary's top border reads
-#   `╭ Preview: finish merging feature into main`, its bottom border starts
-#   `╰ y commit`.
+# - Frame 2 (after `c`): the merge review, its first line `All 2 clashes
+#   solved. Nothing committed yet.`, its bottom border starts `╰ y commit`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 187x50 ===
@@ -63,13 +62,15 @@
  space stage · d discard · c finish · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 --- after c ---
 MERGING
-╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
-│ undo: u takes this back                                                                                                                                                                 │
-│ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
-│ ▸ notes.md   combined                                                                                           Subject Merge branch 'feature'                                    22/72 │
-│   shared.rs  combined                                                                                           Body                                                                    │
-│ COMBINED BY GIT ON ITS OWN · none                                                                                                                                                       │
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ All 2 clashes solved. Nothing committed yet.                                                                                                                                            │
+│                                                                                                                                                                                         │
+│ This merge will put into main:                                                                                                                                                          │
+│   1 commit from feature                                                                                                                                                                 │
+│ ▸ ✓ notes.md   solved in the file                                                                                                                                                       │
+│   ✓ shared.rs  solved in the file                                                                                                                                                       │
+│                                                                                                                                                                                         │
+│ Message  Merge branch 'feature'                                                                                                                                                         │
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
@@ -108,7 +109,5 @@ MERGING
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-╰ y commit  j/k move  ⇥ message  esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again) ────────────────────────────────────────────────────────────────────╯
 

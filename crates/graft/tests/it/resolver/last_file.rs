@@ -111,7 +111,7 @@ fn captured_both_moments(app: &App, state: &AppState) -> AppState {
     assert!(
         landed
             .iter()
-            .any(|row| row.contains("Preview: finish merging")),
+            .any(|row| row.contains("Nothing committed yet.")),
         "{}",
         landed.join("\n")
     );

@@ -107,6 +107,8 @@ pub(super) const BANNER_EDIT: &[HintKey] = &[key("operation.edit")];
 /// `y` from the files: the one confirm key (§2.3b), borrowed by `Finish`.
 pub(super) const FINISH_COMMIT: &[HintKey] = &[key("confirm.yes")];
 pub(super) const TOGGLE_DIFF: &[HintKey] = &[EveryChord(ActionId("finish.toggle_diff"))];
+/// `⏎ look at it` in the merge review: the toggle's first chord.
+pub(super) const LOOK: &[HintKey] = &[key("finish.toggle_diff")];
 
 // §2.7 Rewrite editor.
 /// `y`: the one confirm key (§2.3b), borrowed by `Rewrite`.

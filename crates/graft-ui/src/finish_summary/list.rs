@@ -1,12 +1,13 @@
-//! The finish summary's file list: the section headings, the rows with
-//! their tinted words, and the diff expanded under a row. Where each line
-//! stands is `layout`'s arithmetic; this only draws it.
+//! The review's rows (mock `mergewright-merge-screen.html:158-160`): one
+//! per clashed file and how it was solved, one for what git combined on its
+//! own, and the diff expanded under a row. Where each line stands is
+//! `layout`'s arithmetic; this only draws it.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
 use super::{
-    DIFF_INDENT, ExpandedDiff, FinishScreen, ListLine, Section, SummaryFocus, SummaryState,
+    DIFF_INDENT, ExpandedDiff, FinishScreen, ListLine, ReviewRow, ReviewView, SummaryState,
     list_lines,
 };
 use crate::detail_pane::{DiffFocus, diff_body};
@@ -16,21 +17,22 @@ use crate::paint::foreground;
 use crate::text_input::FOCUS;
 use crate::theme::Token;
 
+/// The `✓` every solved row leads with (mock `:158`).
+const SOLVED: &str = "✓";
+
 impl FinishScreen<'_> {
     /// The cursor glyph.
     fn focus_glyph(&self) -> char {
         if self.ascii { '>' } else { FOCUS }
     }
 
-    /// The file list from `view.top`, into `rect`.
+    /// The list from `view.top`, into `rect`.
     pub(super) fn draw_list(&self, buf: &mut Buffer, rect: Rect) {
         let lines = list_lines(self.view);
-        let path_width = self
-            .view
-            .by_you
+        let names = names(self.view);
+        let name_width = names
             .iter()
-            .chain(&self.view.by_git)
-            .map(|row| row.path.as_str().chars().count())
+            .map(|name| name.chars().count())
             .max()
             .unwrap_or(0);
         let mut y = rect.y;
@@ -46,19 +48,14 @@ impl FinishScreen<'_> {
             };
             match *line {
                 ListLine::Status => self.draw_status(buf, one),
-                ListLine::Section(section) => {
-                    let words = self.section_words(section);
-                    self.text(buf, one, &words, Token::TextMuted, true);
-                }
-                ListLine::Row(index) => self.draw_row(buf, one, index, path_width),
+                ListLine::Row(index) => self.draw_row(buf, one, index, &names, name_width),
                 ListLine::More { hidden, .. } => {
-                    let indented = indent(one);
                     let more = format!("\u{2026} {hidden} more lines");
                     let words =
                         self.view
                             .keys
                             .after(&more, ActionId("finish.toggle_diff"), "hides");
-                    self.text(buf, indented, &words, Token::TextMuted, false);
+                    self.text(buf, indent(one), &words, Token::TextMuted, false);
                 }
                 ListLine::Diff { nth, .. } => {
                     // The whole visible run of this diff in one call, so a
@@ -87,7 +84,7 @@ impl FinishScreen<'_> {
         }
     }
 
-    /// The list's one line while there are no lists.
+    /// The list's one line while there are no rows.
     fn draw_status(&self, buf: &mut Buffer, rect: Rect) {
         match &self.view.state {
             SummaryState::Loading | SummaryState::Ready => {
@@ -114,77 +111,101 @@ impl FinishScreen<'_> {
         }
     }
 
-    /// A section heading's words.
-    fn section_words(&self, section: Section) -> String {
-        match section {
-            Section::ByYou => format!("RESOLVED BY YOU · {}", self.view.by_you.len()),
-            Section::ByGit if self.view.by_git.is_empty() => {
-                "COMBINED BY GIT ON ITS OWN · none".to_owned()
-            }
-            Section::ByGit => self.view.keys.after(
-                &format!(
-                    "COMBINED BY GIT ON ITS OWN \u{b7} {}",
-                    self.view.by_git.len()
-                ),
-                ActionId("finish.toggle_diff"),
-                "shows the change",
-            ),
-            Section::Unrecorded => format!(
-                "CHANGED BY THIS MERGE · {} · which were conflicts is not recorded",
-                self.view.by_git.len()
-            ),
-        }
-    }
-
-    /// `▸ path  what`, the path padded to the widest one.
-    fn draw_row(&self, buf: &mut Buffer, rect: Rect, index: usize, path_width: usize) {
+    /// `▸ ✓ name  you chose: …`, the name padded to the widest, or
+    /// `▸ ✓ N files git combined on its own`.
+    fn draw_row(
+        &self,
+        buf: &mut Buffer,
+        rect: Rect,
+        index: usize,
+        names: &[String],
+        name_width: usize,
+    ) {
         let Some(row) = self.view.row(index) else {
             return;
         };
         let cursor = index == self.view.cursor;
         let marker = if cursor { self.focus_glyph() } else { ' ' };
-        let path = row.path.as_str();
-        let pad = path_width.saturating_sub(path.chars().count());
-        let line = format!("{marker} {path}{}  {}", " ".repeat(pad), row.what.as_str());
-        let token = if cursor && self.view.focus == SummaryFocus::Files {
-            Token::Text
-        } else {
-            Token::TextMuted
+        let lead = format!("{marker} {SOLVED} ");
+        let (what, how) = match row {
+            ReviewRow::Clashed(at) => {
+                let name = names.get(at).map_or("", String::as_str);
+                let pad = name_width.saturating_sub(name.chars().count());
+                let how = self.view.clashed.get(at).map(|file| file.how.words());
+                (
+                    format!("{name}{}  ", " ".repeat(pad)),
+                    how.unwrap_or_default(),
+                )
+            }
+            ReviewRow::Combined => {
+                let n = self.view.combined;
+                let noun = if n == 1 { "file" } else { "files" };
+                (format!("{n} {noun} git combined on its own"), String::new())
+            }
         };
-        let mut style = foreground(self.theme, token);
+        let line = format!("{lead}{what}{how}");
+        let mut style = foreground(
+            self.theme,
+            if cursor {
+                Token::Text
+            } else {
+                Token::TextMuted
+            },
+        );
         if cursor {
             style = crate::paint::on_selection(self.theme, style)
                 .bg(crate::paint::color(self.theme.token(Token::Selection)));
         }
         buf.set_string(rect.x, rect.y, fit(&line, usize::from(rect.width)), style);
-        // The words take the colours that tie them back to the panes and to
-        // diffs; the characters already say it all (rule 5).
-        let before = crate::frame_box::cells(&format!("{marker} {path}{}  ", " ".repeat(pad)));
-        let what = row.what.as_str();
-        for (start, end, token) in tints(what) {
-            let x = before + crate::frame_box::cells(&what[..start]);
-            let width = crate::frame_box::cells(&what[start..end]);
-            let x = rect.x.saturating_add(u16::try_from(x).unwrap_or(u16::MAX));
-            if x >= rect.right() {
-                continue;
-            }
-            let width = u16::try_from(width)
-                .unwrap_or(u16::MAX)
-                .min(rect.right() - x);
-            buf.set_style(
-                Rect {
-                    x,
-                    y: rect.y,
-                    width,
-                    height: 1,
-                },
-                if cursor {
-                    crate::paint::on_selection(self.theme, foreground(self.theme, token))
-                } else {
-                    foreground(self.theme, token)
-                },
-            );
+        // The tints tie the words back to the clash screen's sides; the
+        // characters already say it all (rule 5).
+        let mut tints = vec![(2, SOLVED.len(), Token::Added)];
+        let how_at = lead.len() + what.len();
+        tints.extend(
+            side_tints(&how)
+                .into_iter()
+                .map(|(start, end, token)| (how_at + start, end - start, token)),
+        );
+        for (start, len, token) in tints {
+            self.tint(buf, rect, &line, (start, start + len), token, cursor);
         }
+    }
+
+    /// `token` over the byte range `span` of `line`, drawn at `rect`.
+    fn tint(
+        &self,
+        buf: &mut Buffer,
+        rect: Rect,
+        line: &str,
+        (start, end): (usize, usize),
+        token: Token,
+        cursor: bool,
+    ) {
+        let (Some(before), Some(inner)) = (line.get(..start), line.get(start..end)) else {
+            return;
+        };
+        let x = crate::frame_box::cells(before);
+        let x = rect.x.saturating_add(u16::try_from(x).unwrap_or(u16::MAX));
+        if x >= rect.right() {
+            return;
+        }
+        let width = u16::try_from(crate::frame_box::cells(inner))
+            .unwrap_or(u16::MAX)
+            .min(rect.right() - x);
+        let style = foreground(self.theme, token);
+        buf.set_style(
+            Rect {
+                x,
+                y: rect.y,
+                width,
+                height: 1,
+            },
+            if cursor {
+                crate::paint::on_selection(self.theme, style)
+            } else {
+                style
+            },
+        );
     }
 
     /// The expanded diff's lines from `nth`, into `rect`.
@@ -204,10 +225,10 @@ impl FinishScreen<'_> {
                 None if view.hunks.is_empty() => {
                     self.text(buf, rect, "no change to show", Token::TextMuted, false);
                 }
-                // `truncated: None`: the summary draws its own `… N more
-                // lines · space hides`, and `L load all` is not one of its
-                // keys (ticket 19 S5). The row count `diff_body` returns is
-                // for scroll clamping; `list_lines` already counted the rows
+                // `truncated: None`: the review draws its own `… N more
+                // lines · ⏎ hides`, and `L load all` is not one of its keys
+                // (ticket 19 S5). The row count `diff_body` returns is for
+                // scroll clamping; `list_lines` already counted the rows
                 // (`diff_extent`), so it is not needed here.
                 None => {
                     let _rows: usize = diff_body(
@@ -229,33 +250,41 @@ impl FinishScreen<'_> {
     }
 }
 
-/// Byte ranges of a row's words that take a colour: `yours · <branch>` in
-/// `ours`, `theirs · <branch>` in `theirs`, `+n` in `added`, `−n` in
-/// `removed`.
-fn tints(what: &str) -> Vec<(usize, usize, Token)> {
-    let mut found = Vec::new();
-    for (lead, token) in [("yours · ", Token::Ours), ("theirs · ", Token::Theirs)] {
-        let mut from = 0;
-        while let Some(at) = what[from..].find(lead).map(|at| at + from) {
-            let name = at + lead.len();
-            let end = what[name..]
-                .find([' ', ','])
-                .map_or(what.len(), |stop| name + stop);
-            found.push((at, end, token));
-            from = end;
-        }
+/// Each clashed file's drawn name: its last path segment, as the mock and
+/// the clash screen name files — or every whole path, when two clashed
+/// files share a last segment and the names alone would not tell them apart.
+fn names(view: &ReviewView<'_>) -> Vec<String> {
+    let last = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
+    let short: Vec<String> = view
+        .clashed
+        .iter()
+        .map(|file| last(file.path.as_str()))
+        .collect();
+    let unique = short
+        .iter()
+        .enumerate()
+        .all(|(at, name)| !short[..at].contains(name));
+    if unique {
+        short
+    } else {
+        view.clashed
+            .iter()
+            .map(|file| file.path.as_str().to_owned())
+            .collect()
     }
-    for (sign, token) in [('+', Token::Added), ('\u{2212}', Token::Removed)] {
-        for (at, _) in what.match_indices(sign) {
-            let digits = what[at + sign.len_utf8()..]
-                .find(|c: char| !c.is_ascii_digit())
-                .unwrap_or(what.len() - at - sign.len_utf8());
-            if digits > 0 {
-                found.push((at, at + sign.len_utf8() + digits, token));
-            }
-        }
-    }
-    found
+}
+
+/// Byte ranges of the how-solved words that take a side's colour: `◀
+/// yours` in `ours`, `▶ theirs` in `theirs`, `◆ both` in `added`.
+fn side_tints(how: &str) -> Vec<(usize, usize, Token)> {
+    [
+        ("◀ yours", Token::Ours),
+        ("▶ theirs", Token::Theirs),
+        ("◆ both", Token::Added),
+    ]
+    .into_iter()
+    .filter_map(|(kind, token)| how.find(kind).map(|at| (at, at + kind.len(), token)))
+    .collect()
 }
 
 /// `rect` moved right by [`DIFF_INDENT`].

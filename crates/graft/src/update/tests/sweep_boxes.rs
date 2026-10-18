@@ -2,15 +2,10 @@
 
 use super::*;
 
-/// [`screen_for`]'s finish summary: a merge stopped with nothing left
-/// unmerged, `c` pressed on its banner and the summary read.
-pub(super) fn finish_screen_for(
-    walk: JobId,
-    focus: graft_ui::finish_summary::SummaryFocus,
-    expandable: bool,
-) -> AppState {
-    use graft_ui::finish_summary::SummaryFocus;
-
+/// [`screen_for`]'s merge review: a merge stopped with nothing left
+/// unmerged, `c` pressed on its banner and the review read. `on_combined`
+/// puts the cursor on the combined row.
+pub(super) fn finish_screen_for(walk: JobId, on_combined: bool) -> AppState {
     let mut state = stopped_operation(walk, false, false);
     let job = JobId::new(702);
     assert!(super::super::finish::open_finish(
@@ -41,12 +36,7 @@ pub(super) fn finish_screen_for(
         .into()),
     );
     if let Some(open) = state.finish.as_mut() {
-        open.cursor = usize::from(expandable);
-        open.focus = match focus {
-            SummaryFocus::Files => super::super::finish::FinishFocus::Files,
-            SummaryFocus::Subject => super::super::finish::FinishFocus::Subject,
-            SummaryFocus::Body => super::super::finish::FinishFocus::Body,
-        };
+        open.cursor = usize::from(on_combined);
     }
     state
 }

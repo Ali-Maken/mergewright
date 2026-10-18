@@ -22,6 +22,7 @@ fn reviewed() -> Reviewed {
             recorded: true,
         }),
         solved: vec![PathBuf::from("notes.txt")],
+        incoming: None,
     }
 }
 

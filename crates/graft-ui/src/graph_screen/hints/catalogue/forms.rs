@@ -67,6 +67,7 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Clash(_)
         | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
+        | HintContext::Review(_)
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
         | HintContext::History { .. }
@@ -129,6 +130,7 @@ pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Clash(_)
         | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
+        | HintContext::Review(_)
         | HintContext::Marked(_)
         | HintContext::Searching(_)
         | HintContext::PaneFocused { .. }
@@ -171,6 +173,7 @@ pub(super) fn searching_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Clash(_)
         | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
+        | HintContext::Review(_)
         | HintContext::Searching(_)
         | HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
@@ -249,6 +252,7 @@ pub(super) fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Clash(_)
         | HintContext::GraphRow { .. }
         | HintContext::Finish { .. }
+        | HintContext::Review(_)
         | HintContext::PaneFocused { .. }
         | HintContext::Searching(_)
         | HintContext::Blame { .. }

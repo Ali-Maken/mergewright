@@ -105,154 +105,37 @@ fn last_message(repo: &Path) -> String {
     git(repo, &["log", "-1", "--format=%B"])
 }
 
-fn typed(app: &App, state: AppState, text: &str) -> AppState {
-    text.chars().fold(state, |state, character| {
-        app.key(&state, KeyCode::Char(character))
-    })
+/// `MERGE_MSG` as `git commit --no-edit` would commit it: the comment
+/// lines gone, trailing blank lines trimmed.
+fn merge_msg_minus_comments(repo: &Path) -> String {
+    let merge_msg = std::fs::read_to_string(repo.join(".git/MERGE_MSG")).expect("git wrote it");
+    assert!(
+        merge_msg.lines().any(|line| line.starts_with('#')),
+        "the fixture's MERGE_MSG carries git's comment block:\n{merge_msg}"
+    );
+    let kept: Vec<&str> = merge_msg
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .collect();
+    kept.join("\n").trim_end().to_owned()
 }
 
+/// ease-pass/12 decision 5: the message is read-only and `y` commits git's
+/// own — `git log -1 --format=%B` is `MERGE_MSG` minus its comments.
 #[test]
-fn an_edited_subject_commits_with_that_message() {
+fn y_commits_gits_message_minus_its_comments() {
     let scratch = about_to_merge();
     let repo = scratch.path();
     let (app, state) = App::open(repo);
     let state = summary_open(&app, state, repo);
+    let expected = merge_msg_minus_comments(repo);
 
-    let state = app.key(&state, KeyCode::Tab);
-    let subject_len = state.finish.as_ref().map_or(0, |open| open.subject.len());
-    let state = (0..subject_len).fold(state, |state, _| app.key(&state, KeyCode::Backspace));
-    let state = typed(&app, state, "Merge feature: the agreed plan");
-    let state = committed(&app, &state, KeyPress::plain(KeyCode::Enter));
-
-    assert_eq!(
-        last_message(repo).lines().next(),
-        Some("Merge feature: the agreed plan")
-    );
+    let state = committed(&app, &state, KeyPress::plain(KeyCode::Char('y')));
     assert!(
         !repo.join(".git/MERGE_HEAD").exists(),
         "git finished the merge"
     );
-    drop(state);
-    app.close();
-}
-
-#[test]
-fn a_hash_line_typed_in_the_body_lands() {
-    let scratch = about_to_merge();
-    let repo = scratch.path();
-    let (app, state) = App::open(repo);
-    let state = summary_open(&app, state, repo);
-
-    let state = app.key(&state, KeyCode::Tab);
-    let state = app.key(&state, KeyCode::Tab);
-    let state = typed(&app, state, "#123 fixes login");
-    let state = committed(&app, &state, KeyPress::control(KeyCode::Enter));
-
-    let message = last_message(repo);
-    assert!(
-        message.lines().any(|line| line == "#123 fixes login"),
-        "the typed line is in the commit:\n{message}"
-    );
-    drop(state);
-    app.close();
-}
-
-/// `Handover::edit_message`'s own write/open/read-back
-/// (`event_loop::outside::edit_message_in`) minus the terminal suspend,
-/// which needs a real terminal: the fixture's `$EDITOR` **run as a
-/// process** through the app's own `editor_command`.
-///
-/// The editor is the one git names with the environment's editor variables
-/// taken out — git ranks `GIT_EDITOR` first, so a developer's own would
-/// otherwise replace the fixture's (as `m5_walk::gestures::fixture_editor`).
-fn run_the_fixture_editor(repo: &Path, message: &str) -> String {
-    let asked = std::process::Command::new("git")
-        .args(["var", "GIT_EDITOR"])
-        .current_dir(repo.join(".git"))
-        .env_remove("GIT_EDITOR")
-        .env_remove("VISUAL")
-        .env_remove("EDITOR")
-        .output()
-        .expect("git var runs");
-    assert!(asked.status.success(), "git names an editor");
-    let editor = String::from_utf8_lossy(&asked.stdout).trim().to_owned();
-    let app_dir = repo
-        .join(".git")
-        .join(graft_core::on_disk::Generation::Graft.dir());
-    graft::event_loop::outside::edit_message_in(&app_dir, message, |file| {
-        let status =
-            graft::event_loop::outside::editor_command(&editor, file, None, Some(repo)).status();
-        match status {
-            Ok(status) if status.success() => Ok(()),
-            other => Err(format!("{editor}: {other:?}")),
-        }
-    })
-    .expect("the editor ran and left the file")
-}
-
-/// `Ctrl+E` hands the message to `$EDITOR`: a real process, the fixture's
-/// `core.editor`, a script that appends `#123 fixes login`. The harness'
-/// job pool cannot run a handover — that is the loop's, never a job's — so
-/// the test takes the command `update` issued, runs the editor the way the
-/// loop's `Handover::edit_message` does, and feeds back what it wrote. Only
-/// the terminal suspend around the process is not exercised.
-#[test]
-fn a_hash_line_from_the_editor_lands() {
-    use std::os::unix::fs::PermissionsExt;
-
-    let scratch = about_to_merge();
-    let repo = scratch.path();
-    let script = repo.join(".git/fixture-editor.sh");
-    std::fs::write(
-        &script,
-        "#!/bin/sh\nfor f in \"$@\"; do :; done\nprintf '\\n#123 fixes login\\n' >> \"$f\"\n",
-    )
-    .expect("writable");
-    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).expect("chmod");
-    git(
-        repo,
-        &[
-            "config",
-            "--local",
-            "core.editor",
-            script.to_str().expect("a UTF-8 scratch path"),
-        ],
-    );
-    let (app, state) = App::open(repo);
-    let state = summary_open(&app, state, repo);
-
-    let (state, commands) = press_for_commands(&state, KeyPress::control(KeyCode::Char('e')));
-    let Some(Command::EditCommitMessage { id, message }) = commands
-        .iter()
-        .find(|command| matches!(command, Command::EditCommitMessage { .. }))
-    else {
-        panic!("`Ctrl+E` hands the message over: {commands:?}");
-    };
-    let edited = run_the_fixture_editor(repo, message);
-    assert!(
-        edited.lines().any(|line| line == "#123 fixes login"),
-        "the editor ran: {edited:?}"
-    );
-    let (state, _) = update(
-        &state,
-        AppEvent::Produced(*id, Product::ExternalEditor(Ok(edited))),
-    );
-    let body = state
-        .finish
-        .as_ref()
-        .map(|open| open.body.text())
-        .expect("the summary is still open");
-    assert!(
-        body.lines().any(|line| line == "#123 fixes login"),
-        "the editor's line is in the body: {body:?}"
-    );
-
-    let state = committed(&app, &state, KeyPress::control(KeyCode::Enter));
-    let message = last_message(repo);
-    assert!(
-        message.lines().any(|line| line == "#123 fixes login"),
-        "the editor's line is in the commit:\n{message}"
-    );
+    assert_eq!(last_message(repo).trim_end(), expected);
     drop(state);
     app.close();
 }
@@ -269,13 +152,15 @@ fn the_summary_shows_no_git_comment_lines() {
         merge_msg.lines().any(|line| line.starts_with('#')),
         "the fixture's MERGE_MSG carries git's comment block:\n{merge_msg}"
     );
-    let open = state.finish.as_ref().expect("open");
-    assert_eq!(
-        open.subject.text(),
-        merge_msg.lines().next().expect("a first line"),
-        "the subject is git's first line"
-    );
     let drawn = crate::captures::frame(&state, 120, 40);
+    let first = merge_msg.lines().next().expect("a first line");
+    assert!(
+        drawn
+            .iter()
+            .any(|line| line.contains(&format!("Message  {first}"))),
+        "the message row is git's first line:\n{}",
+        drawn.join("\n")
+    );
     let message_lines: Vec<&String> = drawn
         .iter()
         .filter(|line| line.trim_start().starts_with('#'))
@@ -305,15 +190,8 @@ fn a_hook_refusal_keeps_the_summary_open() {
     std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).expect("chmod");
     let (app, state) = App::open(repo);
     let state = summary_open(&app, state, repo);
-    let state = app.key(&state, KeyCode::Tab);
-    let state = typed(&app, state, " (kept)");
-    let subject = state
-        .finish
-        .as_ref()
-        .map(|open| open.subject.text().to_owned())
-        .expect("open");
 
-    let state = committed(&app, &state, KeyPress::plain(KeyCode::Enter));
+    let state = committed(&app, &state, KeyPress::plain(KeyCode::Char('y')));
     let open = state
         .finish
         .as_ref()
@@ -324,7 +202,6 @@ fn a_hook_refusal_keeps_the_summary_open() {
         words.contains("a ticket number is required"),
         "the hook's own words: {words:?}"
     );
-    assert_eq!(open.subject.text(), subject, "the message is kept");
     assert_eq!(open.committing, None);
     assert!(
         repo.join(".git/MERGE_HEAD").exists(),
@@ -366,8 +243,8 @@ fn done_lands_on_the_merge_commit() {
     );
     assert_eq!(
         state.status,
-        Status::done("merged feature into main"),
-        "drawn as `✓ merged feature into main`"
+        Status::done("Merged feature into main."),
+        "drawn as `✓ Merged feature into main.` (mock :197)"
     );
     drop(state);
     app.close();
@@ -375,3 +252,4 @@ fn done_lands_on_the_merge_commit() {
 
 mod captures;
 mod choices;
+mod landing;

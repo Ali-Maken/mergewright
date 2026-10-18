@@ -1178,6 +1178,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Resolver { .. }
         | HintContext::Clash(_)
         | HintContext::Finish { .. }
+        | HintContext::Review(_)
         | HintContext::RewriteEditor { .. }
         | HintContext::RewriteMessage => None,
         HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => doorway_of(inner),
@@ -2234,68 +2235,6 @@ fn a_merge_banner_says_c_finish() {
     }
 }
 
-/// The blame place's bar words (design note pass 2b B1), m7-power-tools/20c.
-mod blame_place {
-    use super::*;
-
-    fn words(list: &[Hint]) -> Vec<String> {
-        list.iter()
-            .filter_map(|hint| hint.text(Keymap::shipped()))
-            .collect()
-    }
-
-    #[test]
-    fn blame_bar_words_in_order() {
-        assert_eq!(
-            words(&blame_place_list(true, true)),
-            [
-                "⏎ that commit",
-                "^ before it",
-                "L history of these lines",
-                "/ find",
-                "n/N match",
-                "space ages",
-                "w whitespace",
-                "i ignore list",
-                "esc back",
-            ]
-        );
-    }
-
-    #[test]
-    fn n_n_only_while_finding() {
-        assert!(!words(&blame_place_list(false, true)).contains(&"n/N match".to_owned()));
-        assert!(words(&blame_place_list(true, false)).contains(&"n/N match".to_owned()));
-    }
-
-    #[test]
-    fn i_only_with_the_file() {
-        assert!(!words(&blame_place_list(true, false)).contains(&"i ignore list".to_owned()));
-        assert!(words(&blame_place_list(false, true)).contains(&"i ignore list".to_owned()));
-    }
-
-    /// m7-power-tools/20k, 20n: without lines (a read in flight, or a
-    /// failed one) the line keys go.
-    #[test]
-    fn a_place_without_lines_draws_no_line_keys() {
-        let reading = HintContext::Blame {
-            finding: true,
-            ignore_file: true,
-            lines: false,
-        };
-        assert_eq!(
-            words(&lists::context_list(&reading)),
-            [
-                "/ find",
-                "space ages",
-                "w whitespace",
-                "i ignore list",
-                "esc back"
-            ]
-        );
-    }
-}
-
 /// The history place's bar (design note pass 1b "History";
 /// m7-power-tools/21b): modal for keys, no `<> resize`; `? keys` since m8/11d.
 mod history_place {
@@ -2545,6 +2484,7 @@ fn a_amend_follows_open_where_no_commit_or_remote_verb() {
 }
 
 mod bars;
+mod blame_place;
 mod typed_fields;
 
 // --- m8/11b: the doorway is `? keys`, `. actions` an ordinary candidate ---
@@ -2800,6 +2740,7 @@ fn modal_bars_draw_no_doorway() {
                     | HintContext::PickerOnCurrent
                     | HintContext::Resolver { .. }
                     | HintContext::Finish { .. }
+                    | HintContext::Review(_)
                     | HintContext::RewriteEditor { .. }
                     | HintContext::RewriteMessage
                     | HintContext::Preview

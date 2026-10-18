@@ -16,7 +16,7 @@ use graft_ops::finish::{FinishSummary, ResultIs};
 use super::advance::{notice, on, open_path, three};
 use super::press;
 use crate::update::detail::Loading;
-use crate::update::finish::{FinishFocus, ReturnTo, ReviewFailed, Reviewed};
+use crate::update::finish::{ReturnTo, ReviewFailed, Reviewed};
 use crate::update::resolver::Pick;
 use crate::update::{AppEvent, AppState, Command, Product, update};
 
@@ -67,6 +67,7 @@ fn reviewed() -> Reviewed {
             recorded: true,
         }),
         solved: vec![PathBuf::from("a")],
+        incoming: None,
     }
 }
 
@@ -99,7 +100,6 @@ fn y_in_a_merge_with_nothing_open_opens_the_review_and_stages_nothing() {
     let state = read_lands(&state, &commands, Ok(reviewed()));
     let finish = state.finish.as_ref().expect("the review is open");
     assert_eq!(finish.return_to, ReturnTo::Resolver);
-    assert_eq!(finish.focus, FinishFocus::Files);
     assert!(state.resolver.is_some(), "the resolver stays under it");
 }
 
@@ -174,7 +174,6 @@ fn the_review_opens_when_its_read_lands_ready() {
     assert!(state.finish.is_none());
     let state = read_lands(&state, &commands, Ok(reviewed()));
     let finish = state.finish.as_ref().expect("the review is open");
-    assert_eq!(finish.focus, FinishFocus::Files);
     assert_eq!(finish.return_to, ReturnTo::Resolver);
     assert!(matches!(finish.summary, Loading::Ready(_)));
     assert_eq!(finish.solved, vec![PathBuf::from("a")]);
@@ -280,22 +279,17 @@ fn u_in_the_review_goes_back_to_the_resolver_and_undoes_the_last_pick() {
     nothing_staged(&commands);
 }
 
-/// `⌃Z`, `app.undo`'s other chord, is the same `u` — from the subject
-/// too, where it is never text.
+/// `⌃Z`, `app.undo`'s other chord, is the same `u` (the review has no
+/// text field since ease-pass/12).
 #[test]
-fn ctrl_z_in_the_review_undoes_the_last_pick_from_any_focus() {
+fn ctrl_z_in_the_review_undoes_the_last_pick() {
     let ctrl_z = AppEvent::Core(graft_core::event::Event::Key(
         graft_core::event::KeyPress::control(KeyCode::Char('z')),
     ));
-    for focus in [FinishFocus::Files, FinishFocus::Subject] {
-        let mut state = review_over_the_resolver();
-        if let Some(finish) = state.finish.as_mut() {
-            finish.focus = focus;
-        }
-        let (state, commands) = update(&state, ctrl_z.clone());
-        assert!(state.finish.is_none(), "{focus:?}: the review closed");
-        assert!(untake(&commands).is_some(), "{focus:?}: {commands:?}");
-    }
+    let state = review_over_the_resolver();
+    let (state, commands) = update(&state, ctrl_z);
+    assert!(state.finish.is_none(), "the review closed");
+    assert!(untake(&commands).is_some(), "{commands:?}");
 }
 
 #[test]
@@ -310,19 +304,6 @@ fn u_in_the_review_with_nothing_to_undo_says_so_and_stays() {
         Some("nothing to undo here")
     );
     assert_eq!(untake(&commands), None);
-}
-
-/// `u` typed in the subject is text, never an undo.
-#[test]
-fn u_in_the_subject_is_typed_text() {
-    let mut state = review_over_the_resolver();
-    if let Some(finish) = state.finish.as_mut() {
-        finish.focus = FinishFocus::Subject;
-    }
-    let (state, commands) = press(&state, KeyCode::Char('u'));
-    assert!(state.finish.is_some());
-    assert_eq!(untake(&commands), None);
-    assert!(state.picks.in_file(Path::new("a")) == 1, "the pick is kept");
 }
 
 /// `esc` from the review: the resolver, unchanged, picks kept.

@@ -3,7 +3,7 @@
 //! landings where nothing opens.
 
 use super::*;
-use graft::update::finish::{FinishFocus, ReturnTo};
+use graft::update::finish::ReturnTo;
 
 /// The resolver landed on `path` with nothing in flight.
 fn landed_on(app: &App, state: AppState, path: &str) -> AppState {
@@ -41,9 +41,9 @@ fn review_landed(app: &App, state: AppState) -> AppState {
 
 /// `o y` on the last block of the last file of a shell-begun merge: `o`
 /// solves it and stages nothing, the notice offers `y`, and `y` lands on the
-/// review — over the resolver, the file lists focused, the cursor on the
-/// first row git combined on its own — with the real index untouched
-/// (ease-pass/05b; was J13's `o ⏎`, the summary opening on its own).
+/// review — over the resolver, the cursor on the first clashed file
+/// (ease-pass/12) — with the real index untouched (ease-pass/05b; was
+/// J13's `o ⏎`, the summary opening on its own).
 #[test]
 fn y_on_a_solved_shell_merge_opens_the_review_over_the_resolver() {
     let scratch = file_list::gone_notes_and_readme_merge();
@@ -67,7 +67,6 @@ fn y_on_a_solved_shell_merge_opens_the_review_over_the_resolver() {
 
     let finish = state.finish.as_ref().expect("the review");
     assert_eq!(finish.return_to, ReturnTo::Resolver);
-    assert_eq!(finish.focus, FinishFocus::Files);
     assert!(state.resolver.is_some(), "the resolver stays under it");
     assert_eq!(
         still_unmerged(scratch.path()).trim(),
@@ -77,14 +76,14 @@ fn y_on_a_solved_shell_merge_opens_the_review_over_the_resolver() {
     let after = crate::captures::frame(&state, 187, 50);
     let body = after.join("\n");
     assert!(
-        after[1].contains("╭ Preview: finish merging feature into main"),
+        body.contains("All 3 clashes solved. Nothing committed yet."),
         "{body}"
     );
     let cursor = after
         .iter()
         .find(|row| row.contains('▸'))
         .unwrap_or_else(|| panic!("no cursor row:\n{body}"));
-    assert!(cursor.contains("README.md"), "{cursor}");
+    assert!(cursor.contains("✓ gone.txt"), "{cursor}");
     // The summary takes the whole frame, the bottom row included: the
     // status is set (above) but not drawn while it is open.
     let shot = format!(

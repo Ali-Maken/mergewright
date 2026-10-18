@@ -14,10 +14,11 @@
 //! (`mergewright-merge-screen.html:150`).
 
 use super::super::keys::{
-    BACK, BOTH, MARK_DONE, NEXT_BLOCK, OURS, RESOLVER_EDIT, RESOLVER_FINISH, RESOLVER_REVIEW,
-    STEP_CLASHES, THEIRS, UNDO,
+    BACK, BOTH, CONFIRM_YES, DOWN_UP, LOOK, MARK_DONE, NEXT_BLOCK, OPEN, OURS, RESOLVER_EDIT,
+    RESOLVER_FINISH, RESOLVER_REVIEW, STEP_CLASHES, THEIRS, UNDO,
 };
 use super::super::{ClashAt, ClashBar, Hint, bar_name, hint, named};
+use super::banner_list;
 use crate::conflict_resolver::SideRoles;
 
 /// The clash screen's bar for `bar`.
@@ -94,6 +95,40 @@ fn take_words(roles: SideRoles) -> ((&'static str, &'static str), (&'static str,
         SideRoles::StashPop => ("take stashed (right)", "take stashed"),
     };
     (ours, theirs)
+}
+
+/// The merge review's bar (ease-pass/12, 03 Handoff; mock
+/// `mergewright-merge-screen.html:162`): the mock's words, each with a
+/// one-word short rung so the floor of three fits the narrowest bar (47). `⏎` is `finish.toggle_diff`'s first
+/// chord: today's inline diff until 12b's look.
+pub(super) fn review_list() -> Vec<Hint> {
+    vec![
+        named(CONFIRM_YES, "commit the merge", "commit"),
+        hint(DOWN_UP, "move"),
+        named(LOOK, "look at it", "look"),
+        named(UNDO, "undo last pick", "undo"),
+        named(
+            BACK,
+            "back to the clashes (y brings you here again)",
+            "back",
+        ),
+    ]
+}
+
+/// The banner after `esc pause` (Q7 a, Q17 a): `⏎` says where it goes, back to
+/// the clash screen `esc` paused (first landing says `resolve`). `s` stays: all but a merge skip.
+pub(super) fn paused_banner_list(merge: bool) -> Vec<Hint> {
+    paused(banner_list(!merge, true, merge))
+}
+
+/// `list` with its `⏎` hint, found by key, saying `back to the clashes`.
+pub(in super::super) fn paused(mut list: Vec<Hint>) -> Vec<Hint> {
+    for hint in &mut list {
+        if hint.is(OPEN) {
+            *hint = named(OPEN, "back to the clashes", "back");
+        }
+    }
+    list
 }
 
 /// `u undo pick`.

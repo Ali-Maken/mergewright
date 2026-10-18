@@ -1,19 +1,17 @@
-//! The finish summary (m6-conflicts/19): `c` on a merge whose conflicts are
-//! all resolved shows what will land — the files the user resolved and what
-//! each came out as, the files git combined on its own, and the message —
-//! and only `y` (from the file list) or `⏎` (from the subject) commits it
-//! (keymap §2.6b).
+//! The merge's review (ease-pass/12; m6-conflicts/19 before it): once a
+//! merge's clashes are all solved, `y` (or `c` on the banner) shows what
+//! will land — every clashed file and how it was solved, how many files git
+//! combined on its own, and git's message, read-only — and only `y` commits
+//! it (keymap §2.6b).
 //!
 //! Modal while open: [`finish_key`] runs before the resolver and the banner
-//! and claims every key but `Ctrl+C`. The summary is read off the loop's
-//! thread (`jobs::finish`) under an id chosen here; so is the one diff a
-//! row can show under it.
+//! and claims every key but `Ctrl+C`. The review is read off the loop's
+//! thread (`jobs::finish`) under an id chosen here, and drawn only once
+//! that read lands; so is the one diff a row can show under it.
 //!
-//! **The app strips nothing from the message** (S3). The fields start from
-//! `graft_ops`' `FinishSummary::message`, which already has git's comment
-//! lines removed; whatever the user types or brings back from `$EDITOR` —
-//! a `#123 fixes login` line included — is committed as it stands, through
-//! `Resume::ContinueWith`'s `--cleanup=whitespace`.
+//! **The merge commits git's own message** (ease-pass/12 decision 5): the
+//! read's `FinishSummary::message` — `MERGE_MSG` with its comment lines
+//! removed — through `Resume::Continue`, as `git commit --no-edit` would.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -24,9 +22,7 @@ use graft_git::conflict::Take;
 use graft_ops::apply::Resume;
 use graft_ops::finish::{FinishSummary, ResultIs};
 use graft_ops::operation::Side;
-use graft_ui::conflict_resolver::SideNames;
 use graft_ui::detail::DiffView;
-use graft_ui::text_input::{TextArea, TextField};
 
 use super::detail::Loading;
 use super::events::Command;
@@ -48,39 +44,6 @@ pub struct Choices {
     pub whole: Option<Side>,
     /// `$EDITOR` or the mergetool had the file.
     pub edited: bool,
-}
-
-/// What has the keyboard in the summary.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FinishFocus {
-    /// The file lists.
-    Files,
-    /// The subject field.
-    Subject,
-    /// The body area.
-    Body,
-}
-
-impl FinishFocus {
-    /// `⇥`: files → subject → body → files.
-    #[must_use]
-    pub fn next(self) -> Self {
-        match self {
-            Self::Files => Self::Subject,
-            Self::Subject => Self::Body,
-            Self::Body => Self::Files,
-        }
-    }
-
-    /// `⇧⇥`: the way back — files → body → subject → files.
-    #[must_use]
-    pub fn prev(self) -> Self {
-        match self {
-            Self::Files => Self::Body,
-            Self::Subject => Self::Files,
-            Self::Body => Self::Subject,
-        }
-    }
 }
 
 /// Where `Esc` goes back to: where `c` was pressed.
@@ -107,26 +70,18 @@ pub struct FinishState {
     pub expanded: Option<(usize, Loading<Arc<DiffView>>)>,
     /// The diff read in flight; an answer under any other id is stale.
     pub diff_job: Option<JobId>,
-    /// The message's first line.
-    pub subject: TextField,
-    /// The rest of the message.
-    pub body: TextArea,
-    /// What has the keyboard.
-    pub focus: FinishFocus,
     /// Where `Esc` goes.
     pub return_to: ReturnTo,
     /// The `--continue` running under this id.
     pub committing: Option<JobId>,
-    /// `$EDITOR` has the message under this id.
-    pub editing: Option<JobId>,
     /// A line above the bar, and whether it is a problem.
     pub notice: Option<(String, bool)>,
-    /// The fields came from `finish_draft`: the summary landing must not
-    /// overwrite them with git's message.
-    pub from_draft: bool,
     /// The files `y` stages inside the finish (ease-pass/05b): the
     /// review's read fills it; empty until then.
     pub solved: Vec<PathBuf>,
+    /// The commits the merge brings in (`HEAD..MERGE_HEAD`), asked beside
+    /// the review's read; `None` until it lands or when it failed (`?`).
+    pub incoming: Option<u32>,
 }
 
 /// The review's read (ease-pass/05b): what the merge will commit, and the
@@ -137,6 +92,9 @@ pub struct Reviewed {
     pub summary: Arc<FinishSummary>,
     /// The unmerged files solved on disk: staged inside the finish.
     pub solved: Vec<PathBuf>,
+    /// `HEAD..MERGE_HEAD`, counted the way a folded merge's tail is
+    /// (`graft_git::history_reads::count_between`); `None` when it failed.
+    pub incoming: Option<u32>,
 }
 
 impl From<Arc<FinishSummary>> for Reviewed {
@@ -145,6 +103,7 @@ impl From<Arc<FinishSummary>> for Reviewed {
         Self {
             summary,
             solved: Vec::new(),
+            incoming: None,
         }
     }
 }
@@ -174,12 +133,12 @@ impl From<String> for ReviewFailed {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FinishAnswer {
     /// It committed: the summary is closed. The words are the status line
-    /// (`merged feature into main`), when the summary was read.
+    /// (`Merged feature into main.`), when the review was read.
     Merged(Option<String>),
     /// git refused (a hook): the summary stays open with the reason.
     Kept,
-    /// Anything else: the summary is closed, the draft kept, and the banner
-    /// takes it from here as it always has.
+    /// Anything else: the review is closed and the banner takes it from
+    /// here as it always has.
     Closed,
 }
 
@@ -222,12 +181,10 @@ pub(crate) fn ask_review(
     true
 }
 
-/// The review, open from `from`, waiting on the read `id`: the draft the
-/// last `Esc` kept goes back in its fields.
+/// The review, open from `from`, waiting on the read `id`. The doors
+/// (`ask_review`) call it only from the read's answer, which fills it in
+/// the same update: no frame draws it waiting (ease-pass/12 decision 7).
 fn open_reading(state: &mut AppState, from: ReturnTo, id: JobId) {
-    let draft = state.finish_draft.take();
-    let from_draft = draft.is_some();
-    let (subject, body) = draft.unwrap_or_default();
     state.finish = Some(Box::new(FinishState {
         summary: Loading::Pending(id),
         job: Some(id),
@@ -235,16 +192,36 @@ fn open_reading(state: &mut AppState, from: ReturnTo, id: JobId) {
         top: 0,
         expanded: None,
         diff_job: None,
-        subject: TextField::new(&subject),
-        body: TextArea::new(&body),
-        focus: FinishFocus::Files,
         return_to: from,
         committing: None,
-        editing: None,
         notice: None,
-        from_draft,
         solved: Vec::new(),
+        incoming: None,
     }));
+}
+
+/// `Some(RowBar::JustMerged)` while the cursor rests on the merge the
+/// review just made, it is still `HEAD`, and its count is known (M18);
+/// before the count lands the row keeps its own bar (G's), and a
+/// fast-forward — no merge commit, never `last_merge` — never has one.
+#[must_use]
+pub(crate) fn just_merged_bar(
+    state: &AppState,
+    cursor: Option<graft_core::oid::Oid>,
+) -> Option<graft_ui::graph_screen::hints::RowBar> {
+    let merge = state.last_merge?;
+    if cursor != Some(merge) || crate::update::commit_editor::head_oid(state) != Some(merge) {
+        return None;
+    }
+    match state.fold_counts.get(&merge)? {
+        crate::update::fold_count::FoldCount::Counted(inside) => {
+            Some(graft_ui::graph_screen::hints::RowBar::JustMerged {
+                inside: u32::try_from(*inside).unwrap_or(u32::MAX),
+            })
+        }
+        crate::update::fold_count::FoldCount::Counting
+        | crate::update::fold_count::FoldCount::Failed => None,
+    }
 }
 
 /// After a resize: the cursor row back on screen.
@@ -282,14 +259,11 @@ mod keys;
 mod mouse;
 mod words;
 
-pub(crate) use answers::{
-    diff_landed, editor_returned, job_ended, resume_answered, summary_landed,
-};
+pub(crate) use answers::{diff_landed, job_ended, resume_answered, summary_landed};
 pub(crate) use choices::{forget, record_edited, record_take, record_whole};
 pub use keys::finish_key;
-pub(crate) use keys::paste;
 pub(crate) use mouse::finish_mouse;
-pub(crate) use words::{by_you_words, compose, split_message};
+pub(crate) use words::{how_solved, subject_of};
 
 #[cfg(test)]
 pub(crate) mod tests;

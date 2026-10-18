@@ -50,14 +50,16 @@ FILES · 2 conflicted  │▸ notes.txt · 2 conflicts · 0 open
  ✓ took yours · main in notes.txt · 0 of 2 open
 --- after y ---
 MERGING
-╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
-│ undo: u takes this back                                                                                                                                                                 │
-│ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
-│   gone.txt   kept · yours · main                                                                                Subject Merge branch 'feature'                                    22/72 │
-│   notes.txt  yours · main in 2 of 2 conflicts                                                                   Body                                                                    │
-│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                                                                                                     │
-│ ▸ README.md  modified  +1 −1                                                                                                                                                            │
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ All 3 clashes solved. Nothing committed yet.                                                                                                                                            │
+│                                                                                                                                                                                         │
+│ This merge will put into main:                                                                                                                                                          │
+│   1 commit from feature                                                                                                                                                                 │
+│ ▸ ✓ gone.txt   you chose: ◀ yours, whole file                                                                                                                                           │
+│   ✓ notes.txt  you chose: ◀ yours                                                                                                                                                       │
+│   ✓ 1 file git combined on its own                                                                                                                                                      │
+│                                                                                                                                                                                         │
+│ Message  Merge branch 'feature'                                                                                                                                                         │
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
@@ -95,6 +97,4 @@ MERGING
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
 │                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again) ────────────────────────────────────────────────────────────────────╯

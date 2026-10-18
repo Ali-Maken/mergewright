@@ -175,11 +175,15 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
         | HintContext::Credential => {
             vec![box_over_the_graph(walk, context)]
         }
-        // The summary open over a resolved merge, read: one row the user
-        // resolved, one git combined. `expandable` is the cursor on the
-        // combined one.
-        HintContext::Finish { focus, expandable } => {
-            vec![finish_screen_for(walk, *focus, *expandable)]
+        // The m6 summary's form: no screen picks it since ease-pass/12
+        // (retiring, 03b's); its keys are the review's, so its state is
+        // the review's. The cursor stays on the clashed row: on the
+        // combined row `⏎` is drawn but waits for 12b's look (ticket 12
+        // NOTES, `enter_on_the_combined_row_does_nothing_yet`).
+        // The merge review over a resolved merge, read: one clashed row,
+        // one combined (ease-pass/12).
+        HintContext::Finish { .. } | HintContext::Review(_) => {
+            vec![finish_screen_for(walk, false)]
         }
     }
 }

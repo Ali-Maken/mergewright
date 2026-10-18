@@ -35,8 +35,7 @@ fn c_on_a_resolved_merge_opens_the_summary_not_the_commit() {
             Product::FinishSummary(Ok(summary().into())),
         ),
     );
-    let open = finish(&state);
-    assert_eq!(open.focus, FinishFocus::Files);
+    assert!(state.finish.is_some());
     assert_eq!(
         state.graph_overlay(),
         Some(crate::update::GraphOverlay::Finish)
@@ -113,6 +112,7 @@ fn y_in_the_review_stages_the_files_the_read_found_solved() {
     let reviewed = Reviewed {
         summary: summary(),
         solved: vec![PathBuf::from("notes.txt")],
+        incoming: None,
     };
     let (state, _) = update(
         &state,

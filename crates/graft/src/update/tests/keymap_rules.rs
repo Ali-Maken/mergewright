@@ -8,7 +8,6 @@
 
 use std::sync::Arc;
 
-use graft_ui::finish_summary::SummaryFocus;
 use graft_ui::keymap::{ActionId, ContextId, KeySwitches, Keymap};
 
 use super::keymap_edge::{
@@ -206,7 +205,7 @@ fn confirm_on_c_confirms_every_box_and_y_still_copies_on_the_graph() {
         ("confirm box", fixture(ContextId::Confirm).expect("confirm")),
         (
             "finish files",
-            sized_to_draw(finish_screen_for(walk(), SummaryFocus::Files, true)),
+            sized_to_draw(finish_screen_for(walk(), true)),
         ),
         ("rewrite editor", rewrite_editor()),
     ];
@@ -284,31 +283,18 @@ fn a_line_on_the_repeat_key_is_one_problem() {
 
 // ── R4 ──────────────────────────────────────────────────────────────────
 
-/// (a) `confirm.yes = "c"`: in the finish subject `c` then `y` type `cy`
-/// and commit nothing; from the files, `c` commits.
+/// (a) `confirm.yes = "c"`: on the review `y` commits nothing (the
+/// message is read-only since ease-pass/12, so nothing is typed either);
+/// `c` commits.
 #[test]
-fn confirm_on_c_types_in_the_subject_and_commits_from_the_files() {
+fn confirm_on_c_commits_from_the_review_and_y_does_not() {
     let (keys, _) = from_file("[keys.confirm]\nyes = \"c\"\n");
-    let subject = with_keys(
-        &sized_to_draw(finish_screen_for(walk(), SummaryFocus::Subject, true)),
-        &keys,
-    );
-    let (after_c, c_commands) = update(&subject, AppEvent::Core(Event::Key(press('c'))));
-    let (after_y, y_commands) = update(&after_c, AppEvent::Core(Event::Key(press('y'))));
-    assert_eq!(c_commands, []);
+    let review = with_keys(&sized_to_draw(finish_screen_for(walk(), true)), &keys);
+    let (after_y, y_commands) = update(&review, AppEvent::Core(Event::Key(press('y'))));
     assert_eq!(y_commands, []);
-    let finish = after_y.finish.as_ref().expect("still on the finish screen");
-    assert!(
-        finish.subject.text().ends_with("cy"),
-        "{}",
-        finish.subject.text()
-    );
-    assert!(finish.committing.is_none(), "nothing committed");
+    assert_eq!(after_y, review, "y does nothing");
 
-    let files = with_keys(
-        &sized_to_draw(finish_screen_for(walk(), SummaryFocus::Files, true)),
-        &keys,
-    );
+    let files = with_keys(&sized_to_draw(finish_screen_for(walk(), true)), &keys);
     let (committed, _) = update(&files, AppEvent::Core(Event::Key(press('c'))));
     assert!(
         committed
@@ -341,11 +327,7 @@ const UNMOVED: &[&str] = &[
 #[test]
 fn a_text_field_draws_no_key_his_remap_moves() {
     let (keys, _) = swept();
-    let mut fields = every_field();
-    fields.push((
-        "finish body",
-        sized_to_draw(finish_screen_for(walk(), SummaryFocus::Body, true)),
-    ));
+    let fields = every_field();
     let mut checked = 0;
     for (name, base) in fields {
         assert!(base.text_field_open(), "{name}: open");
@@ -389,7 +371,7 @@ fn a_text_field_draws_no_key_his_remap_moves() {
         }
         checked += 1;
     }
-    assert_eq!(checked, 11, "every field text_field_open names");
+    assert_eq!(checked, 9, "every field text_field_open names");
     // The sweep's chords do spell `alt+`: the check can fail.
     assert!(
         keys.spell(&ActionId("graph.merge")).0.starts_with("alt+"),
@@ -414,7 +396,7 @@ fn merge_on_j_spells_move_without_j() {
         ("map", fixture(ContextId::Map).expect("a fixture"), "select"),
         (
             "finish files",
-            sized_to_draw(finish_screen_for(walk(), SummaryFocus::Files, true)),
+            sized_to_draw(finish_screen_for(walk(), true)),
             "move",
         ),
     ];

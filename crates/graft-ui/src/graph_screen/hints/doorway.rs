@@ -95,6 +95,9 @@ pub(super) fn words_for(context: &HintContext) -> Words {
         // The clash screen is modal but words-only: the mocks draw every
         // key with its words, and each has a short rung (ease-pass/03b).
         | HintContext::Clash(_)
+        // The review too: the mock draws its keys with their words, and
+        // each has a short rung too (ease-pass/12).
+        | HintContext::Review(_)
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. }

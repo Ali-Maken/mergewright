@@ -142,32 +142,6 @@ const INLINE: &[Inline] = &[
         },
     },
     Inline {
-        name: "finish: an empty subject (finish/tests opened)",
-        keys: &["app.next_pane"],
-        drawn: |keys| {
-            let mut state = crate::update::finish::tests::opened();
-            state.keymap = Arc::clone(keys);
-            if let Some(open) = state.finish.as_mut() {
-                open.subject = graft_ui::text_input::TextField::new("");
-            }
-            let mut commands = Vec::new();
-            crate::update::dispatch_key(
-                &mut state,
-                &mut commands,
-                KeyPress::plain(graft_core::event::KeyCode::Char('y')),
-            );
-            let finish = state.finish.as_ref().expect("the summary is open");
-            let (words, _) = finish.notice.clone().expect("a notice");
-            words
-        },
-        expected: |k| {
-            format!(
-                "the message is empty \u{b7} {} to write one",
-                k("app.next_pane")
-            )
-        },
-    },
-    Inline {
         name: "abort box: a merge begun in the shell (banner/tests merge_read)",
         keys: &["app.undo"],
         drawn: |keys| {
@@ -238,13 +212,14 @@ const INLINE: &[Inline] = &[
     },
 ];
 
-/// The seven inline stop words (10j ruling 2, m8/10k), each driven through
+/// The six inline stop words (10j ruling 2, m8/10k; the review's empty-subject
+/// one left with its field, ease-pass/12), each driven through
 /// the event that draws it: under the shipped keymap byte-identical to the
 /// pre-10f literal; under the swept keymap each key its new label, as a
 /// whole token, and no default letter of a moved action left.
 #[test]
 fn each_inline_stop_word_spells_the_remapped_key() {
-    assert_eq!(INLINE.len(), 7, "the seven inline stop words");
+    assert_eq!(INLINE.len(), 6, "the six inline stop words");
     let shipped = Arc::new(Keymap::shipped().clone());
     let swept = swept();
     for site in INLINE {

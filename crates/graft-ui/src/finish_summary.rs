@@ -1,12 +1,11 @@
-//! The finish summary (`c` on a merge, m6-conflicts/19): what will land —
-//! the files the user resolved, the files git combined on its own, and the
-//! message — before `y` commits it. It is drawn as a preview, inside the
-//! same rounded frame as the merge preview: title in the top border, keys in
-//! the bottom one (`docs/design-notes/m6-conflicts.md` Amendment 2, "Finish
-//! summary", and Amendment 2026-09-24, "The finish summary is a preview").
+//! The merge's review (ease-pass/12; m6-conflicts/19 before it): what will
+//! land before `y` commits it — every clashed file and how it was solved,
+//! how many files git combined on its own, and the message, read-only. The
+//! mock's box (`mergewright-merge-screen.html:155-162`), drawn inside a
+//! rounded frame with the keys in its bottom border.
 //!
 //! Owns no state and reads no repository. `graft::update::finish` holds the
-//! state and `graft::view::finish` turns it into the [`FinishView`] this
+//! state and `graft::view::finish` turns it into the [`ReviewView`] this
 //! draws. The layout is pure arithmetic over the view and the area
 //! ([`layout`], [`list_lines`]), and the app's keys and mouse ask the same
 //! functions where a row is ([`hit`], [`top_for_cursor`]), so what is drawn
@@ -26,20 +25,13 @@ use ratatui::widgets::Widget;
 
 use crate::detail::{DiffView, LineKindView};
 use crate::fit::fit;
-use crate::keymap::ActionId;
 use crate::paint::foreground;
-use crate::text_input::{AreaView, AreaWidget, FieldView, FieldWidget};
 use crate::theme::{Theme, Token};
 
-/// The smallest area the summary draws in, `(columns, rows)`. Below it the
+/// The smallest area the review draws in, `(columns, rows)`. Below it the
 /// widget draws one line, `finish needs 62x18 · esc back`, and the app
-/// answers only `Esc` (and `Ctrl+C`). (60, 14) grown by the frame: its two
-/// side columns, its two border rows and the two preview lines.
+/// answers only `Esc` (and `Ctrl+C`).
 pub const FINISH_MIN: (u16, u16) = (62, 18);
-
-/// From this width the file lists take the left 60 % and the message the
-/// right; below it, one column.
-pub const TWO_COLUMN_MIN: u16 = 160;
 
 /// The most rows an expanded diff draws under its row. More than that adds
 /// one row, `… N more lines · ⏎ hides`.
@@ -48,20 +40,9 @@ pub const DIFF_ROWS_MAX: usize = 12;
 /// Cells an expanded diff is indented by, under its row.
 const DIFF_INDENT: u16 = 4;
 
-/// Rows the message block needs at the least in one column: `MESSAGE`, the
-/// subject, the body's label and one body line.
-const MESSAGE_MIN_ROWS: u16 = 4;
-
-/// One file row: its path and what the summary says about it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SummaryRow {
-    /// The path.
-    pub path: SanitizedText,
-    /// `theirs · feature in 2 of 2 conflicts`, `modified  +1 −1`, ….
-    pub what: SanitizedText,
-}
-
-/// What has the keyboard in the summary.
+/// What had the keyboard in the m6 finish summary's fields. The review has
+/// no fields now (ease-pass/12): kept only as the retiring
+/// `HintContext::Finish`'s field, which nothing picks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SummaryFocus {
     /// The file lists.
@@ -83,85 +64,192 @@ pub enum ExpandedDiff {
     Ready(Arc<DiffView>),
 }
 
-/// Whether the summary itself has been read.
+/// Whether the review itself has been read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SummaryState {
     /// `reading what this merge changes…`.
     Loading,
-    /// The lists are the summary's.
+    /// The lines are the review's.
     Ready,
     /// The read failed: `summary unavailable: <why> · y commits with git's
     /// message`.
     Unavailable(SanitizedText),
 }
 
-/// Everything the summary draws.
+/// One clashed file's picks, by kind.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PickCounts {
+    /// `◀ yours`.
+    pub yours: u32,
+    /// `▶ theirs`.
+    pub theirs: u32,
+    /// `◆ both`.
+    pub both: u32,
+}
+
+/// How one clashed file was solved (ticket decision 4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HowSolved {
+    /// Clash by clash: `you chose: ◀ yours (1) · ▶ theirs (1)`.
+    Picks(PickCounts),
+    /// A whole-file card's choice: `you chose: <the card's word>`.
+    Whole(SanitizedText),
+    /// No picks recorded — edited by hand, or a relaunch since: `solved in
+    /// the file`.
+    ByHand,
+}
+
+impl HowSolved {
+    /// The words after the file's name. One kind alone has no count; with
+    /// several each has its own, in `◀ ▶ ◆` order, zero kinds left out.
+    #[must_use]
+    pub fn words(&self) -> String {
+        match self {
+            Self::Picks(counts) => {
+                let kinds: Vec<(&str, u32)> = [
+                    ("◀ yours", counts.yours),
+                    ("▶ theirs", counts.theirs),
+                    ("◆ both", counts.both),
+                ]
+                .into_iter()
+                .filter(|(_, n)| *n > 0)
+                .collect();
+                match kinds.as_slice() {
+                    [] => "solved in the file".to_owned(),
+                    [(kind, _)] => format!("you chose: {kind}"),
+                    _ => format!(
+                        "you chose: {}",
+                        kinds
+                            .iter()
+                            .map(|(kind, n)| format!("{kind} ({n})"))
+                            .collect::<Vec<_>>()
+                            .join(" · ")
+                    ),
+                }
+            }
+            Self::Whole(word) => format!("you chose: {}", word.as_str()),
+            Self::ByHand => "solved in the file".to_owned(),
+        }
+    }
+
+    /// The clashes this file counts for in the title: each pick, or one
+    /// for a whole-file choice or a file solved by hand.
+    #[must_use]
+    pub fn clashes(&self) -> u32 {
+        match self {
+            Self::Picks(counts) => (counts.yours + counts.theirs + counts.both).max(1),
+            Self::Whole(_) | Self::ByHand => 1,
+        }
+    }
+}
+
+/// One clashed file's row.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReviewFile {
+    /// The path, whole; the row draws its last segment unless two clashed
+    /// files share one.
+    pub path: SanitizedText,
+    /// How it was solved.
+    pub how: HowSolved,
+}
+
+/// What the cursor can be on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReviewRow {
+    /// A clashed file, by its index in [`ReviewView::clashed`].
+    Clashed(usize),
+    /// `✓ N files git combined on its own`.
+    Combined,
+}
+
+/// Everything the review draws.
 #[derive(Clone, Debug)]
-pub struct FinishView<'a> {
-    /// His keymap: every key the summary names is spelled from it.
+pub struct ReviewView<'a> {
+    /// His keymap: every key the review names is spelled from it.
     pub keys: &'a crate::keymap::Keymap,
-    /// `(from, into)`: the branch merged in and the one it lands on. `None`
-    /// while the read has not landed, or when the names are not known: the
-    /// title then reads `Preview: finish the merge`, never an invented name.
-    pub names: Option<(SanitizedText, SanitizedText)>,
-    /// The files the merge conflicted on, worded by what the user chose.
-    pub by_you: Vec<SummaryRow>,
-    /// Every other staged change: the files git combined on its own.
-    pub by_git: Vec<SummaryRow>,
-    /// Whether it is known which files were conflicts. `false`: one section,
-    /// `CHANGED BY THIS MERGE`, and every row is in `by_git`.
-    pub recorded: bool,
-    /// The cursor row, counted over `by_you` then `by_git`.
+    /// The branch merged in.
+    pub from: SanitizedText,
+    /// The branch it lands on.
+    pub into: SanitizedText,
+    /// The title's `N clashes`.
+    pub clashes: u32,
+    /// `HEAD..MERGE_HEAD`, the commits the merge brings in; `None` when
+    /// the count failed (`?`).
+    pub incoming: Option<u32>,
+    /// The clashed files, in the merge's order.
+    pub clashed: Vec<ReviewFile>,
+    /// Files git combined on its own; no row when 0.
+    pub combined: u32,
+    /// The message's subject, as the merge will commit it.
+    pub message: SanitizedText,
+    /// The cursor, counted over the clashed rows then the combined row.
     pub cursor: usize,
     /// The row whose diff is shown under it, and the diff.
     pub expanded: Option<(usize, ExpandedDiff)>,
-    /// The subject field.
-    pub subject: FieldView<'a>,
-    /// The body area.
-    pub body: AreaView<'a>,
-    /// What has the keyboard.
-    pub focus: SummaryFocus,
-    /// The cursor stands on a row git combined: the footer offers `⏎ diff`
-    /// (`HintContext::Finish`'s own meaning).
-    pub expandable: bool,
     /// The frame has the keyboard: its border is `accent` and its keys are
-    /// drawn. `false` under a live box (a confirm, a prompt), which claims
-    /// the next key, so the summary's keys would do nothing (rulings 07b,
-    /// Q1).
+    /// drawn. `false` under a live box, which claims the next key.
     pub focused: bool,
     /// A line above the bottom border, and whether it is a problem.
     pub notice: Option<(SanitizedText, bool)>,
     /// The commit is running.
     pub busy: bool,
-    /// Whether the summary has been read.
+    /// Whether the review has been read.
     pub state: SummaryState,
     /// The first list line on screen.
     pub top: usize,
 }
 
-impl FinishView<'_> {
-    /// Rows in both lists together: what the cursor counts over.
+impl ReviewView<'_> {
+    /// Rows the cursor counts over: each clashed file, and the combined
+    /// row when git combined anything.
     #[must_use]
     pub fn row_count(&self) -> usize {
-        self.by_you.len() + self.by_git.len()
+        self.clashed.len() + usize::from(self.combined > 0)
     }
 
     /// The row the cursor index names.
-    fn row(&self, index: usize) -> Option<&SummaryRow> {
-        self.by_you
-            .get(index)
-            .or_else(|| self.by_git.get(index.checked_sub(self.by_you.len())?))
+    #[must_use]
+    pub fn row(&self, index: usize) -> Option<ReviewRow> {
+        if index < self.clashed.len() {
+            Some(ReviewRow::Clashed(index))
+        } else if index < self.row_count() {
+            Some(ReviewRow::Combined)
+        } else {
+            None
+        }
     }
 }
 
-/// [`FinishView`] drawn into the area under the header and above the bar.
+/// The title (mock `:155`): `All N clashes solved. Nothing committed yet.`
+#[must_use]
+pub fn review_title(clashes: u32) -> String {
+    match clashes {
+        0 => "Nothing committed yet.".to_owned(),
+        1 => "1 clash solved. Nothing committed yet.".to_owned(),
+        n => format!("All {n} clashes solved. Nothing committed yet."),
+    }
+}
+
+/// The count line (mock `:157`): `N commits from <from>`, `?` when the
+/// count failed (06's rule).
+#[must_use]
+pub fn count_line(incoming: Option<u32>, from: &SanitizedText) -> String {
+    let from = from.as_str();
+    match incoming {
+        Some(1) => format!("1 commit from {from}"),
+        Some(n) => format!("{n} commits from {from}"),
+        None => format!("? commits from {from}"),
+    }
+}
+
+/// [`ReviewView`] drawn into the area under the header and above the bar.
 #[derive(Debug)]
 pub struct FinishScreen<'a> {
     /// What to draw.
-    pub view: &'a FinishView<'a>,
+    pub view: &'a ReviewView<'a>,
     /// Colours.
     pub theme: &'a Theme,
-    /// The ASCII renderer tier: `>` for the cursor, `->` in the title.
+    /// The ASCII renderer tier: `>` for the cursor.
     pub ascii: bool,
 }
 
@@ -170,7 +258,7 @@ impl Widget for &FinishScreen<'_> {
         if area.width == 0 || area.height == 0 {
             return;
         }
-        // The summary replaces the graph and the detail pane both, so it
+        // The review replaces the graph and the detail pane both, so it
         // owns its background.
         buf.set_style(
             area,
@@ -194,9 +282,12 @@ impl Widget for &FinishScreen<'_> {
             return;
         };
         self.draw_frame(buf, placed.frame);
-        self.draw_preview(buf, placed.preview);
+        self.draw_head(buf, placed.head);
         self.draw_list(buf, placed.list);
-        self.draw_message(buf, &placed);
+        if matches!(self.view.state, SummaryState::Ready) {
+            let words = format!("Message  {}", self.view.message.as_str());
+            self.text(buf, placed.message, &words, Token::Text, false);
+        }
         if let (Some(rect), Some((words, problem))) = (placed.notice, &self.view.notice) {
             let token = if *problem {
                 Token::Warning
@@ -211,6 +302,9 @@ impl Widget for &FinishScreen<'_> {
 impl FinishScreen<'_> {
     /// `text` on one row of `rect`, fitted to its width.
     fn text(&self, buf: &mut Buffer, rect: Rect, text: &str, token: Token, bold: bool) {
+        if rect.height == 0 {
+            return;
+        }
         let mut style = foreground(self.theme, token);
         if bold {
             style = style.add_modifier(Modifier::BOLD);
@@ -218,41 +312,24 @@ impl FinishScreen<'_> {
         buf.set_string(rect.x, rect.y, fit(text, usize::from(rect.width)), style);
     }
 
-    /// `MESSAGE · ⇥ edit` (`app.next_pane` spelled from his keymap: the
-    /// list is not a text field), the subject and the body.
-    fn draw_message(&self, buf: &mut Buffer, placed: &FinishLayout) {
-        if placed.message.height == 0 {
+    /// The title, then — once read — what the merge puts where and how
+    /// many commits it brings (mock `:155-157`).
+    fn draw_head(&self, buf: &mut Buffer, rect: Rect) {
+        let line = |nth: u16| Rect {
+            y: rect.y + nth,
+            height: u16::from(nth < rect.height),
+            ..rect
+        };
+        let ready = matches!(self.view.state, SummaryState::Ready);
+        let clashes = if ready { self.view.clashes } else { 0 };
+        self.text(buf, line(0), &review_title(clashes), Token::Added, true);
+        if !ready {
             return;
         }
-        self.text(
-            buf,
-            placed.message,
-            &match self
-                .view
-                .keys
-                .key_verb(&[ActionId("app.next_pane")], "edit")
-            {
-                Some(edit) => format!("MESSAGE \u{b7} {edit}"),
-                None => "MESSAGE".to_owned(),
-            },
-            Token::TextMuted,
-            true,
-        );
-        if placed.subject.height > 0 {
-            (&FieldWidget {
-                view: &self.view.subject,
-                theme: self.theme,
-                ascii: self.ascii,
-            })
-                .render(placed.subject, buf);
-        }
-        if placed.body.height > 0 {
-            (&AreaWidget {
-                view: &self.view.body,
-                theme: self.theme,
-            })
-                .render(placed.body, buf);
-        }
+        let into = format!("This merge will put into {}:", self.view.into.as_str());
+        self.text(buf, line(2), &into, Token::Text, false);
+        let count = format!("  {}", count_line(self.view.incoming, &self.view.from));
+        self.text(buf, line(3), &count, Token::Text, false);
     }
 }
 
@@ -260,10 +337,9 @@ mod frame;
 mod layout;
 mod list;
 
-pub use frame::{footer_hints, footer_spans, preview_line, preview_title, undo_line};
+pub use frame::{footer_hints, footer_spans};
 pub use layout::{
-    FinishHit, FinishLayout, ListLine, Section, fits, hit, layout, list_height, list_lines,
-    max_top, top_for_cursor,
+    FinishLayout, ListLine, fits, hit, layout, list_height, list_lines, max_top, top_for_cursor,
 };
 
 #[cfg(test)]

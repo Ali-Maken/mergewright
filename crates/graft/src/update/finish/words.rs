@@ -1,93 +1,61 @@
-//! The summary's words: the message split and joined, and what a
-//! resolved-by-you row says was chosen.
+//! The review's words: how a clashed file was solved, and the message's
+//! subject as the merge will commit it.
 
-use super::{Choices, ResultIs, Side, SideNames, Take};
+use graft_term::sanitize_line;
+use graft_ui::finish_summary::{HowSolved, PickCounts};
 
-/// A message split the way git splits one: the first line is the subject;
-/// the rest, after one blank line if there is one, is the body.
+use super::{Choices, ResultIs, Side, Take};
+
+/// How a clashed file was solved, from what the resolver recorded (ticket
+/// decision 4). First match wins: a whole-file choice, then a file handed
+/// to an editor, then the picks counted by kind; nothing recorded (solved
+/// in the file, or a relaunch since) is `ByHand`.
 #[must_use]
-pub(crate) fn split_message(text: &str) -> (String, String) {
-    let text = text.replace("\r\n", "\n");
-    match text.split_once('\n') {
-        Some((first, rest)) => {
-            let rest = rest.strip_prefix('\n').unwrap_or(rest);
-            (
-                first.trim_end().to_owned(),
-                rest.trim_end_matches('\n').to_owned(),
-            )
-        }
-        None => (text.trim_end().to_owned(), String::new()),
-    }
-}
-
-/// The message the fields hold: the subject, then a blank line and the body
-/// when the body is not blank.
-#[must_use]
-pub(crate) fn compose(subject: &str, body: &str) -> String {
-    if body.trim().is_empty() {
-        subject.to_owned()
-    } else {
-        format!("{subject}\n\n{body}")
-    }
-}
-
-/// What a resolved file's row says about it: what the user chose when that
-/// was recorded, else what the result is. First match wins (ticket 19,
-/// scope 3).
-#[must_use]
-pub(crate) fn by_you_words(
-    choices: Option<&Choices>,
-    result: ResultIs,
-    names: &SideNames,
-) -> String {
-    let name = |side: Side| match side {
-        Side::Ours => names.ours.as_str(),
-        Side::Theirs => names.theirs.as_str(),
+pub(crate) fn how_solved(choices: Option<&Choices>, result: ResultIs) -> HowSolved {
+    let Some(choices) = choices else {
+        return HowSolved::ByHand;
     };
-    if let Some(choices) = choices {
-        if let Some(side) = choices.whole {
-            return if result == ResultIs::Deleted {
-                format!("deleted · as {}", name(side))
-            } else {
-                format!("kept · {}", name(side))
-            };
-        }
-        if choices.edited {
-            return "edited in your editor".to_owned();
-        }
-        let count = |take: Take| {
-            choices
-                .takes
-                .iter()
-                .filter(|landed| **landed == Some(take))
-                .count()
+    if let Some(side) = choices.whole {
+        let word = if result == ResultIs::Deleted {
+            "delete the file"
+        } else {
+            match side {
+                Side::Ours => "◀ yours, whole file",
+                Side::Theirs => "▶ theirs, whole file",
+            }
         };
-        let kinds: Vec<(usize, &str)> = [
-            (count(Take::Ours), names.ours.as_str()),
-            (count(Take::Theirs), names.theirs.as_str()),
-            (count(Take::Both), "both"),
-        ]
-        .into_iter()
-        .filter(|(taken, _)| *taken > 0)
-        .collect();
-        match kinds.as_slice() {
-            [] => {}
-            [(taken, label)] => {
-                return format!("{label} in {taken} of {} conflicts", choices.takes.len());
-            }
-            _ => {
-                return kinds
-                    .iter()
-                    .map(|(taken, label)| format!("{label} in {taken}"))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-            }
-        }
+        return HowSolved::Whole(sanitize_line(word));
     }
-    match result {
-        ResultIs::Yours => format!("same as {}", names.ours.as_str()),
-        ResultIs::Theirs => format!("same as {}", names.theirs.as_str()),
-        ResultIs::Deleted => "deleted".to_owned(),
-        ResultIs::Combined => "combined".to_owned(),
+    if choices.edited {
+        return HowSolved::ByHand;
     }
+    let count = |take: Take| {
+        let n = choices
+            .takes
+            .iter()
+            .filter(|landed| **landed == Some(take))
+            .count();
+        u32::try_from(n).unwrap_or(u32::MAX)
+    };
+    let counts = PickCounts {
+        yours: count(Take::Ours),
+        theirs: count(Take::Theirs),
+        both: count(Take::Both),
+    };
+    if counts == PickCounts::default() {
+        HowSolved::ByHand
+    } else {
+        HowSolved::Picks(counts)
+    }
+}
+
+/// The message's first line, trimmed: what the review's `Message` row shows.
+#[must_use]
+pub(crate) fn subject_of(message: &[u8]) -> String {
+    String::from_utf8_lossy(message)
+        .lines()
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_owned()
 }

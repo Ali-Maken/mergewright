@@ -391,6 +391,6 @@ fn an_untracked_file_in_the_way_closes_the_box_with_the_refusal() {
     app.close();
 }
 
-mod fast_forward;
+pub(crate) mod fast_forward;
 mod openers;
 mod shots;

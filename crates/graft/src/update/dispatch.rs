@@ -146,7 +146,6 @@ pub(super) fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event
                 && !palette::paste(next, commands, &text)
                 && !name_prompt::name_prompt_paste(next, &text)
                 && !journal::find::find_paste(next, &text)
-                && !finish::paste(next, &text)
             {
                 let _taken: bool = commit_editor::paste(next, &text);
             }

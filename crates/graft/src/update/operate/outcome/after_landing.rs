@@ -51,6 +51,8 @@ fn landed(
     // Whatever landed, the commit `c` made is no longer the last thing
     // that happened (C13); a commit sets it again in `commit_landed`.
     state.last_commit = None;
+    // Nor is the merge the review made (ease-pass/12 M18).
+    state.last_merge = None;
     let mut commands = refresh_scope(state, applied.refresh, next_id);
     // A write that moved `HEAD` lands the cursor on its new row once
     // this refresh's refs and walk are in, exactly as a `--continue`

@@ -1,8 +1,8 @@
 //! The whole bar per context before the width rule: the list filters and wrappers (`whole_bar`, `drawable`) (m8/21b-1 split from `hints.rs`).
 
 use super::{
-    ACTIONS, DOORWAY, Divider, EXPLAIN, Hint, HintContext, HintKey, HintState, Keymap, RESIZE,
-    TAIL, WayToBanner, context_list, doorway_hint, hint, hint_keys, lists,
+    ACTIONS, DOORWAY, Divider, EXPLAIN, Hint, HintContext, HintKey, HintState, Keymap, LiveC,
+    RESIZE, TAIL, WayToBanner, context_list, doorway_hint, hint, hint_keys, lists,
 };
 
 /// The bar `context` would draw on a row with no end to it, and the doorway
@@ -37,6 +37,7 @@ pub(super) fn whole_bar(
         | HintContext::Resolver { .. }
         | HintContext::Clash(_)
         | HintContext::Finish { .. }
+        | HintContext::Review(_)
         // The rewrite editor is modal (keymap §2.7): no doorway.
         | HintContext::RewriteEditor { .. }
         | HintContext::RewriteMessage => (drawable(context, divider), None),
@@ -89,19 +90,30 @@ pub(super) fn whole_bar(
             c,
             way_to_banner,
             space_stages,
-        } => {
-            let (list, trailer) = whole_bar(row, divider, keys);
-            let list = lists::said_live_on_the_graph(list, *c, *space_stages);
-            let way = match way_to_banner {
-                None => return (list, trailer),
-                Some(WayToBanner::Forward) => WAY_TO_BANNER_FORWARD,
-                Some(WayToBanner::Back) => WAY_TO_BANNER_BACK,
-            };
-            let mut led: Vec<Hint> = list.into_iter().filter(|hint| !hint.is(way.keys)).collect();
-            led.insert(0, way);
-            (led, trailer)
-        }
+        } => live_bar(row, *c, *way_to_banner, *space_stages, divider, keys),
     }
+}
+
+/// [`whole_bar`]'s [`HintContext::OperationLive`] arm (moved out whole,
+/// ease-pass/12, to keep `whole_bar` under clippy's line limit).
+fn live_bar(
+    row: &HintContext,
+    c: LiveC,
+    way_to_banner: Option<WayToBanner>,
+    space_stages: bool,
+    divider: Divider,
+    keys: &Keymap,
+) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(row, divider, keys);
+    let list = lists::said_live_on_the_graph(list, c, space_stages);
+    let way = match way_to_banner {
+        None => return (list, trailer),
+        Some(WayToBanner::Forward) => WAY_TO_BANNER_FORWARD,
+        Some(WayToBanner::Back) => WAY_TO_BANNER_BACK,
+    };
+    let mut led: Vec<Hint> = list.into_iter().filter(|hint| !hint.is(way.keys)).collect();
+    led.insert(0, way);
+    (led, trailer)
 }
 
 /// A marked row's list: `. explain`, the row's own list, and `? keys`.
@@ -356,6 +368,7 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Resolver { .. }
                 | HintContext::Clash(_)
                 | HintContext::Finish { .. }
+                | HintContext::Review(_)
                 | HintContext::Blame { .. }
                 | HintContext::History { .. }
                 | HintContext::RewriteEditor { .. }

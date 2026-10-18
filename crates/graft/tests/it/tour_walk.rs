@@ -584,12 +584,10 @@ impl Walk {
         self.send(b"t");
         self.wait("theirs taken", |s| s.has("took theirs"));
         self.send(b"y");
-        self.wait("the finish preview", |s| {
-            s.has("Preview: finish merging clash into main")
-        });
+        self.wait("the merge review", |s| s.has("Nothing committed yet."));
         self.send(b"y");
         self.wait("merged, his edits back staged", |s| {
-            s.has("\u{2713} merged clash into main")
+            s.has("\u{2713} Merged clash into main.")
                 && s.has("Uncommitted changes (1 staged, 1 untracked)")
         });
     }

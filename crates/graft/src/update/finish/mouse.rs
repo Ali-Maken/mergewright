@@ -1,8 +1,8 @@
-//! The summary's mouse: wheel scroll and row clicks.
+//! The review's mouse: wheel scroll and row clicks.
 
 use super::keys::toggle_diff;
 use super::{
-    AppState, Command, FinishFocus, JobId, MouseButton, MouseInput, MouseKind, WHEEL_LINES, fits,
+    AppState, Command, JobId, MouseButton, MouseInput, MouseKind, WHEEL_LINES, fits,
     keep_cursor_on_screen, with_finish,
 };
 
@@ -46,8 +46,7 @@ pub(super) fn scroll(state: &mut AppState, down: bool) {
     });
 }
 
-/// A left click: a row takes the cursor and toggles its diff; the subject
-/// or the body takes the focus.
+/// A left click: a row takes the cursor and toggles its diff.
 pub(super) fn click(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -65,21 +64,9 @@ pub(super) fn click(
             mouse.row,
         )
     };
-    match landed {
-        Some(graft_ui::finish_summary::FinishHit::Row(row)) => {
-            with_finish(state, |finish| {
-                finish.cursor = row;
-                finish.focus = FinishFocus::Files;
-            });
-            toggle_diff(state, commands, next_id);
-            keep_cursor_on_screen(state);
-        }
-        Some(graft_ui::finish_summary::FinishHit::Subject) => {
-            with_finish(state, |finish| finish.focus = FinishFocus::Subject);
-        }
-        Some(graft_ui::finish_summary::FinishHit::Body) => {
-            with_finish(state, |finish| finish.focus = FinishFocus::Body);
-        }
-        None => {}
+    if let Some(row) = landed {
+        with_finish(state, |finish| finish.cursor = row);
+        toggle_diff(state, commands, next_id);
+        keep_cursor_on_screen(state);
     }
 }

@@ -1,10 +1,10 @@
-//! What the summary's jobs answer: the summary read, a row's diff, the
-//! `$EDITOR` round trip and the `--continue` the summary started.
+//! What the review's jobs answer: the review's read, a row's diff and the
+//! `--continue` the review started.
 
-use super::keys::close_keeping_draft;
+use super::keys::close;
 use super::{
     AppState, Arc, DiffView, FinishAnswer, JobId, Loading, Operated, ReturnTo, ReviewFailed,
-    Reviewed, TextArea, TextField, keep_cursor_on_screen, split_message,
+    Reviewed, keep_cursor_on_screen,
 };
 use crate::update::op_keys::OpKeys;
 
@@ -44,25 +44,19 @@ pub(crate) fn summary_landed(
     match summary {
         Err(ReviewFailed::StillOpen { files, clashes }) => {
             let back_to = finish.return_to;
-            close_keeping_draft(state);
+            close(state);
             still_open(state, back_to, files, clashes);
             return;
         }
-        Ok(Reviewed { summary, solved }) => {
+        Ok(Reviewed {
+            summary,
+            solved,
+            incoming,
+        }) => {
             finish.solved = solved;
-            // A restored draft is the user's words; so is anything typed
-            // while the read ran. Git's message fills only empty fields.
-            let untouched = finish.subject.is_empty() && finish.body.is_empty();
-            if !finish.from_draft && untouched {
-                let (subject, body) = split_message(&String::from_utf8_lossy(&summary.message));
-                finish.subject = TextField::new(&subject);
-                finish.body = TextArea::new(&body);
-            }
-            finish.cursor = if summary.by_git.is_empty() {
-                0
-            } else {
-                summary.by_you.len()
-            };
+            finish.incoming = incoming;
+            // The first clashed file, as the mock's cursor starts.
+            finish.cursor = 0;
             finish.summary = Loading::Ready(summary);
         }
         Err(ReviewFailed::Failed(why)) => finish.summary = Loading::Failed(why),
@@ -138,36 +132,6 @@ pub(crate) fn job_ended(state: &mut AppState, id: JobId, failure: &dyn std::fmt:
     }
 }
 
-/// `$EDITOR` handed the message back. `true` when it was the summary's.
-///
-/// **Strips nothing** (S3): a `#123 fixes login` line the user wrote in the
-/// editor is part of the message.
-pub(crate) fn editor_returned(
-    state: &mut AppState,
-    id: JobId,
-    text: Result<String, String>,
-) -> bool {
-    let Some(finish) = state.finish.as_mut() else {
-        return false;
-    };
-    if finish.editing != Some(id) {
-        return false;
-    }
-    finish.editing = None;
-    state.external_editor = None;
-    match text {
-        Ok(text) => {
-            let (subject, body) = split_message(&text);
-            finish.subject = TextField::new(&subject);
-            finish.body = TextArea::new(&body);
-            finish.notice = None;
-        }
-        // The fields still hold what went out: nothing was lost.
-        Err(why) => finish.notice = Some((why, true)),
-    }
-    true
-}
-
 /// A `--continue` came back; acts only on the one the summary started.
 pub(crate) fn resume_answered(
     state: &mut AppState,
@@ -190,22 +154,39 @@ pub(crate) fn resume_answered(
     // opens its own resolver, which an open one would refuse (review
     // m6-amend-31).
     state.resolver = None;
-    if let Operated::Done(_) = outcome {
+    if let Operated::Done(applied) = outcome {
         let words = match &finish.summary {
-            Loading::Ready(summary) => Some(format!(
-                "merged {} into {}",
-                String::from_utf8_lossy(&summary.from),
-                String::from_utf8_lossy(&summary.into)
-            )),
+            Loading::Ready(summary) => Some(merged_words(&summary.from, &summary.into)),
             Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => None,
         };
         state.finish = None;
-        state.finish_draft = None;
-        state.external_editor = None;
+        // The merge just made: its row's bar is `JustMerged` while the
+        // cursor rests on it and it is still `HEAD` (M18).
+        state.last_merge = merge_made(&applied.entry);
         return Some(FinishAnswer::Merged(words));
     }
-    close_keeping_draft(state);
+    close(state);
     Some(FinishAnswer::Closed)
+}
+
+/// The commit `HEAD` names after `entry`: the merge the review's `y` made.
+fn merge_made(entry: &graft_core::journal::JournalEntry) -> Option<graft_core::oid::Oid> {
+    use graft_core::journal::HeadRef;
+    match entry.head_after.as_ref()? {
+        HeadRef::Detached(oid) => Some(*oid),
+        HeadRef::Branch(name) | HeadRef::Unborn(name) => entry.refs_after.get(name).copied()?,
+    }
+}
+
+/// The status the merge lands with (mock
+/// `mergewright-merge-screen.html:197`): `Merged <from> into <into>.` — the
+/// status row draws the one `✓` before it, as it does a commit's.
+pub(crate) fn merged_words(from: &[u8], into: &[u8]) -> String {
+    format!(
+        "Merged {} into {}.",
+        String::from_utf8_lossy(from),
+        String::from_utf8_lossy(into)
+    )
 }
 
 /// git said no to the commit and nothing moved: a hook refused it, or a

@@ -1,6 +1,7 @@
-//! What the summary's character grid says at each width: one column below
-//! 160, two from 160, one line below the minimum, and a long diff cut at 12
-//! rows with the summary's own words.
+//! What the merge review's character grid says (ticket ease-pass/12, mock
+//! `mergewright-merge-screen.html:155-162`): the mock's lines in its order,
+//! the bar in the bottom border, one line below the minimum, and a long
+//! diff cut at 12 rows with the review's own words.
 
 use graft_term::sanitize_line;
 use ratatui::Terminal;
@@ -19,44 +20,38 @@ fn theme() -> Theme {
     )
 }
 
-fn row(path: &str, what: &str) -> SummaryRow {
-    SummaryRow {
+fn picks(yours: u32, theirs: u32, both: u32) -> HowSolved {
+    HowSolved::Picks(PickCounts {
+        yours,
+        theirs,
+        both,
+    })
+}
+
+fn file(path: &str, how: HowSolved) -> ReviewFile {
+    ReviewFile {
         path: sanitize_line(path),
-        what: sanitize_line(what),
+        how,
     }
 }
 
-/// The ticket's fixture, built by hand: two files resolved, one combined.
-fn view<'a>() -> FinishView<'a> {
-    FinishView {
+/// The ticket's fixture: `sara/fix-toc` into `wallet-release`, `report.md`
+/// (2 clashes, `o` then `t`), `notes.md` (1, `o`), 2 files combined.
+fn view<'a>() -> ReviewView<'a> {
+    ReviewView {
         keys: crate::keymap::Keymap::shipped(),
-        names: Some((sanitize_line("feature"), sanitize_line("main"))),
-        by_you: vec![
-            row("gone.txt", "kept · yours · main"),
-            row("notes.txt", "theirs · feature in 2 of 2 conflicts"),
+        from: sanitize_line("sara/fix-toc"),
+        into: sanitize_line("wallet-release"),
+        clashes: 3,
+        incoming: Some(4),
+        clashed: vec![
+            file("docs/report.md", picks(1, 1, 0)),
+            file("notes.md", picks(1, 0, 0)),
         ],
-        by_git: vec![row("README.md", "modified  +1 −1")],
-        recorded: true,
-        cursor: 2,
+        combined: 2,
+        message: sanitize_line("Merge branch 'sara/fix-toc' into wallet-release"),
+        cursor: 0,
         expanded: None,
-        subject: FieldView {
-            label: "Subject",
-            text: sanitize_line("Merge branch 'feature'"),
-            cursor: None,
-            guide_at: None,
-            counter: None,
-            focused: false,
-            secret: None,
-        },
-        body: AreaView {
-            label: "Body",
-            lines: vec![sanitize_line("")],
-            cursor: None,
-            guide_at: None,
-            focused: false,
-        },
-        focus: SummaryFocus::Files,
-        expandable: true,
         focused: true,
         notice: None,
         busy: false,
@@ -65,7 +60,7 @@ fn view<'a>() -> FinishView<'a> {
     }
 }
 
-fn draw(view: &FinishView<'_>, columns: u16, rows: u16) -> Vec<String> {
+fn draw(view: &ReviewView<'_>, columns: u16, rows: u16) -> Vec<String> {
     let theme = theme();
     let mut terminal = Terminal::new(TestBackend::new(columns, rows))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
@@ -93,9 +88,13 @@ fn draw(view: &FinishView<'_>, columns: u16, rows: u16) -> Vec<String> {
         .collect()
 }
 
-/// A row with the frame's left border and gutter taken off.
+/// A row with the frame's left border and gutter taken off, and its right
+/// border.
 fn inside(line: &str) -> &str {
-    line.strip_prefix("│ ").unwrap_or(line)
+    line.strip_prefix("│ ")
+        .unwrap_or(line)
+        .trim_end_matches('│')
+        .trim_end()
 }
 
 fn line_of(grid: &[String], needle: &str) -> usize {
@@ -104,68 +103,7 @@ fn line_of(grid: &[String], needle: &str) -> usize {
         .unwrap_or_else(|| panic!("no line holds {needle:?}:\n{}", grid.join("\n")))
 }
 
-#[test]
-fn one_column_below_160() {
-    let grid = draw(&view(), 120, 40);
-    let text = grid.join("\n");
-    assert!(
-        grid[0].starts_with("╭ Preview: finish merging feature into main ─"),
-        "{text}"
-    );
-    let by_you = line_of(&grid, "RESOLVED BY YOU · 2");
-    let gone = line_of(&grid, "gone.txt");
-    let notes = line_of(&grid, "notes.txt");
-    let by_git = line_of(&grid, "COMBINED BY GIT ON ITS OWN · 1");
-    let readme = line_of(&grid, "▸ README.md");
-    let message = line_of(&grid, "MESSAGE · ⇥ edit");
-    let subject = line_of(&grid, "Merge branch 'feature'");
-    assert!(by_you < gone && gone < notes && notes < by_git && by_git < readme);
-    assert_eq!(message, readme + 1, "the message follows the list:\n{text}");
-    assert!(subject > message, "{text}");
-    // Paths padded to the widest one, then the words.
-    assert!(
-        grid[gone].contains("gone.txt   kept · yours · main"),
-        "{text}"
-    );
-    assert!(
-        grid[notes].contains("notes.txt  theirs · feature in 2 of 2 conflicts"),
-        "{text}"
-    );
-    assert!(
-        grid[readme].contains("README.md  modified  +1 −1"),
-        "{text}"
-    );
-    // One column: the message starts at the left edge like the lists.
-    assert!(inside(&grid[message]).starts_with("MESSAGE"), "{text}");
-}
-
-#[test]
-fn two_columns_from_160() {
-    for (columns, rows) in [(160, 48), (200, 50)] {
-        let grid = draw(&view(), columns, rows);
-        let text = grid.join("\n");
-        let message = line_of(&grid, "MESSAGE · ⇥ edit");
-        assert_eq!(
-            message, 3,
-            "the message starts under the preview lines:\n{text}"
-        );
-        let at = grid[message]
-            .find("MESSAGE")
-            .map(|byte| grid[message][..byte].chars().count())
-            .unwrap_or_default();
-        let left = usize::from(columns) * 3 / 5;
-        assert!(at >= left, "message at {at}, left column {left}:\n{text}");
-        // The lists sit to its left on the same rows.
-        assert!(
-            inside(&grid[message]).starts_with("RESOLVED BY YOU · 2"),
-            "{text}"
-        );
-        let readme = line_of(&grid, "▸ README.md");
-        assert!(readme < 10, "{text}");
-    }
-}
-
-fn buffer(view: &FinishView<'_>, columns: u16, rows: u16) -> Buffer {
+fn buffer(view: &ReviewView<'_>, columns: u16, rows: u16) -> Buffer {
     let theme = theme();
     let area = Rect::new(0, 0, columns, rows);
     let mut buf = Buffer::empty(area);
@@ -178,166 +116,142 @@ fn buffer(view: &FinishView<'_>, columns: u16, rows: u16) -> Buffer {
     buf
 }
 
+/// The mock's lines (`:155-161`), in its order, names swapped, and the bar
+/// in the bottom border. No undo line: the mock has none (Minor 7).
 #[test]
-fn preview_title_shortens_then_cuts() {
-    let names = Some(("feature", "main"));
-    assert_eq!(
-        preview_title(names, 80),
-        "Preview: finish merging feature into main"
-    );
-    // 41 cells whole, 4 more for the corners and gutters: 44 is one short.
-    assert_eq!(preview_title(names, 44), "Preview: merge feature → main");
-    let cut = preview_title(names, 20);
-    assert!(
-        cut.starts_with("Preview: merge") && cut.ends_with('…'),
-        "{cut}"
-    );
-    assert_eq!(crate::frame_box::cells(&cut), 16, "{cut}");
-    assert_eq!(preview_title(None, 80), "Preview: finish the merge");
-    let unnamed = preview_title(None, 20);
-    assert!(unnamed.ends_with('…'), "{unnamed}");
-    assert_eq!(crate::frame_box::cells(&unnamed), 16, "{unnamed}");
-}
-
-#[test]
-fn summary_draws_inside_the_preview_frame() {
-    let view = view();
-    let grid = draw(&view, 80, 24);
+fn the_review_reads_as_the_mock_at_120() {
+    let grid = draw(&view(), 120, 30);
     let text = grid.join("\n");
-    assert!(
-        grid[0].starts_with("╭ Preview: finish merging feature into main ─")
-            && grid[0].ends_with('╮'),
-        "{text}"
-    );
-    assert!(
-        grid[1].starts_with("│ 1 merge commit on main · nothing is committed until y ")
-            && grid[1].ends_with("  │"),
-        "{text}"
-    );
-    assert!(grid[2].starts_with("│ undo: u takes this back"), "{text}");
-    assert!(
-        grid[23].starts_with("╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ─"),
-        "{text}"
-    );
-    assert!(grid[23].ends_with('╯'), "{text}");
-    assert!(
-        grid[3..23]
+    let want = [
+        "All 3 clashes solved. Nothing committed yet.",
+        "This merge will put into wallet-release:",
+        "  4 commits from sara/fix-toc",
+        "▸ ✓ report.md  you chose: ◀ yours (1) · ▶ theirs (1)",
+        "  ✓ notes.md   you chose: ◀ yours",
+        "  ✓ 2 files git combined on its own",
+        "Message  Merge branch 'sara/fix-toc' into wallet-release",
+    ];
+    let mut at = 0;
+    for line in want {
+        let found = grid[at..]
             .iter()
-            .all(|line| line.starts_with('│') && line.ends_with('│')),
-        "{text}"
+            .position(|drawn| inside(drawn) == line)
+            .unwrap_or_else(|| panic!("{line:?} not after line {at}:\n{text}"));
+        at += found + 1;
+    }
+    assert!(grid[0].starts_with('╭'), "{text}");
+    assert!(
+        grid[29].starts_with("╰ y commit the merge"),
+        "the bar is the bottom border:\n{text}"
     );
+    assert!(!text.contains("takes this back"), "{text}");
+    assert!(!text.contains("undo:"), "{text}");
 }
 
-/// The frame's styles: border and title `accent`, the first key `accent`
-/// BOLD, the rest muted, the row words in their panes' tokens. The cells
-/// only — colour on a screen stays unverified (rule 5).
+/// At 90 columns every line of the mock still reads whole.
 #[test]
-fn preview_frame_styles() {
-    let view = view();
-    let grid = draw(&view, 80, 24);
-    let buf = buffer(&view, 80, 24);
-    let theme = theme();
-    let accent = crate::paint::color(theme.token(Token::Accent));
-    for (x, y) in [
-        (0, 0),
-        (79, 0),
-        (0, 5),
-        (79, 5),
-        (0, 23),
-        (79, 23),
-        (70, 23),
+fn the_review_reads_whole_at_90() {
+    let grid = draw(&view(), 90, 24);
+    let text = grid.join("\n");
+    for needle in [
+        "All 3 clashes solved. Nothing committed yet.",
+        "✓ report.md  you chose: ◀ yours (1) · ▶ theirs (1)",
+        "✓ 2 files git combined on its own",
+        "Message  Merge branch 'sara/fix-toc' into wallet-release",
     ] {
-        assert_eq!(buf[(x, y)].fg, accent, "border cell ({x}, {y})");
+        line_of(&grid, needle);
     }
-    // `╰ y`: the key at x = 2.
-    assert_eq!(buf[(2, 23)].symbol(), "y");
-    assert_eq!(buf[(2, 23)].fg, accent);
-    assert!(buf[(2, 23)].modifier.contains(Modifier::BOLD));
-    let muted = crate::paint::color(theme.token(Token::TextMuted));
-    assert_eq!(buf[(4, 23)].fg, muted, "`commit` is muted");
-    assert!(buf[(2, 0)].modifier.contains(Modifier::BOLD), "the title");
-    assert_eq!(buf[(2, 0)].fg, accent);
-    // Words that tie the rows back to the panes (colour unverified by eye).
-    let grid_row = line_of(&grid, "gone.txt");
-    let row = u16::try_from(grid_row).unwrap_or(u16::MAX);
-    let at = grid[grid_row]
-        .find("yours")
-        .map_or(0, |byte| grid[grid_row][..byte].chars().count());
-    let ours = crate::paint::color(theme.token(Token::Ours));
-    assert_eq!(buf[(u16::try_from(at).unwrap_or(0), row)].fg, ours);
-    let readme = line_of(&grid, "▸ README.md");
-    let plus = grid[readme]
-        .find('+')
-        .map_or(0, |byte| grid[readme][..byte].chars().count());
-    // README is the cursor row: `added`, lifted to stay legible on the fill
-    // (ADR-0058 §3).
-    let added = crate::paint::color(theme.on_selection(theme.token(Token::Added)));
-    let y = u16::try_from(readme).unwrap_or(0);
-    assert_eq!(buf[(u16::try_from(plus).unwrap_or(0), y)].fg, added);
+    assert!(text.contains("╰ y commit the merge"), "{text}");
+}
+
+/// Decision 4's words: one kind, several kinds in `◀ ▶ ◆` order with the
+/// zero kinds left out, a whole-file card's word, and a file solved with no
+/// picks recorded.
+#[test]
+fn how_solved_words() {
+    let cases = [
+        (picks(1, 0, 0), "you chose: ◀ yours"),
+        (picks(0, 2, 0), "you chose: ▶ theirs"),
+        (picks(0, 0, 1), "you chose: ◆ both"),
+        (picks(1, 1, 0), "you chose: ◀ yours (1) · ▶ theirs (1)"),
+        (picks(2, 0, 1), "you chose: ◀ yours (2) · ◆ both (1)"),
+        (
+            HowSolved::Whole(sanitize_line("keep theirs")),
+            "you chose: keep theirs",
+        ),
+        (HowSolved::ByHand, "solved in the file"),
+    ];
+    for (how, want) in cases {
+        assert_eq!(how.words(), want, "{how:?}");
+    }
+}
+
+/// `N clashes` counts each pick, and one per whole-file or by-hand file.
+#[test]
+fn clashes_count_picks_and_one_per_other_file() {
+    assert_eq!(picks(2, 1, 1).clashes(), 4);
+    assert_eq!(HowSolved::ByHand.clashes(), 1);
+    assert_eq!(HowSolved::Whole(sanitize_line("delete")).clashes(), 1);
+}
+
+/// The title and the count line, one and none, and a count that failed.
+#[test]
+fn title_and_count_words() {
+    assert_eq!(
+        review_title(3),
+        "All 3 clashes solved. Nothing committed yet."
+    );
+    assert_eq!(review_title(1), "1 clash solved. Nothing committed yet.");
+    assert_eq!(review_title(0), "Nothing committed yet.");
+    let from = sanitize_line("sara/fix-toc");
+    assert_eq!(count_line(Some(4), &from), "4 commits from sara/fix-toc");
+    assert_eq!(count_line(Some(1), &from), "1 commit from sara/fix-toc");
+    assert_eq!(count_line(None, &from), "? commits from sara/fix-toc");
+}
+
+/// Two clashed files with one name are drawn by their whole paths.
+#[test]
+fn files_with_one_name_are_drawn_whole() {
+    let mut twins = view();
+    twins.clashed = vec![
+        file("src/mod.rs", picks(1, 0, 0)),
+        file("tests/mod.rs", picks(0, 1, 0)),
+    ];
+    let grid = draw(&twins, 120, 30);
+    line_of(&grid, "✓ src/mod.rs");
+    line_of(&grid, "✓ tests/mod.rs");
+}
+
+/// Nothing combined by git: no combined row (status rule).
+#[test]
+fn no_combined_row_when_git_combined_nothing() {
+    let mut none = view();
+    none.combined = 0;
+    let text = draw(&none, 120, 30).join("\n");
+    assert!(!text.contains("combined on its own"), "{text}");
+    assert_eq!(none.row_count(), 2);
+    assert_eq!(none.row(2), None);
+    let one = ReviewView {
+        combined: 1,
+        ..view()
+    };
+    line_of(&draw(&one, 120, 30), "✓ 1 file git combined on its own");
+    assert_eq!(one.row(2), Some(ReviewRow::Combined));
+    assert_eq!(one.row(1), Some(ReviewRow::Clashed(1)));
 }
 
 #[test]
-fn unread_summary_has_no_names() {
-    let mut unread = view();
-    unread.names = None;
-    unread.state = SummaryState::Loading;
-    unread.by_you.clear();
-    unread.by_git.clear();
-    let grid = draw(&unread, 80, 24);
-    let text = grid.join("\n");
-    assert!(
-        grid[0].starts_with("╭ Preview: finish the merge ─"),
-        "{text}"
-    );
-    assert!(
-        grid[1].starts_with("│ 1 merge commit · nothing is committed until y "),
-        "{text}"
-    );
-    assert!(
-        !grid[0].contains("main") && !grid[1].contains("main"),
-        "{text}"
-    );
-}
-
-#[test]
-fn unavailable_summary_names_y() {
+fn unavailable_review_names_y() {
     let mut failed = view();
-    failed.state = SummaryState::Unavailable(sanitize_line("1 still conflicted"));
-    let grid = draw(&failed, 120, 40);
+    failed.state = SummaryState::Unavailable(sanitize_line("git said no"));
+    let grid = draw(&failed, 120, 30);
     let text = grid.join("\n");
-    assert!(
-        text.contains("summary unavailable: 1 still conflicted · y commits with git's message"),
-        "{text}"
+    line_of(
+        &grid,
+        "summary unavailable: git said no · y commits with git's message",
     );
-}
-
-#[test]
-fn hit_round_trips_inside_the_frame() {
-    let mut view = view();
-    view.by_git = (0..6)
-        .map(|n| row(&format!("file{n}.txt"), "modified  +1 −1"))
-        .collect();
-    for (columns, rows) in [(80, 24), (120, 40), (187, 50)] {
-        let area = Rect::new(0, 0, columns, rows);
-        let grid = draw(&view, columns, rows);
-        let text = grid.join("\n");
-        for index in 0..view.row_count() {
-            let path = view
-                .row(index)
-                .map(|row| row.path.as_str().to_owned())
-                .unwrap_or_default();
-            let y = line_of(&grid, &format!(" {path}  "));
-            let y = u16::try_from(y).unwrap_or(u16::MAX);
-            assert_eq!(
-                hit(&view, area, 4, y),
-                Some(FinishHit::Row(index)),
-                "{columns}x{rows} row {index}:\n{text}"
-            );
-        }
-        assert_eq!(hit(&view, area, 4, 0), None, "the top border");
-        assert_eq!(hit(&view, area, 4, 1), None, "the preview line");
-        assert_eq!(hit(&view, area, 4, rows - 1), None, "the bottom border");
-    }
+    assert!(!text.contains("Message"), "{text}");
+    assert!(!text.contains("you chose"), "{text}");
 }
 
 #[test]
@@ -349,13 +263,10 @@ fn too_small_says_so() {
         "{}",
         grid.join("\n")
     );
-
     let short = draw(&view(), 100, 17);
     assert_eq!(short[0], "finish needs 62x18 · esc back");
-
-    // At the minimum it draws.
     let fits = draw(&view(), 62, 18);
-    assert!(fits.iter().any(|line| line.contains("MESSAGE")));
+    assert!(fits.iter().any(|line| line.contains("Message")));
 }
 
 fn long_diff(lines: usize) -> Arc<DiffView> {
@@ -378,7 +289,7 @@ fn long_diff(lines: usize) -> Arc<DiffView> {
         pair: None,
     }));
     Arc::new(DiffView {
-        path: sanitize_line("README.md"),
+        path: sanitize_line("notes.md"),
         old_path: None,
         status: FileStatusView::Modified,
         hunks: vec![HunkView {
@@ -386,68 +297,64 @@ fn long_diff(lines: usize) -> Arc<DiffView> {
             lines: hunk,
         }],
         binary: None,
-        // What the job reports when it cut the diff: the summary must still
+        // What the job reports when it cut the diff: the review must still
         // say `⏎ hides`, never `L load all`.
         truncated: Some((30, 40)),
         untracked: false,
     })
 }
 
+/// Until 12b's look, `⏎` on a clashed row is today's inline diff.
 #[test]
 fn a_long_diff_stops_at_12_rows_and_says_enter_hides() {
     let mut expanded = view();
-    expanded.expanded = Some((2, ExpandedDiff::Ready(long_diff(30))));
+    expanded.cursor = 1;
+    expanded.expanded = Some((1, ExpandedDiff::Ready(long_diff(30))));
     let grid = draw(&expanded, 120, 40);
     let text = grid.join("\n");
-    let readme = line_of(&grid, "▸ README.md");
+    let notes = line_of(&grid, "▸ ✓ notes.md");
     let more = line_of(&grid, "more lines · ⏎ hides");
-    assert_eq!(
-        more,
-        readme + 1 + DIFF_ROWS_MAX,
-        "12 diff rows between the row and the footer:\n{text}"
-    );
-    // 31 rows (heading + 30 lines), 12 drawn: 19 left, plus the 10 the job
-    // cut (30 shown of 40).
+    assert_eq!(more, notes + 1 + DIFF_ROWS_MAX, "{text}");
     assert!(grid[more].contains("… 29 more lines · ⏎ hides"), "{text}");
-    // Indented under the row.
     assert!(inside(&grid[more]).starts_with("    …"), "{text}");
-    assert!(inside(&grid[readme + 1]).starts_with("    "), "{text}");
     assert!(!text.contains("load all"), "{text}");
-    // The rows after it move down: the message follows the footer.
-    assert_eq!(line_of(&grid, "MESSAGE · ⇥ edit"), more + 1, "{text}");
+    assert_eq!(
+        line_of(&grid, "✓ 2 files git combined"),
+        more + 1,
+        "the rows after it move down:\n{text}"
+    );
 }
 
 #[test]
 fn a_click_lands_on_what_is_drawn() {
     let view = view();
-    let area = Rect::new(0, 0, 120, 40);
-    let grid = draw(&view, 120, 40);
-    let notes = u16::try_from(line_of(&grid, "notes.txt")).unwrap_or(u16::MAX);
-    assert_eq!(hit(&view, area, 5, notes), Some(FinishHit::Row(1)));
-    let subject = u16::try_from(line_of(&grid, "Merge branch")).unwrap_or(u16::MAX);
-    assert_eq!(hit(&view, area, 20, subject), Some(FinishHit::Subject));
-    assert_eq!(hit(&view, area, 5, 0), None, "the title is not a row");
+    let area = Rect::new(0, 0, 120, 30);
+    let grid = draw(&view, 120, 30);
+    let at = |needle| u16::try_from(line_of(&grid, needle)).unwrap_or(u16::MAX);
+    assert_eq!(hit(&view, area, 5, at("notes.md")), Some(1));
+    assert_eq!(hit(&view, area, 5, at("git combined")), Some(2));
+    assert_eq!(hit(&view, area, 5, at("Message")), None);
+    assert_eq!(hit(&view, area, 5, 0), None, "the border is not a row");
 }
 
 #[test]
 fn the_cursor_row_is_kept_on_screen() {
     let mut view = view();
-    view.by_git = (0..40)
-        .map(|n| row(&format!("file{n}.txt"), "modified  +1 −1"))
+    view.clashed = (0..40)
+        .map(|n| file(&format!("file{n}.txt"), picks(1, 0, 0)))
         .collect();
     let area = Rect::new(0, 0, 120, 20);
-    view.cursor = 41;
-    let top = top_for_cursor(&view, area);
-    view.top = top;
+    view.cursor = 40;
+    view.top = top_for_cursor(&view, area);
     let grid = draw(&view, 120, 20);
     assert!(
         grid.iter()
-            .any(|line| inside(line).starts_with("▸ file39.txt")),
+            .any(|line| inside(line).starts_with("▸ ✓ 2 files git combined")),
         "{}",
         grid.join("\n")
     );
     view.cursor = 0;
-    assert_eq!(top_for_cursor(&view, area), 0, "back up brings the heading");
+    assert_eq!(top_for_cursor(&view, area), 0);
 }
 
 /// Review m6-look-finish-wave2 m9: the footer's spans come from the hints,
@@ -461,22 +368,13 @@ fn footer_spans_take_the_first_key_from_the_hint() {
     let keys = Keymap::shipped();
     let strong = Style::new().add_modifier(Modifier::BOLD);
     let muted = Style::new().add_modifier(Modifier::DIM);
-    let for_each_focus = [
-        (SummaryFocus::Files, "y"),
-        (SummaryFocus::Subject, "⏎"),
-        (SummaryFocus::Body, "⌃⏎"),
-    ];
-    for (focus, key) in for_each_focus {
-        let mut view = view();
-        view.focus = focus;
-        let hints = footer_hints(&view, 120);
-        let spans = footer_spans(&hints, keys, strong, muted);
-        assert_eq!(spans.len(), 2, "{focus:?}: {spans:?}");
-        assert_eq!(spans[0], (key.to_owned(), strong), "{focus:?}");
-        assert_eq!(spans[1].1, muted, "{focus:?}");
-        let joined: String = spans.iter().map(|(text, _)| text.as_str()).collect();
-        assert_eq!(joined, hints_text(&hints, keys).trim_start(), "{focus:?}");
-    }
+    let hints = footer_hints(&view(), 120);
+    let spans = footer_spans(&hints, keys, strong, muted);
+    assert_eq!(spans.len(), 2, "{spans:?}");
+    assert_eq!(spans[0], ("y".to_owned(), strong));
+    assert_eq!(spans[1].1, muted);
+    let joined: String = spans.iter().map(|(text, _)| text.as_str()).collect();
+    assert_eq!(joined, hints_text(&hints, keys).trim_start());
     // A key with a space in it stays whole: splitting at the first space
     // would have painted `⌃` alone.
     let spaced = [
@@ -506,35 +404,40 @@ fn footer_spans_take_the_first_key_from_the_hint() {
             (" commit  esc".to_owned(), muted)
         ]
     );
-    assert!(
-        footer_spans(&[], keys, strong, muted).is_empty(),
-        "no keys, no spans"
-    );
+    assert!(footer_spans(&[], keys, strong, muted).is_empty());
 }
 
-/// ADR-0058 §3: the file list's cursor row — path, and the words tinted
-/// `ours`/`theirs`/`added`/`removed` — clears 4.5:1 on `selection` in dark B,
-/// focused or not.
+/// No keys are drawn while the commit runs or a box has the keyboard.
+#[test]
+fn no_keys_while_busy_or_under_a_box() {
+    let busy = ReviewView {
+        busy: true,
+        ..view()
+    };
+    assert!(footer_hints(&busy, 120).is_empty());
+    let boxed = ReviewView {
+        focused: false,
+        ..view()
+    };
+    assert!(footer_hints(&boxed, 120).is_empty());
+}
+
+/// ADR-0058 §3: the cursor row's text clears 4.5:1 on `selection` in dark.
 #[test]
 fn text_on_the_cursor_row_is_legible() {
     for cursor in 0..3 {
-        for focus in [SummaryFocus::Files, SummaryFocus::Subject] {
-            let mut shown = view();
-            shown.cursor = cursor;
-            shown.focus = focus;
-            let checked = crate::test_support::assert_legible_on_selection(
-                &buffer(&shown, 120, 30),
-                &theme(),
-            );
-            assert!(checked > 5, "cursor {cursor} {focus:?}: drawn ({checked})");
-        }
+        let mut shown = view();
+        shown.cursor = cursor;
+        let checked =
+            crate::test_support::assert_legible_on_selection(&buffer(&shown, 120, 30), &theme());
+        assert!(checked > 5, "cursor {cursor}: drawn ({checked})");
     }
 }
 
-/// Spell sweep (c), ticket m8/10c: the too-small line, the unavailable
-/// line, the preview line and the undo line name his chords.
+/// Spell sweep (c), ticket m8/10c: the too-small line and the unavailable
+/// line name his chords.
 #[test]
-fn the_summary_spells_every_key_from_his_keymap() {
+fn the_review_spells_every_key_from_his_keymap() {
     use crate::keymap::sweep::{assert_spelled, swept};
     let (keys, _) = swept();
     let mut swept_view = view();
@@ -547,10 +450,4 @@ fn the_summary_spells_every_key_from_his_keymap() {
         .find(|line| line.contains("summary unavailable"))
         .unwrap_or_else(|| panic!("{}", grid.join("\n")));
     assert_spelled(unavailable, &keys, &[&["confirm.yes"]]);
-    assert_spelled(
-        &preview_line(Some("main"), &keys),
-        &keys,
-        &[&["confirm.yes"]],
-    );
-    assert_spelled(&undo_line(&keys), &keys, &[&["app.undo"]]);
 }
