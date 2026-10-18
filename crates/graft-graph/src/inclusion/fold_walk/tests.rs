@@ -2,12 +2,12 @@ use std::collections::BTreeSet;
 
 use super::*;
 
-fn h(n: u32) -> CommitHandle {
+pub(super) fn h(n: u32) -> CommitHandle {
     CommitHandle(n)
 }
 
 /// Admits `walk` (commit, parents) in order; the verdict per commit.
-fn walk_all(walk: &mut FoldWalk, history: &[(u32, &[u32])]) -> Vec<(u32, Admit)> {
+pub(super) fn walk_all(walk: &mut FoldWalk, history: &[(u32, &[u32])]) -> Vec<(u32, Admit)> {
     history
         .iter()
         .map(|&(commit, parents)| {
@@ -17,7 +17,7 @@ fn walk_all(walk: &mut FoldWalk, history: &[(u32, &[u32])]) -> Vec<(u32, Admit)>
         .collect()
 }
 
-fn shown(verdicts: &[(u32, Admit)]) -> BTreeSet<u32> {
+pub(super) fn shown(verdicts: &[(u32, Admit)]) -> BTreeSet<u32> {
     verdicts
         .iter()
         .filter(|(_, admit)| matches!(admit, Admit::Shown { .. }))
@@ -152,7 +152,7 @@ fn a_mark_after_new_counts_like_one_given_to_new() {
     assert_eq!(shown(&verdicts), [1, 2, 3, 4, 5].into());
 }
 
-mod properties {
+pub(super) mod properties {
     //! The fold over generated histories, checked against a reference
     //! worked out from the whole graph at once (no order involved).
 
@@ -273,7 +273,7 @@ mod properties {
     /// The walk order with each commit pushed up to three places later:
     /// some parents now come before their children, as a backward clock
     /// leaves the provisional date order.
-    fn skewed(len: usize, noise: &[u8]) -> Vec<usize> {
+    pub(in crate::inclusion::fold_walk) fn skewed(len: usize, noise: &[u8]) -> Vec<usize> {
         let mut order: Vec<usize> = (0..len).collect();
         order.sort_by_key(|&position| position + usize::from(noise[position % noise.len()] % 4));
         order
