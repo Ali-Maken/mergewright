@@ -16,144 +16,24 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
-docs/shots/m8-tour-step1-120x36.txt
-what right looks like: (19, J12) `⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the left (`…-step1-XXXXXX/practice-tmp/tributary-practice-1609459200/work`, the run's random folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the top row opens your changes · space stages the change under the cursor` (at 120 columns the ticks row does not fit beside that line, so it is dropped, never cut); the practice graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, `feature` and `clash` beside it, the cursor on `main`.
-================================================================================
-
-m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the left (`…-step1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work`, the run's random folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the top row opens your changes · space stages the change under the cursor` (at 120 columns the ticks row does not fit beside that line, so it is dropped, never cut); the practice graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, `feature` and `clash` beside it, the cursor on `main`. Colour unverified (rule 5).
-
- ◇ work  …tep1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work · a throwaway repo, not yours · main  7 commits
-
-╭─ practice 1 of 8 · stage a change ──────────────────────────────────────────────────────────────────────── esc leave ╮
-│ ⏎ on the top row opens your changes · space stages the change under the cursor                                       │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ◌        Uncommitted changes (1 unstaged, 1 untracked)
-▸ ◆      ⓘ [◆ main ↑1] Add today's specials                                                             PR 6y   ecad443
-  ●        [origin/main] Name the chef                                                                  PR 6y   9855ec8
-  ●        Pie for dessert                                                                              PR 6y   eb4b686
-  │ ●      [clash] Ice cream for dessert                                                                PR 6y   ebf3d77
-  │ │ ●    [feature] Add opening hours                                                                  PR 6y   8393dfc
-  ●─┴─╯    Add a side dish                                                                              PR 6y   4a6c890
-  ◇        Start the menu                                                                               PR 6y   4baa76b
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal
-
-================================================================================
-docs/shots/m8-tour-80x24.txt
-what right looks like: (19c, J12) `t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the practice graph under the card, `Uncommitted changes` on top, the cursor on `main`.
-================================================================================
-
-m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the practice graph under the card, `Uncommitted changes` on top, the cursor on `main`. Colour unverified (rule 5).
-
- ◇ workri…ctice-1609459200/work · a throwaway repo, not yours · main  7 commits
-╭─ practice 1 of 8 · stage a change ──────────────────────────────── esc leave ╮
-│ ⏎ on the top row opens your changes · space stages the change under the cur… │
-╰──────────────────────────────────────────────────────────────────────────────╯
-  ◌        Uncommitted changes (1 unstaged, 1 untracked)
-▸ ◆      ⓘ [◆ main ↑1] Add today's specials                        6y   ecad443
-  ●        [origin/main] Name the chef                             6y   9855ec8
-  ●        Pie for dessert                                         6y   eb4b686
-  │ ●      [clash] Ice cream for dessert                           6y   ebf3d77
-  │ │ ●    [feature] Add opening hours                             6y   8393dfc
-  ●─┴─╯    Add a side dish                                         6y   4a6c890
-  ◇        Start the menu                                          6y   4baa76b
-
-
-
-
-
-
-
-
-
-
-────────────────────────────────────────────────────────────────────────────────
- . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · u undo
-
-================================================================================
-docs/shots/m8-tour-step7-conflict-120x36.txt
-what right looks like: (19c) task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn.
-================================================================================
-
-m8-polish-and-ship/19c-c: what right looks like — task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn. Colour unverified (rule 5).
-
-MERGING
-files   ▸ menu.txt · 1 of 1 open
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ menu.txt · 1 conflict · 1 open
-
-  1 starter: bread
-  2 soup: tomato
-  3 main: pasta
-▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
-▏ yours · main                                              │theirs · clash
-▏ 4 dessert: pie                                            │4 dessert: ice cream
-▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-  5 drink: water
-  6 side: salad
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
-
-================================================================================
 docs/shots/m8-tour-finished-120x36.txt
 what right looks like: (19c, J13) the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the commit he left (two rows under where he landed), the status `practice done ✓ · ⌃P tour goes again`. Every age on his graph in years.
 ================================================================================
 
 m8-polish-and-ship/19c-c: what right looks like — the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the commit he left (two rows under where he landed), the status `practice done ✓ · ⌃P tour goes again`. Every age on his graph in years. Colour unverified (rule 5).
 
- ◆ his  /tmp/graft-capture/tour-walk-XXXXXX/his · main                                                       10 commits
+ ◆ his  /tmp/graft-capture/tour-walk-XXXXXX/his · main                                                        6 commits
 
-    ●        [feature/three] three: in progress                                                         GF 7y   0683985
-  ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                        GF 7y   5202e1c
-  │ │ ●      [feature/two] two: finish                                                                  GF 7y   e30e870
-▸ │ │ ●      two: start                                                                                 GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                 GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                  GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                 GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                  GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                  GF 7y   21b16b9
-  ◇          Add a readme                                                                               GF 7y   daa5167
+    ●    [feature/three] three: in progress                                                             GF 7y   0683985
+  ◆ │    [◆ main] Merge branch 'feature/two'  ▸ 2 commits from feature/two                              GF 7y   5202e1c
+  ◉ │    Merge branch 'feature/one'  ▸ 2 commits from feature/one                                       GF 7y   3a97003
+▸ ●─╯    Add b.txt                                                                                      GF 7y   de95041
+  ●      Add a.txt                                                                                      GF 7y   21b16b9
+  ◇      Add a readme                                                                                   GF 7y   daa5167
+
+
+
+
 
 
 
@@ -463,17 +343,17 @@ what right looks like: (28, J23) `▸` in the gutter's first cell and the badge 
 
 m8-polish-and-ship/28, 80x24, cursor on `[feature/two] two: finish`: what right looks like — `▸` in the gutter's first cell and the badge `[feature/two]` on the same row; the lanes as on every other row; no `▏` in the marker slot. Judge beside m8-look-cursor-row-dark-120x36.txt and the mock-up m8-proto-4a-dark-a-b.txt. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                            10 commits
+ ◆ api  ~/code/api · main                                             9 commits
     ●        [feature/three] three: in progress                    7y   0683985
   ◆─│─╮      [◆ main] Merge branch 'feature/two'                   7y   5202e1c
-▸ │ │ ●      [feature/two] two: finish                             7y   e30e870
+  │ │ │ ●    [feature/two-next] two: follow-up                     7y   e53c4a4
+▸ │ │ ●─╯    [feature/two] two: finish                             7y   e30e870
   │ │ ●      two: start                                            7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                            7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                             7y   fdb311f
-  │ │ │ ●    one: start                                            7y   bba225a
-  ●─┴─╯ │    Add b.txt                                             7y   de95041
-  ●─────╯    Add a.txt                                             7y   21b16b9
+  ◉ │ │      Merge branch 'feature/…  ▸ 2 commits from feature/one 7y   3a97003
+  ●─┴─╯      Add b.txt                                             7y   de95041
+  ●          Add a.txt                                             7y   21b16b9
   ◇          Add a readme                                          7y   daa5167
+
 
 
 
@@ -495,18 +375,18 @@ what right looks like: (28, J23) `▸` in the gutter's first cell and the badge 
 
 m8-polish-and-ship/28, 187x50, cursor on `[feature/two] two: finish`: what right looks like — `▸` in the gutter's first cell and the badge `[feature/two]` on the same row; the lanes as on every other row; no `▏` in the marker slot. Judge beside m8-look-cursor-row-dark-120x36.txt and the mock-up m8-proto-4a-dark-a-b.txt. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                                                                                                                                       10 commits
+ ◆ api  ~/code/api · main                                                                                                                                                        9 commits
 
     ●        [feature/three] three: in progress                                                                                                                            GF 7y   0683985
   ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                                                                                           GF 7y   5202e1c
-▸ │ │ ●      [feature/two] two: finish                                                                                                                                     GF 7y   e30e870
+  │ │ │ ●    [feature/two-next] two: follow-up                                                                                                                             GT 7y   e53c4a4
+▸ │ │ ●─╯    [feature/two] two: finish                                                                                                                                     GF 7y   e30e870
   │ │ ●      two: start                                                                                                                                                    GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                                                                                    GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                                                                                     GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                                                                                    GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                                                                                     GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                                                                                     GF 7y   21b16b9
+  ◉ │ │      Merge branch 'feature/one'  ▸ 2 commits from feature/one                                                                                                      GF 7y   3a97003
+  ●─┴─╯      Add b.txt                                                                                                                                                     GF 7y   de95041
+  ●          Add a.txt                                                                                                                                                     GF 7y   21b16b9
   ◇          Add a readme                                                                                                                                                  GF 7y   daa5167
+
 
 
 
@@ -553,18 +433,18 @@ what right looks like: (28, J4/J5) the keys palette over the graph, HERE's actio
 
 m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the keys palette over the graph, HERE's actions first with their keys, then EVERYWHERE; the bar holds the palette's own keys. Judge beside m8-help-graph-120x36.txt and the mock-up m8-proto-2d-help-x.txt. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                                                                                                                                       10 commits
+ ◆ api  ~/code/api · main                                                                                                                                                        6 commits
                                              ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
-▸   ●        [feature/three] three: in progre│ ›                                                                                            │                              GF 7y   0683985
-  ◆─│─╮      [◆ main] Merge branch 'feature/t│ HERE                                                                                         │                              GF 7y   5202e1c
-  │ │ ●      [feature/two] two: finish       │▸c     Commit                                                                   graph.commit  │                              GF 7y   e30e870
-  │ │ ●      two: start                      │ a     Amend                                                                     graph.amend  │                              GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'      │ R     Open the rewrite editor                                                 graph.rewrite  │                              GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish       │ C     Switch branch (branch picker)                                            graph.switch  │                              GF 7y   fdb311f
-  │ │ │ ●    one: start                      │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │                              GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                       │ m     Merge selected branch into current                                        graph.merge  │                              GF 7y   de95041
-  ●─────╯    Add a.txt                       │ r     Rebase current onto selection                                            graph.rebase  │                              GF 7y   21b16b9
-  ◇          Add a readme                    │ b     New branch from selected commit                                          graph.branch  │                              GF 7y   daa5167
+▸   ●    [feature/three] three: in progress  │ ›                                                                                            │                              GF 7y   0683985
+  ◆ │    [◆ main] Merge branch 'feature/two' │ HERE                                                                                         │                              GF 7y   5202e1c
+  ◉ │    Merge branch 'feature/one'  ▸ 2 comm│▸c     Commit                                                                   graph.commit  │                              GF 7y   3a97003
+  ●─╯    Add b.txt                           │ a     Amend                                                                     graph.amend  │                              GF 7y   de95041
+  ●      Add a.txt                           │ R     Open the rewrite editor                                                 graph.rewrite  │                              GF 7y   21b16b9
+  ◇      Add a readme                        │ C     Switch branch (branch picker)                                            graph.switch  │                              GF 7y   daa5167
+                                             │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │
+                                             │ m     Merge selected branch into current                                        graph.merge  │
+                                             │ r     Rebase current onto selection                                            graph.rebase  │
+                                             │ b     New branch from selected commit                                          graph.branch  │
                                              │ t     New tag at selected commit                                                  graph.tag  │
                                              │ x     Compare against a marked base                                           graph.compare  │
                                              │ +     Expand / collapse folded lanes                                            graph.lanes  │
@@ -575,7 +455,7 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
                                              │ M     Map view                                                                    graph.map  │
                                              │ F     Focus mode                                                                graph.focus  │
                                              │ O     Overview strip                                                         graph.overview  │
-                                             │ space Fold a merged branch into its merge                                        graph.fold  │
+                                             │ space Open or close a merged branch                                              graph.fold  │
                                              │ 1     First-parent view                                                  graph.first_parent  │
                                              │ H     Hide / show the stash                                                graph.hide_stash  │
                                              │ y     Copy the commit's SHA                                                  graph.copy_sha  │

@@ -277,13 +277,13 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
             .all(|subject| frame.iter().any(|line| line.contains(subject)))
             && frame
                 .iter()
-                .any(|line| line.contains(&format!("{PR_MERGE} \u{25be}")))
+                .any(|line| line.contains(&format!("{PR_MERGE}  \u{25be}")))
     });
     the_side_joins_its_merge(window(&state).expect("a window"));
     let state = app.pump(state, "the opened merge's count", |state| {
         drawn(state)
             .iter()
-            .any(|line| line.contains(&format!("{PR_MERGE} \u{25be} 4 commits from PR 16021")))
+            .any(|line| line.contains(&format!("{PR_MERGE}  \u{25be} 4 commits from PR 16021")))
     });
     drop(state);
     app.close();

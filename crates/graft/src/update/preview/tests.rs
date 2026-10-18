@@ -240,7 +240,7 @@ fn the_slice_takes_the_parents_the_screen_draws() {
     stash.drawn_parents = vec![oid(2)];
     let state = on_screen_with(vec![stash, row(2, &[1]), row(1, &[0])]);
 
-    let (_, resident) = resident_slice(&state, 10);
+    let resident = resident::slice(&state, 10).commits;
 
     let parents: Vec<&[Oid]> = resident.iter().map(|commit| &commit.parents[..]).collect();
     assert_eq!(parents, [&[oid(2)][..], &[oid(1)], &[oid(0)]]);

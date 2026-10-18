@@ -114,7 +114,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `Stub` (struct) — `identity`, `toward`: a folded edge as the rasteriser draws it.
 - `Marker` (struct) — the rail column: `column`.
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`, `Selection`.
-- `Ring` (enum) — node style: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of(&Row)`.
+- `Ring` (enum) — node style: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of(&Row)` from git's parents (`Row::is_merge`: a folded merge is `Merge`), stash-blind.
 - `Backdrop` (enum) — `Full` / `OffThread` / `Faded`: the one alpha a layout-only strip draws at; `alpha`, `lowest`.
 - `PlainRow` (struct) — a row as the layout draws it: `row`, `ring`, `stubs`; `PlainRow::of`.
 - `Lit` (struct) — one row's selection paint: `emphasis`, `thread`.
@@ -160,7 +160,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## row
 - `Row` (struct) — one laid-out commit: `commit` (every real parent, under every inclusion), `drawn_parents` (the view's trimmed parents; drawing only), `lane`, `incoming`, `outgoing`, `lanes`, `marker`.
-- `Row::is_merge` (fn) — two or more real parents; the answer outside drawing (stash entries are the caller's to exclude).
+- `Row::is_merge` (fn) — two or more of git's parents; stash-blind: `Ring::of` and graft-ui's `NodeKind::of` call it; the app's answer, which excludes stash entries, is `history::parents::is_merge`.
 - `Row::assemble` (fn) — `assemble(shape, commit, &MergeNames, id_of) -> Result<Row, AssembleError>`; hydrate a shape.
 - `RowShape` (struct) — a row before hydration, by handle; `Hash` for chunk fingerprints.
 - `MergeNames` (struct) — merge-lane names for one batch; `gather`, `reads`, `resolve`.

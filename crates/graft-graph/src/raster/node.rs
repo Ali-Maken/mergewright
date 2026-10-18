@@ -26,13 +26,17 @@ pub enum Ring {
 }
 
 impl Ring {
-    /// The ring a row's drawn parent count implies: none is a root, several a
-    /// merge. `Head`, `Stash` and `Uncommitted` are the caller's to set.
+    /// Node style from git's parents ([`Row::is_merge`]): a folded merge is
+    /// `Merge`, as `graft_ui`'s `NodeKind::of` draws it; none is a root.
+    /// Stash-blind: `Head`, `Stash` and `Uncommitted`, and a stash entry's
+    /// plain style, are the caller's to set (ease-pass 06r).
     pub fn of(row: &Row) -> Ring {
-        match row.drawn_parents.len() {
-            0 => Ring::Root,
-            1 => Ring::Commit,
-            _ => Ring::Merge,
+        if row.is_merge() {
+            Ring::Merge
+        } else if row.commit.parents.is_empty() {
+            Ring::Root
+        } else {
+            Ring::Commit
         }
     }
 }
@@ -212,3 +216,6 @@ fn fill_square(pixmap: &mut Pixmap, (x, y): (f32, f32), half: f32, ink: Ink, shi
     };
     pixmap.fill_rect(rect, &paint(ink), Transform::identity(), None);
 }
+
+#[cfg(test)]
+mod tests;

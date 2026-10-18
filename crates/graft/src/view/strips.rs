@@ -21,9 +21,9 @@ use graft_graph::row::Row;
 use graft_graph::{Fold, Kin};
 
 use super::entries::{Thread, thread, uncommitted_row};
+use super::node::Node;
 use super::rows::keep_for;
 use crate::history::History;
-use crate::refs::RefBadges;
 use crate::session::Session;
 use crate::update::AppState;
 
@@ -371,15 +371,8 @@ struct Painter<'a> {
 
 impl Painter<'_> {
     fn row(&self, index: usize, row: &Row) -> PaintedRow {
-        let refs = self.state.refs.as_deref();
-        // HEAD wins over the stash, as in `row_entry`.
-        let ring = if refs.and_then(RefBadges::head) == Some(row.commit.id) {
-            Ring::Head
-        } else if refs.and_then(RefBadges::stash) == Some(row.commit.id) {
-            Ring::Stash
-        } else {
-            Ring::of(row)
-        };
+        // The node `row_entry` draws, as a ring (`view::node`, ease-pass 06r).
+        let ring = Node::of(row, self.state.refs.as_deref()).ring();
         // The cursor's own row needs no row-level emphasis: it is always on
         // its own thread, and the rasteriser draws the thread at full alpha
         // regardless of `emphasis` (ADR-0024 — the thread is never a wider

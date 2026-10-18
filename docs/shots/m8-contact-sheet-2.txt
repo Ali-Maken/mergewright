@@ -16,48 +16,6 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
-docs/shots/m8-keymap-config-problem-120x36.txt
-what right looks like: (09b) the graph as normal, the bottom row `config: 1 problem · ? shows them` (muted).
-================================================================================
-
-"                                                                                                          2 rows so far "
-"                                                                                                                        "
-"  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
-"▸ ◉    [feature] a commit                                                                               TE 57y  0202020 "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"                                                                                                                        "
-"────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-" config: 1 problem · ? shows them                                                                                       "
-
-================================================================================
 docs/shots/m8/changes-over-stash-bar-80x24.txt
 what right looks like: (09e) the last row is the pane's own keys — `space stage`, `d discard`, `⌃A all`, `e edit`, `⇥` — and `? keys`; no `c commit`, no `. actions`, no `/ search`.
 ================================================================================
@@ -137,7 +95,7 @@ what right looks like: (10) three whole frames: at startup the status row `confi
 "                                                                                                          2 rows so far "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
-"▸ ◉    [feature] a commit                                                                               TE 57y  0202020 "
+"▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -174,7 +132,7 @@ what right looks like: (10) three whole frames: at startup the status row `confi
 "                                                                                                          2 rows so far "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
-"▸ ◉    [feature] a commit                                                                               TE 57y  0202020 "
+"▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "
 " Checkout feature                                                                                                       "
 " Cherry-pick (o) — a merge · taking a merge isn't in Mergewright yet                                                    "
 " Copy SHA (y)                                                                                                           "
@@ -211,7 +169,7 @@ what right looks like: (10) three whole frames: at startup the status row `confi
 "                                                                                                          2 rows so far "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
-"▸ ◉    [feature] a commit                                                                               TE 57y  0202020 "
+"▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -272,7 +230,7 @@ what right looks like: (11) `?` on the graph: a box at most 96 wide centred over
 "            │ M     Map view                                                                    graph.map  │            "
 "            │ F     Focus mode                                                                graph.focus  │            "
 "            │ O     Overview strip                                                         graph.overview  │            "
-"            │ space Fold a merged branch into its merge                                        graph.fold  │            "
+"            │ space Open or close a merged branch                                              graph.fold  │            "
 "            │ 1     First-parent view                                                  graph.first_parent  │            "
 "            │ H     Hide / show the stash                                                graph.hide_stash  │            "
 "            │ y     Copy the commit's SHA                                                  graph.copy_sha  │            "
@@ -314,7 +272,7 @@ what right looks like: (11) `⌃P` on the graph: the same box titled `find anyth
 "            │ M     Map view                                                                    graph.map  │            "
 "            │ F     Focus mode                                                                graph.focus  │            "
 "            │ O     Overview strip                                                         graph.overview  │            "
-"            │ space Fold a merged branch into its merge                                        graph.fold  │            "
+"            │ space Open or close a merged branch                                              graph.fold  │            "
 "            │ 1     First-parent view                                                  graph.first_parent  │            "
 "            │ H     Hide / show the stash                                                graph.hide_stash  │            "
 "            │ y     Copy the commit's SHA                                                  graph.copy_sha  │            "
@@ -378,7 +336,7 @@ what right looks like: (11b) at 80×24 the bar ending `? keys`, then the same sc
 
 "                                                                  2 rows so far "
 "  ◆    [◆ main] a commit                                           57y  0101010 "
-"▸ ◉    [feature] a commit                                          57y  0202020 "
+"▸ ◉    [feature] a commit  ▸ 1 commit                              57y  0202020 "
 "                                                                                "
 "                                                                                "
 "                                                                                "
@@ -482,12 +440,12 @@ what right looks like: (11d) `. explain` leads, `u undo` is drawn, and `? keys` 
 # only once both are (a marked branch tip needs 137 cells of bar, m8/11e F1);
 # `?` still answers.
 
- ◆ api  ~/code/api · main                                                                                     4 commits
+ ◆ api  ~/code/api · main                                                                                     3 commits
 
-▸ ◆─╮  ⚠ [◆ main] Merge branch 'alpha'                                                                  GF 1y   cc1103b
-  ● │    Advance main                                                                                   GF 1y   0631550
-  │ ●    [alpha] alpha: work                                                                            GF 1y   bd20b78
-  ◇─╯    Add the base                                                                                   GF 1y   68d5d19
+▸ ◆  ⚠ [◆ main] Merge branch 'alpha'  ▸ 1 commit from alpha                                             GF 1y   cc1103b
+  ●    Advance main                                                                                     GF 1y   0631550
+  ◇    Add the base                                                                                     GF 1y   68d5d19
+
 
 
 
@@ -532,12 +490,12 @@ what right looks like: (11e) the cursor on an evil merge that is the branch tip,
 # radar, the pane shut. Right (m8/11e F1): at 140 columns, past the 137 a marked branch tip
 # needs, the bar ends `? keys`.
 
- ◆ api  ~/code/api · main                                                                                                         4 commits
+ ◆ api  ~/code/api · main                                                                                                         3 commits
 
-▸ ◆─╮  ⚠ [◆ main] Merge branch 'alpha'                                                                                      GF 1y   cc1103b
-  ● │    Advance main                                                                                                       GF 1y   0631550
-  │ ●    [alpha] alpha: work                                                                                                GF 1y   bd20b78
-  ◇─╯    Add the base                                                                                                       GF 1y   68d5d19
+▸ ◆  ⚠ [◆ main] Merge branch 'alpha'  ▸ 1 commit from alpha                                                                 GF 1y   cc1103b
+  ●    Advance main                                                                                                         GF 1y   0631550
+  ◇    Add the base                                                                                                         GF 1y   68d5d19
+
 
 
 
@@ -916,7 +874,7 @@ what right looks like: (12) the empty palette: the field reads, muted, `type to 
 "            │ M     Map view                                                                    graph.map  │            "
 "            │ F     Focus mode                                                                graph.focus  │            "
 "            │ O     Overview strip                                                         graph.overview  │            "
-"            │ space Fold a merged branch into its merge                                        graph.fold  │            "
+"            │ space Open or close a merged branch                                              graph.fold  │            "
 "            │ 1     First-parent view                                                  graph.first_parent  │            "
 "            │ H     Hide / show the stash                                                graph.hide_stash  │            "
 "            │ y     Copy the commit's SHA                                                  graph.copy_sha  │            "
@@ -1727,13 +1685,13 @@ what right looks like: (15b) after Enter — the header's tail leads with the se
 
 ## after Enter
 
- ◆ api  ~/code/api · main                                  /topic  4 matches (1/4)  n/N next/prev  esc close  5 commits
+ ◆ api  ~/code/api · main                                  /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits
 
-▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
-  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
-  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
-  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
-  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
+  ◇    Add the base                                                                                     GF 2d   68d5d19
+
+
+
 
 
 
@@ -1766,13 +1724,13 @@ what right looks like: (15b) after Enter — the header's tail leads with the se
 
 ## after Esc
 
- ◆ api  ~/code/api · main                                                                                     5 commits
+ ◆ api  ~/code/api · main                                                                                     2 commits
 
-▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
-  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
-  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
-  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
-  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
+  ◇    Add the base                                                                                     GF 2d   68d5d19
+
+
+
 
 
 
@@ -1821,13 +1779,13 @@ what right looks like: (15b) running — `… matches so far …  n/N next/prev 
 
 ## running
 
- ◆ api  ~/code/api · main                          /topic  4 matches so far (1/4)  n/N next/prev  esc cancel  5 commits
+ ◆ api  ~/code/api · main                          /topic  4 matches so far (1/4)  n/N next/prev  esc cancel  2 commits
 
-▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
-  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
-  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
-  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
-  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
+  ◇    Add the base                                                                                     GF 2d   68d5d19
+
+
+
 
 
 
@@ -1860,13 +1818,13 @@ what right looks like: (15b) running — `… matches so far …  n/N next/prev 
 
 ## settled with matches
 
- ◆ api  ~/code/api · main                                  /topic  4 matches (1/4)  n/N next/prev  esc close  5 commits
+ ◆ api  ~/code/api · main                                  /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits
 
-▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
-  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
-  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
-  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
-  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
+  ◇    Add the base                                                                                     GF 2d   68d5d19
+
+
+
 
 
 
@@ -1899,13 +1857,13 @@ what right looks like: (15b) running — `… matches so far …  n/N next/prev 
 
 ## no match
 
- ◆ api  ~/code/api · main                                                       /zzqx  no matches  esc close  5 commits
+ ◆ api  ~/code/api · main                                                       /zzqx  no matches  esc close  2 commits
 
-▸ ◆─┬─┬─╮    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'                                 GF 2d   e385b54
-  │ │ │ ●    [topic-3] topic 3                                                                          GF 2d   c95dba0
-  │ │ ● │    [topic-2] topic 2                                                                          GF 2d   3d625a5
-  │ ● │ │    [topic-1] topic 1                                                                          GF 2d   04bb363
-  ◇─┴─┴─╯    Add the base                                                                               GF 2d   68d5d19
+▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
+  ◇    Add the base                                                                                     GF 2d   68d5d19
+
+
+
 
 
 
@@ -2437,4 +2395,124 @@ m8-polish-and-ship/18d, from the real binary on a pty: what right looks like —
  first time? ? keys here · ⌃P anything
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  o open… · i init · c clone… · t practice tour · ⏎ open the selected · q quit · ? keys
+
+================================================================================
+docs/shots/m8-tour-step1-120x36.txt
+what right looks like: (19, J12) `⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the left (`…-step1-XXXXXX/practice-tmp/tributary-practice-1609459200/work`, the run's random folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the top row opens your changes · space stages the change under the cursor` (at 120 columns the ticks row does not fit beside that line, so it is dropped, never cut); the practice graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, `feature` and `clash` beside it, the cursor on `main`.
+================================================================================
+
+m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his repo: the header `◇ work`, then the practice path cut from the left (`…-step1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work`, the run's random folder written as `X`s), `· a throwaway repo, not yours · main  7 commits`; the card at the graph pane's top, 3 rows, `practice 1 of 8 · stage a change` and `esc leave` on its top border, line 1 `⏎ on the top row opens your changes · space stages the change under the cursor` (at 120 columns the ticks row does not fit beside that line, so it is dropped, never cut); the practice graph under it: `Uncommitted changes` on top, `main ↑1` one ahead of `origin/main`, `feature` and `clash` beside it, the cursor on `main`. Colour unverified (rule 5).
+
+ ◇ work  …tep1-XXXXXX/practice-tmp/mergewright-practice-1609459200/work · a throwaway repo, not yours · main  7 commits
+
+╭─ practice 1 of 8 · stage a change ──────────────────────────────────────────────────────────────────────── esc leave ╮
+│ ⏎ on the top row opens your changes · space stages the change under the cursor                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ◌        Uncommitted changes (1 unstaged, 1 untracked)
+▸ ◆      ⓘ [◆ main ↑1] Add today's specials                                                             PR 6y   ecad443
+  ●        [origin/main] Name the chef                                                                  PR 6y   9855ec8
+  ●        Pie for dessert                                                                              PR 6y   eb4b686
+  │ ●      [clash] Ice cream for dessert                                                                PR 6y   ebf3d77
+  │ │ ●    [feature] Add opening hours                                                                  PR 6y   8393dfc
+  ●─┴─╯    Add a side dish                                                                              PR 6y   4a6c890
+  ◇        Start the menu                                                                               PR 6y   4baa76b
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal
+
+================================================================================
+docs/shots/m8-tour-80x24.txt
+what right looks like: (19c, J12) `t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the practice graph under the card, `Uncommitted changes` on top, the cursor on `main`.
+================================================================================
+
+m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 80×24: the card's top border still holds `practice 1 of 8 · stage a change` and `esc leave`; its line is cut to the width with `…` and no ticks row is drawn (under 100 columns the ticks go); the header `◇ work` with a gap before the path cut from the left (`…ctice-1609459200/work · a throwaway repo, not yours`); the practice graph under the card, `Uncommitted changes` on top, the cursor on `main`. Colour unverified (rule 5).
+
+ ◇ workri…ctice-1609459200/work · a throwaway repo, not yours · main  7 commits
+╭─ practice 1 of 8 · stage a change ──────────────────────────────── esc leave ╮
+│ ⏎ on the top row opens your changes · space stages the change under the cur… │
+╰──────────────────────────────────────────────────────────────────────────────╯
+  ◌        Uncommitted changes (1 unstaged, 1 untracked)
+▸ ◆      ⓘ [◆ main ↑1] Add today's specials                        6y   ecad443
+  ●        [origin/main] Name the chef                             6y   9855ec8
+  ●        Pie for dessert                                         6y   eb4b686
+  │ ●      [clash] Ice cream for dessert                           6y   ebf3d77
+  │ │ ●    [feature] Add opening hours                             6y   8393dfc
+  ●─┴─╯    Add a side dish                                         6y   4a6c890
+  ◇        Start the menu                                          6y   4baa76b
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+ . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · u undo
+
+================================================================================
+docs/shots/m8-tour-step7-conflict-120x36.txt
+what right looks like: (19c) task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn.
+================================================================================
+
+m8-polish-and-ship/19c-c: what right looks like — task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `menu.txt · 1 conflict · 1 open`, conflict 1 of 1 with `yours · main` `4 dessert: pie` against `theirs · clash` `4 dessert: ice cream`, the lines around it plain, the resolver's keys at the foot. Drawn as it is, not as hoped: no practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn. Colour unverified (rule 5).
+
+MERGING
+files   ▸ menu.txt · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ menu.txt · 1 conflict · 1 open
+
+  1 starter: bread
+  2 soup: tomato
+  3 main: pasta
+▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · clash
+▏ 4 dessert: pie                                            │4 dessert: ice cream
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+  5 drink: water
+  6 side: salad
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 

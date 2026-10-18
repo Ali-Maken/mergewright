@@ -7,7 +7,7 @@ m8-polish-and-ship/07, light theme, 120x36, cursor on `[feature/two] two: finish
   │ │ │ ●    [feature/two-next] two: follow-up                                                          GT 7y   e53c4a4
 ▸ │ │ ●─╯    [feature/two] two: finish                                                                  GF 7y   e30e870
   │ │ ●      two: start                                                                                 GF 7y   40034e4
-  ◉ │ │      Merge branch 'feature/one' ▸ 2 commits from feature/one                                    GF 7y   3a97003
+  ◉ │ │      Merge branch 'feature/one'  ▸ 2 commits from feature/one                                   GF 7y   3a97003
   ●─┴─╯      Add b.txt                                                                                  GF 7y   de95041
   ●          Add a.txt                                                                                  GF 7y   21b16b9
   ◇          Add a readme                                                                               GF 7y   daa5167

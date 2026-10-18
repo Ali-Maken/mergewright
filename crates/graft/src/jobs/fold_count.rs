@@ -1,4 +1,5 @@
-//! The read behind a folded merge's `+N` (m8-polish-and-ship/17b): how many
+//! The read behind a folded merge's count, the `N` of its tail `▸ N commits
+//! from …` (m8-polish-and-ship/17b; ease-pass 06): how many
 //! commits the merge brought in. A fact of the merge commit, so the answer
 //! never changes and `update` keeps it for the session
 //! (`AppState::fold_counts`).
@@ -33,7 +34,7 @@ pub(crate) fn count_folded(
     };
     let reached =
         count_between(&handle, first, merge, cancel).map_err(|error| error.to_string())?;
-    // The range holds the merge itself; `+N` counts what it brought in.
+    // The range holds the merge itself; the count is what it brought in.
     Ok(reached.saturating_sub(1))
 }
 

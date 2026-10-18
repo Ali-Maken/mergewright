@@ -3,8 +3,8 @@ What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its
 
  ◆ api  ~/code/api · wallet-release                                                                           8 commits
 
-    ◆      [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rel… ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
-▸   ◉─╮    Merged PR 16021: Fix the wallet totals ▾ 4 commits from PR 16021                             GF 28h  4eb2a56
+    ◆      [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-re…  ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
+▸   ◉─╮    Merged PR 16021: Fix the wallet totals  ▾ 4 commits from PR 16021                            GF 28h  4eb2a56
     │ ●    totals: test the sum                                                                         GF 28h  a03e550
     │ ●    totals: drop the cache                                                                       GF 28h  3334d8b
     │ ●    totals: round once                                                                           GF 28h  2c2a1cf

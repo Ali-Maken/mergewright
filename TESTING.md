@@ -3330,7 +3330,7 @@ app's name, except the two throwaway prototypes `m8-proto-3a/3c` (records).
 | seek-commit-words | 3 | `palette_find::walk_seek_commit_words` | `⌃P` words from a message `⏎`: the cursor on that commit |
 | file-history | 3 | `palette_find::walk_file_history` | `⌃P` a path `⏎`: that file's history |
 | rerun-recent | 2 | `palette_find::walk_rerun_recent` | `⌃P` `⏎`: the last thing you ran runs again |
-| fold-merge-count (J33) | 1 | `m8_walk::journeys::fold_merge_count` | fold a merge with `Space`: its row ends `+` for a moment, then `+N`, N the commits the merge brought in; press `Ctrl+R`: the number stays, it is not re-counted |
+| fold-merge-count (J33) | 1 | `m8_walk::journeys::fold_merge_count`; closing: `update::tests::graph_toggles::space_inside_an_opened_merge_closes_it_and_lands_on_the_merge` | merged branches open folded: the merge's row ends `▸ N commits from <branch>` (an octopus names no one branch: `▸ 3 commits`), N the commits it brought in, and its branch's rows are not drawn; `space` opens it: `▾ N commits`, the rows appear; `space` on a row inside closes it, the cursor back on the merge; `Ctrl+R`: the number stays, it is not re-counted |
 | whitespace-mode-shown (J34) | 1 | `m8_walk::journeys::whitespace_mode_shown` | in the detail pane press `w`: the title ends `· whitespace ignored`; press `w` again: the words go. In blame the title says nothing until `w`, then `· whitespace counted` |
 
 ### Teaches itself (PROMPT §9's seven tasks, from the bar or `?` where he stands)

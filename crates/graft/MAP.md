@@ -282,7 +282,7 @@ Places: the blame and history screens opened over the graph, and the `^` trail `
 ## update::prelude
 The harness's key prelude: keys a gallery stop presses before its first frame, each once the state is settled.
 ## update::preview
-Ghost Preview: every history-changing key opens this first; the answer is drawn as ghost rows, `y` runs it.
+Ghost Preview: every history-changing key opens this first; the answer is drawn as ghost rows, `y` runs it. `PreviewState::merges`: the slice's rows the app calls merges, read off their source rows.
 ## update::quit
 `q`: quit, unless a write is running; then a box says what quitting does to it.
 ## update::radar
@@ -343,6 +343,8 @@ The undo journal screen's view model (`J`): rows, marks from `graft_ops`, open o
 The Map screen's widget input, built from `state.map`.
 ## view::name_prompt
 The name prompt's view model: the title says what is being named and where.
+## view::node
+A history row's node, decided once for both tiers (ease-pass 06r): `Node::of(row, refs)` (HEAD, the newest stash, a merge by `history::parents::is_merge`, root, commit), spelled `kind()` for Unicode and `ring()` for pixels.
 ## view::picker
 The branch picker's view model for `graft_ui::picker`; row order is `graft_ops`' answer.
 ## view::preview

@@ -119,6 +119,45 @@ fn a_folded_merge_gets_the_evil_merge_radar_line() {
     );
 }
 
+/// ease-pass 06r M5: an evil verdict on a folded merge reaches the graph
+/// row's radar marker and the overview strip's mark, not only the detail
+/// pane's line (06d box 3's other two readers).
+#[test]
+fn a_folded_merge_row_draws_its_radar_marker() {
+    let (state, merge) = folded_merge_on_screen(JobId::new(69), 0);
+    let (moved, commands) = update(&state, key(KeyCode::Char('j')));
+    let Some(Command::EvilProbe(probe, _)) = commands
+        .iter()
+        .find(|command| matches!(command, Command::EvilProbe(_, oid) if *oid == merge))
+    else {
+        panic!("the folded merge is probed: {commands:?}");
+    };
+    let evil = EvilVerdict::Evil {
+        files: vec![b"x".to_vec()],
+    };
+    let (marked, _) = update(
+        &moved,
+        AppEvent::Produced(*probe, Product::EvilProbe(merge, evil)),
+    );
+    let view = crate::view::graph_view(&marked, 0);
+    let row = view
+        .rows
+        .iter()
+        .find(|entry| entry.line.row.commit.id == merge)
+        .expect("the merge's row");
+    assert!(row.marker.is_some(), "the graph row's radar marker");
+    let strip = crate::view::strip_marks(&marked);
+    assert!(
+        strip
+            .marks
+            .iter()
+            .any(|(at, mark)| *at == 1
+                && matches!(mark, graft_ui::overview_strip::StripMark::Radar(_))),
+        "{:?}",
+        strip.marks
+    );
+}
+
 /// `o` on a folded merge is refused as a merge, not offered as a pick.
 #[test]
 fn o_on_a_folded_merge_is_refused_as_a_merge() {
@@ -133,6 +172,28 @@ fn o_on_a_folded_merge_is_refused_as_a_merge() {
             if reason.starts_with(&format!("{short} is a merge"))),
         "{:?}",
         next.status
+    );
+}
+
+/// ease-pass 06r M4: on a folded merge, `?` then the key's name, J5's
+/// what-does-key route spelled as `?` lists it: the row under the cursor
+/// says what `space` does there now that merged branches open folded.
+#[test]
+fn help_lists_space_as_open_or_close() {
+    let (state, _) = folded_merge_on_screen(JobId::new(68), 1);
+    let (mut asked, _) = update(&state, key(KeyCode::Char('?')));
+    for letter in "space".chars() {
+        asked = update(&asked, key(KeyCode::Char(letter))).0;
+    }
+    let palette = asked.palette.as_ref().expect("`?` opens the palette");
+    let under_cursor = crate::update::palette::rows(&asked, palette)
+        .into_iter()
+        .flat_map(|(_, rows)| rows)
+        .nth(palette.cursor)
+        .map(|(row, _)| row.label.as_str().to_owned());
+    assert_eq!(
+        under_cursor.as_deref(),
+        Some("Open or close a merged branch")
     );
 }
 

@@ -193,11 +193,9 @@ pub enum AssembleError {
 }
 
 impl Row {
-    /// Whether the commit is a merge as the repository has it: two or more
-    /// real parents, whatever the view draws. The one answer to "is this a
-    /// merge" outside drawing. A stash entry is a merge to the repository
-    /// too; a row cannot tell one apart (the refs can), so callers that
-    /// must exclude stash entries check the refs as well.
+    /// Two or more of git's parents. Stash-blind: the drawing `of` fns call
+    /// this; the app's answer, which excludes stash entries, is
+    /// `history::parents::is_merge`.
     #[must_use]
     pub fn is_merge(&self) -> bool {
         self.commit.parents.len() >= 2

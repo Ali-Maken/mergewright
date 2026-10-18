@@ -22,7 +22,7 @@
 "            │ M     Map view                                                                    graph.map  │            "
 "            │ F     Focus mode                                                                graph.focus  │            "
 "            │ O     Overview strip                                                         graph.overview  │            "
-"            │ space Fold a merged branch into its merge                                        graph.fold  │            "
+"            │ space Open or close a merged branch                                              graph.fold  │            "
 "            │ 1     First-parent view                                                  graph.first_parent  │            "
 "            │ H     Hide / show the stash                                                graph.hide_stash  │            "
 "            │ y     Copy the commit's SHA                                                  graph.copy_sha  │            "

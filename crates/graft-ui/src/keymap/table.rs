@@ -181,7 +181,7 @@ const BEFORE_RESOLVER: &[Binding] = &[
         "graph.fold",
         Graph,
         &[SPACE],
-        "Fold a merged branch into its merge",
+        "Open or close a merged branch",
     ),
     b("graph.first_parent", Graph, &[k('1')], "First-parent view"),
     b(

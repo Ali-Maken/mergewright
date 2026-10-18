@@ -155,6 +155,7 @@ fn the_prelude_holds_a_key_while_a_preview_plan_is_pending() {
             graft_core::journal::EntryId::new(0, [0; 10]),
         ),
         resident: Vec::new(),
+        merges: std::collections::HashSet::new(),
         slice_top: 0,
         job: planning,
         plan: Loading::Pending(planning),

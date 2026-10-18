@@ -83,6 +83,24 @@ fn switch_and_compare_keep_their_keys() {
     );
 }
 
+/// Merged branches open folded, so graph `space` opens one and closes it
+/// again (ease-pass 06r, review M4; `02-keymap.md` §2.3): its words, which
+/// `?`, the palette and the man page read, say so.
+#[test]
+fn space_on_the_graph_opens_or_closes_a_merged_branch() {
+    let keys = Keymap::shipped();
+    let (fold, _) = keys
+        .in_context(ContextId::Graph)
+        .into_iter()
+        .find(|(b, _)| b.action.0 == "graph.fold")
+        .expect("graph.fold is a Graph row");
+    assert_eq!(fold.label, "Open or close a merged branch");
+    assert_eq!(
+        acting(ContextId::Graph, KeyChord::key(' ')),
+        Some("graph.fold")
+    );
+}
+
 const TOGGLES: [&str; 3] = [
     "commit.toggle_amend",
     "commit.toggle_no_verify",
