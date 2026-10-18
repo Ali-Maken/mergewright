@@ -122,3 +122,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-10-18 · `↑N to push` on every local branch with unpushed commits, not only the checked-out one (user; stacked branches).
 - 2026-10-18 · a branch never pushed reads `not pushed yet` in the graph (no number) (user).
 - 2026-10-19 · Don't spend work on files that will be deleted (old contact sheets, past-milestone docs).
+- 2026-10-19 · Skip regenerating docs/AUTHORSHIP.md; keep log lines short.
