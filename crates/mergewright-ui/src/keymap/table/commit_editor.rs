@@ -42,18 +42,18 @@ pub(super) const ROWS: &[Binding] = &[
         "commit.toggle_amend",
         CommitEditor,
         &[],
-        "Amend the last commit",
+        "Amend the last commit: on / off",
     ),
     b(
         "commit.toggle_no_verify",
         CommitEditor,
         &[],
-        "Skip the commit hooks",
+        "Skip the commit hooks: on / off",
     ),
     b(
         "commit.toggle_allow_empty",
         CommitEditor,
         &[],
-        "Allow an empty commit",
+        "Allow an empty commit: on / off",
     ),
 ];

@@ -76,9 +76,9 @@ fn ctrl_p_from_the_commit_editor_lists_its_rows_and_only_its_rows() {
     let open = press(&editor(), ctrl_p());
     let rows = action_rows(&open);
     for want in [
-        "Amend the last commit",
-        "Skip the commit hooks",
-        "Allow an empty commit",
+        "Amend the last commit: on / off",
+        "Skip the commit hooks: on / off",
+        "Allow an empty commit: on / off",
     ] {
         assert!(
             rows.iter()
@@ -95,7 +95,10 @@ fn ctrl_p_from_the_commit_editor_lists_its_rows_and_only_its_rows() {
 
 #[test]
 fn choosing_an_option_row_flips_it_and_keeps_the_editor() {
-    let open = cursor_on(press(&editor(), ctrl_p()), "Skip the commit hooks");
+    let open = cursor_on(
+        press(&editor(), ctrl_p()),
+        "Skip the commit hooks: on / off",
+    );
     let after = press(&open, KeyPress::plain(KeyCode::Enter));
     assert!(after.palette.is_none(), "the palette closes");
     let editor = after.commit_editor.as_ref().expect("the editor stays");
@@ -120,7 +123,7 @@ fn question_mark_off_the_text_fields_opens_the_editors_rows() {
     let rows = action_rows(&open);
     assert!(
         rows.iter()
-            .any(|(label, _, _)| label == "Amend the last commit"),
+            .any(|(label, _, _)| label == "Amend the last commit: on / off"),
         "{rows:?}"
     );
 }
@@ -144,9 +147,12 @@ fn from_the_graph_no_commit_editor_row_is_listed() {
 #[test]
 fn choosing_each_option_twice_returns_it_to_off() {
     for (label, id) in [
-        ("Amend the last commit", "commit.toggle_amend"),
-        ("Skip the commit hooks", "commit.toggle_no_verify"),
-        ("Allow an empty commit", "commit.toggle_allow_empty"),
+        ("Amend the last commit: on / off", "commit.toggle_amend"),
+        ("Skip the commit hooks: on / off", "commit.toggle_no_verify"),
+        (
+            "Allow an empty commit: on / off",
+            "commit.toggle_allow_empty",
+        ),
     ] {
         let mut state = editor();
         let option = crate::update::commit_editor::CommitOption::of_id(&ActionId(id))
@@ -168,7 +174,7 @@ fn skipping_hooks_from_question_mark_in_the_files_shows_in_the_header() {
     state.commit_editor.as_mut().expect("open").focus = CommitFocus::Files;
     let open = cursor_on(
         press(&state, KeyPress::plain(KeyCode::Char('?'))),
-        "Skip the commit hooks",
+        "Skip the commit hooks: on / off",
     );
     let after = press(&open, KeyPress::plain(KeyCode::Enter));
     let header = crate::view::commit_screen_view(&after)
