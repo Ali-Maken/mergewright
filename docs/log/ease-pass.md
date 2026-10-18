@@ -97,3 +97,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - planner-fable 08t rulings: (a) key-shaped prefix only, else whole line masked (PEM leak) → new 08v (Sonnet tier) with (d); (b) resolver ticks stay; (c) m3 pty waiter + stale pty records + contact sheets → 14; 08u gains rulings + secrets box · 20 tools.
 - gates after 06u (92821959): fmt ok, clippy 0, nextest 6834/6834, doc ok; worktree removed. 08t merged 5d32d440 (shared captures auto-merged; gates check). Gates running.
 - gates after 08t (5d32d440): fmt ok, clippy 0, nextest 6838/6838, doc ok; worktree removed. 08v filed ready. builder-opus-xhigh 08u + builder-sonnet 08v dispatched (MAP.md row merged by hand).
+- builder-sonnet 08v mask key files (d6b9333d, merged 4e6dc034) 5/5: key-shaped prefix rule, PEM/ssh lines masked whole; both tests seen red first. No scout (ticket names lines). skills: none · 30 tools. Gates running.
