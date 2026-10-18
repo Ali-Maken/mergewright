@@ -23,6 +23,8 @@ search counts folded hits and says so (06c). No accepted behaviour changed.
 
 **Commit secrets and done-line follow-ups settled** (2026-10-18, after 08t's NOTES; design, not his call — no accepted mock behaviour changes: mock :116 still reads `PAYMENT_KEY=••••••••`). (a) **Masking rule:** a secrets file's line keeps `<key><sep>` only when its first `=`/`:` follows a key-shaped name (optional `export `, `[A-Za-z_][A-Za-z0-9_.-]*`, ≤64) and is followed by a character other than `=`; any other line masks whole. Base64 has no `:` and `=` only as end padding, so every line of a PEM/OpenSSH key, its `BEGIN` line and a multi-line value's continuation mask whole — closing the leak where `…IDAQAB==` drew readable up to its padding (`mask.rs:21`). Rejected: a file-kind switch from graft-ops (a second list to keep in step with `looks_like_secrets`; the line rule already covers key files); every line whole (loses the mock's key). Spec `08v-mask-key-files.md`. (08t's deviation) **Hunk headings are masked**, as built: git's funcname copies a `KEY=value` or base64 line into `@@ … @@`; the ranges stay. Our spec said headings stay; that let the value through, against Q1's point. (b) **Resolver `done ✓ · ▸` rows and notices keep the tick after:** they mark a file's state beside its name, like the list's `?`/`✓` (M6), not a landing; tick-first is `Status::Done`'s, through its one renderer (08r). (c) **m3 pty waiter** waits on the in-process scenario's refusal words; it and the stale m3/m4/m6/m7/m8 pty records and sheets re-walk in 14, after 08u and 06u stop moving those frames; `m6/prototype-journeys` stays as the record of what he tried. (d) The resolving-walk comment follows the code (`Status::Done`), in 08v.
 
+**Merge preview prior art recorded** (2026-10-18, review ease-pass-05-10 M1): the `Merge preview:` rows below, from `docs/research/merge-preview.md`, decided after the build (ticket 10) and the accepted mock; the `merge-clean` count is sourced under Journeys. Fast-forward words: ruled in 05s (Minor 1), cited, not re-decided. No accepted behaviour changed.
+
 ## Promise
 **Ease:** the graph tells you whose line is whose and who did what at a glance; a commit is 3 keys; a one-clash merge is
 5 keys and never leaves you hunting for the clash — and each screen is the one you tried in the mock.
@@ -49,6 +51,12 @@ search counts folded hits and says so (06c). No accepted behaviour changed.
 | Commit key | lazygit `⏎` (§1.1); `⌃⏎` doesn't reach Zed/VS Code | `⏎` on the subject (already built, P16) | **T** |
 | In vs out | none fits | `Going in ✓` / `Staying out ·`, one-line summary | **I** |
 | Secrets file | none found | new `.env`-like file left out, `!` + reason | **I** |
+| Merge preview: what comes in | GitLens counts in the confirm line, "Will merge N commits from X into Y"; nobody lists them inside a merge confirm (`merge-preview.md` GitLens, Summary) | `Comes in N commits from <b> (<who>)`; `⏎` lists them, `esc` back | **T** GitLens's count; **I** the list — nothing found has one, and the mock he accepted does (Q6 a) |
+| Merge preview: counts vs names | GitLens a clash-file count, no names (paid); Tower "clean / conflicts"; GitHub yes/no (study, comparison table) | `Changes` / `Git combines` counts; clashing files named | **T** counts for what git does alone; **I** names for what he must decide — a count can't say which file waits |
+| Merge preview: clash places | only GitKraken shows files and lines, as a background alert outside the merge, Pro tier; `git merge-tree --write-tree` lists them, exit status decides (study GitKraken, Others) | `<path> (p places)`; one `merge-tree` per preview | **I** places in the confirm — lazygit users ask for a dry-run there (#3004); **T** merge-tree, exit status not an empty list |
+| Merge preview: unrelated histories | JetBrains, SM offer `--allow-unrelated-histories`; none refuses up front with a sentence (study JetBrains, SM) | `Can't merge: <from> and <into> share no history.`, `y` withheld (05s Minor 13 documents it) | **R** the flag — another option for a case his repos don't have; **I** the sentence — a refusal that says why |
+| Merge preview: fast-forward | lazygit, GitLens, JetBrains name it before running; a JetBrains user got a silent fast-forward he didn't want (study lazygit, GitLens, JetBrains) | **ruled in 05s Minor 1**: `Git combines  nothing: no merge commit is made`, `After y <into> moves up to <from>.` | **T** naming it; **R** a `--no-ff` choice — the mock has one path; naming it before `y` answers the complaint, `esc` is the way out |
+| Merge preview: check cost | Tower unresponsive, GitHub stuck on "Checking for ability to merge" (study Tower, GitHub) | one forecast per preview; 12 spawns clean, 10 fast-forward (ticket 10 NOTES :134) | **T** the warning — one `merge-tree`; a fast-forward's is wasted, open (below) |
 | Merge landing | JetBrains dialog opens; lazygit menu (`conflict-resolution.md` §3) | stop lands on the first clash, cursor on it | **T** |
 | Clash layout | VS Code back to inline (#160806) (§3) | inline; only clash blocks split yours \| theirs | **T** inline, **R** 3 columns |
 | Colours | cyan/magenta for colour-blind (`conflict-visuals-and-finish.md` §1.3, §4) | yours cyan left, theirs pink right | **T** |
@@ -56,6 +64,11 @@ search counts folded hits and says so (06c). No accepted behaviour changed.
 | Advance | KDiff3 auto-advance (`conflict-resolution.md` §3) | to next open clash **in the same file**; `n` next file | **T**, limited (`:109`) |
 | Undo a take | lazygit `z`, Tower reset (§3) | `u` undoes the last pick, clash screen and review | **T** |
 | Finish | preview before commit (`conflict-visuals-and-finish.md` §3–4) | review "Nothing committed yet", `y` | **T** |
+
+Merge preview, open after the study (not in 05s/05t/12; no ticket written): (1) a fast-forward still runs `merge-tree`,
+which can't clash (ticket 10 NOTES :134; `merge_forecast` is graft-git's) — skipping it is the study's cost warning
+applied. (2) **Question:** what our box says when nothing comes in — GitLens says `<dst> is already up to date with <src>`
+(study GitLens, l.345-355); not checked.
 
 ## Journeys
 Counting: `docs/research/ux-principles.md` §1.3 (typed text = 1; target under the cursor unless said). Landing points are
@@ -82,6 +95,10 @@ open-folded-merge    1     space                         SM 1 click
   lands there directly. Refused (in the way, ADR-0049) → the box closes and the status line says why and the next step,
   nothing written (today's, `answer.rs:58`). Hook refuses at
   step 5 → stays on the review with the failure (05b).
+- **Merge-clean, the count's source:** lazygit 2 (`M` opens the merge menu, `m` runs its first item), JetBrains 2 (branch
+  popup quick path, "Merge <branch> into <target>"), GitLens 3–4 (`docs/research/merge-preview.md` lazygit, JetBrains,
+  GitLens, Summary; counted from the source branch selected, as ours). Ours `m y` = 2 — no tool found does it in fewer and
+  none of them shows what comes in first.
 - **Pause:** `esc` on the clash screen → graph, banner focused (Q7 a); `⏎` → first open clash, picks kept. A relaunch
   mid-merge lands in the same paused place (picks don't survive it; files solved before it still read solved).
 - **Going to a commit inside a folded merge** (detail parent link, search hit, `J` put-back, palette, Map): the merge

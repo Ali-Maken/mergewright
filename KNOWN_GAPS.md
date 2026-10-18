@@ -1403,3 +1403,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/10-spawns | Merge preview git spawns: clean true merge 12 (was 7), fast-forward 10 (was 4) — one `merge-tree` each; the rest is the put-back forecast. Frame/latency cost unmeasured. | **unverified** | ease-pass release perf |
 | ease/10-palette-opener | Palette merge opener not tested; same `plan_as_run` path as `m`. | **unverified** | ease-pass review |
 | ease/10-flaky-undo-cancel | graft-ops `undo_cancel::cancel_at_every_step_boundary_is_clean` failed once in 10's full run (leftover lock), passed alone and in the run before. Cause not looked for. | **unverified** | ease-pass review |
+| ease/10-ff-merge-tree | A fast-forward merge preview still runs a `merge-tree` it doesn't need (10 NOTES :134); part of ease/10-spawns' cost. graft-git change. | **unverified** | ease-pass release perf |
+| ease/10-nothing-to-merge | What the merge box says when there is nothing to merge (already up to date) is unchecked — no test, no capture. | **question** | ease-pass review |
