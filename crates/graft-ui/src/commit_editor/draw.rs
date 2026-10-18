@@ -1,6 +1,7 @@
-//! The commit screen's layout (design note "New UI"): header, message box
-//! (subject 1, body 3), summary line, then `files 44 | diff` — files alone
-//! under [`DIFF_COLUMNS`] — and the bar at the bottom.
+//! Drawing the commit screen (design note "New UI") into the rectangles of
+//! [`commit_layout`]: header, message box (subject 1, body 3), summary
+//! line, then `files 44 | diff` — files alone under
+//! [`DIFF_COLUMNS`](super::DIFF_COLUMNS) — and the bar at the bottom.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -8,12 +9,14 @@ use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
+use super::layout::{CommitLayout, commit_layout};
 use super::words::{bar, header_line, summary_line, whole_parts};
 use super::{CommitScreen, Summary};
 use crate::fit::fit;
 use crate::paint::foreground;
 use crate::text_input::{FOCUS, draw_line};
 use crate::theme::Token;
+use crate::{cells_of, rect_of};
 
 mod split;
 
@@ -26,13 +29,6 @@ pub(super) const BODY_PLACEHOLDER: &str = "More detail, if it needs it (optional
 /// diff shows, with the keys elsewhere.
 const CURSOR_AWAY: char = '\u{203a}';
 
-/// Body rows inside the message box.
-const BODY_ROWS: u16 = 3;
-
-/// Rows the screen takes before the file list: header, the box's two
-/// borders, the subject, the summary and the rule over the files.
-const CHROME: u16 = 6;
-
 impl Widget for &CommitScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.width == 0 || area.height == 0 {
@@ -43,38 +39,31 @@ impl Widget for &CommitScreen<'_> {
             area,
             Style::new().bg(crate::paint::color(self.theme.token(Token::Bg))),
         );
-        let width = usize::from(area.width);
+        // The rectangles a click is tested against, so a click lands on
+        // what is drawn (08s M5).
+        let layout = commit_layout(cells_of(area));
+        let header = rect_of(layout.header);
         buf.set_string(
-            area.x,
-            area.y,
-            fit(&format!(" {}", header_line(&self.view.header)), width),
+            header.x,
+            header.y,
+            fit(
+                &format!(" {}", header_line(&self.view.header)),
+                usize::from(header.width),
+            ),
             foreground(self.theme, Token::Text).add_modifier(Modifier::BOLD),
         );
-        if area.height == 1 {
-            return;
+        if layout.bar.height > 0 {
+            self.draw_bar(buf, rect_of(layout.bar));
         }
-        let bar_row = area.bottom() - 1;
-        self.draw_bar(buf, band(area, bar_row, 1));
-        // Rows between the header and the bar.
-        let room = area.height - 2;
-        // The body gives way first, a row at a time, keeping one file row.
-        let body_rows = BODY_ROWS.min(room.saturating_sub(CHROME));
-        let mut y = area.y + 1;
-        let box_rows = 3 + body_rows;
-        if room < box_rows {
-            return;
+        if layout.message_box.height > 0 {
+            self.draw_message_box(buf, &layout);
         }
-        self.draw_message_box(buf, band(area, y, box_rows), body_rows);
-        y += box_rows;
-        if y >= bar_row {
-            return;
+        if layout.summary.height > 0 {
+            self.draw_summary(buf, rect_of(layout.summary));
         }
-        self.draw_summary(buf, band(area, y, 1));
-        y += 1;
-        if y >= bar_row {
-            return;
+        if layout.rule.height > 0 {
+            self.draw_split(buf, &layout);
         }
-        self.draw_split(buf, band(area, y, bar_row - y));
     }
 }
 
@@ -117,7 +106,9 @@ impl CommitScreen<'_> {
     }
 
     /// `┌─┐`, the subject with its `n/72`, the body rows, `└─┘`.
-    fn draw_message_box(&self, buf: &mut Buffer, area: Rect, body_rows: u16) {
+    fn draw_message_box(&self, buf: &mut Buffer, layout: &CommitLayout) {
+        let area = rect_of(layout.message_box);
+        let body_rows = layout.body.height;
         let focused = self.view.focus.types();
         let border = foreground(
             self.theme,
@@ -146,19 +137,20 @@ impl CommitScreen<'_> {
         if area.width < 6 {
             return;
         }
-        // Text starts two cells in: the focus mark, then a space.
+        // Text starts two cells inside the borders: the focus mark, then a
+        // space, and keeps one cell clear of the right border.
+        let subject = rect_of(layout.subject);
         let text = Rect {
-            x: area.x + 3,
-            y: area.y + 1,
-            width: area.width - 5,
-            height: 1,
+            x: subject.x + 2,
+            width: subject.width - 3,
+            ..subject
         };
         self.draw_subject(buf, text);
         let cursor_line = self.view.body.cursor.map_or(0, |(line, _)| line);
         let top = cursor_line.saturating_sub(usize::from(body_rows.max(1)) - 1);
         for row in 0..body_rows {
             let rect = Rect {
-                y: text.y + 1 + row,
+                y: layout.body.y + row,
                 ..text
             };
             self.draw_body_row(buf, rect, top + usize::from(row), row == 0);
@@ -277,11 +269,6 @@ impl CommitScreen<'_> {
             foreground(self.theme, token),
         );
     }
-}
-
-/// `height` rows of `area` from row `y`, its full width.
-fn band(area: Rect, y: u16, height: u16) -> Rect {
-    Rect { y, height, ..area }
 }
 
 /// The text cursor over a placeholder's first cell: the placeholder stays

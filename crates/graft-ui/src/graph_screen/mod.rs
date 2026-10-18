@@ -44,8 +44,8 @@ pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use header_tail::LaneTally;
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintKey, HintState, LiveC, NOT_A_BINDING, Rung,
-    StopWording, TabWord, WayToBanner, blame_place_list, every_context, every_hint,
-    fit_status_line, hints_for, hints_text, stopped_row, stopped_row_before_keys,
+    StatusRow, StopWording, TabWord, WayToBanner, blame_place_list, every_context, every_hint,
+    fit_status_line, hints_for, hints_text, status_row, stopped_row, stopped_row_before_keys,
 };
 pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,
@@ -195,6 +195,11 @@ pub struct GraphView<'a> {
     /// be told twice — the tier-drop key said what it did. Takes the
     /// footer's place under [`GraphView::problem`], above the hints.
     pub notice: Option<SanitizedText>,
+    /// Where [`GraphView::notice`] stands: in the bar's row, or — a done
+    /// line over a landing bar, `graft`'s [`hints::status_row`] answer — on
+    /// its own row directly above the bar, the graph a row shorter
+    /// (ease-pass/08s M4).
+    pub status_row: hints::StatusRow,
     /// The search prompt while `/` is open, in the footer above a notice and
     /// under a problem; `None` otherwise (m1-the-graph/26). Once `⏎` closes
     /// the field the search's line is [`GraphView::search_tail`] (m8/15b).

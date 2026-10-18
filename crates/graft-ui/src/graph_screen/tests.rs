@@ -57,7 +57,7 @@ pub(super) fn linear(count: u8) -> Vec<Row> {
 
 #[allow(
     clippy::too_many_lines,
-    reason = "one struct literal naming every `GraphView` field; it grows with the view"
+    reason = "one literal naming every `GraphView` field"
 )]
 pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     GraphView {
@@ -108,6 +108,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
         graphics: None,
         push: None,
         notice: None,
+        status_row: StatusRow::InBar,
         search: None,
         search_tail: None,
         compare_footer: None,

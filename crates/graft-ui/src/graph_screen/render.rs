@@ -115,11 +115,7 @@ impl Widget for GraphScreen<'_> {
         let bar_width = width
             .saturating_sub(usize::from(super::RIGHT_MARGIN))
             .max(1);
-        if chrome.footer.height > 0 {
-            let (text, token) = self.footer_line(body, rows, &fold, bar_width);
-            let footer = Line::styled(fit(&text, bar_width), foreground(self.theme, token));
-            buf.set_line(area.x, chrome.footer.y, &footer, area.width);
-        }
+        self.bottom_rows(&chrome, (body, rows, &fold), bar_width, area.x, buf);
         if let Some(line) = self.view.commit_graph
             && chrome.offer.height > 0
         {

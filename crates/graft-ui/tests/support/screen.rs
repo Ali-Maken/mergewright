@@ -74,6 +74,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         graphics: None,
         push: None,
         notice: None,
+        status_row: graft_ui::graph_screen::StatusRow::InBar,
         search: None,
         search_tail: None,
         compare_footer: None,

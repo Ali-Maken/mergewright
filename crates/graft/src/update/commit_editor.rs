@@ -28,15 +28,18 @@ use graft_ui::text_input::{TextArea, TextField};
 use super::events::Command;
 use super::state::{AppState, Status};
 
+mod done_row;
 mod drafts;
 mod edit_stop;
 mod files;
 mod keys;
 mod landing;
+mod mouse;
 mod open;
 mod options;
 mod refusal;
 mod returned;
+pub(crate) use done_row::{done_row, done_shown};
 pub use drafts::{Draft, Drafts, WayIn, give_back, redo_took_back};
 pub(crate) use edit_stop::{amend_at_edit_stop, at_edit_stop};
 pub use files::{
@@ -46,6 +49,7 @@ pub(crate) use files::{claims_diff, counted, display_order, kind_of};
 pub(crate) use keys::toggle_from_palette;
 pub use keys::{committed, editor_key, paste};
 pub use landing::{LastCommit, commit_landed, landed_bar, push_words, redo_landed, undo_landed};
+pub(crate) use mouse::mouse;
 pub use open::{head_message_arrived, open};
 pub(crate) use open::{head_oid, short_sha};
 pub use options::CommitOption;

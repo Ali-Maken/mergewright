@@ -5,6 +5,7 @@
 use ratatui::layout::Rect;
 
 use super::GraphView;
+use super::hints::StatusRow;
 use super::layout::{body_width, inset};
 use crate::{Cells, cells_of, rect_of};
 
@@ -40,6 +41,9 @@ pub struct CarveInputs {
     /// ([`crate::still_to_apply::still_to_apply_height`] of
     /// [`GraphView::pending`]); 0 when nothing is pending.
     pub pending_rows: u16,
+    /// [`GraphView::status_row`]: [`StatusRow::AboveBar`] wants the done
+    /// line's own row above the bar (ease-pass/08s M4).
+    pub status_row: StatusRow,
 }
 
 impl CarveInputs {
@@ -47,6 +51,7 @@ impl CarveInputs {
     #[must_use]
     pub fn of(view: &GraphView<'_>) -> Self {
         Self {
+            status_row: view.status_row,
             spaced: view.spaced,
             banner_rows: banner_rows(view),
             commit_graph: view.commit_graph.is_some(),
@@ -80,6 +85,8 @@ pub struct RowCarve {
     pub rule: Cells,
     /// [`ScreenRows::offer`](super::ScreenRows::offer).
     pub offer: Cells,
+    /// [`ScreenRows::status`](super::ScreenRows::status).
+    pub status: Cells,
     /// [`ScreenRows::footer`](super::ScreenRows::footer).
     pub footer: Cells,
 }
@@ -113,7 +120,6 @@ pub fn row_carve(area: Cells, inputs: CarveInputs) -> RowCarve {
         height: u16::from(spaced),
         ..area
     };
-    let rule_floor = footer.y;
     let top = gap.bottom().min(footer.y);
     let free = footer
         .y
@@ -124,16 +130,23 @@ pub fn row_carve(area: Cells, inputs: CarveInputs) -> RowCarve {
         height: inputs.banner_rows.min(free),
         ..area
     };
-    let offer = Rect {
-        y: rule_floor.saturating_sub(1),
-        height: u16::from(inputs.commit_graph && free > banner.height),
+    // The done line's own row, directly above the bar (ease-pass/08s M4),
+    // when a row is going spare under the banner; the offer above it.
+    let spare = free.saturating_sub(banner.height);
+    let status = Rect {
+        y: footer.y.saturating_sub(1),
+        height: inputs.status_row.rows_taken().min(spare),
         ..area
     };
-    let above_offer = if offer.height > 0 {
-        offer.y
-    } else {
-        rule_floor
+    // Each of the two is a row or none: what stands above it starts that
+    // many rows higher.
+    let rule_floor = footer.y.saturating_sub(status.height);
+    let offer = Rect {
+        y: rule_floor.saturating_sub(1),
+        height: u16::from(inputs.commit_graph && free > banner.height + status.height),
+        ..area
     };
+    let above_offer = rule_floor.saturating_sub(offer.height);
     let rule = Rect {
         y: above_offer.saturating_sub(1),
         height: u16::from(spaced),
@@ -152,6 +165,7 @@ pub fn row_carve(area: Cells, inputs: CarveInputs) -> RowCarve {
         body: cells_of(body),
         rule: cells_of(rule),
         offer: cells_of(offer),
+        status: cells_of(status),
         footer: cells_of(footer),
     }
 }

@@ -55,8 +55,13 @@ pub struct ScreenRows {
     /// ([`GraphView::spaced`](super::GraphView::spaced)); zero-height below
     /// 30 rows.
     pub rule: Rect,
-    /// The commit-graph offer's row, directly above the hint bar.
+    /// The commit-graph offer's row, above the hint bar (and above the
+    /// done line's row when that is drawn).
     pub offer: Rect,
+    /// The done line's own row, directly above the hint bar, while
+    /// [`GraphView::status_row`](super::GraphView::status_row) says so
+    /// (ease-pass/08s M4); zero-height otherwise.
+    pub status: Rect,
     /// The hint bar's row: the screen's last.
     pub footer: Rect,
 }
@@ -262,6 +267,7 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         body: rect_of(carve.body),
         rule: rect_of(carve.rule),
         offer: rect_of(carve.offer),
+        status: rect_of(carve.status),
         footer: rect_of(carve.footer),
     }
 }

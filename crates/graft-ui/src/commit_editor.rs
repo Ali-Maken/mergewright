@@ -24,8 +24,10 @@ use crate::text_input::{AreaView, FieldView};
 use crate::theme::Theme;
 
 mod draw;
+mod layout;
 mod words;
 
+pub use layout::{CommitLayout, commit_layout, file_at};
 pub use words::{bar, summary_line};
 
 /// Characters the subject is meant to stay inside: the counter reads
@@ -221,6 +223,8 @@ pub struct CommitScreen<'a> {
 
 #[cfg(test)]
 mod fixture;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod part_tests;
 #[cfg(test)]

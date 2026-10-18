@@ -239,6 +239,7 @@ pub fn view_with_graphics(
                 let footer_width =
                     primary_pane_area(state, area).map_or(area.width, |graph| graph.width);
                 screen.notice = status_row_notice(state, &screen, tier, footer_width);
+                check_status_row(state, &screen);
                 screen.pixel = pixels;
                 // By the tier in force: a preview drawing the column in text
                 // does not change what the terminal said (ADR-0060 2).
@@ -274,5 +275,21 @@ pub fn view_with_graphics(
     pixels_above_overlays(graph, palette.into_iter().chain(boxes))
 }
 
+/// Where the done line stands is read off state, so the scrollers can count
+/// the row it takes; in a dev build, every frame, it must agree with the bar
+/// drawn under it (ease-pass/08s M4).
+fn check_status_row(state: &AppState, screen: &GraphView<'_>) {
+    debug_assert_eq!(
+        screen.status_row,
+        graft_ui::graph_screen::status_row(
+            crate::update::commit_editor::done_shown(state),
+            &screen.hint_context
+        ),
+        "`update::commit_editor::done_row` disagrees with the bar drawn"
+    );
+}
+
+#[cfg(test)]
+mod landing_tests;
 #[cfg(test)]
 mod tests;

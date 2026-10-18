@@ -45,10 +45,9 @@ pub(super) use fold::fold_tail;
 /// rectangle — because those need the `Session` and move nothing.
 ///
 /// That matters because [`super::hit::badge_index_at`] calls this function
-/// too, to say which badge a mouse cell belongs to. When the frame overrode
-/// the icons and the lane cap *after* building the view, the hit-test
-/// measured against a view nothing ever drew, and with Nerd icons or past
-/// eight lanes a drag landed on the wrong badge.
+/// too, to say which badge a mouse cell belongs to: when the frame overrode
+/// the icons and the lane cap *after* building the view, a drag with Nerd
+/// icons or past eight lanes landed on the wrong badge.
 #[must_use]
 pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
@@ -67,17 +66,15 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         return opening_view(state, location, problem);
     };
 
-    let walk = walk_view(state, history);
     let thread = thread(history);
     let mut live = visible_rows(state, history, thread.as_ref(), now_seconds);
     mark_stash_only(state, &mut live);
     let compaction = compaction(state, history, thread.as_ref(), &live);
     let banner_op = crate::update::banner::banner_view(state);
     let (rows, reveal) = rows_for_frame(state, history, live, now_seconds);
-    // The footer follows the *box*, not the slice. While the plan is still
-    // in flight the rows are empty and the graph keeps what it had, but the
-    // box already has the keyboard — a footer offering `m merge  r rebase`
-    // there names two keys the modal box swallows (review 08 Minor 10).
+    // The footer follows the *box*, not the slice: while the plan is in
+    // flight the rows are empty but the box has the keyboard, and a footer
+    // offering `m merge  r rebase` names two keys it swallows (review 08 m10).
     let hint_context = if state.preview.is_some() {
         HintContext::Preview
     } else {
@@ -87,7 +84,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     GraphView {
         location,
         problem,
-        walk,
+        walk: walk_view(state, history),
         rows,
         banner_op,
         pending: crate::update::banner::pending_view(state),
@@ -104,6 +101,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         push: crate::update::commit_editor::push_words(state, false)
             .map(|words| graft_term::sanitize_line(&words)),
         notice: None,
+        status_row: crate::update::commit_editor::done_row(state),
         search: modal_blanked(state, search_line),
         search_tail: modal_blanked(state, search_tail),
         compare_footer: modal_blanked(state, compare_footer_line),
@@ -294,6 +292,7 @@ fn opening_view(
         graphics: None,
         push: None,
         notice: None,
+        status_row: crate::update::commit_editor::done_row(state),
         search: modal_blanked(state, search_line),
         search_tail: modal_blanked(state, search_tail),
         compare_footer: modal_blanked(state, compare_footer_line),
