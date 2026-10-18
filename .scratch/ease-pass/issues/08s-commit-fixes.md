@@ -1,6 +1,6 @@
 # 08s — commit screen fixes (review ease-pass-08: Majors 1–7, minors 1–8, 11, 12 in part; Q1, Q2; absorbs 08r)
 
-Status: draft
+Status: ready
 Blocked by: 05c-merge-review-rest (its wave owns `update/state.rs`, `update/events.rs`, `jobs/kinds.rs` and edits the clash-stop landing in `update::operate`; all edited here), 06r-fold-fixes (shared registries: `docs/man/mwr.1`, `TESTING.md`, `docs/design/02-keymap.md`, `over_400.txt`, re-shot captures). **Conductor:** 06s's Blocked by gains 08s (`update/state.rs`, `update/events.rs` lowered here); 06b also edits graft-ui `graph_screen/layout.rs` (M4 may too), so order them.
 Build with: Opus (`builder-opus-xhigh`) — every decision is made below and pinned by a state, real-git or render test; no cross-crate signature for another ticket; no correctness that hides from the tests. Not Fable.
 Needs: from 08 (built): `Draft`, `LastCommit`, `include_of`, `landed_bar`, `CommitEditor::from_draft`, `commit_landed`, `CommitScreenView`, `CommitFileRow`, `Summary`, `CommitHeader`, `push_words`, `whole_parts`. From 04/04r (graft-ops): `Include`, `FileChoice`, `Part` (`Part::StagedPart`), `first_choice`, `looks_like_secrets`, `commit_chosen`. graft-git `DiffSpec`. graft-ui `RowBar::{JustCommitted, JustMerged}`, `fit_status_line`.
