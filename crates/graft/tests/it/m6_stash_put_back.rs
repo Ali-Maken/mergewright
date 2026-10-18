@@ -396,7 +396,7 @@ fn done_shot(state: &AppState) {
     // layout at 120x40), not on the frame's last row.
     assert!(
         done.iter().any(|row| row.trim()
-            == "every file done \u{b7} stash@{0} dropped \u{2713} \u{b7} u brings it back"),
+            == "\u{2713} every file done \u{b7} stash@{0} dropped  u brings it back"),
         "{}",
         done.join("\n")
     );
@@ -598,7 +598,7 @@ const DONE_HEADER: &str = "\
 #  - No `CONFLICTS` section anywhere: the tree is clean again (yours was
 #    taken, which is what is committed), so the pane shows HEAD's commit.
 #  - The status row, under the graph, reads
-#    `every file done · stash@{0} dropped ✓ · u brings it back`.
+#    `✓ every file done · stash@{0} dropped  u brings it back`.
 ";
 
 const HEADER: &str = "\

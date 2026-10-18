@@ -1,7 +1,7 @@
 //! `pull_ff_over_edits` (m7-power-tools/03b): a fast-forward pull over an
 //! unsaved edit to a file it changes is `p`, one key, no decision — his
 //! edit set aside and put back, HEAD fast-forwarded, the cursor on the new
-//! HEAD, `pulled origin/main ✓ · your edits are back`. The capture is drawn
+//! HEAD, `✓ pulled origin/main · your edits are back`. The capture is drawn
 //! by `view::view` from the walked state (colour unverified, CLAUDE.md
 //! rule 5).
 //!
@@ -114,7 +114,7 @@ fn pull_ff_over_edits() {
     let frame = frame_at(&state, 120, 40, Some(Clock::Fixed(PULL_NOW)));
     let body = format!("{}\n", frame.join("\n"));
     assert!(
-        body.contains("pulled origin/main \u{2713} \u{b7} your edits are back"),
+        body.contains("\u{2713} pulled origin/main \u{b7} your edits are back"),
         "{body}"
     );
     check_shot("m7/pull-over-edits-120x40.txt", &body);

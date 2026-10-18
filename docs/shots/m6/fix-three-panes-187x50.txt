@@ -47,4 +47,4 @@ FILES · 2 conflicted     │▸ notes.txt · 2 conflicts · 1 open
                          │
                          │
                          │
- took theirs · feature in notes.txt · 1 of 2 open ✓
+ ✓ took theirs · feature in notes.txt · 1 of 2 open

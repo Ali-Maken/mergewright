@@ -23,7 +23,7 @@ pub(in crate::event_loop) struct Arrival {
     pub at: Option<graft_core::oid::Oid>,
     /// This place is the practice repository: the tour's card and ticks.
     pub practice: bool,
-    /// The tour was finished in the place before: `practice done ✓`.
+    /// The tour was finished in the place before: `✓ practice done`.
     pub tour_done: bool,
     /// The process's one keymap (`config::keymap_from`, ADR-0055).
     pub keymap: Arc<graft_ui::keymap::Keymap>,

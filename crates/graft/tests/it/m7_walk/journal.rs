@@ -298,7 +298,7 @@ fn journey_13(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> Ap
     let state = app.pump(state, "the graph re-read with D on it", |state| {
         drawn(state, 187, 50)
             .iter()
-            .any(|row| row.contains(lost_work::LOST_ON_MAIN) && !row.contains("put back ✓"))
+            .any(|row| row.contains(lost_work::LOST_ON_MAIN) && !row.contains("✓ put back"))
     });
     let state = crate::captures::settled_frame(app, state);
     let landed = drawn(&state, 187, 50);

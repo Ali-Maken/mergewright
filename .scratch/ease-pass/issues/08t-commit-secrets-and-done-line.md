@@ -1,6 +1,6 @@
 # 08t — commit fixes, part B1: masked secrets, tick-first done line
 
-Status: ready (split by the conductor from 08s after two compactions, 2026-10-18; no new decision — scope, words and tests are 08s's)
+Status: done (2026-10-18). Split by the conductor from 08s after two compactions; no new decision — scope, words and tests are 08s's.
 Blocked by: 08s part A (merged)
 Build with: Opus (`builder-opus-xhigh`), as 08s.
 
@@ -14,3 +14,10 @@ Everything else — signatures, words, Touches — is 08s's spec; read 08s top t
 
 ## Acceptance
 Tick in **08s's file**, each naming its test: **Q1 lines**, **Q1 screen**, **Q1 captures**, **08r**, **m5**, **m8**, and the captures box's rows for `commit-secrets-120` and the `✓` re-shoots. Leave M4, M5+Q2, m4, m12, M6 to 08u.
+
+## NOTES (builder, 2026-10-18)
+- **Compacted once** mid-ticket; nothing of this scope remains.
+- No scout: 08s's Step 1 answers stand in.
+- Boxes ticked in 08s, each naming its test: Q1 lines, Q1 screen, Q1 captures, 08r, m5, m8 (6 of 6).
+- The captures box stays open for 08u; 08t's part (commit-secrets-120 and 45 re-shots) is listed.
+- The full notes are in 08s, under "NOTES (builder, part B1 = ticket 08t)": deviations, four questions with lines, the capture lists, Touches and gates.

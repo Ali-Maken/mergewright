@@ -13,7 +13,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
 /// closes its entry `Aborted` exactly as a user's abort does
 /// (`graft_ops::apply::resume::close_resume`). It must answer `Failed`,
 /// never `Done`: `banner::resumed_words` reads an `Aborted` entry on a
-/// `Done` answer to an abort as `aborted: … ✓`.
+/// `Done` answer to an abort as `✓ aborted: …`.
 #[test]
 fn a_resume_git_fails_answers_failed() {
     let entry = JournalEntry {

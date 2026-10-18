@@ -232,7 +232,7 @@ fn empty_query_box(state: &AppState) {
 // ── `switch-named-branch`: `C <type> ⏎` ───────────────────────────────────
 
 /// `C login ⏎` on a clean tree: on `login-page` at once, no preview, the
-/// cursor on its row, `on login-page ✓ · u goes back`. Then `u`: on `main`.
+/// cursor on its row, `✓ on login-page  u goes back`. Then `u`: on `main`.
 /// Captures the box filtered at 100×30 on the way, and the landing at
 /// 120×40.
 #[test]
@@ -268,7 +268,7 @@ fn switch_named_branch() {
     );
     let text = drawn(&state, 120, 40);
     assert!(
-        text.contains("on login-page \u{2713} \u{b7} u goes back"),
+        text.contains("\u{2713} on login-page  u goes back"),
         "{text}"
     );
     check_shot(
@@ -280,7 +280,7 @@ fn switch_named_branch() {
                 "switch_named_branch",
                 "`C login ⏎` on a clean tree — no preview box; the cursor on\n\
                  # the new HEAD's row (login-page); the status line\n\
-                 # `on login-page ✓ · u goes back`."
+                 # `✓ on login-page  u goes back`."
             )
         ),
     );
@@ -434,7 +434,7 @@ fn switch_to_a_remote_only_branch_makes_its_local_copy() {
                 "picker-remote-landed-120x40.txt",
                 "switch_to_a_remote_only_branch_makes_its_local_copy",
                 "`C sara ⏎` on `origin/sara/login-page` — the status line\n\
-                 # `on sara/login-page (new, tracks origin/sara/login-page) ✓ · u\n\
+                 # `✓ on sara/login-page (new, tracks origin/sara/login-page)  u\n\
                  # goes back`; the cursor on the new HEAD's row."
             )
         ),
@@ -559,7 +559,7 @@ fn y_takes_it_and_lands_on_the_new_commit(state: &AppState, path: &std::path::Pa
         "the cursor on the new commit"
     );
     let text = drawn(state, 120, 40);
-    let line = "took \"fix the bug\" onto main \u{2713} \u{b7} your edits are back \u{b7} u undoes";
+    let line = "\u{2713} took \"fix the bug\" onto main \u{b7} your edits are back  u undoes";
     assert!(text.contains(line), "`{line}`:\n{text}");
 }
 

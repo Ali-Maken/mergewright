@@ -10,7 +10,7 @@
 #   `⏎ commit 1 file  ⇥ more detail`. The body is empty; `sample.txt` is
 #   under `Going in`.
 # - Frame 2: the screen is gone; the status line reads
-#   `Committed 1 file to main. ✓` and the graph's top row is
+#   `✓ Committed 1 file to main.` and the graph's top row is
 #   `[◆ main] fix: x`, with nothing uncommitted.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
@@ -97,4 +97,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- Committed 1 file to main. ✓ · u undo · P push
+ ✓ Committed 1 file to main.  u undo · P push

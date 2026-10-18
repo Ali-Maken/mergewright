@@ -682,7 +682,7 @@ fn a_stopped_rebase_then_a_clash_is_eight_keys() {
 /// Review m6-final-fixes-74 m2: `p r r` to the stop on F, then `esc a y` —
 /// `esc` leaves the resolver for the banner, `a` asks, `y` aborts. The
 /// branch back on its own tip, G's edit in the tree, no stash left, and the
-/// line `aborted: rebase … ✓ · your edits are back`.
+/// line `✓ aborted: rebase … · your edits are back`.
 #[test]
 fn aborting_a_stopped_rebase_puts_the_edits_back() {
     let remote = local();
@@ -918,7 +918,7 @@ const DONE_HEADER: &str = "\
 # What right looks like: `p r r` over three edited files, the rebase clean.
 #  - The graph on HEAD, the rebased `ours` on top of the teammate's commit.
 #  - The status row reads
-#    `rebase main onto origin/main ✓ · your edits are back` (the op's own
+#    `✓ rebase main onto origin/main · your edits are back` (the op's own
 #    done line, as a clean-tree rebase words it, then the clause).
 ";
 
@@ -1071,8 +1071,8 @@ fn switched_over_the_fallback(
 fn fallback_line_shot(state: &AppState, columns: u16, rows: u16) -> String {
     let line = staging_line(state, columns, rows);
     let rungs = [
-        "on fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
-        "on fix \u{2713} \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
+        "\u{2713} on fix \u{b7} your edits are back \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
+        "\u{2713} on fix \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
         "staging not kept: f.txt \u{b7} u undoes it, staging included",
     ];
     if columns >= 187 {
@@ -1115,7 +1115,7 @@ const STAGING_NOT_KEPT_HEADER: &str = "\
 # edited and staged, `fix` changed line 7. git could not put the staging
 # back on `fix`'s tree, so the edits came back unstaged.
 #  - The cursor on `fix`, now HEAD.
-#  - The bottom row: `on fix ✓ · your edits are back · staging not
+#  - The bottom row: `✓ on fix · your edits are back · staging not
 #    kept: f.txt · u undoes it, staging included` at 187; at 80 `your
 #    edits are back` goes first, the file and `u` stay whole.
 #  - Nowhere `could not confirm`.

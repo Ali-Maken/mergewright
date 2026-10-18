@@ -1,4 +1,4 @@
-//! m6-conflicts/68 on a real repository: an abort reads `aborted: … ✓`, and
+//! m6-conflicts/68 on a real repository: an abort reads `✓ aborted: …`, and
 //! what `u` says right after it. Real `git`, real job pool, real keys; the
 //! repository is read back rather than trusted from the line.
 //!
@@ -60,7 +60,7 @@ fn a_relaunched_rebase_abort_reads_aborted() {
     assert!(
         frame
             .iter()
-            .any(|row| row.contains(&format!("{ABORTED} \u{2713}"))),
+            .any(|row| row.contains(&format!("\u{2713} {ABORTED}"))),
         "{body}"
     );
     let head = git(repo, &["rev-parse", "HEAD"]);

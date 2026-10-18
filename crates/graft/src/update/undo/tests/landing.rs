@@ -92,7 +92,7 @@ fn an_undo_that_puts_a_merge_back_lands_on_the_banner() {
     );
     assert_eq!(
         done_line_of(&state.status),
-        "undo: finish merge of feature ✓ · c finishes the merge"
+        "✓ undo: finish merge of feature  c finishes the merge"
     );
 }
 

@@ -338,9 +338,7 @@ fn put_back_and_was_here_tags_draw() {
         "where main was:\n{body}"
     );
     assert!(
-        body.contains(
-            "put back \u{2713} \u{b7} main has \"Add rate limiter\" again \u{b7} u undoes"
-        ),
+        body.contains("\u{2713} put back \u{b7} main has \"Add rate limiter\" again  u undoes"),
         "the \u{2713} line:\n{body}"
     );
     drop(state);

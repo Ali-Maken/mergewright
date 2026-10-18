@@ -119,4 +119,4 @@ deleted by them · o keeps the file  t deletes it
 
 
 
- restarted gone.txt ✓
+ ✓ restarted gone.txt

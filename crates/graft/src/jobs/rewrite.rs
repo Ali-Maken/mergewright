@@ -53,7 +53,7 @@ pub struct PlannedPutIn {
     pub shown: BoxWords,
 }
 
-/// The landing's status line: `<what> ✓ · <also> · u undoes`.
+/// The landing's status line: `✓ <what> · <also>  u undoes`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DoneWords {
     /// Before the tick: `put into "Add OAuth callback"`.

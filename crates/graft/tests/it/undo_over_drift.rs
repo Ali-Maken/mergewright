@@ -474,7 +474,7 @@ fn the_time_machine_names_the_presses() {
     let state = app.key(&state, KeyCode::Right);
     let state = app.settle_write(app.key(&state, KeyCode::Enter), "the forced revert");
     // Fitted to the 80-column footer (m6-conflicts/80, review m5): with the
-    // path, `… ✓ · U (2 times) brings back your edit to fix.txt` is 93
+    // path, `✓ …  U (2 times) brings back your edit to fix.txt` is 93
     // cells; the path goes first and the key stays.
     assert_eq!(
         state.status,
@@ -518,18 +518,18 @@ fn header(size: &str) -> String {
 # 1. The drift box: under what moved, `Undo replaces your edit to fix.txt;
 #    a backup keeps it, and U brings it back.` — whole, not cut. The graph
 #    under it has settled: no `sorting…` (asserted; m6-conflicts/80).
-# 2. After `y`: no changes row, and the bottom row reads `undo: checkout
-#    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
+# 2. After `y`: no changes row, and the bottom row reads `✓ undo: checkout
+#    fix  U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
 #    m6-conflicts/79). `fix`'s row reads `[fix] fix the bug`, no mark
 #    after the badge (this line said a Radar `ⓘ` until m8/28).
-# 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
-#    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
+# 3. After `U`: the changes row is back, `(1 unstaged)`, and `✓ redo:
+#    checkout fix`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
 # 4. A second repository: `fix`, then `fix2`, checked out, `fix.txt`
 #    edited, and the journal's time machine run back to before `checkout
-#    fix` past its drift box. The bottom row reads `reverted to before
-#    “checkout fix” (2 steps) ✓ · U (2 times) brings it back`, whole at 80
+#    fix` past its drift box. The bottom row reads `✓ reverted to before
+#    “checkout fix” (2 steps)  U (2 times) brings it back`, whole at 80
 #    columns: the path is dropped before the key (asserted; m6-conflicts/80).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
@@ -553,7 +553,7 @@ fn assert_way_back_frames(size: &str, [asked, landed, back, jumped]: [&str; 4]) 
     // (m6-conflicts/80, review m5).
     assert!(
         jumped.contains(
-            "reverted to before \u{201c}checkout fix\u{201d} (2 steps) \u{2713} \u{b7} U (2 times) brings it back"
+            "\u{2713} reverted to before \u{201c}checkout fix\u{201d} (2 steps)  U (2 times) brings it back"
         ),
         "{size}\n{jumped}"
     );

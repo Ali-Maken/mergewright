@@ -333,8 +333,8 @@ pub struct AppState {
     pub(crate) clash_facts_seen: bool,
     /// The `DropPutBack` the resolver's close launched after a popped
     /// stash's last file, the stash's position then, and why it was put
-    /// back — what its answer's `every file done · stash@{0} dropped ✓`
-    /// names (a set-aside's: `every file done · your edits are back ✓`,
+    /// back — what its answer's `✓ every file done · stash@{0} dropped`
+    /// names (a set-aside's: `✓ every file done · your edits are back`,
     /// m6-conflicts/74).
     pub(crate) clash_drop: Option<(JobId, Option<usize>, graft_core::journal::PutBackWhy)>,
     /// The clash landing opened the resolver from the changes pane while
@@ -1246,10 +1246,10 @@ pub enum Status {
     /// (m3-working-tree-undo-and-stash/04).
     Busy(String),
     /// It finished: a working-tree write in the journal's own words (`stage
-    /// src/a.rs`), or a verdict (`every file done`). Drawn `<what> ✓`, then
+    /// src/a.rs`), or a verdict (`every file done`). Drawn `✓ <what>`, then
     /// ` · <also>` when something else is true after it (`your edits are
-    /// back`), then ` · <keys>` when there is a next key to name (`c
-    /// finishes the merge`), by `view::status::done_line` — the one place
+    /// back`), then two spaces and `<keys>` when there is a next key to
+    /// name (`c finishes the merge`), by `view::status::done_line` — the one place
     /// that draws a `Done`. Cleared by the next key, like `Copied`.
     ///
     /// The keys are kept apart, as `Sticky`'s are, because the tick is the
@@ -1278,7 +1278,7 @@ impl Status {
         }
     }
 
-    /// `Done` with no keys: drawn `<what> ✓`.
+    /// `Done` with no keys: drawn `✓ <what>`.
     pub fn done(what: impl Into<String>) -> Status {
         Status::Done {
             what: what.into(),
@@ -1287,7 +1287,7 @@ impl Status {
         }
     }
 
-    /// `Done` whose line names the next key: drawn `<what> ✓ · <keys>`.
+    /// `Done` whose line names the next key: drawn `✓ <what>  <keys>`.
     pub fn done_with_keys(what: impl Into<String>, keys: impl Into<String>) -> Status {
         Status::Done {
             what: what.into(),

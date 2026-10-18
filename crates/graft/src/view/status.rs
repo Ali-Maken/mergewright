@@ -53,18 +53,23 @@ pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     }
 }
 
-/// The one rendering of a [`Status::Done`]: `<what> ✓`, then ` · <also>`,
-/// then ` · <keys>`, each part only when present. The tick says `what`
-/// finished, so it goes after `what` and never after what else is true or
-/// the key still to press (ticket 41; review m6-final-fixes-74 m3). Every
-/// draw site calls this, and so does the resolver's notice row, so none can
-/// place the tick apart.
+/// The one rendering of a [`Status::Done`]: `✓ <what>`, then ` · <also>`,
+/// then two spaces and `<keys>`, each part only when present — the commit
+/// mock's landing line (`✓ Committed 3 files to main.  u undo · P push`).
+/// The tick leads, so it is the first thing read and never lands after
+/// what else is true or the key still to press (ticket 41); the gap, not a
+/// `·`, sets the keys apart from the words, as the hint bar does. Every
+/// draw site calls this, so none can place the tick apart.
 #[must_use]
 pub(crate) fn done_line(what: &str, also: Option<&str>, keys: Option<&str>) -> String {
-    let mut line = format!("{what} ✓");
-    for part in [also, keys].into_iter().flatten() {
+    let mut line = format!("✓ {what}");
+    if let Some(also) = also {
         line.push_str(" · ");
-        line.push_str(part);
+        line.push_str(also);
+    }
+    if let Some(keys) = keys {
+        line.push_str("  ");
+        line.push_str(keys);
     }
     line
 }
@@ -210,27 +215,33 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
 mod tests {
     use super::done_line;
 
+    /// The commit mock's landing line (`mergewright-commit-screen.html:178`):
+    /// the tick first, then what finished, two spaces, then the keys.
     #[test]
-    fn done_line_puts_the_tick_after_what_and_before_keys() {
-        assert_eq!(done_line("x", None, None), "x ✓");
+    fn the_done_line_leads_with_its_tick() {
+        assert_eq!(
+            done_line("Committed 3 files to main.", None, Some("u undo · P push")),
+            "✓ Committed 3 files to main.  u undo · P push"
+        );
+        assert_eq!(done_line("x", None, None), "✓ x");
         assert_eq!(
             done_line("x", None, Some("c finishes the merge")),
-            "x ✓ · c finishes the merge"
+            "✓ x  c finishes the merge"
         );
     }
 
     /// Review m6-final-fixes-74 M4: a fact that is not a key (`your edits
-    /// are back`) rides in `also`, drawn after the tick and before any key —
-    /// never in `keys`, where the key-driven paths replace it.
+    /// are back`) rides in `also`, drawn after `what` with a `·` and before
+    /// any key — never in `keys`, where the key-driven paths replace it.
     #[test]
     fn done_line_places_also_before_keys() {
         assert_eq!(
             done_line("rebase", Some("your edits are back"), None),
-            "rebase ✓ · your edits are back"
+            "✓ rebase · your edits are back"
         );
         assert_eq!(
             done_line("rebase", Some("your edits are back"), Some("u undoes")),
-            "rebase ✓ · your edits are back · u undoes"
+            "✓ rebase · your edits are back  u undoes"
         );
     }
 

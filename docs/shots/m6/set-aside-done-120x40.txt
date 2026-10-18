@@ -11,7 +11,7 @@
 # What right looks like: `p r r` over three edited files, the rebase clean.
 #  - The graph on HEAD, the rebased `ours` on top of the teammate's commit.
 #  - The status row reads
-#    `rebase main onto origin/main ✓ · your edits are back` (the op's own
+#    `✓ rebase main onto origin/main · your edits are back` (the op's own
 #    done line, as a clean-tree rebase words it, then the clause).
 
  ◆ api  ~/code/api · main                                                                 202 commits  1 commit to push
@@ -53,4 +53,4 @@
   ●    Commit 169                                                                                       GF 1y   4926766
   ●    Commit 168                                                                                       GF 1y   0d60d60
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- rebase main onto origin/main ✓ · your edits are back
+ ✓ rebase main onto origin/main · your edits are back

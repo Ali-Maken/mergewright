@@ -524,7 +524,7 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 |---|---|
 | `Ctrl+Enter` | Commit |
 | `Enter` | In the subject: commit, as in §2.6b (P16, approved 2026-09-24; ADR-0044 §3). In the body: a newline |
-| `Tab` | Move between subject / body / options (`Tab` from the subject reaches the body) |
+| `Tab` | Move subject → body → files → subject (`Shift+Tab` back) |
 | `Ctrl+E` | Open `$EDITOR` instead |
 | `Ctrl+S` | Sign off: on / off |
 | `Ctrl+Shift+C` | Insert a co-author trailer |

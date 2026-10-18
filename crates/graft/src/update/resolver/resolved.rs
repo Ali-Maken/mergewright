@@ -170,10 +170,10 @@ fn to_next(
 ///
 /// A clash Graft recorded (`AppState::clash`, m6-conflicts/72b) ends here
 /// too (ADR-0045 §3): a **pop** or set-aside launches
-/// `Operation::DropPutBack` — its answer says `every file done ·
-/// stash@{0} dropped ✓ · u brings it back` (a set-aside's: `every file
-/// done · your edits are back ✓`); an **apply** runs nothing,
-/// `every file done · stash@{0} kept ✓`. A shell pop has no record, and
+/// `Operation::DropPutBack` — its answer says `✓ every file done ·
+/// stash@{0} dropped  u brings it back` (a set-aside's: `✓ every file
+/// done · your edits are back`); an **apply** runs nothing,
+/// `✓ every file done · stash@{0} kept`. A shell pop has no record, and
 /// closes as it always did.
 pub(crate) fn close_after_last(
     state: &mut AppState,
@@ -249,9 +249,9 @@ fn stay_after_last(
     }
 }
 
-/// `<file> done ✓ · every file done`, and the key that carries the
+/// `✓ <file> done  every file done`, and the key that carries the
 /// operation on (m6-conflicts/60). A merge says
-/// `<file> done ✓ · every clash is solved · y reviews the merge`.
+/// `✓ <file> done  every clash is solved · y reviews the merge`.
 fn last_done(state: &AppState, done: &Path) -> Status {
     let (every, keys) = every_file_done_parts(state);
     // A merge's solved files wait, unstaged, for the review (ease-pass/05b).

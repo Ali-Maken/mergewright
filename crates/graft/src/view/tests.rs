@@ -343,7 +343,7 @@ fn a_running_write_and_a_finished_one_both_say_so_in_the_footer() {
         ..running
     };
     let screen = draw(&done, 60, 5);
-    assert!(screen.contains("stage src/a.rs \u{2713}"), "{screen}");
+    assert!(screen.contains("\u{2713} stage src/a.rs"), "{screen}");
 }
 
 /// A remote write's line ends in its key hint, drawn as the design note

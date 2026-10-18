@@ -23,7 +23,7 @@ fn gone_kept_and_opened(app: &App, state: &AppState) -> AppState {
                 .any(|(path, row)| path == "gone.txt" && *row == RowState::Done)
     });
     let state = done_open(app, &state, "gone.txt");
-    // The status line (`resolved gone.txt (ours) ✓`) holds the bar's row
+    // The status line (`✓ resolved gone.txt (ours)`) holds the bar's row
     // until the next key; `PgUp` at the top scrolls nowhere and gives it
     // back (`k` steps files since m6-conflicts/17).
     app.key(&state, KeyCode::PageUp)

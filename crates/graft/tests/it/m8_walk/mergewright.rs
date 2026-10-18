@@ -278,7 +278,7 @@ fn rebase_feature_onto_main(pty: &mut Pty, repo: &Path) {
     pty.wait_for(
         "feature on main, the rebase's outcome written and said",
         |s| {
-            s.has("rebase feature onto main \u{2713}")
+            s.has("\u{2713} rebase feature onto main")
                 && git(repo, &["rev-parse", "feature~1"]) == main
                 && older::journal(repo)
                     .iter()

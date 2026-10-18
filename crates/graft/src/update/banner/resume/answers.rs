@@ -180,7 +180,7 @@ pub(crate) fn resumed_words(how: &Resume, applied: &graft_ops::apply::Applied) -
     match closing(how, &applied.entry) {
         // A rebase that set edits aside put them back as it closed: a
         // closing answer means they came back clean, and the line says so
-        // after the tick — `aborted: rebase … ✓ · your edits are back`
+        // after the tick — `✓ aborted: rebase … · your edits are back`
         // (m6-conflicts/74). Nothing after it for any other entry.
         Closing::Finished(what) => Status::Done {
             what,

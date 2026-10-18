@@ -392,7 +392,7 @@ fn stash_pop_clash_to_done() -> Scenario {
                 Step::Frame(
                     "the done line, drawn",
                     &[Sees::Has(
-                        "every file done · stash@{0} dropped ✓ · u brings it back",
+                        "✓ every file done · stash@{0} dropped  u brings it back",
                     )],
                 ),
                 Step::Shell(|fixture| {
@@ -409,7 +409,7 @@ fn stash_pop_clash_to_done() -> Scenario {
 }
 
 /// `stash-apply-clash-to-done`: `S ⏎ y o ⏎` — the same, but an apply keeps
-/// its stash: `every file done · stash@{0} kept ✓`, one entry listed.
+/// its stash: `✓ every file done · stash@{0} kept`, one entry listed.
 fn stash_apply_clash_to_done() -> Scenario {
     journey(
         "stash-apply-clash-to-done",
@@ -430,7 +430,7 @@ fn stash_apply_clash_to_done() -> Scenario {
                 }),
                 Step::Frame(
                     "the done line, drawn",
-                    &[Sees::Has("every file done · stash@{0} kept ✓")],
+                    &[Sees::Has("✓ every file done · stash@{0} kept")],
                 ),
                 Step::Shell(|fixture| {
                     let list = stash_list(fixture)?;
@@ -584,7 +584,7 @@ fn pull_rebase_dirty() -> Scenario {
                 Step::Frame(
                     "the done line, drawn",
                     &[Sees::Has(
-                        "rebase main onto origin/main ✓ · your edits are back",
+                        "✓ rebase main onto origin/main · your edits are back",
                     )],
                 ),
                 Step::Shell(|fixture| {
@@ -840,7 +840,7 @@ fn switch_dirty_clash() -> Scenario {
                 Step::Frame(
                     "the done line, drawn",
                     &[Sees::Has(
-                        "every file done · set-aside copy dropped ✓ · u brings it back",
+                        "✓ every file done · set-aside copy dropped  u brings it back",
                     )],
                 ),
                 Step::Shell(|fixture| {

@@ -229,7 +229,7 @@ fn the_landing_keeps_also_when_the_banner_takes_the_keys() {
     assert!(state.banner_focus, "the banner has the keyboard");
     assert_eq!(
         done_line_of(&state.status),
-        "undo: finish merge of feature \u{2713} \u{b7} your edits are back \u{b7} c finishes the merge"
+        "\u{2713} undo: finish merge of feature \u{b7} your edits are back  c finishes the merge"
     );
 }
 

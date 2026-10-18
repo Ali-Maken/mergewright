@@ -21,4 +21,4 @@
 
 
 
- undo: finish merge of feature ✓ · c finishes the merge
+ ✓ undo: finish merge of feature  c finishes the merge

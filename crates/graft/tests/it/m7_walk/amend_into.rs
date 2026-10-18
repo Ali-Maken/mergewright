@@ -425,7 +425,7 @@ const REWORD_HEADER: &str = "\
 /// <sha7> "Add OAuth callback"` with its `gains` row and `feature-b` marked
 /// `built on yours · follows`; after `y`, the cursor on the new `HEAD`,
 /// `✎ changed` after "Add OAuth callback" only, and the status
-/// `put into "Add OAuth callback" ✓ · your unstaged edits are back · u
+/// `✓ put into "Add OAuth callback" · your unstaged edits are back  u
 /// undoes` (09b Q3: `src/tokens.rs` is edited and not staged). The box
 /// says one thing about his edits (09b Q4) and `undo: u takes this back`.
 ///
@@ -510,7 +510,7 @@ fn capture_amend_into_git_clock_pinned() {
     );
     assert!(
         body.contains(
-            "put into \"Add OAuth callback\" \u{2713} \u{b7} your unstaged edits are back \u{b7} u undoes"
+            "\u{2713} put into \"Add OAuth callback\" \u{b7} your unstaged edits are back  u undoes"
         ),
         "{body}"
     );

@@ -228,7 +228,7 @@ fn capture_after_continue_on_a_rebase() {
     for (columns, rows) in [(120u16, 40u16), (187, 50)] {
         let frame = drawn(&app, &state, columns, rows);
         let row = footer(&frame, "\u{2713}");
-        assert!(row.trim_end().ends_with('\u{2713}'), "{row}");
+        assert!(row.trim_start().starts_with('\u{2713}'), "{row}");
         let mut body = format!("{}\n", frame.join("\n"));
         for id in replayed.lines() {
             if body.contains(&id[..7]) {

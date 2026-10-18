@@ -232,9 +232,9 @@ pub(crate) fn instant_refused(
     Some(commands)
 }
 
-/// What a switch's clean landing says before its tick: `on <b>`, or `on <b>
+/// What a switch's clean landing says after its tick: `on <b>`, or `on <b>
 /// (new, tracks <origin/b>)`; `on <nb>` for a create that switches (`b <name>
-/// ⇥`). `None` for a detached checkout (today's words) and every other kind. Drawn `on <b> ✓ · u goes back` — the tick where
+/// ⇥`). `None` for a detached checkout (today's words) and every other kind. Drawn `✓ on <b>  u goes back` — the tick where
 /// every `Done` draws it (`view::status::done_line`; conductor ruling,
 /// m7-power-tools/10b), with `your edits are back` between when edits were
 /// set aside.

@@ -177,9 +177,9 @@ pub(super) fn landing(
 }
 
 /// The cells `view::status::done_line` draws for `what` and `keys`:
-/// `<what> ✓` and ` · <keys>`.
+/// `✓ <what>` and `  <keys>`.
 fn done_width(what: &str, keys: Option<&str>) -> usize {
-    what.chars().count() + 2 + keys.map_or(0, |keys| 3 + keys.chars().count())
+    2 + what.chars().count() + keys.map_or(0, |keys| 2 + keys.chars().count())
 }
 
 /// `text` in at most `room` characters, its end cut with `…` when it is

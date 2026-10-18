@@ -1,7 +1,7 @@
 //! A fast-forward pull over an unsaved edit to a file the pull changes
 //! (m7-power-tools/03b; before it, m6-conflicts/85 D's refusal): `p` sets
 //! the edit aside, fast-forwards and puts it back — one key, no decision —
-//! the cursor on the new `HEAD`, the line `pulled origin/main ✓ · your edits
+//! the cursor on the new `HEAD`, the line `✓ pulled origin/main · your edits
 //! are back`. When the edit and the pull change the same line, the put-back
 //! clashes and he lands on the resolver.
 #![allow(
@@ -83,7 +83,7 @@ pub(crate) fn pulled(app: &App, state: &AppState) -> AppState {
 }
 
 /// `p`, one key: HEAD at origin's tip, his edit back unstaged over theirs,
-/// no stash left, the cursor on the new HEAD, `pulled origin/main ✓ · your
+/// no stash left, the cursor on the new HEAD, `✓ pulled origin/main · your
 /// edits are back`. Was `a_ff_pull_over_overlapping_edits_names_keys_that_work`
 /// (m6-conflicts/85 D: the refusal, then `⏎ S s ⏎ esc p`, 7 keys),
 /// rewritten to the journey 03b makes of it.
@@ -145,7 +145,7 @@ fn a_ff_pull_over_edits_says_they_are_back() {
         .find(|row| row.contains("pulled origin/main"))
         .unwrap_or_else(|| panic!("no pulled line at 80:\n{}", drawn.join("\n")));
     assert!(
-        line.contains("pulled origin/main \u{2713} \u{b7} your edits are back"),
+        line.contains("\u{2713} pulled origin/main \u{b7} your edits are back"),
         "{line}"
     );
     drop(state);

@@ -60,7 +60,7 @@ pub(in crate::update) fn reread_disagrees(
 /// When the undo put an operation back (a finish taken back leaves git
 /// mid-merge), the banner takes the keyboard, exactly as a launch into that
 /// state lands (keymap §2.6a), and the `Done` line names the key that
-/// finishes it again: `undo: finish merge of feature ✓ · c finishes the
+/// finishes it again: `✓ undo: finish merge of feature  c finishes the
 /// merge`. Not under a modal or an overlay that hides the banner (the Map,
 /// the journal browser, the stash list): the keyboard is not taken from
 /// under them, and the landing is dropped rather than kept, because a later

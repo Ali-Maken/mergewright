@@ -125,7 +125,7 @@ fn undo(walk: &mut Walk<'_>, state: &AppState) -> AppState {
 // ── `.` Checkout, clean ──────────────────────────────────────────────────
 
 /// `checkout-branch` on a clean tree: `. ⏎` on `feature-b`'s row — no
-/// preview, on `feature-b`, the line `on feature-b ✓ · u goes back`, the
+/// preview, on `feature-b`, the line `✓ on feature-b  u goes back`, the
 /// cursor on the new `HEAD`'s row. Then `u`: back on `main`.
 #[test]
 fn switch_clean_via_menu_is_two_keys() {
@@ -160,7 +160,7 @@ fn switch_clean_via_menu_is_two_keys() {
     assert!(
         drawn
             .iter()
-            .any(|line| line.contains("on feature-b \u{2713} \u{b7} u goes back")),
+            .any(|line| line.contains("\u{2713} on feature-b  u goes back")),
         "{text}"
     );
     assert!(!text.contains("Preview"), "no preview box:\n{text}");
@@ -192,7 +192,7 @@ const CLEAN_HEADER: &str = "\
 #
 # Right: `. ⏎` on feature-b's row, the tree clean — no preview box; the
 # cursor on the new HEAD's row (feature-b, `◆`); the status line
-# `on feature-b ✓ · u goes back`.";
+# `✓ on feature-b  u goes back`.";
 
 // ── `.` Checkout, with edits ─────────────────────────────────────────────
 
@@ -297,8 +297,8 @@ const CAME_BACK_HEADER: &str = "\
 #
 # Right: `. ⏎ y` to feature-b over edits, with notes.md staged new and then
 # deleted from disk — on feature-b, the status line
-# `on feature-b ✓ · your edits are back · notes.md came back from the index
-# · u goes back` (a file back on disk is never silent).";
+# `✓ on feature-b · your edits are back · notes.md came back from the index
+#   u goes back` (a file back on disk is never silent).";
 
 // ── `b ⇥`, with edits ────────────────────────────────────────────────────
 

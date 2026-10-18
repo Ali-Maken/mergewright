@@ -28,7 +28,7 @@ const SHOTS: [(&str, &str, u16, u16); 7] = [
     ),
     (
         "commit-files-focus",
-        "`fix toc` typed, `⇥ ⇥`: the file list has focus; bar `space leave it out  j/k move  ⏎ commit 3 files  esc back to the message`.",
+        "`fix toc` typed, `⇥ ⇥`: the file list has focus; bar `space leave it out  j/k move  ⏎ commit  esc back to the message`.",
         120,
         40,
     ),
@@ -52,7 +52,7 @@ const SHOTS: [(&str, &str, u16, u16); 7] = [
     ),
     (
         "commit-landed",
-        "after `⏎`: the graph, the cursor on `fix toc`; the bottom row is the status `Committed 3 files to main.`, its tick, `u undo · P push` (the row's bar, `u undo the commit, your edits come back · P push · c commit again`, is under it, not drawn while the status stands); the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out. Ids zeroed (made by the run).",
+        "after `⏎`: the graph, the cursor on `fix toc`; the bottom row is the status `✓ Committed 3 files to main.  u undo · P push`, tick first (the row's bar, `u undo the commit, your edits come back · P push · c commit again`, is under it, not drawn while the status stands); the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out. Ids zeroed (made by the run).",
         120,
         40,
     ),

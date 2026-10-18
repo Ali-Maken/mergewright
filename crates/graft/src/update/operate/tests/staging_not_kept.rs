@@ -22,22 +22,22 @@ fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
     assert_eq!(
         staging_not_kept_rungs("checkout fix", &paths(&["base.txt"]), &[], graft_ui::keymap::Keymap::shipped()),
         vec![
-            "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
-            "checkout fix \u{2713} \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "\u{2713} checkout fix \u{b7} your edits are back \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "\u{2713} checkout fix \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
             "staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
         ]
     );
     assert_eq!(
         staging_not_kept_rungs("checkout fix", &paths(&["a.txt", "b.txt", "c.txt"]), &[], graft_ui::keymap::Keymap::shipped()),
         vec![
-            "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
-            "checkout fix \u{2713} \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
+            "\u{2713} checkout fix \u{b7} your edits are back \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
+            "\u{2713} checkout fix \u{b7} staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
             "staging not kept: a.txt +2 more \u{b7} u undoes it, staging included".to_owned(),
         ]
     );
 }
 
-/// Rung 1's text after `✓ · ` is graft-ops' own words, so the two cannot
+/// Rung 1's text after `✓ checkout fix · ` is graft-ops' own words, so the two cannot
 /// drift.
 #[test]
 fn staging_not_kept_words_match_graft_ops() {
@@ -50,7 +50,7 @@ fn staging_not_kept_words_match_graft_ops() {
             graft_ui::keymap::Keymap::shipped(),
         );
         let tail = rungs[0]
-            .strip_prefix("checkout fix \u{2713} \u{b7} ")
+            .strip_prefix("\u{2713} checkout fix \u{b7} ")
             .expect("rung 1 leads with the done words");
         assert_eq!(
             tail,
@@ -145,8 +145,8 @@ fn staging_not_kept_names_a_file_back_from_the_index() {
             graft_ui::keymap::Keymap::shipped()
         ),
         vec![
-            "checkout fix \u{2713} \u{b7} your edits are back \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
-            "checkout fix \u{2713} \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "\u{2713} checkout fix \u{b7} your edits are back \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
+            "\u{2713} checkout fix \u{b7} notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
             "notes.md came back from the index \u{b7} staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
             "staging not kept: base.txt \u{b7} u undoes it, staging included".to_owned(),
         ]

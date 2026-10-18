@@ -34,7 +34,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- undo: merge main into feature ✓
+ ✓ undo: merge main into feature
 
 === frame 2: `j` `U` — lands on the redone merge ===
  ◆ api  ~/code/api · feature                                                             9 commits  lanes drawn: 2 of 3
@@ -72,4 +72,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- redo: merge main into feature ✓
+ ✓ redo: merge main into feature

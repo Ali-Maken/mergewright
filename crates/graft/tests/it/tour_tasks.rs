@@ -266,7 +266,7 @@ impl Tour {
             s.has("Preview: finish merging clash into main")
         });
         self.send(b"y");
-        self.wait("merged", |s| s.has("merged clash into main \u{2713}"));
+        self.wait("merged", |s| s.has("\u{2713} merged clash into main"));
     }
 
     /// 8: `P`, `y`.

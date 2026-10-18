@@ -65,7 +65,7 @@ fn a_clean_put_back_says_your_edits_are_back() {
             Some("your edits are back"),
             None
         ),
-        "rebase main onto origin/main \u{2713} \u{b7} your edits are back"
+        "\u{2713} rebase main onto origin/main \u{b7} your edits are back"
     );
 
     let mut clean = AppState::default();

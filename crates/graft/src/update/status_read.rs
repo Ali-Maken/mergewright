@@ -6,7 +6,7 @@
 //! write — after the last file's `Stage` it still calls that file unmerged.
 //! Anything that *counts* on the status in that window counts stale
 //! entries: `c` once refused with `1 file still conflicted` right under a
-//! line saying `every file done ✓ · c finishes the merge`.
+//! line saying `✓ every file done  c finishes the merge`.
 //!
 //! So every read carries an id `update` chose ([`ask`]), the newest is
 //! remembered in [`AppState::status_read`], and while it is out both the

@@ -6,7 +6,7 @@
 //! `HEAD`, the eight tasks by the keys each card line names (the walk
 //! asserts the line before it presses them, so a card naming keys that do
 //! not work fails here), then home: his commit under the cursor,
-//! `practice done ✓ · ⌃P tour goes again`, and nothing of his changed.
+//! `✓ practice done  ⌃P tour goes again`, and nothing of his changed.
 //! Tasks 6 and 7 merge over `notes.txt`, staged since task 3's `u`: each
 //! merge sets it aside and puts it back staged (19d §R1, §R2).
 //!
@@ -589,7 +589,7 @@ impl Walk {
         });
         self.send(b"y");
         self.wait("merged, his edits back staged", |s| {
-            s.has("merged clash into main \u{2713}")
+            s.has("\u{2713} merged clash into main")
                 && s.has("Uncommitted changes (1 staged, 1 untracked)")
         });
     }
@@ -710,7 +710,7 @@ fn the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home() {
 
     let home = walk.wait("home, finished, settled", |s| {
         s.lines()[0].contains("his")
-            && s.has("practice done \u{2713} \u{b7} \u{2303}P tour goes again")
+            && s.has("\u{2713} practice done  \u{2303}P tour goes again")
             && ready_to_shoot(&s.text())
     });
     assert!(!home.has("practice 8 of 8"), "no card:\n{}", home.text());
@@ -724,7 +724,7 @@ fn the_whole_tour_in_a_pty_ticks_all_eight_and_comes_home() {
         &root,
         "m8-tour-finished-120x36.txt",
         "the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the \
-         commit he left (two rows under where he landed), the status `practice done ✓ · ⌃P tour \
+         commit he left (two rows under where he landed), the status `✓ practice done  ⌃P tour \
          goes again`. Every age on his graph in years.",
     );
     no_future(&home);

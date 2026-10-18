@@ -100,7 +100,7 @@ fn aborting_a_rebase_does_not_read_as_done() {
     assert_eq!(state.status, Status::done("aborted: rebase main onto fix"));
     let row = bottom_row(&state, 120, 40);
     assert!(
-        row.contains("aborted: rebase main onto fix \u{2713}"),
+        row.contains("\u{2713} aborted: rebase main onto fix"),
         "{row:?}"
     );
 }
@@ -114,7 +114,7 @@ fn set_aside_around(mut entry: JournalEntry) -> JournalEntry {
     entry
 }
 
-/// `<what> ✓ · your edits are back`: the fact rides `also`, never `keys`
+/// `✓ <what> · your edits are back`: the fact rides `also`, never `keys`
 /// (review m6-final-fixes-74 M4).
 fn edits_back(what: &str) -> Status {
     Status::Done {
@@ -164,7 +164,7 @@ fn a_continue_whose_drop_fails_says_the_edits_are_back() {
 
 /// m6-conflicts/74: `a y` on a rebase that stopped with edits set aside;
 /// the abort and the put-back both went through. 68's aborted wording,
-/// extended: `aborted: rebase … ✓ · your edits are back`.
+/// extended: `✓ aborted: rebase … · your edits are back`.
 #[test]
 fn aborting_a_stopped_rebase_says_your_edits_are_back() {
     let (state, commands) = keys(
@@ -186,7 +186,7 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
     );
     let row = bottom_row(&state, 120, 40);
     assert!(
-        row.contains("aborted: rebase main onto origin/main \u{2713} \u{b7} your edits are back"),
+        row.contains("\u{2713} aborted: rebase main onto origin/main \u{b7} your edits are back"),
         "{row:?}"
     );
     // The `c` that finishes it says the same after its own words.

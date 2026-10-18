@@ -234,7 +234,7 @@
 640 crates/graft/tests/it/heavy.rs
 750 crates/graft/tests/it/held_key.rs
 972 crates/graft/tests/it/hint_bar.rs
-507 crates/graft/tests/it/journal_put_back.rs
+505 crates/graft/tests/it/journal_put_back.rs
 759 crates/graft/tests/it/journal_screen.rs
 506 crates/graft/tests/it/land_on_result.rs
 1818 crates/graft/tests/it/m3_walk.rs

@@ -45,7 +45,7 @@ fn assert_on(state: &AppState, repo: &Path, rev_name: &str, what: &str) {
 }
 
 /// J18 `pull-nothing-new` = 1 key: `p` on an up-to-date branch, cursor on a
-/// row that is not `HEAD` → it stays there; the line says `up to date ✓`.
+/// row that is not `HEAD` → it stays there; the line says `✓ up to date`.
 #[test]
 fn j18_a_pull_with_nothing_new_leaves_the_cursor() {
     let remote = local();

@@ -23,10 +23,14 @@ fn with_clause(words: String, clause: Option<&str>) -> String {
 }
 
 /// The fallback's status wordings, longest first (planner 30b, Decided 3).
-/// `what` is what `Done` would put before its tick:
-/// 1. `<what> ✓ · your edits are back · staging not kept: <paths> · u undoes it, staging included`
-/// 2. `<what> ✓ · staging not kept: <paths> · u undoes it, staging included`
+/// `what` is what `Done` would put after its tick:
+/// 1. `✓ <what> · your edits are back · staging not kept: <paths> · u undoes it, staging included`
+/// 2. `✓ <what> · staging not kept: <paths> · u undoes it, staging included`
 /// 3. `staging not kept: <paths> · u undoes it, staging included`
+///
+/// Each rung is the line the footer draws for a `Sticky`, `<reason> ·
+/// <keys>` (`fit_status_line`), so a rung measured to fit is the line
+/// drawn; the words before the key are a done line's (`done_line`).
 ///
 /// The cut drops `your edits are back` first: the files and the key are
 /// what he must read. `<paths>` is `<first>[ +N more]`, as graft-ops'
@@ -59,12 +63,15 @@ pub(crate) fn staging_not_kept_rungs(
     };
     let done_line = crate::view::status::done_line;
     let mut rungs = vec![
-        done_line(
-            what,
-            Some(&format!("your edits are back \u{b7} {lost}")),
+        with_clause(
+            done_line(
+                what,
+                Some(&format!("your edits are back \u{b7} {lost}")),
+                None,
+            ),
             undo,
         ),
-        done_line(what, Some(&lost), undo),
+        with_clause(done_line(what, Some(&lost), None), undo),
         with_clause(lost.clone(), undo),
     ];
     if lost != staging {
