@@ -118,3 +118,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 06c first half (merge of f41cc96f): fmt ok, clippy 0, nextest 6889/6889, doc ok; worktree removed. builder-opus-xhigh 06c continuation (search folded count) dispatched.
 - builder-sonnet 06g (cce09962, merged 387124df) 9/9: rule_pinned.rs (5 cases + skew/promote), app it fold_rule_pinned; all passed first run (rule holds). Trunk=main only → gap. No scout. skills: none · 41 tools. Gates running.
 - user answers: clash file word → `done` as the mock (11 unblocked on its question); set-aside line kept (gap closed).
+- scout 11: 8 mismatches; live bug: finish-row click → continue_pressed (update/resolver/scroll.rs:94) skips the review door; list column only ≥180 cols · 11 tools. scout 12: 9 mismatches; merge_review in graft-ops; mock :160-161 Message line + 'N files git combined on its own' missing · 17 tools. planner-fable reconciling 11+12.
