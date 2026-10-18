@@ -83,7 +83,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `BaseError` (enum) — `NoBase`, `Mismatch(BaseMismatch)`, `Diff3(Diff3Error)`.
 - `base_for` (fn) — `(repo, path, file)` → `diff3_file` + `attach_base`; how many blocks got a base.
 - `mark_resolved_refusal` (fn) — `(path, file)` → `Some(ConflictsOpen)` while blocks are open; asked before `Stage`.
-- `ConflictSet` (struct) — `paths` (unmerged now, git's `Conflicts:` list, the current step's chain; each once) and `recorded`.
+- `ConflictSet` (struct) — `paths` (unmerged now, git's `Conflicts:` list, the current step's chain; each once), `recorded`, and `solved` (unmerged files `file_state` calls solved on disk; a relaunch reads them solved).
 - `ConflictSetError` (enum) — `Io`, `Run`, `Facts`, `Journal`, `Snapshot`.
 - `operation_conflicts` (fn) — `(repo, facts) -> ConflictSet`: git and the backup chain only, so a relaunch lists the same files.
 

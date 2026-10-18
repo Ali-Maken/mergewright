@@ -126,14 +126,22 @@ fn row_open(row: &RowState) -> usize {
 /// `None` outside a merge. What the words after a solved file point to:
 /// `n` to that clash, or — none left — `y` to the review.
 pub(super) fn open_elsewhere(state: &AppState) -> Option<bool> {
-    if !in_a_merge(state) {
-        return None;
-    }
+    in_a_merge(state).then(|| next_open_file(state).is_some())
+}
+
+/// The first file in the list's order, other than the one on screen, where
+/// a clash may still be open — one open, or a file not read yet: where `n`
+/// goes from a solved file, and the file the bar names (ease-pass/05c).
+#[must_use]
+pub(crate) fn next_open_file(state: &AppState) -> Option<std::path::PathBuf> {
     let here = state.resolver.as_ref().map(|open| open.path.as_path());
-    Some(listed_files(state).iter().any(|row| {
-        Some(row.path.as_path()) != here
-            && (row.state == RowState::Unread || row_open(&row.state) > 0)
-    }))
+    listed_files(state)
+        .into_iter()
+        .find(|row| {
+            Some(row.path.as_path()) != here
+                && (row.state == RowState::Unread || row_open(&row.state) > 0)
+        })
+        .map(|row| row.path)
 }
 
 /// `head` and a merge's way on from a solved file: `n` while a clash is

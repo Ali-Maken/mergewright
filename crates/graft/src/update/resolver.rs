@@ -56,8 +56,9 @@ mod open;
 mod picks;
 mod resolved;
 mod restart;
-mod review;
+pub(crate) mod review;
 mod scroll;
+mod seek;
 mod settle;
 mod step;
 mod take;
@@ -93,12 +94,13 @@ pub use picks::{BlockAt, Pick, Picks, Reread, blocks_of, next_open, next_open_in
 #[cfg(test)]
 pub(crate) use resolved::close_after_last;
 pub use resolved::resolved_advance;
-pub(crate) use resolved::{every_file_done, finish_if_owed, set_notice};
+pub(crate) use resolved::{every_file_done, set_notice};
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
 pub(crate) use review::finish_refused_notice;
 pub use review::{notice_once_checked, reviews_the_merge, still_open_words};
 pub use scroll::resolver_mouse;
+pub(crate) use seek::{open_on_first_open, seek_first_open};
 pub use step::step_in_file;
 pub(crate) use unpick::{NOTHING_TO_UNDO, undo_from_review};
 pub use unpick::{dropped_words, untake_ended, untaken};
@@ -112,7 +114,7 @@ use geometry::scrolled_to;
 use handover::{edit_here, mergetool_here};
 use leave::{escape, finish_pressed};
 use open::reopen;
-use resolved::{cancel_owed_finish, mark_resolved};
+use resolved::mark_resolved;
 use restart::restart_box;
 use review::review_keys;
 use scroll::scroll_key;
@@ -217,6 +219,11 @@ pub struct ResolverState {
     /// `N` crossed to this file: when its opening read lands the cursor goes
     /// to the last block rather than the first.
     pub land_last: bool,
+    /// Opened to the first **open** clash (the banner's `⏎`, Q7 a): once
+    /// this file's read and the set's have landed, a file with no clash
+    /// open hands on to the next file one may be open in
+    /// ([`seek::seek_first_open`]).
+    pub seek_open: bool,
     /// Queued takes a failed take dropped while its re-read is out: said
     /// once the re-read lands, which clears the failure's own words (review
     /// m6-amend-15 M2). `0` otherwise.
@@ -232,15 +239,6 @@ pub struct ResolverState {
     /// lands (`resolved::resolved_advance`), never on the key. `None` for
     /// `⏎`'s plain stage (m6-conflicts/19 scope 3).
     pub whole_side: Option<graft_ops::operation::Side>,
-    /// The last file of a merge was just done here, so the finish summary
-    /// opens on its own once everything that event started has landed
-    /// (m6-conflicts/60, P11). **Set by the event, never derived from the
-    /// state:** only `resolved::stay_after_last` sets it, on the state
-    /// `reopen` rebuilt; `resolved::finish_if_owed` spends it. A key that
-    /// moves him on (`Esc`, `j`/`k`, `n`/`N`, `d`, `e`, `M`), a file switch
-    /// (`reopen` builds a fresh state), a write that did not land, a failed
-    /// read, or a status still showing a conflict clears it unspent.
-    pub finish_owed: bool,
 }
 
 /// The most takes held behind the one in flight; the next is refused
@@ -272,10 +270,10 @@ impl ResolverState {
             in_flight: None,
             queued: VecDeque::new(),
             land_last: false,
+            seek_open: false,
             dropped: 0,
             settling: None,
             whole_side: None,
-            finish_owed: false,
         }
     }
 
@@ -318,6 +316,7 @@ pub fn resolver_key(
     if state.resolver.is_none() {
         return false;
     }
+    seek::he_acted(state);
     if key.code == KeyCode::Char('c') && key.modifiers.control {
         return false;
     }
@@ -345,7 +344,6 @@ fn act(
     next_id: &mut impl FnMut() -> JobId,
 ) {
     let plain = !key.modifiers.control && !key.modifiers.alt;
-    cancel_owed_finish(state, key.code, plain);
     // A done file is read-only (m6-conflicts/25): refused in words, with
     // nothing sent.
     if done::refuses(&key)

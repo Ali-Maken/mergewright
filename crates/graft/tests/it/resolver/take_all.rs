@@ -57,7 +57,8 @@ fn take_all_capture() {
         body.contains("took theirs · feature in 3 blocks · n goes to the next"),
         "{body}"
     );
-    assert!(body.contains("⌃O/⌃T all"), "{body}");
+    // Solved in a merge: the bar points on to the next file (ease-pass/05c).
+    assert!(body.contains("n next file:"), "{body}");
     crate::captures::check_shot("m6/fix-take-all-120x40.txt", &format!("{body}\n"));
     drop(state);
     app.close();

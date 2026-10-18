@@ -93,4 +93,4 @@
   ●      Ship release 14                                           2h   0f8d5d6
   ●      Ship release 13                                           2h   78ddfac
   ●      Ship release 12                                           2h   9bedacc
- merge stopped · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit

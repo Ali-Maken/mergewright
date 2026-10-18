@@ -64,7 +64,7 @@ pub struct ListedFile {
 /// State, first match wins: status not arrived → `Unread` (but for the open
 /// file); not unmerged → `Done`; the open file → what its document or card
 /// says; otherwise what it last was while open here ([`ResolverState::seen`]),
-/// else `Unread`.
+/// else `AllTaken` when the set read found it solved on disk, else `Unread`.
 #[must_use]
 pub fn listed_files(state: &AppState) -> Vec<ListedFile> {
     let Some(open) = state.resolver.as_ref() else {
@@ -95,12 +95,26 @@ pub fn listed_files(state: &AppState) -> Vec<ListedFile> {
                 RowState::Done
             } else if let Some(now) = is_open.then(|| open_state(open)).flatten() {
                 now
+            } else if let Some(seen) = open.seen.get(&path) {
+                seen.clone()
+            } else if solved_on_disk(open, &path) {
+                RowState::AllTaken
             } else {
-                open.seen.get(&path).cloned().unwrap_or(RowState::Unread)
+                RowState::Unread
             };
             ListedFile { path, state }
         })
         .collect()
+}
+
+/// The set read found `path` solved on disk — every clash picked, not yet
+/// staged (`ConflictSet::solved`, the resolver's own rule): so a file solved
+/// before a pause or a relaunch reads as solved unopened (ease-pass/05c).
+fn solved_on_disk(open: &ResolverState, path: &Path) -> bool {
+    match &open.files {
+        Loading::Ready(set) => set.solved.iter().any(|solved| solved == path),
+        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => false,
+    }
 }
 
 /// git's own path order — the index's and `status`'s: byte-wise over the

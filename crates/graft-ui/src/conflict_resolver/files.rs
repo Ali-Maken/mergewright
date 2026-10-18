@@ -54,6 +54,9 @@ pub enum FileState {
     },
     /// Every block taken; `⏎` marks it done.
     AllTaken,
+    /// A merge's file with every clash picked: still unmerged, staged by
+    /// the review's `y` (ease-pass/05b) — `⏎` has nothing to mark.
+    Solved,
     /// git no longer calls it unmerged.
     Done,
     /// A whole-file shape (modify/delete, add/add without markers, …).
@@ -76,8 +79,11 @@ impl FileState {
             (FileState::Open { open, of }, true) => format!("{open}/{of} open"),
             (FileState::AllTaken, false) => format!("{} marks done", g.enter),
             (FileState::AllTaken, true) => g.enter.to_string(),
+            (FileState::Solved, false) => format!("solved {}", g.check),
             (FileState::Done, false) => format!("done {}", g.check),
-            (FileState::Done, true) => g.check.to_string(),
+            // Compact, solved and done draw the same tick; the tone tells
+            // them apart no more than the words do (both muted).
+            (FileState::Solved | FileState::Done, true) => g.check.to_string(),
             (FileState::WholeFile { .. }, false) => "keep or delete".to_owned(),
             (FileState::WholeFile { .. }, true) => "keep?".to_owned(),
             (FileState::Binary, false) => "binary".to_owned(),

@@ -122,19 +122,14 @@ pub fn banner_key(
     let plain = !key.modifiers.control && !key.modifiers.alt;
     match key.code {
         KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => hand_the_keyboard_back(state, key),
-        // `⏎` opens the resolver on the first conflicted file
-        // (`docs/design/02-keymap.md` §2.6a, m6-conflicts/04). It was the
-        // catch-all's before, which meant the one key §2.2 gives to "open /
-        // drill in" did nothing at all on the banner.
+        // `⏎` opens the resolver on the first open clash
+        // (`docs/design/02-keymap.md` §2.6a, m6-conflicts/04; Q7 a): git's
+        // first conflicted file, handing on past any already solved. It was
+        // the catch-all's before, which meant the one key §2.2 gives to
+        // "open / drill in" did nothing at all on the banner.
         KeyCode::Enter if plain => match first_conflicted(state) {
             Some(path) => {
-                crate::update::resolver::open_resolver(
-                    state,
-                    commands,
-                    path,
-                    crate::update::resolver::OpenedFrom::Banner,
-                    next_id,
-                );
+                crate::update::resolver::open_on_first_open(state, commands, path, next_id);
             }
             None => nothing_conflicted(state),
         },

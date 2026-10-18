@@ -81,6 +81,10 @@ pub struct Picks {
     /// The untake the review's `u` sent with no resolver open under it
     /// (ease-pass/05b): its landing opens the resolver on the pick.
     opens: Option<JobId>,
+    /// The resolver has been open at this stop (ease-pass/05c, Q7 a): the
+    /// banner then reads as a pause, `⏎ back to the clashes`. A launch, or
+    /// a stop nobody has opened yet, leaves it false: `⏎ resolve`.
+    seen: bool,
 }
 
 /// An untake's landing on a file the resolver was not showing.
@@ -134,6 +138,18 @@ impl Picks {
     pub fn clear(&mut self) {
         self.stack.clear();
         self.landing = None;
+        self.seen = false;
+    }
+
+    /// The resolver opened at this stop.
+    pub fn resolver_opened(&mut self) {
+        self.seen = true;
+    }
+
+    /// Has the resolver been open at this stop? See [`Self::clear`].
+    #[must_use]
+    pub fn resolver_seen(&self) -> bool {
+        self.seen
     }
 
     /// What a fresh read of `path` means for its picks (ticket ease-pass/05r,

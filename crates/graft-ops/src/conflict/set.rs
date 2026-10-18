@@ -33,6 +33,13 @@ pub struct ConflictSet {
     /// holding one. When false, `paths` is only what is unmerged now, and
     /// which of the staged changes were conflicts is not known.
     pub recorded: bool,
+    /// The unmerged paths the resolver's rule calls solved on disk
+    /// ([`file_state`](super::file_state), ease-pass/05b): a marker
+    /// document with no clash open, not staged yet. So a relaunch reads
+    /// what was solved before it (05c). Filled by [`operation_conflicts`];
+    /// the finish's own read of the set never looks at it and leaves it
+    /// empty.
+    pub solved: Vec<PathBuf>,
 }
 
 /// Why the conflict set could not be read.
@@ -76,7 +83,40 @@ pub fn operation_conflicts(
     repo: &RepoHandle,
     facts: &RepoFacts,
 ) -> Result<ConflictSet, ConflictSetError> {
-    conflicts_of(repo, facts.in_progress, &facts.status)
+    let mut set = conflicts_of(repo, facts.in_progress, &facts.status)?;
+    set.solved = solved_on_disk(repo, &facts.status)?;
+    Ok(set)
+}
+
+/// Every unmerged path [`file_state`](super::file_state) calls solved, in
+/// status order. One the resolver cannot open (not unmerged after all, too
+/// large, markers that do not parse) is not solved — as the merge review
+/// reads it (`finish::merge_review`); a file that would not read at all is
+/// the error.
+fn solved_on_disk(
+    repo: &RepoHandle,
+    status: &WorkingTreeStatus,
+) -> Result<Vec<PathBuf>, ConflictSetError> {
+    use super::{FileState, OpenError, file_state, open_conflict};
+    let mut solved = Vec::new();
+    for entry in status.entries.iter().filter(|entry| entry.unmerged) {
+        match open_conflict(repo, status, &entry.path) {
+            Ok(opened) if file_state(&opened, true) == FileState::Solved => {
+                solved.push(entry.path.clone());
+            }
+            Ok(_)
+            | Err(OpenError::Refused(_) | OpenError::TooLarge { .. } | OpenError::Markers(_)) => {
+                // Open, done, or nothing the resolver solved: not solved.
+            }
+            Err(OpenError::Read(source)) => {
+                return Err(ConflictSetError::Facts(FactsError::Markers {
+                    path: entry.path.clone(),
+                    source,
+                }));
+            }
+        }
+    }
+    Ok(solved)
 }
 
 /// The same from the two facts it needs, for a caller that read them
@@ -98,6 +138,7 @@ pub(crate) fn conflicts_of(
         return Ok(ConflictSet {
             paths: set.paths,
             recorded: false,
+            solved: Vec::new(),
         });
     };
     let listed = match merge_msg::read(repo)? {
@@ -112,6 +153,7 @@ pub(crate) fn conflicts_of(
     Ok(ConflictSet {
         paths: set.paths,
         recorded: from_git || from_chain,
+        solved: Vec::new(),
     })
 }
 

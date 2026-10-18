@@ -21,8 +21,11 @@ use crate::update::{AppState, GraphOverlay};
 
 use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 
+mod clash_bars;
 mod context;
 mod fold;
+pub(crate) use clash_bars::banner_context;
+pub use clash_bars::resolver_context;
 pub(crate) use context::back_to_place;
 use context::{cursor_row_context, live_wrapped, search_wrapped};
 pub(super) use fold::fold_tail;
@@ -568,26 +571,6 @@ fn live_c(state: &AppState) -> Option<LiveC> {
     })
 }
 
-/// The hint context a focused banner puts the footer in. One function
-/// rather than two literals: the tab layout draws the banner's hints
-/// outside the graph screen (`view::frame`), and the two must not drift.
-///
-/// `merge` comes from the live operation's kind, begun in Graft or in the
-/// shell: `c` opens the finish summary on both, so the bar says `c finish`
-/// (m6-conflicts/70, n2).
-pub(crate) fn banner_context(
-    state: &AppState,
-    banner: &graft_ui::graph_screen::BannerView,
-) -> HintContext {
-    use graft_git::state::InProgress;
-    HintContext::Banner {
-        skippable: banner.skippable,
-        conflicted: banner.conflict.is_some(),
-        merge: crate::update::commit_editor::live_operation(state)
-            .is_some_and(|(kind, _)| kind == InProgress::Merge),
-    }
-}
-
 /// The changes pane's `⇥` word: where one `Tab` lands from here, read off
 /// the one reading of the cycle (`update::banner::tab_target`,
 /// m6-conflicts/70). A target the pane's bar never shows while it has
@@ -719,41 +702,6 @@ pub(crate) fn place_context(state: &AppState) -> Option<HintContext> {
         ignore_file: blame.ignore_line().is_some(),
         lines: matches!(blame.body, crate::update::place::BlameLoad::Ready { .. }),
     })
-}
-
-/// The resolver's bar: the one context both the classifier above and the
-/// resolver's own footer (`view::frame::draw_resolver_footer`) draw from,
-/// so the bar the key sweep checks is the bar on screen (m6-05 review,
-/// Major 1 — the footer had its own hard-coded copy, which drew neither
-/// `B` nor `d`).
-///
-/// `B`/`d` act the moment they are pressed (`update::resolver::toggle_base`
-/// / `restart_box`, m6-conflicts/05), so a document passes `true` for both.
-/// A whole-file card has no blocks for either to act on, and draws its own
-/// shorter list. `restart` is `start_over_refusal`'s answer, the same one
-/// `d` itself asks (m6-conflicts/28): the bar offers `d` exactly where it
-/// opens the box.
-#[must_use]
-pub fn resolver_context(state: &AppState) -> HintContext {
-    let card = state
-        .resolver
-        .as_ref()
-        .is_some_and(|open| open.whole_file.is_some());
-    let done = state
-        .resolver
-        .as_ref()
-        .is_some_and(|open| open.done.is_some());
-    HintContext::Resolver {
-        base: !card,
-        restart: crate::update::resolver::start_over_refusal(state).is_none(),
-        whole_file: card,
-        done,
-        roles: crate::update::resolver::side_names(state).roles,
-        // `c` would act rather than refuse (m6-conflicts/31): the bar
-        // never names a key that answers "not yet".
-        finishable: crate::update::banner::banner_view(state).is_some()
-            && crate::update::banner::continue_refusal(state).is_none(),
-    }
 }
 
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):

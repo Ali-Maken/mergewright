@@ -21,10 +21,6 @@ fn summaries(commands: &[Command]) -> usize {
         .count()
 }
 
-fn owed(state: &AppState) -> bool {
-    state.resolver.as_ref().is_some_and(|open| open.finish_owed)
-}
-
 /// A status read answering that nothing is unmerged, `kind` in progress.
 fn clean_read(kind: InProgress) -> Product {
     Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
@@ -83,9 +79,7 @@ fn a_refused_reopen_opens_nothing() {
         ids += 1;
         JobId::new(ids)
     });
-    assert!(!owed(&state));
     assert_eq!(state.status, Status::sticky("finish the box first"));
-    crate::update::resolver::finish_if_owed(&mut state, &mut commands, &mut || JobId::new(9_000));
     assert!(state.finish.is_none());
     assert_eq!(summaries(&commands), 0);
 }
@@ -114,7 +108,6 @@ fn a_failed_last_stage_opens_nothing() {
     );
     let open = after.resolver.as_ref().expect("the resolver stays");
     assert_eq!(open.staging, None);
-    assert!(!open.finish_owed);
     assert!(after.finish.is_none());
     assert_eq!(summaries(&sent), 0);
     assert!(
@@ -147,7 +140,6 @@ fn switching_file_cancels_the_open() {
     let state = done_read_lands(&landed, &commands);
     let (moved, _) = press(&state, KeyCode::Char('j'));
     assert_eq!(super::open_path(&moved), std::path::Path::new("gone.txt"));
-    assert!(!owed(&moved));
     let (after, sent) = update(&moved, AppEvent::Produced(read, nothing_unmerged()));
     assert!(after.finish.is_none());
     assert_eq!(summaries(&sent), 0);
@@ -172,7 +164,6 @@ fn a_failed_status_read_cancels_the_open_and_says_so() {
     );
     assert!(after.finish.is_none());
     assert_eq!(summaries(&sent), 0);
-    assert!(!owed(&after));
     assert_eq!(after.status, Status::Failed("status broke".to_owned()));
     assert_eq!(notice(&after), None, "no checking words left standing");
     assert!(
@@ -201,7 +192,6 @@ fn a_read_that_never_answers_cancels_the_open() {
     ] {
         let (after, sent) = update(&state, AppEvent::Core(event));
         assert!(after.finish.is_none());
-        assert!(!owed(&after));
         assert_eq!(summaries(&sent), 0);
     }
 }
@@ -226,7 +216,6 @@ fn a_status_still_conflicted_cancels_the_open() {
     })));
     let (after, sent) = update(&state, AppEvent::Produced(read, conflicted));
     assert!(after.finish.is_none());
-    assert!(!owed(&after));
     assert_eq!(summaries(&sent), 0);
     assert_eq!(notice(&after), None);
 }
@@ -236,7 +225,6 @@ fn a_status_still_conflicted_cancels_the_open() {
 #[test]
 fn the_last_file_of_a_rebase_shows_the_finish_row() {
     let (landed, commands) = last_stage_lands_in(InProgress::Rebase);
-    assert!(!owed(&landed));
     let read = owed_read(&commands);
     let state = done_read_lands(&landed, &commands);
     let (after, sent) = update(
@@ -280,8 +268,7 @@ fn the_last_file_of_a_rebase_shows_the_finish_row() {
 fn a_resolver_opened_on_a_done_merge_opens_no_summary() {
     let (landed, commands) = last_stage_lands();
     let read = owed_read(&commands);
-    let mut state = done_read_lands(&landed, &commands);
-    state.resolver.as_mut().expect("open").finish_owed = false;
+    let state = done_read_lands(&landed, &commands);
     let (after, sent) = update(&state, AppEvent::Produced(read, nothing_unmerged()));
     assert!(after.finish.is_none());
     assert_eq!(summaries(&sent), 0);

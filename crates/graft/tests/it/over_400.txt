@@ -194,8 +194,8 @@
 577 crates/graft/src/update/remote.rs
 1549 crates/graft/src/update/remote/tests.rs
 538 crates/graft/src/update/remote/tests/lease.rs
-972 crates/graft/src/update/resolver/tests.rs
-987 crates/graft/src/update/resolver/tests/file_list.rs
+965 crates/graft/src/update/resolver/tests.rs
+976 crates/graft/src/update/resolver/tests/file_list.rs
 1683 crates/graft/src/update/rewrite_editor/tests.rs
 639 crates/graft/src/update/selection.rs
 536 crates/graft/src/update/stash.rs
@@ -217,7 +217,7 @@
 694 crates/graft/src/view/frame/tests.rs
 720 crates/graft/src/view/journal/tests.rs
 732 crates/graft/src/view/radar.rs
-897 crates/graft/src/view/rows.rs
+845 crates/graft/src/view/rows.rs
 422 crates/graft/src/view/strips.rs
 489 crates/graft/src/view/strips/tests.rs
 5315 crates/graft/src/view/tests.rs

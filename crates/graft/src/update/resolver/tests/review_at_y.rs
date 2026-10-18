@@ -41,7 +41,7 @@ fn reads_the_review(commands: &[Command]) -> Option<JobId> {
     })
 }
 
-fn as_rebase(mut state: AppState) -> AppState {
+pub(super) fn as_rebase(mut state: AppState) -> AppState {
     if let Some(detail) = state.in_progress.as_mut() {
         detail.kind = InProgress::Rebase;
     }

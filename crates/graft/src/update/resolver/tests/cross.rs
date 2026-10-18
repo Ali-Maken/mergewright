@@ -184,8 +184,9 @@ fn n_past_the_last_block_says_no_open_clashes_left() {
         after.status, status_before,
         "the status line is not touched"
     );
+    // A merge: `⏎` marks nothing, so the bar offers the review (05c).
     assert!(
-        bottom_row(&after).contains("\u{23ce} done"),
+        bottom_row(&after).contains("y review the merge"),
         "{}",
         bottom_row(&after)
     );
@@ -199,7 +200,7 @@ fn n_past_the_last_block_says_no_open_clashes_left() {
 }
 
 /// The words are said once, on the notice row: the bar under the document
-/// does not repeat them, and it still offers `⏎ done`.
+/// does not repeat them, and it offers the merge's review (ease-pass/05c).
 #[test]
 fn no_open_clashes_left_is_not_repeated_in_the_bar() {
     let (after, _) = press(&nothing_open_on_three(&["three.txt"]), KeyCode::Char('n'));
@@ -211,7 +212,7 @@ fn no_open_clashes_left_is_not_repeated_in_the_bar() {
     );
     let bar = bottom_row(&after);
     assert!(!bar.contains("no open clashes left"), "{bar}");
-    assert!(bar.contains("\u{23ce} done"), "{bar}");
+    assert!(bar.contains("y review the merge"), "{bar}");
 }
 
 /// The rule-3 notice keeps today's lifetime (Decisions, conductor

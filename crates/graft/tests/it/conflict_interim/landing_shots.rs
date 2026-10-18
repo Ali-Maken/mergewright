@@ -100,9 +100,10 @@ fn esc_from_the_landing_shows_the_banner_row_on_a_real_merge() {
     for (columns, rows) in [(80u16, 24u16), (120, 40), (187, 50)] {
         let frame = drawn(&app, &state, columns, rows);
         let body = frame.join("\n");
-        let row = footer(&frame, "\u{23ce} resolve");
+        // Paused (ease-pass/05c, Q7 a): `⏎` goes back to the clashes.
+        let row = footer(&frame, "\u{23ce} back to the clashes");
         assert!(
-            row.contains("\u{23ce} resolve  c finish  a abort"),
+            row.contains("\u{23ce} back to the clashes  c finish  a abort"),
             "{columns}x{rows}: {body}"
         );
         assert!(!body.contains("esc dismiss"), "{columns}x{rows}: {body}");

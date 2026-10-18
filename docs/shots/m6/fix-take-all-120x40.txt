@@ -1,7 +1,7 @@
 MERGING
-files · 13     added-by-us.txt •          both-added.txt •           both-deleted.txt •         both.txt •
-               crlf.txt •                 md.md •                    nofinal.txt •              ours-deleted.txt •
-               pic.bin •                  theirs-deleted.txt •     ▸ three.txt ⏎ marks done   … 2 more
+files · 13     added-by-us.txt •        both-added.txt •         both-deleted.txt •       both.txt •
+               crlf.txt •               md.md •                  nofinal.txt •            ours-deleted.txt •
+               pic.bin •                theirs-deleted.txt •   ▸ three.txt solved ✓     … 2 more
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ three.txt · 3 conflicts · 0 open
 took theirs · feature in 3 blocks · n goes to the next
@@ -37,4 +37,4 @@ took theirs · feature in 3 blocks · n goes to the next
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
+ n next file: added-by-them.txt · u undo pick · esc pause, come back later · ←/→ clashes

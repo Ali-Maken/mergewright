@@ -1,5 +1,5 @@
 MERGING
-files   ▸ gone.txt · keep or delete    notes.txt · ⏎ marks done
+files   ▸ gone.txt · keep or delete    notes.txt · solved ✓
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ gone.txt · modified on yours · main, deleted on theirs · feature
 ▸ gone.txt

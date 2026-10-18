@@ -1350,7 +1350,7 @@ fn a_rebase_stopping_again_lands_in_the_resolver() {
 }
 
 /// m6-conflicts/18: `Esc` from the resolver a stop landed in shows the
-/// banner, focused, with the stop line and its keys on the bottom row.
+/// banner, focused, with the stop line and its keys (paused, Q7 a) below.
 /// Lives here rather than in `resolver::tests` for `a_merge_stops`.
 #[test]
 fn esc_from_a_landed_resolver_shows_the_banner_keys() {
@@ -1360,7 +1360,7 @@ fn esc_from_a_landed_resolver_shows_the_banner_keys() {
     assert!(state.resolver.is_none());
     assert!(state.banner_focus);
     let row = bottom_row(&state, 120, 40);
-    assert!(row.contains("⏎ resolve"), "{row}");
+    assert!(row.contains("⏎ back to the clashes"), "{row}");
     assert!(
         row.trim_start()
             .starts_with("merge stopped · 1 file conflicted ·"),
@@ -1381,7 +1381,7 @@ fn a_stop_keeps_the_banner_keys_on_the_bottom_row() {
     );
     for (columns, rows) in [(80, 24), (120, 40), (200, 50)] {
         let row = bottom_row(&state, columns, rows);
-        assert!(row.contains("⏎ resolve"), "{columns}x{rows}: {row}");
+        assert!(row.contains("⏎ back to"), "{columns}x{rows}: {row}");
         assert!(row.contains("a abort"), "{columns}x{rows}: {row}");
         assert!(!row.contains("esc dismiss"), "{columns}x{rows}: {row}");
     }

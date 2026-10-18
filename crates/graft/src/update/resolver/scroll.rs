@@ -33,6 +33,7 @@ pub fn resolver_mouse(
     if state.resolver.is_none() {
         return false;
     }
+    super::seek::he_acted(state);
     // A box up over the resolver (`d`'s "Start … over?") owns the input,
     // the mouse as much as the keys: `keys::key_event` hands every key to
     // `confirm_key` first, so the resolver sees none of them. A click or a

@@ -19,6 +19,7 @@ mod commit_chosen_scratch;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;
+mod conflict_solved;
 mod edit_stop;
 mod error_rows;
 mod finish;

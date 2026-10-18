@@ -688,28 +688,21 @@ fn frame_text(state: &AppState) -> String {
         .join("\n")
 }
 
+mod abort_words;
 mod advance;
 mod cross;
 mod file_keys;
 mod file_list;
 mod finish_here;
 mod first_open;
+mod help_words;
+mod live_bar;
 mod opens_itself;
 mod review_at_y;
 mod step;
 mod take_all;
-mod undo_ends;
-
-/// m6-conflicts/46: `B` on a file of one block says `1 conflict`.
-#[test]
-fn base_shown_words_are_singular_at_one() {
-    use super::base::base_shown_words;
-    assert_eq!(base_shown_words(1), "base shown for 1 conflict");
-    assert_eq!(base_shown_words(3), "base shown for 3 conflicts");
-}
-mod abort_words;
-mod help_words;
 mod three_panes;
+mod undo_ends;
 mod words_and_c;
 
 // ----------------------------------- m6-conflicts/85 B: the pane after a take

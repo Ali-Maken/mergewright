@@ -288,8 +288,6 @@ pub fn write_not_landed(state: &mut AppState, id: JobId) {
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
-    // A write that did not run leaves nothing to finish on (m6-conflicts/60).
-    open.finish_owed = false;
     if open.staging == Some(id) {
         open.staging = None;
         open.whole_side = None;

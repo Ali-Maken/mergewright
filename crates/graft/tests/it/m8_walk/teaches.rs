@@ -186,7 +186,8 @@ fn merge_is_found_on_a_branch_row() {
 }
 
 /// §9 "resolve a conflict": at a merge stopped on a conflict, the banner's
-/// bar leads with `⏎ resolve`.
+/// bar leads with `⏎` — `back to the clashes` once `esc` has paused them
+/// (ease-pass/05c, Q7 a), as here.
 #[test]
 fn resolve_is_on_the_stop_banner_bar() {
     let scratch = crate::conflict_interim::about_to_conflict();
@@ -194,7 +195,7 @@ fn resolve_is_on_the_stop_banner_bar() {
     let state = crate::conflict_interim::stopped_on_the_conflict(&app, state);
     let state = app.resize(&state, COLUMNS, ROWS);
     assert!(
-        bar(&state).contains("\u{23ce} resolve"),
+        bar(&state).contains("\u{23ce} back to the clashes"),
         "{:?}",
         bar(&state)
     );

@@ -1810,10 +1810,10 @@ fn capture_banner_for_docs_shots() {
 /// What right looks like (`m8-banner-bar-q-{187x50,80x24}.txt`, m8-13b):
 /// a merge stopped at a conflict, the banner focused, the graph showing.
 /// At 187 the bottom row is the stop's words, then the banner's own keys
-/// with `q quit` **last** — `⏎ resolve  c finish  a abort  M mergetool
-/// e edit  ⇥ graph  q quit`. At 80 `q quit` is the one key gone: it gave way
-/// first, so `merge stopped` still fits before the other six. Colour
-/// unverified.
+/// with `q quit` **last** — `⏎ back to the clashes … ⇥ graph  q quit`
+/// (paused, ease-pass/05c Q7 a). At 80 the stop's words give way to the
+/// whole bar (`graft_ui`'s `stopped_row`; the header says `MERGING`).
+/// Colour unverified.
 ///
 /// Regenerate on purpose: `MWR_UPDATE_SHOTS=1 cargo test -p mergewright --test it conflict_interim::capture_banner_bar_with_q`.
 #[test]
@@ -1823,9 +1823,9 @@ fn capture_banner_bar_with_q() {
     let (app, state) = App::open(repo);
     let state = stopped_on_the_conflict(&app, state);
     assert!(state.banner_focus, "the banner has the keyboard");
-    for (label, columns, rows, ends) in [
-        ("187x50", 187u16, 50u16, "\u{21e5} graph  q quit"),
-        ("80x24", 80, 24, "e edit  \u{21e5} graph"),
+    for (label, columns, rows, ends, stop_shown) in [
+        ("187x50", 187u16, 50u16, "\u{21e5} graph  q quit", true),
+        ("80x24", 80, 24, "\u{21e5} graph  q quit", false),
     ] {
         let mut shot = state.clone();
         if let Some(facts) = shot.repository.as_mut() {
@@ -1835,8 +1835,8 @@ fn capture_banner_bar_with_q() {
         let drawn = frame_at(&sized, columns, rows, Some(Clock::Fixed(CONFLICT_NOW)));
         let bar = drawn.last().expect("a bottom row");
         assert!(
-            bar.trim_end().ends_with(ends) && bar.contains("merge stopped"),
-            "{label}: the bar ends `{ends}` after the stop's words: {bar:?}"
+            bar.trim_end().ends_with(ends) && bar.contains("merge stopped") == stop_shown,
+            "{label}: the bar ends `{ends}`, the stop's words shown: {stop_shown}: {bar:?}"
         );
         check_shot(
             &format!("m8-banner-bar-q-{label}.txt"),
@@ -1846,8 +1846,8 @@ fn capture_banner_bar_with_q() {
                  # `view::view` from a real AppState over a real repository \
                  (conflict_interim::capture_banner_bar_with_q). Not a pty capture: \
                  no colour (rule 5).\n\
-                 # What right looks like: the bottom row reads `merge stopped \u{b7} \u{2026}` and \
-                 ends `{ends}`.\n\n{}\n",
+                 # What right looks like: the bottom row ends `{ends}`; it leads \
+                 `merge stopped \u{b7} \u{2026}` where that fits beside the whole bar.\n\n{}\n",
                 drawn.join("\n")
             ),
         );
