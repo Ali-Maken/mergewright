@@ -212,7 +212,7 @@ fn planned_with(
         left_behind_more: 0,
         forks: Vec::new(),
         forks_more: 0,
-        messages: Vec::new(),
+        ..Default::default()
     };
     super::super::preview::preview_produced(
         state,

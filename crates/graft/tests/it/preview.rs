@@ -315,8 +315,8 @@ fn capture_preview_for_docs_shots() {
     assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }
 
-/// `m` on `main`'s row: the box names both confirm keys in its footer, and
-/// the cursor still rests on `Cancel` (m6-conflicts/11). Regenerate on
+/// `m` on `main`'s row: the merge box (ease-pass 10) has keys, not buttons,
+/// and its footer names `y` once, no `m merge` alias. Regenerate on
 /// purpose with `MWR_UPDATE_SHOTS=1`.
 #[test]
 fn capture_fix_preview_verb_for_docs_shots() {
@@ -329,11 +329,8 @@ fn capture_fix_preview_verb_for_docs_shots() {
     let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
     app.close();
     let text = drawn.join("\n");
-    assert!(
-        text.contains("y confirm  m merge  ←/→ choose  ⏎ act  esc cancel"),
-        "{text}"
-    );
-    assert!(text.contains("▸[ Cancel ]"), "{text}");
+    assert!(text.contains("╰ y merge  esc cancel  ⏎ see the "), "{text}");
+    assert!(!text.contains("[ Cancel ]"), "{text}");
     let mut out = String::from(
         "# fix-preview-verb-120x40.txt: 120x40, drawn by `view::view` from a real\n\
          # AppState over a real repository (`main` three commits, `feature` forked off\n\
@@ -343,9 +340,9 @@ fn capture_fix_preview_verb_for_docs_shots() {
          # TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).\n\
          #\n\
          # What right looks like:\n\
-         #  - The box's bottom border reads\n\
-         #    `y confirm  m merge  ←/→ choose  ⏎ act  esc cancel`.\n\
-         #  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.\n\
+         #  - The merge box (ease-pass 10); its bottom border reads\n\
+         #    `y merge  esc cancel  ⏎ see the N commits`.\n\
+         #  - No buttons row, no `m merge` on the footer.\n\
          #\n\n",
     );
     for line in &drawn {

@@ -137,7 +137,7 @@ pub(in crate::update) fn a_plan() -> PreviewPlan {
         left_behind_more: 0,
         forks: Vec::new(),
         forks_more: 0,
-        messages: Vec::new(),
+        ..Default::default()
     }
 }
 
@@ -162,7 +162,7 @@ fn an_empty_plan() -> PreviewPlan {
         left_behind_more: 0,
         forks: Vec::new(),
         forks_more: 0,
-        messages: Vec::new(),
+        ..Default::default()
     }
 }
 

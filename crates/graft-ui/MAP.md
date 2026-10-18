@@ -495,9 +495,8 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `PreviewBox` (struct) — Everything the Ghost Preview box draws.
 - `new` (fn) — An empty box titled `title`, choices `Cancel`/`Confirm`, cursor on `Cancel` — the only way to build one, so the safe choice is first and under the cursor in every preview, whatever the plan does (ADR-0038 §1).
 - `with_choices` (fn) — The same box with its own choices — `labels[0]` is the safe one and is where the cursor goes back to (ADR-0038 §1).
-- `PreviewBox::merge`, `PreviewBox::incoming` (fields) — a merge's own box (ease-pass 10), and its incoming list drawn in the box's place; `preview_rows` sizes either.
-- `with_merge` (fn) — the merge box: `MergeParts` in place of `lines`/`commands`, no choices (keys only), footer `y merge  esc cancel  ⏎ see the N commits` (no `y` when withheld).
-- `MergeParts` (struct) — `from`, `into`, `incoming`/`incoming_capped`, `who`/`who_more`, `changed`/`changed_capped`, `decide: Vec<(path, places)>`, `not_checkable`, `withheld`: what the merge box says, in counts.
+- `with_merge` (fn) — fills the box's `merge` field: no lines, no choices (keys only), footer `y merge  esc cancel  ⏎ see the N commits`. Its `incoming` field draws the incoming list in the box's place.
+- `MergeParts` (struct) — what the merge box says, in counts: incoming commits and who, files changed, clashes with places, his set-aside `edits`; `not_checkable` or `withheld` replace the counts.
 - `choices` (fn) — The choices, left to right.
 - `selected` (fn) — The choice the cursor is on.
 - `left` (fn) — Moves the cursor one choice left, clamped at the first (no wrap).

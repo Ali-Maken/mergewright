@@ -283,6 +283,8 @@ Places: the blame and history screens opened over the graph, and the `^` trail `
 The harness's key prelude: keys a gallery stop presses before its first frame, each once the state is settled.
 ## update::preview
 Ghost Preview: every history-changing key opens this first; the answer is drawn as ghost rows, `y` runs it. `PreviewState::merges`: the slice's rows the app calls merges, read off their source rows.
+- `Showing` (enum) — `PreviewState::showing`: a merge preview's box or, after `⏎`, its incoming list. Every merge preview gets the merge box by op kind; `y` withheld over unrelated histories (`merge_view.rs`).
+- `BoxRect` (struct) — moved to `preview/rect.rs`, re-exported unchanged.
 ## update::quit
 `q`: quit, unless a write is running; then a box says what quitting does to it.
 ## update::radar

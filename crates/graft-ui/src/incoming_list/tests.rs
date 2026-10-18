@@ -66,9 +66,17 @@ fn the_list_names_the_commits_that_come_in_with_who_and_age() {
     let rows = drawn(&view, 80, view.rows_wanted());
     assert_eq!(rows.len(), 7);
     assert!(rows[1].contains("│ The 3 commits that come in from sara/fix-toc"));
-    assert!(rows[3].starts_with("│ ▸●  Fix the contents links"), "{}", rows[3]);
+    assert!(
+        rows[3].starts_with("│ ▸●  Fix the contents links"),
+        "{}",
+        rows[3]
+    );
     assert!(rows[3].trim_end().ends_with("Sara  2h │"), "{}", rows[3]);
-    assert!(rows[4].starts_with("│  ◉  Merge the numbering"), "{}", rows[4]);
+    assert!(
+        rows[4].starts_with("│  ◉  Merge the numbering"),
+        "{}",
+        rows[4]
+    );
     assert!(rows[5].contains("Sara  1d"), "{}", rows[5]);
     assert!(
         rows[6].contains("╰ esc back to the preview  y merge ─"),
@@ -88,7 +96,11 @@ fn j_and_k_move_the_cursor_clamped() {
     view.down();
     assert_eq!(view.cursor, 2);
     let rows = drawn(&view, 80, view.rows_wanted());
-    assert!(rows[5].starts_with("│ ▸●  Move the summary up"), "{}", rows[5]);
+    assert!(
+        rows[5].starts_with("│ ▸●  Move the summary up"),
+        "{}",
+        rows[5]
+    );
 }
 
 #[test]

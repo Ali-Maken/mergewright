@@ -76,6 +76,7 @@ mod m8_walk;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
 mod map_coverage;
+mod merge_preview;
 mod name_and_drag;
 mod not_a_repo;
 mod offer_and_blame;

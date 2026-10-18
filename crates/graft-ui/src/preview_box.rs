@@ -27,9 +27,9 @@ use crate::incoming_list::{IncomingList, IncomingView};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 pub use footer::Again;
-pub use merge::MergeParts;
 pub(crate) use footer::footer_label;
 use footer::too_small;
+pub use merge::MergeParts;
 
 /// Below this width or this height **the screen** does not fit the box: "a
 /// picture that cannot be seen is never confirmed" (design note). `⏎` does

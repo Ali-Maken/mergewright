@@ -97,7 +97,7 @@ fn merging(isolated: &Isolated, repo: &Path) -> (Pty, u32, u32) {
     });
     pty.send(b"m");
     pty.wait_for("the merge preview's plan", |s| {
-        s.has("no conflicts expected")
+        s.has("nothing: no file clashes")
     });
     pty.send(b"y");
     let git = pid(repo, "git.pid");

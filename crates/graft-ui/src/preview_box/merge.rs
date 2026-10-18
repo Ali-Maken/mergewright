@@ -51,6 +51,10 @@ pub struct MergeParts {
     /// `Some(line)`: `y` withheld; the line replaces the three parts and
     /// the last line; footer drops `y`.
     pub withheld: Option<SanitizedText>,
+    /// His edits around the merge, as every preview says them: the
+    /// set-aside row and the put-back's forecast (ADR-0045 §4). Drawn
+    /// under the counts; empty when nothing of his is touched.
+    pub edits: Vec<SanitizedText>,
 }
 
 /// How a box line is painted.
@@ -142,8 +146,17 @@ impl MergeParts {
                 Tone::Text,
             ),
         ];
-        if let Some(line) = self.withheld.as_ref().or(self.not_checkable.as_ref()) {
+        let edits = self
+            .edits
+            .iter()
+            .map(|line| (line.as_str().to_owned(), Tone::Text));
+        if let Some(line) = &self.withheld {
             lines.push((line.as_str().to_owned(), Tone::Text));
+            return lines;
+        }
+        if let Some(line) = &self.not_checkable {
+            lines.push((line.as_str().to_owned(), Tone::Text));
+            lines.extend(edits);
             return lines;
         }
         let clashes = self.decide.len();
@@ -164,20 +177,29 @@ impl MergeParts {
             labelled("Git combines", &format!("{combined} on its own")),
             Tone::Text,
         ));
-        let tone = if clashes == 0 { Tone::Text } else { Tone::Clash };
+        let tone = if clashes == 0 {
+            Tone::Text
+        } else {
+            Tone::Clash
+        };
         lines.push((labelled("You decide", &self.decide_words()), tone));
+        lines.extend(edits);
         lines.push((String::new(), Tone::Text));
-        let after = if clashes == 0 {
+        lines.push((self.after_words(keys), Tone::Text));
+        lines
+    }
+
+    /// The last line: where `y` lands him. `y` spelled through `confirm.yes`.
+    fn after_words(&self, keys: &Keymap) -> String {
+        let after = if self.decide.is_empty() {
             "the merge is committed."
         } else {
             "you go straight to the first clash."
         };
-        let after = match keys.spell_keys(&[ActionId("confirm.yes")]) {
+        match keys.spell_keys(&[ActionId("confirm.yes")]) {
             Some(y) => format!("After {y} {after}"),
             None => format!("After you confirm, {after}"),
-        };
-        lines.push((after, Tone::Text));
-        lines
+        }
     }
 
     /// `the 3 commits`, `the 1 commit`, `the 50+ commits`.

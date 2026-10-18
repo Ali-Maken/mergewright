@@ -32,12 +32,13 @@ fn clashing() -> MergeParts {
         decide: vec![(sanitize_line("report.md"), Some(2))],
         not_checkable: None,
         withheld: None,
+        edits: Vec::new(),
     }
 }
 
 fn drawn(parts: MergeParts, width: u16) -> Vec<String> {
-    let view = PreviewBox::new(sanitize_line("Merge sara/fix-toc into wallet-release"))
-        .with_merge(parts);
+    let view =
+        PreviewBox::new(sanitize_line("Merge sara/fix-toc into wallet-release")).with_merge(parts);
     let height = preview_rows(&view, width);
     let frame = Rect::new(0, 0, width, height);
     let mut buf = Buffer::empty(frame);
@@ -95,6 +96,42 @@ fn a_clean_merge_says_nothing_to_decide_and_that_it_commits() {
     assert!(has(&rows, "│ Git combines  4 files on its own"));
 }
 
+/// His edits set aside around the merge (ADR-0045 §4) keep their lines,
+/// under `You decide` and above `After y`; a not-checked forecast keeps
+/// them too.
+#[test]
+fn his_set_aside_edits_are_said_under_the_counts() {
+    let edits = vec![
+        sanitize_line("your edits: 1 file set aside, put back after"),
+        sanitize_line("your edits may clash when put back: notes.md"),
+    ];
+    let rows = drawn(
+        MergeParts {
+            edits: edits.clone(),
+            ..clashing()
+        },
+        100,
+    );
+    let at = |text: &str| rows.iter().position(|row| row.contains(text));
+    let decide = at("│ You decide").expect("You decide");
+    let aside = at("│ your edits: 1 file set aside, put back after").expect("set aside");
+    let clash = at("│ your edits may clash when put back: notes.md").expect("put back");
+    let after = at("│ After y").expect("After y");
+    assert!(
+        decide < aside && aside < clash && clash < after,
+        "{rows:#?}"
+    );
+    let rows = drawn(
+        MergeParts {
+            edits,
+            not_checkable: Some(sanitize_line("conflicts: not checked (old git)")),
+            ..clashing()
+        },
+        100,
+    );
+    assert!(has(&rows, "│ your edits: 1 file set aside"), "{rows:#?}");
+}
+
 #[test]
 fn counts_are_singular_capped_and_more_authors_are_counted() {
     let parts = MergeParts {
@@ -110,10 +147,16 @@ fn counts_are_singular_capped_and_more_authors_are_counted() {
         ..clashing()
     };
     let rows = drawn(parts, 120);
-    assert!(has(&rows, "Comes in      1 commit from sara/fix-toc (Sara, +2)"));
+    assert!(has(
+        &rows,
+        "Comes in      1 commit from sara/fix-toc (Sara, +2)"
+    ));
     assert!(has(&rows, "Changes       50+ files"));
     assert!(has(&rows, "Git combines  48+ files on its own"));
-    assert!(has(&rows, "You decide    2 files clash: a.rs (1 place), b.bin"));
+    assert!(has(
+        &rows,
+        "You decide    2 files clash: a.rs (1 place), b.bin"
+    ));
     assert!(has(&rows, "⏎ see the 1 commit"));
 }
 

@@ -406,14 +406,14 @@ impl Walk<'_> {
         Ok(state)
     }
 
-    /// The open box's choice at `index`: `→` that many times off `Cancel`,
-    /// then `Enter`. [`Step::Confirm`] is this with `index` 1.
+    /// The open box's choice at `index`, pressed with the keys
+    /// [`super::vocabulary::choice_keys`] gives. [`Step::Confirm`] is `index` 1.
     fn choose(&mut self, state: AppState, index: usize) -> Result<AppState, String> {
         check(state.preview.is_some() || state.confirm.is_some(), || {
             format!("no box to answer; status {:?}", state.status)
         })?;
-        let state = (0..index).fold(state, |state, _| self.app.key(&state, KeyCode::Right));
-        Ok(self.app.key(&state, KeyCode::Enter))
+        let keys = super::vocabulary::choice_keys(&state, index).into_iter();
+        Ok(keys.fold(state, |state, key| self.app.key(&state, key)))
     }
 
     /// A journey's count (m6-conflicts/21, UX 1.3): [`Step::Route`] opens

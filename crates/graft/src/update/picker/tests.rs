@@ -397,7 +397,7 @@ fn y_on_that_preview_closes_the_picker() {
         left_behind_more: 0,
         forks: Vec::new(),
         forks_more: 0,
-        messages: Vec::new(),
+        ..Default::default()
     };
     crate::update::preview::preview_produced(
         &mut state,

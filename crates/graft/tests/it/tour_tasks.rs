@@ -234,7 +234,7 @@ impl Tour {
         self.cursor_to("[feature]");
         self.send(b"m");
         self.wait("the merge preview, forecast read", |s| {
-            s.has("Preview: merge feature into main") && s.has("no conflicts expected")
+            s.has("Merge feature into main") && s.has("nothing: no file clashes")
         });
         self.send(b"y");
         self.wait("the merge on main", |s| {
@@ -248,7 +248,7 @@ impl Tour {
         self.cursor_to("[clash]");
         self.send(b"m");
         self.wait("the merge preview, forecast read", |s| {
-            s.has("Preview: merge clash into main") && s.has("may conflict: menu.txt")
+            s.has("Merge clash into main") && s.has("1 file clashes: menu.txt")
         });
         self.send(b"y");
         self.wait("the resolver on menu.txt", |s| {

@@ -303,10 +303,10 @@ fn merge_over_staged_edits_previews_and_puts_back() {
     let state = planned(&app, state);
 
     let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW))).join("\n");
-    assert!(drawn.contains("Preview: merge"), "{drawn}");
+    assert!(drawn.contains("Merge fix into main"), "{drawn}");
     for row in [
         "your edits: 1 file set aside, put back after",
-        "no conflicts expected",
+        "You decide    nothing: no file clashes",
     ] {
         assert!(drawn.contains(row), "`{row}`:\n{drawn}");
     }

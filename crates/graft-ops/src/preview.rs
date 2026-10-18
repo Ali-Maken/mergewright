@@ -242,5 +242,14 @@ fn blank() -> PreviewPlan {
     }
 }
 
+/// The blank plan every kind starts from: nothing moves, nothing is
+/// written, `Clean`, undoable. For a caller building a plan by hand (a
+/// test's fixture) without naming every field.
+impl Default for PreviewPlan {
+    fn default() -> Self {
+        blank()
+    }
+}
+
 #[cfg(test)]
 mod tests;

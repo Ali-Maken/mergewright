@@ -32,9 +32,11 @@ use crate::set_aside::{
     StopWhen, Tree, edit_is_somewhere, id, journal_entries, last_entry, loose_objects, porcelain,
     resume_with, set_aside_of, staging_lost, stash_commits, step_names, whole,
 };
+mod spawns;
 use crate::support::{
     NOW, Never, TempRepo, git_version, run_redo, run_undo, run_with_stop, try_run,
 };
+use spawns::{CLEAN_TREE_SPAWNS, FF_CLEAN_TREE_SPAWNS, FF_PUT_BACK_SPAWNS, PUT_BACK_SPAWNS};
 
 // ── repositories and operations ─────────────────────────────────────────
 
@@ -825,35 +827,6 @@ fn the_put_back_forecast_costs(repo: &TempRepo) {
 }
 
 // ── counting the preview's spawns ───────────────────────────────────────
-
-/// A true merge's preview over a clean tree, one `git` per entry, measured
-/// on this ticket's code before the put-back forecast was added (the merge
-/// arm of `sets_aside` spawns nothing; it reads the facts).
-const CLEAN_TREE_SPAWNS: &[&str] = &[
-    "diff-tree",
-    "ls-files",
-    "merge-base",
-    "var",
-    "merge-base",
-    "diff-tree",
-    "merge-tree",
-];
-
-/// The put-back forecast's own, after the merge's (ADR-0045 §8).
-const PUT_BACK_SPAWNS: &[&str] = &[
-    "stash create",
-    "merge-base",
-    "merge-tree",
-    "commit-tree",
-    "merge-tree",
-];
-
-/// A fast-forward's preview over a clean tree, measured as
-/// [`CLEAN_TREE_SPAWNS`] was.
-const FF_CLEAN_TREE_SPAWNS: &[&str] = &["diff-tree", "ls-files", "merge-base", "diff-tree"];
-
-/// A fast-forward lands on the source itself: no merged tree to make.
-const FF_PUT_BACK_SPAWNS: &[&str] = &["stash create", "merge-base", "merge-tree"];
 
 /// A `git` first on the child's `PATH`: logs its argv, runs the real one.
 const SPAWN_LOG_SHIM: &str = "#!/bin/sh\n\

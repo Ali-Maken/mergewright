@@ -30,8 +30,8 @@ use super::merge_look;
 use super::rewrite;
 use super::{
     ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, Landing, PreviewError, PreviewPlan,
-    RefMove, Replay, Target, UndoNote, WorktreeEffect, blank, conflicts_from, dirty_tracked, fold, forecast_one,
-    ghost_oid, identity_now, is_ancestor, worktree,
+    RefMove, Replay, Target, UndoNote, WorktreeEffect, blank, conflicts_from, dirty_tracked, fold,
+    forecast_one, ghost_oid, identity_now, is_ancestor, worktree,
 };
 
 mod rebase;

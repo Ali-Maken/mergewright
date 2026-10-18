@@ -93,6 +93,38 @@ pub(super) fn box_choices(state: &AppState) -> Result<Vec<String>, String> {
         .ok_or_else(|| format!("no preview box is drawn; status {:?}", state.status))
 }
 
+/// The keys that pick the open box's choice at `index`: `→` that many times
+/// off `Cancel`, then `Enter`. A merge box has keys, not buttons (ease-pass
+/// 10), so its confirm is `y`.
+pub(super) fn choice_keys(state: &AppState, index: usize) -> Vec<KeyCode> {
+    if index == 1 && preview_box(state).is_some_and(|view| view.merge.is_some()) {
+        return vec![KeyCode::Char('y')];
+    }
+    let mut keys = vec![KeyCode::Right; index];
+    keys.push(KeyCode::Enter);
+    keys
+}
+
+/// The merge box's `You decide` line names `path` as a clash.
+pub(super) fn merge_clashes(state: &AppState, path: &str) -> Result<(), String> {
+    let parts = preview_box(state).and_then(|view| view.merge);
+    let decide: Vec<String> = parts
+        .map(|parts| {
+            parts
+                .decide
+                .iter()
+                .map(|(name, _)| name.to_string())
+                .collect()
+        })
+        .unwrap_or_default();
+    check(decide.iter().any(|name| name == path), || {
+        format!(
+            "the merge box decides {decide:?}; status {:?}",
+            state.status
+        )
+    })
+}
+
 /// The title starts with `Preview: ` and names `word`.
 pub(super) fn title_names(state: &AppState, word: &str) -> Result<(), String> {
     let title = box_title(state)?;

@@ -1,6 +1,28 @@
 //! Where the preview box sits on screen, and which choice a click lands on.
 
-use super::{AppState, BoxRect, PreviewBox, fits, preview_box, preview_rows};
+use super::{AppState, PreviewBox, fits, preview_box, preview_rows};
+
+/// Where the preview box goes on screen, in plain screen coordinates —
+/// `update` draws nothing and names no drawing type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BoxRect {
+    /// Leftmost column.
+    pub x: u16,
+    /// Topmost row.
+    pub y: u16,
+    /// How wide.
+    pub width: u16,
+    /// How tall.
+    pub height: u16,
+}
+
+impl BoxRect {
+    /// One past the last row.
+    #[must_use]
+    pub fn bottom(self) -> u16 {
+        self.y.saturating_add(self.height)
+    }
+}
 
 /// Rows the graph gives up to the box this frame, footer excluded.
 ///

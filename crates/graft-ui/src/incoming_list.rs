@@ -195,7 +195,12 @@ impl Widget for &IncomingList<'_> {
         buf.set_string(
             area.x,
             area.bottom().saturating_sub(1),
-            border_row('╰', '╯', &view.footer(width.saturating_sub(2), self.keys), width),
+            border_row(
+                '╰',
+                '╯',
+                &view.footer(width.saturating_sub(2), self.keys),
+                width,
+            ),
             muted,
         );
     }

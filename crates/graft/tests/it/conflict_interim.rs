@@ -259,9 +259,8 @@ fn merge_stopped(app: &App, state: AppState) -> AppState {
             !matches!(preview.plan, graft::update::detail::Loading::Pending(_))
         })
     });
-    // `→` off `Cancel` onto `Confirm` (ADR-0038 §1), then `Enter` runs it.
-    let state = app.key(&state, KeyCode::Right);
-    let state = app.key(&state, KeyCode::Enter);
+    // The merge box has keys, not buttons (ease-pass 10): `y` runs it.
+    let state = app.key(&state, KeyCode::Char('y'));
     let state = app.pump(state, "the merge", |state| state.operating.is_none());
     // Then the re-read the conflict asked for: the banner cannot name a file
     // before the working tree comes back.

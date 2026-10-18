@@ -3877,7 +3877,7 @@ pub(super) fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::
         left_behind_more: 0,
         forks: Vec::new(),
         forks_more: 0,
-        messages: Vec::new(),
+        ..Default::default()
     }
 }
 

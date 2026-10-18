@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_merge_preview in
+# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# Judge by eye: `⏎` from the box: `The 3 commits that come in from sara/fix-toc`, newest first, `▸` on the first, who and age right-aligned; footer `esc back to the preview  y merge`.
+=== 120x40 ===
+ ◆ api  ~/code/api · wallet-release                                                                           8 commits
+
+      │    after merge
+    ◎┈╮    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-release                           GT —    —
+▸   │ ●    [sara/fix-toc] Check every link                                                              SA 55m  c95c84c
+    │ ●    Link the contents                                                                            OK 56m  ec3eb1b
+    │ ●    Add a table of contents                                                                      SA 57m  c1b9826
+    ● │    Number the report                                                                            GF 58m  27d980c
+    ●─╯    Add the report                                                                               GF 59m  1ac2b32
+  ●─╯      [main] Correct the note                                                                      GF 1y   a82960b
+  ●        Add the first note                                                                           GF 1y   fadcfb3
+  ◇        Add a readme                                                                                 GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ The 3 commits that come in from sara/fix-toc                                                                         │
+│                                                                                                                      │
+│ ▸●  Check every link                                                                                       Sara  55m │
+│  ●  Link the contents                                                                                      Omar  56m │
+│  ●  Add a table of contents                                                                                Sara  57m │
+╰ esc back to the preview  y merge ────────────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
