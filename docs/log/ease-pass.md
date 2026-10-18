@@ -123,3 +123,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - user: merge message read-only in the review, as the mock (12 as written).
 - gates after 06g (387124df): fmt ok, clippy 0, nextest 6895/6895, doc ok; worktree removed. builder-opus 11 dispatched.
 - builder-opus-xhigh 06c continuation (9ed75744, merged 40a10255) 06c 17/18: FoldedAsk/FoldedHits, search suffix, search.rs split 634→398. Open box: m8/search-hint re-shoot also drops header fold words (06b rule) → 14. Gap broken: suffix stale after space/1 → 06h. Not compacted. skills: implement, tdd · 179 tools. Eye: main-search-folded-120. Gates running.
+- planner-fable 06h/06i refresh: 06c names in; 06h closes ease/06c-suffix-stale (change_view re-asks); both ready; both need scouts (06h: cursor path on view change — via seek would open a merge = stop). Scouts 06h + 06i dispatched.

@@ -1,31 +1,32 @@
 # graph-mode-in-help — `GRAPH MODE` in the `?` list: `⏎` switches, the app keeps the pick in its config file
 
-Status: draft
-Blocked by: 06h-graph-mode (`MergedBranches`, `as_config`, `History::merged_branches`, `switch_graph_mode`).
+Status: ready (reconciled 2026-10-18 with 06c as built and 06h's update; build after 06h merges)
+Blocked by: 06h-graph-mode (`MergedBranches`, `as_config`, `History::merged_branches`, `switch_graph_mode`, the folded-count re-ask in `change_view`). The scout may run before 06h merges: its files (`update::palette`, graft-ui `palette`, `config::load`, `jobs`) are not 06h's.
 Build with: Sonnet — a listing group, a keyless row kind and a small file writer, each pinned by tests; the writer's cases are all observable on a temp dir. Brownfield: scout first (ADR-0035); conductor confirms the model after it.
-Needs: from 06h `MergedBranches::{KEY, as_config}`, `History::merged_branches() -> MergedBranches`, `switch_graph_mode(&mut AppState, MergedBranches) -> Vec<Command>`. Existing: `update::palette` (listing, filter, `⏎`), graft-ui `palette` (`RowKind`, `PaletteRow`, `PaletteView`, `palette_row_at`), `config::Loaded` (its path), the job runner (`update` → `Command` → worker → event), the bar's one-shot result line.
-Scout: needed — one page: how `update::palette` builds `?`'s groups (`IN PROGRESS`/`HERE`/`EVERYWHERE`/`YOUR CONFIG`) and `⌃P`'s typed groups; how a keyless row is drawn today (commit options over the editor, MAP `update::palette`); every `PaletteRow` field (is there one for muted text after the label?); where `Loaded.path` is held after startup and whether it is set when no file exists; the command/job-event enums a write would use; the one-shot bar line an operation's `✓` uses; every capture and insta snapshot of `?` opened on the graph.
+Needs: from 06h `MergedBranches::{KEY, as_config}`, `History::merged_branches() -> MergedBranches`, `switch_graph_mode(&mut AppState, MergedBranches) -> Vec<Command>` (goes through `change_view`, which re-asks a live search's folded count — 06i adds no ask). Existing: `update::palette` (listing, filter, `⏎`), graft-ui `palette` (`RowKind`, `PaletteRow`, `PaletteView`, `palette_row_at`), `config::Loaded` (its path), the job runner (`update` → `Command` → worker → event), the bar's one-shot result line.
+Scout: needed (brownfield; no Step 1 here covers it), one page: how `update::palette` builds `?`'s groups (`IN PROGRESS`/`HERE`/`EVERYWHERE`/`YOUR CONFIG`) and `⌃P`'s typed groups; how a keyless row is drawn today (commit options over the editor, MAP `update::palette`); every `PaletteRow` field (is there one for muted text after the label?); where `Loaded.path` is held after startup and whether it is set when no file exists; the command/job-event enums a write would use; the one-shot bar line an operation's `✓` uses; every capture and insta snapshot of `?` opened on the graph (06h adds `config-merged-branches-problem-120.txt`, one more).
 
 ## Read first
 - `docs/design-notes/ease-pass.md` :20 ("Graph mode in the `?` list").
 - Mock: `prototypes/ease-mocks/mergewright-show-all-branches.html` script :76-107 (rows, group, words), :137 (`⏎` and the flash). Build to it.
-- `06h-graph-mode.md` Decided and Signatures.
+- `06h-graph-mode.md` Decided ("The switch", "Folded count re-asked") and Signatures.
 - `docs/design/02-keymap.md` §2.12 :576-592 (palette and help). `docs/design/01-view-mockups.md` §1.16 :505-532 (row form: key 6 cells · label · config id, id dropped below 100 columns).
 - `README.md` :105-111 (config path, how it is read).
 - `crates/graft/MAP.md`: `config`, `config::load`, `config::folder`, `update` (pure: no file), `update::palette`, `jobs`, `layout` (an existing write to the app's own folder, for form). `crates/graft-ui/MAP.md` `palette`.
 
 ## Why
-User, 2026-10-18: "introducing [a config file] for just one feature doesn't feel right, how about a mode selector?" — chose: pick the graph mode inside the app, in the `?` list; no new key; he never opens a file.
+User, 2026-10-18 (field notes :116): "introducing [a config file] for just one feature doesn't feel right, how about a mode selector?" — chose: pick the graph mode inside the app, in the `?` list; no new key; he never opens a file.
 
 ## Checked before this spec (rule: check the specific)
-- **Keyless palette rows are not new.** Over the commit editor the palette lists keyless options (`commit.toggle_amend` …; MAP `update::palette` :277; keymap §2.12 / §2.10 :538-540). **New here:** a row that is a setting's choice, not an action — no `ActionId`, a `●`/`○` in the key column, `(on)` on the chosen one — and a group not read from the key table. MAP lists no such `RowKind`; scout confirms.
+- **Keyless palette rows are not new.** Over the commit editor the palette lists keyless options (`commit.toggle_amend` …; MAP `update::palette`; keymap §2.12 / §2.10 :538-540). **New here:** a row that is a setting's choice, not an action — no `ActionId`, a `●`/`○` in the key column, `(on)` on the chosen one — and a group not read from the key table. MAP lists no such `RowKind`; scout confirms.
 - **The app never writes its config today.** `crates/graft/Cargo.toml` :63-66: "Graft reads config and never writes it" (`toml` built without `display`). Under `crates/graft/src/config/` only `folder.rs` touches the disk to write, and that moves the folder (grep `fs::write|File::create|rename(`, paths only). Other writes (`layout::save_split`, `first_launch`, `recent`) go to the app's own state folder, not `config.toml`. **The writer is new code.**
+- **Typing in `?`:** 06r Q1 (open, owned by 14): the space key typed in `?` goes into the query. This journey types letters (`graph`), unaffected.
 
 ## Decided here
 - **Where it lists.** `?` opened on the graph (`ContextId::Graph`): group `GRAPH MODE` right after `HERE` (mock :78-81), before `EVERYWHERE`. `⌃P`/`:` with a query: the same group after actions when a row matches. Not on the start screen (no graph). Typing filters on the title plus hidden words `graph mode view fold folded merges merged every branch all lanes` (mock :83) — `graph`, `fold`, `branch` all find it.
 - **Row** (mock :100, §1.16 form): key column `●` on / `○` off (accent on the `●`), title padded (`Folded merges`, `Every branch`), muted detail (`merged branches fold into their merge row` / `every branch on its own lane, as before`), `   (on)` after the chosen one; config id column `graph.merged_branches` (muted, dropped below 100 columns as every row's). Below 100 columns the detail is cut before the title is.
 - **`⏎` / click** on the off row: palette closes → `switch_graph_mode` (06h) → `Command::KeepGraphMode`. On the on row: palette closes, nothing else (mock :137). Not recorded as a recently run command (ADR-0061 records actions; this is a setting). No journal entry.
-- **Where he lands:** the graph, cursor on the same commit (06h), top line `every branch shown` / `K merged branches folded`. Bar, after the write: `✓ Graph: every branch · kept for next launch` / `✓ Graph: folded merges · kept for next launch` (mock :137), the bar's existing one-shot line. Write failed: `✗ Graph: every branch for this run · not kept: <reason>` — the switch stands, the file is as it was.
+- **Where he lands:** the graph, cursor on the same commit (06h; switching to folded with the cursor on a commit that folds away → on its merge, nothing opened), top line `every branch shown` / `K merged branches folded`. A live search stays live; its footer is re-counted under the new mode by 06h's re-ask (`· N in folded merges` gone in Every branch, back in Folded merges) — no extra step. Bar, after the write: `✓ Graph: every branch · kept for next launch` / `✓ Graph: folded merges · kept for next launch` (mock :137), the bar's existing one-shot line. Write failed: `✗ Graph: every branch for this run · not kept: <reason>` — the switch stands, the file is as it was.
 - **The writer** (`config::write`, new; runs on a worker, `update` stays pure):
   - Path: the one `config::load` reads (`$XDG_CONFIG_HOME/mergewright/config.toml`, else `~/.config/mergewright/config.toml`). Missing file → create it (and the folder) holding `[graph]` + the key. Read fresh at write time, not the startup copy: edits he made while running are kept.
   - Edits with **`toml_edit`** (new dependency, graft only; same toml-rs family as `toml` 1.x; `cargo tree -d` shows no duplicate of `toml_parser`/`toml_datetime`): every comment, blank line, key order and other table kept byte for byte; only the key's value changes, its trailing comment kept; absent key → added at the end of `[graph]`; absent `[graph]` → appended; a dotted `graph.merged_branches` or inline `graph = { … }` edited in place. A bad value (`"open"`) is replaced.
@@ -39,7 +40,7 @@ Switch to every branch: `?` · `graph` · `↓` · `⏎` = **4** (typed word = 1
 
 ## Scope
 In: graft `update::palette` (group, rows, `⏎`), the command and job event, `jobs` (the write job), `config::write` (new), the bar line; graft-ui `palette` (`RowKind::Setting`, row drawing, `palette_row_at` on the new rows); `Cargo.toml` (graft); README :105-111 (the app writes this one key when picked in `?`).
-Out: the modes themselves (06h); other settings in the list; live reload; design-doc wording — text in NOTES for the conductor: keymap §2.12 :580-581 add "`GRAPH MODE` after `HERE` on the graph: two keyless rows, `⏎` picks and keeps it"; `01-view-mockups.md` §1.16 :524-528 the group and the `●`/`○` row form; §1.16's drawing gains the group.
+Out: the modes themselves and the search re-ask (06h); other settings in the list; live reload; 06r Q1 (space typed in `?`); design-doc wording — text in NOTES for the conductor: keymap §2.12 :580-581 add "`GRAPH MODE` after `HERE` on the graph: two keyless rows, `⏎` picks and keeps it"; `01-view-mockups.md` §1.16 :524-528 the group and the `●`/`○` row form; §1.16's drawing gains the group.
 
 ## Signatures
 graft-ui `palette`:
@@ -75,16 +76,17 @@ pub enum KeepError {
 }
 impl std::fmt::Display for KeepError; // the reason words in Decided; Io: `can't write <path>: <error>`
 ```
-graft jobs: `Command::KeepGraphMode(MergedBranches)` and its event `GraphModeKept { mode: MergedBranches, result: Result<(), String> }` in the graft-local enums the scout names (no graft-core type gains a config type).
+graft jobs: `Command::KeepGraphMode(MergedBranches)` and its event `GraphModeKept { mode: MergedBranches, result: Result<(), String> }` in the graft-local enums the scout names (no graft-core type gains a config type). Every `HistoryUpdate`-style exhaustive match the new event reaches (e.g. `event_loop/label.rs`, as 06c found for `FoldedHits`) gains its arm; the compiler confirms.
 
 ## Touches
 Each checked, and how, in the report's **Touches:** line:
-- Every `?`-on-graph capture and insta snapshot (3 more lines: header + 2 rows) — list them, re-shoot each with its D3 class; `m8-keymap-config-problem-120x36`.
+- Every `?`-on-graph capture and insta snapshot (3 more lines: header + 2 rows) — list them, re-shoot each with its D3 class; `m8-keymap-config-problem-120x36`; 06h's `config-merged-branches-problem-120.txt`.
 - `palette_row_at` (group header → `None`, rows hit), `row_count`, scrolling in a short box, `nothing matches`.
 - `⌃P` typed ranking and the recently-run list (not recorded — test).
 - Start-screen palette (`empty_state::palette`): no group (test).
 - `first_launch` (opening the palette still counts as today).
 - Tour steps that open `?` on the graph (grep).
+- A live search across the switch: footer re-counted by 06h's `change_view` ask; 06i sends no ask of its own (grep `ask_folded` in the files it edits → none).
 - `cli::config_keys` / man page: the key is unchanged; the man page notes the app may write it.
 - Dependencies: `toml_edit` added, `tempfile` promoted; `tests/it/dependency_edges.rs`; licence/deny config if one exists.
 - Keymap: no key added; `tests/keymap_ids.txt` unchanged (rows aren't actions). Journal/undo: none.
@@ -93,6 +95,7 @@ Each checked, and how, in the report's **Touches:** line:
 - [ ] `?` on the graph, empty query: `HERE`, then `GRAPH MODE` with `● Folded merges … (on)` and `○ Every branch`, then `EVERYWHERE`; id column `graph.merged_branches` at 120, dropped at 90. — names its test.
 - [ ] Typed `graph`, `fold`, `branch` each keep both rows; `⌃P` typed `graph` lists the group; start-screen palette never does. — names its tests.
 - [ ] `⏎` on `Every branch`: palette closed, `History::merged_branches() == Shown`, one `KeepGraphMode(Shown)` command, cursor commit unchanged; `⏎` on the on row: closed, no command; neither recorded as recently run; journal unchanged. Click on a mode row = `⏎`. — names its tests.
+- [ ] With a finished search, 3 of 4 hits folded: `⏎` on `Every branch` → the request the switch sends carries a `FoldedAsk` (06h's); fed `folded: 0`, the footer has no suffix and the search is still live. — names its test.
 - [ ] Event ok → bar `✓ Graph: every branch · kept for next launch`; event err → `✗ Graph: every branch for this run · not kept: <reason>`, mode stays `Shown`. — names its test.
 - [ ] Writer, temp dir each: missing folder + file → file is exactly `[graph]\nmerged_branches = "shown"\n`; a file with comments, `[ui]`, `[keys.graph]` and no `[graph]` → original bytes then the appended table; `[graph]` with other keys and comments → only the inserted line differs; existing key with a trailing comment, and `= "open"` → only the value differs; dotted `graph.merged_branches` edited in place; each result `config::load`s to the mode with no warning. — names its tests.
 - [ ] Writer refusals: an unparsable file and `graph = 3` → `Err`, file bytes unchanged. Read-only folder → `Io`, file unchanged. No temp file left in the folder after any case. — names its tests.
