@@ -1422,6 +1422,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/06h-mode-lost | A graph mode switched at run time is lost when another repo opens (06h NOTES) | **question** | ease-pass review |
 | ease/06h-landed-bar | Every branch: after-merge bar (undo the merge, push) never shows, finish.rs:208-224 (06h Q1) | **question** | ease-pass 12b/review |
 | ease/06h-fork-rows-flaky | `fork_rows` test failed once then passed; code untouched by 06h | **unverified** | ease-pass review |
+| ease/07a-perf | Cold ahead read 121.4 ms median on 2,000 branches vs ≤100 ms; measured at load 15–21, needs an idle re-run (scripts/ease-ahead-read.sh) | **unverified** | before 07 |
+| ease/07a-no-reread-on-move | "0 ahead walks on moves/redraws" shown by grep only (one caller of refs::read, jobs/runner/reads.rs:99), no test | **unverified** | ease-pass review |
+| ease/heavy-folded-hits | Heavy tier does not compile: tests/it/heavy.rs:321,347 use FoldedHits (after 06c/06h) | **broken** | ease-pass review (heavy run) |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |

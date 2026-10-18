@@ -146,3 +146,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - user: no-upstream branch → `not pushed yet`; written into 07a Build with/acceptance note.
 - builder-sonnet 06h merged: 22/24 (space at edit stop, n in Every branch untested → gaps); Q1 landed bar in Every branch; fork_rows flaky once. 6945/6945 in worktree · 192 tools · skills: implement. builder-sonnet 07a dispatched beside 11b.
 - builder-sonnet 07a · 41 tools · skills: none (tests first by hand): 4/6; accessor ahead_of_upstream() -> Option<AheadOfUpstream{NotPushed,By(n)}>; perf cold 121.4 ms median on 2000 branches vs ≤100 budget, measured at load 15–21 (11b + gates) → idle re-run by conductor before deciding; warm 3.2 ms. Pre-existing: heavy tier breaks tests/it/heavy.rs:321,347 (FoldedHits). Merge after 06h gates.
+- gates after 06h (4a90c7e0): fmt ok, clippy 0, nextest 6945/6945, doc ok; worktree removed. 07a merged; gates running.
