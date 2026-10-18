@@ -22,7 +22,9 @@ use mergewright_core::oid::Oid;
 use mergewright_fixtures::Shape;
 use mergewright_git::history::{CHUNK, CommitTable, Order, Walk, WalkError, read_commit};
 use mergewright_git::repo::RepoHandle;
-use mergewright_graph::layout::{Anchor, CommitSource, Pull, StreamConfig, StreamingLayout, layout};
+use mergewright_graph::layout::{
+    Anchor, CommitSource, Pull, StreamConfig, StreamingLayout, layout,
+};
 use mergewright_graph::row::Row;
 
 use crate::corpus::{for_each_shape, open_with_seeds, walk_everything};

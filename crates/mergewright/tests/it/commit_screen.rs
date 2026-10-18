@@ -106,7 +106,10 @@ pub(crate) fn committed_files(repo: &Path) -> Vec<String> {
 pub(crate) fn landed(app: &App, state: AppState) -> AppState {
     let state = app.settle_write(state, "the commit");
     app.pump(state, "the graph on the new commit", |state| {
-        let head = state.refs.as_deref().and_then(mergewright::refs::RefBadges::head);
+        let head = state
+            .refs
+            .as_deref()
+            .and_then(mergewright::refs::RefBadges::head);
         head.is_some()
             && state.last_commit.as_ref().map(|last| last.commit) == head
             && mergewright::view::graph_view(state, 0).push.is_some()
@@ -238,7 +241,7 @@ fn a_commit_made_with_sign_off_on_carries_the_trailer() {
     let _landed: AppState = app.settle_write(state, "the commit");
     let message = git(repo, &["log", "-1", "--format=%B"]);
     assert!(
-        message.contains("Signed-off-by: Mergewright Test <test@example.invalid>"),
+        message.contains("Signed-off-by: Graft Test <test@example.invalid>"),
         "{message}"
     );
     app.close();

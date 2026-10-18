@@ -183,8 +183,9 @@ fn areas(
         .paint_key(first, plain, selection)
         .map_err(|why| format!("paint key: {why:?}"))?;
     let changed = seen.slots.insert(first, paint_key) != Some(paint_key);
-    let area =
-        |frame: &mergewright_core::raster::RasterFrame| u64::from(frame.width) * u64::from(frame.height);
+    let area = |frame: &mergewright_core::raster::RasterFrame| {
+        u64::from(frame.width) * u64::from(frame.height)
+    };
     let today = if changed {
         rasterise_emphasis(plain, selection)
             .map_err(|why| format!("emphasis: {why:?}"))?

@@ -479,7 +479,9 @@ fn a_failed_read_says_so_in_the_box() {
     let view = crate::view::picker::picker_view(&state).expect("drawn");
     assert_eq!(
         view.body,
-        mergewright_ui::picker::PickerBody::Failed(mergewright_term::sanitize_line("fatal: bad things"))
+        mergewright_ui::picker::PickerBody::Failed(mergewright_term::sanitize_line(
+            "fatal: bad things"
+        ))
     );
     let (state, _) = press(&state, KeyCode::Enter);
     assert!(state.picker.is_some(), "⏎ on nothing does nothing");

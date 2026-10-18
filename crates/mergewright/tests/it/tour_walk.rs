@@ -204,7 +204,8 @@ fn shot(
 
 /// His repository: the feature-branch corpus copied into `root/his`.
 fn his_repo(root: &Path) -> PathBuf {
-    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+    let scratch =
+        mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let path = root.join("his");
     let status = std::process::Command::new("cp")
         .arg("-R")

@@ -107,7 +107,11 @@ fn tributary_repo_moves_and_both_rename_rows_read() {
         NOW + 301,
     );
     let old = refs_of(&repo, tributary);
-    assert_eq!(old.len(), 5, "3 moved from Mergewright, 2 made under Tributary");
+    assert_eq!(
+        old.len(),
+        5,
+        "3 moved from Mergewright, 2 made under Tributary"
+    );
     let before = journal_for(&repo.open()).entries().to_vec();
     assert_eq!(before.len(), 23);
     let newest = before.last().expect("an entry").clone();
@@ -192,7 +196,9 @@ fn switched_tributary_with_graft_leftovers() {
         settled.outcome
     );
     let kept = |name: &str| {
-        let rest = name.strip_prefix(graft.ref_prefix()).expect("a Mergewright ref");
+        let rest = name
+            .strip_prefix(graft.ref_prefix())
+            .expect("a Mergewright ref");
         format!("{kept_prefix}{}/{rest}", graft.dir())
     };
     let mut expected = moved(&held, Generation::CURRENT);

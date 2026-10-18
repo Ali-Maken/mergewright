@@ -233,7 +233,7 @@ fn shell_steps(
     )?;
     shell.remote_at_c(root, origin)?;
     let limiter = shell.commit(at(10, 15, 0), "src/limit.rs", b"// limit\n", LOST_ON_MAIN)?;
-    mergewright_edit_steps(shell, graft)?;
+    app_edit_steps(shell, graft)?;
 
     shell.git(at(10, 18, 0), &["switch", "-q", "-c", "spike", "HEAD~1"])?;
     let cache = shell.commit(at(10, 21, 0), "src/cache.rs", b"// redis\n", LOST_ON_SPIKE)?;
@@ -270,7 +270,7 @@ fn shell_steps(
 }
 
 /// 10:16: Mergewright's discard, his edit, Mergewright's forced undo over it.
-fn mergewright_edit_steps(shell: &Shell<'_>, graft: &mut dyn Mergewright) -> Result<(), LostWorkError> {
+fn app_edit_steps(shell: &Shell<'_>, graft: &mut dyn Mergewright) -> Result<(), LostWorkError> {
     let failed = |step| move |why| LostWorkError::Mergewright { step, why };
     shell.write(EDITED, DISCARDED_EDIT)?;
     graft

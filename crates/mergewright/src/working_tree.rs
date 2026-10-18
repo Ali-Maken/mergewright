@@ -69,7 +69,8 @@ pub fn read(store: &RepoStore, stop: &dyn Stop) -> Result<WorkingTree, String> {
     // the one `M`'s refusal is worded from. A config that could not be *read*
     // is a different thing, and reporting it as "unset" would tell the user
     // to configure a tool they have already configured.
-    let mergetool = mergewright_git::state::mergetool(&handle).map_err(|error| error.to_string())?;
+    let mergetool =
+        mergewright_git::state::mergetool(&handle).map_err(|error| error.to_string())?;
     // Only a rebase has a todo to read; every other read costs nothing more.
     let rewrite = in_progress
         .as_ref()

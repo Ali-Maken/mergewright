@@ -32,7 +32,9 @@ fn status_row(frame: &[String]) -> &str {
     &frame[legend - 1]
 }
 
-fn in_progress(kind: mergewright_git::state::InProgress) -> mergewright_git::state::InProgressDetail {
+fn in_progress(
+    kind: mergewright_git::state::InProgress,
+) -> mergewright_git::state::InProgressDetail {
     mergewright_git::state::InProgressDetail {
         kind,
         step: None,

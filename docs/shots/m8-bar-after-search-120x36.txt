@@ -1,5 +1,5 @@
 # m8-bar-after-search-120x36: drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/search_hint.rs). Not a pty capture: a character grid,
+# (crates/mergewright/tests/it/search_hint.rs). Not a pty capture: a character grid,
 # no colour (CLAUDE.md rule 5 — colour unverified; a failed search's warning
 # style in the header is unverified too).
 #

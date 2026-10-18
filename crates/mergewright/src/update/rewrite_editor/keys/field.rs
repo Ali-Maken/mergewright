@@ -16,7 +16,9 @@ pub(super) fn open_field(editor: &mut RewriteEditor, keys: &mergewright_ui::keym
     if row.action.melds() {
         editor.notice = Some(match editor.melds_into(index) {
             Some(kept) => words::melds_into(&editor.todo[kept].subject, keys),
-            None => mergewright_ops::rewrite::TodoProblem::MeldsIntoNothing { row: index }.explain(),
+            None => {
+                mergewright_ops::rewrite::TodoProblem::MeldsIntoNothing { row: index }.explain()
+            }
         });
         return;
     }

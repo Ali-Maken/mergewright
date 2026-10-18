@@ -17,7 +17,7 @@ use super::public_set::{brace_delta, inline_body, mod_decl};
 use super::{crate_dir, ident_prefix, listed_item, map_text, read, src_tree};
 
 /// Crates checked as maps of modules (the app). Empty in pass 1.
-pub(super) const MODULES_CHECKED: &[&str] = &["graft"];
+pub(super) const MODULES_CHECKED: &[&str] = &["mergewright"];
 /// Deepest module path that must have its own heading.
 const HEADING_DEPTH: usize = 2;
 const MODULE_MAP_MAX_LINES: usize = 450;

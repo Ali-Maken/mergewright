@@ -111,7 +111,10 @@ impl GraphScreen<'_> {
                 let width16 = u16::try_from(width.saturating_sub(1)).unwrap_or(u16::MAX);
                 let line = fit_status_line(
                     problem.reason.as_str(),
-                    problem.keys.as_ref().map(mergewright_term::SanitizedText::as_str),
+                    problem
+                        .keys
+                        .as_ref()
+                        .map(mergewright_term::SanitizedText::as_str),
                     width16,
                 );
                 (format!(" {line}"), Token::Warning)

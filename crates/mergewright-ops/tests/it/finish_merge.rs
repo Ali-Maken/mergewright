@@ -50,7 +50,10 @@ fn shell_merge_stopped() -> TempRepo {
         repo.try_git(&["merge", "feature"]).is_err(),
         "the merge is meant to stop"
     );
-    assert!(journal_ids(&repo).is_empty(), "Mergewright journaled nothing");
+    assert!(
+        journal_ids(&repo).is_empty(),
+        "Mergewright journaled nothing"
+    );
     repo
 }
 

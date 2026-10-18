@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use mergewright::session::Clock;
 use mergewright::update::AppState;
 use mergewright_core::event::KeyCode;
-use mergewright_fixtures::lost_work::{self, Commits, Mergewright, LostWork};
+use mergewright_fixtures::lost_work::{self, Commits, LostWork, Mergewright};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::Stop;
 use mergewright_ops::apply::{Context, apply};
@@ -94,7 +94,8 @@ impl Mergewright for AppOps {
 
     fn undo_forced(&mut self, work: &Path, at_ms: i64) -> Result<(), String> {
         with_context(work, at_ms, |ctx| {
-            mergewright_ops::undo::undo(ctx, true).map_err(|why| why.explain(&mergewright_ops::keys::NoKeys))
+            mergewright_ops::undo::undo(ctx, true)
+                .map_err(|why| why.explain(&mergewright_ops::keys::NoKeys))
         })
     }
 }
@@ -148,7 +149,8 @@ pub(super) fn enter_to_the_box(route: &mut Route, app: &App, state: &AppState) -
         state.preview.as_ref().is_some_and(|preview| {
             !matches!(
                 preview.plan,
-                mergewright::update::detail::Loading::Idle | mergewright::update::detail::Loading::Pending(_)
+                mergewright::update::detail::Loading::Idle
+                    | mergewright::update::detail::Loading::Pending(_)
             )
         }) || matches!(state.status, mergewright::update::Status::Sticky { .. })
     });

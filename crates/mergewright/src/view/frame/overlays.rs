@@ -69,11 +69,13 @@ fn journal_status_row(
             problem: true,
         });
     }
-    footer_notice(state, tier, width).map(|notice| mergewright_ui::journal_screen::JournalStatusRow {
-        words: mergewright_ui::fit::fit(notice.as_str(), usize::from(width))
-            .trim_end()
-            .to_owned(),
-        problem: false,
+    footer_notice(state, tier, width).map(|notice| {
+        mergewright_ui::journal_screen::JournalStatusRow {
+            words: mergewright_ui::fit::fit(notice.as_str(), usize::from(width))
+                .trim_end()
+                .to_owned(),
+            problem: false,
+        }
     })
 }
 
@@ -183,7 +185,10 @@ pub(super) fn draw_place(
     }
     let bar = (area.x, area.bottom() - 1, area.width);
     if let Some(typed) = &blame.find_prompt {
-        let text = format!(" /{}", mergewright_term::sanitize::sanitize_line(typed).as_str());
+        let text = format!(
+            " /{}",
+            mergewright_term::sanitize::sanitize_line(typed).as_str()
+        );
         frame.buffer_mut().set_string(
             bar.0,
             bar.1,

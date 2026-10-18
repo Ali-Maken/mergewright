@@ -30,7 +30,8 @@ pub(super) fn write_commit_graph(
 /// remember "never for this repository" in its common directory.
 pub(super) fn decline_commit_graph(repos: &RepoStore) -> Result<(), String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
-    mergewright_git::commit_graph::remember_declined(&repo.handle()).map_err(|error| error.to_string())
+    mergewright_git::commit_graph::remember_declined(&repo.handle())
+        .map_err(|error| error.to_string())
 }
 
 /// The work behind [`Command::OpenRepository`](crate::update::Command::OpenRepository).
@@ -103,7 +104,13 @@ pub(super) fn search<S: JobEvents>(
             sink.deliver(AppEvent::Progress(id, Progress::Search(hits)))
                 != Delivery::NobodyListening
         };
-        match crate::search::scan(&store, &query, mergewright_git::history::CHUNK, &stop, &mut found) {
+        match crate::search::scan(
+            &store,
+            &query,
+            mergewright_git::history::CHUNK,
+            &stop,
+            &mut found,
+        ) {
             Ok(crate::search::Scanned::Finished) => Outcome::Done,
             Ok(crate::search::Scanned::Stopped) => Outcome::Cancelled,
             Err(message) => Outcome::Failed(message),
@@ -148,7 +155,9 @@ pub(super) fn read_commit_files(
     staged_parts: &[std::path::PathBuf],
     stop: &super::Cancel,
 ) -> Result<Arc<mergewright_git::diff::FileList>, String> {
-    use mergewright_git::diff::{DiffOptions, DiffSpec, FileStatus, LineKind, file_diff, list_files};
+    use mergewright_git::diff::{
+        DiffOptions, DiffSpec, FileStatus, LineKind, file_diff, list_files,
+    };
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
     let options = DiffOptions::default();

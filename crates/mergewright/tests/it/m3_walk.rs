@@ -158,7 +158,9 @@ pub fn run_scenario(scenario: &Scenario) -> Result<(), String> {
 /// Set a scenario up for a pty capture: the shape, its setup and the
 /// capture's headless steps. Hands back the scratch (alive while the
 /// captured run lasts) and the directory to open.
-pub fn prepare_capture(scenario: &Scenario) -> Result<(mergewright_fixtures::Scratch, PathBuf), String> {
+pub fn prepare_capture(
+    scenario: &Scenario,
+) -> Result<(mergewright_fixtures::Scratch, PathBuf), String> {
     let capture = scenario
         .capture
         .as_ref()
@@ -1533,7 +1535,8 @@ fn interrupted_entry() -> Scenario {
                 mergewright::update::undo::interrupted_notice(state).is_some()
             }),
             Step::See("the footer notice names the operation", |state| {
-                let notice = mergewright::update::undo::interrupted_notice(state).ok_or("no notice")?;
+                let notice =
+                    mergewright::update::undo::interrupted_notice(state).ok_or("no notice")?;
                 check(
                     notice.contains("discard sample.txt") && notice.contains("J to inspect"),
                     || format!("notice {notice:?}"),

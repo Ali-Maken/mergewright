@@ -137,7 +137,10 @@ fn the_menus_band_stops_at_the_detail_pane_instead_of_clearing_it() {
     let state = on_mains_row(&app, state);
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the detail pane's file list", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
 
     // 160x48 lays the detail pane out to the right (`DetailLayout::Right`),
@@ -440,7 +443,8 @@ fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
         .unwrap_or_else(|| panic!("{wanted:?} missing from {:?}", menu_labels(&state)));
     let expected = {
         let open = state.context_menu.as_ref().expect("a menu is open");
-        let mergewright_ui::context_menu::ContextAction::History(index) = open.menu.items[at].action
+        let mergewright_ui::context_menu::ContextAction::History(index) =
+            open.menu.items[at].action
         else {
             panic!("{wanted:?} is a history verb")
         };

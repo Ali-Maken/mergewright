@@ -40,7 +40,10 @@ fn main_tip(repo: &std::path::Path) -> String {
 }
 
 /// `J`, then every stage answered by its real job.
-fn journal_with_every_stage(app: &App, state: mergewright::update::AppState) -> mergewright::update::AppState {
+fn journal_with_every_stage(
+    app: &App,
+    state: mergewright::update::AppState,
+) -> mergewright::update::AppState {
     let state = app.pump(state, "the launch read", |state| {
         state.journal.reading.is_none()
     });
@@ -80,7 +83,8 @@ fn u_undoes_the_put_back() {
         state.preview.as_ref().is_some_and(|preview| {
             !matches!(
                 preview.plan,
-                mergewright::update::detail::Loading::Idle | mergewright::update::detail::Loading::Pending(_)
+                mergewright::update::detail::Loading::Idle
+                    | mergewright::update::detail::Loading::Pending(_)
             )
         })
     });
@@ -164,7 +168,8 @@ fn u_in_j_undoes_the_next_entry_from_any_row() {
         state.preview.as_ref().is_some_and(|preview| {
             !matches!(
                 preview.plan,
-                mergewright::update::detail::Loading::Idle | mergewright::update::detail::Loading::Pending(_)
+                mergewright::update::detail::Loading::Idle
+                    | mergewright::update::detail::Loading::Pending(_)
             )
         })
     });
@@ -208,10 +213,9 @@ fn put_back_box(app: &App, state: mergewright::update::AppState) -> mergewright:
     let state = journal_with_every_stage(app, state);
     let state = app.key(&state, KeyCode::Enter);
     app.pump(state, "the put-back's plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| matches!(preview.plan, mergewright::update::detail::Loading::Ready(_)))
+        state.preview.as_ref().is_some_and(|preview| {
+            matches!(preview.plan, mergewright::update::detail::Loading::Ready(_))
+        })
     })
 }
 
@@ -267,14 +271,18 @@ fn a_put_back_refused_at_launch_stays_on_j() {
 
 /// `⏎ y` on J's preselected lost row, the put-back settled and the graph
 /// re-read with the lost commit on it.
-fn put_back_through_j(app: &App, state: mergewright::update::AppState) -> mergewright::update::AppState {
+fn put_back_through_j(
+    app: &App,
+    state: mergewright::update::AppState,
+) -> mergewright::update::AppState {
     let state = journal_with_every_stage(app, state);
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the put-back's plan", |state| {
         state.preview.as_ref().is_some_and(|preview| {
             !matches!(
                 preview.plan,
-                mergewright::update::detail::Loading::Idle | mergewright::update::detail::Loading::Pending(_)
+                mergewright::update::detail::Loading::Idle
+                    | mergewright::update::detail::Loading::Pending(_)
             )
         })
     });
@@ -472,10 +480,9 @@ fn a_staged_path_put_back_lands_on_its_unstaged_row() {
     );
     let state = route.press(&app, &state, "⏎", KeyCode::Enter);
     let state = app.pump(state, "what the row puts back", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| matches!(preview.plan, mergewright::update::detail::Loading::Ready(_)))
+        state.preview.as_ref().is_some_and(|preview| {
+            matches!(preview.plan, mergewright::update::detail::Loading::Ready(_))
+        })
     });
     check_staged_box(&state);
 

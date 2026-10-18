@@ -5,7 +5,9 @@ use super::*;
 /// The file's own `Block`s, in order — `ConflictFile::blocks()` answers
 /// only position and state (`BlockAt`), not the `base`/`reproduced` fields a
 /// base test needs, which live on the `Block` each region carries.
-fn conflict_blocks(file: &mergewright_git::conflict::ConflictFile) -> Vec<&mergewright_git::conflict::Block> {
+fn conflict_blocks(
+    file: &mergewright_git::conflict::ConflictFile,
+) -> Vec<&mergewright_git::conflict::Block> {
     file.regions
         .iter()
         .filter_map(|region| match region {

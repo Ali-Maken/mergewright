@@ -111,8 +111,10 @@ fn capture_repo_path() -> std::path::PathBuf {
 /// The repository's location is rewritten to [`CAPTURE_REPO_PATH`] whatever
 /// directory the test opened, so the frame is the same on every machine.
 pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>) -> Vec<String> {
-    let session =
-        mergewright::session::Session::settle(&mergewright::config::Loaded::default(), capabilities());
+    let session = mergewright::session::Session::settle(
+        &mergewright::config::Loaded::default(),
+        capabilities(),
+    );
     let mut state = state.clone();
     state.size = mergewright::update::Size { columns, rows };
     if let Some(clock) = clock {

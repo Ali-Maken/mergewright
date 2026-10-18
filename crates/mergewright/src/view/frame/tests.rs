@@ -387,18 +387,20 @@ fn detail_tab_mid_rebase(banner_focus: bool) -> AppState {
             theirs: Ok(None),
         }),
         banner_focus,
-        working_tree: Some(std::sync::Arc::new(mergewright_git::status::WorkingTreeStatus {
-            entries: vec![mergewright_git::status::StatusEntry {
-                path: "a.txt".into(),
-                original_path: None,
-                staged: None,
-                unstaged: None,
-                untracked: false,
-                unmerged: true,
-                unmerged_how: None,
-                submodule: None,
-            }],
-        })),
+        working_tree: Some(std::sync::Arc::new(
+            mergewright_git::status::WorkingTreeStatus {
+                entries: vec![mergewright_git::status::StatusEntry {
+                    path: "a.txt".into(),
+                    original_path: None,
+                    staged: None,
+                    unstaged: None,
+                    untracked: false,
+                    unmerged: true,
+                    unmerged_how: None,
+                    submodule: None,
+                }],
+            },
+        )),
         detail: crate::update::detail::DetailState {
             shown: true,
             focus: mergewright_ui::detail::DetailFocus::Files,
@@ -482,7 +484,9 @@ fn the_start_over_box_clears_its_band_over_the_resolver() {
         let (state, _) = crate::update::update(
             &state,
             crate::update::AppEvent::Core(mergewright_core::event::Event::Key(
-                mergewright_core::event::KeyPress::plain(mergewright_core::event::KeyCode::Char('d')),
+                mergewright_core::event::KeyPress::plain(mergewright_core::event::KeyCode::Char(
+                    'd',
+                )),
             )),
         );
         assert!(state.confirm.is_some(), "`d` opened the start-over box");
@@ -564,8 +568,10 @@ fn a_status_on_a_standin_footer_starts_at_column_one() {
 fn a_name_prompt() -> crate::update::name_prompt::NamePrompt {
     crate::update::name_prompt::NamePrompt {
         kind: crate::update::name_prompt::NameKind::Branch {
-            at: mergewright_core::oid::Oid::from_bytes(&[1; mergewright_core::oid::Oid::SHA1_BYTES])
-                .expect("20 bytes"),
+            at: mergewright_core::oid::Oid::from_bytes(
+                &[1; mergewright_core::oid::Oid::SHA1_BYTES],
+            )
+            .expect("20 bytes"),
             checkout: true,
         },
         field: TextField::new(""),

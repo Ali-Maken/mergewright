@@ -44,9 +44,9 @@ pub(crate) fn on_branch(state: &AppState, name: &[u8]) -> bool {
     ) else {
         return false;
     };
-    refs.on(row.commit.id)
-        .iter()
-        .any(|label| matches!(label, mergewright::refs::RefLabel::Branch { name: n, .. } if n == name))
+    refs.on(row.commit.id).iter().any(
+        |label| matches!(label, mergewright::refs::RefLabel::Branch { name: n, .. } if n == name),
+    )
 }
 
 /// The cursor onto `branch`'s row, `key`, the preview's plan, `y`: the
@@ -70,7 +70,10 @@ pub(crate) fn stop_by(
     assert!(state.preview.is_some(), "`{key}` opens a preview");
     let state = app.pump(state, "the preview's plan", |state| {
         state.preview.as_ref().is_some_and(|preview| {
-            !matches!(preview.plan, mergewright::update::detail::Loading::Pending(_))
+            !matches!(
+                preview.plan,
+                mergewright::update::detail::Loading::Pending(_)
+            )
         })
     });
     let state = app.key(&state, KeyCode::Char('y'));

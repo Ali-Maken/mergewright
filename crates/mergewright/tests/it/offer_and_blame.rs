@@ -106,10 +106,9 @@ fn merge_with_nothing_to_do() -> (mergewright_fixtures::Scratch, App, AppState) 
     let state = cursor_to(&app, state, &old);
     let state = app.key(&state, KeyCode::Char('m'));
     let state = app.pump(state, "the merge's plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| matches!(preview.plan, mergewright::update::detail::Loading::Ready(_)))
+        state.preview.as_ref().is_some_and(|preview| {
+            matches!(preview.plan, mergewright::update::detail::Loading::Ready(_))
+        })
     });
     (scratch, app, state)
 }
@@ -157,8 +156,10 @@ fn a_single_close_box_offers_only_esc() {
             "undrawable",
             PreviewState {
                 undrawable: Some(
-                    mergewright_core::oid::Oid::from_hex("0707070707070707070707070707070707070707")
-                        .expect("an object id"),
+                    mergewright_core::oid::Oid::from_hex(
+                        "0707070707070707070707070707070707070707",
+                    )
+                    .expect("an object id"),
                 ),
                 ..preview.clone()
             },
@@ -223,7 +224,9 @@ fn capture_commit_editor_fresh() {
         &state,
         120,
         40,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     );
     let text = frame.join("\n");
     assert!(!text.contains("subject empty"), "{text}");

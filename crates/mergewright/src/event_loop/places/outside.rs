@@ -211,7 +211,9 @@ pub(super) fn draw_whole(
     render: impl FnOnce(&mut ratatui::Frame<'_>),
 ) -> io::Result<()> {
     use std::io::Write;
-    screen.backend_mut().write_all(mergewright_term::SYNC_BEGIN)?;
+    screen
+        .backend_mut()
+        .write_all(mergewright_term::SYNC_BEGIN)?;
     let drawn = screen.draw(render).map(|_| ());
     let backend = screen.backend_mut();
     let ended = backend

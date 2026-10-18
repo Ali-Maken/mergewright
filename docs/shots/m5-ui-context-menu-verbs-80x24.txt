@@ -3,7 +3,7 @@
 # forked off the first with two of its own, `feature` checked out), opened
 # over the real job pool, cursor moved to `main`'s row and `.` pressed
 # through `update`
-# (crates/graft/tests/it/context_menu.rs, capture_context_menu_for_docs_shots).
+# (crates/mergewright/tests/it/context_menu.rs, capture_context_menu_for_docs_shots).
 # This file is a golden snapshot: that test asserts the frame still
 # matches it, so drift fails the suite. Regenerate on purpose with
 # MWR_UPDATE_SHOTS=1. Not a pty capture: the terminal is ratatui's

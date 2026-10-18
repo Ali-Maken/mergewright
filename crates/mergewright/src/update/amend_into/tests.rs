@@ -600,7 +600,9 @@ fn y_launches() {
     let state = previewed();
     let view = preview_box(&state).expect("a box");
     assert_eq!(
-        view.lines.first().map(mergewright_term::SanitizedText::as_str),
+        view.lines
+            .first()
+            .map(mergewright_term::SanitizedText::as_str),
         Some("0000000  commit 2  gains  src/auth.rs +4 \u{2212}1")
     );
     assert_eq!(
@@ -633,15 +635,17 @@ fn landing_words_are_done_line_shaped() {
 fn a_put_in_carrying_forks_is_still_the_put_in() {
     let state = previewed();
     let mut with_forks = params();
-    with_forks.forks.push(mergewright_ops::rewrite::ForkSection {
-        after_row: 1,
-        branch: Tip {
-            name: "refs/heads/feature-x".to_owned(),
-            oid: oid(9),
-        },
-        picks: Vec::new(),
-        inside: Vec::new(),
-    });
+    with_forks
+        .forks
+        .push(mergewright_ops::rewrite::ForkSection {
+            after_row: 1,
+            branch: Tip {
+                name: "refs/heads/feature-x".to_owned(),
+                oid: oid(9),
+            },
+            picks: Vec::new(),
+            inside: Vec::new(),
+        });
     assert!(
         state
             .amend_into

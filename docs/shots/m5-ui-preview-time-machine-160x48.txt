@@ -3,8 +3,8 @@
 # three files staged one at a time through the changes pane (three journal
 # entries), then `J`, `j`, `j`, `Enter` on the oldest of the three, through
 # `update` over the real job pool, then the real
-# `graft_ops::preview::plan_revert_to` run
-# (crates/graft/tests/it/preview.rs, capture_time_machine_for_docs_shots,
+# `mergewright_ops::preview::plan_revert_to` run
+# (crates/mergewright/tests/it/preview.rs, capture_time_machine_for_docs_shots,
 # asserted). Not a pty capture: ratatui's TestBackend, a character grid
 # with no colour attributes — CLAUDE.md rule 5, colour ships
 # unverified. The scratch repository's temporary path is replaced by

@@ -1,5 +1,5 @@
 # bar-amend-row-187x44.txt: the 187-column bar (not a pty), from `view::rows::graph_view`'s context. Fixture: capture_bar_take_and_amend_rows in
-# crates/graft/src/update/context_menu/tests.rs (m7-power-tools/40). Colour unverified.
+# crates/mergewright/src/update/context_menu/tests.rs (m7-power-tools/40). Colour unverified.
 # Right: cursor on HEAD's row; bar reads `⏎ open  c commit  P push  p pull  f fetch  a amend …`; no `o`.
 #
 Rewritable(BranchRow { current: true, verbs: RowVerbs { take: false, amend: true } })

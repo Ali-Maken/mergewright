@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), 80x24, no colour recorded. Fixture:
-# capture_fix_status_under_a_box in crates/graft/tests/it/status_under_a_box.rs
+# capture_fix_status_under_a_box in crates/mergewright/tests/it/status_under_a_box.rs
 # (asserted). Six frames, one sitting: a fetch fails under the name prompt,
 # then a second fetch runs while the prompt is up again.
 #

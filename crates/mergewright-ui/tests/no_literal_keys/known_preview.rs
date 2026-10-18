@@ -3,7 +3,7 @@
 //! prose its rewording put in a literal of its own (kept here, in 10i's file, not `prose.rs`).
 
 pub const ROWS: &[(&str, &str, &str)] = &[(
-    "graft:update/preview/history.rs",
+    "mergewright:update/preview/history.rs",
     "a stash isn't a branch",
     "article",
 )];

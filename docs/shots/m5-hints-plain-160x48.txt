@@ -1,6 +1,6 @@
 # m5-hints-plain-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
-# the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
+# the keys pressed through `update` (crates/mergewright/tests/it/hint_bar.rs,
 # capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch

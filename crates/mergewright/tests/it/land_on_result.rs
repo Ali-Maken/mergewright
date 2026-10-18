@@ -363,7 +363,7 @@ fn capture_landed_after_merge() {
     let repo = scratch.path();
     // The merge is committed by whoever runs the test unless the repository
     // says otherwise: the fixture's name keeps a real person's out.
-    git(repo, &["config", "user.name", "Mergewright Fixture"]);
+    git(repo, &["config", "user.name", "Graft Fixture"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     let (app, state) = App::open(repo);
     let state = app.resize(&state, 120, 40);
@@ -449,7 +449,7 @@ fn merged_main(app: &App, state: AppState) -> AppState {
 fn capture_landing_after_undo_and_redo() {
     let scratch = forked();
     let repo = scratch.path();
-    git(repo, &["config", "user.name", "Mergewright Fixture"]);
+    git(repo, &["config", "user.name", "Graft Fixture"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     let (app, state) = App::open(repo);
     let state = merged_main(&app, app.resize(&state, 120, 36));

@@ -2,7 +2,9 @@
 
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
-use mergewright_ops::preview::{Fork, ForkFate, LeftBehind, PreviewPlan, RefMove, Target, WhyStays};
+use mergewright_ops::preview::{
+    Fork, ForkFate, LeftBehind, PreviewPlan, RefMove, Target, WhyStays,
+};
 use mergewright_ui::rewrite_editor::FactTone;
 
 use super::{after_facts, ghost_owners};
@@ -92,7 +94,8 @@ fn the_after_side_names_each_fork() {
 /// ADR-0059 §6's reasons draw muted, no `!` (14d).
 #[test]
 fn a_fork_kept_by_a_safety_gate_is_muted() {
-    let feature_w = mergewright_core::ref_name::RefName::new(b"refs/heads/feature-w").expect("a name");
+    let feature_w =
+        mergewright_core::ref_name::RefName::new(b"refs/heads/feature-w").expect("a name");
     for (why, words) in [
         (
             WhyStays::Carries {

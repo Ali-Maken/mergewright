@@ -323,7 +323,9 @@ fn b_on_an_untracked_file_says_so_and_opens_nothing() {
 fn b_on_a_binary_file_says_so_and_opens_nothing() {
     let mut state = pane_at(0);
     state.detail.diff = Loading::Ready(Arc::new(mergewright_ui::detail::DiffView {
-        binary: Some(mergewright_term::sanitize::sanitize_line("Binary files differ")),
+        binary: Some(mergewright_term::sanitize::sanitize_line(
+            "Binary files differ",
+        )),
         ..crate::update::detail::tests::empty_diff_view()
     }));
     refused_with(&state, "a.rs is binary · no blame");
@@ -336,7 +338,9 @@ fn b_in_the_pane_blames_while_the_commit_graph_offer_is_up() {
     let mut state = pane_at(22);
     state.commit_graph = crate::update::CommitGraphOffer::Offered;
     state.system_git = Some(crate::update::GitCheck::Ran(
-        mergewright_git::version::SystemGit::Supported(mergewright_git::version::GitVersion::MINIMUM),
+        mergewright_git::version::SystemGit::Supported(
+            mergewright_git::version::GitVersion::MINIMUM,
+        ),
     ));
     let (next, commands) = press(&state, KeyCode::Char('B'));
     assert!(next.trail.is_live(), "a place opened");

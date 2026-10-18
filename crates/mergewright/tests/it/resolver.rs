@@ -245,7 +245,7 @@ fn git_stops(repo: &Path, args: &[&str]) {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
         ])
@@ -389,8 +389,10 @@ fn take_all_and_mark(app: &App, state: AppState) -> AppState {
 
 /// The journal on disk, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-        .expect("the journal the merge just wrote is readable")
-        .entries()
-        .to_vec()
+    mergewright_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the merge just wrote is readable")
+    .entries()
+    .to_vec()
 }

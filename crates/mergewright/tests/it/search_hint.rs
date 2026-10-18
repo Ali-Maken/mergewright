@@ -9,7 +9,8 @@ use mergewright_core::event::KeyCode;
 
 use crate::app_harness::App;
 
-const CLOCK: mergewright::session::Clock = mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW);
+const CLOCK: mergewright::session::Clock =
+    mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW);
 
 fn opened(app: &App, state: AppState) -> AppState {
     app.pump(state, "the first rows and the refs", |state| {

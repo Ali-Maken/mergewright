@@ -242,7 +242,10 @@ fn keep_cursor_on_screen(state: &mut AppState) {
         let Some(view) = crate::view::finish::finish_view(state) else {
             return;
         };
-        mergewright_ui::finish_summary::top_for_cursor(&view, crate::view::finish::summary_area(state))
+        mergewright_ui::finish_summary::top_for_cursor(
+            &view,
+            crate::view::finish::summary_area(state),
+        )
     };
     with_finish(state, |finish| finish.top = top);
 }

@@ -39,7 +39,7 @@ pub(crate) fn long_line(dir: &Path) {
         writeln!(stream, "mark :{i}").expect("a string");
         writeln!(
             stream,
-            "committer Mergewright Test <test@example.invalid> {at} +0000"
+            "committer Graft Test <test@example.invalid> {at} +0000"
         )
         .expect("a string");
         write!(stream, "data {}\n{message}", message.len()).expect("a string");
@@ -49,8 +49,12 @@ pub(crate) fn long_line(dir: &Path) {
         writeln!(stream, "M 644 inline file.txt").expect("a string");
         write!(stream, "data {}\n{content}\n", content.len()).expect("a string");
     }
-    mergewright_fixtures::git::run_isolated(dir, &["fast-import", "--quiet"], Some(stream.as_bytes()))
-        .expect("fast-import");
+    mergewright_fixtures::git::run_isolated(
+        dir,
+        &["fast-import", "--quiet"],
+        Some(stream.as_bytes()),
+    )
+    .expect("fast-import");
     git(dir, &["reset", "-q", "--hard", "main"]);
 }
 

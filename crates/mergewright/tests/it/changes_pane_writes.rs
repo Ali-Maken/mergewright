@@ -61,7 +61,7 @@ fn dirty_repo() -> mergewright_fixtures::Scratch {
         repo,
         &[
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
             "commit",
@@ -120,9 +120,11 @@ impl App {
     }
 
     fn close(self) {
-        let shutdown =
-            self.jobs
-                .shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+        let shutdown = self.jobs.shutdown(
+            Duration::from_secs(10),
+            mergewright::jobs::EXIT_WRITE_WAIT,
+            &(),
+        );
         assert_eq!(
             shutdown,
             Shutdown::CLEAN,
@@ -153,7 +155,10 @@ fn changes_pane(app: &App, state: AppState) -> AppState {
     );
     let state = app.key(&state, KeyCode::Enter);
     app.pump(state, "the changes pane's file list", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     })
 }
 
@@ -222,8 +227,10 @@ fn space_on_a_hunk_stages_only_that_hunk() {
     // `Enter` in the file list moves focus to the diff region.
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the file's diff", |state| {
-        matches!(state.detail.diff, mergewright::update::detail::Loading::Ready(_))
-            && state.detail.diff_raw.is_some()
+        matches!(
+            state.detail.diff,
+            mergewright::update::detail::Loading::Ready(_)
+        ) && state.detail.diff_raw.is_some()
     });
     // The line cursor opens on body row 0: the first hunk's `@@` heading.
     let state = app.key(&state, KeyCode::Char(' '));

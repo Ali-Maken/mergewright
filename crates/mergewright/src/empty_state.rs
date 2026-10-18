@@ -242,7 +242,9 @@ fn render_credential(
     }
     buf.set_style(
         rect,
-        ratatui::style::Style::new().bg(mergewright_ui::paint::color(theme.token(Token::SurfaceRaised))),
+        ratatui::style::Style::new().bg(mergewright_ui::paint::color(
+            theme.token(Token::SurfaceRaised),
+        )),
     );
     CredentialBox {
         view: &view,

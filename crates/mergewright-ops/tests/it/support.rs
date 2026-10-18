@@ -80,8 +80,10 @@ impl TempRepo {
     fn scratch() -> TempRepo {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let unique = NEXT.fetch_add(1, Ordering::Relaxed);
-        let path =
-            std::env::temp_dir().join(format!("mergewright-ops-exec-{}-{unique}", std::process::id()));
+        let path = std::env::temp_dir().join(format!(
+            "mergewright-ops-exec-{}-{unique}",
+            std::process::id()
+        ));
         if path.exists() {
             std::fs::remove_dir_all(&path).expect("an old scratch clears");
         }

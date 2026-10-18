@@ -498,7 +498,10 @@ fn shell_refusal(kind: mergewright_git::state::InProgress) -> String {
         onto: None,
         theirs: Ok(None),
     });
-    assert!(state.live_entries.is_empty(), "nothing of Mergewright's is live");
+    assert!(
+        state.live_entries.is_empty(),
+        "nothing of Mergewright's is live"
+    );
     let open = opened_under(&state);
     let open = typed(&open, "subject");
     let refusal = shown_refusal(&open).expect("a refusal");

@@ -64,7 +64,9 @@ fn every_file_staged(state: &mut AppState) {
         .iter()
         .map(|entry| status_entry(&entry.path.display().to_string(), false))
         .collect();
-    state.working_tree = Some(Arc::new(mergewright_git::status::WorkingTreeStatus { entries }));
+    state.working_tree = Some(Arc::new(mergewright_git::status::WorkingTreeStatus {
+        entries,
+    }));
 }
 
 fn in_roles(mut state: AppState, roles: mergewright_ui::conflict_resolver::SideRoles) -> AppState {
@@ -98,7 +100,10 @@ fn in_roles(mut state: AppState, roles: mergewright_ui::conflict_resolver::SideR
 /// document in `bar.roles`' operation, picked to where `bar.at` stands —
 /// `Picked` its first clash taken, `FileSolved` both (`later.rs`, unread,
 /// is next), `AllSolved` both and `later.rs` solved too.
-pub(super) fn clash_for(walk: JobId, bar: &mergewright_ui::graph_screen::hints::ClashBar) -> AppState {
+pub(super) fn clash_for(
+    walk: JobId,
+    bar: &mergewright_ui::graph_screen::hints::ClashBar,
+) -> AppState {
     use mergewright_git::conflict::Take;
     use mergewright_ui::graph_screen::hints::ClashAt;
     let mut state = resolver_screen_for(walk, false, false, bar.roles);

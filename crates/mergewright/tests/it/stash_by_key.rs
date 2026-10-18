@@ -57,14 +57,19 @@ fn overlay(repo: &Path) -> (App, mergewright::update::AppState) {
     let state = app.pump(state, "the stash list", |state| {
         !matches!(
             state.stash.entries,
-            mergewright::update::detail::Loading::Idle | mergewright::update::detail::Loading::Pending(_)
+            mergewright::update::detail::Loading::Idle
+                | mergewright::update::detail::Loading::Pending(_)
         )
     });
     (app, state)
 }
 
 /// Waits for the overlay's list to catch up with a write that just landed.
-fn settle_list(app: &App, state: mergewright::update::AppState, want: usize) -> mergewright::update::AppState {
+fn settle_list(
+    app: &App,
+    state: mergewright::update::AppState,
+    want: usize,
+) -> mergewright::update::AppState {
     app.pump(state, "the stash list after a write", |state| {
         state.stash.rows().len() == want
     })

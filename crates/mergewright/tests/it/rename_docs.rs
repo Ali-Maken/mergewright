@@ -32,7 +32,11 @@ const ALLOWED_FILES: &[(&str, &str)] = &[
 /// starting after it. Empty means "anything".
 const ALLOWED_AT: &[(&str, &str, &str)] = &[
     ("-p ", "", "package name `graft` (cargo -p): a code name"),
-    ("crates/", "", "crate folder `crates/mergewright`: a code name"),
+    (
+        "crates/",
+        "",
+        "crate folder `crates/mergewright`: a code name",
+    ),
     (
         "",
         "-",
@@ -175,7 +179,7 @@ fn every_file(dir: &Path, out: &mut Vec<PathBuf>) {
 
 #[test]
 fn the_word_finder_reads_words_only() {
-    let words: Vec<_> = old_words("Mergewright and mergewright_x and mergewright-ui, grafted").collect();
+    let words: Vec<_> = old_words("Graft and graft_x and graft-ui, grafted").collect();
     assert_eq!(words.len(), 2);
     assert!(allowed("graft", "x ", "-ui"));
     assert!(!allowed("graft", "run ", " now"));

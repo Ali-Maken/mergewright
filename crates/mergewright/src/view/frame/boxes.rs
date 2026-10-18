@@ -347,9 +347,13 @@ pub(super) fn draw_confirm(
     };
     let (rect, clear) = match snapped {
         Some(snapped) => {
-            let rect =
-                mergewright_ui::confirm::confirm_area_at(area, &pending.view, snapped.x, snapped.width)
-                    .intersection(area);
+            let rect = mergewright_ui::confirm::confirm_area_at(
+                area,
+                &pending.view,
+                snapped.x,
+                snapped.width,
+            )
+            .intersection(area);
             (rect, rect)
         }
         // No snap position fits inside the frame. The box may not split a

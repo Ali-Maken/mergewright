@@ -1,5 +1,5 @@
 # m6/stash-clash-landing-<size>.txt: drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/m6_stash_put_back.rs,
+# AppState (crates/mergewright/tests/it/m6_stash_put_back.rs,
 # a_stash_pop_that_clashes_is_five_keys, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #

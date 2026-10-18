@@ -50,7 +50,7 @@ pub fn run_git_with(repo: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<
     // a second helper to forget.
     let mut full = vec![
         "-c",
-        "user.name=Mergewright Test",
+        "user.name=Graft Test",
         "-c",
         "user.email=test@example.invalid",
     ];
@@ -90,7 +90,7 @@ pub fn neutralise_global_config(repo: &Path) -> Result<(), String> {
         ("commit.gpgsign", "false"),
         ("tag.gpgsign", "false"),
         // An identity the machine neither supplies nor overrides.
-        ("user.name", "Mergewright Test"),
+        ("user.name", "Graft Test"),
         ("user.email", "test@example.invalid"),
         // A global hook would run on every commit here.
         ("core.hooksPath", empty),
@@ -274,9 +274,10 @@ pub fn fsck_clean(repo: &Path) -> Result<(), String> {
     // non-zero when it has any, so both streams are wanted whatever the
     // status. Isolated all the same — a global `fsck.*` severity setting
     // would otherwise decide what this test means.
-    let out = mergewright_fixtures::git::isolated(repo, &["fsck", "--no-dangling", "--no-progress"])
-        .output()
-        .map_err(|why| format!("git fsck: {why}"))?;
+    let out =
+        mergewright_fixtures::git::isolated(repo, &["fsck", "--no-dangling", "--no-progress"])
+            .output()
+            .map_err(|why| format!("git fsck: {why}"))?;
     let text = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),

@@ -71,7 +71,12 @@ fn time_machine_three_steps() -> Scenario {
                 Step::Stage(STAGED[1]),
                 Step::Stage(STAGED[2]),
             ],
-            keys: plain(&[ch('J'), ch('j'), ch('j'), mergewright_core::event::KeyCode::Enter]),
+            keys: plain(&[
+                ch('J'),
+                ch('j'),
+                ch('j'),
+                mergewright_core::event::KeyCode::Enter,
+            ]),
             on_screen: "3 steps",
             when: When::Settled,
         }),

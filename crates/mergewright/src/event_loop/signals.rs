@@ -132,7 +132,7 @@ pub fn watch(wakes: Sender<Wake>) -> io::Result<Watch> {
     let counted = Arc::clone(&seen);
 
     let spawned = thread::Builder::new()
-        .name("graft-signals".to_owned())
+        .name("mergewright-signals".to_owned())
         .spawn(move || {
             for signal in &mut signals {
                 // Counted first: once the loop has gone, the count is how
@@ -167,7 +167,7 @@ pub fn watch_resizes(wakes: Sender<Wake>, redetector: Option<Redetector>) -> io:
     let handle = signals.handle();
 
     let spawned = thread::Builder::new()
-        .name("graft-resize".to_owned())
+        .name("mergewright-resize".to_owned())
         .spawn(move || {
             for _ in &mut signals {
                 let wake = match crossterm::terminal::size() {

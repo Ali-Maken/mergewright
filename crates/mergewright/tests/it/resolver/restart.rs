@@ -175,7 +175,10 @@ fn each_working_tree_step_is_its_own_entry_in_a_shell_begun_merge() {
     let state = app.key(&state, KeyCode::Escape);
     assert!(state.resolver.is_none(), "closed, back to the pane");
     let state = app.pump(state, "the files list after the resolve", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
 
     // A `d` restart on a block take.

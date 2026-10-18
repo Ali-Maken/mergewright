@@ -285,7 +285,10 @@ fn a_shell_begun_edit_stop_amend_is_recorded_with_a_backup() {
 
     let entries = journal(&repo);
     assert_eq!(entries.len(), 1, "one entry, the amend's: {entries:?}");
-    assert_eq!(entries[0].kind, mergewright_core::journal::OperationKind::Amend);
+    assert_eq!(
+        entries[0].kind,
+        mergewright_core::journal::OperationKind::Amend
+    );
     assert!(entries[0].backup_ref.is_some(), "with a backup");
     assert!(
         repo.path().join(".git/rebase-merge").is_dir(),

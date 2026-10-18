@@ -173,8 +173,11 @@ fn roots() -> Vec<(&'static str, PathBuf)> {
     let crates = ui.join("..");
     vec![
         ("", ui.join("src")),
-        ("graft:", crates.join("graft").join("src")),
-        ("mergewright-ops:", crates.join("mergewright-ops").join("src")),
+        ("mergewright:", crates.join("mergewright").join("src")),
+        (
+            "mergewright-ops:",
+            crates.join("mergewright-ops").join("src"),
+        ),
     ]
 }
 

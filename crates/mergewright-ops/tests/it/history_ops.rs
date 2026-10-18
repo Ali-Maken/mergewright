@@ -22,7 +22,9 @@ use mergewright_fixtures::Shape;
 use mergewright_fixtures::remote::LocalRemote;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::state::InProgress;
-use mergewright_ops::apply::{Applied, ApplyError, Refresh, Resume, apply, recover_interrupted, resume};
+use mergewright_ops::apply::{
+    Applied, ApplyError, Refresh, Resume, apply, recover_interrupted, resume,
+};
 use mergewright_ops::facts::read_facts;
 use mergewright_ops::operation::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
@@ -310,9 +312,9 @@ fn an_undo_that_leaves_head_alone_rereads_the_working_tree_only() {
     repo.write("main.txt", b"edited\n");
     run(
         &repo,
-        &Operation::Stage(mergewright_ops::operation::Target::Paths(vec![PathBuf::from(
-            "main.txt",
-        )])),
+        &Operation::Stage(mergewright_ops::operation::Target::Paths(vec![
+            PathBuf::from("main.txt"),
+        ])),
         NOW,
     );
     let undone = run_undo(&repo, NOW + 1, false)

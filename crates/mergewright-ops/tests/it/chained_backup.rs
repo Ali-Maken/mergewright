@@ -261,7 +261,8 @@ fn chain_adds_no_entries() {
     let (repo, _entry) = a_stopped_graft_merge();
     let before_lines = journal_lines(&repo);
     let before_entries = entries(&repo);
-    let before_next = mergewright_ops::journal::next_undo(&before_entries).map(|entry| entry.id.clone());
+    let before_next =
+        mergewright_ops::journal::next_undo(&before_entries).map(|entry| entry.id.clone());
 
     for (at, op) in [
         (

@@ -9,7 +9,9 @@ use std::sync::Arc;
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
 use mergewright_git::switch_refs::{RefListing, SwitchRefs};
-use mergewright_ops::switch_list::{Relation, SwitchKind, SwitchList, SwitchRow, filter_switch_rows};
+use mergewright_ops::switch_list::{
+    Relation, SwitchKind, SwitchList, SwitchRow, filter_switch_rows,
+};
 
 use super::*;
 

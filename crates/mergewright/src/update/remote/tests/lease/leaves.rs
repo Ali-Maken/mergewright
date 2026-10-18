@@ -338,7 +338,11 @@ fn read_ends_with(event: impl FnOnce(JobId) -> Event) -> AppState {
 
 fn held_leaves(
     state: &AppState,
-) -> Option<(mergewright_core::oid::Oid, mergewright_core::oid::Oid, LeavesRead)> {
+) -> Option<(
+    mergewright_core::oid::Oid,
+    mergewright_core::oid::Oid,
+    LeavesRead,
+)> {
     state
         .remote
         .last_rejected_push

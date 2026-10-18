@@ -249,7 +249,10 @@ pub(super) fn shell_merge_known(state: &AppState) -> bool {
 /// `NotInvertible::OperationLive` answer all build their status here, so the
 /// three cannot drift (`operation_live_words_match_ops` pins it to ops'
 /// text). `keys` is `None` where the banner is hidden or absent.
-pub(super) fn live_refusal(kind: mergewright_git::state::InProgress, keys: Option<String>) -> Status {
+pub(super) fn live_refusal(
+    kind: mergewright_git::state::InProgress,
+    keys: Option<String>,
+) -> Status {
     Status::Sticky {
         reason: live_refusal_words(kind),
         keys,

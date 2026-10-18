@@ -148,11 +148,8 @@ fn a_folded_merge_row_draws_its_radar_marker() {
     assert!(row.marker.is_some(), "the graph row's radar marker");
     let strip = crate::view::strip_marks(&marked);
     assert!(
-        strip
-            .marks
-            .iter()
-            .any(|(at, mark)| *at == 1
-                && matches!(mark, mergewright_ui::overview_strip::StripMark::Radar(_))),
+        strip.marks.iter().any(|(at, mark)| *at == 1
+            && matches!(mark, mergewright_ui::overview_strip::StripMark::Radar(_))),
         "{:?}",
         strip.marks
     );

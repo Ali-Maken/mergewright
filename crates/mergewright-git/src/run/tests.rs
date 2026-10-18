@@ -9,12 +9,13 @@ use crate::fixture::Fixture;
 
 #[test]
 fn a_stopped_command_is_killed_and_reaped() {
-    let invocation = GitInvocation::in_directory(&mergewright_fixtures::borrow(Shape::Linear)).args([
-        GitArg::Flag("log"),
-        GitArg::Flag("-p"),
-        GitArg::Flag("--all"),
-        GitArg::Flag("--no-color"),
-    ]);
+    let invocation = GitInvocation::in_directory(&mergewright_fixtures::borrow(Shape::Linear))
+        .args([
+            GitArg::Flag("log"),
+            GitArg::Flag("-p"),
+            GitArg::Flag("--all"),
+            GitArg::Flag("--no-color"),
+        ]);
     let mut child = invocation.spawn().expect("git starts");
     // Stop on the very first poll, microseconds after the spawn: git has
     // not even finished starting, so this is a kill, not an exit a stop

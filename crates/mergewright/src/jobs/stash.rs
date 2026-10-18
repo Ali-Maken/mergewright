@@ -43,9 +43,11 @@ pub(super) fn read_index_state(
 ) -> Result<mergewright_core::journal::IndexState, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    let journal = mergewright_ops::journal::journal_path(&handle).map_err(|error| error.to_string())?;
+    let journal =
+        mergewright_ops::journal::journal_path(&handle).map_err(|error| error.to_string())?;
     let scratch = journal
         .parent()
         .ok_or_else(|| "the journal has no directory to read the index in".to_owned())?;
-    mergewright_ops::snapshot::index_state(&handle, scratch, cancel).map_err(|error| error.to_string())
+    mergewright_ops::snapshot::index_state(&handle, scratch, cancel)
+        .map_err(|error| error.to_string())
 }

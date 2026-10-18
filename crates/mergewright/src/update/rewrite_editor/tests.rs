@@ -8,7 +8,9 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use mergewright_core::commit::{Commit, Identity, Timestamp};
-use mergewright_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
+use mergewright_core::event::{
+    Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind,
+};
 use mergewright_core::job::JobId;
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
@@ -589,11 +591,15 @@ fn a_new_editor_claims_nothing_before_its_first_plan() {
     assert_ne!(editor.after, After::Invalid(TodoProblem::EverythingDropped));
     assert!(
         matches!(
-            editor.view_facts(mergewright_ui::keymap::Keymap::shipped()).after,
+            editor
+                .view_facts(mergewright_ui::keymap::Keymap::shipped())
+                .after,
             AfterFacts::Checking
         ),
         "{:?}",
-        editor.view_facts(mergewright_ui::keymap::Keymap::shipped()).after
+        editor
+            .view_facts(mergewright_ui::keymap::Keymap::shipped())
+            .after
     );
 }
 

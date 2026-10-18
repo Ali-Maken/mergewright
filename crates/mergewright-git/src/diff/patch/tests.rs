@@ -265,8 +265,9 @@ fn lines_selection_stages_exactly_the_selected_line() {
     std::fs::write(fixture.root().join("patch.diff"), &patch).expect("patch written");
     fixture.git(&["apply", "--cached", "patch.diff"]);
 
-    let staged = mergewright_fixtures::git::run(fixture.root(), &["diff", "--cached", "--no-color"])
-        .expect("git diff --cached runs");
+    let staged =
+        mergewright_fixtures::git::run(fixture.root(), &["diff", "--cached", "--no-color"])
+            .expect("git diff --cached runs");
     let staged = String::from_utf8_lossy(&staged);
     assert!(staged.contains("+four"), "{staged}");
     assert!(!staged.contains("twoo"), "{staged}");
@@ -977,7 +978,8 @@ fn staging_part_of_a_deletion_is_refused_by_git_and_leaves_the_index_alone() {
     fixture.git(&["read-tree", "HEAD"]);
     std::fs::write(fixture.root().join("part.diff"), &patch).expect("the patch is written");
     let refused =
-        mergewright_fixtures::git::run(fixture.root(), &["apply", "--cached", "part.diff"]).is_err();
+        mergewright_fixtures::git::run(fixture.root(), &["apply", "--cached", "part.diff"])
+            .is_err();
 
     assert!(
         refused,

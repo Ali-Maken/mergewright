@@ -87,13 +87,15 @@ fn ctrl_t_in_a_merge_takes_every_open_block_and_the_cursor_stays() {
     let state = on("a", three(), &["a"], &["a"]);
     let (state, commands) = update(
         &state,
-        AppEvent::Core(mergewright_core::event::Event::Key(mergewright_core::event::KeyPress {
-            code: KeyCode::Char('t'),
-            modifiers: mergewright_core::event::Modifiers {
-                control: true,
-                ..mergewright_core::event::Modifiers::NONE
+        AppEvent::Core(mergewright_core::event::Event::Key(
+            mergewright_core::event::KeyPress {
+                code: KeyCode::Char('t'),
+                modifiers: mergewright_core::event::Modifiers {
+                    control: true,
+                    ..mergewright_core::event::Modifiers::NONE
+                },
             },
-        })),
+        )),
     );
     let takes = sent(&commands);
     assert_eq!(takes.len(), 1);
@@ -109,13 +111,15 @@ fn the_last_take_in_a_merge_points_to_y_once_nothing_is_open_elsewhere() {
     let after_ctrl_t = |state: &AppState| {
         let (state, commands) = update(
             state,
-            AppEvent::Core(mergewright_core::event::Event::Key(mergewright_core::event::KeyPress {
-                code: KeyCode::Char('t'),
-                modifiers: mergewright_core::event::Modifiers {
-                    control: true,
-                    ..mergewright_core::event::Modifiers::NONE
+            AppEvent::Core(mergewright_core::event::Event::Key(
+                mergewright_core::event::KeyPress {
+                    code: KeyCode::Char('t'),
+                    modifiers: mergewright_core::event::Modifiers {
+                        control: true,
+                        ..mergewright_core::event::Modifiers::NONE
+                    },
                 },
-            })),
+            )),
         );
         landed(&state, &sent(&commands)[0]).0
     };

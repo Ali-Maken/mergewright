@@ -238,7 +238,12 @@ pub(super) fn on_the_message(state: &mut AppState) {
 /// A diff long enough to scroll: `j`/`k` in the diff region clamp to the
 /// content they have, so a pane with nothing loaded answers them with
 /// nothing, which is a fixture that cannot see what it is looking for.
-pub(super) fn long_diff(path: &str) -> (DetailArc<DiffView>, DetailArc<mergewright_git::diff::FileDiff>) {
+pub(super) fn long_diff(
+    path: &str,
+) -> (
+    DetailArc<DiffView>,
+    DetailArc<mergewright_git::diff::FileDiff>,
+) {
     use mergewright_ui::detail::{HunkView, LineKindView, LineView};
 
     let (view, raw) = diff_of(path);

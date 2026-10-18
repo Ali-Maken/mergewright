@@ -30,7 +30,12 @@ pub(crate) fn id(repo: &Path, rev: &str) -> Oid {
 /// it, with `edit` on the row whose subject is `edit` (if any) and the base
 /// moved to `onto` (if given). It stops, and nothing of this process's is
 /// left but what is on disk — a kill, as the next Mergewright sees it.
-pub(crate) fn mergewright_rewrite_stops(repo: &Path, from: &str, edit: Option<&str>, onto: Option<&str>) {
+pub(crate) fn mergewright_rewrite_stops(
+    repo: &Path,
+    from: &str,
+    edit: Option<&str>,
+    onto: Option<&str>,
+) {
     let handle = mergewright_git::repo::RepoHandle::open(repo)
         .unwrap_or_else(|why| panic!("the repo opens: {why:?}"));
     let version = mergewright_git::version::system_git()
@@ -116,7 +121,9 @@ fn frame(state: &AppState) -> String {
         state,
         COLUMNS,
         ROWS,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     );
     format!("{}\n", lines.join("\n"))
 }
@@ -179,7 +186,9 @@ fn capture_m8_bar_edit_stop_120x36() {
         &state,
         120,
         36,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     );
     let bar = lines.last().expect("a footer row");
     assert!(bar.contains("a amend it · c continue"), "{bar}");
@@ -281,8 +290,10 @@ fn a_twice_then_c_amends_the_stopped_commit_and_the_rewrite_goes_home() {
 #[test]
 fn esc_never_aborts_a_rewrite_stop() {
     fn esc_keeps_it(repo: &Path, state: &AppState, where_: &str) -> AppState {
-        let (after, commands) =
-            press_for_commands(state, mergewright_core::event::KeyPress::plain(KeyCode::Escape));
+        let (after, commands) = press_for_commands(
+            state,
+            mergewright_core::event::KeyPress::plain(KeyCode::Escape),
+        );
         assert!(
             !format!("{commands:?}").contains("Abort"),
             "Esc {where_}: {commands:?}"

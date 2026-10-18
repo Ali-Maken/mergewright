@@ -91,8 +91,14 @@ fn u_brings_a_discarded_untracked_file_back_byte_for_byte() {
         2,
         "the discard and its undo, and nothing else: {entries:?}"
     );
-    assert_eq!(entries[0].kind, mergewright_core::journal::OperationKind::Discard);
-    assert_eq!(entries[1].kind, mergewright_core::journal::OperationKind::Undo);
+    assert_eq!(
+        entries[0].kind,
+        mergewright_core::journal::OperationKind::Discard
+    );
+    assert_eq!(
+        entries[1].kind,
+        mergewright_core::journal::OperationKind::Undo
+    );
     assert_eq!(
         entries[1].reverses.as_ref(),
         Some(&entries[0].id),
@@ -267,14 +273,18 @@ fn an_interrupted_operation_is_announced_until_j_and_its_row_says_interrupted() 
         mergewright::update::undo::interrupted_notice(state).is_some()
     });
 
-    let notice = mergewright::update::undo::interrupted_notice(&state).expect("the launch read found it");
+    let notice =
+        mergewright::update::undo::interrupted_notice(&state).expect("the launch read found it");
     assert!(notice.contains("half written"), "{notice}");
 
     // The row the browser would draw, straight off the real read. Recovery
     // has already closed the entry as `Aborted { "interrupted" }` by now.
     let rows = mergewright::view::journal_view(&state, 40).rows;
     let row = rows.first().expect("one entry");
-    assert_eq!(row.mark, mergewright_ui::journal_screen::RowMark::Interrupted);
+    assert_eq!(
+        row.mark,
+        mergewright_ui::journal_screen::RowMark::Interrupted
+    );
     assert!(
         row.summary.as_str().starts_with("interrupted"),
         "a process that died did not `fail`: {}",

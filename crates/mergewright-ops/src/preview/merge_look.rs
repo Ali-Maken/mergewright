@@ -85,7 +85,9 @@ pub(crate) fn conflicts_from(check: &MergeCheck) -> ConflictForecast {
 mod tests {
     use std::path::PathBuf;
 
-    use mergewright_git::history_reads::{ClashForecast, MergeCheck, MergeForecast, Range, UNRELATED};
+    use mergewright_git::history_reads::{
+        ClashForecast, MergeCheck, MergeForecast, Range, UNRELATED,
+    };
 
     use super::{ConflictForecast, MergeLook, conflicts_from};
 

@@ -86,12 +86,12 @@ pub(crate) fn hits(files: &[PathBuf], needles: &[&str]) -> Vec<String> {
 #[test]
 fn every_open_settles_first() {
     let mut files = Vec::new();
-    production_files(&crates_dir().join("graft/src"), &mut files);
+    production_files(&crates_dir().join("mergewright/src"), &mut files);
     let found: Vec<String> = hits(&files, &["SharedRepo::open(", "RepoHandle::open("])
         .into_iter()
         // The one place that opens: it settles, then reopens if the names
         // changed. Its doc line names `SharedRepo::open` too.
-        .filter(|hit| !hit.starts_with("graft/src/rename.rs:"))
+        .filter(|hit| !hit.starts_with("mergewright/src/rename.rs:"))
         .collect();
     assert!(
         found.is_empty(),
@@ -101,7 +101,7 @@ fn every_open_settles_first() {
     // The filter above is not hiding the open itself.
     assert!(
         hits(
-            &[crates_dir().join("graft/src/rename.rs")],
+            &[crates_dir().join("mergewright/src/rename.rs")],
             &["SharedRepo::open("]
         )
         .len()

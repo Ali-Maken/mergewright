@@ -20,9 +20,12 @@ const WIDTH: u16 = 187;
 /// Block 0 open, 1 took yours, 2 took theirs, 3 took both; cursor on 0.
 fn four_states() -> DocView {
     let mut file = mergewright_git::conflict::parse(FOUR).expect("parses");
-    file.take(1, mergewright_git::conflict::Take::Ours).expect("1");
-    file.take(2, mergewright_git::conflict::Take::Theirs).expect("2");
-    file.take(3, mergewright_git::conflict::Take::Both).expect("3");
+    file.take(1, mergewright_git::conflict::Take::Ours)
+        .expect("1");
+    file.take(2, mergewright_git::conflict::Take::Theirs)
+        .expect("2");
+    file.take(3, mergewright_git::conflict::Take::Both)
+        .expect("3");
     doc_of(&file, false)
 }
 

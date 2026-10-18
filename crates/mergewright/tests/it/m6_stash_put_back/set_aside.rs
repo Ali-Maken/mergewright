@@ -1142,7 +1142,8 @@ fn child_switches_until_the_drop() {
     };
     let handle = mergewright_git::repo::RepoHandle::open(Path::new(&repo)).expect("the repo opens");
     let journal_file = mergewright_ops::journal::journal_path(&handle).expect("the journal path");
-    let mut journal = mergewright_ops::journal::Journal::open(&journal_file).expect("the journal opens");
+    let mut journal =
+        mergewright_ops::journal::Journal::open(&journal_file).expect("the journal opens");
     let git_version = mergewright_git::version::system_git()
         .expect("git is on PATH")
         .version();
@@ -1155,11 +1156,13 @@ fn child_switches_until_the_drop() {
         &(),
     )
     .expect("the context opens");
-    let op = mergewright_ops::operation::Operation::Checkout(mergewright_ops::operation::CheckoutParams {
-        to: mergewright_ops::operation::CheckoutTarget::Branch("refs/heads/fix".to_owned()),
-        head_before: mergewright_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
-        on_edits: mergewright_ops::operation::OnEdits::SetAside,
-    });
+    let op = mergewright_ops::operation::Operation::Checkout(
+        mergewright_ops::operation::CheckoutParams {
+            to: mergewright_ops::operation::CheckoutTarget::Branch("refs/heads/fix".to_owned()),
+            head_before: mergewright_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+            on_edits: mergewright_ops::operation::OnEdits::SetAside,
+        },
+    );
     let ran = mergewright_ops::apply::apply(&mut ctx, &op);
     panic!("the shim should have killed this process: {ran:?}");
 }

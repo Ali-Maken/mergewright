@@ -480,9 +480,10 @@ fn thread_pngs() {
         "fix-scroll-thread-composite.png is {} bytes, over 200 KB",
         png.len()
     );
-    if let Err(drift) =
-        mergewright_fixtures::capture::check_bytes(&shots.join("fix-scroll-thread-composite.png"), &png)
-    {
+    if let Err(drift) = mergewright_fixtures::capture::check_bytes(
+        &shots.join("fix-scroll-thread-composite.png"),
+        &png,
+    ) {
         panic!("{drift}");
     }
 }

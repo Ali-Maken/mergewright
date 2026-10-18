@@ -672,7 +672,11 @@ fn migrate_row_words() {
     let mut migrate = entry(
         2,
         OperationKind::Migrate,
-        &mergewright_ops::rename::description(mergewright_core::on_disk::Generation::CURRENT, 3, 12),
+        &mergewright_ops::rename::description(
+            mergewright_core::on_disk::Generation::CURRENT,
+            3,
+            12,
+        ),
     );
     migrate.touches.index = false;
     migrate.index_before = None;

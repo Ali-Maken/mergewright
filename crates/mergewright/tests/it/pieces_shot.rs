@@ -102,7 +102,11 @@ fn shot() -> Result<Shot, String> {
     let focused = press(&state, KeyCode::Char('F'));
     let focused = answered(&jobs, focused, &events, QUIET)?;
     let (on, on_pieces) = panel(&focused)?;
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!(
             "the job pool did not stop cleanly: stalled {}",

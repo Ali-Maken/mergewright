@@ -146,7 +146,11 @@ fn wall_ms() -> i64 {
 
 /// Every entry stamped by the wall clock while the run lasted, none at the
 /// pin: `MWR_NOW` drew the ages and wrote nothing (19e §R1).
-fn stamped_by_the_wall(entries: &[mergewright_core::journal::JournalEntry], run: (i64, i64), pin: i64) {
+fn stamped_by_the_wall(
+    entries: &[mergewright_core::journal::JournalEntry],
+    run: (i64, i64),
+    pin: i64,
+) {
     let (from, to) = run;
     for entry in entries {
         assert!(
@@ -182,7 +186,11 @@ fn mergewright_now_never_stamps_the_journal() {
     std::fs::write(repo.join("README.md"), "edited\n").expect("the scratch repo is writable");
 
     let from = wall_ms();
-    let mut pty = launch(&isolated, repo, &mergewright_fixtures::PINNED_NOW.to_string());
+    let mut pty = launch(
+        &isolated,
+        repo,
+        &mergewright_fixtures::PINNED_NOW.to_string(),
+    );
     pty.wait_for("the graph", |s| s.has("Uncommitted changes"));
     stage_and_commit(&mut pty, 1, "Made under the pin");
     pty.send(b"q");

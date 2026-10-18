@@ -48,7 +48,12 @@ pub(super) fn two_files() -> (DetailArc<FileListView>, DetailArc<FileList>) {
     (DetailArc::new(view), DetailArc::new(list))
 }
 
-pub(super) fn diff_of(path: &str) -> (DetailArc<DiffView>, DetailArc<mergewright_git::diff::FileDiff>) {
+pub(super) fn diff_of(
+    path: &str,
+) -> (
+    DetailArc<DiffView>,
+    DetailArc<mergewright_git::diff::FileDiff>,
+) {
     let view = DetailArc::new(DiffView {
         path: sanitize_line(path),
         old_path: None,

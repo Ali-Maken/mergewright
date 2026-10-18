@@ -197,7 +197,8 @@ fn history_with_merges(cursor: usize) -> History {
             }
         })
         .collect();
-    let rows = mergewright_graph::layout::layout(&commits, mergewright_graph::seeds::Seeds::default());
+    let rows =
+        mergewright_graph::layout::layout(&commits, mergewright_graph::seeds::Seeds::default());
     History {
         window: Some(crate::history::Window {
             request: 0,
@@ -436,7 +437,10 @@ fn tab_after_a_burst_acts_on_the_cursors_commit() {
     let (state, commands) = three_js_then(super::key(KeyPress::plain(KeyCode::Tab)));
     assert_eq!(cursor(&state), 3);
     assert_eq!(state.detail.spec, Some(DetailSpec::Commit(commit_on(3))));
-    assert_eq!(state.detail.focus, mergewright_ui::detail::DetailFocus::Files);
+    assert_eq!(
+        state.detail.focus,
+        mergewright_ui::detail::DetailFocus::Files
+    );
     assert!(
         asked_about(&commands).0.contains(&commit_on(3)),
         "{commands:?}"

@@ -19,8 +19,8 @@ use mergewright_ops::operation::{Operation, Refusal, RestartKind, RestartParams}
 use mergewright_ops::snapshot::{LinkKind, backup_chain};
 
 use crate::conflict_fixtures::{
-    conflict_set, downstream_of, mergewright_merge_stops, mergewright_rebase_stops, mergewright_stage, paths,
-    run_resume, two_file_conflict, two_stop_history,
+    conflict_set, downstream_of, mergewright_merge_stops, mergewright_rebase_stops,
+    mergewright_stage, paths, run_resume, two_file_conflict, two_stop_history,
 };
 use crate::support::{NOW, Never, TempRepo, try_run};
 use mergewright_core::on_disk::CURRENT_DIR;

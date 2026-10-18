@@ -1,4 +1,6 @@
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+};
 use mergewright_git::run::RunError;
 
 use super::*;

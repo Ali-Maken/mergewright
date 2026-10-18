@@ -102,7 +102,10 @@ fn run_at(repo: &Path, args: &[&str], minute: i64) {
 /// temporary path eats the room the header's `lanes drawn: N of M` needs — the very
 /// number this capture is about (the same rule m5/16 settled for the banner
 /// captures).
-fn opened_with_pane(app: &App, state: mergewright::update::AppState) -> mergewright::update::AppState {
+fn opened_with_pane(
+    app: &App,
+    state: mergewright::update::AppState,
+) -> mergewright::update::AppState {
     let state = app.pump(state, "the first rows and the refs", |state| {
         state.refs.is_some()
             && state
@@ -128,7 +131,11 @@ fn opened_with_pane(app: &App, state: mergewright::update::AppState) -> mergewri
     );
     let state = app.key(&state, KeyCode::Enter);
     let mut state = app.pump(state, "the detail pane's file list", |state| {
-        state.detail.shown && matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        state.detail.shown
+            && matches!(
+                state.detail.files,
+                mergewright::update::detail::Loading::Ready(_)
+            )
     });
     if let Some(facts) = state.repository.as_mut() {
         facts.path = std::path::PathBuf::from("/code/api");

@@ -26,7 +26,9 @@ use mergewright_ops::apply::{
 use mergewright_ops::clash::live_clash;
 use mergewright_ops::facts::read_facts;
 use mergewright_ops::journal::journal_path;
-use mergewright_ops::operation::{CheckoutParams, CheckoutTarget, Operation, RebaseParams, Source, Tip};
+use mergewright_ops::operation::{
+    CheckoutParams, CheckoutTarget, Operation, RebaseParams, Source, Tip,
+};
 
 use crate::support::{
     NOW, Never, RepoState, TempRepo, context, git_version, journal_for, run_redo, run_undo,

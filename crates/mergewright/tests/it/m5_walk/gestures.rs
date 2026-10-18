@@ -241,7 +241,8 @@ impl Walk<'_> {
                 state = self.app.key(&state, KeyCode::Escape);
                 guard += 1;
             }
-            if state.on_changes_pane() && state.detail.focus == mergewright_ui::detail::DetailFocus::Graph
+            if state.on_changes_pane()
+                && state.detail.focus == mergewright_ui::detail::DetailFocus::Graph
             {
                 // The pane is open on the work but the graph has the keys:
                 // one `Tab` takes them to its file list.
@@ -318,7 +319,10 @@ impl Walk<'_> {
                         }),
                         Err(why) => Err(format!("could not run {editor}: {why}")),
                     };
-                    AppEvent::Produced(mergewright_core::job::JobId::new(0), Product::HandedOver(result))
+                    AppEvent::Produced(
+                        mergewright_core::job::JobId::new(0),
+                        Product::HandedOver(result),
+                    )
                 }
                 Command::OpenMergetool { path } => {
                     let status = mergetool_command(&path, &repo).status();

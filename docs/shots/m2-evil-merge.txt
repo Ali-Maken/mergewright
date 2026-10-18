@@ -1,5 +1,5 @@
 # m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_evil_merge in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_evil_merge in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). Three synthetic commits: a merge (0303030) over
 # two parents, opened in the detail pane, with the evil-merge probe's
 # verdict injected as Evil { files: ["src/config.rs"] } — the verdict a

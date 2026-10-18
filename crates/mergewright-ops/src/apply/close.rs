@@ -260,8 +260,8 @@ fn clashed_put_back(ctx: &Context<'_>, entry: &JournalEntry) -> Result<Option<Cl
     // Never stopped: the put-back has already run, and a stop that cut it
     // short must not also cut short the read that says what it left
     // (`record::read_after`, m3/03 review M1).
-    let status =
-        mergewright_git::status::read(ctx.repo, &()).map_err(|error| ApplyError::Facts(error.into()))?;
+    let status = mergewright_git::status::read(ctx.repo, &())
+        .map_err(|error| ApplyError::Facts(error.into()))?;
     let paths: Vec<PathBuf> = status
         .entries
         .into_iter()

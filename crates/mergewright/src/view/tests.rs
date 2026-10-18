@@ -2288,7 +2288,10 @@ fn routes_diff() -> mergewright_git::diff::FileDiff {
 /// The changes pane on a scripted dirty tree: one staged file, two unstaged,
 /// one untracked, the diff region focused with the line cursor on the added
 /// line of the first hunk.
-fn scripted_file_lists() -> (mergewright_git::diff::FileList, mergewright_git::diff::FileList) {
+fn scripted_file_lists() -> (
+    mergewright_git::diff::FileList,
+    mergewright_git::diff::FileList,
+) {
     use mergewright_git::diff::{FileEntry, FileList, FileStatus};
     let file = |path: &str, status: FileStatus, added: u32, removed: u32| FileEntry {
         path: path.as_bytes().to_vec(),
@@ -2854,7 +2857,9 @@ fn journal_entry(
 /// A commit a previous run died in the middle of: recovery closes it as
 /// `Aborted { "interrupted" }`, and it has no before-tree to restore, so it
 /// carries the warning mark rather than the undo arrow.
-fn torn_commit(touches: mergewright_core::journal::Touches) -> mergewright_core::journal::JournalEntry {
+fn torn_commit(
+    touches: mergewright_core::journal::Touches,
+) -> mergewright_core::journal::JournalEntry {
     use mergewright_core::journal::{EntryStatus, OperationKind};
 
     let mut torn = journal_entry(
@@ -2876,7 +2881,9 @@ fn torn_commit(touches: mergewright_core::journal::Touches) -> mergewright_core:
 /// The undo of `commit`. As the newest entry it is what `U` would put back,
 /// and the commit under it then reads `undone`. Without this row no capture
 /// showed the redo mark or `undone` at all (m3/06 review, Minor 12).
-fn undo_of(commit: &mergewright_core::journal::JournalEntry) -> mergewright_core::journal::JournalEntry {
+fn undo_of(
+    commit: &mergewright_core::journal::JournalEntry,
+) -> mergewright_core::journal::JournalEntry {
     use mergewright_core::journal::{OperationKind, Touches};
 
     let mut undo = journal_entry(
@@ -3443,7 +3450,10 @@ fn the_drift_box_line_is_never_cut() {
             let (message, screen) = drift_box_drawn(columns, rows, description, &path);
             let words = message.join(" ");
             let at = format!("{columns}x{rows}, {description}");
-            assert!(message.len() <= 4, "{at}: over mergewright-ui's cap: {message:?}");
+            assert!(
+                message.len() <= 4,
+                "{at}: over mergewright-ui's cap: {message:?}"
+            );
             assert!(words.ends_with("U brings it back."), "{at}: {words}");
             assert!(
                 words.contains("your edit to \u{2026}/") && words.contains("/fix.txt;"),
@@ -3546,7 +3556,11 @@ fn capture_m4_remote_keys() {
     );
 }
 
-fn leaving(hex: char, subject: &str, author: &str) -> mergewright_git::history_reads::CommitSummary {
+fn leaving(
+    hex: char,
+    subject: &str,
+    author: &str,
+) -> mergewright_git::history_reads::CommitSummary {
     mergewright_git::history_reads::CommitSummary {
         id: Oid::from_hex(&hex.to_string().repeat(40)).expect("40 hex digits"),
         parents: Vec::new(),
@@ -4331,7 +4345,8 @@ fn the_credential_prompt_clears_the_band_it_stands_on_at_every_width() {
         let rows = 24;
         let state = graph_behind_a_box(columns, rows);
         let grid = draw_cells(&state, columns, rows);
-        let rect = mergewright_ui::credential_prompt::credential_area(Rect::new(0, 0, columns, rows));
+        let rect =
+            mergewright_ui::credential_prompt::credential_area(Rect::new(0, 0, columns, rows));
 
         // The graph really is behind it: without content on the box's own
         // rows there is nothing for the band to have cleared.
@@ -4651,7 +4666,8 @@ fn preview_over_lanes(columns: u16, rows: u16) -> AppState {
 fn pixel_session() -> Session {
     let mut session = session();
     session.rendering.tier = mergewright_core::capabilities::RenderingTier::Pixel;
-    session.capabilities.pixel_protocol = Some(mergewright_core::capabilities::PixelProtocol::Kitty);
+    session.capabilities.pixel_protocol =
+        Some(mergewright_core::capabilities::PixelProtocol::Kitty);
     session
 }
 
@@ -4698,8 +4714,10 @@ fn the_lane_images_never_cover_a_box_drawn_over_the_graph() {
                 .expect("TestBackend cannot fail to draw");
             let Some(lanes) = lanes else { continue };
             let view = crate::update::preview::preview_box(&state).expect("a preview is open");
-            let boxed =
-                mergewright_ui::preview_box::preview_box_area(Rect::new(0, 0, columns, rows), &view);
+            let boxed = mergewright_ui::preview_box::preview_box_area(
+                Rect::new(0, 0, columns, rows),
+                &view,
+            );
             let overlap = lanes.intersection(boxed);
             assert!(
                 overlap.is_empty(),
@@ -4972,8 +4990,9 @@ fn a_drag_in_progress_is_visible_in_the_buffer_before_the_button_comes_up() {
     let theme = session().theme;
     // The target row is raised onto the fill, so its accent is lifted to
     // stay legible there (ADR-0058 §3, `Theme::on_selection`).
-    let accent =
-        mergewright_ui::paint::color(theme.on_selection(theme.token(mergewright_ui::theme::Token::Accent)));
+    let accent = mergewright_ui::paint::color(
+        theme.on_selection(theme.token(mergewright_ui::theme::Token::Accent)),
+    );
     let target = cells(row_of(4));
     let mark = target
         .iter()

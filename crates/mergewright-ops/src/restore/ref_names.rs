@@ -41,10 +41,12 @@ pub(super) fn check_ref_names(plan: &InversePlan) -> Result<(), RestoreError> {
 
 pub(super) fn check_ref_name(name: &str) -> Result<(), RestoreError> {
     match RefName::new(name) {
-        Err(mergewright_core::error::Error::RefName { name, reason }) => Err(RestoreError::BadRefName {
-            name,
-            reason: reason.to_string(),
-        }),
+        Err(mergewright_core::error::Error::RefName { name, reason }) => {
+            Err(RestoreError::BadRefName {
+                name,
+                reason: reason.to_string(),
+            })
+        }
         Err(other) => Err(RestoreError::BadRefName {
             name: name.escape_debug().to_string(),
             reason: other.to_string(),

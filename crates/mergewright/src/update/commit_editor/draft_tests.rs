@@ -7,7 +7,9 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+};
 use mergewright_ops::apply::{Applied, Refresh};
 
 use super::screen_tests::{editor, key, mock_tree, opened, text, walk};
@@ -41,7 +43,8 @@ pub(super) fn words(subject: &str, body: &str) -> Draft {
 
 /// Refs with `main` at `head`, `HEAD` on it.
 pub(super) fn head_at(head: Oid) -> crate::refs::RefBadges {
-    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a name");
+    let main =
+        mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a name");
     crate::refs::badges(
         &[(main.clone(), head)],
         &mergewright_git::repo::HeadState::Branch(main),

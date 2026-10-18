@@ -397,7 +397,9 @@ fn a_binary_card_shows_its_size_not_its_bytes() {
 fn a_binary_uu_card_answers_d_by_ops_rule() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let handle = mergewright_git::repo::RepoHandle::open(scratch.path()).expect("the repo opens");
-    let git = mergewright_git::version::system_git().expect("git").version();
+    let git = mergewright_git::version::system_git()
+        .expect("git")
+        .version();
     let facts = mergewright_ops::facts::read_facts(
         &handle,
         git,

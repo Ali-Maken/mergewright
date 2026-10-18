@@ -157,7 +157,9 @@ fn unrelated_histories_are_not_checkable() {
 
 #[test]
 fn an_old_git_is_not_checkable_with_forecast_merges_reason() {
-    let repo = open(&mergewright_fixtures::borrow(mergewright_fixtures::Shape::Trivial));
+    let repo = open(&mergewright_fixtures::borrow(
+        mergewright_fixtures::Shape::Trivial,
+    ));
     let old = GitVersion {
         major: 2,
         minor: 37,

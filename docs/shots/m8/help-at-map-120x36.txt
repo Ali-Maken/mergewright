@@ -1,5 +1,5 @@
 # m8/help-at-map-120x36: drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character grid,
+# (crates/mergewright/tests/it/look_polish.rs). Not a pty capture: a character grid,
 # no colour (CLAUDE.md rule 5 — colour unverified).
 #
 # The Map open, the graph focused, `?` pressed. Right: HERE lists the Map's own

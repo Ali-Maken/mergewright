@@ -58,9 +58,10 @@ fn parse_rev_list_rejects_a_truncated_pair() {
 
 #[test]
 fn forecast_merge_is_not_checkable_on_an_old_git_never_an_error() {
-    let repo =
-        crate::repo::RepoHandle::open(&mergewright_fixtures::borrow(mergewright_fixtures::Shape::Trivial))
-            .expect("the fixture opens");
+    let repo = crate::repo::RepoHandle::open(&mergewright_fixtures::borrow(
+        mergewright_fixtures::Shape::Trivial,
+    ))
+    .expect("the fixture opens");
     let old = GitVersion {
         major: 2,
         minor: 30,

@@ -88,7 +88,11 @@ fn a_failed_copy_retries_cleanly() {
     let before = repo.read(".git/graft/undo-journal.jsonl");
     stage_edit(&repo, "after the failure\n", NOW + 500);
     let grown = repo.read(".git/graft/undo-journal.jsonl");
-    let parse = |bytes: &[u8]| mergewright_ops::journal::parse(bytes).expect("parses").entries;
+    let parse = |bytes: &[u8]| {
+        mergewright_ops::journal::parse(bytes)
+            .expect("parses")
+            .entries
+    };
     assert_eq!(parse(&grown).len(), parse(&before).len() + 1);
     std::fs::remove_dir_all(repo.path().join(".git/graft/rewrite")).expect("the plan goes");
     let old = refs_under(&repo, "refs/graft/");

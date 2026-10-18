@@ -1,4 +1,6 @@
-use mergewright_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
+use mergewright_core::event::{
+    Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind,
+};
 use proptest::prelude::*;
 
 use super::{Decoded, Decoder};

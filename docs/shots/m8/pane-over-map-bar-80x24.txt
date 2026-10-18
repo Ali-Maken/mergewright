@@ -1,4 +1,4 @@
-# m8/pane-over-map-bar-80x24.txt: 80x24, drawn by `view::view` from a real AppState (crates/graft/
+# m8/pane-over-map-bar-80x24.txt: 80x24, drawn by `view::view` from a real AppState (crates/mergewright/
 # tests/it/hint_bar.rs, capture_bars_over_an_overlay_for_docs_shots). Not a pty
 # capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).
 #

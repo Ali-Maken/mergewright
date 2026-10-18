@@ -207,7 +207,9 @@ fn submodule_rows(
         view.untracked_inside = facts.untracked_inside;
         rows.unstaged.insert(path, view);
     }
-    for path in mergewright_git::status::submodules_not_set_up(handle, stop).map_err(|e| e.to_string())? {
+    for path in
+        mergewright_git::status::submodules_not_set_up(handle, stop).map_err(|e| e.to_string())?
+    {
         let path = path.as_os_str().as_bytes().to_vec();
         if !unstaged.files.iter().any(|file| file.path == path) {
             unstaged.files.push(gitlink_entry(path.clone()));

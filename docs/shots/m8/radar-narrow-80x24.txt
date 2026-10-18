@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_radar_beside_a_long_subject_80x24 in
-# crates/graft-ui/src/detail_pane/tests.rs (review m8 words-focus M1).
+# crates/mergewright-ui/src/detail_pane/tests.rs (review m8 words-focus M1).
 #
 # Judge by eye: the detail pane under 100 columns, on a merge whose two
 # hand-resolved files the evil-merge probe could not check. The row

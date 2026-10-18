@@ -135,8 +135,9 @@ fn a_staged_row_reads_the_index_and_every_other_row_the_working_tree() {
         diff_spec_for(DetailSpec::WorkingTree, Some(Untracked)),
         DiffSpec::Unstaged
     );
-    let commit =
-        DetailSpec::Commit(mergewright_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes is an oid"));
+    let commit = DetailSpec::Commit(
+        mergewright_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes is an oid"),
+    );
     assert_eq!(diff_spec_for(commit, None), commit.diff_spec());
 }
 

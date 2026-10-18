@@ -53,8 +53,10 @@ fn picker_bar_context_follows_the_row() {
         name: mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
             .expect("a valid ref name"),
         kind: SwitchKind::Local,
-        tip: mergewright_core::oid::Oid::from_bytes(&[byte; mergewright_core::oid::Oid::SHA1_BYTES])
-            .expect("20 bytes is an oid"),
+        tip: mergewright_core::oid::Oid::from_bytes(
+            &[byte; mergewright_core::oid::Oid::SHA1_BYTES],
+        )
+        .expect("20 bytes is an oid"),
         subject: String::new(),
         author: String::new(),
         when: 0,
@@ -140,8 +142,9 @@ fn the_location_names_the_repo_its_home_path_and_its_branch() {
 /// A detached `HEAD` says so, with seven characters of its id.
 #[test]
 fn a_detached_head_is_named_with_seven_characters_of_its_id() {
-    let id = mergewright_core::oid::Oid::from_bytes(&[0xab; mergewright_core::oid::Oid::SHA1_BYTES])
-        .expect("20 bytes");
+    let id =
+        mergewright_core::oid::Oid::from_bytes(&[0xab; mergewright_core::oid::Oid::SHA1_BYTES])
+            .expect("20 bytes");
     let at = location(&facts("/srv/api", Head::Detached(id)), None);
     assert_eq!(at.branch.as_str(), "detached abababa");
 }

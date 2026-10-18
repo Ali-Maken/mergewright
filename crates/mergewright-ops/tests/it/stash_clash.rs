@@ -373,7 +373,12 @@ fn a_shell_pop_after_an_unfinished_graft_pop_is_no_clash() {
     let now = index_now(&repo);
     assert!(now.is_unmerged());
     assert_eq!(
-        mergewright_ops::clash::live_clash(&journal_entries(&repo), None, &now, &stashes_now(&repo)),
+        mergewright_ops::clash::live_clash(
+            &journal_entries(&repo),
+            None,
+            &now,
+            &stashes_now(&repo)
+        ),
         None,
         "B's conflict is not A's clash"
     );

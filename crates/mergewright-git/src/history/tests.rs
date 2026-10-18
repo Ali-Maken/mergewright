@@ -55,7 +55,8 @@ fn all(walk: &mut Walk<'_>) -> Vec<Oid> {
 fn rev_list(repo: &Path, args: &[&str]) -> Vec<Oid> {
     let mut command = vec!["rev-list"];
     command.extend_from_slice(args);
-    let stdout = mergewright_fixtures::git::run(repo, &command).expect("git rev-list runs on a fixture");
+    let stdout =
+        mergewright_fixtures::git::run(repo, &command).expect("git rev-list runs on a fixture");
     String::from_utf8(stdout)
         .expect("git prints object ids as ASCII")
         .lines()
@@ -757,7 +758,10 @@ fn a_commit_reachable_two_ways_is_emitted_once() {
 
 /// Every link a walk produces in batches of `limit`, checking each batch's
 /// contract on the way.
-fn links_in_batches(walk: &mut Walk<'_>, limit: usize) -> Vec<mergewright_core::commit_handle::Link> {
+fn links_in_batches(
+    walk: &mut Walk<'_>,
+    limit: usize,
+) -> Vec<mergewright_core::commit_handle::Link> {
     let mut links = Vec::new();
     loop {
         let chunk = walk.next_links(limit, &never).expect("the walk reads");
@@ -852,7 +856,8 @@ fn links_come_out_as_whole_commits_do_on_every_shape() {
 #[test]
 fn links_come_out_as_whole_commits_do_with_a_commit_graph() {
     for &shape in Shape::ALL {
-        let Some(scratch) = available(shape, mergewright_fixtures::try_copy_into_temp(shape)) else {
+        let Some(scratch) = available(shape, mergewright_fixtures::try_copy_into_temp(shape))
+        else {
             continue;
         };
         mergewright_fixtures::git::run(scratch.path(), &["commit-graph", "write", "--reachable"])
@@ -968,7 +973,8 @@ fn previous_tips_returns_the_reflogs_old_values_newest_first_deduped() {
     ]);
 
     let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
-    let refname = mergewright_core::ref_name::RefName::new("refs/heads/main").expect("a valid ref name");
+    let refname =
+        mergewright_core::ref_name::RefName::new("refs/heads/main").expect("a valid ref name");
 
     let tips = previous_tips(&repo, &refname, 10).expect("the reflog reads");
 
@@ -981,7 +987,8 @@ fn previous_tips_on_a_fresh_branch_with_only_its_creation_entry_is_empty() {
     fixture.git(&["branch", "fresh"]);
 
     let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
-    let refname = mergewright_core::ref_name::RefName::new("refs/heads/fresh").expect("a valid ref name");
+    let refname =
+        mergewright_core::ref_name::RefName::new("refs/heads/fresh").expect("a valid ref name");
 
     let tips = previous_tips(&repo, &refname, 10).expect("a creation-only reflog is not an error");
 

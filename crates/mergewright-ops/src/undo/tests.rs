@@ -79,7 +79,12 @@ fn the_worktree_restore_carries_the_raw_tree_of_its_own_entry() {
 }
 
 /// `committed` with the touches an operation of that kind really has.
-fn op(at: i64, kind: OperationKind, before: u8, after: u8) -> mergewright_core::journal::JournalEntry {
+fn op(
+    at: i64,
+    kind: OperationKind,
+    before: u8,
+    after: u8,
+) -> mergewright_core::journal::JournalEntry {
     let (refs, index, worktree) = match kind {
         OperationKind::Stage | OperationKind::Unstage => (vec![], true, false),
         OperationKind::Discard => (vec![], true, true),

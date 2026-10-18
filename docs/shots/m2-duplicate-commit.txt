@@ -1,5 +1,5 @@
 # m2-duplicate-commit.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_duplicate_commit in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_duplicate_commit in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). Three synthetic commits; the middle one
 # (0202020) is opened in the detail pane, with a DuplicateCommit finding
 # injected as Evidence::Duplicate { copies: [0303030] } — the finding a

@@ -84,8 +84,11 @@ fn rewrite_stop_to_first_file() {
     let resolver = state.resolver.as_ref().expect("the resolver is open");
     assert_eq!(resolver.path, std::path::PathBuf::from("shared.txt"));
     let banner = mergewright::update::banner::banner_view(&state).expect("a banner");
-    let words =
-        mergewright_ui::graph_screen::banner_line(&banner, u16::MAX, mergewright_ui::keymap::Keymap::shipped());
+    let words = mergewright_ui::graph_screen::banner_line(
+        &banner,
+        u16::MAX,
+        mergewright_ui::keymap::Keymap::shipped(),
+    );
     assert!(
         words.contains("step 3 of 5") && words.contains("feature-b, branch 2 of 3"),
         "{words}"

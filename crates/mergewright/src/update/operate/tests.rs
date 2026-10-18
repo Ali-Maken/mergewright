@@ -373,8 +373,13 @@ fn space_on_a_hunk_heading_stages_the_whole_hunk() {
     assert_eq!(side, PatchSide::Worktree);
     assert_eq!(
         patch,
-        &mergewright_git::diff::hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward)
-            .expect("the whole hunk always builds")
+        &mergewright_git::diff::hunk_patch(
+            &diff,
+            0,
+            &Selection::WholeHunk,
+            PatchDirection::Forward
+        )
+        .expect("the whole hunk always builds")
     );
 }
 
@@ -408,8 +413,13 @@ fn space_on_a_context_line_stages_the_hunk_around_it() {
     let (_, patch, _) = queued_patch(&commands);
     assert_eq!(
         patch,
-        &mergewright_git::diff::hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward)
-            .expect("the whole hunk always builds")
+        &mergewright_git::diff::hunk_patch(
+            &diff,
+            0,
+            &Selection::WholeHunk,
+            PatchDirection::Forward
+        )
+        .expect("the whole hunk always builds")
     );
 }
 
@@ -430,8 +440,13 @@ fn a_hunk_under_staged_unstages_in_reverse_against_the_index() {
     assert_eq!(side, PatchSide::Index);
     assert_eq!(
         patch,
-        &mergewright_git::diff::hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Reverse)
-            .expect("the whole hunk always builds")
+        &mergewright_git::diff::hunk_patch(
+            &diff,
+            0,
+            &Selection::WholeHunk,
+            PatchDirection::Reverse
+        )
+        .expect("the whole hunk always builds")
     );
 }
 

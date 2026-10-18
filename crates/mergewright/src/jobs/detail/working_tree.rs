@@ -7,7 +7,9 @@ use mergewright_core::oid::Oid;
 use mergewright_git::diff::{DiffSpec, FileDiff, FileEntry, FileList, FileStatus, LineKind};
 use mergewright_git::status::UnmergedHow;
 use mergewright_term::sanitize::{SanitizedText, sanitize_line};
-use mergewright_ui::detail::{FileListView, FileRow, FileRowKind, SubmoduleView, WorkingTreeSection};
+use mergewright_ui::detail::{
+    FileListView, FileRow, FileRowKind, SubmoduleView, WorkingTreeSection,
+};
 
 use super::assemble::push_tree;
 use crate::update::detail::DetailSpec;

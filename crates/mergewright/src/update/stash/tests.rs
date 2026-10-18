@@ -86,7 +86,8 @@ fn capital_s_opens_the_overlay_and_asks_for_the_list() {
 #[test]
 fn capital_s_on_a_stash_row_selects_that_stash() {
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     let refs = crate::refs::badges(
         &[(name("refs/heads/main"), oid(2))],

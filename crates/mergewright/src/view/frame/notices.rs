@@ -95,5 +95,6 @@ pub(super) fn first_launch_line(state: &AppState, columns: u16) -> Option<Saniti
     let cells = usize::from(columns)
         .saturating_sub(1)
         .saturating_sub(usize::from(mergewright_ui::graph_screen::RIGHT_MARGIN));
-    mergewright_ui::empty_state::first_launch_words(&state.keymap, cells).map(|line| sanitize_line(&line))
+    mergewright_ui::empty_state::first_launch_words(&state.keymap, cells)
+        .map(|line| sanitize_line(&line))
 }

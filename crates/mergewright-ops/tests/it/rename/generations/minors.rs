@@ -4,7 +4,9 @@
 
 use mergewright_core::on_disk::Generation;
 use mergewright_git::file_lock::FileLock;
-use mergewright_ops::rename::{KEPT_ASIDE_DIR, LOCK_FILE, MigrateError, SettleOutcome, settle_names};
+use mergewright_ops::rename::{
+    KEPT_ASIDE_DIR, LOCK_FILE, MigrateError, SettleOutcome, settle_names,
+};
 
 use super::super::old_repo;
 use super::setup::{

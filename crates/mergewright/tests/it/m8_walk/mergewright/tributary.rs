@@ -47,8 +47,11 @@ pub fn as_tributary(repo: &Path) {
     copy_dir(&from, &to);
     std::fs::remove_dir_all(&from).unwrap_or_else(|why| panic!("{why}"));
     append_migrate(repo, tributary, old.len());
-    std::fs::write(in_dir(repo, tributary, mergewright_ops::rename::LOCK_FILE), b"")
-        .unwrap_or_else(|why| panic!("{why}"));
+    std::fs::write(
+        in_dir(repo, tributary, mergewright_ops::rename::LOCK_FILE),
+        b"",
+    )
+    .unwrap_or_else(|why| panic!("{why}"));
     std::fs::write(in_dir(repo, tributary, MIGRATED_MARKER), b"clean\n")
         .unwrap_or_else(|why| panic!("{why}"));
     assert_eq!(open(repo).on_disk_names(), tributary);
@@ -109,8 +112,9 @@ fn append_migrate(repo: &Path, to: Generation, refs: usize) {
     let mut lines =
         mergewright_ops::journal::render_pending(&entry).unwrap_or_else(|why| panic!("{why:?}"));
     entry.status = EntryStatus::Committed;
-    lines
-        .extend(mergewright_ops::journal::render_outcome(&entry).unwrap_or_else(|why| panic!("{why:?}")));
+    lines.extend(
+        mergewright_ops::journal::render_outcome(&entry).unwrap_or_else(|why| panic!("{why:?}")),
+    );
     let mut bytes = std::fs::read(&path).unwrap_or_else(|why| panic!("{why}"));
     bytes.extend(lines);
     std::fs::write(&path, bytes).unwrap_or_else(|why| panic!("{why}"));

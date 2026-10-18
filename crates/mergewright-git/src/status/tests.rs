@@ -237,7 +237,8 @@ fn script_dirty_states(root: &Path, files: &[String]) -> DirtyPaths {
     }
     if let Some(path) = files.get(3) {
         let renamed = format!("{path}-renamed");
-        mergewright_fixtures::git::run(root, &["mv", path, &renamed]).expect("git mv stages a rename");
+        mergewright_fixtures::git::run(root, &["mv", path, &renamed])
+            .expect("git mv stages a rename");
         paths.rename_from = Some(path.clone());
         paths.rename_to = Some(renamed);
     }
@@ -336,7 +337,8 @@ fn read_matches_gits_own_counts_and_letters_on_every_shape() {
     let mut shapes_checked = 0usize;
     let mut best_states = 0usize;
     for &shape in Shape::ALL {
-        let Some(scratch) = available(shape, mergewright_fixtures::try_copy_into_temp(shape)) else {
+        let Some(scratch) = available(shape, mergewright_fixtures::try_copy_into_temp(shape))
+        else {
             continue;
         };
         let root = scratch.path();

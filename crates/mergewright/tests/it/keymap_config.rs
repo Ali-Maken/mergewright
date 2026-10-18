@@ -11,7 +11,8 @@ use mergewright_core::on_disk::CURRENT_DIR;
 /// tests' (`update::tests::keymap_edge`): this checks the startup wiring.
 #[test]
 fn a_keys_table_in_the_config_file_reaches_the_first_screen() {
-    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+    let scratch =
+        mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let repo = scratch.path().canonicalize().expect("canonical");
     let isolated = Isolated::new();
     let dir = isolated.config().join(CURRENT_DIR);

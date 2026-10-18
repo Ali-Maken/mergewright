@@ -14,8 +14,10 @@ use crate::app_harness::App;
 #[test]
 fn capture_fix_preview_verb_for_docs_shots() {
     let scratch = forked();
-    let (app, state) =
-        App::open_with_clock(scratch.path(), Clock::Fixed(mergewright_fixtures::PINNED_NOW));
+    let (app, state) = App::open_with_clock(
+        scratch.path(),
+        Clock::Fixed(mergewright_fixtures::PINNED_NOW),
+    );
     let state = preview_opened_by(&app, state, 'm');
     let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
     app.close();

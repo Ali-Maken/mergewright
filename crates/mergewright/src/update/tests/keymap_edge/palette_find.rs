@@ -284,7 +284,9 @@ fn click_on_branch_row_seeks() {
         update(
             state,
             AppEvent::Core(Event::Mouse(mergewright_core::event::MouseInput {
-                kind: mergewright_core::event::MouseKind::Down(mergewright_core::event::MouseButton::Left),
+                kind: mergewright_core::event::MouseKind::Down(
+                    mergewright_core::event::MouseButton::Left,
+                ),
                 column: 60,
                 row: u16::try_from(row).expect("a row"),
                 modifiers: Modifiers::NONE,
@@ -762,7 +764,9 @@ fn nothing_matches_waits_for_every_source() {
     let (landed, more) = produced(
         &landed,
         files,
-        Product::TrackedPaths(Ok(Arc::new(mergewright_git::status::TrackedPaths::default()))),
+        Product::TrackedPaths(Ok(Arc::new(
+            mergewright_git::status::TrackedPaths::default(),
+        ))),
     );
     let landed = answer(&landed, names_asked(&more).last().expect("re-asked"));
     let commits = commits_pending(&landed);

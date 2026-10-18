@@ -632,7 +632,13 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
     );
     // A pop's words are unchanged.
     assert_eq!(
-        notice_words(Some(0), 2, false, None, mergewright_ui::keymap::Keymap::shipped()),
+        notice_words(
+            Some(0),
+            2,
+            false,
+            None,
+            mergewright_ui::keymap::Keymap::shipped()
+        ),
         "stash@{0} clashed in 2 files \u{b7} esc, u puts it all back"
     );
 }

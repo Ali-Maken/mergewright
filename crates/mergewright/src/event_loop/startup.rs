@@ -42,7 +42,8 @@ use wind_down::{excused_by_hangup, finish_to, report_stalled_jobs_to};
 /// Undo, spelled once per place for the exit line of a write git could not
 /// pause (13d): the process has one keymap (ADR-0055), and that line is
 /// printed after the loop, and its state, are gone (`exit_wait::Pool`).
-pub(super) const UNDO: mergewright_ui::keymap::ActionId = mergewright_ui::keymap::ActionId("app.undo");
+pub(super) const UNDO: mergewright_ui::keymap::ActionId =
+    mergewright_ui::keymap::ActionId("app.undo");
 
 /// Start the re-query worker (DESIGN.md §4.5), knowing what startup settled.
 ///

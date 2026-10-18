@@ -161,7 +161,10 @@ fn unread_review_has_no_names() {
     let state = review::reading();
     let view = crate::view::finish::finish_view(&state).expect("drawn");
     assert_eq!((view.from.as_str(), view.into.as_str()), ("", ""));
-    assert_eq!(view.state, mergewright_ui::finish_summary::SummaryState::Loading);
+    assert_eq!(
+        view.state,
+        mergewright_ui::finish_summary::SummaryState::Loading
+    );
 }
 
 #[test]
@@ -347,8 +350,10 @@ fn arrows_and_pages_move_the_file_cursor() {
         open.summary = Loading::Ready(Arc::new(many));
     }
     let view = crate::view::finish::finish_view(&long).expect("drawn");
-    let height =
-        mergewright_ui::finish_summary::list_height(&view, crate::view::finish::summary_area(&long));
+    let height = mergewright_ui::finish_summary::list_height(
+        &view,
+        crate::view::finish::summary_area(&long),
+    );
     assert!(height > 2, "{height}");
     let paged = key(&long, KeyCode::PageDown);
     assert_eq!(finish(&paged).cursor, height);

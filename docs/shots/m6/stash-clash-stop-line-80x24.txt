@@ -1,5 +1,5 @@
 # m6/stash-clash-stop-line-80x24.txt: drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/stash_clash.rs,
+# AppState (crates/mergewright/tests/it/stash_clash.rs,
 # the_stop_line_words_a_clash_at_80_and_120, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #

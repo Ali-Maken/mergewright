@@ -170,7 +170,9 @@ pub(crate) fn resume_answered(
 }
 
 /// The commit `HEAD` names after `entry`: the merge the review's `y` made.
-fn merge_made(entry: &mergewright_core::journal::JournalEntry) -> Option<mergewright_core::oid::Oid> {
+fn merge_made(
+    entry: &mergewright_core::journal::JournalEntry,
+) -> Option<mergewright_core::oid::Oid> {
     use mergewright_core::journal::HeadRef;
     match entry.head_after.as_ref()? {
         HeadRef::Detached(oid) => Some(*oid),

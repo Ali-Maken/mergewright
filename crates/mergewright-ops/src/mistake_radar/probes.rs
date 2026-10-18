@@ -595,7 +595,8 @@ mod tests {
     /// A fixture's checked-out tip (the merge, in every merge shape) and that
     /// tip's first parent (a plain commit).
     fn tip_and_parent(shape: mergewright_fixtures::Shape) -> (RepoHandle, Oid, Oid) {
-        let repo = RepoHandle::open(&mergewright_fixtures::borrow(shape)).expect("the fixture opens");
+        let repo =
+            RepoHandle::open(&mergewright_fixtures::borrow(shape)).expect("the fixture opens");
         let mergewright_git::repo::HeadState::Branch(branch) =
             repo.head().expect("the fixture's HEAD reads")
         else {
@@ -692,8 +693,11 @@ mod tests {
     /// reflog turned on, plus two commits: an older one and the tip.
     fn tracked() -> (mergewright_fixtures::Scratch, RepoHandle, Oid, Oid) {
         let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
-        mergewright_fixtures::git::run(scratch.path(), &["config", "core.logAllRefUpdates", "true"])
-            .expect("the copy takes config");
+        mergewright_fixtures::git::run(
+            scratch.path(),
+            &["config", "core.logAllRefUpdates", "true"],
+        )
+        .expect("the copy takes config");
         let older = rev_parse(&scratch, "HEAD~2");
         let tip = rev_parse(&scratch, "HEAD");
         let repo = RepoHandle::open(scratch.path()).expect("the copy opens");
@@ -874,8 +878,10 @@ mod tests {
 
     #[test]
     fn a_fixture_with_no_repeated_content_has_no_groups() {
-        let repo = RepoHandle::open(&mergewright_fixtures::borrow(mergewright_fixtures::Shape::Trivial))
-            .expect("the fixture opens");
+        let repo = RepoHandle::open(&mergewright_fixtures::borrow(
+            mergewright_fixtures::Shape::Trivial,
+        ))
+        .expect("the fixture opens");
         let d = probe_duplicates(&repo, 500, &()).expect("the probe runs");
         assert_eq!(d.groups, Vec::<Vec<Oid>>::new());
         assert!(d.complete);

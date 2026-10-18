@@ -43,7 +43,8 @@ pub(crate) fn opened(columns: u16, rows: u16) -> (mergewright_fixtures::Scratch,
 /// lanes, not about a merged branch, so they keep `[feature/two] two: finish`
 /// on screen this way (06 D3, route 2: a new ref, the corpus refs untouched).
 pub(crate) fn with_feature_two_kept() -> mergewright_fixtures::Scratch {
-    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+    let scratch =
+        mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let path = scratch.path();
     let tip_date: i64 = git(path, &["log", "-1", "--format=%ct", "feature/two"])
         .trim()
@@ -55,7 +56,7 @@ pub(crate) fn with_feature_two_kept() -> mergewright_fixtures::Scratch {
         .arg(path)
         .args([
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
             "commit-tree",
@@ -311,8 +312,16 @@ fn capture_the_cursor_row_in_dark_and_light() {
     crate::m8_walk::within_the_note::<&str>("cursor-row-branch", &[]);
 
     for (name, choice, kind) in [
-        ("dark", mergewright::config::ThemeChoice::Dark, ThemeKind::Dark),
-        ("light", mergewright::config::ThemeChoice::Light, ThemeKind::Light),
+        (
+            "dark",
+            mergewright::config::ThemeChoice::Dark,
+            ThemeKind::Dark,
+        ),
+        (
+            "light",
+            mergewright::config::ThemeChoice::Light,
+            ThemeKind::Light,
+        ),
     ] {
         let buffer = buffer_with(&state, choice, columns, rows);
         let theme = Theme::new(kind, &crate::captures::capabilities());

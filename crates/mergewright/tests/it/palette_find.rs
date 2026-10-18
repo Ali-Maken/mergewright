@@ -34,7 +34,8 @@ struct Repo {
 }
 
 fn repo() -> Repo {
-    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+    let scratch =
+        mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let path = scratch.path();
     // Launched in a repository, the cursor lands on HEAD (`main`; ticket
     // 12d), where the walks start.

@@ -1252,7 +1252,9 @@ mod tests {
             "",
         )
         .unwrap();
-        let layout = temp.path().join("crates/mergewright-graph/tests/it/snapshots");
+        let layout = temp
+            .path()
+            .join("crates/mergewright-graph/tests/it/snapshots");
         fs::create_dir_all(&layout).unwrap();
         fs::write(layout.join("it__corpus__linear.snap"), "").unwrap();
         let shots = temp.path().join("docs/shots");

@@ -26,7 +26,10 @@ fn read(interrupted: &[&str], unreadable: &[&str]) -> JournalState {
 }
 
 /// One entry a previous run left open and recovery then closed.
-pub(super) fn torn_entry(index: usize, description: &str) -> mergewright_core::journal::JournalEntry {
+pub(super) fn torn_entry(
+    index: usize,
+    description: &str,
+) -> mergewright_core::journal::JournalEntry {
     use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, OperationKind, Touches};
     let oid = |byte: u8| mergewright_core::oid::Oid::from_bytes(&[byte; 20]).expect("20 bytes");
     let number = i64::try_from(index).expect("a handful of entries") + 1;

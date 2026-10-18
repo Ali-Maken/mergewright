@@ -10,7 +10,9 @@ use std::path::PathBuf;
 
 use mergewright_core::journal::{EntryStatus, OperationKind};
 use mergewright_ops::apply::{ApplyError, Refresh, apply};
-use mergewright_ops::operation::{CommitParams, FactsScope, Operation, StashParams, StashScope, Target};
+use mergewright_ops::operation::{
+    CommitParams, FactsScope, Operation, StashParams, StashScope, Target,
+};
 use mergewright_ops::snapshot;
 use mergewright_ops::undo::UndoError;
 

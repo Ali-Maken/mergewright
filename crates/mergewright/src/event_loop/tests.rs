@@ -1553,7 +1553,10 @@ fn inside_tmux_the_osc_52_request_is_wrapped_in_the_passthrough() {
     let (exit, recorder, sha) = copy_run(&mut inside);
     exit.expect("writing to memory cannot fail");
     let mut wrapped = Vec::new();
-    mergewright_term::tmux_passthrough(&mergewright_term::clipboard::osc52_copy(&sha), &mut wrapped);
+    mergewright_term::tmux_passthrough(
+        &mergewright_term::clipboard::osc52_copy(&sha),
+        &mut wrapped,
+    );
     let wrapped = String::from_utf8(wrapped).expect("ASCII");
     assert!(recorder.written().contains(&wrapped));
 }

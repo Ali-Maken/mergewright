@@ -23,8 +23,10 @@ fn line(remote: bool) -> Invocation {
 
 #[test]
 fn local_write_lines_stop_hooks_first_and_remote_lines_do_not() {
-    let repo = RepoHandle::open(&mergewright_fixtures::borrow(mergewright_fixtures::Shape::Trivial))
-        .expect("the fixture opens");
+    let repo = RepoHandle::open(&mergewright_fixtures::borrow(
+        mergewright_fixtures::Shape::Trivial,
+    ))
+    .expect("the fixture opens");
     let plan = Path::new("/nonexistent/plan");
     let resumed = |kind: InProgress, dir: Option<&Path>| {
         let args = vec![GitArg::Flag(kind.name()), GitArg::Flag("--continue")];

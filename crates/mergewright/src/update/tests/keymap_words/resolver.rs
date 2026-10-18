@@ -257,7 +257,8 @@ fn landed_and_drawn() -> Vec<Site> {
                     doc(k),
                     Opening::Unmerged(Arc::new(OpenedFile {
                         file: Some(
-                            mergewright_git::conflict::parse(b"plain\n").expect("plain text parses"),
+                            mergewright_git::conflict::parse(b"plain\n")
+                                .expect("plain text parses"),
                         ),
                         how: UnmergedHow::BothModified,
                         binary: false,

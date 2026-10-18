@@ -19,7 +19,9 @@ use std::time::Instant;
 use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
 use mergewright::repos::RepoStore;
 use mergewright::update::{AppEvent, AppState, Command, Size, Status, update};
-use mergewright_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
+use mergewright_core::event::{
+    Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind,
+};
 
 pub use crate::deadline::{DEADLINE, Deadline};
 
@@ -93,7 +95,7 @@ pub fn git(repo: &Path, args: &[&str]) -> String {
 pub fn git_as_graft(repo: &Path, args: &[&str]) -> String {
     let mut full = vec![
         "-c",
-        "user.name=Mergewright Test",
+        "user.name=Graft Test",
         "-c",
         "user.email=test@example.invalid",
     ];
@@ -110,7 +112,7 @@ pub fn git_as_graft(repo: &Path, args: &[&str]) -> String {
 /// `MA` on the Mac and `TE` in the Linux container, and the ids changed
 /// with them (m8-polish-and-ship/30).
 pub fn pin_identity(repo: &Path) {
-    git(repo, &["config", "user.name", "Mergewright Test"]);
+    git(repo, &["config", "user.name", "Graft Test"]);
     git(repo, &["config", "user.email", "test@example.invalid"]);
 }
 
@@ -288,9 +290,11 @@ impl App {
     }
 
     pub fn close(self) {
-        let shutdown =
-            self.jobs
-                .shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+        let shutdown = self.jobs.shutdown(
+            Duration::from_secs(10),
+            mergewright::jobs::EXIT_WRITE_WAIT,
+            &(),
+        );
         assert_eq!(
             shutdown,
             Shutdown::CLEAN,
@@ -322,7 +326,10 @@ pub fn changes_pane(app: &App, state: AppState) -> AppState {
     );
     let state = app.key(&state, KeyCode::Enter);
     app.pump(state, "the changes pane's file list", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     })
 }
 

@@ -1,11 +1,11 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_undo_drift in crates/graft/src/view/tests.rs (asserted;
+# capture_m3_undo_drift in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). The undo job answered Drift: the repository moved
 # since the entry `u` would take back.
 #
 # Judge by eye:
 # - The question names the entry, not the word "operation".
-# - The consequence is `graft_ops`' own drift.explain() text, verbatim —
+# - The consequence is `mergewright_ops`' own drift.explain() text, verbatim —
 #   which fields moved, and that an unrecorded after-state is restored whole.
 # - Under it, what the undo replaces and the key that brings it back
 #   (m6-conflicts/77): `Undo replaces the whole working tree; U brings it

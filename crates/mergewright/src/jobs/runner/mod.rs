@@ -86,7 +86,7 @@ impl<S: JobEvents> JobRunner<S> {
             };
             alive.started();
             match thread::Builder::new()
-                .name(format!("graft-job-{number}"))
+                .name(format!("mergewright-job-{number}"))
                 .spawn(move || worker.run())
             {
                 Ok(handle) => handles.push(handle),

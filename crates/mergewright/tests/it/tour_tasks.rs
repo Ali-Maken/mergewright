@@ -151,7 +151,8 @@ impl Tour {
     /// The practice repo's journal, as written so far; empty before its
     /// first entry (no file yet).
     fn journal(&self) -> Vec<JournalEntry> {
-        let repo = mergewright_git::repo::RepoHandle::open(&self.work).expect("practice repo opens");
+        let repo =
+            mergewright_git::repo::RepoHandle::open(&self.work).expect("practice repo opens");
         let path = mergewright_ops::journal::journal_path(&repo).expect("journal path");
         match std::fs::read(&path) {
             Ok(bytes) => {

@@ -919,7 +919,9 @@ fn ctrl_a_with_nothing_to_stage_says_so() {
         ..AppState::default()
     };
     state.detail.focus = DetailFocus::Files;
-    state.working_tree = Some(Arc::new(mergewright_git::status::WorkingTreeStatus::default()));
+    state.working_tree = Some(Arc::new(
+        mergewright_git::status::WorkingTreeStatus::default(),
+    ));
     let mut commands = Vec::new();
     let ctrl_a = KeyPress {
         code: KeyCode::Char('a'),

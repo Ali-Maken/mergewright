@@ -8,7 +8,9 @@
 //! key can never disagree.
 
 use mergewright_core::journal::{EntryId, EntryStatus, JournalEntry, OperationKind};
-use mergewright_ops::journal_list::{Fate, HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan};
+use mergewright_ops::journal_list::{
+    Fate, HeldBy, JournalList, ListRow, LostCommit, LostEdit, LostScan,
+};
 use mergewright_term::sanitize::{sanitize, sanitize_line};
 use mergewright_ui::journal_screen::{
     JournalFindView, JournalRowView, JournalStatus, JournalView, RowKind, RowMark,

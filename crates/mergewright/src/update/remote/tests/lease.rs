@@ -41,7 +41,8 @@ fn oid(hex: &str) -> Oid {
 
 /// `main` checked out at `tip`, diverged from `origin/main`.
 fn refs_on_main(tip: &str) -> RefBadges {
-    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
+    let main =
+        mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
     crate::refs::badges(
         &[(main.clone(), oid(tip))],
         &mergewright_git::repo::HeadState::Branch(main),

@@ -338,7 +338,9 @@ pub enum Product {
         mergewright_ops::mistake_radar::probes::ForcePushVerdict,
     ),
     /// The duplicate-commit probe's groups, or why it could not run.
-    DuplicatesProbe(Result<std::sync::Arc<mergewright_ops::mistake_radar::probes::Duplicates>, String>),
+    DuplicatesProbe(
+        Result<std::sync::Arc<mergewright_ops::mistake_radar::probes::Duplicates>, String>,
+    ),
     /// The commits only a stash reaches, each with the newest entry `n`
     /// (`stash@{n}`) reaching it, or why they could not be read
     /// (m7-power-tools/16).
@@ -448,7 +450,15 @@ pub enum Product {
     /// (`no base (added on both sides)`, `base unavailable after edits`, or
     /// git's own `diff3` failure), paired with whether they are a problem —
     /// only a failure is; no base and edited-past-git are facts.
-    BaseLoaded(Result<(std::sync::Arc<mergewright_git::conflict::ConflictFile>, usize), (String, bool)>),
+    BaseLoaded(
+        Result<
+            (
+                std::sync::Arc<mergewright_git::conflict::ConflictFile>,
+                usize,
+            ),
+            (String, bool),
+        >,
+    ),
     /// The files the operation in progress conflicted on
     /// (`mergewright_ops::conflict::operation_conflicts`, m6-conflicts/13), or why
     /// they could not be read, in `mergewright_ops`' own words.

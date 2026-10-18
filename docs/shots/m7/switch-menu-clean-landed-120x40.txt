@@ -1,5 +1,5 @@
 # m7/switch-menu-clean-landed-120x40.txt: drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/m7_walk/switch.rs,
+# AppState (crates/mergewright/tests/it/m7_walk/switch.rs,
 # switch_clean_via_menu_is_two_keys, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #

@@ -11,7 +11,9 @@
 use std::path::{Path, PathBuf};
 
 use mergewright_git::status::UnmergedHow;
-use mergewright_ops::apply::{ApplyError, RestartPlan, RestartReadError, StageSource, restart_gate};
+use mergewright_ops::apply::{
+    ApplyError, RestartPlan, RestartReadError, StageSource, restart_gate,
+};
 use mergewright_ops::facts::read_facts;
 use mergewright_ops::journal::journal_path;
 use mergewright_ops::operation::{

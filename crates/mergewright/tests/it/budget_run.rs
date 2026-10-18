@@ -75,10 +75,12 @@ pub struct Numbers {
     /// This process's physical footprint once `G` has landed
     /// (m1-the-graph/57). `Err` only means this platform cannot read it
     /// (`mergewright_fixtures::footprint`, macOS only) — not a failure of the run.
-    pub footprint_at_bottom: Result<mergewright_fixtures::Footprint, mergewright_fixtures::MemoryError>,
+    pub footprint_at_bottom:
+        Result<mergewright_fixtures::Footprint, mergewright_fixtures::MemoryError>,
     /// The same reading taken once more at the very end of the run, whose
     /// `peak` is this run's own lifetime maximum footprint.
-    pub footprint_at_end: Result<mergewright_fixtures::Footprint, mergewright_fixtures::MemoryError>,
+    pub footprint_at_end:
+        Result<mergewright_fixtures::Footprint, mergewright_fixtures::MemoryError>,
 }
 
 /// Opens `repo` as `event_loop::opening_repository` does, and drives it.
@@ -118,7 +120,11 @@ pub fn run(repo: &Path) -> Result<Numbers, String> {
 
     let peak_rss = peak()?;
     let footprint_at_end = mergewright_fixtures::footprint();
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!("the job pool did not stop cleanly: {shutdown:?}"));
     }

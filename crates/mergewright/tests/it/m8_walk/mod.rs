@@ -304,7 +304,7 @@ pub fn octopus_with_an_unmerged_branch() -> mergewright_fixtures::Scratch {
         .arg(scratch.path())
         .args([
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
             "commit-tree",

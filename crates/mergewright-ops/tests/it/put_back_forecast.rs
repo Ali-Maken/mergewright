@@ -18,7 +18,9 @@ use mergewright_core::oid::Oid;
 use mergewright_git::run::Stop;
 use mergewright_git::version::GitVersion;
 use mergewright_ops::facts::read_facts;
-use mergewright_ops::operation::{CheckoutParams, CheckoutTarget, Operation, RebaseParams, Source, Tip};
+use mergewright_ops::operation::{
+    CheckoutParams, CheckoutTarget, Operation, RebaseParams, Source, Tip,
+};
 use mergewright_ops::preview::{self, ConflictForecast, PreviewError, PreviewPlan};
 
 use crate::support::{Never, TempRepo, git_version};

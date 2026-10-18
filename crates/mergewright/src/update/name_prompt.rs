@@ -221,7 +221,9 @@ pub fn name_refusal(state: &AppState) -> Option<String> {
     // The same rule `mergewright_ops::operation::history::new_ref` applies at
     // `check` time — `RefName::new` is where `check-ref-format` lives, so
     // the preview and the decision cannot drift.
-    if let Err(mergewright_core::error::Error::RefName { reason, .. }) = RefName::new(full.as_bytes()) {
+    if let Err(mergewright_core::error::Error::RefName { reason, .. }) =
+        RefName::new(full.as_bytes())
+    {
         return Some(format!("bad name: {reason}"));
     }
     let refs = state.refs.as_deref()?;

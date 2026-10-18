@@ -266,7 +266,10 @@ fn empty_state_bar_keys_are_answered() {
     let now = UNIX_EPOCH;
     let mut checked = 0;
     for (form, start) in forms {
-        for (drawn, _label) in bar_keys(&view(&start, now), mergewright_ui::keymap::Keymap::shipped()) {
+        for (drawn, _label) in bar_keys(
+            &view(&start, now),
+            mergewright_ui::keymap::Keymap::shipped(),
+        ) {
             let press = match drawn.as_str() {
                 "⏎" => key(KeyCode::Enter),
                 "⇥" => key(KeyCode::Tab),
@@ -277,7 +280,8 @@ fn empty_state_bar_keys_are_answered() {
             let mut after = start.clone();
             // Through the edge, as the loop sends it: `?` opens the palette
             // there (`act`), before `outside_key` (m8/11b).
-            let step = super::outside_edge(&mut after, mergewright_ui::keymap::Keymap::shipped(), press);
+            let step =
+                super::outside_edge(&mut after, mergewright_ui::keymap::Keymap::shipped(), press);
             assert!(
                 step != OutsideStep::Stay
                     || view(&after, now) != view(&start, now)
@@ -457,7 +461,11 @@ fn no_clone_in_a_missing_folder() {
         "c drawn for a missing folder: {drawn:?}"
     );
     let mut after = missing.clone();
-    let step = super::outside_edge(&mut after, mergewright_ui::keymap::Keymap::shipped(), ch('c'));
+    let step = super::outside_edge(
+        &mut after,
+        mergewright_ui::keymap::Keymap::shipped(),
+        ch('c'),
+    );
     assert_eq!(step, OutsideStep::Stay);
     assert_eq!(after, missing, "c answered for a missing folder");
 }

@@ -38,9 +38,10 @@ pub(super) fn mark_resolved(
     if let Some(refusal) = mergewright_ops::conflict::mark_resolved_refusal(&path, &file) {
         state.status = Status::Sticky {
             reason: refusal.explain(&OpKeys(&state.keymap)),
-            keys: state
-                .keymap
-                .key_verb(&[mergewright_ui::keymap::ActionId("resolver.next_block")], "next"),
+            keys: state.keymap.key_verb(
+                &[mergewright_ui::keymap::ActionId("resolver.next_block")],
+                "next",
+            ),
         };
         return;
     }
@@ -57,7 +58,9 @@ pub(super) fn mark_resolved(
     if let Err(busy) = crate::update::operate::launch(
         state,
         commands,
-        mergewright_ops::operation::Operation::Stage(mergewright_ops::operation::Target::Paths(vec![path])),
+        mergewright_ops::operation::Operation::Stage(mergewright_ops::operation::Target::Paths(
+            vec![path],
+        )),
         next_id,
     ) {
         // Unreachable: `write_refusal` returned above. Worded as it is, on

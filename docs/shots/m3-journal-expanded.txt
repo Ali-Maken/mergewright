@@ -1,12 +1,12 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
+# capture_m3_journal in crates/mergewright/src/view/tests.rs (asserted; regenerate
 # on purpose). The same journal with the cursor moved onto the
 # failed discard and `space` pressed.
 #
 # Judge by eye:
 # - The cursor row is the discard, marked ▸ and painted.
 # - Under it, indented: the whole failure reason, then the Command Log's one
-#   `┆ git --literal-pathspecs restore …` line, under `commands Graft ran` — the exact command that ran,
+#   `┆ git --literal-pathspecs restore …` line, under `commands Mergewright ran` — the exact command that ran,
 #   not a description of it.
 # - The rows below the expansion are pushed down, not overwritten.
 === 120x32 ===

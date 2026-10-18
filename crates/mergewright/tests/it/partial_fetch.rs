@@ -31,10 +31,12 @@ fn tracking(remote: &LocalRemote) -> String {
 }
 
 fn journal(repo: &std::path::Path) -> Vec<JournalEntry> {
-    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-        .expect("the journal the writes made is readable")
-        .entries()
-        .to_vec()
+    mergewright_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the writes made is readable")
+    .entries()
+    .to_vec()
 }
 
 /// The status line's words, whatever its kind.

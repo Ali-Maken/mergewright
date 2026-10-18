@@ -78,8 +78,8 @@ pub(super) fn unmerged_paths(
     ctx: &Context<'_>,
     stop: &dyn Stop,
 ) -> Result<Vec<PathBuf>, ApplyError> {
-    let status =
-        mergewright_git::status::read(ctx.repo, stop).map_err(|error| ApplyError::Facts(error.into()))?;
+    let status = mergewright_git::status::read(ctx.repo, stop)
+        .map_err(|error| ApplyError::Facts(error.into()))?;
     Ok(status
         .entries
         .into_iter()

@@ -89,6 +89,7 @@ pub(super) fn head_message(store: &RepoStore) -> Result<String, String> {
             return Err("nothing committed yet, so there is nothing to amend".to_owned());
         }
     };
-    let commit = mergewright_git::history::read_commit(&handle, id).map_err(|error| error.to_string())?;
+    let commit =
+        mergewright_git::history::read_commit(&handle, id).map_err(|error| error.to_string())?;
     Ok(String::from_utf8_lossy(&commit.message).into_owned())
 }

@@ -1,7 +1,7 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # a_on_the_banner_aborts_a_shell_merge in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). `git merge
-# feature` run in the shell on `main`, stopped on two files; Graft launched
+# crates/mergewright/tests/it/resolver/shell_begun.rs (asserted). `git merge
+# feature` run in the shell on `main`, stopped on two files; Mergewright launched
 # on it, the banner focused (m6-conflicts/57).
 #
 # Judge by eye:

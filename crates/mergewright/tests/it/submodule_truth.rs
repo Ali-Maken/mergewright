@@ -55,7 +55,7 @@ fn dated(repo: &Path, args: &[&str]) {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
         ])
@@ -177,7 +177,9 @@ fn frame(state: &AppState) -> String {
         state,
         120,
         40,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     );
     format!("{}\n", rows.join("\n"))
 }
@@ -246,7 +248,9 @@ fn a_moved_and_dirty_submodule_shows_both() {
         &state,
         187,
         40,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     );
     let wide = format!("{}\n", wide.join("\n"));
     assert!(

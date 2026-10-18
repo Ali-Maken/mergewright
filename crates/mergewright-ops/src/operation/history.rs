@@ -565,7 +565,9 @@ fn clean_tree(facts: &RepoFacts) -> Result<(), Refusal> {
 
 /// A name git would accept under `prefix`, that no ref holds yet.
 pub(super) fn new_ref(full: &str, short: &str, facts: &RepoFacts) -> Result<(), Refusal> {
-    if let Err(mergewright_core::error::Error::RefName { reason, .. }) = RefName::new(full.as_bytes()) {
+    if let Err(mergewright_core::error::Error::RefName { reason, .. }) =
+        RefName::new(full.as_bytes())
+    {
         return Err(Refusal::BadRefName {
             name: short.to_owned(),
             rule: reason,

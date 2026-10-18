@@ -3,7 +3,9 @@
 
 use std::path::PathBuf;
 
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+};
 use mergewright_core::oid::Oid;
 use mergewright_git::remote::RemoteFailure;
 use mergewright_git::run::RunError;
@@ -544,7 +546,11 @@ const SITES: &[Site] = &[
 /// and no default letter of it as a whole token (W1).
 #[test]
 fn each_ops_word_spells_the_remapped_key() {
-    assert_eq!(SITES.len(), 29, "every mergewright-ops site that names a key");
+    assert_eq!(
+        SITES.len(),
+        29,
+        "every mergewright-ops site that names a key"
+    );
     let shipped = Keymap::shipped();
     let swept = swept();
     for site in SITES {

@@ -1,4 +1,4 @@
-ease-pass 06r m2, 50x36 (the widest that shortens a tail; at 80 none does), main screen at first paint, short of room: drawn by `view::view` from a real AppState over the job pool (crates/graft/tests/it/fold_tail_narrow.rs, `wallet_release`). Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+ease-pass 06r m2, 50x36 (the widest that shortens a tail; at 80 none does), main screen at first paint, short of room: drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/fold_tail_narrow.rs, `wallet_release`). Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
 What right looks like: the PR's merge ends `▸ 4 commits`, two cells after its cut subject, no ` from PR 16021` and no word cut (one column wider it is whole: the subject yields first); the named merge's tail shortens the same way or drops whole, never cut.
 
  ◆ api  ~/code/api · wallet-release     4 commits

@@ -183,7 +183,9 @@ pub(super) fn two_branch_map() -> crate::map::MapData {
         .map(|i| crate::map::MapBranch {
             name: mergewright_core::ref_name::RefName::new(format!("refs/heads/b{i}").into_bytes())
                 .expect("a valid ref name"),
-            identity: mergewright_graph::identity::BranchIdentity::of_name(format!("b{i}").as_bytes()),
+            identity: mergewright_graph::identity::BranchIdentity::of_name(
+                format!("b{i}").as_bytes(),
+            ),
             tip: Oid::from_bytes(&[u8::try_from(i + 1).expect("a small row"); Oid::SHA1_BYTES])
                 .expect("20 bytes is an oid"),
             tip_date: 0,

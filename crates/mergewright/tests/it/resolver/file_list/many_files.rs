@@ -36,7 +36,10 @@ fn file_list_many_capture() {
     let (app, state) = opened_on(&scratch);
     let state = resolver_on(&app, state, "handler_01.rs");
     let state = app.pump(state, "the set read", |state| {
-        matches!(open(state).files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            open(state).files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
     assert_eq!(rows(&state).len(), 12);
     let frame = crate::captures::frame(&state, 120, 40);

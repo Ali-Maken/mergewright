@@ -12,7 +12,8 @@ use crate::repo::SharedRepo;
 
 /// Every commit `git` says the repository holds.
 fn every_commit(repo: &Path) -> Vec<Oid> {
-    let stdout = mergewright_fixtures::git::run(repo, &["rev-list", "--all"]).expect("git rev-list runs");
+    let stdout =
+        mergewright_fixtures::git::run(repo, &["rev-list", "--all"]).expect("git rev-list runs");
     String::from_utf8(stdout)
         .expect("git prints ids as ASCII")
         .lines()
@@ -72,7 +73,8 @@ fn every_corpus_shape_round_trips_without_a_commit_graph() {
 #[test]
 fn every_corpus_shape_round_trips_with_a_commit_graph() {
     for &shape in Shape::ALL {
-        let Some(scratch) = available(shape, mergewright_fixtures::try_copy_into_temp(shape)) else {
+        let Some(scratch) = available(shape, mergewright_fixtures::try_copy_into_temp(shape))
+        else {
             continue;
         };
         mergewright_fixtures::git::run(scratch.path(), &["commit-graph", "write", "--reachable"])

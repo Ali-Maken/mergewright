@@ -11,7 +11,9 @@ use mergewright_git::remote::{RemoteFailure, RemoteProgress};
 use mergewright_git::run::askpass::AskPass;
 use mergewright_git::state::InProgress;
 use mergewright_git::version::system_git;
-use mergewright_ops::apply::{self, AfterState, Applied, ApplyError, Context, Refresh, RemoteHooks};
+use mergewright_ops::apply::{
+    self, AfterState, Applied, ApplyError, Context, Refresh, RemoteHooks,
+};
 use mergewright_ops::journal::{Journal, journal_path};
 use mergewright_ops::operation::Operation;
 

@@ -134,7 +134,10 @@ fn caret_across_a_rename_lands_where_the_line_came_from() {
 /// The job on the session fixture's `path` in the working tree, and the
 /// words the place then says.
 fn refused(path: &str) -> (BlameFailure, String) {
-    let store = RepoStore::new(mergewright_fixtures::borrow(mergewright_fixtures::Shape::Session), None);
+    let store = RepoStore::new(
+        mergewright_fixtures::borrow(mergewright_fixtures::Shape::Session),
+        None,
+    );
     let mut state = AppState::default();
     let commands = open_blame(
         &mut state,

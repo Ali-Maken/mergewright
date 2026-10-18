@@ -3,7 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+};
 
 use super::*;
 

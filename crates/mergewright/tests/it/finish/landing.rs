@@ -24,7 +24,7 @@ const REPORT: &str = "# Report\n\nintro\n\n## Contents\nold toc\n\nmiddle\nmiddl
 fn wallet_and_sara() -> mergewright_fixtures::Scratch {
     let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
     let repo = scratch.path();
-    git(repo, &["config", "user.name", "Mergewright Fixture"]);
+    git(repo, &["config", "user.name", "Graft Fixture"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     git(repo, &["switch", "--quiet", "-c", "wallet-release"]);
     write(repo, "report.md", REPORT);
@@ -69,9 +69,9 @@ fn on_branch(state: &AppState, name: &[u8]) -> bool {
     ) else {
         return false;
     };
-    refs.on(row.commit.id)
-        .iter()
-        .any(|label| matches!(label, mergewright::refs::RefLabel::Branch { name: n, .. } if n == name))
+    refs.on(row.commit.id).iter().any(
+        |label| matches!(label, mergewright::refs::RefLabel::Branch { name: n, .. } if n == name),
+    )
 }
 
 /// `m` on `sara/fix-toc`'s row, `y` in the merge box, and the resolver
@@ -96,7 +96,10 @@ fn merge_stopped(app: &App, state: AppState) -> AppState {
     let state = app.key(&state, KeyCode::Char('m'));
     let state = app.pump(state, "the merge preview's plan", |state| {
         state.preview.as_ref().is_some_and(|preview| {
-            !matches!(preview.plan, mergewright::update::detail::Loading::Pending(_))
+            !matches!(
+                preview.plan,
+                mergewright::update::detail::Loading::Pending(_)
+            )
         })
     });
     let state = app.key(&state, KeyCode::Char('y'));
@@ -295,7 +298,10 @@ fn a_fast_forward_lands_with_no_just_merged() {
     let state = app.key(&state, KeyCode::Char('m'));
     let state = app.pump(state, "the merge preview's plan", |state| {
         state.preview.as_ref().is_some_and(|preview| {
-            !matches!(preview.plan, mergewright::update::detail::Loading::Pending(_))
+            !matches!(
+                preview.plan,
+                mergewright::update::detail::Loading::Pending(_)
+            )
         })
     });
     let state = app.key(&state, KeyCode::Char('y'));

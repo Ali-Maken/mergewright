@@ -530,7 +530,10 @@ fn ended(bytes: &[u8]) -> &[u8] {
             .windows(needle.len())
             .rposition(|window| window == needle)
     };
-    match (last(mergewright_term::SYNC_BEGIN), last(mergewright_term::SYNC_END)) {
+    match (
+        last(mergewright_term::SYNC_BEGIN),
+        last(mergewright_term::SYNC_END),
+    ) {
         (Some(begin), Some(end)) if end > begin => bytes,
         (Some(begin), _) => &bytes[..begin],
         (None, _) => bytes,

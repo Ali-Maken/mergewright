@@ -55,7 +55,7 @@ impl Served {
             &["remote", "set-url", "origin", &url],
             // Only the test's own answers count.
             &["config", "credential.helper", ""],
-            &["config", "user.name", "Mergewright Test"],
+            &["config", "user.name", "Graft Test"],
             &["config", "user.email", "test@example.invalid"],
             // A global `core.hooksPath` must not reach this clone.
             &["config", "core.hooksPath", ".git/hooks"],
@@ -86,10 +86,12 @@ fn rev(repo: &Path, name: &str) -> String {
 }
 
 fn journal(repo: &Path) -> Vec<JournalEntry> {
-    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-        .expect("the journal the writes made is readable")
-        .entries()
-        .to_vec()
+    mergewright_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the writes made is readable")
+    .entries()
+    .to_vec()
 }
 
 fn plain(c: char) -> KeyPress {

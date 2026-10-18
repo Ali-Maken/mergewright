@@ -55,7 +55,9 @@ fn octopus() -> (mergewright_fixtures::Scratch, App, AppState) {
 }
 
 /// `scratch` opened at 120×36, laid out and settled.
-fn laid_out(scratch: mergewright_fixtures::Scratch) -> (mergewright_fixtures::Scratch, App, AppState) {
+fn laid_out(
+    scratch: mergewright_fixtures::Scratch,
+) -> (mergewright_fixtures::Scratch, App, AppState) {
     let (app, state) = App::open(scratch.path());
     let state = opened(&app, state);
     let state = app.resize(&state, COLUMNS, ROWS);

@@ -1,12 +1,12 @@
 # m7/30c-relaunch-edits-back-120x40.txt: drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# AppState (crates/mergewright/tests/it/m6_stash_put_back/set_aside.rs,
 # a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back,
 # asserted). Not a pty capture: a character grid with no colour (CLAUDE.md
 # rule 5, colour unverified).
 #
 # What right looks like: `f.txt` line 5 edited and staged on `main`, a
 # switch to `fix` killed after the edits came back (unstaged) and before
-# the stash was dropped; Graft launched again.
+# the stash was dropped; Mergewright launched again.
 #  - HEAD on `fix`.
 #  - At 120 the bottom row reads `an operation was interrupted: checkout
 #    fix · your edits are back · a copy stays in stash@{0} · J to inspect`.

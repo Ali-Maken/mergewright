@@ -70,7 +70,9 @@ pub(super) fn events(
 /// entries first; steps in log order (records come newest first).
 fn newer_first(left: &Event, right: &Event, grouped: &Steps) -> Ordering {
     match (left, right) {
-        (Event::Mergewright { entry: left, .. }, Event::Mergewright { entry: right, .. }) => right.cmp(left),
+        (Event::Mergewright { entry: left, .. }, Event::Mergewright { entry: right, .. }) => {
+            right.cmp(left)
+        }
         (Event::Outside { step: left }, Event::Outside { step: right }) => grouped.steps[*left]
             .primary
             .cmp(&grouped.steps[*right].primary),

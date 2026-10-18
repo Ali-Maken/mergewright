@@ -251,7 +251,8 @@ pub fn read(store: &RepoStore, cache: &AheadBehindCache) -> Result<RefBadges, St
     // The reflog only: `stash::list` would spawn a `diff-tree` per entry,
     // and a badge never says how many files a stash holds
     // (m3-working-tree-undo-and-stash/06).
-    let stashes = mergewright_git::stash::commits(&handle, &()).map_err(|error| error.to_string())?;
+    let stashes =
+        mergewright_git::stash::commits(&handle, &()).map_err(|error| error.to_string())?;
     badges(refs, &head, &upstreams, &stashes, |local, upstream| {
         cache.get_or_count(local, upstream, || count(&handle, local, upstream))
     })

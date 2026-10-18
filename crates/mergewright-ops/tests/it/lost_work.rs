@@ -26,7 +26,7 @@ use mergewright_ops::journal_list::{
 use mergewright_ops::operation::{FetchParams, Operation, Target};
 use mergewright_ops::undo;
 
-use mergewright_fixtures::lost_work::{self, Mergewright, LostWork};
+use mergewright_fixtures::lost_work::{self, LostWork, Mergewright};
 
 use crate::journal_list_oracle::{branch_exists, lines};
 use crate::support::{Never, context, journal_for};

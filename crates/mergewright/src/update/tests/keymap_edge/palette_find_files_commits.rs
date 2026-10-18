@@ -179,7 +179,10 @@ fn esc_from_palette_file_history_lands_on_graph() {
     assert!(!back.trail.is_live(), "the place is gone");
     assert!(back.palette.is_none());
     assert_eq!(back.history.as_ref().map(|h| h.cursor), cursor);
-    assert_eq!(back.detail.focus, mergewright_ui::detail::DetailFocus::Graph);
+    assert_eq!(
+        back.detail.focus,
+        mergewright_ui::detail::DetailFocus::Graph
+    );
     let frame = crate::view::tests::draw(&back, 120, 36);
     assert_eq!(
         frame,

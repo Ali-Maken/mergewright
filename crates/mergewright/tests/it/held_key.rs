@@ -424,7 +424,11 @@ fn run(
     keys_were_the_script(&script, &stamps, journal)?;
 
     let reading = read(&wakes, &drain, initial, &stamps, journal);
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!(
             "the job pool did not stop cleanly: stalled {}, forced {:?}",
@@ -474,7 +478,10 @@ fn open_pane(jobs: &impl Dispatch, mut state: AppState) -> Result<AppState, Stri
 
 /// The harness's terminal answers fences as it reads them (ADR-0054), so
 /// `held_key` measures the paced loop: at most one frame in the pipe.
-fn answering(encoding: Encoding, tier: RenderingTier) -> mergewright_core::capabilities::Capabilities {
+fn answering(
+    encoding: Encoding,
+    tier: RenderingTier,
+) -> mergewright_core::capabilities::Capabilities {
     let mut capabilities = encoding.capabilities(tier);
     capabilities.answers_dsr = true;
     capabilities

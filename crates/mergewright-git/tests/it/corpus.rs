@@ -248,8 +248,9 @@ fn non_utf8_path() {
         2,
         &["refs/heads/latin1", "refs/heads/main"],
     );
-    let listed = mergewright_fixtures::git::run(&dir, &["ls-tree", "-r", "-z", "--name-only", "latin1"])
-        .unwrap_or_else(|why| panic!("listing the non-utf8-path fixture's tree: {why}"));
+    let listed =
+        mergewright_fixtures::git::run(&dir, &["ls-tree", "-r", "-z", "--name-only", "latin1"])
+            .unwrap_or_else(|why| panic!("listing the non-utf8-path fixture's tree: {why}"));
     assert!(
         listed
             .split(|byte| *byte == 0)

@@ -74,32 +74,33 @@ fn the_notice_words_where_recovery_found_the_edits() {
         why: mergewright_core::journal::PutBackWhy::SetAside,
     });
     let id = entry.id.clone();
-    let main =
-        mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
-    let state = |edits: Vec<(mergewright_core::journal::EntryId, mergewright_ops::EditsAt)>| AppState {
-        journal: JournalState {
-            entries: Loading::Ready(Arc::new(JournalRead {
-                entries: vec![entry.clone()],
-                unreadable: Vec::new(),
-                held: Vec::new(),
-                live: Vec::new(),
-                interrupted_edits: Vec::new(),
-            })),
-            ..JournalState::default()
-        },
-        interrupted_edits: edits,
-        refs: Some(Arc::new(
-            crate::refs::badges(
-                &[(main.clone(), stash)],
-                &mergewright_git::repo::HeadState::Branch(main.clone()),
-                &std::collections::HashMap::new(),
-                &[(stash, 0)],
-                |_, _| Err("no upstreams in this fixture".to_owned()),
-            )
-            .expect("badges builds from plain data"),
-        )),
-        ..AppState::default()
-    };
+    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
+        .expect("a valid ref name");
+    let state =
+        |edits: Vec<(mergewright_core::journal::EntryId, mergewright_ops::EditsAt)>| AppState {
+            journal: JournalState {
+                entries: Loading::Ready(Arc::new(JournalRead {
+                    entries: vec![entry.clone()],
+                    unreadable: Vec::new(),
+                    held: Vec::new(),
+                    live: Vec::new(),
+                    interrupted_edits: Vec::new(),
+                })),
+                ..JournalState::default()
+            },
+            interrupted_edits: edits,
+            refs: Some(Arc::new(
+                crate::refs::badges(
+                    &[(main.clone(), stash)],
+                    &mergewright_git::repo::HeadState::Branch(main.clone()),
+                    &std::collections::HashMap::new(),
+                    &[(stash, 0)],
+                    |_, _| Err("no upstreams in this fixture".to_owned()),
+                )
+                .expect("badges builds from plain data"),
+            )),
+            ..AppState::default()
+        };
     let back = state(vec![(
         id.clone(),
         mergewright_ops::EditsAt::Back { copy: Some(0) },
@@ -146,7 +147,11 @@ fn the_notice_drops_a_stash_that_is_gone() {
             "an operation was interrupted: checkout other \u{b7} your edits are back \u{b7} J to inspect"
         )
     );
-    let popped = with_edits(&entry, vec![(id, mergewright_ops::EditsAt::Stash { n: 0 })], &[]);
+    let popped = with_edits(
+        &entry,
+        vec![(id, mergewright_ops::EditsAt::Stash { n: 0 })],
+        &[],
+    );
     let notice = interrupted_notice(&popped).expect("a notice");
     assert!(!notice.contains("stash@"), "{notice}");
 }
@@ -187,8 +192,8 @@ fn with_edits(
     edits: Vec<(mergewright_core::journal::EntryId, mergewright_ops::EditsAt)>,
     stashes: &[(mergewright_core::oid::Oid, usize)],
 ) -> AppState {
-    let main =
-        mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
+    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
+        .expect("a valid ref name");
     let tip = mergewright_core::oid::Oid::from_bytes(&[0x22; 20]).expect("20 bytes");
     AppState {
         journal: JournalState {
@@ -225,7 +230,11 @@ fn the_landing_keeps_also_when_the_banner_takes_the_keys() {
     if let Status::Done { also, .. } = &mut state.status {
         *also = Some("your edits are back".to_owned());
     }
-    let state = read_lands(&state, read, Some(mergewright_git::state::InProgress::Merge));
+    let state = read_lands(
+        &state,
+        read,
+        Some(mergewright_git::state::InProgress::Merge),
+    );
     assert!(state.banner_focus, "the banner has the keyboard");
     assert_eq!(
         done_line_of(&state.status),
@@ -296,19 +305,39 @@ fn ladder_rows_of_the_table(d: &str) {
         assert_eq!(cells_of(&rung2(d, clause)), w2);
         assert_eq!(cells_of(&rung4(clause)), w4);
         assert_eq!(
-            notice_line(d, Some(clause), w1, mergewright_ui::keymap::Keymap::shipped()),
+            notice_line(
+                d,
+                Some(clause),
+                w1,
+                mergewright_ui::keymap::Keymap::shipped()
+            ),
             rung1(d, Some(clause))
         );
         assert_eq!(
-            notice_line(d, Some(clause), w1 - 1, mergewright_ui::keymap::Keymap::shipped()),
+            notice_line(
+                d,
+                Some(clause),
+                w1 - 1,
+                mergewright_ui::keymap::Keymap::shipped()
+            ),
             rung2(d, clause)
         );
         assert_eq!(
-            notice_line(d, Some(clause), w2, mergewright_ui::keymap::Keymap::shipped()),
+            notice_line(
+                d,
+                Some(clause),
+                w2,
+                mergewright_ui::keymap::Keymap::shipped()
+            ),
             rung2(d, clause)
         );
         assert_eq!(
-            notice_line(d, Some(clause), 79, mergewright_ui::keymap::Keymap::shipped()),
+            notice_line(
+                d,
+                Some(clause),
+                79,
+                mergewright_ui::keymap::Keymap::shipped()
+            ),
             rung4(clause)
         );
     }
@@ -319,7 +348,12 @@ fn ladder_rows_of_the_table(d: &str) {
 /// description whose rung 3 is the cut.
 fn ladder_rows_without_a_new_clause(d: &str) {
     assert_eq!(
-        notice_line(d, Some(OLDER), 79, mergewright_ui::keymap::Keymap::shipped()),
+        notice_line(
+            d,
+            Some(OLDER),
+            79,
+            mergewright_ui::keymap::Keymap::shipped()
+        ),
         "an operation was interrupted: checkout fix \u{b7} edits in stash@{0} \u{b7} J to inspect"
     );
     assert_eq!(cells_of(&rung1(d, Some(OLDER))), 78);
@@ -331,14 +365,29 @@ fn ladder_rows_without_a_new_clause(d: &str) {
     assert_eq!(cells_of(&rung1(LONG, Some(OLDER))), 112);
     assert_eq!(cells_of(&rung2(LONG, OLDER)), 95);
     assert_eq!(
-        notice_line(LONG, Some(OLDER), 112, mergewright_ui::keymap::Keymap::shipped()),
+        notice_line(
+            LONG,
+            Some(OLDER),
+            112,
+            mergewright_ui::keymap::Keymap::shipped()
+        ),
         rung1(LONG, Some(OLDER))
     );
     assert_eq!(
-        notice_line(LONG, Some(OLDER), 95, mergewright_ui::keymap::Keymap::shipped()),
+        notice_line(
+            LONG,
+            Some(OLDER),
+            95,
+            mergewright_ui::keymap::Keymap::shipped()
+        ),
         rung2(LONG, OLDER)
     );
-    let rung3 = notice_line(LONG, Some(OLDER), 79, mergewright_ui::keymap::Keymap::shipped());
+    let rung3 = notice_line(
+        LONG,
+        Some(OLDER),
+        79,
+        mergewright_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(
         rung3,
         "interrupted: rebase feature/payments-retry\u{2026} \u{b7} edits in stash@{0} \u{b7} J to inspect"

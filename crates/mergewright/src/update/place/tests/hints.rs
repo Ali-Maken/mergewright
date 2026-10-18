@@ -35,7 +35,9 @@ fn the_pane_bar_keeps_b_blame_while_the_offer_is_up() {
     let mut state = pane_at(22);
     state.commit_graph = crate::update::CommitGraphOffer::Offered;
     state.system_git = Some(crate::update::GitCheck::Ran(
-        mergewright_git::version::SystemGit::Supported(mergewright_git::version::GitVersion::MINIMUM),
+        mergewright_git::version::SystemGit::Supported(
+            mergewright_git::version::GitVersion::MINIMUM,
+        ),
     ));
     assert!(state.commit_graph_actionable(), "the offer is up");
     assert!(blamable(&state));
@@ -83,7 +85,10 @@ fn history_rows_in_the_place_bar_table() {
 
     let list = lines_history(three_rows(), refresh_token());
     let (file, _) = press(&list, KeyCode::Tab);
-    assert_eq!(history(&file).focus, mergewright_ui::history::HistoryFocus::File);
+    assert_eq!(
+        history(&file).focus,
+        mergewright_ui::history::HistoryFocus::File
+    );
     let (tracing, commands) = press(&blame_on_22(), KeyCode::Char('L'));
     let (job, _) = trace_job(&commands);
     let (failed, _) = traced(

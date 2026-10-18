@@ -5,7 +5,7 @@
 //! m8/10j (`banner::mergetool_fallback`).
 
 pub const ROWS: &[(&str, &str, &str)] = &[(
-    "graft:update/operate/failure.rs",
+    "mergewright:update/operate/failure.rs",
     "a copy is in stash@{{{n}}}",
     "prose: the article, not the abort key (10f split it from `u restores the backup`)",
 )];

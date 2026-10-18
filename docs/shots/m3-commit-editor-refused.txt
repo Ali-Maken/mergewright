@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_commit_editor_refused in crates/graft/src/view/tests.rs
+# capture_m3_commit_editor_refused in crates/mergewright/src/view/tests.rs
 # (asserted). The same screen with nothing changed at all.
 #
 # Judge by eye (the commit screen since ease-pass/08):

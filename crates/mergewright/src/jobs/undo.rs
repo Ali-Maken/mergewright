@@ -575,8 +575,8 @@ pub(super) fn read_journal(
         clock,
         cancel,
         |ctx| {
-            let recovered =
-                mergewright_ops::apply::recover_interrupted(ctx).map_err(|error| error.to_string())?;
+            let recovered = mergewright_ops::apply::recover_interrupted(ctx)
+                .map_err(|error| error.to_string())?;
             let entries = ctx.journal.entries();
             let described = |id: &mergewright_core::journal::EntryId| {
                 entries
@@ -769,10 +769,9 @@ mod tests {
         let repo = scratch.path();
         std::fs::write(repo.join("new.txt"), "new\n").expect("the scratch repo is writable");
         let store = RepoStore::new(repo.to_path_buf(), None);
-        let stage =
-            mergewright_ops::operation::Operation::Stage(mergewright_ops::operation::Target::Paths(vec![
-                std::path::PathBuf::from("new.txt"),
-            ]));
+        let stage = mergewright_ops::operation::Operation::Stage(
+            mergewright_ops::operation::Target::Paths(vec![std::path::PathBuf::from("new.txt")]),
+        );
         with_context(
             &store,
             Clock::Fixed(1_700_000_000),

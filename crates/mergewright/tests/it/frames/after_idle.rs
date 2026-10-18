@@ -160,7 +160,11 @@ fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
     }
     let landing = landed(&wakes, initial, rows, laid_out)?;
 
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!(
             "the job pool did not stop cleanly: stalled {}, forced {:?}",

@@ -1,5 +1,5 @@
 # m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_force_push in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_force_push in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). Three synthetic commits; `main` stands on the
 # middle one (0202020), which is opened in the detail pane, with the
 # force-push probe's verdict injected as Rewritten { remote_ref:

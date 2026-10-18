@@ -1,5 +1,5 @@
 # m8/polish-ghost-pixel-120x36: drawn by `view::view_with_graphics` at the pixel
-# tier (Kitty) from an AppState (crates/graft/src/view/tests/pixel_preview.rs).
+# tier (Kitty) from an AppState (crates/mergewright/src/view/tests/pixel_preview.rs).
 # The TEXT LAYER only: a character grid, no images, no colour (rule 5 —
 # colour unverified). Whether a strip image is placed is asserted on the
 # bytes by event_loop::tests::pixel_scroll, not shown here.

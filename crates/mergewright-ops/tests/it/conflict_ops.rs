@@ -550,7 +550,8 @@ fn a_stale_shape_is_refused() {
 #[test]
 fn a_binary_conflict_resolves_whole() {
     let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::StoppedMerge);
-    let handle = mergewright_git::repo::RepoHandle::open(scratch.path()).expect("the fixture opens");
+    let handle =
+        mergewright_git::repo::RepoHandle::open(scratch.path()).expect("the fixture opens");
     let status = mergewright_git::status::read(&handle, &()).expect("the status reads");
     assert_eq!(
         status

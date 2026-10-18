@@ -1,5 +1,5 @@
 # m8/came-back-landed-120x40.txt: drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/m7_walk/switch.rs,
+# (crates/mergewright/tests/it/m7_walk/switch.rs,
 # a_file_back_from_the_index_is_named_after_a_switch, asserted). Not a pty
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).

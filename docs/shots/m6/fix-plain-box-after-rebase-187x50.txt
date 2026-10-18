@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), 187x50, no colour recorded. Fixture:
-# capture_fix_plain_box_after_rebase in crates/graft/tests/it/remote_by_key.rs
+# capture_fix_plain_box_after_rebase in crates/mergewright/tests/it/remote_by_key.rs
 # (asserted). A teammate pushed; `P` `→` `⏎` was rejected; `p` named the
 # divergence; `r` `r` rebased onto origin/main; then `P` (m6-conflicts/49).
 # The rebased commit is drawn moments before the frame, so its id is new

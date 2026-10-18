@@ -207,7 +207,11 @@ fn mid_merge_u_off_the_resolver_still_refuses_and_keeps_the_pick() {
     let git_wrote = bytes(repo, name);
     let state = pressed(&app, &state, 'o');
     let state = pressed(&app, &state, 'u');
-    assert_eq!(bytes(repo, name), git_wrote, "a merge begun in Mergewright too");
+    assert_eq!(
+        bytes(repo, name),
+        git_wrote,
+        "a merge begun in Mergewright too"
+    );
 
     let state = pressed(&app, &state, 'o');
     let picked = bytes(repo, name);

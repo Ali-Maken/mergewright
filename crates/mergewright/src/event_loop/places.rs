@@ -85,16 +85,18 @@ pub fn locate(path: &Path, config: &Loaded) -> Result<Place, String> {
             repos,
             path: path.to_path_buf(),
         }),
-        Err(mergewright_git::repo::OpenError::NotARepo { .. }) => Ok(Place::Outside(OutsideStart {
-            // Canonical, so `.` and `..` read as the folder they are. It
-            // exists (checked above); if it cannot be resolved after all
-            // (removed in between), the absolute spelling is still a true
-            // name for what was asked.
-            folder: absolute.canonicalize().unwrap_or(absolute),
-            missing: false,
-            cursor: 0,
-            problem: None,
-        })),
+        Err(mergewright_git::repo::OpenError::NotARepo { .. }) => {
+            Ok(Place::Outside(OutsideStart {
+                // Canonical, so `.` and `..` read as the folder they are. It
+                // exists (checked above); if it cannot be resolved after all
+                // (removed in between), the absolute spelling is still a true
+                // name for what was asked.
+                folder: absolute.canonicalize().unwrap_or(absolute),
+                missing: false,
+                cursor: 0,
+                problem: None,
+            }))
+        }
         Err(error) => Err(error.to_string()),
     }
 }

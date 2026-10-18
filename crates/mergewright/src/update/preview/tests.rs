@@ -1704,7 +1704,9 @@ fn r_in_a_squash_merged_preview_opens_the_editor_with_drops_marked() {
     };
     assert_eq!(
         opened_rewrites(&commands),
-        [&mergewright_ops::rewrite::RewriteRequest::FromRebase(params)],
+        [&mergewright_ops::rewrite::RewriteRequest::FromRebase(
+            params
+        )],
         "the as-run params, drops and all: {commands:?}"
     );
     assert!(state.preview.is_none(), "the preview closes");

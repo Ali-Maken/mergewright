@@ -1,6 +1,6 @@
 # m3-confirm-delete-untracked.txt: TestBackend capture (not a pty), 120x40,
 # no colour recorded. Fixture: capture_m3_confirm_delete_untracked in
-# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
+# crates/mergewright/src/view/tests.rs (asserted; regenerate on purpose).
 # `d` pressed with the files list focused and the cursor on notes.md, which
 # is untracked.
 #

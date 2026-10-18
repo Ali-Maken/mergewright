@@ -440,7 +440,7 @@ fn commit_through_apply(remote: &LocalRemote, name: &str, at: i64) -> JournalEnt
     git(
         remote,
         remote.work(),
-        &["config", "user.name", "Mergewright Test"],
+        &["config", "user.name", "Graft Test"],
     );
     git(
         remote,

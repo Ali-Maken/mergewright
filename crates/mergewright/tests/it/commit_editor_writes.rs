@@ -50,7 +50,7 @@ fn commit(repo: &Path, message: &str) {
         repo,
         &[
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
             "commit",
@@ -69,7 +69,7 @@ fn staged_repo() -> mergewright_fixtures::Scratch {
     commit(repo, "add sample");
     // Mergewright's own commit needs an identity too, and the write does not go
     // through a shell where `-c` could be passed.
-    git(repo, &["config", "user.name", "Mergewright Test"]);
+    git(repo, &["config", "user.name", "Graft Test"]);
     git(repo, &["config", "user.email", "test@example.invalid"]);
 
     std::fs::write(repo.join("sample.txt"), "one\ntwo\n").expect("the scratch repo is writable");
@@ -138,9 +138,11 @@ impl App {
     }
 
     fn close(self) {
-        let shutdown =
-            self.jobs
-                .shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+        let shutdown = self.jobs.shutdown(
+            Duration::from_secs(10),
+            mergewright::jobs::EXIT_WRITE_WAIT,
+            &(),
+        );
         assert_eq!(
             shutdown,
             Shutdown::CLEAN,
@@ -299,7 +301,10 @@ fn nothing_staged_makes_no_commit() {
     let refused = mergewright::view::commit_screen_view(&state)
         .expect("the editor is open")
         .refusal;
-    assert_eq!(refused, Some(mergewright_ui::commit_editor::Refusal::NoFile));
+    assert_eq!(
+        refused,
+        Some(mergewright_ui::commit_editor::Refusal::NoFile)
+    );
 
     // `Ctrl+Enter` too, in case the focus is what was refused.
     let state = app.press(
@@ -331,7 +336,7 @@ fn fresh_staged_repo() -> tempfile::TempDir {
         repo,
         &["init", "-q", "-b", "main", "--object-format=sha1", "."],
     );
-    git(repo, &["config", "user.name", "Mergewright Test"]);
+    git(repo, &["config", "user.name", "Graft Test"]);
     git(repo, &["config", "user.email", "test@example.invalid"]);
     std::fs::write(repo.join("sample.txt"), "one\n").expect("the scratch repo is writable");
     git(repo, &["add", "sample.txt"]);
@@ -515,7 +520,10 @@ fn stage_one_file_and_commit_is_six_steps() {
     };
     let state = step(&state, KeyCode::Enter);
     let state = app.pump(state, "the changes pane's file list", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
     let state = step(&state, KeyCode::Char('j'));
     let state = step(&state, KeyCode::Char(' '));

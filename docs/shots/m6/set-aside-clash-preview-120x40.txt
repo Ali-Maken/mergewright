@@ -1,5 +1,5 @@
 # m6/set-aside-clash-preview-120x40.txt: drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# AppState (crates/mergewright/tests/it/m6_stash_put_back/set_aside.rs,
 # the_preview_warns_before_a_switch_that_clashes, asserted). Not a pty
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).

@@ -550,7 +550,8 @@ fn key_behind(hint: &str) -> Option<Behind> {
     if chars.next().is_some() {
         return None;
     }
-    let press = mergewright_core::event::KeyPress::plain(mergewright_core::event::KeyCode::Char(only));
+    let press =
+        mergewright_core::event::KeyPress::plain(mergewright_core::event::KeyCode::Char(only));
     if crate::update::preview::is_take_key(press) {
         return Some(Behind::Take);
     }

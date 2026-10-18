@@ -83,7 +83,11 @@ pub(super) fn done_line_of(status: &Status) -> String {
 fn an_undo_that_puts_a_merge_back_lands_on_the_banner() {
     let (state, read) = finish_undone(AppState::default());
     assert!(state.in_progress.is_none(), "nothing live when it answers");
-    let state = read_lands(&state, read, Some(mergewright_git::state::InProgress::Merge));
+    let state = read_lands(
+        &state,
+        read,
+        Some(mergewright_git::state::InProgress::Merge),
+    );
     assert!(state.banner_focus, "the banner has the keyboard");
     assert!(!state.undo_landing_owed, "the landing is spent");
     assert_eq!(
@@ -105,7 +109,11 @@ fn an_undo_that_puts_a_merge_back_lands_on_the_banner() {
 fn q_on_the_banner_after_an_undo_puts_a_merge_back_quits_with_no_box() {
     use mergewright_core::event::{Event, KeyCode, KeyPress};
     let (state, read) = finish_undone(AppState::default());
-    let state = read_lands(&state, read, Some(mergewright_git::state::InProgress::Merge));
+    let state = read_lands(
+        &state,
+        read,
+        Some(mergewright_git::state::InProgress::Merge),
+    );
     assert!(state.banner_focus, "the banner has the keyboard");
     let (next, commands) = crate::update::update(
         &state,
@@ -140,7 +148,11 @@ fn a_stale_read_does_not_spend_the_landing() {
     let state = read_lands(&state, older, None);
     assert!(!state.banner_focus, "no focus on a stale read");
     assert!(state.undo_landing_owed, "the stale read did not spend it");
-    let state = read_lands(&state, read, Some(mergewright_git::state::InProgress::Merge));
+    let state = read_lands(
+        &state,
+        read,
+        Some(mergewright_git::state::InProgress::Merge),
+    );
     assert!(state.banner_focus, "the undo's own read lands it");
     assert!(!state.undo_landing_owed);
 }
@@ -157,7 +169,11 @@ fn under_a_modal_the_landing_is_dropped() {
         state.graph_overlay(),
         Some(crate::update::GraphOverlay::Journal)
     );
-    let state = read_lands(&state, read, Some(mergewright_git::state::InProgress::Merge));
+    let state = read_lands(
+        &state,
+        read,
+        Some(mergewright_git::state::InProgress::Merge),
+    );
     assert!(!state.banner_focus, "no focus under the overlay");
     assert_eq!(state.status, Status::done(FINISH_UNDONE), "no keys added");
     assert!(!state.undo_landing_owed, "dropped, not kept for later");
@@ -166,7 +182,11 @@ fn under_a_modal_the_landing_is_dropped() {
 #[test]
 fn a_rebase_put_back_says_continues() {
     let (state, read) = finish_undone(AppState::default());
-    let state = read_lands(&state, read, Some(mergewright_git::state::InProgress::Rebase));
+    let state = read_lands(
+        &state,
+        read,
+        Some(mergewright_git::state::InProgress::Rebase),
+    );
     assert!(state.banner_focus);
     let Status::Done { keys, .. } = &state.status else {
         panic!("{:?}", state.status);

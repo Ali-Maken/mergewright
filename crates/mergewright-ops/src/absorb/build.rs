@@ -4,7 +4,9 @@
 use std::path::Path;
 
 use mergewright_core::oid::Oid;
-use mergewright_git::diff::{DiffLine, FileDiff, Hunk, LineKind, PatchDirection, Selection, hunk_patch};
+use mergewright_git::diff::{
+    DiffLine, FileDiff, Hunk, LineKind, PatchDirection, Selection, hunk_patch,
+};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation, Stop};
 

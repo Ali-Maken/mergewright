@@ -46,7 +46,10 @@ fn untake_reopens_a_block_to_the_bytes_git_wrote() {
     assert_eq!(back.blocks()[0].state, BlockState::Open);
     assert_eq!(back.open(), 3);
     assert_eq!(on_disk(&repo), git_wrote, "bytes equal the file git wrote");
-    assert_eq!(back.fingerprint, mergewright_git::conflict::blob_id(&git_wrote));
+    assert_eq!(
+        back.fingerprint,
+        mergewright_git::conflict::blob_id(&git_wrote)
+    );
 }
 
 #[test]

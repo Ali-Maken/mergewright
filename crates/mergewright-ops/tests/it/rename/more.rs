@@ -30,7 +30,9 @@ fn with_worktrees() -> TempRepo {
     let mut ctx = context(&handle, &mut journal, NOW + 300, &Never);
     mergewright_ops::apply::apply(
         &mut ctx,
-        &Operation::Stage(mergewright_ops::operation::Target::Paths(vec!["a.rs".into()])),
+        &Operation::Stage(mergewright_ops::operation::Target::Paths(vec![
+            "a.rs".into(),
+        ])),
     )
     .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
     let never = repo.path().join(".git/worktrees/never/graft");

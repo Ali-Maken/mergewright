@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_merge_preview in
-# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# crates/mergewright/tests/it/merge_preview/shots.rs, real git.
 # Judge by eye: the same box at 90 columns: the lines whole where they fit, the footer's widest rung that fits.
 === 90x30 ===
  ◆ api  ~/code/api · wallet-release                                             8 commits

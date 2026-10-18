@@ -119,7 +119,10 @@ fn replaced_row_bar_matches_lost_row_bar() {
     let bar_for = |fate: Fate| {
         let mut state = opened();
         state.journal.list = Some(Arc::new(JournalList {
-            rows: vec![ListRow::Mergewright(newest_entry()), lost_on_main(0, 5, fate)],
+            rows: vec![
+                ListRow::Mergewright(newest_entry()),
+                lost_on_main(0, 5, fate),
+            ],
             scan: LostScan::Done,
         }));
         cursor_on(&mut state, 1);
@@ -145,5 +148,9 @@ fn preselect_never_lands_on_a_replaced_row() {
         scan: LostScan::Done,
     };
     assert_eq!(preselect(&list, |_| true), Some(3));
-    assert_eq!(preselect(&list, |_| false), None, "Mergewright worked since");
+    assert_eq!(
+        preselect(&list, |_| false),
+        None,
+        "Mergewright worked since"
+    );
 }

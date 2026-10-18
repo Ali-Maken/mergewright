@@ -32,7 +32,8 @@ fn main() -> ExitCode {
 }
 
 fn measure() -> Result<(), String> {
-    let dir = mergewright_fixtures::synthetic::borrow(Scale::HEAVY).map_err(|why| why.to_string())?;
+    let dir =
+        mergewright_fixtures::synthetic::borrow(Scale::HEAVY).map_err(|why| why.to_string())?;
     let head = head(&dir)?;
     let repo = RepoHandle::open(&dir).map_err(|why| why.to_string())?;
     let path = Path::new(FILE);

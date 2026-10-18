@@ -59,17 +59,22 @@ pub(super) fn run_preview(
                 .map_err(|why| PreviewFailure::Failed(why.to_string()))?;
             // The op as `y` will run it (a rebase's line and drops, found
             // here once, 05b), and its picture.
-            let (runs, plan) =
-                mergewright_ops::preview::plan_as_run(&handle, &git, op.as_ref().clone(), &facts, cancel)
-                    .map_err(|why| match why {
-                        // The write would refuse this too: routed to the status
-                        // line, not the `preview failed:` box (m6-conflicts/67).
-                        mergewright_ops::preview::PreviewError::Refused(refusal) => {
-                            PreviewFailure::Refused(refusal)
-                        }
-                        // Not a refusal, so it names no key (m8/10e).
-                        other => PreviewFailure::Failed(other.to_string()),
-                    })?;
+            let (runs, plan) = mergewright_ops::preview::plan_as_run(
+                &handle,
+                &git,
+                op.as_ref().clone(),
+                &facts,
+                cancel,
+            )
+            .map_err(|why| match why {
+                // The write would refuse this too: routed to the status
+                // line, not the `preview failed:` box (m6-conflicts/67).
+                mergewright_ops::preview::PreviewError::Refused(refusal) => {
+                    PreviewFailure::Refused(refusal)
+                }
+                // Not a refusal, so it names no key (m8/10e).
+                other => PreviewFailure::Failed(other.to_string()),
+            })?;
             (Some(Box::new(runs)), plan)
         }
         PreviewSubject::RevertTo(entry) => {
@@ -78,8 +83,10 @@ pub(super) fn run_preview(
             // Keyless (m8/10e): the time machine's plan refuses only with
             // `Refusal::CannotRevertTo` (`preview::revert_to`), whose words name no
             // key, so this job holds no keymap.
-            let plan = mergewright_ops::preview::plan_revert_to(&entries, entry)
-                .map_err(|why| PreviewFailure::Failed(why.explain(&mergewright_ops::keys::NoKeys)))?;
+            let plan =
+                mergewright_ops::preview::plan_revert_to(&entries, entry).map_err(|why| {
+                    PreviewFailure::Failed(why.explain(&mergewright_ops::keys::NoKeys))
+                })?;
             (None, plan)
         }
     };
@@ -167,7 +174,9 @@ fn read_anchors(
 /// open — is a refusal. Dropping one would draw a picture with a piece
 /// silently missing and no sign that it is missing, which is the one thing a
 /// preview must not do.
-fn keep(read: Result<Commit, mergewright_git::history::WalkError>) -> Result<Option<Commit>, String> {
+fn keep(
+    read: Result<Commit, mergewright_git::history::WalkError>,
+) -> Result<Option<Commit>, String> {
     use mergewright_git::history::{NodeError, WalkError};
     match read {
         Ok(commit) => Ok(Some(commit)),

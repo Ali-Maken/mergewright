@@ -231,7 +231,8 @@ fn base_for_is_equality_or_nothing() {
     let text = String::from_utf8(original).expect("the fixture is utf-8");
     let hand_edited = hand_edit_first_ours_line(&text);
     std::fs::write(workdir.join("three.txt"), hand_edited.as_bytes()).expect("written");
-    let mut touched = mergewright_git::conflict::read(&workdir.join("three.txt")).expect("it parses");
+    let mut touched =
+        mergewright_git::conflict::read(&workdir.join("three.txt")).expect("it parses");
     match base_for(&repo, Path::new("three.txt"), &mut touched) {
         Err(BaseError::Mismatch(mismatch)) => assert_eq!(mismatch.block, 0),
         other => panic!("expected Mismatch, got {other:?}"),

@@ -18,8 +18,8 @@ use mergewright_ops::finish::{ByGit, ByYou, Change, ResultIs, SummaryError, fini
 use mergewright_ops::operation::Refusal;
 
 use crate::conflict_fixtures::{
-    downstream_of, mergewright_merge_stops, mergewright_rebase_stops, mergewright_stage, id, run_resume,
-    two_file_conflict,
+    downstream_of, id, mergewright_merge_stops, mergewright_rebase_stops, mergewright_stage,
+    run_resume, two_file_conflict,
 };
 use crate::support::{NOW, TempRepo, state_of};
 

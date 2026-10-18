@@ -291,7 +291,11 @@ fn measure(repo: &std::path::Path, control: Control) -> Result<Measured, String>
     drop(spinner);
     let after_enter = replayed(settled, &found.replay, Some(enter_at()));
     let title_after_enter = title(&after_enter)?;
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!(
             "the job pool did not stop cleanly: stalled {}, forced {:?}",

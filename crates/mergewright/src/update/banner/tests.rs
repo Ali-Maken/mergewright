@@ -803,7 +803,10 @@ fn backtab_out_of_the_banner_reaches_the_diff_pane() {
     let (claimed, _) = press(&mut state, KeyCode::BackTab);
     assert!(claimed);
     assert!(!state.banner_focus);
-    assert_eq!(state.detail.focus, mergewright_ui::detail::DetailFocus::Diff);
+    assert_eq!(
+        state.detail.focus,
+        mergewright_ui::detail::DetailFocus::Diff
+    );
 }
 
 /// `Esc` is "leave the mode", not a step of the cycle: it puts the keyboard
@@ -816,7 +819,10 @@ fn escape_out_of_the_banner_leaves_the_pane_focus_alone() {
     let (claimed, _) = press(&mut state, KeyCode::Escape);
     assert!(claimed);
     assert!(!state.banner_focus);
-    assert_eq!(state.detail.focus, mergewright_ui::detail::DetailFocus::Files);
+    assert_eq!(
+        state.detail.focus,
+        mergewright_ui::detail::DetailFocus::Files
+    );
 }
 
 /// Convenience for reading a `SanitizedText` back as `&str` in assertions.
@@ -1770,7 +1776,8 @@ fn a_stop_with_edits_aside_says_so_and_drops_it_first() {
 }
 
 fn oid(byte: u8) -> mergewright_core::oid::Oid {
-    mergewright_core::oid::Oid::from_bytes(&[byte; mergewright_core::oid::Oid::SHA1_BYTES]).expect("20 bytes")
+    mergewright_core::oid::Oid::from_bytes(&[byte; mergewright_core::oid::Oid::SHA1_BYTES])
+        .expect("20 bytes")
 }
 
 fn refs_at(head: mergewright_core::oid::Oid) -> crate::refs::RefBadges {

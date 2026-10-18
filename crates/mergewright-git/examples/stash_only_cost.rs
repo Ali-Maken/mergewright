@@ -168,9 +168,9 @@ fn stash_shaped(dir: &std::path::Path, lost: &str) -> Result<Oid, String> {
             "WIP on perf",
         ])
         .current_dir(dir)
-        .env("GIT_AUTHOR_NAME", "Mergewright Perf")
+        .env("GIT_AUTHOR_NAME", "Graft Perf")
         .env("GIT_AUTHOR_EMAIL", "perf@example.invalid")
-        .env("GIT_COMMITTER_NAME", "Mergewright Perf")
+        .env("GIT_COMMITTER_NAME", "Graft Perf")
         .env("GIT_COMMITTER_EMAIL", "perf@example.invalid")
         .output()
         .map_err(|why| format!("git commit-tree: {why}"))?;

@@ -261,7 +261,10 @@ pub(crate) fn continue_abort(keys: &mergewright_ui::keymap::Keymap) -> Option<St
 
 /// `a abort` alone, spelled from his keymap; `None` when unbound.
 pub(crate) fn abort_key(keys: &mergewright_ui::keymap::Keymap) -> Option<String> {
-    keys.key_verb(&[mergewright_ui::keymap::ActionId("operation.abort")], "abort")
+    keys.key_verb(
+        &[mergewright_ui::keymap::ActionId("operation.abort")],
+        "abort",
+    )
 }
 
 #[cfg(test)]

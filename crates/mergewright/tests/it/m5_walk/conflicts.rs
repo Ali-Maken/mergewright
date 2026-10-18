@@ -542,7 +542,9 @@ fn e_opens_editor_at_first_marker() -> Scenario {
                         let opened: Vec<&std::path::PathBuf> = commands
                             .iter()
                             .filter_map(|command| match command {
-                                mergewright::update::Command::OpenConflictEditor { path } => Some(path),
+                                mergewright::update::Command::OpenConflictEditor { path } => {
+                                    Some(path)
+                                }
                                 _ => None,
                             })
                             .collect();

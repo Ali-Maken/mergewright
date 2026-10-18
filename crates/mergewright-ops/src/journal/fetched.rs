@@ -99,7 +99,8 @@ fn verb(change: RefMove) -> &'static str {
 
 /// `a1b2c3d → e4f5a6b`, `new at e4f5a6b`, `gone, was a1b2c3d`.
 fn values(change: RefMove) -> String {
-    let short = |oid: mergewright_core::oid::Oid| oid.to_string().chars().take(7).collect::<String>();
+    let short =
+        |oid: mergewright_core::oid::Oid| oid.to_string().chars().take(7).collect::<String>();
     match (change.before, change.after) {
         (Some(before), Some(after)) => format!("{} → {}", short(before), short(after)),
         (None, Some(after)) => format!("new at {}", short(after)),

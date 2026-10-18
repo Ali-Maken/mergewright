@@ -1,5 +1,5 @@
 # m8/21c-journal-partial-fetch-80x24.txt: 80x24, drawn by `view::view`
-# from a real AppState (crates/graft/tests/it/partial_fetch.rs,
+# from a real AppState (crates/mergewright/tests/it/partial_fetch.rs,
 # capture_a_partial_fetch, asserted). The fetch above failed on `gone` after it
 # moved origin/main; then `J`, then `Space` on the fetch row. Not a pty capture:
 # TestBackend, no colour recorded — colour is unverified (CLAUDE.md rule 5).

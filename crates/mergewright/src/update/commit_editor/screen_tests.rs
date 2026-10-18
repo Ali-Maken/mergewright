@@ -104,7 +104,10 @@ fn the_secrets_file_stays_out_marked_and_space_puts_it_in() {
     let view = crate::view::commit_screen_view(&open).expect("open");
     let env = view.files.last().expect("rows");
     assert_eq!(env.path.as_str(), ".env");
-    assert_eq!(env.group, mergewright_ui::commit_editor::FileGroup::StayingOut);
+    assert_eq!(
+        env.group,
+        mergewright_ui::commit_editor::FileGroup::StayingOut
+    );
     assert!(env.secret, "marked `!`, why `looks like a secrets file`");
     // `⇥ ⇥` to the files, `j` three times to `.env`, `space`.
     let (moved, _) = walk(

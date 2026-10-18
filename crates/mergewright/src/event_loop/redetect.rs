@@ -72,7 +72,7 @@ impl Redetector {
             wakes,
         };
         thread::Builder::new()
-            .name("graft-redetect".to_owned())
+            .name("mergewright-redetect".to_owned())
             .spawn(move || worker.serve(&receiver))?;
         Ok(Self { requests })
     }

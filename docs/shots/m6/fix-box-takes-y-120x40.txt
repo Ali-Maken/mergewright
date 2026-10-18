@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
-# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
+# capture_fix_box_takes_y in crates/mergewright/tests/it/remote_by_key.rs (asserted).
 # A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
 # `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
 # box, then `y` pressed: it is the frame before `y`, byte for byte.

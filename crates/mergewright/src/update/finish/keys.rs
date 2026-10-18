@@ -95,8 +95,10 @@ fn page(state: &AppState) -> isize {
     let Some(view) = crate::view::finish::finish_view(state) else {
         return 0;
     };
-    let height =
-        mergewright_ui::finish_summary::list_height(&view, crate::view::finish::summary_area(state));
+    let height = mergewright_ui::finish_summary::list_height(
+        &view,
+        crate::view::finish::summary_area(state),
+    );
     isize::try_from(height.max(1)).unwrap_or(isize::MAX)
 }
 

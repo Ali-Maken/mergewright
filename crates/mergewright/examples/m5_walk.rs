@@ -68,11 +68,11 @@ mod m5_walk;
 #[path = "../tests/it/repo_truth.rs"]
 mod repo_truth;
 
+use m5_walk::{Scenario, capture_prelude, prepare_capture, run_scenario, scenarios, stems_line};
 use mergewright::cli::{self, Invocation};
 use mergewright::event_loop::{self, Exit};
 use mergewright::session::Startup;
 use mergewright::update::Harness;
-use m5_walk::{Scenario, capture_prelude, prepare_capture, run_scenario, scenarios, stems_line};
 
 const USAGE: &str =
     "usage: m5_walk [--only <scenario> | --list | --stems | --capture <scenario> | --matrix]";

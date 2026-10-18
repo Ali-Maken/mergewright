@@ -131,7 +131,10 @@ fn a_clashing_pop_lands_on_the_resolver_on_the_first_clashed_file() {
     assert!(state.detail.shown, "the changes pane is open");
     let open = state.resolver.as_ref().expect("the resolver is open");
     assert_eq!(open.path, Path::new(NOTES));
-    assert_eq!(open.opened_from, mergewright::update::resolver::OpenedFrom::Pane);
+    assert_eq!(
+        open.opened_from,
+        mergewright::update::resolver::OpenedFrom::Pane
+    );
     assert_eq!(
         notice(&state),
         "stash@{0} clashed in 1 file \u{b7} esc, u puts it all back"
@@ -278,7 +281,9 @@ fn a_shell_pop_clash_names_no_stash_and_drops_nothing() {
     assert!(state.clash.is_none(), "no record, no clash");
     let state = crate::resolver::resolver_on(&app, state, NOTES);
     assert_eq!(
-        mergewright::update::resolver::side_names(&state).theirs.as_str(),
+        mergewright::update::resolver::side_names(&state)
+            .theirs
+            .as_str(),
         "stashed"
     );
     let state = app.key(&state, KeyCode::Char('o'));
@@ -363,7 +368,9 @@ fn a_shell_pop_after_an_unfinished_graft_pop_names_no_stash_and_drops_nothing() 
             .is_some_and(|open| open.file.is_some())
     });
     assert_eq!(
-        mergewright::update::resolver::side_names(&state).theirs.as_str(),
+        mergewright::update::resolver::side_names(&state)
+            .theirs
+            .as_str(),
         "stashed",
         "theirs names no stash"
     );

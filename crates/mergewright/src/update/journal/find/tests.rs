@@ -3,7 +3,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+};
 use mergewright_core::oid::Oid;
 use mergewright_git::history_reads::LostRun;
 use mergewright_git::reflog::ReflogRecord;

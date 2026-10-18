@@ -51,9 +51,8 @@ const QUOTED_DESCRIPTION: usize = 34;
 /// head, which `p`/`P` refuse to push from, so a push entry always has one.
 fn entry_branch(entry: &JournalEntry) -> Option<&str> {
     match &entry.head_before {
-        mergewright_core::journal::HeadRef::Branch(name) | mergewright_core::journal::HeadRef::Unborn(name) => {
-            Some(name)
-        }
+        mergewright_core::journal::HeadRef::Branch(name)
+        | mergewright_core::journal::HeadRef::Unborn(name) => Some(name),
         mergewright_core::journal::HeadRef::Detached(_) => None,
     }
 }

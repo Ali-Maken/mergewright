@@ -15,7 +15,9 @@ mod lines;
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind,
+};
 use mergewright_core::oid::Oid;
 
 pub use fetched::{moved_lines, moved_words, wrote_anything};

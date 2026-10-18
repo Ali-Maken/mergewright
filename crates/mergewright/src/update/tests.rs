@@ -1,6 +1,8 @@
 use crate::spelled::Spelled as _;
 use mergewright_core::capabilities::RenderingTier;
-use mergewright_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
+use mergewright_core::event::{
+    Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind,
+};
 use mergewright_core::job::{JobFailure, JobId};
 
 use mergewright_core::commit::{Commit, Identity, Timestamp};
@@ -21,7 +23,9 @@ use crate::history::{
 };
 use crate::repository::{Head, RepositoryFacts};
 use crate::search::{Search, SearchState};
-use mergewright_ui::graph_screen::{CommitGraphLine, Divider, Hint, HintContext, HintKey, OrderNotice};
+use mergewright_ui::graph_screen::{
+    CommitGraphLine, Divider, Hint, HintContext, HintKey, OrderNotice,
+};
 use mergewright_ui::keymap::{ActionId, KeyChord, Keymap};
 
 use super::detail::Loading as EvilLoading;
@@ -30,7 +34,9 @@ use crate::search::Query;
 use mergewright_git::diff::{DiffOptions, FileEntry, FileList, FileStatus};
 use mergewright_ops::mistake_radar::probes::EvilVerdict;
 use mergewright_term::sanitize::sanitize_line;
-use mergewright_ui::detail::{DetailFocus, DiffView, FileListView, FileRow, FileRowKind, FileStatusView};
+use mergewright_ui::detail::{
+    DetailFocus, DiffView, FileListView, FileRow, FileRowKind, FileStatusView,
+};
 use std::sync::Arc as DetailArc;
 
 mod fixtures;

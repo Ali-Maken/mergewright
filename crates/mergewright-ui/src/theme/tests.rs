@@ -7,7 +7,9 @@
 //! drops a lane pair below the distinguishable line, or a "nicer" muted grey
 //! that falls under the contrast floor, would otherwise ship looking fine.
 
-use mergewright_core::capabilities::{ColorDepth, Rgb, Theme as TerminalTheme, ThemeHint, ThemeSource};
+use mergewright_core::capabilities::{
+    ColorDepth, Rgb, Theme as TerminalTheme, ThemeHint, ThemeSource,
+};
 
 use crate::test_support::terminal;
 

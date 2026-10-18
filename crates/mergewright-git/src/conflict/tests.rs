@@ -597,7 +597,8 @@ fn crlf_attribute_stop() -> tempfile::TempDir {
     // broken recipe, so it is not run through `git` (which insists on 0).
     let stopped = mergewright_fixtures::git::run(dir, &["merge", "--no-edit", "feature"]);
     match stopped {
-        Err(mergewright_fixtures::git::GitError::Failed { status, .. }) if status.code() == Some(1) => {}
+        Err(mergewright_fixtures::git::GitError::Failed { status, .. })
+            if status.code() == Some(1) => {}
         other => panic!("`git merge` should have stopped on a conflict: {other:?}"),
     }
     scratch

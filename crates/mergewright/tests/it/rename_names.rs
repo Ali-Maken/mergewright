@@ -56,18 +56,10 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ),
     // Thread names: in a backtrace, never on screen; code names.
     (
-        "graft/src/event_loop/input.rs",
-        "graft-input-forward",
+        "mergewright-term/src/input/mux.rs",
+        "graft-input",
         "thread name",
     ),
-    (
-        "graft/src/event_loop/redetect.rs",
-        "graft-redetect",
-        "thread name",
-    ),
-    ("graft/src/event_loop/signals.rs", "graft-", "thread names"),
-    ("graft/src/jobs/runner/mod.rs", "graft-job-", "thread name"),
-    ("mergewright-term/src/input/mux.rs", "graft-input", "thread name"),
     // Temporary file, socket and marker names: code names, gone after use.
     (
         "mergewright-git/src/conflict/disk.rs",
@@ -86,7 +78,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ),
     (
         "mergewright-git/src/fixture.rs",
-        "Mergewright Fixture",
+        "Graft Fixture",
         "fixture author identity",
     ),
     (
@@ -112,7 +104,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     // Perf examples (50): run by hand to measure, never drawn to the user.
     (
         "mergewright-git/examples/stash_only_cost.rs",
-        "Mergewright Perf",
+        "Graft Perf",
         "perf fixture's author identity",
     ),
     (
@@ -190,7 +182,7 @@ fn says_word(text: &str, word: &str) -> bool {
     })
 }
 
-/// The earlier generation `text` names, if any: its title (`Mergewright`,
+/// The earlier generation `text` names, if any: its title (`Graft`,
 /// `Tributary`), its dir (`tributary`, as in a folder prefix; 51) or its
 /// command (`graft`, `trib`) as a whole word, read from
 /// the names table so a later rename needs no edit here.
@@ -291,7 +283,7 @@ fn no_old_name_in_user_visible_strings() {
 #[test]
 fn the_word_test_reads_words_only() {
     assert_eq!(says_old_name("graft crashed"), Some(Generation::Graft));
-    assert_eq!(says_old_name("usage: Mergewright"), Some(Generation::Graft));
+    assert_eq!(says_old_name("usage: Graft"), Some(Generation::Graft));
     assert_eq!(
         says_old_name("Tributary cannot read this"),
         Some(Generation::Tributary)

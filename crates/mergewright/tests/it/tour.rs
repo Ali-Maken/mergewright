@@ -146,7 +146,8 @@ fn on_head(pty: &Pty, repo: &Path, name: &str) -> usize {
 /// His repository: a copy of the feature-branch corpus; its path and every
 /// subject on its graph.
 fn his_repo() -> (mergewright_fixtures::Scratch, PathBuf, Vec<String>) {
-    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+    let scratch =
+        mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let path = scratch.path().canonicalize().expect("canonical");
     let subjects = git(&path, &["log", "--all", "--format=%s"])
         .lines()

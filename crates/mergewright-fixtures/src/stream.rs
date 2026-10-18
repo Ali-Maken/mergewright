@@ -28,7 +28,7 @@ pub struct Mark(u32);
 
 /// The identity on every commit and tag in the corpus, unless a shape
 /// deliberately overrides it.
-pub const IDENTITY: &str = "Mergewright Fixture <fixture@example.invalid>";
+pub const IDENTITY: &str = "Graft Fixture <fixture@example.invalid>";
 
 /// The first commit's timestamp: 2020-01-01T00:00:00Z, in git's raw format.
 const EPOCH: u64 = 1_577_836_800;

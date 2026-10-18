@@ -231,10 +231,9 @@ fn stash_b_opens_prompt_then_preview_then_creates() {
     assert!(state.name_prompt.is_none(), "the box closed");
     assert!(!state.stash.shown, "the overlay stepped out of the way");
     let state = app.pump(state, "the plan for `stash branch`", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| matches!(preview.plan, mergewright::update::detail::Loading::Ready(_)))
+        state.preview.as_ref().is_some_and(|preview| {
+            matches!(preview.plan, mergewright::update::detail::Loading::Ready(_))
+        })
     });
     assert!(
         git(repo, &["stash", "list"]).contains("wip"),
@@ -455,10 +454,9 @@ fn a_drag_onto_a_row_ends_in_a_preview() {
     assert!(state.context_menu.is_none(), "the menu closed");
     assert!(state.preview.is_some(), "a picture opened instead");
     let state = app.pump(state, "the drop verb's plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| matches!(preview.plan, mergewright::update::detail::Loading::Ready(_)))
+        state.preview.as_ref().is_some_and(|preview| {
+            matches!(preview.plan, mergewright::update::detail::Loading::Ready(_))
+        })
     });
     assert_eq!(
         git(repo, &["for-each-ref", "--format=%(refname) %(objectname)"]),
@@ -583,10 +581,9 @@ fn capture_fix_preview_verb_name_prompt_for_docs_shots() {
     let state = type_in(&app, state, "rescued");
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the plan for `stash branch`", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| matches!(preview.plan, mergewright::update::detail::Loading::Ready(_)))
+        state.preview.as_ref().is_some_and(|preview| {
+            matches!(preview.plan, mergewright::update::detail::Loading::Ready(_))
+        })
     });
     let caption = "# fix-preview-verb-name-prompt-120x40.txt: 120x40, drawn by `view::view` from a\n\
          # real AppState over a real repository with one stash entry; the stash overlay\n\

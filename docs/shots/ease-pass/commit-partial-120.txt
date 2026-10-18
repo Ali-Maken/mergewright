@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
-# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# crates/mergewright/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: `src/a.rs` staged, then one more line added to it and left unstaged; `c`: only `src/a.rs` goes in, its row ending `+1 part`; the line above the files reads `1 file goes in, +1 −0, as a new commit on main. 3 stay out.`; the changes pane's top line says `only the part you staged goes in; the rest stays uncommitted.`; the changes show the staged `fn b() {}` and not the unstaged `fn c() {}`.
 === 120x40 ===
  ◆ api  ~/code/api  committing to main

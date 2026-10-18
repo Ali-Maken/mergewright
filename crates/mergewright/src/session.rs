@@ -12,7 +12,9 @@
 //! are settled once, and keeping them out of the state is what keeps `update`
 //! a function of the things that actually vary.
 
-use mergewright_core::capabilities::{Capabilities, CellSize, ProbeOutcome, ThemeHint, ThemeSource};
+use mergewright_core::capabilities::{
+    Capabilities, CellSize, ProbeOutcome, ThemeHint, ThemeSource,
+};
 use mergewright_term::{SanitizedText, sanitize_line};
 use mergewright_ui::status_screen::{RenderingView, TierSource};
 use mergewright_ui::theme::{Theme, ThemeKind};

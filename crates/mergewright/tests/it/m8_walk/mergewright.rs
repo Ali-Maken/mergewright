@@ -18,7 +18,7 @@ mod older;
 mod tributary;
 mod walk;
 
-use older::{Last, git, git_at, mergewright_era, in_dir, refs_of, state};
+use older::{Last, git, git_at, in_dir, mergewright_era, refs_of, state};
 use walk::{
     close_journal, cursor_row, every_backup_kept, files_in, his_repo, journal_screen, launch, quit,
     renames, shot,
@@ -142,7 +142,11 @@ fn another_window_keeps_old_names() {
     let repo = his_repo(&isolated);
     mergewright_era(&repo, Last::Stage);
     let old = refs_of(&repo, Generation::Graft);
-    let lock = in_dir(&repo, Generation::Tributary, mergewright_ops::rename::LOCK_FILE);
+    let lock = in_dir(
+        &repo,
+        Generation::Tributary,
+        mergewright_ops::rename::LOCK_FILE,
+    );
     std::fs::create_dir_all(lock.parent().unwrap_or_else(|| panic!("a folder")))
         .unwrap_or_else(|why| panic!("{why}"));
     let other_window = FileLock::shared(&lock).unwrap_or_else(|why| panic!("{why}"));

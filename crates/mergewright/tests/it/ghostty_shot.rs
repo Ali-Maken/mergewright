@@ -121,7 +121,11 @@ fn shot() -> Result<Shot, String> {
     // The thread and window answers the hold asked for.
     let state = answered(&jobs, state, &events, QUIET)?;
     let built = composed(&state, from + HELD);
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!(
             "the job pool did not stop cleanly: stalled {}, forced {:?}",
@@ -177,7 +181,8 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
     if state.detail.shown {
         return Err("the detail pane is open: the lane cap would read a narrower graph".to_owned());
     }
-    let max_lanes = mergewright_ui::graph_screen::max_lanes_for(state.size.columns, state.max_lanes);
+    let max_lanes =
+        mergewright_ui::graph_screen::max_lanes_for(state.size.columns, state.max_lanes);
     let pixels = pixel_rows(state, max_lanes, STRIP_ROWS);
     let session = Session::settle(&Loaded::default(), {
         let mut caps = capabilities(RenderingTier::Pixel);

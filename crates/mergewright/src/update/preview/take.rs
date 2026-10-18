@@ -124,7 +124,9 @@ pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
     // `HeadUnborn` (mergewright-ops `head_is`), and `o` says the same words
     // (ticket 11 Decided; 30n m3).
     let head = crate::update::context_menu::verbs::head_tip(refs).ok_or_else(|| {
-        Status::sticky(mergewright_ops::operation::Refusal::HeadUnborn.explain(&OpKeys(&state.keymap)))
+        Status::sticky(
+            mergewright_ops::operation::Refusal::HeadUnborn.explain(&OpKeys(&state.keymap)),
+        )
     })?;
     let subject = String::from_utf8_lossy(row.commit.subject()).into_owned();
     let params = crate::update::context_menu::verbs::pick_params(id, &subject, &head);

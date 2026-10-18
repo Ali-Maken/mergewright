@@ -168,18 +168,19 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, 
             }),
         };
     }
-    let opened = mergewright_ops::conflict::open_conflict(&handle, &status, path).map_err(|error| {
-        OpenFailure {
-            words: error.to_string(),
-            not_unmerged: matches!(
-                error,
-                mergewright_ops::conflict::OpenError::Refused(
-                    mergewright_ops::operation::Refusal::NotUnmerged { .. }
-                )
-            ),
-            done: None,
-        }
-    })?;
+    let opened =
+        mergewright_ops::conflict::open_conflict(&handle, &status, path).map_err(|error| {
+            OpenFailure {
+                words: error.to_string(),
+                not_unmerged: matches!(
+                    error,
+                    mergewright_ops::conflict::OpenError::Refused(
+                        mergewright_ops::operation::Refusal::NotUnmerged { .. }
+                    )
+                ),
+                done: None,
+            }
+        })?;
     let (on_disk, unreadable, start_over) = if opened.file.is_none() {
         let (on_disk, unreadable) = match worktree_glimpse(&handle, path, opened.binary) {
             Ok(on_disk) => (on_disk, None),
@@ -349,7 +350,8 @@ pub fn conflict_set(
     let scope = mergewright_ops::operation::FactsScope::default();
     let facts = mergewright_ops::facts::read_facts(&handle, git, stop, &scope)
         .map_err(|error| error.to_string())?;
-    mergewright_ops::conflict::operation_conflicts(&handle, &facts).map_err(|error| error.to_string())
+    mergewright_ops::conflict::operation_conflicts(&handle, &facts)
+        .map_err(|error| error.to_string())
 }
 
 /// `B`'s refusal as the resolver's notice: the words, and whether they are

@@ -629,7 +629,10 @@ fn both_applies_refused_keeps_the_stash() {
         entry.commands
     );
     assert_eq!(stash_commits(&repo).len(), 1, "S kept");
-    assert_eq!(error.edits_at(), Some(mergewright_ops::EditsAt::Stash { n: 0 }));
+    assert_eq!(
+        error.edits_at(),
+        Some(mergewright_ops::EditsAt::Stash { n: 0 })
+    );
 }
 
 // ── T10: his bytes are never only on disk ───────────────────────────────

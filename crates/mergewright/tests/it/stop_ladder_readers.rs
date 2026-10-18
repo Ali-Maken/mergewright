@@ -20,7 +20,7 @@ fn only_the_graph_footer_reads_the_short_stop_rungs() {
         .expect("crates/")
         .to_owned();
     let mut readers = Vec::new();
-    for krate in ["graft", "mergewright-ui"] {
+    for krate in ["mergewright", "mergewright-ui"] {
         let src = crates.join(krate).join("src");
         for file in rust_files(&src) {
             if is_test_file(&file) {
@@ -49,12 +49,12 @@ fn only_the_graph_footer_reads_the_short_stop_rungs() {
         readers,
         [
             // The definitions: `stop_line_wordings` calls `stop_wordings`.
-            "graft/src/update/banner/stop/wording.rs",
+            "mergewright/src/update/banner/stop/wording.rs",
             // A stash clash's ladder (m6-conflicts/72b), which `stop/wording.rs`
             // hands on when nothing is stopped: a definition, not a reader.
-            "graft/src/update/clash.rs",
+            "mergewright/src/update/clash.rs",
             // `stopped_line`, which the graph footer draws.
-            "graft/src/view/rows.rs",
+            "mergewright/src/view/rows.rs",
         ]
     );
 }

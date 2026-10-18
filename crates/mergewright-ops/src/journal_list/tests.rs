@@ -16,7 +16,9 @@ mod words;
 
 use std::collections::BTreeMap;
 
-use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use mergewright_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+};
 use mergewright_core::oid::Oid;
 use mergewright_git::history_reads::{LostRun, Unreached};
 use mergewright_git::reflog::ReflogRecord;

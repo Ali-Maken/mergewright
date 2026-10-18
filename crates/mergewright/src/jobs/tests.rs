@@ -688,10 +688,16 @@ fn product_of(events: &Receiver<AppEvent>, id: JobId) -> Product {
 
 /// A writable copy of the feature-branches fixture, `main`'s tip, and how
 /// many files that tip changes against its first parent (git's own count).
-fn feature_branches_main() -> (mergewright_fixtures::Scratch, mergewright_core::oid::Oid, usize) {
-    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+fn feature_branches_main() -> (
+    mergewright_fixtures::Scratch,
+    mergewright_core::oid::Oid,
+    usize,
+) {
+    let scratch =
+        mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let git = |args: &[&str]| {
-        let out = mergewright_fixtures::git::run(scratch.path(), args).expect("git runs on the fixture");
+        let out =
+            mergewright_fixtures::git::run(scratch.path(), args).expect("git runs on the fixture");
         String::from_utf8(out).expect("git prints utf-8 here")
     };
     let oid = mergewright_core::oid::Oid::from_hex(git(&["rev-parse", "main"]).trim())

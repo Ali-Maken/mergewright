@@ -225,18 +225,20 @@ fn the_working_tree_menu_offers_absorb_when_something_is_staged() {
     };
     let mut state = AppState::default();
     assert_eq!(absorb(&mut state).as_deref(), Some("nothing staged"));
-    state.working_tree = Some(std::sync::Arc::new(mergewright_git::status::WorkingTreeStatus {
-        entries: vec![mergewright_git::status::StatusEntry {
-            path: "a.rs".into(),
-            original_path: None,
-            staged: Some(mergewright_git::status::Change::Modified),
-            unstaged: None,
-            untracked: false,
-            unmerged: false,
-            unmerged_how: None,
-            submodule: None,
-        }],
-    }));
+    state.working_tree = Some(std::sync::Arc::new(
+        mergewright_git::status::WorkingTreeStatus {
+            entries: vec![mergewright_git::status::StatusEntry {
+                path: "a.rs".into(),
+                original_path: None,
+                staged: Some(mergewright_git::status::Change::Modified),
+                unstaged: None,
+                untracked: false,
+                unmerged: false,
+                unmerged_how: None,
+                submodule: None,
+            }],
+        },
+    ));
     assert_eq!(absorb(&mut state), None);
 }
 
@@ -451,7 +453,8 @@ pub(super) fn ref_badges(
 
 fn refs_over_the_fixture() -> std::sync::Arc<crate::refs::RefBadges> {
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     std::sync::Arc::new(ref_badges(
         &[
@@ -616,10 +619,12 @@ fn switched_at_once(state: &AppState, commands: &[Command], op: &Operation, what
         "{what}: a clean checkout previews nothing"
     );
     let expected = match op {
-        Operation::Checkout(params) => Operation::Checkout(mergewright_ops::operation::CheckoutParams {
-            on_edits: mergewright_ops::operation::OnEdits::Refuse,
-            ..params.clone()
-        }),
+        Operation::Checkout(params) => {
+            Operation::Checkout(mergewright_ops::operation::CheckoutParams {
+                on_edits: mergewright_ops::operation::OnEdits::Refuse,
+                ..params.clone()
+            })
+        }
         other => panic!("{what}: not a checkout: {other:?}"),
     };
     let launched: Vec<&Operation> = commands
@@ -879,7 +884,8 @@ fn staged_tree() -> std::sync::Arc<mergewright_git::status::WorkingTreeStatus> {
 #[test]
 fn a_stash_row_menu_is_unchanged() {
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     let refs = crate::refs::badges(
         &[(name("refs/heads/main"), oid(2))],
@@ -1187,7 +1193,8 @@ fn o_on_the_uncommitted_row_is_refused_in_words() {
 fn o_on_an_unborn_head_says_check_picks_words() {
     let mut state = on_row(0);
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     state.refs = Some(std::sync::Arc::new(ref_badges(
         &[(name("refs/heads/feature"), oid(3))],
@@ -1234,7 +1241,8 @@ fn a_stash_row_menu_has_no_merge_or_rebase() {
 /// `a_stash_row_menu_is_unchanged`'s state: `refs/stash` on row 0.
 fn stash_on_row_0() -> AppState {
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     let refs = crate::refs::badges(
         &[(name("refs/heads/main"), oid(2))],
@@ -1378,7 +1386,8 @@ fn draws(state: &AppState, words: &str) -> bool {
 fn plain_off_branch_row() -> AppState {
     let mut state = on_row(0);
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     state.refs = Some(std::sync::Arc::new(ref_badges(
         &[(name("refs/heads/main"), oid(2))],

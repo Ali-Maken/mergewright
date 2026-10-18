@@ -523,7 +523,7 @@ pub(super) fn resolved_shell_merge() -> mergewright_fixtures::Scratch {
     use crate::app_harness::git;
     let scratch = crate::conflict_interim::about_to_conflict();
     let repo = scratch.path();
-    git(repo, &["config", "user.name", "Mergewright Fixture"]);
+    git(repo, &["config", "user.name", "Graft Fixture"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     git_stops(repo, &["merge", "feature"]);
     std::fs::write(repo.join("shared.rs"), "fn main() { both() }\n").expect("writable");
@@ -1167,7 +1167,10 @@ fn c_in_the_changes_pane_opens_the_summary() {
     );
     let state = crate::finish::review_landed(&app, app.key(&pane, KeyCode::Char('c')));
     let finish = state.finish.as_ref().expect("`c` opens the summary");
-    assert_eq!(finish.return_to, mergewright::update::finish::ReturnTo::Banner);
+    assert_eq!(
+        finish.return_to,
+        mergewright::update::finish::ReturnTo::Banner
+    );
     assert!(state.commit_editor.is_none(), "no commit editor");
     app.close();
     drop(scratch);

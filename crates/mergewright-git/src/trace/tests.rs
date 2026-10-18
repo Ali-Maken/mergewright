@@ -60,7 +60,7 @@ fn the_2_54_line_log_reads_ranges_and_counts() {
     assert_eq!(
         summary,
         [
-            ("Mergewright Fixture", 1, 1, Some((18, 29))),
+            ("Graft Fixture", 1, 1, Some((18, 29))),
             ("Lina", 3, 2, Some((17, 28))),
             ("Tom", 11, 0, Some((17, 27))),
         ]
@@ -243,9 +243,9 @@ fn one_file_repo(content: &str) -> (tempfile::TempDir, Oid) {
         let output = std::process::Command::new("git")
             .args(args)
             .current_dir(temp.path())
-            .env("GIT_AUTHOR_NAME", "Mergewright Test")
+            .env("GIT_AUTHOR_NAME", "Graft Test")
             .env("GIT_AUTHOR_EMAIL", "test@example.invalid")
-            .env("GIT_COMMITTER_NAME", "Mergewright Test")
+            .env("GIT_COMMITTER_NAME", "Graft Test")
             .env("GIT_COMMITTER_EMAIL", "test@example.invalid")
             .output()
             .expect("git runs");

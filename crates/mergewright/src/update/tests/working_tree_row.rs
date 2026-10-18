@@ -13,40 +13,42 @@ pub(super) fn dirty_on_screen(id: JobId) -> AppState {
         .and_then(History::selected)
         .map(|row| row.commit.id)
         .expect("row 0 has arrived");
-    state.working_tree = Some(std::sync::Arc::new(mergewright_git::status::WorkingTreeStatus {
-        entries: vec![
-            mergewright_git::status::StatusEntry {
-                path: "staged.txt".into(),
-                original_path: None,
-                staged: Some(mergewright_git::status::Change::Modified),
-                unstaged: None,
-                untracked: false,
-                unmerged: false,
-                unmerged_how: None,
-                submodule: None,
-            },
-            mergewright_git::status::StatusEntry {
-                path: "unstaged.txt".into(),
-                original_path: None,
-                staged: None,
-                unstaged: Some(mergewright_git::status::Change::Modified),
-                untracked: false,
-                unmerged: false,
-                unmerged_how: None,
-                submodule: None,
-            },
-            mergewright_git::status::StatusEntry {
-                path: "untracked.txt".into(),
-                original_path: None,
-                staged: None,
-                unstaged: None,
-                untracked: true,
-                unmerged: false,
-                unmerged_how: None,
-                submodule: None,
-            },
-        ],
-    }));
+    state.working_tree = Some(std::sync::Arc::new(
+        mergewright_git::status::WorkingTreeStatus {
+            entries: vec![
+                mergewright_git::status::StatusEntry {
+                    path: "staged.txt".into(),
+                    original_path: None,
+                    staged: Some(mergewright_git::status::Change::Modified),
+                    unstaged: None,
+                    untracked: false,
+                    unmerged: false,
+                    unmerged_how: None,
+                    submodule: None,
+                },
+                mergewright_git::status::StatusEntry {
+                    path: "unstaged.txt".into(),
+                    original_path: None,
+                    staged: None,
+                    unstaged: Some(mergewright_git::status::Change::Modified),
+                    untracked: false,
+                    unmerged: false,
+                    unmerged_how: None,
+                    submodule: None,
+                },
+                mergewright_git::status::StatusEntry {
+                    path: "untracked.txt".into(),
+                    original_path: None,
+                    staged: None,
+                    unstaged: None,
+                    untracked: true,
+                    unmerged: false,
+                    unmerged_how: None,
+                    submodule: None,
+                },
+            ],
+        },
+    ));
     let badges = crate::refs::badges(
         &[],
         &mergewright_git::repo::HeadState::Detached(head_id),
@@ -76,8 +78,9 @@ fn k_from_the_top_row_selects_the_working_tree_row_and_asks_history_for_nothing(
 fn k_reaches_the_working_tree_row_even_with_head_scrolled_off() {
     let mut state = dirty_on_screen(JobId::new(40));
     // `HEAD` on a commit that is not the topmost visible row.
-    let elsewhere = mergewright_core::oid::Oid::from_bytes(&[0x5a; mergewright_core::oid::Oid::SHA1_BYTES])
-        .expect("20 bytes");
+    let elsewhere =
+        mergewright_core::oid::Oid::from_bytes(&[0x5a; mergewright_core::oid::Oid::SHA1_BYTES])
+            .expect("20 bytes");
     let badges = crate::refs::badges(
         &[],
         &mergewright_git::repo::HeadState::Detached(elsewhere),
@@ -109,7 +112,10 @@ fn enter_on_the_working_tree_row_opens_the_pane_on_it() {
     assert_eq!(opened.detail.focus, DetailFocus::Files);
     let lists = list_commands(&commands);
     assert_eq!(lists.len(), 1, "{commands:?}");
-    assert_eq!(lists[0].1, mergewright_git::diff::DiffSpec::WorkingTreeVsHead);
+    assert_eq!(
+        lists[0].1,
+        mergewright_git::diff::DiffSpec::WorkingTreeVsHead
+    );
     assert!(
         !commands
             .iter()

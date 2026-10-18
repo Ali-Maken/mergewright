@@ -649,7 +649,9 @@ impl AppState {
         self.commit_graph == CommitGraphOffer::Offered
             && matches!(
                 self.system_git,
-                Some(GitCheck::Ran(mergewright_git::version::SystemGit::Supported(_)))
+                Some(GitCheck::Ran(
+                    mergewright_git::version::SystemGit::Supported(_)
+                ))
             )
     }
 

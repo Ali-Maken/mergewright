@@ -98,13 +98,15 @@ pub fn untake(
             "is not conflicted any more".to_owned(),
         ));
     }
-    mergewright_ops::conflict::apply_untake(&handle, path, file, restore).map_err(|error| match error {
-        TakeError::Changed { .. } => {
-            UntakeFailure::Stale("changed on disk since that pick".to_owned())
+    mergewright_ops::conflict::apply_untake(&handle, path, file, restore).map_err(|error| {
+        match error {
+            TakeError::Changed { .. } => {
+                UntakeFailure::Stale("changed on disk since that pick".to_owned())
+            }
+            TakeError::NoSuchBlock(_) => {
+                UntakeFailure::Stale("is out of step with that pick".to_owned())
+            }
+            TakeError::Write(error) => failed(&error),
         }
-        TakeError::NoSuchBlock(_) => {
-            UntakeFailure::Stale("is out of step with that pick".to_owned())
-        }
-        TakeError::Write(error) => failed(&error),
     })
 }

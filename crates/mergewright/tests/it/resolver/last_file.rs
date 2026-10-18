@@ -42,7 +42,10 @@ fn review_landed(app: &App, state: AppState) -> AppState {
             .is_some_and(|finish| finish.job.is_none())
     });
     let finish = state.finish.as_ref().expect("the review");
-    assert_eq!(finish.return_to, mergewright::update::finish::ReturnTo::Resolver);
+    assert_eq!(
+        finish.return_to,
+        mergewright::update::finish::ReturnTo::Resolver
+    );
     state
 }
 

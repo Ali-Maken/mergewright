@@ -50,10 +50,10 @@ mod m3_walk;
 #[path = "../tests/it/repo_truth.rs"]
 mod repo_truth;
 
+use m3_walk::{Scenario, prepare_capture, run_scenario, scenarios};
 use mergewright::event_loop::{self, Exit};
 use mergewright::session::Startup;
 use mergewright::update::Harness;
-use m3_walk::{Scenario, prepare_capture, run_scenario, scenarios};
 
 const USAGE: &str =
     "usage: m3_walk [--only <scenario> | --list | --stems | --capture <scenario> | --matrix]";

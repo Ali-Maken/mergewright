@@ -345,7 +345,8 @@ fn a_failure_still_names_the_key_that_clears_it() {
     let state = app.pump(state, "the remotes", |state| {
         !matches!(
             state.remotes,
-            mergewright::update::detail::Loading::Idle | mergewright::update::detail::Loading::Pending(_)
+            mergewright::update::detail::Loading::Idle
+                | mergewright::update::detail::Loading::Pending(_)
         )
     });
     let state = app.key(&state, KeyCode::Char('p'));

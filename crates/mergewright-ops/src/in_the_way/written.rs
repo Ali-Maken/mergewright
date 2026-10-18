@@ -40,9 +40,13 @@ pub(super) fn written_paths(
         // `--allow-unrelated-histories`), so it writes nothing, and
         // `diff-tree --merge-base` has no base to diff from (ease-pass 10).
         Operation::Merge(params)
-            if mergewright_git::history_reads::merge_base(repo, params.into.oid, params.source_tip)
-                .map_err(super::reads::run_error)?
-                .is_none() =>
+            if mergewright_git::history_reads::merge_base(
+                repo,
+                params.into.oid,
+                params.source_tip,
+            )
+            .map_err(super::reads::run_error)?
+            .is_none() =>
         {
             BTreeSet::new()
         }

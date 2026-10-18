@@ -470,9 +470,15 @@ fn j_opens_with_graft_rows_at_once() {
 fn the_cursor_stays_on_its_row_when_outside_rows_arrive() {
     let mut state = opened();
     press(&mut state, KeyCode::Char('j'));
-    assert_eq!(state.journal.cursor, Some(RowKey::Mergewright(older_entry())));
+    assert_eq!(
+        state.journal.cursor,
+        Some(RowKey::Mergewright(older_entry()))
+    );
     outside_lands(&mut state, shell_reset());
-    assert_eq!(state.journal.cursor, Some(RowKey::Mergewright(older_entry())));
+    assert_eq!(
+        state.journal.cursor,
+        Some(RowKey::Mergewright(older_entry()))
+    );
     let list = state.journal.list.as_ref().expect("built");
     assert_eq!(
         list.rows.get(state.journal.selected()),
@@ -500,7 +506,10 @@ fn a_vanished_row_falls_to_the_newest() {
     let mut state = opened();
     state.journal.cursor = Some(RowKey::Lost(oid(9)));
     rebuild(&mut state);
-    assert_eq!(state.journal.cursor, Some(RowKey::Mergewright(newest_entry())));
+    assert_eq!(
+        state.journal.cursor,
+        Some(RowKey::Mergewright(newest_entry()))
+    );
     assert_eq!(state.journal.selected(), 0);
 }
 
@@ -509,7 +518,10 @@ fn space_expands_by_row_not_by_index() {
     let mut state = opened();
     press(&mut state, KeyCode::Char(' '));
     outside_lands(&mut state, shell_reset());
-    assert_eq!(state.journal.expanded, Some(RowKey::Mergewright(newest_entry())));
+    assert_eq!(
+        state.journal.expanded,
+        Some(RowKey::Mergewright(newest_entry()))
+    );
     assert!(state.journal.is_expanded(&newest_entry()));
     assert!(
         !matches!(
@@ -721,11 +733,13 @@ fn b_on_a_step_with_no_commit_says_so() {
     // now says where `b` works instead).
     let mut state = opened();
     state.journal.list = Some(Arc::new(JournalList {
-        rows: vec![ListRow::Outside(mergewright_ops::journal_list::OutsideStep {
-            record: record("refs/heads/main", 0, 0, 1005, "update by push").record,
-            words: "moved main".to_owned(),
-            folded: 0,
-        })],
+        rows: vec![ListRow::Outside(
+            mergewright_ops::journal_list::OutsideStep {
+                record: record("refs/heads/main", 0, 0, 1005, "update by push").record,
+                words: "moved main".to_owned(),
+                folded: 0,
+            },
+        )],
         scan: LostScan::Done,
     }));
     state.journal.cursor = row_key(state.journal.list.as_ref().expect("set"), 0);
@@ -914,7 +928,8 @@ fn switched_from_reads_the_branch_a_shell_switch_left() {
 /// module's own fixture, which is private to its tests.
 fn on_main_with_feature() -> AppState {
     let name = |full: &str| {
-        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        mergewright_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name")
     };
     let refs = crate::refs::badges(
         &[
@@ -1109,7 +1124,11 @@ fn enter_on(landed: LostFound, pick: impl Fn(&ListRow) -> bool) -> (AppState, Jo
 }
 
 /// `recover_for`'s `Run` answered, and the preview it opened over J.
-fn answered_run(state: &mut AppState, id: JobId, target: &mergewright_ops::operation::RecoverTarget) {
+fn answered_run(
+    state: &mut AppState,
+    id: JobId,
+    target: &mergewright_ops::operation::RecoverTarget,
+) {
     let mut commands = Vec::new();
     recover_answered(
         state,

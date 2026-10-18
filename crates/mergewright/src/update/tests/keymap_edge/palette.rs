@@ -505,7 +505,12 @@ fn the_detail_tab_offers_no_first_parent() {
     assert!(first_parent(&context), "{context:?}");
 }
 
-fn mouse(state: &AppState, kind: mergewright_core::event::MouseKind, column: u16, row: u16) -> Walk {
+fn mouse(
+    state: &AppState,
+    kind: mergewright_core::event::MouseKind,
+    column: u16,
+    row: u16,
+) -> Walk {
     let (after, commands) = update(
         state,
         AppEvent::Core(Event::Mouse(mergewright_core::event::MouseInput {

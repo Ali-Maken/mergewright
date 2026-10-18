@@ -102,7 +102,7 @@ fn commit(repo: &Path, message: &str) {
         repo,
         &[
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
             "-c",
@@ -171,7 +171,8 @@ fn a_first_stop_skip_that_finishes_says_skipped() {
         state.preview.as_ref().is_some_and(|preview| {
             !matches!(
                 preview.plan,
-                mergewright::update::detail::Loading::Pending(_) | mergewright::update::detail::Loading::Idle
+                mergewright::update::detail::Loading::Pending(_)
+                    | mergewright::update::detail::Loading::Idle
             )
         })
     });

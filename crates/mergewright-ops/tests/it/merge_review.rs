@@ -17,7 +17,7 @@ use mergewright_ops::apply::{ApplyError, Resume};
 use mergewright_ops::finish::{ByGit, ByYou, Change, ResultIs, SummaryError, merge_review};
 use mergewright_ops::operation::Refusal;
 
-use crate::conflict_fixtures::{mergewright_merge_stops, id, paths, run_resume, two_file_conflict};
+use crate::conflict_fixtures::{id, mergewright_merge_stops, paths, run_resume, two_file_conflict};
 use crate::finish::refuse_commits;
 use crate::support::{NOW, TempRepo, journal_for, run_undo};
 

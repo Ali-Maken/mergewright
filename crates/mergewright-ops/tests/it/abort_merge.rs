@@ -74,7 +74,10 @@ pub fn stop_the_merge(repo: &TempRepo) {
         "gone.txt\nnotes.txt",
         "stopped on both files"
     );
-    assert!(journal_ids(repo).is_empty(), "Mergewright journaled nothing");
+    assert!(
+        journal_ids(repo).is_empty(),
+        "Mergewright journaled nothing"
+    );
 }
 
 /// Where git keeps one of its files: `rev-parse --git-path`.

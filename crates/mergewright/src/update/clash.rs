@@ -548,5 +548,8 @@ pub(crate) mod tests;
 /// `u brings it back`: a dropped stash or set-aside copy, `app.undo` on
 /// the graph; `None` when unbound.
 pub(crate) fn brings_back(keys: &mergewright_ui::keymap::Keymap) -> Option<String> {
-    keys.key_verb(&[mergewright_ui::keymap::ActionId("app.undo")], "brings it back")
+    keys.key_verb(
+        &[mergewright_ui::keymap::ActionId("app.undo")],
+        "brings it back",
+    )
 }

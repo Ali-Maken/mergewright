@@ -22,7 +22,7 @@ fn source_column_words() {
     let wide = draw(&view, 187, 14);
     assert!(wide[1].contains("●  Mergewright  "), "{wide:?}");
     assert!(wide[2].contains("$  outside        5m ago"), "{wide:?}");
-    assert!(!wide.iter().any(|line| line.contains("Mergewright")), "{wide:?}");
+    assert!(!wide.iter().any(|line| line.contains("Graft")), "{wide:?}");
     let narrow = draw(&view, 80, 24);
     assert!(
         narrow
@@ -31,7 +31,7 @@ fn source_column_words() {
         "{narrow:?}"
     );
     assert!(
-        !narrow.iter().any(|line| line.contains("Mergewright")),
+        !narrow.iter().any(|line| line.contains("Graft")),
         "{narrow:?}"
     );
     assert!(

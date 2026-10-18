@@ -31,7 +31,9 @@ use std::collections::HashMap;
 
 use mergewright_core::ref_name::RefName;
 use mergewright_ui::graph_screen::every_context;
-use mergewright_ui::keymap::{ActionId, Binding, ContextId, KeyChord, KeyWarning, Keymap, defaults};
+use mergewright_ui::keymap::{
+    ActionId, Binding, ContextId, KeyChord, KeyWarning, Keymap, defaults,
+};
 
 use super::*;
 use std::sync::Arc;
@@ -326,7 +328,8 @@ pub(super) fn swept() -> (Arc<Keymap>, Vec<(&'static Binding, KeyChord)>) {
         .iter()
         .map(|(b, chord)| (b.action.0.to_owned(), vec![chord.label().0]))
         .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines, mergewright_ui::keymap::KeySwitches::default());
+    let (map, warnings) =
+        Keymap::with_overrides(&lines, mergewright_ui::keymap::KeySwitches::default());
     assert_eq!(warnings, [], "every chord is free, so nothing collides");
     (Arc::new(map), moved)
 }
@@ -345,7 +348,8 @@ fn both(moved: &[(&'static Binding, KeyChord)]) -> Arc<Keymap> {
             (b.action.0.to_owned(), labels)
         })
         .collect();
-    let (map, warnings) = Keymap::with_overrides(&lines, mergewright_ui::keymap::KeySwitches::default());
+    let (map, warnings) =
+        Keymap::with_overrides(&lines, mergewright_ui::keymap::KeySwitches::default());
     // Restating a default as an override reports the shadowing the default
     // table already has (an inner context's `⏎` over `app.open`): the inner
     // row keeps the chord, exactly as under the defaults. Anything else is a

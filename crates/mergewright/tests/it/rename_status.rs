@@ -50,8 +50,8 @@ fn kept_old_words() {
     // Taken away: a repository no build of the app has opened.
     std::fs::remove_file(&marker).expect("the marker goes");
     // What a run still on the old names holds for its life.
-    let _other_run =
-        mergewright_git::file_lock::FileLock::shared(&new_dir.join(LOCK_FILE)).expect("the shared lock");
+    let _other_run = mergewright_git::file_lock::FileLock::shared(&new_dir.join(LOCK_FILE))
+        .expect("the shared lock");
 
     let store = RepoStore::new(repo.to_path_buf(), None);
     store.shared().expect("it opens");

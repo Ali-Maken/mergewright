@@ -48,7 +48,11 @@ fn a_moved_branch_says_it_has_the_commit_again() {
 
 #[test]
 fn a_subject_nobody_holds_is_the_sha() {
-    let said = done_status(&move_main(), |_| None, mergewright_ui::keymap::Keymap::shipped());
+    let said = done_status(
+        &move_main(),
+        |_| None,
+        mergewright_ui::keymap::Keymap::shipped(),
+    );
     assert_eq!(said, done("put back", Some("main has 0404040 again")));
 }
 

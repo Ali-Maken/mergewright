@@ -747,7 +747,10 @@ mod tests {
         };
         let (mut state, mut commands) = crate::update::update(
             &state,
-            AppEvent::Core(mergewright_core::event::Event::JobFailed(JobId::new(5), failure)),
+            AppEvent::Core(mergewright_core::event::Event::JobFailed(
+                JobId::new(5),
+                failure,
+            )),
         );
         assert!(
             matches!(&state.radar.context, Loading::Failed(why) if why.contains("lane 3 vanished")),
@@ -779,7 +782,10 @@ mod tests {
         let failure = mergewright_core::job::JobFailure::Failed("boom".to_owned());
         let (mut state, mut commands) = crate::update::update(
             &state,
-            AppEvent::Core(mergewright_core::event::Event::JobFailed(JobId::new(6), failure)),
+            AppEvent::Core(mergewright_core::event::Event::JobFailed(
+                JobId::new(6),
+                failure,
+            )),
         );
         assert!(matches!(state.radar.duplicates, Loading::Failed(_)));
         for _ in 0..5 {
@@ -810,7 +816,10 @@ mod tests {
         let failure = mergewright_core::job::JobFailure::Failed("boom".to_owned());
         let (mut state, mut commands) = crate::update::update(
             &state,
-            AppEvent::Core(mergewright_core::event::Event::JobFailed(JobId::new(7), failure)),
+            AppEvent::Core(mergewright_core::event::Event::JobFailed(
+                JobId::new(7),
+                failure,
+            )),
         );
         assert!(
             matches!(state.radar.force_push.get("main"), Some(Loading::Failed(_))),

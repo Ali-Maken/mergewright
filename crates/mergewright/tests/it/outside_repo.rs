@@ -51,7 +51,8 @@ impl Tree {
     /// A copy of the feature-branch corpus shape under the tree, named
     /// `name`; its canonical path and HEAD's subject.
     fn repo(&self, name: &str) -> (PathBuf, String) {
-        let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+        let scratch =
+            mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
         let target = self.root.path().join(name);
         let status = std::process::Command::new("cp")
             .arg("-R")
@@ -443,7 +444,8 @@ fn mockup_home(isolated: &Isolated) -> PathBuf {
         (code.join("web-dashboard"), 3),
         (home.join("dotfiles"), 9),
     ] {
-        let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
+        let scratch =
+            mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
         let status = std::process::Command::new("cp")
             .arg("-R")
             .arg(scratch.path())

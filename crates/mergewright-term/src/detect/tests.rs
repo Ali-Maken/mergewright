@@ -727,7 +727,9 @@ fn versions_parse_from_whatever_shape_they_arrive_in() {
 }
 
 mod redetection {
-    use mergewright_core::capabilities::{CellSize, CellSizeSource, Rgb, Theme, ThemeHint, ThemeSource};
+    use mergewright_core::capabilities::{
+        CellSize, CellSizeSource, Rgb, Theme, ThemeHint, ThemeSource,
+    };
 
     use super::*;
 

@@ -4,6 +4,7 @@
 //! event *does* once it knows where it landed.
 
 use mergewright_core::event::{MouseButton, MouseInput, MouseKind};
+use mergewright_ui::overview_strip::row_for_cell;
 
 use super::context_menu;
 use super::detail;
@@ -147,8 +148,7 @@ fn left_click(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInpu
         && bounds.contains(mouse.column, mouse.row)
     {
         let marks = crate::view::strip::strip_marks(next);
-        let row =
-            mergewright_ui::overview_strip::row_for_cell(&marks, bounds.height, mouse.row - bounds.y);
+        let row = row_for_cell(&marks, bounds.height, mouse.row - bounds.y);
         select_row(next, commands, row);
         return;
     }

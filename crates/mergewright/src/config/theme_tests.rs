@@ -56,8 +56,11 @@ fn a_lane_colour_is_refused_and_lanes_stay_put() {
     assert!(loaded.config.theme.dark.is_empty());
     let caps = crate::session::for_tests::capabilities();
     let kind = mergewright_ui::theme::ThemeKind::Dark;
-    let theme =
-        mergewright_ui::theme::Theme::with_overrides(kind, &caps, loaded.config.theme.for_kind(kind));
+    let theme = mergewright_ui::theme::Theme::with_overrides(
+        kind,
+        &caps,
+        loaded.config.theme.for_kind(kind),
+    );
     assert_eq!(
         theme.lane(3),
         mergewright_ui::theme::Theme::new(kind, &caps).lane(3)

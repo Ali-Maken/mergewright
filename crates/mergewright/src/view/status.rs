@@ -4,7 +4,9 @@
 use mergewright_git::version::SystemGit;
 use mergewright_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use mergewright_ui::graph_screen::ProblemLine;
-use mergewright_ui::status_screen::{HeadView, HistoryState, HistoryView, RepositoryView, StatusView};
+use mergewright_ui::status_screen::{
+    HeadView, HistoryState, HistoryView, RepositoryView, StatusView,
+};
 
 use crate::history::{History, Phase};
 use crate::repository::{Head, RepositoryFacts};

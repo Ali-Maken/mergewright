@@ -610,15 +610,16 @@ fn esc_cancels_an_undo_in_flight() {
 fn history_ops_launch_unstoppable() {
     let mut state = AppState::default();
     let mut commands = Vec::new();
-    let op = mergewright_ops::operation::Operation::Merge(mergewright_ops::operation::MergeParams {
-        source: mergewright_ops::operation::Source::Branch("feature".to_owned()),
-        into: mergewright_ops::operation::Tip {
-            name: "refs/heads/main".to_owned(),
-            oid: oid(THEIRS),
-        },
-        source_tip: oid(THEIRS),
-        ff: mergewright_ops::operation::FastForward::Default,
-    });
+    let op =
+        mergewright_ops::operation::Operation::Merge(mergewright_ops::operation::MergeParams {
+            source: mergewright_ops::operation::Source::Branch("feature".to_owned()),
+            into: mergewright_ops::operation::Tip {
+                name: "refs/heads/main".to_owned(),
+                oid: oid(THEIRS),
+            },
+            source_tip: oid(THEIRS),
+            ff: mergewright_ops::operation::FastForward::Default,
+        });
     let description = op.describe();
     crate::update::operate::launch_unstoppable(
         &mut state,
@@ -641,7 +642,8 @@ fn history_ops_launch_unstoppable() {
         pressed.status,
         Status::Busy(format!(
             "{description} {}",
-            crate::update::preview::HISTORY_CANNOT_STOP.words(mergewright_ui::keymap::Keymap::shipped())
+            crate::update::preview::HISTORY_CANNOT_STOP
+                .words(mergewright_ui::keymap::Keymap::shipped())
         )),
         "the refusal names what does stop it"
     );
@@ -664,7 +666,8 @@ fn diverged() -> AppState {
         Some(upstream(Some(THEIRS))),
     );
     let ours = oid(OURS);
-    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
+    let main =
+        mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
     state.refs = Some(Arc::new(
         crate::refs::badges(
             &[(main.clone(), ours)],
@@ -843,7 +846,8 @@ fn the_diverged_line_aims_at_where_the_fetch_left_the_tracking_ref() {
 /// they read once the pull's fetch has landed and the refresh has arrived.
 fn diverged_with_tracking_at(tracking: Oid) -> AppState {
     let mut state = diverged();
-    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
+    let main =
+        mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
     let remote = mergewright_core::ref_name::RefName::new(b"refs/remotes/origin/main".to_vec())
         .expect("a ref name");
     state.refs = Some(Arc::new(

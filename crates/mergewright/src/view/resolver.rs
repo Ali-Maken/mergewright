@@ -328,7 +328,8 @@ fn block_view(
     numbers: BlockNumbers,
     state: BlockState,
 ) -> BlockView {
-    let side = |lines: &[mergewright_git::conflict::Line]| lines.iter().map(text_of).collect::<Vec<_>>();
+    let side =
+        |lines: &[mergewright_git::conflict::Line]| lines.iter().map(text_of).collect::<Vec<_>>();
     BlockView {
         // What the pick wrote, for its `◀ ▶ ◆` rows (ease-pass/11).
         kept: match state {

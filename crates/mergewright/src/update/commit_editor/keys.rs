@@ -116,7 +116,10 @@ fn opens_the_palette(state: &mut AppState, key: &KeyPress) -> Option<Vec<Command
 /// A keyless `commit.toggle_*` row chosen in the palette (ease-pass/03b):
 /// flips that option, focus kept; the header says it while on (Q8 a).
 /// `false` when `id` is not one of the three or no screen is open.
-pub(crate) fn toggle_from_palette(state: &mut AppState, id: mergewright_ui::keymap::ActionId) -> bool {
+pub(crate) fn toggle_from_palette(
+    state: &mut AppState,
+    id: mergewright_ui::keymap::ActionId,
+) -> bool {
     let Some(option) = CommitOption::of_id(&id) else {
         return false;
     };

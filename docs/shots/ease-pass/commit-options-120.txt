@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
-# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# crates/mergewright/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: `⌃S`, then `Skip the commit hooks` from `⌃P`: no option row anywhere; the header ends `· signing off · skipping hooks`.
 === 120x40 ===
  ◆ api  ~/code/api  committing to main · signing off · skipping hooks

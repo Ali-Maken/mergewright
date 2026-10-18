@@ -1,12 +1,12 @@
 # m6/fix-radar-bookkeeping-120x40.txt: 120x40, drawn by `view::view` from a
-# real AppState (crates/graft/tests/it/radar_bookkeeping.rs,
+# real AppState (crates/mergewright/tests/it/radar_bookkeeping.rs,
 # a_pull_rebase_marks_no_duplicates, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #
 # The scene: a teammate pushed, you had a local commit and a stash made on
 # it; `p` named the divergence, `r r` rebased onto their work, `P` pushed
 # it (so the true "unpushed on main" ⓘ is not in the picture).
-# Your old commit still lives in Graft's undo backup and under the stash.
+# Your old commit still lives in Mergewright's undo backup and under the stash.
 #
 # What right looks like:
 #  - Frame 1: no ⓘ in the marker column of any `main` row. The old

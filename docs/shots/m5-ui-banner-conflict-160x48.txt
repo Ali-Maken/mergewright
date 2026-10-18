@@ -2,7 +2,7 @@
 # from a real AppState — a real repository whose `main` and `feature`
 # both rewrote the same 16 files, opened over the real job pool, the
 # merge launched with `m` through the preview and the confirm box, and
-# git really stopped on the conflict (crates/graft/tests/it/
+# git really stopped on the conflict (crates/mergewright/tests/it/
 # conflict_interim.rs, capture_banner_for_docs_shots, asserted). The
 # app was resized to 160x48 before the frame was drawn, so the
 # layout it chose is the layout for this screen and not for another

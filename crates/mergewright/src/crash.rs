@@ -393,7 +393,7 @@ mod tests {
         assert!(written.contains("2026-09-12T12:40:00Z"), "{written}");
         assert!(written.contains("backtrace:\n"), "{written}");
         // `force_capture` ignores RUST_BACKTRACE, so there are always frames.
-        assert!(written.contains("graft"), "{written}");
+        assert!(written.contains("mergewright"), "{written}");
     }
 
     #[test]

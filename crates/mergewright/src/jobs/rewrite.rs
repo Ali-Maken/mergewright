@@ -15,7 +15,9 @@ use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation, Stop};
 use mergewright_git::version::{GitVersion, system_git};
 use mergewright_ops::operation::{FactsScope, Refusal, RepoFacts, Tip};
-use mergewright_ops::rewrite::{Dependents, RewriteError, RewriteParams, RewriteRequest, TodoAction};
+use mergewright_ops::rewrite::{
+    Dependents, RewriteError, RewriteParams, RewriteRequest, TodoAction,
+};
 
 use crate::repos::RepoStore;
 
@@ -213,7 +215,8 @@ fn planned(
             amend_into_words(*target, subject, &gains)
         }
         RewriteRequest::Absorb => {
-            let map = match mergewright_ops::rewrite::absorb_plan_map(handle, facts, default, stop) {
+            let map = match mergewright_ops::rewrite::absorb_plan_map(handle, facts, default, stop)
+            {
                 Ok(map) => map,
                 Err(RewriteError::Refused(refusal)) => {
                     return Ok(RewritePlanned::Refused(refusal));

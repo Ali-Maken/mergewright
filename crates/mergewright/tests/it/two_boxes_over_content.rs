@@ -69,7 +69,7 @@ fn one_commit_to_push() -> LocalRemote {
     // missing identity must not reach this clone.
     for args in [
         ["config", "core.hooksPath", ".git/hooks"],
-        ["config", "user.name", "Mergewright Test"],
+        ["config", "user.name", "Graft Test"],
         ["config", "user.email", "test@example.invalid"],
     ] {
         run(&remote, &work, &args);

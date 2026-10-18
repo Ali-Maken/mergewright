@@ -9,7 +9,7 @@
 
 use std::path::Path;
 
-use super::{DISCARDED_EDIT, EDITED, END, Mergewright, LOST_EDIT, LostWork, START, at, date};
+use super::{DISCARDED_EDIT, EDITED, END, LOST_EDIT, LostWork, Mergewright, START, at, date};
 use crate::git;
 
 /// Records each call, and does the plain-git equivalent of what Mergewright's

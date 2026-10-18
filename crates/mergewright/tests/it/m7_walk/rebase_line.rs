@@ -230,7 +230,9 @@ pub(crate) fn frame(state: &AppState, columns: u16, rows: u16) -> String {
         state,
         columns,
         rows,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     );
     format!("{}\n", lines.join("\n"))
 }

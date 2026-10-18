@@ -91,7 +91,9 @@ fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
         state,
         columns,
         rows,
-        Some(mergewright::session::Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+        Some(mergewright::session::Clock::Fixed(
+            mergewright_fixtures::CORPUS_NOW,
+        )),
     )
 }
 

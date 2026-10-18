@@ -32,7 +32,7 @@ fn gone_and_notes_merge_with(readme: bool) -> Scratch {
         // The merge commit is the app's `git merge --continue`: the
         // fixture's own name, so no machine's identity decides whether it
         // can commit.
-        git(repo, &["config", "user.name", "Mergewright Fixture"]);
+        git(repo, &["config", "user.name", "Graft Fixture"]);
         git(repo, &["config", "user.email", "fixture@example.invalid"]);
         write("README.md", "# Project\n\nline one\nline two\nline three\n");
     }
@@ -147,7 +147,10 @@ fn the_list_survives_a_relaunch() {
     let (app, state) = opened_on(&scratch);
     let state = resolver_on(&app, state, "notes.txt");
     let state = app.pump(state, "the set read", |state| {
-        matches!(open(state).files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            open(state).files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
     assert_eq!(
         rows(&state),
@@ -485,7 +488,8 @@ pub(super) fn rebased_onto_main_by_graft(app: &App, state: AppState, first: &str
         state.preview.as_ref().is_some_and(|preview| {
             !matches!(
                 preview.plan,
-                mergewright::update::detail::Loading::Pending(_) | mergewright::update::detail::Loading::Idle
+                mergewright::update::detail::Loading::Pending(_)
+                    | mergewright::update::detail::Loading::Idle
             )
         })
     });

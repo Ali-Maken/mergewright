@@ -112,7 +112,11 @@ pub(super) fn scroll(
     }
     let run = measured(&mut wakes, &sink, initial, pane, &before_loop)?;
 
-    let shutdown = jobs.shutdown(Duration::from_secs(10), mergewright::jobs::EXIT_WRITE_WAIT, &());
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
     if shutdown != Shutdown::CLEAN {
         return Err(format!(
             "the job pool did not stop cleanly: stalled {}, forced {:?}",
@@ -213,7 +217,10 @@ fn ready_sized(
     if let Some((columns, rows)) = size {
         let (next, commands) = update(
             &state,
-            mergewright::update::AppEvent::Core(mergewright_core::event::Event::Resize { columns, rows }),
+            mergewright::update::AppEvent::Core(mergewright_core::event::Event::Resize {
+                columns,
+                rows,
+            }),
         );
         state = next;
         for command in commands {

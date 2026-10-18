@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
-# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# crates/mergewright/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: `fix toc` typed, `⇥ ⇥`: the file list has focus; bar `space leave it out  j/k move  ⏎ commit  esc back to the message`.
 === 120x40 ===
  ◆ api  ~/code/api  committing to main

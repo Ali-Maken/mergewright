@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::{EntryId, JournalEntry, Touches};
 use mergewright_core::oid::Oid;
-use mergewright_fixtures::lost_work::{self, Mergewright, LostWork};
+use mergewright_fixtures::lost_work::{self, LostWork, Mergewright};
 use mergewright_git::repo::RepoHandle;
 use mergewright_ops::apply::{ApplyError, apply};
 use mergewright_ops::facts::read_facts;
@@ -1229,7 +1229,10 @@ fn a_recover_entry_describes_itself_in_words() {
     let undo = undo_over_drift(&repo);
     let restored = run(&repo, &files_of(&undo, &["a.txt"]), NOW + 2);
     assert_eq!(restored.description, "put back your edit to a.txt");
-    assert_eq!(restored.kind, mergewright_core::journal::OperationKind::Recover);
+    assert_eq!(
+        restored.kind,
+        mergewright_core::journal::OperationKind::Recover
+    );
 }
 
 fn files_of_id(paths: &[&str]) -> Operation {

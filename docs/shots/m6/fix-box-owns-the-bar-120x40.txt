@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
-# capture_fix_box_owns_the_bar in crates/graft/tests/it/box_owns_the_bar.rs
+# capture_fix_box_owns_the_bar in crates/mergewright/tests/it/box_owns_the_bar.rs
 # (asserted). Four frames, each a box open over a status that was standing.
 #
 # What right looks like, the bottom row of each frame:

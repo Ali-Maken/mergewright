@@ -11,8 +11,12 @@ use mergewright_core::oid::Oid;
 use mergewright_git::blame::Rev;
 use mergewright_git::trace::{BlobSizes, LineRange, SHALLOW_END, TraceCommit, TraceEnd};
 use mergewright_term::sanitize::sanitize_line;
-use mergewright_ui::detail::{DetailFocus, DiffView, FileStatusView, HunkView, LineKindView, LineView};
-use mergewright_ui::history::{FilePane, HistoryFocus, HistoryList, HistoryRow, HistoryView, columns};
+use mergewright_ui::detail::{
+    DetailFocus, DiffView, FileStatusView, HunkView, LineKindView, LineView,
+};
+use mergewright_ui::history::{
+    FilePane, HistoryFocus, HistoryList, HistoryRow, HistoryView, columns,
+};
 
 use crate::update::detail::Side;
 use crate::update::events::WholeFileAnswer;

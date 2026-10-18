@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_fix_c_in_pane_finishes in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# crates/mergewright/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
 # begun in the shell, resolved; the changes pane focused (m6-conflicts/52).
 #
 # Judge by eye:

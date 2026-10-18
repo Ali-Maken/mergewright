@@ -98,12 +98,13 @@ pub(crate) fn open_rewrite(
     let git = system_git().map_err(|error| error.to_string())?.version();
     let facts = mergewright_ops::facts::read_facts(&handle, git, stop, &FactsScope::default())
         .map_err(|error| error.explain())?;
-    let params = match mergewright_ops::rewrite::plan(&handle, &git, req, &facts, default_branch, stop) {
-        Ok(params) => params,
-        Err(RewriteError::Refused(refusal)) => return Ok(RewriteOpened::Refused(refusal)),
-        Err(RewriteError::Facts(error)) => return Err(error.explain()),
-        Err(RewriteError::Stopped) => return Err("stopped".to_owned()),
-    };
+    let params =
+        match mergewright_ops::rewrite::plan(&handle, &git, req, &facts, default_branch, stop) {
+            Ok(params) => params,
+            Err(RewriteError::Refused(refusal)) => return Ok(RewriteOpened::Refused(refusal)),
+            Err(RewriteError::Facts(error)) => return Err(error.explain()),
+            Err(RewriteError::Stopped) => return Err("stopped".to_owned()),
+        };
     let mut whole = HashMap::with_capacity(params.todo.len());
     for row in &params.todo {
         whole.insert(row.commit, message_of(&handle, row.commit)?);

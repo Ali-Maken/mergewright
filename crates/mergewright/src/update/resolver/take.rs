@@ -65,9 +65,10 @@ fn take_block(
     let (Some(block), Some(pending)) = (open.cursor_block, pending_file(open)) else {
         state.status = Status::Sticky {
             reason: "no conflict under the cursor".to_owned(),
-            keys: state
-                .keymap
-                .key_verb(&[mergewright_ui::keymap::ActionId("resolver.next_block")], "next"),
+            keys: state.keymap.key_verb(
+                &[mergewright_ui::keymap::ActionId("resolver.next_block")],
+                "next",
+            ),
         };
         return;
     };

@@ -34,7 +34,7 @@ pub fn spawn_reader(
     stamps: Option<Sender<Instant>>,
 ) -> io::Result<Forwarder> {
     let thread = thread::Builder::new()
-        .name("graft-input-forward".to_owned())
+        .name("mergewright-input-forward".to_owned())
         .spawn(move || {
             let mut stamps = stamps;
             for input in inputs {

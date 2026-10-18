@@ -127,8 +127,8 @@ pub(super) fn place_footer_states() -> Vec<(String, AppState)> {
 fn three_branch_map() -> crate::map::MapData {
     let mut data = two_branch_map();
     let mut third = data.branches[1].clone();
-    third.name =
-        mergewright_core::ref_name::RefName::new(b"refs/heads/b2".to_vec()).expect("a valid ref name");
+    third.name = mergewright_core::ref_name::RefName::new(b"refs/heads/b2".to_vec())
+        .expect("a valid ref name");
     third.identity = mergewright_graph::identity::BranchIdentity::of_name(b"b2");
     third.tip = Oid::from_bytes(&[3; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
     data.branches.push(third);

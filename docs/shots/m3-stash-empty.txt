@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_stash in crates/graft/src/view/tests.rs (asserted; regenerate
+# capture_m3_stash in crates/mergewright/src/view/tests.rs (asserted; regenerate
 # on purpose). `S` on a repository with no stashes.
 #
 # Judge by eye:

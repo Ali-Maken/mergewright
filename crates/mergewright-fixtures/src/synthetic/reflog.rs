@@ -235,7 +235,7 @@ fn write_log(path: &Path, tip: &str, values: &[String]) -> std::io::Result<()> {
     for (age, (old, new)) in records.iter().rev().enumerate() {
         let when = 1_700_000_000 + age;
         text.push_str(&format!(
-            "{old} {new} Mergewright Fixture <fixture@example.invalid> {when} +0000\tfixture: step {age}\n"
+            "{old} {new} Graft Fixture <fixture@example.invalid> {when} +0000\tfixture: step {age}\n"
         ));
     }
     std::fs::write(path, text)

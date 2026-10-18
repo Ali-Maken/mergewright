@@ -93,7 +93,10 @@ fn ancestry_highlight_and_focus_on_criss_cross() {
     }
 }
 
-fn draw(view: &mergewright_ui::graph_screen::GraphView<'_>, theme: &mergewright_ui::theme::Theme) -> Buffer {
+fn draw(
+    view: &mergewright_ui::graph_screen::GraphView<'_>,
+    theme: &mergewright_ui::theme::Theme,
+) -> Buffer {
     let mut terminal = Terminal::new(TestBackend::new(COLUMNS, ROWS)).expect("test backend");
     terminal
         .draw(|frame| frame.render_widget(GraphScreen::new(view, theme), frame.area()))

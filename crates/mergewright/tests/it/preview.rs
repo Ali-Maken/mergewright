@@ -353,10 +353,12 @@ fn m_again_merges_through_the_real_path() {
 
 /// The journal, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-        .expect("the journal the writes just made is readable")
-        .entries()
-        .to_vec()
+    mergewright_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the writes just made is readable")
+    .entries()
+    .to_vec()
 }
 
 /// Stages `name` from inside the changes pane and waits for the write and
@@ -366,7 +368,10 @@ fn stage(app: &App, state: AppState, name: &str) -> AppState {
     let state = app.key(&state, KeyCode::Char(' '));
     let state = app.settle_write(state, &format!("staging {name}"));
     app.pump(state, "the file list after the stage", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     })
 }
 
@@ -414,7 +419,10 @@ fn journal_at_the_oldest_row(app: &App, state: &AppState) -> AppState {
 fn planned_preview(app: &App, state: AppState) -> AppState {
     let state = app.pump(state, "the revert plan", |state| {
         state.preview.as_ref().is_some_and(|preview| {
-            !matches!(preview.plan, mergewright::update::detail::Loading::Pending(_))
+            !matches!(
+                preview.plan,
+                mergewright::update::detail::Loading::Pending(_)
+            )
         })
     });
     let plan = &state.preview.as_ref().expect("still open").plan;
@@ -695,9 +703,9 @@ fn on_branch(state: &AppState, name: &[u8]) -> bool {
     else {
         return false;
     };
-    refs.on(row.commit.id)
-        .iter()
-        .any(|label| matches!(label, mergewright::refs::RefLabel::Branch { name: it, .. } if it == name))
+    refs.on(row.commit.id).iter().any(
+        |label| matches!(label, mergewright::refs::RefLabel::Branch { name: it, .. } if it == name),
+    )
 }
 
 /// Scrolls to `old-release`'s row — well below the first screen — and
@@ -969,7 +977,7 @@ fn the_branch_badge_still_lands_on_the_newest_predicted_row() {
 fn no_user_facing_string_says_forecast() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut offenders = Vec::new();
-    for crate_name in ["graft/src", "mergewright-ui/src"] {
+    for crate_name in ["mergewright/src", "mergewright-ui/src"] {
         walk_rust(&root.join(crate_name), &mut |path, line_no, line| {
             for literal in string_literals(line) {
                 if literal.to_ascii_lowercase().contains("forecast") {
@@ -997,7 +1005,7 @@ fn no_user_facing_string_says_forecast() {
 fn no_user_facing_string_says_ghost() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut offenders = Vec::new();
-    for crate_name in ["graft/src", "mergewright-ui/src"] {
+    for crate_name in ["mergewright/src", "mergewright-ui/src"] {
         walk_rust(&root.join(crate_name), &mut |path, line_no, line| {
             for literal in string_literals(line) {
                 if literal.to_ascii_lowercase().contains("ghost") {

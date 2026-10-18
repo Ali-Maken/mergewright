@@ -31,9 +31,9 @@ fn git(dir: &Path, args: &[&str]) -> Output {
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_ATTR_NOSYSTEM", "1")
         .env("LC_ALL", "C")
-        .env("GIT_AUTHOR_NAME", "Mergewright Test")
+        .env("GIT_AUTHOR_NAME", "Graft Test")
         .env("GIT_AUTHOR_EMAIL", "test@example.invalid")
-        .env("GIT_COMMITTER_NAME", "Mergewright Test")
+        .env("GIT_COMMITTER_NAME", "Graft Test")
         .env("GIT_COMMITTER_EMAIL", "test@example.invalid")
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
@@ -41,7 +41,9 @@ fn git(dir: &Path, args: &[&str]) -> Output {
         .env_remove("GIT_COMMON_DIR")
         .env_remove("GIT_OBJECT_DIRECTORY")
         .output()
-        .unwrap_or_else(|why| panic!("running git (mergewright-git does not run without it): {why}"))
+        .unwrap_or_else(|why| {
+            panic!("running git (mergewright-git does not run without it): {why}")
+        })
 }
 
 /// [`git`], asserting success and returning stdout.

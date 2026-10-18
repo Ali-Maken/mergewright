@@ -136,7 +136,8 @@ pub(super) fn forecast_stash(
         // file was put back as committed before the stash). Name the staged
         // paths rather than an empty list (review 86, m1).
         stopped(stop)?;
-        let (paths, more) = mergewright_git::history_reads::changed_paths(repo, base, staged, PATHS_CAP)?;
+        let (paths, more) =
+            mergewright_git::history_reads::changed_paths(repo, base, staged, PATHS_CAP)?;
         WorktreeEffect::IndexOnly { paths, more }
     } else {
         WorktreeEffect::Updated { paths, more }

@@ -7,7 +7,7 @@
 # size** (so the viewport really is scrolled: `history.top` is 32 here,
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
-# real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
+# real `mergewright_ops::preview::plan` run (crates/mergewright/tests/it/preview.rs,
 # capture_scrolled_preview_for_docs_shots, asserted). Not a pty capture:
 # ratatui's TestBackend, a character grid with no colour attributes in it
 # — CLAUDE.md rule 5, colour ships unverified. The scratch repository's

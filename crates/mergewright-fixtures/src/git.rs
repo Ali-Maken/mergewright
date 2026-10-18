@@ -313,7 +313,7 @@ pub fn isolated(cwd: &Path, args: &[&str]) -> Command {
 }
 
 /// The name on every object plain `git` writes here.
-pub const IDENTITY_NAME: &str = "Mergewright Fixture";
+pub const IDENTITY_NAME: &str = "Graft Fixture";
 /// The address on every object plain `git` writes here.
 pub const IDENTITY_EMAIL: &str = "fixture@example.invalid";
 /// The clock every object plain `git` writes here is stamped with.

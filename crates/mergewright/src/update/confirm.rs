@@ -259,7 +259,10 @@ fn act(
                 if let Err(busy) = super::operate::launch(
                     next,
                     commands,
-                    Operation::RestartConflict(mergewright_ops::operation::RestartParams { path, kind }),
+                    Operation::RestartConflict(mergewright_ops::operation::RestartParams {
+                        path,
+                        kind,
+                    }),
                     next_id,
                 ) {
                     // Unreachable: the arm above takes a running write.

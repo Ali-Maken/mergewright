@@ -51,7 +51,8 @@ impl ResolverScreen<'_> {
         } else {
             finish.short.as_str()
         };
-        let style = if self.theme.color_depth() == mergewright_core::capabilities::ColorDepth::None {
+        let style = if self.theme.color_depth() == mergewright_core::capabilities::ColorDepth::None
+        {
             ratatui::style::Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD)
         } else {
             // `accent`, lifted to stay legible on the fill (ADR-0058 §3).

@@ -123,7 +123,10 @@ fn u_refused_during_an_operation() {
     for (kind, word) in [
         (mergewright_git::state::InProgress::Merge, "merge"),
         (mergewright_git::state::InProgress::Rebase, "rebase"),
-        (mergewright_git::state::InProgress::CherryPick, "cherry-pick"),
+        (
+            mergewright_git::state::InProgress::CherryPick,
+            "cherry-pick",
+        ),
         (mergewright_git::state::InProgress::Revert, "revert"),
     ] {
         let mut state = AppState {

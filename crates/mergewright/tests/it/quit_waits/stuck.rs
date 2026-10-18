@@ -107,10 +107,12 @@ pub(super) fn locks(dir: &Path) -> Vec<PathBuf> {
 }
 
 pub(super) fn entries(repo: &Path) -> Vec<JournalEntry> {
-    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-        .expect("the journal is readable")
-        .entries()
-        .to_vec()
+    mergewright_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal is readable")
+    .entries()
+    .to_vec()
 }
 
 /// `q y` → waiting; the clock calls the wait long; `q` → the stop box;
@@ -196,7 +198,13 @@ fn reap(pid: u32) {
 /// prints it: the binary's name, a fixed wait (the harness has no loop
 /// clock; the offer is injected), and undo as the default keymap spells it.
 pub(super) fn exit_line_for(forced: &Forced) -> String {
-    mergewright::update::quit::exit_line(mergewright::cli::COMMAND, &forced.what, OFFERED, forced.at, "u")
+    mergewright::update::quit::exit_line(
+        mergewright::cli::COMMAND,
+        &forced.what,
+        OFFERED,
+        forced.at,
+        "u",
+    )
 }
 
 /// The wait the exit lines here are worded with: the offer's 10 s.

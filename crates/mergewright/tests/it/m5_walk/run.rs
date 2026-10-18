@@ -560,7 +560,8 @@ impl Walk<'_> {
                 Ok(state)
             }
             Wait::Resolved => self.pump(state, "the resolved tree", |state| {
-                state.operating.is_none() && mergewright::update::banner::unmerged_paths(state).is_empty()
+                state.operating.is_none()
+                    && mergewright::update::banner::unmerged_paths(state).is_empty()
             }),
             Wait::FinishReady => self.pump(state, "the finish summary", |state| {
                 state.finish.as_ref().is_some_and(|open| open.job.is_none())

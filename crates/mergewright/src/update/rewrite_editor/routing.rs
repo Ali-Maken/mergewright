@@ -153,7 +153,9 @@ pub(crate) fn write_answered(state: &mut AppState, answer: &Operated) {
     } = answer
     {
         let op = match &editor.after {
-            After::Ready { asked, .. } => mergewright_ops::operation::Operation::Rewrite(asked.clone()),
+            After::Ready { asked, .. } => {
+                mergewright_ops::operation::Operation::Rewrite(asked.clone())
+            }
             _ => mergewright_ops::operation::Operation::Rewrite(editor.opened.clone()),
         };
         editor.notice = Some(words::status_words(

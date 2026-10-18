@@ -17,7 +17,7 @@ fn git(repo: &Path, args: &[&str]) -> String {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Mergewright Test",
+            "user.name=Graft Test",
             "-c",
             "user.email=test@example.invalid",
             "-c",

@@ -352,7 +352,12 @@ fn on_a_conflicts_row_the_pane_names_space_and_off_it_nothing() {
             vec![unmerged("a.rs"), unstaged_entry("b.rs")],
             cursor,
         );
-        let shape = live(InProgress::Rebase, Begun::InMergewright, &["a.rs"], Frame::Pane);
+        let shape = live(
+            InProgress::Rebase,
+            Begun::InMergewright,
+            &["a.rs"],
+            Frame::Pane,
+        );
         state.in_progress = shape.in_progress.clone();
         state.live_entries = shape.live_entries.clone();
         state.on_working_tree = true;
@@ -496,8 +501,12 @@ fn a_mid_operation_still_refuses_in_words_on_plain_data() {
             let tabs = crate::update::commit_editor::refusal_way(&state);
             assert_eq!(
                 after.status,
-                operation_refusal((kind, begun), tabs, mergewright_ui::keymap::Keymap::shipped())
-                    .status()
+                operation_refusal(
+                    (kind, begun),
+                    tabs,
+                    mergewright_ui::keymap::Keymap::shipped()
+                )
+                .status()
             );
         }
     }
@@ -513,8 +522,16 @@ fn the_bar_over_a_box_during_a_live_operation_is_the_box_s_own() {
     for (kind, begun) in TABLE {
         for frame in FRAMES {
             for (label, what, yes) in [
-                ("Abort", mergewright_ops::apply::Resume::Abort, ConfirmYes::Abort),
-                ("Skip", mergewright_ops::apply::Resume::Skip, ConfirmYes::Skip),
+                (
+                    "Abort",
+                    mergewright_ops::apply::Resume::Abort,
+                    ConfirmYes::Abort,
+                ),
+                (
+                    "Skip",
+                    mergewright_ops::apply::Resume::Skip,
+                    ConfirmYes::Skip,
+                ),
             ] {
                 let mut state = live(kind, begun, &["a.rs"], frame);
                 state.confirm = Some(crate::update::confirm::PendingConfirm {

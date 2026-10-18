@@ -121,7 +121,11 @@ pub enum Command {
     /// Read the Mistake Radar's default-branch context, under an id
     /// `update` chose: the default branch's tip and the branch itself, as
     /// `update` last knew them.
-    RadarContext(JobId, mergewright_core::oid::Oid, mergewright_core::ref_name::RefName),
+    RadarContext(
+        JobId,
+        mergewright_core::oid::Oid,
+        mergewright_core::ref_name::RefName,
+    ),
     /// Probe one merge for an evil resolution, under an id `update` chose.
     EvilProbe(JobId, mergewright_core::oid::Oid),
     /// Probe one branch's upstream for a rewrite, under an id `update`

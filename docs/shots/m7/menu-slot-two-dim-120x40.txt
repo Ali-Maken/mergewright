@@ -1,5 +1,5 @@
 # m7/menu-slot-two-dim-120x40.txt: drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/m7_walk/picker.rs, menu_slot_two_dim_on_head, asserted). Not a pty
+# (crates/mergewright/tests/it/m7_walk/picker.rs, menu_slot_two_dim_on_head, asserted). Not a pty
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).
 #

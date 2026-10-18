@@ -213,7 +213,8 @@ fn the_landing_puts_both_cursors_on_the_first_conflicted_file() {
     let state = app.pump(state, "the conflict set", |state| {
         mergewright::update::resolver::listed_files(state).len() == 3
     });
-    let first = mergewright::update::banner::first_conflicted(&state).expect("something is unmerged");
+    let first =
+        mergewright::update::banner::first_conflicted(&state).expect("something is unmerged");
     let open = state.resolver.as_ref().expect("the stop landed");
     assert_eq!(open.path, first);
     assert_eq!(open.cursor_block, Some(0), "the cursor is on block 0");
@@ -256,7 +257,10 @@ fn merge_stopped(app: &App, state: AppState) -> AppState {
     );
     let state = app.pump(state, "the merge preview's plan", |state| {
         state.preview.as_ref().is_some_and(|preview| {
-            !matches!(preview.plan, mergewright::update::detail::Loading::Pending(_))
+            !matches!(
+                preview.plan,
+                mergewright::update::detail::Loading::Pending(_)
+            )
         })
     });
     // The merge box has keys, not buttons (ease-pass 10): `y` runs it.
@@ -275,10 +279,12 @@ fn merge_stopped(app: &App, state: AppState) -> AppState {
 
 /// The journal on disk, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-        .expect("the journal the merge just wrote is readable")
-        .entries()
-        .to_vec()
+    mergewright_ops::journal::Journal::open(
+        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+    )
+    .expect("the journal the merge just wrote is readable")
+    .entries()
+    .to_vec()
 }
 
 /// What `update` alone answers for one key — the commands, not just the
@@ -302,7 +308,10 @@ pub(crate) fn open_changes_pane(app: &App, state: AppState) -> AppState {
     }
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the changes pane's file list", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
     // And the selected file's diff. The body draws `reading\u{2026}` while
     // **either** the list or the diff is still in flight
@@ -340,7 +349,10 @@ pub(crate) fn mark_resolved(app: &App, state: AppState, name: &str) -> AppState 
         !mergewright::update::banner::unmerged_paths(state)
             .iter()
             .any(|path| path.as_os_str() == name)
-            && matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+            && matches!(
+                state.detail.files,
+                mergewright::update::detail::Loading::Ready(_)
+            )
     })
 }
 
@@ -806,7 +818,10 @@ fn an_unmerged_file_draws_its_conflict_in_the_body() {
     let state = open_changes_pane(&app, state);
     let state = crate::app_harness::cursor_to(&app, state, "notes.md");
     let state = app.pump(state, "the conflicted file's diff", |state| {
-        matches!(state.detail.diff, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.diff,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     });
 
     match &state.detail.diff {
@@ -1038,7 +1053,10 @@ fn stop_line_reads(state: &AppState, reason: &str, keys: &[&str]) {
 fn landed(app: &App, state: AppState) -> AppState {
     let state = launched(app, state);
     app.pump(state, "the changes pane the relaunch opened", |state| {
-        matches!(state.detail.files, mergewright::update::detail::Loading::Ready(_))
+        matches!(
+            state.detail.files,
+            mergewright::update::detail::Loading::Ready(_)
+        )
     })
 }
 
@@ -1078,8 +1096,8 @@ fn relaunch_lands_on_the_conflict() {
         state.on_changes_pane(),
         "the pane is open on the working tree"
     );
-    let first =
-        mergewright::update::banner::first_conflicted(&state).expect("the rebase has conflicted files");
+    let first = mergewright::update::banner::first_conflicted(&state)
+        .expect("the rebase has conflicted files");
     // git's order is by path, so the fixture's first is not `both.txt`
     // (the ticket's guess) but the `UA` file that sorts ahead of it.
     assert_eq!(first, Path::new("added-by-them.txt"));
@@ -1116,7 +1134,11 @@ fn q_at_a_stop_quits_and_the_relaunch_offers_continue() {
 
     let (state, commands) =
         crate::app_harness::press_for_commands(&state, KeyPress::plain(KeyCode::Char('q')));
-    assert_eq!(state.quit, Some(mergewright::update::Quit::Requested), "quits");
+    assert_eq!(
+        state.quit,
+        Some(mergewright::update::Quit::Requested),
+        "quits"
+    );
     assert!(state.confirm.is_none(), "no box");
     assert!(commands.is_empty(), "nothing written: {commands:?}");
     drop(state);
@@ -1209,13 +1231,16 @@ fn interrupted_entry_without_live_state_is_still_closed() {
         ),
         other => panic!("the M3 recovery path must still close it: {other:?}"),
     }
-    let notice =
-        mergewright::update::undo::interrupted_notice(&state).expect("and the user is told about it");
+    let notice = mergewright::update::undo::interrupted_notice(&state)
+        .expect("and the user is told about it");
     assert!(notice.contains("an operation was interrupted"), "{notice}");
 
     let rows = mergewright::view::journal_view(&state, 2_000_000_000).rows;
     let row = rows.first().expect("the torn entry is the newest row");
-    assert_eq!(row.mark, mergewright_ui::journal_screen::RowMark::Interrupted);
+    assert_eq!(
+        row.mark,
+        mergewright_ui::journal_screen::RowMark::Interrupted
+    );
     assert!(
         row.summary.as_str().starts_with("interrupted"),
         "{}",

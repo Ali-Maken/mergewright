@@ -13,7 +13,10 @@ fn edited(state: &AppState, path: &str) -> bool {
 fn handed_back(state: &AppState, result: Result<(), String>) -> AppState {
     let (state, _rereads) = update(
         state,
-        AppEvent::Produced(mergewright_core::job::JobId::new(0), Product::HandedOver(result)),
+        AppEvent::Produced(
+            mergewright_core::job::JobId::new(0),
+            Product::HandedOver(result),
+        ),
     );
     state
 }

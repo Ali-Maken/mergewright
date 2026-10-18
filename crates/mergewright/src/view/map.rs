@@ -136,8 +136,10 @@ mod tests {
         MapBranch {
             name: RefName::new(format!("refs/heads/{name}")).expect("a valid ref name"),
             identity: mergewright_graph::identity::BranchIdentity::of_name(&[identity]),
-            tip: mergewright_core::oid::Oid::from_bytes(&[identity; mergewright_core::oid::Oid::SHA1_BYTES])
-                .expect("20 bytes is a valid oid length"),
+            tip: mergewright_core::oid::Oid::from_bytes(
+                &[identity; mergewright_core::oid::Oid::SHA1_BYTES],
+            )
+            .expect("20 bytes is a valid oid length"),
             tip_date: 0,
             counts: vec![0, 1, 3],
             is_current,
