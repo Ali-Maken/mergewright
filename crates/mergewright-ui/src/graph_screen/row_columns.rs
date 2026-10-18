@@ -1,44 +1,59 @@
-//! Where the row columns stand — marker, graph, subject, author, date, SHA
-//! — and how a box snaps onto them; split out of `layout` for size
-//! (ease-pass/08s M6).
+//! Where the row columns stand — marker, branch, message, who, age — and
+//! how a box snaps onto them; split out of `layout` for size
+//! (ease-pass/08s M6). The columns are the main mock's (ease-pass G5, G8):
+//! `graph | branch | message | who | age`, no SHA and no author chip.
 
 use ratatui::layout::Rect;
 
 use super::{
-    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, GUTTER, MARKER_WIDTH, RIGHT_MARGIN, SHA_WIDTH, SUBJECT_GAP,
-    WHEN_WIDTH,
+    AGE_WIDTH, BRANCH_MIDDLE, BRANCH_NARROW, BRANCH_WIDE, COLUMN_GAP, GUTTER, MARKER_WIDTH,
+    RIGHT_MARGIN, WHO_WIDTH,
 };
 
-/// Where each trailing column sits and how wide it is, once the graph and
-/// the subject have taken their share.
+/// Where each column sits and how wide it is, once the graph has taken its
+/// share.
 ///
-/// Computed right to left from `area.right()`, each column clamped by
-/// `min`/`saturating_sub` against what is left: at any width, down to zero,
-/// a column simply stops taking space rather than the arithmetic
-/// underflowing. The author chip is the one column that can drop entirely,
-/// below [`AUTHOR_BREAKPOINT`] (DESIGN.md §1.2/§1.3); the rest only narrow.
+/// Computed outward from the marker slot and inward from `area.right()`,
+/// each column clamped against what is left: at any width, down to zero, a
+/// column simply stops taking space rather than the arithmetic underflowing.
+/// The message is the elastic one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Columns {
     /// Where the Mistake Radar's marker slot starts.
     pub marker_x: u16,
     /// Its width; always reserved, whether or not a marker draws.
     pub marker_width: u16,
-    /// Where the subject column starts — and so where the row's badges do.
+    /// Where the branch column starts.
+    pub branch_x: u16,
+    /// Its width: [`branch_width_for`] the row's whole width, never more
+    /// than half of what the graph and the trailing columns left.
+    pub branch_width: u16,
+    /// Where the message column starts; the fold tail, the row tag and the
+    /// labels follow the message inside it.
     pub subject_x: u16,
-    /// Its width, badges included.
+    /// Its width, fold tail, tag and labels included.
     pub subject_width: u16,
-    /// Where the author chip starts.
-    pub author_x: u16,
-    /// Its width; `0` below [`AUTHOR_BREAKPOINT`], the one column that drops.
-    pub author_width: u16,
-    /// Where the relative-date column starts.
+    /// Where the who column starts.
+    pub who_x: u16,
+    /// Its width.
+    pub who_width: u16,
+    /// Where the age column starts.
     pub when_x: u16,
     /// Its width.
     pub when_width: u16,
-    /// Where the short-SHA column starts.
-    pub sha_x: u16,
-    /// Its width.
-    pub sha_width: u16,
+}
+
+/// The branch column's width for a row `full` cells wide, gutter and margin
+/// included: 20 from 120, 14 from 100, 12 below (ease-pass New UI).
+#[must_use]
+pub fn branch_width_for(full: u16) -> u16 {
+    if full >= 120 {
+        BRANCH_WIDE
+    } else if full >= 100 {
+        BRANCH_MIDDLE
+    } else {
+        BRANCH_NARROW
+    }
 }
 
 impl Columns {
@@ -54,69 +69,55 @@ impl Columns {
         let marker_width = MARKER_WIDTH.min(area.width.saturating_sub(graph_width));
         let content_x = marker_x + marker_width;
 
-        // Right to left: the rightmost column claims space first, so a
-        // narrow terminal drops the leftmost of these (the author chip)
-        // before it ever eats into the SHA or the date.
+        // Right to left: age, a gap, who, a gap — the message ends there.
         let mut right = area.right();
-        let sha_width = SHA_WIDTH.min(right.saturating_sub(content_x));
-        right -= sha_width;
-        let sha_x = right;
-
-        let when_width = WHEN_WIDTH.min(right.saturating_sub(content_x));
+        let when_width = AGE_WIDTH.min(right.saturating_sub(content_x));
         right -= when_width;
         let when_x = right;
+        right -= COLUMN_GAP.min(right.saturating_sub(content_x));
+        let who_width = WHO_WIDTH.min(right.saturating_sub(content_x));
+        right -= who_width;
+        let who_x = right;
+        right -= COLUMN_GAP.min(right.saturating_sub(content_x));
 
-        // The breakpoint is the row's whole width (DESIGN.md §1.2/§1.3);
-        // `area` is the body, inside the gutter and the margin.
-        let show_author = area.width + GUTTER + RIGHT_MARGIN >= AUTHOR_BREAKPOINT;
-        let author_width = if show_author {
-            AUTHOR_WIDTH.min(right.saturating_sub(content_x))
-        } else {
-            0
-        };
-        right -= author_width;
-        let author_x = right;
-
-        let gap_width = if sha_width + when_width + author_width > 0 {
-            SUBJECT_GAP.min(right.saturating_sub(content_x))
-        } else {
-            0
-        };
-        right -= gap_width;
+        // The branch column takes its width from the left, never more than
+        // half of what is left: the message says what the row is.
+        let left = right.saturating_sub(content_x);
+        let branch_width = branch_width_for(area.width + GUTTER + RIGHT_MARGIN).min(left / 2);
+        let branch_gap = if branch_width > 0 { COLUMN_GAP } else { 0 };
+        let subject_x = content_x + branch_width + branch_gap;
 
         Columns {
             marker_x,
             marker_width,
-            subject_x: content_x,
-            subject_width: right.saturating_sub(content_x),
-            author_x,
-            author_width,
+            branch_x: content_x,
+            branch_width,
+            subject_x,
+            subject_width: right.saturating_sub(subject_x),
+            who_x,
+            who_width,
             when_x,
             when_width,
-            sha_x,
-            sha_width,
         }
     }
 
     /// Every x where one column ends and the next begins, ascending and
     /// deduped, with `area`'s own edges at each end.
     ///
-    /// The trailing columns are laid out contiguously right to left, so one
-    /// column's end is the next one's start and naming the starts is enough;
-    /// the subject's end is named separately because [`SUBJECT_GAP`] sits
-    /// between it and the author chip, and that gap is a region of its own
-    /// that an overlay may legitimately stop inside. A column that took no
-    /// width (the author chip below [`AUTHOR_BREAKPOINT`]) contributes a
+    /// Each column's **start** is named, never its end: every start has a
+    /// blank before it (the gap, or the marker slot's spare cell), which
+    /// [`snap_to_columns`] needs on both sides of a box, while a column's
+    /// last cell may hold text — who is right-aligned, labels run to the
+    /// message column's edge. A column that took no width contributes a
     /// boundary equal to its neighbour's and the dedup drops it.
     pub(super) fn boundaries(&self, area: Rect) -> Vec<u16> {
         let mut xs = vec![
             area.x,
             self.marker_x,
+            self.branch_x,
             self.subject_x,
-            self.subject_x.saturating_add(self.subject_width),
-            self.author_x,
+            self.who_x,
             self.when_x,
-            self.sha_x,
             area.right(),
         ];
         xs.retain(|x| *x >= area.x && *x <= area.right());

@@ -15,12 +15,12 @@
 === 187x50 ===
  ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-▸ ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32
-  ┃ ●    [feature] the feature's take                                                                                                                                      GF 2h   f43f326
-  ●┄╯    the shared files                                                                                                                                                  GF 2h   b35b2f1
-  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
-  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
-  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
+▸ ◆      main (you)           main's take  not pushed yet                                                                                                                       Graft   2h
+  ┃ ●    feature              the feature's take  not pushed yet                                                                                                                Graft   2h
+  ●┄╯    main (you)           the shared files                                                                                                                                  Graft   2h
+  ●                           Correct the note                                                                                                                                  Graft   1y
+  ●                           Add the first note                                                                                                                                Graft   1y
+  ◇                           Add a readme                                                                                                                                      Graft   1y
 
 
 
@@ -66,13 +66,13 @@
 --- frame 2 ---
  ◆ api  ~/code/api · main                                                         merging feature into main  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
-▸ ◌      Uncommitted changes (2 staged)
-  ◆      [◆ main] main's take                                                               GF 2h   ddeed32
-  ┃ ●    [feature] the feature's take                                                       GF 2h   f43f326
-  ●┄╯    the shared files                                                                   GF 2h   b35b2f1  STAGED (2)
-  ●      Correct the note                                                                   GF 1y   a82960b    M notes.md                                                             +1 −1
-  ●      Add the first note                                                                 GF 1y   fadcfb3    M shared.rs                                                            +1 −1
-  ◇      Add a readme                                                                       GF 1y   64ded19  ▎
+▸ ◌                     Uncommitted changes (2 staged)
+  ◆      main (you)     main's take  not pushed yet                                                you   2h
+  ┃ ●    feature        the feature's take  not pushed yet                                         you   2h
+  ●┄╯    main (you)     the shared files                                                           you   2h  STAGED (2)
+  ●                     Correct the note                                                           you   1y    M notes.md                                                             +1 −1
+  ●                     Add the first note                                                         you   1y    M shared.rs                                                            +1 −1
+  ◇                     Add a readme                                                               you   1y  ▎
                                                                                                                1     - our plan
                                                                                                                    1 + the agreed plan
 

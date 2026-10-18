@@ -13,6 +13,7 @@ use std::path::Path;
 use mergewright_core::on_disk::Generation;
 
 use crate::pty::{Isolated, Pty, Screen};
+use crate::row_reads::{on_tip, tip_reads};
 
 const SIZE: (u16, u16) = (120, 30);
 
@@ -131,8 +132,7 @@ fn stage_and_commit(pty: &mut Pty, left: usize, message: &str) {
     pty.wait_for("the commit editor", |s| s.has("more detail"));
     pty.send(message.as_bytes());
     pty.send(b"\r");
-    let tip = format!("main] {message}");
-    pty.wait_for(&format!("{message} the tip of main"), |s| s.has(&tip));
+    pty.wait_for(&format!("{message} the tip of main"), on_tip(message));
 }
 
 /// This process's wall clock in milliseconds: the bounds a run's journal
@@ -233,7 +233,7 @@ fn u_undoes_the_newest_under_a_pinned_drawn_clock() {
 
     pty.send(b"u");
     pty.wait_for("the second commit undone", |s| {
-        s.has("main] First pinned") && !s.has("main] Second pinned")
+        tip_reads(s, "First pinned") && !tip_reads(s, "Second pinned")
     });
     let head = git_out(repo, &["log", "-1", "--format=%s"]);
     assert_eq!(head.trim(), "First pinned");
@@ -276,7 +276,7 @@ fn open_with_clock_pins_the_drawn_frame() {
         let state = app.pump(state, "a commit row with its age", |state| {
             crate::captures::frame(state, 120, 40)
                 .iter()
-                .any(|line| line.contains("main]"))
+                .any(|line| line.contains("main (you)"))
         });
         let state = crate::captures::settled_frame(&app, state);
         let frame = crate::captures::frame(&state, 120, 40);
@@ -334,11 +334,11 @@ fn an_in_app_commit_under_the_default_pin_draws_an_age() {
     pty.wait_for("the commit editor", |s| s.has("more detail"));
     pty.send(b"Made in the app");
     pty.send(b"\r");
-    let screen = pty.wait_for("the new commit's row", |s| s.has("main] Made in the app"));
+    let screen = pty.wait_for("the new commit's row", on_tip("Made in the app"));
     let row = screen
         .lines()
         .iter()
-        .find(|l| l.contains("main] Made in the app"))
+        .find(|l| l.contains("main (you)") && l.contains("Made in the app"))
         .cloned()
         .expect("the row was waited for");
     assert!(

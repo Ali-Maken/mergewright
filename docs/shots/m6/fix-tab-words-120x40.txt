@@ -1,10 +1,10 @@
 --- frame 1: files focused: the bar ends `⇥ diff`
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-▸ ◌      Uncommitted changes (13 unmerged)
-  ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
-  ┃ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
-  ◇┄╯    Add the files both sides will change                                                           GF 1y   9571fc9
+▸ ◌                           Uncommitted changes (13 unmerged)
+  ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
+  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
+  ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
 
 
 
@@ -42,10 +42,10 @@ CONFLICTS (13)                ▎
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-▸ ◌      Uncommitted changes (13 unmerged)
-  ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
-  ┃ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
-  ◇┄╯    Add the files both sides will change                                                           GF 1y   9571fc9
+▸ ◌                           Uncommitted changes (13 unmerged)
+  ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
+  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
+  ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
 
 
 
@@ -83,10 +83,10 @@ CONFLICTS (13)                ▎
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-▸ ◌      Uncommitted changes (13 unmerged)
-  ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
-  ┃ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
-  ◇┄╯    Add the files both sides will change                                                           GF 1y   9571fc9
+▸ ◌                           Uncommitted changes (13 unmerged)
+  ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
+  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
+  ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
 
 
 
@@ -124,10 +124,10 @@ CONFLICTS (13)                ▎
 --- frame 4: a second `⇥`: the banner has the keyboard
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
-▸ ◌      Uncommitted changes (13 unmerged)
-  ◆    ⓘ [HEAD] [main] Change every file on main                                                        GF 2h   274c7d4
-  ┃ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
-  ◇┄╯    Add the files both sides will change                                                           GF 1y   9571fc9
+▸ ◌                           Uncommitted changes (13 unmerged)
+  ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
+  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
+  ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
 
 
 
@@ -165,10 +165,10 @@ CONFLICTS (13)                ▎
 --- frame 5: a merge stop, the banner focused: `c finish`, not `c continue`
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
-▸ ◌      Uncommitted changes (13 unmerged)
-  ◆      [◆ main] Change every file on main                                                             GF 2h   274c7d4
-  ┃ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
-  ◇┄╯    Add the files both sides will change                                                           GF 1y   9571fc9
+▸ ◌                           Uncommitted changes (13 unmerged)
+  ◆      main (you)           Change every file on main  not pushed yet                                      Graft   2h
+  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
+  ◇┄╯    main (you)           Add the files both sides will change                                           Graft   1y
 
 
 
@@ -206,10 +206,10 @@ CONFLICTS (13)                ▎
 --- frame 6: an untracked `new.txt`: the row reads `new`, not `bin` (its body is n1's open half)
  ◆ api  ~/code/api · main                                                                                     3 commits
 
-▸ ◌    Uncommitted changes (1 untracked)
-  ◆    [◆ main] Correct the note                                                                        GF 1y   a82960b
-  ●    Add the first note                                                                               GF 1y   fadcfb3
-  ◇    Add a readme                                                                                     GF 1y   64ded19
+▸ ◌                         Uncommitted changes (1 untracked)
+  ◆    main (you)           Correct the note  not pushed yet                                                 Graft   1y
+  ●                         Add the first note                                                               Graft   1y
+  ◇                         Add a readme                                                                     Graft   1y
 
 
 

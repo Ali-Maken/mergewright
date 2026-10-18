@@ -366,8 +366,8 @@ fn subject_enter_header(columns: u16, rows: u16) -> String {
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_fix_subject_enter_commits in
 # crates/mergewright/tests/it/commit_editor_writes.rs (asserted; the commit is
-# made by real git; its id and its parent's, both made by the run and new
-# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
+# made by real git; the rows draw no id since ease-pass 07, so none is
+# zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
 # with the subject focused (m6-conflicts/51).
 #
 # Judge by eye:
@@ -390,7 +390,8 @@ fn subject_enter_header(columns: u16, rows: u16) -> String {
 fn graph_shows_the_commit(app: &App, state: AppState) -> AppState {
     app.pump(state, "the graph to show the commit", |state| {
         let rows = crate::captures::frame(state, 120, 40);
-        rows.iter().any(|row| row.contains("[◆ main] fix: x"))
+        rows.iter()
+            .any(|row| row.contains("main (you)") && row.contains("fix: x"))
             && !rows.iter().any(|row| {
                 row.contains("Uncommitted changes")
                     || row.contains("reading\u{2026}")
@@ -433,8 +434,6 @@ fn capture_fix_subject_enter_commits() {
         landed.status
     );
     let landed = graph_shows_the_commit(&app, landed);
-    // Both ids are the run's own: the root commit and this one are made now.
-    let made = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
 
     let mut captures = mergewright_fixtures::Captures::new();
     for (columns, rows) in [(120_u16, 40_u16), (80, 24)] {
@@ -458,10 +457,7 @@ fn capture_fix_subject_enter_commits() {
                 "{}/../../docs/shots/m6/fix-subject-enter-commits-{columns}x{rows}.txt",
                 env!("CARGO_MANIFEST_DIR")
             ),
-            crate::captures::without_invented_id(
-                &crate::captures::without_invented_id(&body, &made),
-                &parent,
-            ),
+            body,
         );
     }
     app.close();

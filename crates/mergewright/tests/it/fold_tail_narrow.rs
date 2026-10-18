@@ -37,9 +37,9 @@ fn merge_row(frame: &[String]) -> &str {
 
 /// The widest terminal at which the PR's tail no longer fits whole. At 80
 /// it does: the subject yields first, down to one cell (measured
-/// 2026-10-18: whole at 51 and 57 to 80, `▸ 4 commits` from 43 to 50, `▸`
-/// from 33 to 36).
-const NARROW: u16 = 50;
+/// 2026-10-19, after the branch, who and age columns of ease-pass 07: whole
+/// from 63, `▸ 4 commits` from 49 to 62, `▸` at 48).
+const NARROW: u16 = 62;
 
 /// The capture: `wallet_release` at [`NARROW`] columns, the PR's tail
 /// shortened to `▸ 4 commits` once the counts land; a column wider, whole.

@@ -143,8 +143,9 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `role_token` (fn) — the `Role*` colour token a `LaneRole` draws in.
 
 ## graph_screen
-- `SHA_WIDTH` (const) — 7: cells the short-SHA column takes.
-- `AUTHOR_BREAKPOINT` (const) — 100: below this width the author chip drops.
+- `SHA_WIDTH` (const) — 7: a short SHA's cells (the row no longer draws one, ease-pass G7).
+- `BRANCH_WIDE`, `BRANCH_MIDDLE`, `BRANCH_NARROW` (consts) — 20, 14, 12: the branch column at ≥120, ≥100, below.
+- `WHO_WIDTH`, `AGE_WIDTH` (consts) — 6, 4: the right-aligned who and age columns.
 - `CHROME_ROWS`, `SPACED_FROM_ROWS` (consts) — 2 non-graph rows under 30 rows; from 30 rows the chrome is spaced.
 - `spaced`, `chrome_rows` (fns) — `(rows)`: whether the blank row and rule show; non-graph rows (2, or 4 spaced).
 - `GUTTER`, `RIGHT_MARGIN` (consts) — 2 cells left of every list row (cursor slot + gap), 1 right.
@@ -156,12 +157,13 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`, `every_branch` (graph mode, said by the lane phrases, not `text`); `Filters::text(keys)` is the header's words.
 - `Compaction` (struct, from `compaction.rs`) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept; planned with no cap while expanded, so node-less columns drop either way.
 - `LaneTally` (struct, from `header_tail.rs`) — `drawn` N, `open` M, `folded_in_view` K; `LaneTally::of(fold, window)`: the top line's `lanes drawn: N of M · K merged branches folded`, counted at render.
-- `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `author`, `when`, `sha`, `compare_marked`, `marker`, `tag`, `fold`.
+- `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `branch`, `who`, `dim_message`, `when`, `compare_marked`, `marker`, `tag`, `fold`.
 - `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`).
 - `FoldCount` (enum) — `Pending`, `Known(n)`, `Failed`: the tail's count, none until it lands, `?` if it failed.
 - `RowTag` (enum) — `Changed`: a row's tag after its subject; `RowTag::words(ascii)` per tier.
 - `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a tag leaves.
-- `AuthorChip` (struct) — `initials` and the `identity` that colours them.
+- `BranchCell` (struct) — `name`, `role`, `you`, `dim`: the branch column; role-coloured, bold unless Other, ` (you)` on HEAD's.
+- `WhoCell` (struct) — `name`, `own`: the who column; `you`, bold, on the user's own commits.
 - `OrderNotice` (enum) — `Sorting` / `Provisional`: the header's word on row order.
 - `WalkView` (enum) — opening, reading, jumping, paused, complete, cancelled: where the history walk is.
 - `GraphScreen` (struct, `Widget`) — the graph screen; `GraphScreen::new(view, theme)`.
@@ -180,11 +182,13 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `screen_rows` (fn) — `(view, area) -> ScreenRows`; also `GraphScreen::screen_rows(area)`.
 - `GraphScreen::graph_area`, `GraphScreen::column_boundaries` (fns) — where the graph column lands; every x where a row column ends.
 - `RowLayout` (struct), `row_layout` (fn) — `body` rect and resolved `Columns` for a frame.
-- `Columns` (struct) — where each trailing column of a row sits and how wide it is.
+- `Columns` (struct, from `row_columns.rs`) — marker, branch, message (`subject_*`), who and age: where each sits and how wide.
+- `branch_width_for` (fn) — `(full width) -> u16`: 20 / 14 / 12.
 - `row_at` (fn) — `(view, area, screen_row) -> Option<(&GraphEntry, Columns)>`: the entry drawn at a screen row.
 - `lanes_that_fit`, `max_lanes_for` (fns) — the most lane columns a width holds; the frame's lane cap (configured, else by width).
 - `snap_to_columns` (fn) — `(rect, boundaries, bounds) -> Option<Rect>`: grows `rect` so both edges sit on column boundaries.
-- `badge_spans` (fn, from `render.rs`) — the screen columns each of a row's badges occupies, as drawn.
+- `ref_spans` (fn, from `row_text.rs`) — `(entry, columns, icons, keys, ascii)`: the cells of each label and of the branch column's name, with the badge each names; what a drag picks up.
+- `label_words` (fn) — `(badge, icons, keys, in_column) -> Option<String>`: a ref's label (`main is here  ↑2 to push`, `tag v1.2`).
 - `badges_that_fit` (fn) — `columns / 2 + 1`: the most badges a row can draw.
 - Re-exports here: `badges` and `columns` items below, and the `hints` items the footer uses.
 
@@ -196,7 +200,8 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `separator` (fn) — what goes between two badges in an icon set.
 
 ## graph_screen::columns
-- `initials` (fn) — two letters standing in for a name, for the author chip.
+- `initials` (fn) — two letters standing in for a name.
+- `first_name` (fn) — a name's first word, for the who column.
 - `relative_date`, `relative_date_long` (fns) — `(then, now)`: `"2m"`, `"3h"`…; the same spelled for a sentence.
 - `absolute_date` (fn) — a commit's date in its own offset, `"2026-09-13 14:02 +0500"`.
 - `short_sha` (fn) — the first N hex characters of an object id.

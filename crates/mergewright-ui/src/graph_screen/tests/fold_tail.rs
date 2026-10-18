@@ -207,15 +207,6 @@ fn form_of(rest: &str, columns: u16) -> (Form, &'static str) {
 fn narrowing_the_terminal_sheds_the_tail_before_dropping_it() {
     let mut long = linear(2);
     long[0].commit.message = b"Qa subject far wider than any row the sweep below draws".to_vec();
-    let wide = text(&draw(
-        &view(&long, WalkView::Complete { rows: 2 }, 1),
-        120,
-        5,
-    ));
-    let start = wide[1]
-        .chars()
-        .position(|cell| cell == 'Q')
-        .expect("the subject");
     let mut seen = Vec::new();
     for columns in (24..=120).rev() {
         let mut folded = view(&long, WalkView::Complete { rows: 2 }, 1);
@@ -225,6 +216,12 @@ fn narrowing_the_terminal_sheds_the_tail_before_dropping_it() {
             seen.push(Form::Gone);
             continue;
         };
+        // The message starts after the branch column, whose width moves
+        // with the terminal's (ease-pass G5); a one-cell subject is its `…`.
+        let start = line
+            .iter()
+            .position(|&cell| cell == 'Q' || cell == '\u{2026}')
+            .unwrap_or_else(|| panic!("a tail with no subject at {columns}: {line:?}"));
         let (form, drawn) = form_of(&line[arrow..].iter().collect::<String>(), columns);
         assert_eq!(line[arrow - 2..arrow], [' ', ' '], "the gap at {columns}");
         assert_ne!(line[arrow - 3], ' ', "one gap, two cells, at {columns}");

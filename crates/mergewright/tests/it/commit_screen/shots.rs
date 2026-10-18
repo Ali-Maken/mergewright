@@ -67,7 +67,7 @@ const SHOTS: [(&str, &str, u16, u16); 9] = [
     ),
     (
         "commit-landed",
-        "after `⏎`: the graph, the cursor on `fix toc`; the second-last row is the done line `✓ Committed 3 files to main.  u undo · P push`, tick first; the last row is the bar: `. explain` first (the new commit carries a radar `ⓘ`), then `u undo the commit, your edits come back · P push · c commit`, `c commit again` at its short rung to make room; the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out. Ids zeroed (made by the run).",
+        "after `⏎`: the graph, the cursor on `fix toc`; the second-last row is the done line `✓ Committed 3 files to main.  u undo · P push`, tick first; the last row is the bar: `. explain` first (the new commit carries a radar `ⓘ`), then `u undo the commit, your edits come back · P push · c commit`, `c commit again` at its short rung to make room; the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out.",
         120,
         40,
     ),
@@ -195,10 +195,7 @@ fn capture_the_commit_screen() {
     let (mut states, head) = screens();
     let (_partial_scratch, partial) = partly_staged();
     states.push(partial);
-    let (landed_scratch, committed) = committed();
-    let landed_repo = landed_scratch.path();
-    let made = git(landed_repo, &["rev-parse", "HEAD"]).trim().to_owned();
-    let parent = git(landed_repo, &["rev-parse", "HEAD~1"]).trim().to_owned();
+    let (_landed_scratch, committed) = committed();
     states.push(committed);
     assert_eq!(states.len(), SHOTS.len(), "one state per capture");
 
@@ -217,10 +214,10 @@ fn capture_the_commit_screen() {
              === {columns}x{rows} ===\n{}\n",
             frame.join("\n")
         );
-        // Only the amend and the landing show ids: the ones their runs made.
+        // Only the amend's header shows an id the run made: rows draw none
+        // since ease-pass 07.
         let made_by_the_run: &[&str] = match name {
             "commit-amend-from-c" => &[&head],
-            "commit-landed" => &[&made, &parent],
             _ => &[],
         };
         let body = made_by_the_run.iter().fold(body, |body, id| {

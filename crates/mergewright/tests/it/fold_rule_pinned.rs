@@ -62,7 +62,8 @@ fn a_teammates_merged_branch_folds_and_its_tail_names_it() {
     let state = app.pump(state, "the merge's tail", |state| {
         drawn(state)
             .iter()
-            .any(|line| line.contains(OMAR_MERGE) && line.contains(tail))
+            // The tail names the merge; its subject may yield to the labels.
+            .any(|line| line.contains(tail))
     });
     let frame = drawn(&state);
     for hidden in OMAR_COMMITS {

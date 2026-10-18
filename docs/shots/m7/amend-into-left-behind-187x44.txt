@@ -1,15 +1,15 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   5 commits
 
-    ●        b1                                                                                                                                                            GF 2d   f81a2f8
-    │ ●      feature a: part 3                                                                                                                                             GF 2d   89f73ff
-    │ ●      feature a: part 2                                                                                                                                             GF 2d   c59a559
-▸   ●─╯      feature a: part 1                                                                                                                                             GF 2d   e662b82
-    │        the result
-    │ ○      [feature-b] b1                                                                                                                                                GF —    —
-    │ │ ○    [◆ feature-a] feature a: part 3                                                                                                                               GF —    —
-    │ │ ○    feature a: part 2                                                                                                                                             GF —    —
-    │ ○┈╯    feature a: part 1                                                                                                                                             GF —    —
-  ◇─┴─╯      [main] m1                                                                                                                                                     GF 2d   fb4d697
+    ●                             b1                                                                                                                                            Graft   2d
+    │ ●                           feature a: part 3                                                                                                                             Graft   2d
+    │ ●                           feature a: part 2                                                                                                                             Graft   2d
+▸   ●─╯                           feature a: part 1                                                                                                                             Graft   2d
+    │                             the result
+    │ ○                           b1  feature-b is here  not pushed yet                                                                                                         Graft    —
+    │ │ ○                         feature a: part 3  feature-a is here  not pushed yet                                                                                          Graft    —
+    │ │ ○                         feature a: part 2                                                                                                                             Graft    —
+    │ ○┈╯                         feature a: part 1                                                                                                                             Graft    —
+  ◇─┴─╯                           m1  main is here  not pushed yet                                                                                                              Graft   2d
 
 
 

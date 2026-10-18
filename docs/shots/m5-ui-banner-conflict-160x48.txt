@@ -70,43 +70,43 @@
 
  ◆ api  ~/code/api · main                                         merging feature into main  UNCOMMITTED
                                                                                              diff vs HEAD 80393eb
-▸ ◌      Uncommitted changes (16 unmerged)
-  ◆      [◆ main] main's take                                                  87m  80393eb
-  ┃ ●    [feature] the feature's take                                          88m  38c48dd
-  ●┄╯    the shared files                                                      89m  58854e9  CONFLICTS (16)
-  ●      Ship release 29                                                       2h   b796998    notes.md                                            both modified
-  ●      Ship release 28                                                       2h   8b1f759    shared.rs                                           both modified
-  ●      Ship release 27                                                       2h   0e2c4ab    ▾ src/
-  ●      Ship release 26                                                       2h   e478821      step_00.rs                                        both modified
-  ●      Ship release 25                                                       2h   4f73502      step_01.rs                                        both modified
-  ●      Ship release 24                                                       2h   dbaccce      step_02.rs                                        both modified
-  ●      Ship release 23                                                       2h   fcfad85      step_03.rs                                        both modified
-  ●      Ship release 22                                                       2h   2b22a7d      step_04.rs                                        both modified
-  ●      Ship release 21                                                       2h   f18afe9      step_05.rs                                        both modified
-  ●      Ship release 20                                                       2h   8afb691      step_06.rs                                        both modified
-  ●      Ship release 19                                                       2h   3c4da4b      step_07.rs                                        both modified
-  ●      Ship release 18                                                       2h   56aee62      step_08.rs                                        both modified
-  ●      Ship release 17                                                       2h   16ea802      step_09.rs                                        both modified
-  ●      Ship release 16                                                       2h   9e9dfd0      step_10.rs                                        both modified
-  ●      Ship release 15                                                       2h   a840fd9      step_11.rs                                        both modified
-  ●      Ship release 14                                                       2h   0f8d5d6      step_12.rs                                        both modified
-  ●      Ship release 13                                                       2h   78ddfac  ▎
-  ●      Ship release 12                                                       2h   9bedacc        1 + <<<<<<< HEAD
-  ●      Ship release 11                                                       2h   e3bce29    1   2   our plan
-  ●      Ship release 10                                                       2h   185dcc3        3 + =======
-  ●      Ship release 9                                                        2h   f374c8f        4 + their plan
-  ●      Ship release 8                                                        2h   10e2d5c        5 + >>>>>>> feature
-  ●      Ship release 7                                                        2h   d6ce0bf
-  ●      Ship release 6                                                        2h   4dd324d
-  ●      Ship release 5                                                        2h   00219d3
-  ●      Ship release 4                                                        2h   e8f4fb9
-  ●      Ship release 3                                                        2h   9bb4121
-  ●      Ship release 2                                                        2h   dd893e6
-  ●      Ship release 1                                                        2h   589a12f
-  ●      Ship release 0                                                        2h   c759852
-  ●      Correct the note                                                      1y   a82960b
-  ●      Add the first note                                                    1y   fadcfb3
-  ◇      Add a readme                                                          1y   64ded19
+▸ ◌                   Uncommitted changes (16 unmerged)
+  ◆      main (you)   main's take  not pushed yet                                Graft  87m
+  ┃ ●    feature      the feature's take  not pushed yet                         Graft  88m
+  ●┄╯    main (you)   the shared files                                           Graft  89m  CONFLICTS (16)
+  ●                   Ship release 29                                            Graft   2h    notes.md                                            both modified
+  ●                   Ship release 28                                            Graft   2h    shared.rs                                           both modified
+  ●                   Ship release 27                                            Graft   2h    ▾ src/
+  ●                   Ship release 26                                            Graft   2h      step_00.rs                                        both modified
+  ●                   Ship release 25                                            Graft   2h      step_01.rs                                        both modified
+  ●                   Ship release 24                                            Graft   2h      step_02.rs                                        both modified
+  ●                   Ship release 23                                            Graft   2h      step_03.rs                                        both modified
+  ●                   Ship release 22                                            Graft   2h      step_04.rs                                        both modified
+  ●                   Ship release 21                                            Graft   2h      step_05.rs                                        both modified
+  ●                   Ship release 20                                            Graft   2h      step_06.rs                                        both modified
+  ●                   Ship release 19                                            Graft   2h      step_07.rs                                        both modified
+  ●                   Ship release 18                                            Graft   2h      step_08.rs                                        both modified
+  ●                   Ship release 17                                            Graft   2h      step_09.rs                                        both modified
+  ●                   Ship release 16                                            Graft   2h      step_10.rs                                        both modified
+  ●                   Ship release 15                                            Graft   2h      step_11.rs                                        both modified
+  ●                   Ship release 14                                            Graft   2h      step_12.rs                                        both modified
+  ●                   Ship release 13                                            Graft   2h  ▎
+  ●                   Ship release 12                                            Graft   2h        1 + <<<<<<< HEAD
+  ●                   Ship release 11                                            Graft   2h    1   2   our plan
+  ●                   Ship release 10                                            Graft   2h        3 + =======
+  ●                   Ship release 9                                             Graft   2h        4 + their plan
+  ●                   Ship release 8                                             Graft   2h        5 + >>>>>>> feature
+  ●                   Ship release 7                                             Graft   2h
+  ●                   Ship release 6                                             Graft   2h
+  ●                   Ship release 5                                             Graft   2h
+  ●                   Ship release 4                                             Graft   2h
+  ●                   Ship release 3                                             Graft   2h
+  ●                   Ship release 2                                             Graft   2h
+  ●                   Ship release 1                                             Graft   2h
+  ●                   Ship release 0                                             Graft   2h
+  ●                   Correct the note                                           Graft   1y
+  ●                   Add the first note                                         Graft   1y
+  ◇                   Add a readme                                               Graft   1y
 
 
 

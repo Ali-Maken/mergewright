@@ -18,52 +18,52 @@
 #
 === frame 1: `P`, the plain push box ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
-  ●    [origin/main] Commit 200                                    7y   d5ae5fd
-  ●    Commit 199                                                  7y   13e6ab1
-  ●    Commit 198                                                  7y   f5055d9
-  ●    Commit 197                                                  7y   2cce853
-  ●    Commit 196                                                  7y   325da3f
-  ●    Commit 195                                                  7y   0722297
-  ●    ╭ Push main → origin/main ──────────────────────────────────────────────╮
-  ●    │ 1 commit · can't be undone from here — origin keeps what you send     │
-  ●    │                                                                       │
-  ●    │ git push --progress origin refs/heads/main:refs/heads/main            │
-  ●    │                                                                       │
-  ●    │ ▸[ Cancel ]   [ Push ]                                                │
-  ●    ╰───────────────────────────────────────────────────────────────────────╯
-  ●    Commit 187                                                  7y   3121935
-  ●    Commit 186                                                  7y   fab25df
-  ●    Commit 185                                                  7y   09ae97c
-  ●    Commit 184                                                  7y   49d7783
-  ●    Commit 183                                                  7y   22d55c9
-  ●    Commit 182                                                  7y   d212b3e
-  ●    Commit 181                                                  7y   c8254c5
-  ●    Commit 180                                                  7y   e95ccd4
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ●                 Commit 200  origin/main is here                  Graft   7y
+  ●                 Commit 199                                       Graft   7y
+  ●                 Commit 198                                       Graft   7y
+  ●                 Commit 197                                       Graft   7y
+  ●                 Commit 196                                       Graft   7y
+  ●    ╭ Push main → origin/main ────────────────────────────────────────╮   7y
+  ●    │ 1 commit · can't be undone from here — origin keeps what you    │   7y
+  ●    │ send                                                            │   7y
+  ●    │                                                                 │   7y
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main      │   7y
+  ●    │                                                                 │   7y
+  ●    │ ▸[ Cancel ]   [ Push ]                                          │   7y
+  ●    ╰─────────────────────────────────────────────────────────────────╯   7y
+  ●                 Commit 187                                       Graft   7y
+  ●                 Commit 186                                       Graft   7y
+  ●                 Commit 185                                       Graft   7y
+  ●                 Commit 184                                       Graft   7y
+  ●                 Commit 183                                       Graft   7y
+  ●                 Commit 182                                       Graft   7y
+  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 180                                       Graft   7y
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
-  ●    [origin/main] Commit 200                                    7y   d5ae5fd
-  ●    Commit 199                                                  7y   13e6ab1
-  ●    Commit 198                                                  7y   f5055d9
-  ●    Commit 197                                                  7y   2cce853
-  ●    ╭ Force-push main → origin/main? ───────────────────────────────────────╮
-  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your    │
-  ●    │ fetch (lease)                                                         │
-  ●    │ rewrites history for everyone who has d5ae5fd                         │
-  ●    │ nothing on origin/main is lost                                        │
-  ●    │                                                                       │
-  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365b… │
-  ●    │                                                                       │
-  ●    │ ▸[ Cancel ]   [ Force push ]                                          │
-  ●    ╰───────────────────────────────────────────────────────────────────────╯
-  ●    Commit 186                                                  7y   fab25df
-  ●    Commit 185                                                  7y   09ae97c
-  ●    Commit 184                                                  7y   49d7783
-  ●    Commit 183                                                  7y   22d55c9
-  ●    Commit 182                                                  7y   d212b3e
-  ●    Commit 181                                                  7y   c8254c5
-  ●    Commit 180                                                  7y   e95ccd4
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ●                 Commit 200  origin/main is here                  Graft   7y
+  ●                 Commit 199                                       Graft   7y
+  ●                 Commit 198                                       Graft   7y
+  ●                 Commit 197                                       Graft   7y
+  ●    ╭ Force-push main → origin/main? ─────────────────────────────────╮   7y
+  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │   7y
+  ●    │ your fetch (lease)                                              │   7y
+  ●    │ rewrites history for everyone who has d5ae5fd                   │   7y
+  ●    │ nothing on origin/main is lost                                  │   7y
+  ●    │                                                                 │   7y
+  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │   7y
+  ●    │                                                                 │   7y
+  ●    │ ▸[ Cancel ]   [ Force push ]                                    │   7y
+  ●    ╰─────────────────────────────────────────────────────────────────╯   7y
+  ●                 Commit 186                                       Graft   7y
+  ●                 Commit 185                                       Graft   7y
+  ●                 Commit 184                                       Graft   7y
+  ●                 Commit 183                                       Graft   7y
+  ●                 Commit 182                                       Graft   7y
+  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 180                                       Graft   7y
  ←/→ move  ⏎ choose  esc cancel

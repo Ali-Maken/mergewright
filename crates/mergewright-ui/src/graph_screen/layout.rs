@@ -333,7 +333,7 @@ pub fn row_layout(view: &GraphView<'_>, area: Rect) -> RowLayout {
 /// The entry drawn at `screen_row`, and the columns it was drawn to.
 ///
 /// `None` above or below the commit rows. Together with
-/// [`super::badge_spans`] this is everything a hit-test needs: the entry
+/// [`super::ref_spans`] this is everything a hit-test needs: the entry
 /// says which badges the row has, the columns say where they start, and the
 /// spans say which cell is which — all three read off the same carve the
 /// renderer draws from, so there is nothing here to keep in step by hand.

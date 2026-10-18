@@ -69,9 +69,13 @@ fn esc_then_g_on_a_long_history_draws_its_last_rows() {
     let text = frame.join("\n");
     assert!(frame[0].contains("200 commits"), "{}", frame[0]);
     assert!(!text.contains("stopped"), "{text}");
-    let root = git(path, &["rev-list", "--max-parents=0", "HEAD"]);
-    let root = root.trim().get(..7).expect("a full object id");
-    assert!(text.contains(root), "the root commit is drawn:\n{text}");
+    // By its subject: rows draw no SHA (ease-pass G7).
+    let root = git(
+        path,
+        &["log", "-1", "--format=%s", "--max-parents=0", "HEAD"],
+    );
+    let root = format!(" {} ", root.trim());
+    assert!(text.contains(&root), "the root commit is drawn:\n{text}");
     let history = bottom.history.as_ref().expect("a walk");
     assert_eq!(history.cursor, 199, "the cursor is on the last row");
     app.close();

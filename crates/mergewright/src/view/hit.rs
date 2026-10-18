@@ -5,10 +5,10 @@
 //! not something `update` can work out from a row number. So this half of
 //! the hit-test lives here, where the view model and the pane rectangle both
 //! are, and it asks `mergewright_ui` the same two questions the renderer asks:
-//! `row_at` for the entry and its columns, `badge_spans` for where each
-//! badge's cells are. **Not a second copy of the packing** — the same
+//! `row_at` for the entry and its columns, `ref_spans` for where each
+//! label's cells are. **Not a second copy of the packing** — the same
 //! functions, called again, with
-//! `mergewright_ui::graph_screen::tests::badge_spans_match_the_drawn_cells`
+//! `mergewright_ui::graph_screen::tests::ref_spans_match_the_drawn_cells`
 //! drawing a row and reading the cells back to prove the two agree
 //! (ADR-0040's lesson, applied before it could be re-learned).
 //!
@@ -24,7 +24,7 @@
 //! The *row* half stays in `update::geometry`, which already owns it: this
 //! only answers "which badge on that row".
 
-use mergewright_ui::graph_screen::{badge_spans, row_at};
+use mergewright_ui::graph_screen::{ref_spans, row_at};
 
 use crate::update::AppState;
 
@@ -51,7 +51,7 @@ pub(crate) fn badge_index_at(
     // with the two session overrides re-applied. See `view::rows::graph_view`.
     let view = graph_view(state, now_seconds);
     let (entry, columns) = row_at(&view, pane, row)?;
-    badge_spans(entry, &columns, view.icons, view.keys)
+    ref_spans(entry, &columns, view.icons, view.keys, view.ascii)
         .into_iter()
         .find_map(|(span, index)| span.contains(&column).then_some(index))
 }

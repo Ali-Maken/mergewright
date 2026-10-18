@@ -103,7 +103,8 @@ fn tour_tmp(root: &Path) -> PathBuf {
 /// The screen settled: the working tree read (its row on top) and the
 /// graph's sort done, so two runs draw the same frame.
 fn settled(screen: &Screen) -> bool {
-    screen.has("Uncommitted changes (1 unstaged, 1 untracked)")
+    // Cut to `1 untrack…` at 80 columns since the branch column (ease-pass 07).
+    screen.has("Uncommitted changes (1 unstaged, 1 untrack")
         && !screen.has("sorting\u{2026}")
         && screen.has("\u{24d8}")
 }
@@ -495,17 +496,13 @@ impl Walk {
         self.wait("the commit editor", |s| s.has("more detail"));
         self.send(b"Note the changes");
         self.send(b"\r");
-        self.wait("the commit on main", |s| {
-            s.has("main \u{2191}2] Note the changes")
-        });
+        self.wait("the commit on main", crate::row_reads::tour_committed);
     }
 
     /// 3: `u`.
     fn undo(&mut self) {
         self.send(b"u");
-        self.wait("main back on its own commit", |s| {
-            s.has("main \u{2191}1] Add today's specials") && !s.has("main \u{2191}2]")
-        });
+        self.wait("main back on its own commit", crate::row_reads::tour_undone);
     }
 
     /// 4: `S`, `s` (and `⏎` for the message), `p` (and `y` on its
@@ -535,13 +532,13 @@ impl Walk {
         self.wait("the branch box", |s| s.has("New branch at"));
         self.send(b"try-it");
         self.send(b"\r");
-        self.wait("the branch on the graph", |s| s.has("[try-it]"));
+        self.wait("the branch on the graph", crate::row_reads::tour_branched);
     }
 
     /// 6: `m` on feature, `y`. The preview names `notes.txt` set aside and
     /// put back after (19d §R1), and the put-back is forecast clean.
     fn merge_feature(&mut self) {
-        self.cursor_to("[feature]");
+        self.cursor_to("Add opening hours");
         self.send(b"m");
         self.wait("the merge preview, set-aside row and forecast read", |s| {
             s.has("Merge feature into main")
@@ -559,7 +556,7 @@ impl Walk {
     /// 7 to the stop: `m` on clash, `y` — the resolver on `menu.txt`, his
     /// edits aside until the merge ends; its hunks read (19e §R2).
     fn merge_clash_to_the_stop(&mut self) {
-        self.cursor_to("[clash]");
+        self.cursor_to("Ice cream for dessert");
         self.send(b"m");
         self.wait("the merge preview, set-aside row and forecast read", |s| {
             s.has("Merge clash into main")
@@ -883,9 +880,7 @@ fn push_in_the_tour_fits_the_askpass_socket_under_a_default_length_tmpdir() {
         s.has("Push main \u{2192} origin/main")
     });
     pty.send(b"y");
-    pty.wait_for("main and origin together", |s| {
-        s.has("[\u{25c6} main \u{21c4} origin]")
-    });
+    pty.wait_for("main and origin together", crate::row_reads::main_pushed);
     let screen = on_task(&pty, &work, 0, with(&[7]));
     assert_eq!(drawn_ticks(&screen), Some(with(&[7])), "{}", screen.text());
     assert!(!screen.has("askpass"), "{}", screen.text());

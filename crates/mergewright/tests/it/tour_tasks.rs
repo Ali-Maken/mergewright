@@ -189,15 +189,13 @@ impl Tour {
         self.wait("the commit editor", |s| s.has("more detail"));
         self.send(b"Note the changes");
         self.send(b"\r");
-        self.wait("the commit on main", |s| s.has("main ↑2] Note the changes"));
+        self.wait("the commit on main", crate::row_reads::tour_committed);
     }
 
     /// 3: `u`.
     fn undo(&mut self) {
         self.send(b"u");
-        self.wait("main back on its own commit", |s| {
-            s.has("main ↑1] Add today's specials") && !s.has("main ↑2]")
-        });
+        self.wait("main back on its own commit", crate::row_reads::tour_undone);
     }
 
     /// 4: `S` opens the stashes, `s` and `⏎` save, `p` and `y` pop, `S`
@@ -227,12 +225,12 @@ impl Tour {
         self.wait("the branch box", |s| s.has("New branch at"));
         self.send(b"try-it");
         self.send(b"\r");
-        self.wait("the branch on the graph", |s| s.has("[try-it]"));
+        self.wait("the branch on the graph", crate::row_reads::tour_branched);
     }
 
     /// 6: `m` on `feature`, `y`.
     fn merge_feature(&mut self) {
-        self.cursor_to("[feature]");
+        self.cursor_to("Add opening hours");
         self.send(b"m");
         self.wait("the merge preview, forecast read", |s| {
             s.has("Merge feature into main") && s.has("nothing: no file clashes")
@@ -246,7 +244,7 @@ impl Tour {
     /// 7, up to the stop: `m` on `clash`, `y`; git stops and the resolver
     /// opens on `menu.txt`.
     fn merge_clash_to_the_stop(&mut self) {
-        self.cursor_to("[clash]");
+        self.cursor_to("Ice cream for dessert");
         self.send(b"m");
         self.wait("the merge preview, forecast read", |s| {
             s.has("Merge clash into main") && s.has("1 file clashes: menu.txt")
@@ -275,9 +273,7 @@ impl Tour {
             s.has("Push main \u{2192} origin/main")
         });
         self.send(b"y");
-        self.wait("main and origin together", |s| {
-            s.has("[\u{25c6} main \u{21c4} origin]")
-        });
+        self.wait("main and origin together", crate::row_reads::main_pushed);
     }
 
     fn quit(self) {
@@ -537,7 +533,7 @@ fn reading_the_card_ticks_nothing() {
     );
     tour.send(b"\x1b");
     tour.wait("the key list closed", |s| !s.has("keys here"));
-    tour.cursor_to("[clash]");
+    tour.cursor_to("Ice cream for dessert");
     tour.cursor_to("Pie for dessert");
     tour.send(b"\r");
     tour.wait("the commit's detail", |s| s.has("B blame"));

@@ -7,12 +7,12 @@
 # taking a merge isn't in Mergewright yet`; no preview box.
  ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
-▸   ◉    [merged] merge login-page  ▸ 1 commit                                                          GF now  5c42e39
-  ◆ ┃    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
-  ●━╯    [feature-a] add the base                                                                       GF 5m   ed332bc
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸   ◉    merged               merge login-page  ▸ 1 commit  not pushed yet                                   Graft  now
+  ◆ ┃    main (you)           main moves on                                                                  Graft   4m
+  ●━╯                         add the base  feature-a is here  not pushed yet                                Graft   5m
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 

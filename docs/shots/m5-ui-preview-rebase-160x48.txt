@@ -27,17 +27,17 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ●      finish the feature                                                                                                                   GF now  8d6cd28
-    ●      start the feature                                                                                                                    GF 2m   52f3b96
-    │      after rebase
-    │ ○    [◆ feature] finish the feature                                                                                                       GF —    —
-    │ ○    start the feature                                                                                                                    GF —    —
-▸ ●─│─╯    [main] main moves again                                                                                                              GF 3m   45fa51d
-  ● │      main moves on                                                                                                                        GF 4m   37926a7
-  ●─╯      add the base                                                                                                                         GF 5m   ed332bc
-  ●        Correct the note                                                                                                                     GF 1y   a82960b
-  ●        Add the first note                                                                                                                   GF 1y   fadcfb3
-  ◇        Add a readme                                                                                                                         GF 1y   64ded19
+    ●                           finish the feature                                                                                                   Graft  now
+    ●                           start the feature                                                                                                    Graft   2m
+    │                           after rebase
+    │ ○                         finish the feature  feature is here  not pushed yet                                                                  Graft    —
+    │ ○                         start the feature                                                                                                    Graft    —
+▸ ●─│─╯                         main moves again  main is here  not pushed yet                                                                       Graft   3m
+  ● │                           main moves on                                                                                                        Graft   4m
+  ●─╯                           add the base                                                                                                         Graft   5m
+  ●                             Correct the note                                                                                                     Graft   1y
+  ●                             Add the first note                                                                                                   Graft   1y
+  ◇                             Add a readme                                                                                                         Graft   1y
 
 
 

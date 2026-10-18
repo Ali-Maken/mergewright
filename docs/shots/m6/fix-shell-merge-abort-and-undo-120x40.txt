@@ -18,27 +18,27 @@
 === 1. a: the abort box ===
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
-▸ ◌      Uncommitted changes (2 unmerged)
-  ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
-  ┃ ●    [feature] the feature's take                                                                   GF 2h   f43f326
-  ●┄╯    the shared files                                                                               GF 2h   b35b2f1
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸ ◌                           Uncommitted changes (2 unmerged)
+  ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
+  ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
+  ●┄╯    main (you)           the shared files                                                               Graft   2h
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 
 
 
 
-         ╭ Abort the merge? ─────────────────────────────────────────────────────────────────────────╮
-         │ main goes back to before the merge                                                        │
-         │ u puts the merge back                                                                     │
-         │                                                                                           │
-         │ git merge --abort                                                                         │
-         │                                                                                           │
-         │ ▸[ Cancel ]   [ Abort ]                                                                   │
-─────────╰───────────────────────────────────────────────────────────────────────────────────────────╯──────────────────
+         ╭ Abort the merge? ──────────────────────────────────────────────────────────────────────────────╮
+         │ main goes back to before the merge                                                             │
+         │ u puts the merge back                                                                          │
+         │                                                                                                │
+         │ git merge --abort                                                                              │
+         │                                                                                                │
+         │ ▸[ Cancel ]   [ Abort ]                                                                        │
+─────────╰────────────────────────────────────────────────────────────────────────────────────────────────╯─────────────
  y abort  ←/→ move  ⏎ choose  esc cancel
 UNCOMMITTED
 diff vs HEAD ddeed32
@@ -59,12 +59,12 @@ CONFLICTS (2)                 ▎
 === 2. → ⏎: aborted ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
-  ┃ ●    [feature] the feature's take                                                                   GF 2h   f43f326
-  ●┄╯    the shared files                                                                               GF 2h   b35b2f1
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸ ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
+  ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
+  ●┄╯    main (you)           the shared files                                                               Graft   2h
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 
@@ -100,13 +100,13 @@ M shared.rs             +1 −1   1     - the plan
 === 3. u: the merge back ===
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
-  ◌      Uncommitted changes (2 unmerged)
-▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
-  ┃ ●    [feature] the feature's take                                                                   GF 2h   f43f326
-  ●┄╯    the shared files                                                                               GF 2h   b35b2f1
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+  ◌                           Uncommitted changes (2 unmerged)
+▸ ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
+  ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
+  ●┄╯    main (you)           the shared files                                                               Graft   2h
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 

@@ -256,9 +256,8 @@ fn y_lands_on_the_merge_and_u_takes_it_back() {
         landed_at.elapsed()
     );
     let body = the_landed_frame(&state);
-    // The merge is made at run time: its id is zeroed, width kept.
-    let shot = crate::captures::without_invented_id(&format!("{body}\n"), head.trim());
-    crate::captures::check_shot("ease-pass/merge-landed-120.txt", &shot);
+    // The merge is made at run time; the rows draw no id (ease-pass 07).
+    crate::captures::check_shot("ease-pass/merge-landed-120.txt", &format!("{body}\n"));
 
     let state = app.key(&state, KeyCode::Char('u'));
     let state = app.pump(state, "the undo", |state| state.operating.is_none());

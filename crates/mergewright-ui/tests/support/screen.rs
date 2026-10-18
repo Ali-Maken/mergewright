@@ -1,11 +1,10 @@
 //! A graph screen's view over laid-out corpus rows, the way the app fills one.
 
-use mergewright_graph::identity::BranchIdentity;
 use mergewright_term::{sanitize_line, sanitize_path};
 use mergewright_ui::graph_column::{GraphLine, RowPaint};
 use mergewright_ui::graph_screen::{
-    AuthorChip, Compaction, Filters, GraphEntry, GraphScreen, GraphView, HintContext, Icons,
-    Location, WalkView, initials, relative_date, short_sha,
+    Compaction, Filters, GraphEntry, GraphScreen, GraphView, HintContext, Icons, Location,
+    WalkView, WhoCell, first_name, relative_date,
 };
 use mergewright_ui::theme::Theme;
 use ratatui::layout::Rect;
@@ -29,14 +28,15 @@ fn entry<'a>(line: &GraphLine<'a>, cursor: bool) -> GraphEntry<'a> {
             line.clone()
         },
         subject: sanitize_line(&String::from_utf8_lossy(line.row.commit.subject())),
-        author: AuthorChip {
-            initials: sanitize_line(&initials(&String::from_utf8_lossy(
+        branch: None,
+        who: Some(WhoCell {
+            name: sanitize_line(first_name(&String::from_utf8_lossy(
                 &line.row.commit.author.name,
             ))),
-            identity: BranchIdentity::of_name(&line.row.commit.author.email),
-        },
+            own: false,
+        }),
+        dim_message: false,
         when: relative_date(line.row.commit.date().seconds, NOW),
-        sha: short_sha(&line.row.commit.id.to_string(), 7),
         compare_marked: false,
         marker: None,
         tag: None,

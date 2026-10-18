@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-  ◌    Uncommitted changes (1 unstaged)
-▸ ◆    [◆ main ⇄ origin] their change                                                                   GF 60m  5a2be2d
-  ●    add shared                                                                                       GF 60m  d8ff368
-  ●    Correct the note                                                                                 GF 1y   a82960b
-  ●    Add the first note                                                                               GF 1y   fadcfb3
-  ◇    Add a readme                                                                                     GF 1y   64ded19
+  ◌                         Uncommitted changes (1 unstaged)
+▸ ◆    main (you)           their change                                                                     Graft  60m
+  ●                         add shared                                                                       Graft  60m
+  ●                         Correct the note                                                                 Graft   1y
+  ●                         Add the first note                                                               Graft   1y
+  ◇                         Add a readme                                                                     Graft   1y
 
 
 

@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-▸ ◌    Uncommitted changes (1 staged, 1 unstaged)
-  ◆    [◆ main] add f                                                                                   GT 24h  d45d045
-  ●    Correct the note                                                                                 GF 2d   a82960b
-  ●    Add the first note                                                                               GF 2d   fadcfb3
-  ◇    Add a readme                                                                                     GF 2d   64ded19
+▸ ◌                         Uncommitted changes (1 staged, 1 unstaged)
+  ◆    main (you)           add f  not pushed yet                                                            Graft  24h
+  ●                         Correct the note                                                                 Graft   2d
+  ●                         Add the first note                                                               Graft   2d
+  ◇                         Add a readme                                                                     Graft   2d
 
 
 

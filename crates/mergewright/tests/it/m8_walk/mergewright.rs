@@ -56,7 +56,7 @@ fn older_names_repo_opens_and_undoes() {
         graph.text()
     );
     assert!(
-        cursor_row(&graph).contains("\u{25c6} b0"),
+        cursor_row(&graph).contains("\u{25c6}") && cursor_row(&graph).contains("b0 is here"),
         "{}",
         graph.text()
     );
@@ -321,7 +321,7 @@ fn picker_enter_current() {
         !s.has("\u{23ce} show it on the graph") && cursor_row(s).contains("main")
     });
     assert!(
-        cursor_row(&landed).contains("\u{25c6} main"),
+        cursor_row(&landed).contains("\u{25c6}") && cursor_row(&landed).contains("main (you)"),
         "HEAD's row: {}",
         landed.text()
     );

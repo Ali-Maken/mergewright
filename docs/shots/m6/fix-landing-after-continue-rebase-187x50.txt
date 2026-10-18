@@ -1,8 +1,8 @@
  ◆ api  ~/code/api · feature                                                                      3 commits  COMMIT 0000000
                                                                                                              Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h
-▸   ◆    [◆ feature] Change every file on feature                                           GF futu…0000000  parents 274c7d4 · diff vs first parent
-  ●━╯    [main] Change every file on main                                                   GF 2h   274c7d4  Contained in: feature
-  ◇      Add the files both sides will change                                               GF 1y   9571fc9
+▸   ◆    feature (you)  Change every file on feature  not pushed yet                               you fut…  parents 274c7d4 · diff vs first parent
+  ●━╯    main           Change every file on main  not pushed yet                                  you   2h  Contained in: feature
+  ◇                     Add the files both sides will change                                       you   1y
                                                                                                              A added-by-them.txt                                                      +1 −0
                                                                                                              M both-added.txt                                                         +4 −0
                                                                                                              M both.txt                                                               +4 −0

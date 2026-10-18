@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
-  ◌      Uncommitted changes (1 unstaged)
-    ●    [feature-b] Show the login page                                                                GF 2d   3064a46
-▸   ◆    [◆ feature-a] Handle expired tokens                                                            GF 2d   7c99d12
-    ●    Add OAuth callback  ✎ changed                                                                  GF 2d   fc29f85
-  ◇━╯    [main] m1                                                                                      GF 2d   f1c72d6
+  ◌                           Uncommitted changes (1 unstaged)
+    ●    feature-b            Show the login page  not pushed yet                                            Graft   2d
+▸   ◆                         Handle expired tokens  feature-a is here  not pushed yet                       Graft   2d
+    ●                         Add OAuth callback  ✎ changed                                                  Graft   2d
+  ◇━╯    main                 m1  not pushed yet                                                             Graft   2d
 
 
 

@@ -1,14 +1,14 @@
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
-▸   ◆═╮  ⓘ [◆ feature] Merge branch 'main' into feature                                                 GF futu…0000000
-    ● ║    finish the feature                                                                           GF now  8d6cd28
-    ● ║    start the feature                                                                            GF 2m   52f3b96
-  ●═┃═╯    [main] main moves again                                                                      GF 3m   45fa51d
-  ● ┃      main moves on                                                                                GF 4m   37926a7
-  ●━╯      add the base                                                                                 GF 5m   ed332bc
-  ●        Correct the note                                                                             GF 1y   a82960b
-  ●        Add the first note                                                                           GF 1y   fadcfb3
-  ◇        Add a readme                                                                                 GF 1y   64ded19
+▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  not pushed yet                               you fut…
+    ● ║                         finish the feature                                                             you  now
+    ● ║                         start the feature                                                              you   2m
+  ●═┃═╯    main                 main moves again  not pushed yet                                               you   3m
+  ● ┃                           main moves on                                                                  you   4m
+  ●━╯                           add the base                                                                   you   5m
+  ●                             Correct the note                                                               you   1y
+  ●                             Add the first note                                                             you   1y
+  ◇                             Add a readme                                                                   you   1y
 
 
 

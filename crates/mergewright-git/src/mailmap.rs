@@ -20,14 +20,46 @@ use mergewright_core::commit::Identity;
 /// source git itself would (the working tree's `.mailmap`, `mailmap.blob`,
 /// `mailmap.file`) and never fails: a missing or broken `.mailmap` resolves
 /// every identity to itself, exactly as git treats it as optional.
+///
+/// It also knows who the user is (`user.email`, [`Self::is_me`]): "is this
+/// commit his" is the same question as "are these two identities one
+/// person", asked of his own.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Mailmap(gix::mailmap::Snapshot);
+pub struct Mailmap(gix::mailmap::Snapshot, Option<Vec<u8>>);
 
 impl Mailmap {
     /// Wraps an already-loaded snapshot.
     #[must_use]
     pub(crate) fn from_snapshot(snapshot: gix::mailmap::Snapshot) -> Self {
-        Mailmap(snapshot)
+        Mailmap(snapshot, None)
+    }
+
+    /// This mailmap, knowing the user's own `email` (`user.email`; `None`
+    /// when unset), canonicalised through the mailmap itself.
+    #[must_use]
+    pub fn with_me(self, email: Option<&[u8]>) -> Self {
+        let me = email.map(|email| {
+            let (_, canonical) = self.resolve(&Identity {
+                name: Vec::new(),
+                email: email.to_vec(),
+                when: mergewright_core::commit::Timestamp {
+                    seconds: 0,
+                    offset_seconds: 0,
+                },
+            });
+            canonical
+        });
+        Mailmap(self.0, me)
+    }
+
+    /// Whether `identity` is the user's own, under any address the mailmap
+    /// joins to his `user.email` (the graph's `you`, ease-pass G8). Never
+    /// when `user.email` is unset.
+    #[must_use]
+    pub fn is_me(&self, identity: &Identity) -> bool {
+        self.1
+            .as_deref()
+            .is_some_and(|me| self.resolve(identity).1 == me)
     }
 
     /// Parses `.mailmap` text directly, with no repository involved.
@@ -37,7 +69,7 @@ impl Mailmap {
     #[cfg(test)]
     #[must_use]
     pub fn from_bytes(text: &[u8]) -> Self {
-        Mailmap(gix::mailmap::Snapshot::from_bytes(text))
+        Mailmap(gix::mailmap::Snapshot::from_bytes(text), None)
     }
 
     /// The canonical name and email for `identity`, as `.mailmap` says.

@@ -3,13 +3,13 @@
 # What right looks like: the bottom row ends `⇥ graph  q quit`; it leads `merge stopped · …` where that fits beside the whole bar.
 
  ◆ api  ~/code/api · main                             merging feature into main
-  ◌      Uncommitted changes (2 unmerged)
-  ◆      [◆ main] main's take                                      2h   ddeed32
-▸ ║ ●    [feature] the feature's take                              2h   f43f326
-  ●━╯    the shared files                                          2h   b35b2f1
-  ●      Correct the note                                          1y   a82960b
-  ●      Add the first note                                        1y   fadcfb3
-  ◇      Add a readme                                              1y   64ded19
+  ◌                   Uncommitted changes (2 unmerged)
+  ◆      main (you)   main's take  not pushed yet                    Graft   2h
+▸ ║ ●    feature      the feature's take  not pushed yet             Graft   2h
+  ●━╯    main (you)   the shared files                               Graft   2h
+  ●                   Correct the note                               Graft   1y
+  ●                   Add the first note                             Graft   1y
+  ◇                   Add a readme                                   Graft   1y
 
 
 

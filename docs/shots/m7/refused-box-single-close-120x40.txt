@@ -14,12 +14,12 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-  ●    Handle expired tokens                                                                            GF 7y   74f9a9e
-▸ ●    Move session TTL to config                                                                       PR 7y   0a27627
-  ●    rustfmt                                                                                          RU 7y   b32274b
-  ●    Retry refresh once on 401                                                                        LI 7y   2f48ca3
-  ●    Add token refresh                                                                                TO 8y   47593a5
-  ◇    Add session                                                                                      AN 8y   3f6c311
+  ●                         Handle expired tokens                                                            Graft   7y
+▸ ●                         Move session TTL to config                                                       Priya   7y
+  ●                         rustfmt                                                                         Rustf…   7y
+  ●                         Retry refresh once on 401                                                         Lina   7y
+  ●                         Add token refresh                                                                  Tom   8y
+  ◇                         Add session                                                                        Ana   8y
 
 
 

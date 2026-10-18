@@ -1,6 +1,7 @@
 //! `⏎` on the branch he is on (m8 usability Q2): closes, as `Tab` does.
 //! Its own file so `picker/tests.rs` stays under its size row.
 
+use super::mouse_tests::{at, click, drawn_at};
 use super::*;
 
 fn selected_oid(state: &AppState) -> Option<Oid> {

@@ -10,9 +10,9 @@
 
  ◆ api  ~/code/api · main                                                             3 commits  1 merged branch folded
 
-▸ ◆  ⚠ [◆ main] Merge branch 'alpha'  ▸ 1 commit from alpha                                             GF 1y   cc1103b
-  ●    Advance main                                                                                     GF 1y   0631550
-  ◇    Add the base                                                                                     GF 1y   68d5d19
+▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  not pushed yet                      Graft   1y
+  ●                         Advance main                                                                     Graft   1y
+  ◇                         Add the base                                                                     Graft   1y
 
 
 

@@ -18,13 +18,13 @@
 
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
-  ◌        Uncommitted changes (1 unstaged)
-▸   ■      [stash@{0}] On main: mergewright: your edits, set aside for checkout fix                     GT 3m   1f9ea99
-    ┃ ◆    [◆ fix] fix changes line 7                                                                   GF 4m   f2e2ada
-  ●━┴┄╯    [main] add f                                                                                 GF 5m   330fea5
-  ●        Correct the note                                                                             GF 1y   a82960b
-  ●        Add the first note                                                                           GF 1y   fadcfb3
-  ◇        Add a readme                                                                                 GF 1y   64ded19
+  ◌                             Uncommitted changes (1 unstaged)
+▸   ■                           On main: mergewright: your edits, set aside for checkout fix  stash@{0}        you   3m
+    ┃ ◆    fix (you)            fix changes line 7  not pushed yet                                           Graft   4m
+  ●━┴┄╯    main                 add f  not pushed yet                                                        Graft   5m
+  ●                             Correct the note                                                             Graft   1y
+  ●                             Add the first note                                                           Graft   1y
+  ◇                             Add a readme                                                                 Graft   1y
 
 
 

@@ -7,11 +7,11 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸ ◆    [◆ main] reflow notes                                                                            GF 8m   6029ea7
-  ●    add notes                                                                                        GF 9m   c89398b
-  ●    Correct the note                                                                                 GF 1y   a82960b
-  ●    Add the first note                                                                               GF 1y   fadcfb3
-  ◇    Add a readme                                                                                     GF 1y   64ded19
+▸ ◆    main (you)           reflow notes  not pushed yet                                                     Graft   8m
+  ●                         add notes                                                                        Graft   9m
+  ●                         Correct the note                                                                 Graft   1y
+  ●                         Add the first note                                                               Graft   1y
+  ◇                         Add a readme                                                                     Graft   1y
 
 
 

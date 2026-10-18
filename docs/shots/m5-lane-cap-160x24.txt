@@ -41,53 +41,53 @@
 == the pane open: the graph has 92 columns ==
 
  ◆ api  ~/code/api · main                                  47 commits  lanes drawn: 7 of 15  COMMIT 576e590
-                ●▾   [topic-14] Work on topic-14                               16m  8a7744e  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:30 +0000 ·…
-                ●▾   [topic-13] Work on topic-13                               17m  fba676c  parents ee20ba5 · diff vs first parent
-                ●▾   [topic-12] Work on topic-12                               18m  06237b3  Contained in: main
-                ●▾   [topic-11] Work on topic-11                               19m  7568e0c
-                ●▾   [topic-10] Work on topic-10                               20m  5e16877  M main.rs                                                     +1 −1
-                ●▾   [topic-09] Work on topic-09                               21m  3324476  ▎
-                ●▾   [topic-08] Work on topic-08                               22m  7883cc7    1     - const STEP: u32 = 29;
-                ●▾   [topic-07] Work on topic-07                               23m  8ca71dd        1 + const STEP: u32 = 30;
-    ●           ⋮    [topic-06] Work on topic-06                               24m  2d82c6c
-    ┊ ●         ⋮    [topic-05] Work on topic-05                               25m  aab2182
-    ┊ ┊ ●       ⋮    [topic-04] Work on topic-04                               26m  8931d7e
-    ┊ ┊ ┊ ●     ⋮    [topic-03] Work on topic-03                               27m  deaf074
-    ┊ ┊ ┊ ┊ ●   ⋮    [topic-02] Work on topic-02                               28m  e453903
-    ┊ ┊ ┊ ┊ ┊ ● ⋮    [topic-01] Work on topic-01                               29m  0e3f949
-▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    [◆ main] main: step 30                                    30m  576e590
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 29                                             31m  ee20ba5
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 28                                             32m  8a5834e
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 27                                             33m  323cfda
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 26                                             34m  996f94e
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 25                                             35m  0b91bb8
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 24                                             36m  37cb782
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 23                                             37m  9c54ea7
+                ●▾   topic-14     Work on topic-14  not pushed yet               Graft  16m  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:30 +0000 ·…
+                ●▾   topic-13     Work on topic-13  not pushed yet               Graft  17m  parents ee20ba5 · diff vs first parent
+                ●▾   topic-12     Work on topic-12  not pushed yet               Graft  18m  Contained in: main
+                ●▾   topic-11     Work on topic-11  not pushed yet               Graft  19m
+                ●▾   topic-10     Work on topic-10  not pushed yet               Graft  20m  M main.rs                                                     +1 −1
+                ●▾   topic-09     Work on topic-09  not pushed yet               Graft  21m  ▎
+                ●▾   topic-08     Work on topic-08  not pushed yet               Graft  22m    1     - const STEP: u32 = 29;
+                ●▾   topic-07     Work on topic-07  not pushed yet               Graft  23m        1 + const STEP: u32 = 30;
+    ●           ⋮    topic-06     Work on topic-06  not pushed yet               Graft  24m
+    ┊ ●         ⋮    topic-05     Work on topic-05  not pushed yet               Graft  25m
+    ┊ ┊ ●       ⋮    topic-04     Work on topic-04  not pushed yet               Graft  26m
+    ┊ ┊ ┊ ●     ⋮    topic-03     Work on topic-03  not pushed yet               Graft  27m
+    ┊ ┊ ┊ ┊ ●   ⋮    topic-02     Work on topic-02  not pushed yet               Graft  28m
+    ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01     Work on topic-01  not pushed yet               Graft  29m
+▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)   main: step 30  not pushed yet                  Graft  30m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 29                                  Graft  31m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 28                                  Graft  32m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 27                                  Graft  33m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 26                                  Graft  34m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 25                                  Graft  35m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 24                                  Graft  36m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 23                                  Graft  37m
  ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · u undo · ? keys
 
 == the same terminal, pane closed: the graph has all 160 ==
 
  ◆ api  ~/code/api · main                                                                                                     47 commits  lanes drawn: 11 of 15
-                        ●▾   [topic-14] Work on topic-14                                                                                        GF 16m  8a7744e
-                        ●▾   [topic-13] Work on topic-13                                                                                        GF 17m  fba676c
-                        ●▾   [topic-12] Work on topic-12                                                                                        GF 18m  06237b3
-                        ●▾   [topic-11] Work on topic-11                                                                                        GF 19m  7568e0c
-    ●                   ⋮    [topic-10] Work on topic-10                                                                                        GF 20m  5e16877
-    ┊ ●                 ⋮    [topic-09] Work on topic-09                                                                                        GF 21m  3324476
-    ┊ ┊ ●               ⋮    [topic-08] Work on topic-08                                                                                        GF 22m  7883cc7
-    ┊ ┊ ┊ ●             ⋮    [topic-07] Work on topic-07                                                                                        GF 23m  8ca71dd
-    ┊ ┊ ┊ ┊ ●           ⋮    [topic-06] Work on topic-06                                                                                        GF 24m  2d82c6c
-    ┊ ┊ ┊ ┊ ┊ ●         ⋮    [topic-05] Work on topic-05                                                                                        GF 25m  aab2182
-    ┊ ┊ ┊ ┊ ┊ ┊ ●       ⋮    [topic-04] Work on topic-04                                                                                        GF 26m  8931d7e
-    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ●     ⋮    [topic-03] Work on topic-03                                                                                        GF 27m  deaf074
-    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ●   ⋮    [topic-02] Work on topic-02                                                                                        GF 28m  e453903
-    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ● ⋮    [topic-01] Work on topic-01                                                                                        GF 29m  0e3f949
-▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    [◆ main] main: step 30                                                                                             GF 30m  576e590
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 29                                                                                                      GF 31m  ee20ba5
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 28                                                                                                      GF 32m  8a5834e
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 27                                                                                                      GF 33m  323cfda
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 26                                                                                                      GF 34m  996f94e
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 25                                                                                                      GF 35m  0b91bb8
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 24                                                                                                      GF 36m  37cb782
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main: step 23                                                                                                      GF 37m  9c54ea7
+                        ●▾   topic-14             Work on topic-14  not pushed yet                                                                   Graft  16m
+                        ●▾   topic-13             Work on topic-13  not pushed yet                                                                   Graft  17m
+                        ●▾   topic-12             Work on topic-12  not pushed yet                                                                   Graft  18m
+                        ●▾   topic-11             Work on topic-11  not pushed yet                                                                   Graft  19m
+    ●                   ⋮    topic-10             Work on topic-10  not pushed yet                                                                   Graft  20m
+    ┊ ●                 ⋮    topic-09             Work on topic-09  not pushed yet                                                                   Graft  21m
+    ┊ ┊ ●               ⋮    topic-08             Work on topic-08  not pushed yet                                                                   Graft  22m
+    ┊ ┊ ┊ ●             ⋮    topic-07             Work on topic-07  not pushed yet                                                                   Graft  23m
+    ┊ ┊ ┊ ┊ ●           ⋮    topic-06             Work on topic-06  not pushed yet                                                                   Graft  24m
+    ┊ ┊ ┊ ┊ ┊ ●         ⋮    topic-05             Work on topic-05  not pushed yet                                                                   Graft  25m
+    ┊ ┊ ┊ ┊ ┊ ┊ ●       ⋮    topic-04             Work on topic-04  not pushed yet                                                                   Graft  26m
+    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ●     ⋮    topic-03             Work on topic-03  not pushed yet                                                                   Graft  27m
+    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ●   ⋮    topic-02             Work on topic-02  not pushed yet                                                                   Graft  28m
+    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01             Work on topic-01  not pushed yet                                                                   Graft  29m
+▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)           main: step 30  not pushed yet                                                                      Graft  30m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 29                                                                                      Graft  31m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 28                                                                                      Graft  32m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 27                                                                                      Graft  33m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 26                                                                                      Graft  34m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 25                                                                                      Graft  35m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 24                                                                                      Graft  36m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 23                                                                                      Graft  37m
  ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · ? keys

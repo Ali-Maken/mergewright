@@ -8,8 +8,8 @@
 # unverified: a capture carries no attributes), in places 1 and 2.
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    [login-page] [origin/sara/login-page] fix the bug                                              GF 3m   fbb2394
-▸ ◆ ┊    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
+    ●    origin/sara/login-p… fix the bug  login-page is here  not pushed yet  origin/sara/login-page is h…  Graft   3m
+▸ ◆ ┊    main (you)           main moves on                                                                  Graft   4m
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)

@@ -618,9 +618,8 @@ fn staged_only_names_only_staged() {
         view.rows[0].subject.as_str(),
         "Uncommitted changes (3 staged)"
     );
-    assert_eq!(view.rows[0].author.initials.as_str(), "");
+    assert!(view.rows[0].who.is_none() && view.rows[0].branch.is_none());
     assert_eq!(view.rows[0].when, "");
-    assert_eq!(view.rows[0].sha, "");
     // The virtual row plus history rows, one fewer than a full viewport
     // (graph_rows() is 3 here; the row it draws takes one of them).
     assert_eq!(view.rows.len(), 3, "1 virtual row + 2 history rows");
@@ -4502,32 +4501,32 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
             .min()
             .expect("the graph draws subjects");
 
-        assert_eq!(
-            rect.x, subject_x,
+        // Or on the branch column's, one gap and the column's width left of
+        // it (ease-pass G5): a box too wide for the message column covers
+        // the branch column whole.
+        let full = columns;
+        let branch_x = subject_x - 1 - mergewright_ui::graph_screen::branch_width_for(full);
+        assert!(
+            rect.x == subject_x || rect.x == branch_x,
             "{columns}x{rows}: the box starts at column {} and the subject column starts at \
-             {subject_x} — the box splits it",
+             {subject_x}, the branch column at {branch_x} — the box splits one",
             rect.x
         );
-        // It covers rather than clears: on the box's own rows the SHA column
-        // is still drawn whole beside it — or, where the box's natural width
-        // reaches past the SHA column's gutter, the box runs to the frame's
+        // It covers rather than clears: on the box's own rows the age column
+        // is still drawn whole beside it — or the box runs to the frame's
         // edge and covers that column whole (ADR-0040: whole columns or
-        // clear). At 80 columns that is the case since the one-cell right
-        // margin (m8-polish-and-ship/06, ADR-0058 §4) moved the SHA column
-        // a cell left of the centred 64-wide box's edge. Either way the
-        // lanes left of the box survive, which a cleared band would not.
+        // clear). Either way the lanes left of the box survive, which a
+        // cleared band would not.
         let row = &with[usize::from(rect.y) + 1];
         let beside: String = row[usize::from(rect.right())..].concat();
-        let sha_survives = beside
-            .trim()
-            .chars()
-            .filter(char::is_ascii_hexdigit)
-            .count()
-            >= 7;
+        let age_survives = beside
+            .split_whitespace()
+            .last()
+            .is_some_and(|age| age.ends_with(['m', 'h', 'd', 'w', 'y']));
         let covers_to_the_edge = rect.right() == columns && beside.trim().is_empty();
         assert!(
-            sha_survives || covers_to_the_edge,
-            "{columns}x{rows}: right of the box is neither the SHA whole nor the frame's \
+            age_survives || covers_to_the_edge,
+            "{columns}x{rows}: right of the box is neither the age whole nor the frame's \
              edge: {beside:?}"
         );
         let left_of_box: String = row[..usize::from(rect.x)].concat();
@@ -4834,7 +4833,7 @@ fn layout_widths() -> Vec<u16> {
             (columns, rows),
         ))
     };
-    let mut edges = vec![mergewright_ui::graph_screen::AUTHOR_BREAKPOINT, 160];
+    let mut edges = vec![100, 120, 160]; // the branch column's two steps, then the lanes
     for rows in [24u16, 50] {
         edges.extend((21u16..=240).filter(|&w| layout(w, rows) != layout(w - 1, rows)));
     }

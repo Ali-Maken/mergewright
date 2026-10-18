@@ -2,12 +2,12 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
 
  ◆ api  ~/code/api · main                                                                                                                              6 commits  2 merged branches folded
                                              ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
-▸   ●    [feature/three] three: in progress  │ ›                                                                                            │                              GF 7y   0683985
-  ◆ ┃    [◆ main] Merge branch 'feature/two' │ HERE                                                                                         │                              GF 7y   5202e1c
-  ◉ ┃    Merge branch 'feature/one'  ▸ 2 comm│▸c     Commit                                                                   graph.commit  │                              GF 7y   3a97003
-  ●━╯    Add b.txt                           │ a     Amend                                                                     graph.amend  │                              GF 7y   de95041
-  ●      Add a.txt                           │ R     Open the rewrite editor                                                 graph.rewrite  │                              GF 7y   21b16b9
-  ◇      Add a readme                        │ C     Switch branch (branch picker)                                            graph.switch  │                              GF 7y   daa5167
+▸   ●    feature/three        three: in progr│ ›                                                                                            │                                   Graft   7y
+  ◆ ┃    main (you)           Merge branch 'f│ HERE                                                                                         │                                   Graft   7y
+  ◉ ┃                         Merge branch 'f│▸c     Commit                                                                   graph.commit  │                                   Graft   7y
+  ●━╯                         Add b.txt      │ a     Amend                                                                     graph.amend  │                                   Graft   7y
+  ●                           Add a.txt      │ R     Open the rewrite editor                                                 graph.rewrite  │                                   Graft   7y
+  ◇                           Add a readme   │ C     Switch branch (branch picker)                                            graph.switch  │                                   Graft   7y
                                              │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │
                                              │ m     Merge selected branch into current                                        graph.merge  │
                                              │ r     Rebase current onto selection                                            graph.rebase  │

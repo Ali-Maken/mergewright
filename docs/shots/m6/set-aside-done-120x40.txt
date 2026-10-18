@@ -2,9 +2,8 @@
 # AppState (crates/mergewright/tests/it/m6_stash_put_back/set_aside.rs,
 # a_dirty_pull_rebase_is_three_keys, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
-# The rebased commit is made moments before the frame, so its id is new
-# every run: it is zeroed to `0000000` here. Nothing else is normalised.
-# Its date reads `futu…`: it is dated by the wall clock, the frame by the
+# The rebased commit is drawn with no id (rows draw none since ease-pass
+# 07). Its age reads `fut…`: it is dated by the wall clock, the frame by the
 # fixtures' fixed clock (so the other rows' ages hold still), which is
 # earlier.
 #
@@ -16,41 +15,41 @@
 
  ◆ api  ~/code/api · main                                                                 202 commits  1 commit to push
 
-  ◌    Uncommitted changes (1 staged, 2 unstaged)
-▸ ◆  ⓘ [◆ main ↑1] ours                                                                                 GF futu…0000000
-  ●    [origin/main] theirs                                                                             GF 6m   7be74b5
-  ●    Commit 200                                                                                       GF 1y   d5ae5fd
-  ●    Commit 199                                                                                       GF 1y   13e6ab1
-  ●    Commit 198                                                                                       GF 1y   f5055d9
-  ●    Commit 197                                                                                       GF 1y   2cce853
-  ●    Commit 196                                                                                       GF 1y   325da3f
-  ●    Commit 195                                                                                       GF 1y   0722297
-  ●    Commit 194                                                                                       GF 1y   b6a4a47
-  ●    Commit 193                                                                                       GF 1y   60af0eb
-  ●    Commit 192                                                                                       GF 1y   aceb8c5
-  ●    Commit 191                                                                                       GF 1y   11d68ff
-  ●    Commit 190                                                                                       GF 1y   91900bd
-  ●    Commit 189                                                                                       GF 1y   cec3e93
-  ●    Commit 188                                                                                       GF 1y   0a91ece
-  ●    Commit 187                                                                                       GF 1y   3121935
-  ●    Commit 186                                                                                       GF 1y   fab25df
-  ●    Commit 185                                                                                       GF 1y   09ae97c
-  ●    Commit 184                                                                                       GF 1y   49d7783
-  ●    Commit 183                                                                                       GF 1y   22d55c9
-  ●    Commit 182                                                                                       GF 1y   d212b3e
-  ●    Commit 181                                                                                       GF 1y   c8254c5
-  ●    Commit 180                                                                                       GF 1y   e95ccd4
-  ●    Commit 179                                                                                       GF 1y   97b58e5
-  ●    Commit 178                                                                                       GF 1y   1c9b7ed
-  ●    Commit 177                                                                                       GF 1y   f93340a
-  ●    Commit 176                                                                                       GF 1y   5aaeeba
-  ●    Commit 175                                                                                       GF 1y   6be5928
-  ●    Commit 174                                                                                       GF 1y   9b67be4
-  ●    Commit 173                                                                                       GF 1y   937d32b
-  ●    Commit 172                                                                                       GF 1y   81be718
-  ●    Commit 171                                                                                       GF 1y   57b8196
-  ●    Commit 170                                                                                       GF 1y   8ea98be
-  ●    Commit 169                                                                                       GF 1y   4926766
-  ●    Commit 168                                                                                       GF 1y   0d60d60
+  ◌                         Uncommitted changes (1 staged, 2 unstaged)
+▸ ◆  ⓘ main (you)           ours  ↑1 to push                                                                 Graft fut…
+  ●                         theirs  origin/main is here                                                      Graft   6m
+  ●                         Commit 200                                                                       Graft   1y
+  ●                         Commit 199                                                                       Graft   1y
+  ●                         Commit 198                                                                       Graft   1y
+  ●                         Commit 197                                                                       Graft   1y
+  ●                         Commit 196                                                                       Graft   1y
+  ●                         Commit 195                                                                       Graft   1y
+  ●                         Commit 194                                                                       Graft   1y
+  ●                         Commit 193                                                                       Graft   1y
+  ●                         Commit 192                                                                       Graft   1y
+  ●                         Commit 191                                                                       Graft   1y
+  ●                         Commit 190                                                                       Graft   1y
+  ●                         Commit 189                                                                       Graft   1y
+  ●                         Commit 188                                                                       Graft   1y
+  ●                         Commit 187                                                                       Graft   1y
+  ●                         Commit 186                                                                       Graft   1y
+  ●                         Commit 185                                                                       Graft   1y
+  ●                         Commit 184                                                                       Graft   1y
+  ●                         Commit 183                                                                       Graft   1y
+  ●                         Commit 182                                                                       Graft   1y
+  ●                         Commit 181                                                                       Graft   1y
+  ●                         Commit 180                                                                       Graft   1y
+  ●                         Commit 179                                                                       Graft   1y
+  ●                         Commit 178                                                                       Graft   1y
+  ●                         Commit 177                                                                       Graft   1y
+  ●                         Commit 176                                                                       Graft   1y
+  ●                         Commit 175                                                                       Graft   1y
+  ●                         Commit 174                                                                       Graft   1y
+  ●                         Commit 173                                                                       Graft   1y
+  ●                         Commit 172                                                                       Graft   1y
+  ●                         Commit 171                                                                       Graft   1y
+  ●                         Commit 170                                                                       Graft   1y
+  ●                         Commit 169                                                                       Graft   1y
+  ●                         Commit 168                                                                       Graft   1y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ rebase main onto origin/main · your edits are back

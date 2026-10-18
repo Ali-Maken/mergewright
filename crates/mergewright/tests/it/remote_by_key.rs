@@ -984,8 +984,8 @@ const PLAIN_BOX_AFTER_REBASE_HEADER: &str = "\
 # capture_fix_plain_box_after_rebase in crates/mergewright/tests/it/remote_by_key.rs
 # (asserted). A teammate pushed; `P` `→` `⏎` was rejected; `p` named the
 # divergence; `r` `r` rebased onto origin/main; then `P` (m6-conflicts/49).
-# The rebased commit is drawn moments before the frame, so its id is new
-# every run: it is zeroed to `0000000` here. Nothing else is normalised.
+# The rebased commit is made moments before the frame; the rows draw no id
+# (ease-pass 07), so nothing is normalised.
 #
 # Judge by eye:
 # - The box is titled `Push main → origin/main`, not `Force-push`.
@@ -1220,8 +1220,6 @@ fn capture_fix_plain_box_after_rebase() {
     let state = app.settle_write(state, "the rebase");
     let state = ready(&app, state);
     let state = crate::captures::at_rest(&app, state);
-    let rebased = rev(work, "HEAD");
-
     let state = app.press(&state, plain('P'));
     let pending = state.confirm.as_ref().expect("P opened a box");
     assert_eq!(
@@ -1245,10 +1243,7 @@ fn capture_fix_plain_box_after_rebase() {
     let drawn = frame(&state, 187, 50).join("\n");
     check_shot(
         "m6/fix-plain-box-after-rebase-187x50.txt",
-        &format!(
-            "{PLAIN_BOX_AFTER_REBASE_HEADER}{}\n",
-            without_invented_id(&drawn, &rebased)
-        ),
+        &format!("{PLAIN_BOX_AFTER_REBASE_HEADER}{drawn}\n"),
     );
     drop(state);
     app.close();

@@ -1,8 +1,8 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_fix_subject_enter_commits in
 # crates/mergewright/tests/it/commit_editor_writes.rs (asserted; the commit is
-# made by real git; its id and its parent's, both made by the run and new
-# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
+# made by real git; the rows draw no id since ease-pass 07, so none is
+# zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
 # with the subject focused (m6-conflicts/51).
 #
 # Judge by eye:
@@ -43,8 +43,8 @@
 
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                             2 commits
-▸ ◆    [◆ main] fix: x                                             now  0000000
-  ◇    add sample                                                  now  0000000
+▸ ◆    main (you)   fix: x  not pushed yet                             you  now
+  ◇                 add sample                                         you  now
 
 
 

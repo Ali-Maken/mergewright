@@ -1,13 +1,13 @@
  ◆ api  ~/code/api · main                                                                                                                                      7 commits  1 commit to push
 
-  ◌        Uncommitted changes (1 unstaged)
-    ■      [stash@{0}] On main: tune metrics                                                                                                                               GF 3m   91dddee
-    ┊ ●    [origin/main] Add an ops runbook                                                                                                                                GF 14m  8c11cb0
-    ┊ ●    Document the api                                                                                                                                                GF 15m  ba5c9ad
-▸ ◆ ┊ ┊  ⓘ [◆ main ↑1 ↓2] Add rate limiter  ↺ put back                                                                                                                     GF 30m  a65d7e4
-  ●┄┴┄╯    Add metrics endpoint  ○ main was here                                                                                                                           GF 31m  a314d47
-  ●        Add request logging                                                                                                                                             GF 32m  6b08f9d
-  ◇        Start the api                                                                                                                                                   GF 33m  8a05478
+  ◌                             Uncommitted changes (1 unstaged)
+    ■                           On main: tune metrics  stash@{0}                                                                                                                  you   3m
+    ┊ ●    origin/main          Add an ops runbook  origin/main is here                                                                                                           you  14m
+    ┊ ●                         Document the api                                                                                                                                  you  15m
+▸ ◆ ┊ ┊  ⓘ main (you)           Add rate limiter  ↺ put back  ↑1 to push                                                                                                          you  30m
+  ●┄┴┄╯                         Add metrics endpoint  ○ main was here                                                                                                             you  31m
+  ●                             Add request logging                                                                                                                               you  32m
+  ◇                             Start the api                                                                                                                                     you  33m
 
 
 

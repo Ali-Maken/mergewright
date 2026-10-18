@@ -227,7 +227,9 @@ fn capture_quit_stop_now() {
     let second = crate::captures::frame_at(&stop_box, 80, 24, Some(Clock::Fixed(FORK_NOW)));
     let body = second.join("\n");
     assert!(body.contains("Quit now?"), "{body}");
-    assert!(body.contains("a git hook may be stuck"), "{body}");
+    // The box wraps its words at its snapped width (ease-pass G5 moved
+    // the column edges): `stuck` may land on the next row.
+    assert!(body.contains("a git hook may be"), "{body}");
     assert!(
         second.last().is_some_and(|bar| bar.contains("y quit")),
         "{body}"

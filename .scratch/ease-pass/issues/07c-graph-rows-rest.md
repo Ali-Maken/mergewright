@@ -1,6 +1,6 @@
 # 07c — graph rows, the rest of 07
 
-Status: ready (split by conductor 2026-10-18: 07 compacted at 8/14, f2269602 merged)
+Status: done 2026-10-19 (boxes ticked in 07; `not merged` left for 09). Was: ready (split by conductor 2026-10-18: 07 compacted at 8/14, f2269602 merged)
 Blocked by: 07 part (merged)
 Build with: Opus (`builder-opus`) — same model as 07; scope, signatures and boxes unchanged.
 

@@ -2,41 +2,41 @@
 # What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ●    Commit 036                                                                                       GF 2d   20b8b5b
-  ●    Commit 035                                                                                       GF 2d   3f6038c
-  ●    Commit 034                                                                                       GF 2d   8e09fc2
-  ●    Commit 033                                                                                       GF 2d   6e2678c
-  ●    Commit 032                                                                                       GF 2d   5d63a1d
-  ●    Commit 031                                                                                       GF 2d   8899c30
-  ●    Commit 030                                                                                       GF 2d   37e297d
-  ●    Commit 029                                                                                       GF 2d   70dce5f
-  ●    Commit 028                                                                                       GF 2d   544a17f
-  ●    Commit 027                                                                                       GF 2d   5a0afae
-  ●    Commit 026                                                                                       GF 2d   1613860
-  ●    Commit 025                                                                                       GF 2d   9735460
-  ●    Commit 024                                                                                       GF 2d   b7af116
-  ●    Commit 023                                                                                       GF 2d   fb309b6
-  ●    Commit 022                                                                                       GF 2d   84d0a1f
-  ●    Commit 021                                                                                       GF 2d   4a23986
-  ●    Commit 020                                                                                       GF 2d   39e90f2
-  ●    Commit 019                                                                                       GF 2d   3df4ded
-  ●    Commit 018                                                                                       GF 2d   a4926c8
-  ●    Commit 017                                                                                       GF 2d   9bc97ce
-  ●    Commit 016                                                                                       GF 2d   5c44f45
-  ●    Commit 015                                                                                       GF 2d   079b1e0
-  ●    Commit 014                                                                                       GF 2d   d4c84eb
-  ●    Commit 013                                                                                       GF 2d   0569f2d
-  ●    Commit 012                                                                                       GF 2d   b52bf2e
-  ●    Commit 011                                                                                       GF 2d   72c4ed4
-  ●    Commit 010                                                                                       GF 2d   7ebc50b
-  ●    Commit 009                                                                                       GF 2d   617a1f4
-  ●    Commit 008                                                                                       GF 2d   0ebab38
-  ●    Commit 007                                                                                       GF 2d   07b6383
-  ●    Commit 006                                                                                       GF 2d   258a38c
-  ●    Commit 005                                                                                       GF 2d   af93e54
-  ●    Commit 004                                                                                       GF 2d   23e1f67
-  ●    Commit 003                                                                                       GF 2d   91af090
-  ●    Commit 002                                                                                       GF 2d   ace211d
-▸ ◇    Commit 001                                                                                       GF 2d   a9a0c8e
+  ●    main (you)           Commit 036                                                                       Graft   2d
+  ●                         Commit 035                                                                       Graft   2d
+  ●                         Commit 034                                                                       Graft   2d
+  ●                         Commit 033                                                                       Graft   2d
+  ●                         Commit 032                                                                       Graft   2d
+  ●                         Commit 031                                                                       Graft   2d
+  ●                         Commit 030                                                                       Graft   2d
+  ●                         Commit 029                                                                       Graft   2d
+  ●                         Commit 028                                                                       Graft   2d
+  ●                         Commit 027                                                                       Graft   2d
+  ●                         Commit 026                                                                       Graft   2d
+  ●                         Commit 025                                                                       Graft   2d
+  ●                         Commit 024                                                                       Graft   2d
+  ●                         Commit 023                                                                       Graft   2d
+  ●                         Commit 022                                                                       Graft   2d
+  ●                         Commit 021                                                                       Graft   2d
+  ●                         Commit 020                                                                       Graft   2d
+  ●                         Commit 019                                                                       Graft   2d
+  ●                         Commit 018                                                                       Graft   2d
+  ●                         Commit 017                                                                       Graft   2d
+  ●                         Commit 016                                                                       Graft   2d
+  ●                         Commit 015                                                                       Graft   2d
+  ●                         Commit 014                                                                       Graft   2d
+  ●                         Commit 013                                                                       Graft   2d
+  ●                         Commit 012                                                                       Graft   2d
+  ●                         Commit 011                                                                       Graft   2d
+  ●                         Commit 010                                                                       Graft   2d
+  ●                         Commit 009                                                                       Graft   2d
+  ●                         Commit 008                                                                       Graft   2d
+  ●                         Commit 007                                                                       Graft   2d
+  ●                         Commit 006                                                                       Graft   2d
+  ●                         Commit 005                                                                       Graft   2d
+  ●                         Commit 004                                                                       Graft   2d
+  ●                         Commit 003                                                                       Graft   2d
+  ●                         Commit 002                                                                       Graft   2d
+▸ ◇                         Commit 001                                                                       Graft   2d
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · ? keys

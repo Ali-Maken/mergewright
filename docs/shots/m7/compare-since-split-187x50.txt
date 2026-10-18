@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                                         6 commits  changes on feature-a since it left main · 3 commits · 2 files +2 −0
 
-  ◆   ▏  [x base] [◆ main] Readme                                                           GF 2d   22e02fb
-▸ ║ ●    [feature-a] Use token                                                              GF 2d   a84a58c
-  ● ┃    Changelog                                                                          GF 2d   500b0e7
-  ║ ●    Add token                                                                          GF 2d   fcd7e09  ▾ src/
-  ║ ●    Add login                                                                          GF 2d   95472aa    A login.rs                                                             +1 −0
-  ◇━╯    root                                                                               GF 2d   b5eff22    A token.rs                                                             +1 −0
+  ◆   ▏  main (you)     Readme  x base  not pushed yet                                           Graft   2d
+▸ ║ ●    feature-a      Use token  not pushed yet                                                Graft   2d
+  ● ┃    main (you)     Changelog                                                                Graft   2d
+  ║ ●    feature-a      Add token                                                                Graft   2d  ▾ src/
+  ║ ●                   Add login                                                                Graft   2d    A login.rs                                                             +1 −0
+  ◇━╯    main (you)     root                                                                     Graft   2d    A token.rs                                                             +1 −0
                                                                                                              select a file
 
 

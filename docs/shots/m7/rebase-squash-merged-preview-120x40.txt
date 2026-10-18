@@ -1,14 +1,14 @@
  ◆ api  ~/code/api · feature-a                                                                                7 commits
 
-    ●      b1                                                                                           GF 2d   f41bc43
-    │      after rebase
-    │ ○    [feature-b] b1                                                                               GF —    —
-▸ ◆─│─╯    [main] [◆ feature-a] Add OAuth (#42)                                                         GF 2d   51f3dc8
-  │ ●      a3                                                                                           GF 2d   1dc69fb
-  │ ●      a2                                                                                           GF 2d   5c80d6b
-  │ ●      a1                                                                                           GF 2d   53e9958
-  ● │      m2                                                                                           GF 2d   808546f
-  ◇─╯      m1                                                                                           GF 2d   256d42c
+    ●                           b1                                                                           Graft   2d
+    │                           after rebase
+    │ ○                         b1  feature-b is here  not pushed yet                                        Graft    —
+▸ ◆─│─╯                         Add OAuth (#42)  main is here  not pushed yet  feature-a is here  not push…  Graft   2d
+  │ ●                           a3                                                                           Graft   2d
+  │ ●                           a2                                                                           Graft   2d
+  │ ●                           a1                                                                           Graft   2d
+  ● │                           m2                                                                           Graft   2d
+  ◇─╯                           m1                                                                           Graft   2d
 
 
 

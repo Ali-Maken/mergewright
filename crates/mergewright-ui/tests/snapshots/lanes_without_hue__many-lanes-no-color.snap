@@ -1,32 +1,32 @@
 ---
-source: crates/graft-ui/tests/lanes_without_hue.rs
+source: crates/mergewright-ui/tests/lanes_without_hue.rs
 expression: text
 ---
 shape: many-lanes, no-color, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                      44 commits  lanes drawn: 7 of 11
-  ◆▾            ⋮    Merge branch 'lane-13'                        4y   52f744e
-▸ ◉▾            ⋮    Merge branch 'lane-12'                        4y   312c240
-  │             ●▾   lane 13: finish                               4y   16edd45
-  │             ●▾   lane 13: start                                4y   fc39937
-  │             ●▾   lane 12: finish                               4y   ba41b94
-  │             ●▾   lane 12: start                                4y   595e647
-  │             ●▾   lane 11: finish                               4y   104b6b1
-  │             ●▾   lane 11: start                                4y   f436b6b
-  │             ●▾   lane 10: finish                               4y   a3b8a59
-  │             ●▾   lane 10: start                                4y   bfed5c0
-  │ ●           ⋮    lane 9: finish                                4y   adc0db3
-  │ ●           ⋮    lane 9: start                                 4y   5025693
-  │ ╎ ●         ⋮    lane 8: finish                                4y   05aa3ba
-  │ ╎ ●         ⋮    lane 8: start                                 4y   dbc2bca
-  │ ╎ │ ●       ⋮    lane 7: finish                                4y   f9dccb0
-  │ ╎ │ ●       ⋮    lane 7: start                                 4y   467f15f
-  │ ╎ │ ╎ ●     ⋮    lane 6: finish                                4y   92e2e33
-  │ ╎ │ ╎ ●     ⋮    lane 6: start                                 4y   03bf261
-  │ ╎ │ ╎ │ ●   ⋮    lane 5: finish                                4y   ac7060d
-  │ ╎ │ ╎ │ ●   ⋮    lane 5: start                                 4y   b42258f
-  │ ╎ │ ╎ │ ╎ ● ⋮    lane 4: finish                                4y   53c77f2
-  │ ╎ │ ╎ │ ╎ ● ⋮    lane 4: start                                 4y   8b63689
+  ◆▾            ⋮                 Merge branch 'lane-13'             Graft   4y
+▸ ◉▾            ⋮                 Merge branch 'lane-12'             Graft   4y
+  │             ●▾                lane 13: finish                    Graft   4y
+  │             ●▾                lane 13: start                     Graft   4y
+  │             ●▾                lane 12: finish                    Graft   4y
+  │             ●▾                lane 12: start                     Graft   4y
+  │             ●▾                lane 11: finish                    Graft   4y
+  │             ●▾                lane 11: start                     Graft   4y
+  │             ●▾                lane 10: finish                    Graft   4y
+  │             ●▾                lane 10: start                     Graft   4y
+  │ ●           ⋮                 lane 9: finish                     Graft   4y
+  │ ●           ⋮                 lane 9: start                      Graft   4y
+  │ ╎ ●         ⋮                 lane 8: finish                     Graft   4y
+  │ ╎ ●         ⋮                 lane 8: start                      Graft   4y
+  │ ╎ │ ●       ⋮                 lane 7: finish                     Graft   4y
+  │ ╎ │ ●       ⋮                 lane 7: start                      Graft   4y
+  │ ╎ │ ╎ ●     ⋮                 lane 6: finish                     Graft   4y
+  │ ╎ │ ╎ ●     ⋮                 lane 6: start                      Graft   4y
+  │ ╎ │ ╎ │ ●   ⋮                 lane 5: finish                     Graft   4y
+  │ ╎ │ ╎ │ ●   ⋮                 lane 5: start                      Graft   4y
+  │ ╎ │ ╎ │ ╎ ● ⋮                 lane 4: finish                     Graft   4y
+  │ ╎ │ ╎ │ ╎ ● ⋮                 lane 4: start                      Graft   4y
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 graph colour per cell:

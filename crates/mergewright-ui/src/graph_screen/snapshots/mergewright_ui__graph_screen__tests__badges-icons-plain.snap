@@ -1,10 +1,9 @@
 ---
-source: crates/graft-ui/src/graph_screen/tests.rs
-assertion_line: 773
+source: crates/mergewright-ui/src/graph_screen/tests.rs
 expression: plain
 ---
  ◆ api  /code/api · main                                                                                      2 commits 
-  ●    [◆ main ⇄ origin] [feature/auth ↑2 ↓1] [origin… Commit 2                                         TE 2h   0202020 
-▸ ◇    [topic] Commit 1                                                                                 TE 2h   0101010 
+  ●                         Commit 2  main is here  feature/auth is here  ↑2 to push  origin/feature/auth …   Test   2h 
+▸ ◇                         Commit 1  topic is here  not pushed yet                                           Test   2h 
                                                                                                                         
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys

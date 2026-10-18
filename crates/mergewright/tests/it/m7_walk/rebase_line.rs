@@ -460,7 +460,7 @@ fn a_rebase_onto_the_top_row_shows_after_rebase() {
     );
     let ghosts: Vec<&&str> = rows.iter().filter(|row| row.contains('\u{25cb}')).collect();
     assert_eq!(ghosts.len(), 4, "a1 a2 a3 b1 as ghosts: {screen}");
-    assert!(rows.iter().any(|row| row.contains("[main] m2")), "{screen}");
+    assert!(rows.iter().any(crate::row_reads::m2_on_main), "{screen}");
     crate::captures::check_shot("m7/rebase-preview-target-top-187x44.txt", &screen);
     assert!(
         screen
@@ -491,7 +491,7 @@ fn a_preview_too_tall_pins_its_label() {
         "the label on the top row: {screen}"
     );
     assert!(
-        rows.last().is_some_and(|row| row.contains("[main] m2")),
+        rows.last().is_some_and(crate::row_reads::m2_on_main),
         "the target on the last row: {screen}"
     );
     assert!(

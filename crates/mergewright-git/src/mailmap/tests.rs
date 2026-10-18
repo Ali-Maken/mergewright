@@ -50,3 +50,21 @@ fn an_empty_mailmap_resolves_everything_to_itself() {
         (b"Ada K".to_vec(), b"ada@example.com".to_vec())
     );
 }
+
+#[test]
+fn the_users_own_commits_are_his_under_every_address_the_mailmap_joins() {
+    let mailmap = Mailmap::from_bytes(b"Rui M <reza@example.com> <reza.old@example.invalid>\n")
+        .with_me(Some(b"reza@example.com"));
+
+    assert!(mailmap.is_me(&identity("Rui M", "reza@example.com")));
+    assert!(mailmap.is_me(&identity("Reza Old", "reza.old@example.invalid")));
+    assert!(!mailmap.is_me(&identity("Sara K", "sara@example.com")));
+}
+
+#[test]
+fn with_no_user_email_no_commit_is_his() {
+    let mailmap = Mailmap::default();
+
+    assert!(!mailmap.is_me(&identity("Rui M", "reza@example.com")));
+    assert!(!mailmap.is_me(&identity("", "")));
+}

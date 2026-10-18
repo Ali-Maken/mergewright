@@ -8,12 +8,12 @@
 # `origin/sara/login-page`; the footer `2 of 4 branches`.
  ◆ api  ~/code/api · main                                                                 6 commits
 
-▸   ●    [login-page] [origin/sara/login-pag… fix the bug                           GF 3m   fbb2394
-  ◆ ┃    [◆ main ⇄ origin] main moves on                                            GF 4m   37926a7
-  ●━╯    [feature-a] add the base                                                   GF 5m   ed332bc
-  ●      Correct the note                                                           GF 1y   a82960b
-  ●      Add the first note                                                         GF 1y   fadcfb3
-  ◇      Add a readme                                                               GF 1y   64ded19
+▸   ●    origin/sara/l… fix the bug  login-page is here  not pushed yet  origin/sara/l…  Graft   3m
+  ◆ ┃    main (you)     main moves on                                                    Graft   4m
+  ●━╯                   add the base  feature-a is here  not pushed yet                  Graft   5m
+  ●                     Correct the note                                                 Graft   1y
+  ●                     Add the first note                                               Graft   1y
+  ◇                     Add a readme                                                     Graft   1y
 
 
 

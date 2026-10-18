@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · wallet-release                                                   6 commits  1 merged branch folded
 
-▸   ◆    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rel…  ▸ 2 commits from sara/fix-toc GF now  0000000
-    ●    release notes                                                                                  GF 1y   43f9889
-    ●    the report                                                                                     GF 1y   55f07e5
-  ●━╯    [main] Correct the note                                                                        GF 7y   a82960b
-  ●      Add the first note                                                                             GF 7y   fadcfb3
-  ◇      Add a readme                                                                                   GF 7y   64ded19
+▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' i…  ▸ 2 commits from sara/fix-toc  not pushed yet    you  now
+    ●                         release notes                                                                    you   1y
+    ●                         the report                                                                       you   1y
+  ●━╯    main                 Correct the note  not pushed yet                                                 you   7y
+  ●                           Add the first note                                                               you   7y
+  ◇                           Add a readme                                                                     you   7y
 
 
 

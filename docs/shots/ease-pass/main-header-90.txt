@@ -3,37 +3,37 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
 
  ◆ api  …api · wallet-release  47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
-  ●    release: note 30                                                      27h  16cbf14
-  ●    release: note 29                                                      27h  7e8fabe
-  ●    release: note 28                                                      27h  fd70cee
-  ●    release: note 27                                                      27h  3befda3
-  ●    release: note 26                                                      27h  4562628
-  ●    release: note 25                                                      27h  bd0954e
-  ●    release: note 24                                                      27h  b16f697
-  ●    release: note 23                                                      27h  014c9ac
-  ●    release: note 22                                                      27h  7fe7fe3
-  ●    release: note 21                                                      27h  925d180
-  ●    release: note 20                                                      27h  8d8e40b
-  ●    release: note 19                                                      27h  ac48c5d
-  ●    release: note 18                                                      27h  6afd2e0
-  ●    release: note 17                                                      27h  ef2a267
-  ●    release: note 16                                                      27h  52ddb01
-  ●    release: note 15                                                      27h  7a491cf
-  ●    release: note 14                                                      27h  05f89d2
-  ●    release: note 13                                                      27h  e0e328d
-  ●    release: note 12                                                      27h  76c9147
-  ●    release: note 11                                                      27h  5cb2bbc
-  ●    release: note 10                                                      27h  08216b9
-  ●    release: note 09                                                      27h  939d486
-  ●    release: note 08                                                      27h  26785f8
-  ●    release: note 07                                                      27h  de21cdc
-  ●    release: note 06                                                      27h  42e3d0c
-  ●    release: note 05                                                      27h  7ba6657
-  ●    release: note 04                                                      27h  4c1c323
-  ●    release: note 03                                                      27h  bdcd264
-  ●    release: note 02                                                      27h  fda79f4
-  ●    release: note 01                                                      27h  3842dd8
-  ◉    Merge branch 'sara/fix-toc' into walle…  ▸ 1 commit from sara/fix-toc 28h  ea2b27e
-▸ ◉    Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021     28h  4eb2a56
+  ●    walle… (you) release: note 30                                           Graft  27h
+  ●                 release: note 29                                           Graft  27h
+  ●                 release: note 28                                           Graft  27h
+  ●                 release: note 27                                           Graft  27h
+  ●                 release: note 26                                           Graft  27h
+  ●                 release: note 25                                           Graft  27h
+  ●                 release: note 24                                           Graft  27h
+  ●                 release: note 23                                           Graft  27h
+  ●                 release: note 22                                           Graft  27h
+  ●                 release: note 21                                           Graft  27h
+  ●                 release: note 20                                           Graft  27h
+  ●                 release: note 19                                           Graft  27h
+  ●                 release: note 18                                           Graft  27h
+  ●                 release: note 17                                           Graft  27h
+  ●                 release: note 16                                           Graft  27h
+  ●                 release: note 15                                           Graft  27h
+  ●                 release: note 14                                           Graft  27h
+  ●                 release: note 13                                           Graft  27h
+  ●                 release: note 12                                           Graft  27h
+  ●                 release: note 11                                           Graft  27h
+  ●                 release: note 10                                           Graft  27h
+  ●                 release: note 09                                           Graft  27h
+  ●                 release: note 08                                           Graft  27h
+  ●                 release: note 07                                           Graft  27h
+  ●                 release: note 06                                           Graft  27h
+  ●                 release: note 05                                           Graft  27h
+  ●                 release: note 04                                           Graft  27h
+  ●                 release: note 03                                           Graft  27h
+  ●                 release: note 02                                           Graft  27h
+  ●                 release: note 01                                           Graft  27h
+  ◉                 Merge branch 'sara/fix-toc…  ▸ 1 commit from sara/fix-toc  Graft  28h
+▸ ◉                 Merged PR 16021: Fix the wall…  ▸ 4 commits from PR 16021  Graft  28h
 ──────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys

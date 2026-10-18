@@ -3,10 +3,10 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
 
  ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
 
-    ◆    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rele…  ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
-▸   ◉    Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021                              GF 28h  4eb2a56
-    ●    Start the wallet release                                                                       GF 28h  68f9980
-  ◇━╯    [main] Add the readme                                                                          GF 28h  2b013b5
+    ◆    wallet-release (you) Merge branch 'sara/fix-toc' in…  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
+▸   ◉                         Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021              Graft  28h
+    ●                         Start the wallet release                                                       Graft  28h
+  ◇━╯    main                 Add the readme  not pushed yet                                                 Graft  28h
 
 
 

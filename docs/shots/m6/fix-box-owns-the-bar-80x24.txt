@@ -18,73 +18,73 @@
 #
 === frame 1: the lease box over a rejected push ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
-  ●    [origin/main] Commit 200                                    7y   d5ae5fd
-  ●    Commit 199                                                  7y   13e6ab1
-  ●    Commit 198                                                  7y   f5055d9
-  ●    Commit 197                                                  7y   2cce853
-  ●    ╭ Force-push main → origin/main? ───────────────────────────────────────╮
-  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your    │
-  ●    │ fetch (lease)                                                         │
-  ●    │ rewrites history for everyone who has d5ae5fd                         │
-  ●    │ nothing on origin/main is lost                                        │
-  ●    │                                                                       │
-  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365b… │
-  ●    │                                                                       │
-  ●    │ ▸[ Cancel ]   [ Force push ]                                          │
-  ●    ╰───────────────────────────────────────────────────────────────────────╯
-  ●    Commit 186                                                  7y   fab25df
-  ●    Commit 185                                                  7y   09ae97c
-  ●    Commit 184                                                  7y   49d7783
-  ●    Commit 183                                                  7y   22d55c9
-  ●    Commit 182                                                  7y   d212b3e
-  ●    Commit 181                                                  7y   c8254c5
-  ●    Commit 180                                                  7y   e95ccd4
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ●                 Commit 200  origin/main is here                  Graft   7y
+  ●                 Commit 199                                       Graft   7y
+  ●                 Commit 198                                       Graft   7y
+  ●                 Commit 197                                       Graft   7y
+  ●    ╭ Force-push main → origin/main? ─────────────────────────────────╮   7y
+  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │   7y
+  ●    │ your fetch (lease)                                              │   7y
+  ●    │ rewrites history for everyone who has d5ae5fd                   │   7y
+  ●    │ nothing on origin/main is lost                                  │   7y
+  ●    │                                                                 │   7y
+  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │   7y
+  ●    │                                                                 │   7y
+  ●    │ ▸[ Cancel ]   [ Force push ]                                    │   7y
+  ●    ╰─────────────────────────────────────────────────────────────────╯   7y
+  ●                 Commit 186                                       Graft   7y
+  ●                 Commit 185                                       Graft   7y
+  ●                 Commit 184                                       Graft   7y
+  ●                 Commit 183                                       Graft   7y
+  ●                 Commit 182                                       Graft   7y
+  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 180                                       Graft   7y
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
-  ●    [origin/main] Commit 200                                    7y   d5ae5fd
-  ●    Commit 199                                                  7y   13e6ab1
-  ●    Commit 198                                                  7y   f5055d9
-  ●    Commit 197                                                  7y   2cce853
-  ●    Commit 196                                                  7y   325da3f
-  ●    Commit 195                                                  7y   0722297
-  ●    Commit 194                                                  7y   b6a4a47
-  ●    Commit 193                                                  7y   60af0eb
-  ●    Commit 192                                                  7y   aceb8c5
-  ●    Commit 191                                                  7y   11d68ff
-  ●    Commit 190                                                  7y   91900bd
-  ●    Commit 189                                                  7y   cec3e93
-  ●    Commit 188                                                  7y   0a91ece
-  ●    Commit 187                                                  7y   3121935
-  ●    Commit 186                                                  7y   fab25df
-  ●    Commit 185                                                  7y   09ae97c
-  ●    Commit 184                                                  7y   49d7783
-  ●    Commit 183                                                  7y   22d55c9
-  ●    Commit 182                                                  7y   d212b3e
-  ●    Commit 181                                                  7y   c8254c5
-  ●    Commit 180                                                  7y   e95ccd4
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ●                 Commit 200  origin/main is here                  Graft   7y
+  ●                 Commit 199                                       Graft   7y
+  ●                 Commit 198                                       Graft   7y
+  ●                 Commit 197                                       Graft   7y
+  ●                 Commit 196                                       Graft   7y
+  ●                 Commit 195                                       Graft   7y
+  ●                 Commit 194                                       Graft   7y
+  ●                 Commit 193                                       Graft   7y
+  ●                 Commit 192                                       Graft   7y
+  ●                 Commit 191                                       Graft   7y
+  ●                 Commit 190                                       Graft   7y
+  ●                 Commit 189                                       Graft   7y
+  ●                 Commit 188                                       Graft   7y
+  ●                 Commit 187                                       Graft   7y
+  ●                 Commit 186                                       Graft   7y
+  ●                 Commit 185                                       Graft   7y
+  ●                 Commit 184                                       Graft   7y
+  ●                 Commit 183                                       Graft   7y
+  ●                 Commit 182                                       Graft   7y
+  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 180                                       Graft   7y
  push rejected: origin/main has com… · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
  ◆ api  ~/code/api · fix                        6 commits  date order, sorting…
-    ◌    Uncommitted changes (1 unstaged)
-▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
-  ● ┃    [main] main moves on                                      4m   37926a7
-  ●━╯    add the base                                              5m   ed332bc
-  ●      Correct the note                                          1y   a82960b
-  ●      Add the first note                                        1y   fadcfb3
-  ◇   ╭ Undo “checkout fix”? ──────────────────────────────────────────────────╮
-      │ Since this checkout fix, the working tree changed.                     │
-      │ Undo replaces your edit to fix.txt; a backup keeps it, and U           │
-      │ brings it back.                                                        │
-      │                                                                        │
-      │ undo restores the recorded state                                       │
-      │                                                                        │
-      │ ▸[ Stop ]   [ Undo ]                                                   │
-      ╰────────────────────────────────────────────────────────────────────────╯
+    ◌                 Uncommitted changes (1 unstaged)
+▸   ◆    fix (you)    fix the bug  not pushed yet                    Graft   3m
+  ● ┃    main         main moves on  not pushed yet                  Graft   4m
+  ●━╯                 add the base                                   Graft   5m
+  ●                   Correct the note                               Graft   1y
+  ●                   Add the first note                             Graft   1y
+  ◇   ╭ Undo “checkout fix”? ────────────────────────────────────────────╮   1y
+      │ Since this checkout fix, the working tree changed.               │
+      │ Undo replaces your edit to fix.txt; a backup keeps it, and U     │
+      │ brings it back.                                                  │
+      │                                                                  │
+      │ undo restores the recorded state                                 │
+      │                                                                  │
+      │ ▸[ Stop ]   [ Undo ]                                             │
+      ╰──────────────────────────────────────────────────────────────────╯
 
 
 
@@ -96,26 +96,26 @@
 
 === frame 4: `b`, `⏎` on an empty name ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ [◆ main ↑1] ours                                            6y   739071c
-  ●    [origin/main] Commit 200                                    7y   d5ae5fd
-  ●    Commit 199                                                  7y   13e6ab1
-  ●    Commit 198                                                  7y   f5055d9
-  ●    Commit 197                                                  7y   2cce853
-  ●    Commit 196                                                  7y   325da3f
-  ●    Commit 195                                                  7y   0722297
-  ●    Commit 194                                                  7y   b6a4a47
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ●                 Commit 200  origin/main is here                  Graft   7y
+  ●                 Commit 199                                       Graft   7y
+  ●                 Commit 198                                       Graft   7y
+  ●                 Commit 197                                       Graft   7y
+  ●                 Commit 196                                       Graft   7y
+  ●                 Commit 195                                       Graft   7y
+  ●                 Commit 194                                       Graft   7y
           ╭ New branch at 739071c ───────────────────────────────────╮
           │ ▏                                                        │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-  ●    Commit 187                                                  7y   3121935
-  ●    Commit 186                                                  7y   fab25df
-  ●    Commit 185                                                  7y   09ae97c
-  ●    Commit 184                                                  7y   49d7783
-  ●    Commit 183                                                  7y   22d55c9
-  ●    Commit 182                                                  7y   d212b3e
-  ●    Commit 181                                                  7y   c8254c5
-  ●    Commit 180                                                  7y   e95ccd4
+  ●                 Commit 187                                       Graft   7y
+  ●                 Commit 186                                       Graft   7y
+  ●                 Commit 185                                       Graft   7y
+  ●                 Commit 184                                       Graft   7y
+  ●                 Commit 183                                       Graft   7y
+  ●                 Commit 182                                       Graft   7y
+  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 180                                       Graft   7y
  a branch needs a name

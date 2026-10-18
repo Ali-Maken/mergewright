@@ -16,13 +16,13 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸ ◌      Uncommitted changes (1 unmerged)
-  ◆      [◆ main] commit over the notes                                                                 GF 3m   f3742ab
-  ┃ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                 GF 4m   fa9e094
-  ●┄╯    add the notes                                                                                  GF 5m   cfa370c
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸ ◌                           Uncommitted changes (1 unmerged)
+  ◆      main (you)           commit over the notes  not pushed yet                                          Graft   3m
+  ┃ ■                         WIP on main: cfa370c add the notes  stash@{0}                                  Graft   4m
+  ●┄╯    main (you)           add the notes                                                                  Graft   5m
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 

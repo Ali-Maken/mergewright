@@ -5,17 +5,17 @@
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           9 commits
 
-      │    after merge
-    ◎┈╮    [◆ wallet-release] Merge branch 'stray' into wallet-release                                  GT —    —
-▸   │ ◇    [stray] Start over                                                                           GF 54m  08bc042
-    │ ●    [sara/fix-toc] Check every link                                                              SA 55m  c95c84c
-    │ ●    Link the contents                                                                            OK 56m  ec3eb1b
-    │ ●    Add a table of contents                                                                      SA 57m  c1b9826
-    ● │    Number the report                                                                            GF 58m  27d980c
-    ●─╯    Add the report                                                                               GF 59m  1ac2b32
-  ●─╯      [main] Correct the note                                                                      GF 1y   a82960b
-  ●        Add the first note                                                                           GF 1y   fadcfb3
-  ◇        Add a readme                                                                                 GF 1y   64ded19
+      │                         after merge
+    ◎┈╮                         Merge branch 'stray' into wallet-rele…  wallet-release is here  not pushed…    you    —
+▸   │ ◇                         Start over  stray is here  not pushed yet                                    Graft  54m
+    │ ●                         Check every link  sara/fix-toc is here  not pushed yet                        Sara  55m
+    │ ●                         Link the contents                                                             Omar  56m
+    │ ●                         Add a table of contents                                                       Sara  57m
+    ● │                         Number the report                                                            Graft  58m
+    ●─╯                         Add the report                                                               Graft  59m
+  ●─╯                           Correct the note  main is here  not pushed yet                               Graft   1y
+  ●                             Add the first note                                                           Graft   1y
+  ◇                             Add a readme                                                                 Graft   1y
 
 
 
