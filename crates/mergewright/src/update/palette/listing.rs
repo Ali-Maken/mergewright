@@ -21,6 +21,12 @@ pub(super) fn source_of(state: &AppState) -> Source<'_> {
             .resolver
             .is_some()
             .then(|| crate::update::resolver::side_names(state).roles),
+        graph_mode: Some(
+            state
+                .history
+                .as_ref()
+                .map_or(state.graph_mode, crate::history::History::merged_branches),
+        ),
     }
 }
 
@@ -36,6 +42,7 @@ pub(crate) fn outside_source<'a>(keymap: &'a Keymap, problems: &'a [String]) -> 
         finds: false,
         tags_read: false,
         sides: None,
+        graph_mode: None,
     }
 }
 
@@ -165,6 +172,7 @@ pub(super) fn commit_row(hit: &CommitHit) -> (PaletteRow, PaletteTarget) {
             )),
             key: None,
             config: None,
+            detail: None,
             kind: RowKind::Commit,
         },
         PaletteTarget::Seek(hit.id),
@@ -178,6 +186,7 @@ pub(super) fn placeholder(words: &str) -> (PaletteRow, PaletteTarget) {
             label: sanitize_line(words),
             key: None,
             config: None,
+            detail: None,
             kind: RowKind::More,
         },
         PaletteTarget::Note,
@@ -222,7 +231,8 @@ pub(super) fn action(binding: &Binding, key: KeyLabel, ctx: ContextId) -> Entry 
         row: PaletteRow {
             label: sanitize_line(binding.label),
             key: Some(key),
-            config: Some(binding.action),
+            config: Some(ConfigId::Action(binding.action)),
+            detail: None,
             kind: RowKind::Action,
         },
         target: PaletteTarget::Action {

@@ -5,6 +5,7 @@
 
 use mergewright_core::event::KeyCode;
 use mergewright_ui::keymap::ActionId;
+use mergewright_ui::palette::ConfigId;
 
 use super::{WALK, last_card_in_a_rebase, press, resolver_card_on_screen};
 use crate::update::AppState;
@@ -17,7 +18,7 @@ fn help_label(state: &AppState, action: &'static str) -> String {
     rows(&open, palette)
         .into_iter()
         .flat_map(|(_, rows)| rows)
-        .find(|(row, _)| row.config == Some(ActionId(action)))
+        .find(|(row, _)| row.config == Some(ConfigId::Action(ActionId(action))))
         .map_or_else(
             || panic!("`?` lists {action}"),
             |(row, _)| row.label.as_str().to_owned(),
@@ -62,7 +63,9 @@ fn help_lists_the_arrows_that_step_between_clashes() {
         .filter(|(row, _)| {
             matches!(
                 row.config,
-                Some(ActionId("resolver.step_prev" | "resolver.step_next"))
+                Some(ConfigId::Action(ActionId(
+                    "resolver.step_prev" | "resolver.step_next"
+                )))
             )
         })
         .map(|(row, _)| {

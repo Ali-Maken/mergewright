@@ -25,7 +25,10 @@ pub(super) fn run(
     closed: &PaletteState,
     target: PaletteTarget,
 ) {
-    state.palette_recent.ran(target);
+    // A setting's choice is not a command (ADR-0061 records actions).
+    if !matches!(target, PaletteTarget::App(AppAction::GraphMode(_))) {
+        state.palette_recent.ran(target);
+    }
     match target {
         // In the context the row was spelled in (m8/12e): an `IN PROGRESS`
         // row is the banner's key whether or not the banner has focus, and
@@ -54,6 +57,19 @@ pub(super) fn run(
             }
         }
         PaletteTarget::App(AppAction::Theme(kind)) => commands.push(Command::Retheme(kind)),
+        // The on row closes and does nothing (06i); the other switches the
+        // graph for this run and has the loop keep it in his config file.
+        PaletteTarget::App(AppAction::GraphMode(mode)) => {
+            let now = state
+                .history
+                .as_ref()
+                .map_or(state.graph_mode, crate::history::History::merged_branches);
+            if now != mode {
+                let switched = crate::update::keys::view_change::switch_graph_mode(state, mode);
+                commands.extend(switched);
+                commands.push(Command::KeepGraphMode(mode));
+            }
+        }
         PaletteTarget::App(AppAction::Tour) => crate::update::tour::start_from_palette(state),
         // Lands as the picker's `⇥` does: the graph focused, its cursor on
         // the commit, through the walk when it is not laid out (UX §3.1).

@@ -51,6 +51,7 @@ mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod ghostty_shot;
 mod graph_mode;
+mod graph_mode_keep;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 #[cfg(feature = "heavy-tests")]

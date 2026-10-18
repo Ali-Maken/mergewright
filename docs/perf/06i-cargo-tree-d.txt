@@ -1,0 +1,364 @@
+block-buffer v0.10.4
+└── digest v0.10.7
+    ├── sha1 v0.10.7
+    │   ├── mergewright-git v0.1.0
+    │   │   ├── mergewright v0.1.0
+    │   │   └── mergewright-ops v0.1.0
+    │   │       └── mergewright v0.1.0
+    │   └── sha1-checked v0.10.0
+    │       └── gix-hash v0.26.2
+    │           ├── gix v0.87.1
+    │           │   └── mergewright-git v0.1.0 (*)
+    │           ├── gix-commitgraph v0.39.0
+    │           │   ├── gix v0.87.1 (*)
+    │           │   ├── gix-revision v0.49.1
+    │           │   │   └── gix v0.87.1 (*)
+    │           │   ├── gix-revwalk v0.35.0
+    │           │   │   ├── gix v0.87.1 (*)
+    │           │   │   ├── gix-revision v0.49.1 (*)
+    │           │   │   └── gix-traverse v0.61.0
+    │           │   │       ├── gix v0.87.1 (*)
+    │           │   │       ├── gix-diff v0.67.1
+    │           │   │       │   ├── gix v0.87.1 (*)
+    │           │   │       │   └── gix-status v0.34.1
+    │           │   │       │       └── gix v0.87.1 (*)
+    │           │   │       └── gix-index v0.55.0
+    │           │   │           ├── gix v0.87.1 (*)
+    │           │   │           ├── gix-diff v0.67.1 (*)
+    │           │   │           ├── gix-dir v0.29.1
+    │           │   │           │   ├── gix v0.87.1 (*)
+    │           │   │           │   └── gix-status v0.34.1 (*)
+    │           │   │           ├── gix-status v0.34.1 (*)
+    │           │   │           └── gix-worktree v0.56.0
+    │           │   │               ├── gix v0.87.1 (*)
+    │           │   │               ├── gix-diff v0.67.1 (*)
+    │           │   │               ├── gix-dir v0.29.1 (*)
+    │           │   │               └── gix-status v0.34.1 (*)
+    │           │   └── gix-traverse v0.61.0 (*)
+    │           ├── gix-diff v0.67.1 (*)
+    │           ├── gix-filter v0.34.0
+    │           │   ├── gix v0.87.1 (*)
+    │           │   ├── gix-diff v0.67.1 (*)
+    │           │   └── gix-status v0.34.1 (*)
+    │           ├── gix-hashtable v0.16.0
+    │           │   ├── gix v0.87.1 (*)
+    │           │   ├── gix-object v0.64.1
+    │           │   │   ├── gix v0.87.1 (*)
+    │           │   │   ├── gix-diff v0.67.1 (*)
+    │           │   │   ├── gix-dir v0.29.1 (*)
+    │           │   │   ├── gix-filter v0.34.0 (*)
+    │           │   │   ├── gix-index v0.55.0 (*)
+    │           │   │   ├── gix-odb v0.84.0
+    │           │   │   │   └── gix v0.87.1 (*)
+    │           │   │   ├── gix-pack v0.74.2
+    │           │   │   │   ├── gix v0.87.1 (*)
+    │           │   │   │   └── gix-odb v0.84.0 (*)
+    │           │   │   ├── gix-ref v0.67.1
+    │           │   │   │   ├── gix v0.87.1 (*)
+    │           │   │   │   ├── gix-config v0.60.0
+    │           │   │   │   │   ├── gix v0.87.1 (*)
+    │           │   │   │   │   └── gix-submodule v0.34.0
+    │           │   │   │   │       └── gix v0.87.1 (*)
+    │           │   │   │   ├── gix-discover v0.55.0
+    │           │   │   │   │   ├── gix v0.87.1 (*)
+    │           │   │   │   │   └── gix-dir v0.29.1 (*)
+    │           │   │   │   └── gix-protocol v0.65.1
+    │           │   │   │       └── gix v0.87.1 (*)
+    │           │   │   ├── gix-revision v0.49.1 (*)
+    │           │   │   ├── gix-revwalk v0.35.0 (*)
+    │           │   │   ├── gix-status v0.34.1 (*)
+    │           │   │   ├── gix-traverse v0.61.0 (*)
+    │           │   │   └── gix-worktree v0.56.0 (*)
+    │           │   ├── gix-odb v0.84.0 (*)
+    │           │   ├── gix-pack v0.74.2 (*)
+    │           │   ├── gix-revision v0.49.1 (*)
+    │           │   ├── gix-revwalk v0.35.0 (*)
+    │           │   └── gix-traverse v0.61.0 (*)
+    │           ├── gix-index v0.55.0 (*)
+    │           ├── gix-object v0.64.1 (*)
+    │           ├── gix-odb v0.84.0 (*)
+    │           ├── gix-pack v0.74.2 (*)
+    │           ├── gix-protocol v0.65.1 (*)
+    │           ├── gix-ref v0.67.1 (*)
+    │           ├── gix-refspec v0.45.1
+    │           │   ├── gix v0.87.1 (*)
+    │           │   └── gix-submodule v0.34.0 (*)
+    │           ├── gix-revision v0.49.1 (*)
+    │           ├── gix-revwalk v0.35.0 (*)
+    │           ├── gix-shallow v0.13.0
+    │           │   ├── gix v0.87.1 (*)
+    │           │   └── gix-protocol v0.65.1 (*)
+    │           ├── gix-status v0.34.1 (*)
+    │           ├── gix-traverse v0.61.0 (*)
+    │           └── gix-worktree v0.56.0 (*)
+    └── sha1-checked v0.10.0 (*)
+
+block-buffer v0.12.1
+└── digest v0.11.3
+    └── sha2 v0.11.0
+        └── gix-hash v0.26.2 (*)
+
+cpufeatures v0.2.17
+└── sha1 v0.10.7 (*)
+
+cpufeatures v0.3.1
+└── sha2 v0.11.0 (*)
+
+crypto-common v0.1.7
+└── digest v0.10.7 (*)
+
+crypto-common v0.2.2
+└── digest v0.11.3 (*)
+
+digest v0.10.7 (*)
+
+digest v0.11.3 (*)
+
+getrandom v0.3.4
+└── mergewright v0.1.0
+
+getrandom v0.4.3
+├── gix-utils v0.3.6
+│   ├── gix v0.87.1 (*)
+│   ├── gix-config v0.60.0 (*)
+│   ├── gix-dir v0.29.1 (*)
+│   ├── gix-features v0.49.1
+│   │   ├── gix v0.87.1 (*)
+│   │   ├── gix-attributes v0.35.0
+│   │   │   ├── gix v0.87.1 (*)
+│   │   │   ├── gix-diff v0.67.1 (*)
+│   │   │   ├── gix-filter v0.34.0 (*)
+│   │   │   ├── gix-pathspec v0.20.0
+│   │   │   │   ├── gix v0.87.1 (*)
+│   │   │   │   ├── gix-diff v0.67.1 (*)
+│   │   │   │   ├── gix-dir v0.29.1 (*)
+│   │   │   │   ├── gix-status v0.34.1 (*)
+│   │   │   │   └── gix-submodule v0.34.0 (*)
+│   │   │   └── gix-worktree v0.56.0 (*)
+│   │   ├── gix-config v0.60.0 (*)
+│   │   ├── gix-fs v0.22.1
+│   │   │   ├── gix v0.87.1 (*)
+│   │   │   ├── gix-diff v0.67.1 (*)
+│   │   │   ├── gix-dir v0.29.1 (*)
+│   │   │   ├── gix-discover v0.55.0 (*)
+│   │   │   ├── gix-index v0.55.0 (*)
+│   │   │   ├── gix-odb v0.84.0 (*)
+│   │   │   ├── gix-ref v0.67.1 (*)
+│   │   │   ├── gix-status v0.34.1 (*)
+│   │   │   ├── gix-tempfile v24.0.0
+│   │   │   │   ├── gix v0.87.1 (*)
+│   │   │   │   ├── gix-diff v0.67.1 (*)
+│   │   │   │   ├── gix-lock v24.0.0
+│   │   │   │   │   ├── gix v0.87.1 (*)
+│   │   │   │   │   ├── gix-index v0.55.0 (*)
+│   │   │   │   │   ├── gix-ref v0.67.1 (*)
+│   │   │   │   │   └── gix-shallow v0.13.0 (*)
+│   │   │   │   ├── gix-object v0.64.1 (*)
+│   │   │   │   └── gix-ref v0.67.1 (*)
+│   │   │   └── gix-worktree v0.56.0 (*)
+│   │   ├── gix-glob v0.27.1
+│   │   │   ├── gix v0.87.1 (*)
+│   │   │   ├── gix-attributes v0.35.0 (*)
+│   │   │   ├── gix-config v0.60.0 (*)
+│   │   │   ├── gix-ignore v0.22.1
+│   │   │   │   ├── gix v0.87.1 (*)
+│   │   │   │   ├── gix-dir v0.29.1 (*)
+│   │   │   │   └── gix-worktree v0.56.0 (*)
+│   │   │   ├── gix-pathspec v0.20.0 (*)
+│   │   │   └── gix-worktree v0.56.0 (*)
+│   │   ├── gix-hash v0.26.2 (*)
+│   │   ├── gix-index v0.55.0 (*)
+│   │   ├── gix-object v0.64.1 (*)
+│   │   ├── gix-odb v0.84.0 (*)
+│   │   ├── gix-pack v0.74.2 (*)
+│   │   ├── gix-protocol v0.65.1 (*)
+│   │   ├── gix-ref v0.67.1 (*)
+│   │   ├── gix-status v0.34.1 (*)
+│   │   ├── gix-transport v0.59.2
+│   │   │   └── gix-protocol v0.65.1 (*)
+│   │   └── gix-worktree v0.56.0 (*)
+│   ├── gix-filter v0.34.0 (*)
+│   ├── gix-fs v0.22.1 (*)
+│   ├── gix-index v0.55.0 (*)
+│   ├── gix-lock v24.0.0 (*)
+│   ├── gix-object v0.64.1 (*)
+│   ├── gix-protocol v0.65.1 (*)
+│   ├── gix-quote v0.8.0
+│   │   ├── gix v0.87.1 (*)
+│   │   ├── gix-attributes v0.35.0 (*)
+│   │   ├── gix-command v0.10.1
+│   │   │   ├── gix v0.87.1 (*)
+│   │   │   ├── gix-diff v0.67.1 (*)
+│   │   │   ├── gix-filter v0.34.0 (*)
+│   │   │   ├── gix-object v0.64.1 (*)
+│   │   │   └── gix-transport v0.59.2 (*)
+│   │   ├── gix-filter v0.34.0 (*)
+│   │   ├── gix-odb v0.84.0 (*)
+│   │   └── gix-transport v0.59.2 (*)
+│   ├── gix-ref v0.67.1 (*)
+│   └── gix-url v0.38.0
+│       ├── gix v0.87.1 (*)
+│       ├── gix-submodule v0.34.0 (*)
+│       └── gix-transport v0.59.2 (*)
+└── tempfile v3.27.0
+    ├── gix-odb v0.84.0 (*)
+    ├── gix-tempfile v24.0.0 (*)
+    ├── mergewright v0.1.0
+    ├── mergewright-fixtures v0.1.0
+    └── mergewright-git v0.1.0 (*)
+
+hashbrown v0.14.5
+└── dashmap v6.2.1
+    └── gix-tempfile v24.0.0 (*)
+
+hashbrown v0.16.1
+├── clru v0.6.3
+│   └── gix-pack v0.74.2 (*)
+└── kasuari v0.4.12
+    └── ratatui-core v0.1.2
+        ├── ratatui v0.30.2
+        │   ├── mergewright v0.1.0
+        │   └── mergewright-ui v0.1.0
+        │       └── mergewright v0.1.0
+        ├── ratatui-crossterm v0.1.2
+        │   └── ratatui v0.30.2 (*)
+        └── ratatui-widgets v0.3.2
+            └── ratatui v0.30.2 (*)
+
+hashbrown v0.17.1
+├── gix-hashtable v0.16.0 (*)
+├── gix-imara-diff v0.2.5
+│   └── gix-diff v0.67.1 (*)
+├── gix-index v0.55.0 (*)
+├── indexmap v2.14.2
+│   └── toml_edit v0.25.15+spec-1.1.0
+│       └── mergewright v0.1.0
+├── lru v0.18.4
+│   └── ratatui-core v0.1.2 (*)
+├── ratatui-core v0.1.2 (*)
+└── ratatui-widgets v0.3.2 (*)
+
+miniz_oxide v0.8.9
+├── mergewright-term v0.1.0
+│   ├── mergewright v0.1.0
+│   └── mergewright-ui v0.1.0 (*)
+└── png v0.18.1
+    └── mergewright-term v0.1.0 (*)
+
+miniz_oxide v0.9.1
+└── flate2 v1.1.10
+    ├── png v0.18.1 (*)
+    └── syntect v5.3.0
+        └── mergewright-ui v0.1.0 (*)
+
+syn v2.0.119
+├── derive_more-impl v2.1.1 (proc-macro)
+│   └── derive_more v2.1.1
+│       └── crossterm v0.29.0
+│           ├── mergewright v0.1.0
+│           └── ratatui-crossterm v0.1.2 (*)
+├── gix-macros v0.1.6 (proc-macro)
+│   └── gix-protocol v0.65.1 (*)
+└── strum_macros v0.28.0 (proc-macro)
+    └── strum v0.28.0
+        ├── ratatui-core v0.1.2 (*)
+        └── ratatui-widgets v0.3.2 (*)
+
+syn v3.0.5
+├── darling_core v0.24.1
+│   ├── darling v0.24.1
+│   │   └── instability v0.3.13 (proc-macro)
+│   │       ├── ratatui v0.30.2 (*)
+│   │       ├── ratatui-crossterm v0.1.2 (*)
+│   │       └── ratatui-widgets v0.3.2 (*)
+│   └── darling_macro v0.24.1 (proc-macro)
+│       └── darling v0.24.1 (*)
+├── darling_macro v0.24.1 (proc-macro) (*)
+├── instability v0.3.13 (proc-macro) (*)
+├── serde_derive v1.0.229 (proc-macro)
+│   ├── serde v1.0.229
+│   │   ├── bincode v1.3.3
+│   │   │   └── syntect v5.3.0 (*)
+│   │   ├── mergewright v0.1.0
+│   │   ├── mergewright-core v0.1.0
+│   │   │   ├── mergewright v0.1.0
+│   │   │   ├── mergewright-git v0.1.0 (*)
+│   │   │   ├── mergewright-graph v0.1.0
+│   │   │   │   ├── mergewright v0.1.0
+│   │   │   │   └── mergewright-ui v0.1.0 (*)
+│   │   │   ├── mergewright-ops v0.1.0 (*)
+│   │   │   ├── mergewright-term v0.1.0 (*)
+│   │   │   └── mergewright-ui v0.1.0 (*)
+│   │   ├── mergewright-ops v0.1.0 (*)
+│   │   └── syntect v5.3.0 (*)
+│   └── syntect v5.3.0 (*)
+└── thiserror-impl v2.0.20 (proc-macro)
+    └── thiserror v2.0.20
+        ├── gix v0.87.1 (*)
+        ├── gix-attributes v0.35.0 (*)
+        ├── gix-config v0.60.0 (*)
+        ├── gix-config-value v0.19.1
+        │   ├── gix-config v0.60.0 (*)
+        │   └── gix-pathspec v0.20.0 (*)
+        ├── gix-diff v0.67.1 (*)
+        ├── gix-dir v0.29.1 (*)
+        ├── gix-discover v0.55.0 (*)
+        ├── gix-filter v0.34.0 (*)
+        ├── gix-fs v0.22.1 (*)
+        ├── gix-hash v0.26.2 (*)
+        ├── gix-index v0.55.0 (*)
+        ├── gix-lock v24.0.0 (*)
+        ├── gix-object v0.64.1 (*)
+        ├── gix-odb v0.84.0 (*)
+        ├── gix-pack v0.74.2 (*)
+        ├── gix-packetline v0.22.2
+        │   ├── gix-filter v0.34.0 (*)
+        │   └── gix-transport v0.59.2 (*)
+        ├── gix-path v0.12.6
+        │   ├── gix v0.87.1 (*)
+        │   ├── gix-attributes v0.35.0 (*)
+        │   ├── gix-command v0.10.1 (*)
+        │   ├── gix-config v0.60.0 (*)
+        │   ├── gix-config-value v0.19.1 (*)
+        │   ├── gix-diff v0.67.1 (*)
+        │   ├── gix-dir v0.29.1 (*)
+        │   ├── gix-discover v0.55.0 (*)
+        │   ├── gix-features v0.49.1 (*)
+        │   ├── gix-filter v0.34.0 (*)
+        │   ├── gix-fs v0.22.1 (*)
+        │   ├── gix-glob v0.27.1 (*)
+        │   ├── gix-ignore v0.22.1 (*)
+        │   ├── gix-odb v0.84.0 (*)
+        │   ├── gix-pack v0.74.2 (*)
+        │   ├── gix-pathspec v0.20.0 (*)
+        │   ├── gix-ref v0.67.1 (*)
+        │   ├── gix-status v0.34.1 (*)
+        │   ├── gix-submodule v0.34.0 (*)
+        │   ├── gix-transport v0.59.2 (*)
+        │   ├── gix-url v0.38.0 (*)
+        │   └── gix-worktree v0.56.0 (*)
+        ├── gix-pathspec v0.20.0 (*)
+        ├── gix-protocol v0.65.1 (*)
+        ├── gix-ref v0.67.1 (*)
+        ├── gix-refspec v0.45.1 (*)
+        ├── gix-revwalk v0.35.0 (*)
+        ├── gix-shallow v0.13.0 (*)
+        ├── gix-status v0.34.1 (*)
+        ├── gix-submodule v0.34.0 (*)
+        ├── gix-transport v0.59.2 (*)
+        ├── gix-traverse v0.61.0 (*)
+        ├── gix-url v0.38.0 (*)
+        ├── gix-zlib v0.1.0
+        │   ├── gix v0.87.1 (*)
+        │   ├── gix-odb v0.84.0 (*)
+        │   └── gix-pack v0.74.2 (*)
+        ├── kasuari v0.4.12 (*)
+        ├── mergewright v0.1.0
+        ├── mergewright-capabilities v0.1.0
+        ├── mergewright-core v0.1.0 (*)
+        ├── mergewright-fixtures v0.1.0
+        ├── mergewright-git v0.1.0 (*)
+        ├── mergewright-graph v0.1.0 (*)
+        ├── mergewright-ops v0.1.0 (*)
+        ├── ratatui-core v0.1.2 (*)
+        └── syntect v5.3.0 (*)

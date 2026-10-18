@@ -62,7 +62,7 @@ fn next_watched(
             AppEvent::Produced(of, _) | AppEvent::Progress(of, _) | AppEvent::Started(of, _) => {
                 *of == id
             }
-            AppEvent::Core(_) | AppEvent::Rested => true,
+            AppEvent::Core(_) | AppEvent::Rested | AppEvent::GraphModeKept { .. } => true,
         };
         if ours {
             return event;

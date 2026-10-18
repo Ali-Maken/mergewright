@@ -18,7 +18,8 @@ fn action(key: &str, label: &str, id: &'static str) -> PaletteRow {
     PaletteRow {
         label: sanitize_line(label),
         key: Some(KeyLabel(key.to_owned())),
-        config: Some(ActionId(id)),
+        config: Some(ConfigId::Action(ActionId(id))),
+        detail: None,
         kind: RowKind::Action,
     }
 }
@@ -126,6 +127,7 @@ fn more_rows_draw_muted_and_find_rows_as_text() {
         label: sanitize_line(label),
         key: None,
         config: None,
+        detail: None,
         kind,
     };
     let view = PaletteView {
@@ -152,6 +154,7 @@ fn file_rows_mute_the_directory_and_commit_rows_the_sha() {
         label: sanitize_line(label),
         key: None,
         config: None,
+        detail: None,
         kind,
     };
     let view = PaletteView {
@@ -389,3 +392,5 @@ fn a_click_finds_the_row_it_landed_on() {
         "the query"
     );
 }
+
+mod setting_tests;

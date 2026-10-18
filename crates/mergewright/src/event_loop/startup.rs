@@ -262,6 +262,15 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 ///
 /// # Errors
 /// Setting the run up failed; the terminal is still the caller's.
+/// The loop's image side, written through tmux when the session is in one.
+fn graphics_for(
+    mux: &InputMux,
+    settled: &Session,
+) -> Graphics<mergewright_term::input::ReplyWaiter> {
+    Graphics::new(mux.waiter(), &settled.capabilities)
+        .with_transport(Transport::for_tmux(&settled.capabilities.tmux))
+}
+
 pub(super) fn run_repo(
     term: &mut Terminal,
     repos: Arc<RepoStore>,
@@ -310,8 +319,7 @@ pub(super) fn run_repo(
     )?;
     let undo = arrival.keymap.spell(&UNDO).0;
     arrive(&mut state, arrival);
-    let mut graphics = Graphics::new(mux.waiter(), &settled.capabilities)
-        .with_transport(Transport::for_tmux(&settled.capabilities.tmux));
+    let mut graphics = graphics_for(mux, &settled);
     let outcome = pump_with(
         Screen {
             terminal: &mut terminal,
@@ -327,6 +335,7 @@ pub(super) fn run_repo(
             app_dir.as_deref(),
             workdir.as_deref(),
             first_launch,
+            config.path.as_deref(),
         ),
         &mut tracer,
     );

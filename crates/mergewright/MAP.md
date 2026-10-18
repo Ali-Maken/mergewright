@@ -28,6 +28,11 @@ Reading a config file off disk into a `Loaded`.
 The typed `[ui]`/`[graph]` sections and their value enums.
 - `MergedBranches` (enum) — `[graph] merged_branches`, the graph mode: `Folded` (default) / `Shown`; `from_config` turns a bad value into problem words, `as_config` spells it.
 - `RawValue` (struct) — a config value kept as written, so a bad one is a problem, not a load failure.
+## config::write
+The one key the app writes into his config: `[graph] merged_branches`, every other byte kept, atomic, through a symlink, permissions kept (ease-pass 06i). Run by the loop on `Command::KeepGraphMode`.
+- `keep_merged_branches` (fn) — `(&Path, MergedBranches) -> Result<(), KeepError>`: set the key in that file; creates file and folder; refuses an unparsable file or a non-table `graph`.
+- `keep_in` (fn) — the loop's arm: the file read at startup, else `default_path()`, else `KeepError::NoFolder`; returns the path written.
+- `KeepError` (enum) — `Unparsable { line, column }`, `NotATable`, `NoFolder`, `Io { path, error }`; `Display` is the bar's reason words.
 ## crash
 The panic hook: restore the terminal first, then write a crash report to the state folder, then say where it went.
 - `install` (fn) — installs the hook; called once by `main` before the terminal is touched.

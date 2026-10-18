@@ -483,8 +483,9 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `NOTHING_MATCHES` (const) — The one line drawn when the query keeps no row; the key that closes is spelled after it (`nothing matches · esc close`).
 - `PaletteMode` (enum) — Which way the palette was opened.
 - `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Mergewright` rows `Generation::CURRENT.title()` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
-- `RowKind` (enum) — What a row stands for: `Action`, `App`, `Branch`, `Tag`, `File`, `Commit`, `Recent` (drawn as an action row), `More` (a find group's muted `+N more` / `reading…` line).
-- `PaletteRow` (struct) — One row, worded.
+- `RowKind` (enum) — What a row stands for: `Action`, `App`, `Branch`, `Tag`, `File`, `Commit`, `Recent`, `More` (a find group's muted line), `Setting { on }` (a setting's choice: `●`/`○` by kind, `(on)` after the chosen one).
+- `ConfigId` (enum) — What the id column shows: `Action(ActionId)` or a setting's config `Key(&str)`; `as_str` spells it.
+- `PaletteRow` (struct) — One row, worded: label, key, `config: Option<ConfigId>`, muted `detail` (setting rows; cut before the label is), kind.
 - `PaletteView` (struct) — Everything the box draws.
 - `row_count` (fn) — How many rows there are, groups flattened.
 - `palette_area` (fn) — The most the box can take: over the focused pane `over`, at most [`MAX_WIDTH`] wide and centred on it; the full width of `frame` when `frame` is narrower than [`WIDE_FROM`].

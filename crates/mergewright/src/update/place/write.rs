@@ -45,6 +45,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::CopyToClipboard(..)
         | Command::SaveLayout(..)
         | Command::FirstLaunchDone(..)
+        | Command::KeepGraphMode(..)
         | Command::WriteCommitGraph
         | Command::DeclineCommitGraph
         | Command::ListFiles(..)

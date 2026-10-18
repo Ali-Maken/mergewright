@@ -358,7 +358,7 @@ fn said_by_a_job(event: &AppEvent) -> bool {
     match event {
         AppEvent::Started(..) | AppEvent::Produced(..) | AppEvent::Progress(..) => true,
         // The loop's own: never in a wake.
-        AppEvent::Rested => false,
+        AppEvent::Rested | AppEvent::GraphModeKept { .. } => false,
         AppEvent::Core(event) => matches!(
             event,
             Event::JobFinished(_) | Event::JobFailed(..) | Event::JobCancelled(_)

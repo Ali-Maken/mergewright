@@ -123,7 +123,7 @@
 555 crates/mergewright/src/config/tests.rs
 540 crates/mergewright/src/crash.rs
 1020 crates/mergewright/src/empty_state/tests.rs
-625 crates/mergewright/src/event_loop/outside.rs
+608 crates/mergewright/src/event_loop/outside.rs
 521 crates/mergewright/src/event_loop/outside/tests.rs
 645 crates/mergewright/src/event_loop/places/tests.rs
 481 crates/mergewright/src/event_loop/running/turn.rs
@@ -157,7 +157,7 @@
 412 crates/mergewright/src/update/detail/state.rs
 1025 crates/mergewright/src/update/detail/tests.rs
 576 crates/mergewright/src/update/drag/tests.rs
-584 crates/mergewright/src/update/events.rs
+551 crates/mergewright/src/update/events.rs
 459 crates/mergewright/src/update/events/command.rs
 511 crates/mergewright/src/update/geometry.rs
 1234 crates/mergewright/src/update/journal/tests.rs
@@ -165,7 +165,7 @@
 470 crates/mergewright/src/update/name_prompt.rs
 488 crates/mergewright/src/update/name_prompt/tests.rs
 1516 crates/mergewright/src/update/operate/tests.rs
-408 crates/mergewright/src/update/palette/mod.rs
+402 crates/mergewright/src/update/palette/mod.rs
 618 crates/mergewright/src/update/picker/tests.rs
 440 crates/mergewright/src/update/place.rs
 456 crates/mergewright/src/update/place/keys.rs

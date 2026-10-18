@@ -66,6 +66,21 @@ where
                     state.status = crate::update::Status::Failed(error.words());
                 }
             }
+            // Written by the loop, as `SaveLayout` is, to the file read at
+            // startup or the one `load` would read; unlike `SaveLayout` the
+            // outcome is said, fed straight back as `handed_over`'s are.
+            Command::KeepGraphMode(mode) => {
+                let result = crate::config::keep_in(
+                    outside.config_path,
+                    crate::config::default_path(),
+                    mode,
+                )
+                .map(drop)
+                .map_err(|error| error.to_string());
+                let (kept, queued) = update(&state, AppEvent::GraphModeKept { mode, result });
+                state = kept;
+                queue.extend(queued);
+            }
             // These six restore the terminal, hand it over and take it
             // back (`super::outside`).
             command if hands_over(&command) => {

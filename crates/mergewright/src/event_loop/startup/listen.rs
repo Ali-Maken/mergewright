@@ -22,10 +22,12 @@ pub(super) fn outside<'a>(
     app_dir: Option<&'a std::path::Path>,
     workdir: Option<&'a std::path::Path>,
     first_launch: Option<&'a crate::first_launch::FirstLaunch>,
+    config_path: Option<&'a std::path::Path>,
 ) -> Outside<'a> {
     Outside {
         app_dir,
         first_launch,
+        config_path,
         handover: Some(Handover {
             session,
             mux,
