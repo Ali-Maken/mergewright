@@ -214,7 +214,7 @@ fn history_with_merges(cursor: usize) -> History {
         phase: Phase::Complete,
         cursor,
         reanchor: None,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     }
 }
 

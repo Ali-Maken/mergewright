@@ -198,7 +198,7 @@ fn lines(chains: u8, length: u8, woven: bool) -> History {
         }),
         rows: rows.len(),
         phase: Phase::Complete,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     }
 }
 

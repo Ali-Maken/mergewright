@@ -1,6 +1,6 @@
 # graph-mode — two graph modes, `Folded merges` (default) and `Every branch`; read from `[graph] merged_branches`, switchable while running; a live search's folded count re-asked on every view change
 
-Status: ready (reconciled 2026-10-18 with 06c as built: no `OnFold`, `open_merge` pure, `FoldedAsk`/`FoldedHits`, `Search.folded`; gap `ease/06c-suffix-stale` added. Re-planned 2026-10-18 after the scout's stop: the cursor landing is a request anchor answered through `anchor_behind`, not a seek; `1`/`H` need no change; the problem list has two sources; `space` close's reveal question is a test.)
+Status: done (2026-10-18, partial boxes: edit-stop `space` and `n`-visits in Every branch untested — see Acceptance). Was: ready (reconciled 2026-10-18 with 06c as built: no `OnFold`, `open_merge` pure, `FoldedAsk`/`FoldedHits`, `Search.folded`; gap `ease/06c-suffix-stale` added. Re-planned 2026-10-18 after the scout's stop: the cursor landing is a request anchor answered through `anchor_behind`, not a seek; `1`/`H` need no change; the problem list has two sources; `space` close's reveal question is a test.)
 Replaces: `06h-merged-branches-setting.md` (conductor: `git rm` it; this spec and `06i-graph-mode-in-help.md` take its place).
 Blocked by: none open. Built and merged: 06r (9394aebb; its open boxes are questions Q1/Q2, no code this ticket reads), 06b (fcc5b7bd, `lane_phrases`/`LaneTally`), 06u (92821959, shape unchanged), 06c (40a10255; its open box is the `m8/search-hint` D3 stop, owned by 14). Runs before 06s/06t (they split files this edits).
 Build with: Sonnet — config read, the walk's starting view, one switch through the existing view-change path, one ask call per view-change site, and one request field the worker answers by the code promotion already uses (`anchor_behind`); no graft-graph change; every behaviour is a state or worker test. Scout (`.scratch/ease-pass/scouts/06h-graph-mode.md`) put it at Sonnet once the landing was settled; it is settled below.
@@ -135,31 +135,48 @@ Each checked, and how, in the report's **Touches:** line:
 - Gap `ease/06c-suffix-stale`: NOTES names the tests that close it (conductor moves the row).
 
 ## Acceptance
-- [ ] Unset, `"folded"`, `"shown"` → `Folded`, `Folded`, `Shown`; `as_config` round-trips. — names its test.
-- [ ] `"open"`, `true`, `3` → `Err` with the exact words in Decided; the config still loads (no load error); the app starts folded. — names its test.
-- [ ] Config `merged_branches = "open"` beside one bad `[keys]` entry and one bad theme value: status row `config: 3 problems · ? shows them`; `?` lists `YOUR CONFIG` first, the graph problem last; the graph folds (a `▸` tail). — names its test.
-- [ ] `"shown"` raises no unknown-key warning; `cli::config_keys` pairing passes. — names its test.
-- [ ] Shown, 06e's `wallet_release` through the worker: first window holds every merged-branch commit; row ids equal a `View::default()` layout; every `RowFold.folds == None`; no tail. — names its test.
-- [ ] `History::started(.., Shown)` → `merged_branches() == Shown`, `fold == None`; `Folded` → `View::folded()`; a re-walk keeps the mode. — names its test.
-- [ ] Header: `lane_phrases` table extended — (5,8,0, every) → `["lanes drawn: 5 of 8", "every branch shown"]`; (8,8,0, every) → `["every branch shown"]`; (8,8,3, folded) → `["3 merged branches folded"]`; (8,8,0, folded) → `[]`. 06b's fitting table: `every branch shown` dropped whole at the room `K merged …` drops. Shown at 120 → top line ends `every branch shown` (no `merged branch` phrase). — names its tests.
-- [ ] Shown: `space` on a merge row, a plain row, at an edit stop → view unchanged, no command. — names its test.
-- [ ] Shown: rests ask no `CountFolded`; no rest wake owed. — names its test.
-- [ ] Shown: a refs read leaves view and phase `Complete`. — names its test.
-- [ ] Shown: `1` `1` and `H` `H` leave `inclusion.fold == None`; folded: `graph_toggles` tests pass unchanged. — names its test and the run.
-- [ ] Shown: search, 4 hits on merged-branch commits → `4 matches`, no suffix; `n` visits all 4, `OpenedMerges` empty, `take_reveal` `None` at every step. — names its test.
-- [ ] Shown: after a merge lands the bar has no `space` verb; folded keeps `space show the N commits inside`. — names its test.
-- [ ] **Landing, worker:** a `RowRequest` with a folding view and `keep` = a commit that view folds away → `Sought.anchor_behind == Some((keep, merge))`, the merge's row in the window; `keep` on a shown commit → `anchor_behind` `None`; `promote.anchor` answers as before. — names its test in `history::reveal_tests` or beside it.
-- [ ] **Landing, app:** `switch_graph_mode`: folded → shown keeps the cursor's commit; shown → folded with the cursor on a folded-away commit lands on its merge with `OpenedMerges` empty, `take_reveal()` `None`, no `Find` and no seek sent, exactly one `RowRequest` (carrying `keep`); inside `1` keeps `follow`; an opened merge is closed after; same mode → no commands; journal unchanged; `AppState.graph_mode` follows. — names its tests.
-- [ ] **Landing, `1`:** cursor on an off-first-parent commit, `1` → cursor keeps its index as today (no `anchor_behind`). — names its test.
-- [ ] **`space` close, no reveal owed:** a long opened merge, cursor at its bottom with the merge row off the window on hand, `space` → after the answer the cursor is on the merge, `OpenedMerges` empty, `take_reveal()` `None`, one `RowRequest`. Also with the merge row on hand. — names its test (stop and report the line if it fails).
-- [ ] **Reveal unchanged:** a 06c reveal (search `n` onto a folded hit) still lands on the revealed target, not on its merge (`keep` does not pull it back). 06c's `update::history::tests::reveal` tests pass as they are (one row request per reveal). — names its test and the run.
-- [ ] **Re-ask, app (gap `ease/06c-suffix-stale`):** search done, 4 hits, 3 behind two merges (06c's `folded` fixture shape), footer `4 matches · 3 in folded merges`. Each of `space` open (merge holding 2), `space` close, `1`, `1`, `H`, `switch_graph_mode(Shown)`, `switch_graph_mode(Folded)`: exactly one `RowRequest` sent (as before the change), carrying a `FoldedAsk` with a new number over the 4 ids; fed the answer for the new view, the line reads, whole, `· 1 …`, `· 3 …`, no suffix, `· 3 …`, (`H`: unchanged count), no suffix, `· 3 …`; an answer to the superseded number is dropped. No search, or a search still running → no ask on the request. — names its test(s) in `update::search` or `update::keys`.
-- [ ] **Re-ask, tree_answers:** with a finished search with hits, the refs-read view change (`tree_answers.rs:287`) carries a `FoldedAsk` on its request (or, if it sends none, `walk_completed` re-asks — NOTES says which); `head_known` (:57) with no search → no ask. — names its test.
-- [ ] **Re-ask, worker:** a `RowRequest` that changes the view and carries a `FoldedAsk` answers `FoldedHits` under the new view — `space`-opened merge: its hits not counted; first-parent: 0; `fold: None`: 0 — and lays out no further than the request needs (06c's no-further rule). — names its test in `history::idle_tests` or beside it.
-- [ ] No config: every 06/06b/06c/06e/06g/06u test passes unchanged, the promotion test `a_promoted_anchor_the_new_order_folds_lands_on_its_merge_and_opens_nothing` included. — names the run.
-- [ ] Captures `docs/shots/ease-pass/main-merged-shown-120.txt` (`wallet_release`, shown, 120×36, cursor on the first merge; top line ends `every branch shown`) and `config-merged-branches-problem-120.txt` (`"open"`: status row, then `?` open), in the contact sheet beside `main-folded-120.txt`. Look unjudged (rule 6), colour unverified (rule 5).
-- [ ] NOTES: the step-1 grep (expected empty), the shared landing fn's name, whether `space` close's seek is now redundant (for the conductor), whether `tree_answers.rs:287` sends a request, the design-doc wording, each re-shot capture with its D3 class, the tests closing `ease/06c-suffix-stale`.
-- [ ] Each tick names its test.
+- [x] Unset/"folded"/"shown" → modes; `as_config` round-trips. — `config::merged_tests::unset_folded_and_shown_read_as_their_modes_and_round_trip`.
+- [x] `"open"`, `true`, `3` → `Err` with the exact words; file still loads. — `config::merged_tests::a_value_it_does_not_take_is_a_problem_in_words_and_the_file_still_loads`; starts folded: `event_loop::tests::theme_problems::a_graph_mode_it_does_not_take_is_the_last_problem_and_the_app_starts_folded`.
+- [x] Three problems, status row `config: 3 problems · ? shows them`, `YOUR CONFIG` first, graph problem last, walk starts `View::folded()`. — `event_loop::tests::theme_problems::a_graph_mode_it_does_not_take_is_the_last_problem_and_the_app_starts_folded`. Note: the "graph folds (a ▸ tail)" half is asserted as `History::started(state.graph_mode).view == View::folded()` on a synthetic history, not a drawn `▸`.
+- [x] `"shown"` no unknown-key warning; `cli::config_keys` pairing. — `config::merged_tests::shown_raises_no_unknown_key_warning`, `cli::docs_tests::config_keys_and_the_loader_name_the_same_keys`.
+- [x] Shown `wallet_release` through the worker: every merged commit in first window, view == `View::default()`, every `folds == None`, no tail. — `it::graph_mode::every_branch_first_paint_draws_every_merged_commit_and_says_so` (row-id equality shown as view equality with `View::default()`).
+- [x] `started(Shown)`/`started(Folded)`; re-walk keeps mode. — `history::keep_tests::a_walk_starts_in_its_mode_and_the_mode_is_read_from_the_view`, `update::tests::graph_mode::the_same_mode_again_or_no_walk_sends_nothing`.
+- [x] Header `lane_phrases` table and fitting; top line at 120 ends `every branch shown`. — mergewright-ui `graph_screen::tests::lanes_in_view::{the_lane_words_say_only_what_there_is_to_say, every_branch_shown_takes_the_folded_counts_slot_always, every_branch_shown_drops_whole_with_the_lane_phrases}`; `it::graph_mode::every_branch_first_paint_…`.
+- [ ] Shown `space`: merge row and plain rows → nothing — `update::tests::graph_mode::every_branch_space_does_nothing_on_any_row`. **Edit stop (§2.6a) not tested**: open.
+- [x] Shown: no `CountFolded` at rest, none owed. — `update::tests::graph_mode::every_branch_asks_no_fold_count_at_rest_and_offers_no_space_after_a_merge` (with a folded contrast at the same size).
+- [x] Shown: refs read leaves view and `Complete`. — `update::tests::graph_mode::every_branch_a_refs_read_relays_nothing`.
+- [x] Shown `1 1`, `H H` keep `fold == None`; folded `graph_toggles` unchanged. — `update::tests::graph_mode::every_branch_first_parent_and_stash_toggles_stay_unfolded`; full nextest run.
+- [ ] Shown search: suffix none when the count answers 0 — `update::tests::graph_mode_reask::every_view_change_asks_the_folded_count_again` (switch to Shown → `4 matches`); worker counts 0 under `fold: None` — `history::idle_tests::keep_tests::a_folded_ask_on_a_view_change_is_counted_under_the_new_view`. **`n` visiting all 4 with `take_reveal` None at each step not tested**: open.
+- [x] After a merge lands, Shown: no `space` verb (no count is ever asked, so `just_merged_bar` is `None`). — `update::tests::graph_mode::every_branch_asks_no_fold_count_at_rest_and_offers_no_space_after_a_merge`. See NOTES Q1.
+- [x] Landing, worker. — `history::idle_tests::keep_tests::a_kept_commit_the_view_folds_away_is_answered_with_its_merge`; promotion: `history::reveal_tests::a_promoted_anchor_…` unchanged, `history::keep_tests::a_promotion_request_carries_no_keep`.
+- [x] Landing, app. — `update::tests::graph_mode::{folded_to_every_branch_keeps_the_cursors_commit_and_is_not_an_operation, every_branch_to_folded_lands_a_folded_away_commit_on_its_merge, a_switch_inside_first_parent_stays_in_it_and_closes_every_opened_merge, the_same_mode_again_or_no_walk_sends_nothing}`; history level `history::keep_tests::a_view_change_that_folds_the_cursors_commit_away_lands_on_its_merge`.
+- [x] Landing, `1`: keeps index (top, as `Follow` change sets), no `anchor_behind`. — `history::keep_tests::first_parent_hiding_the_cursors_commit_keeps_its_index`.
+- [x] `space` close off the rows on hand: one find, lands on merge, closed, no reveal. — `update::tests::graph_mode::space_closing_a_merge_off_the_rows_on_hand_owes_no_reveal`; on hand: existing `update::tests::graph_toggles::space_inside_an_opened_merge_closes_it_and_lands_on_the_merge`.
+- [x] Reveal unchanged. — `history::keep_tests::a_reveal_lands_on_its_target_not_on_the_kept_commit`; 06c reveal tests pass in the full run.
+- [x] Re-ask, app. — `update::tests::graph_mode_reask::every_view_change_asks_the_folded_count_again` (seen red with the ask removed), `…::a_view_change_with_no_finished_search_asks_nothing`. `H` not in the sequence: H with no stash is no view change.
+- [x] Re-ask, tree_answers: refs read carries the ask; none without a search. — `update::tests::graph_mode_reask::a_refs_read_view_change_asks_the_folded_count_again`. `head_known` (:57) with no search: not separately tested (code path: `ask_folded` returns early with no search).
+- [x] Re-ask, worker under the new view (fold None → 0; opened merge → fewer). — `history::idle_tests::keep_tests::a_folded_ask_on_a_view_change_is_counted_under_the_new_view`; first-parent 0 is 06c's `hits_off_the_first_parent_line_are_not_counted_folded`. No-further rule: not re-tested here.
+- [x] No config: every earlier test passes. — full workspace nextest run.
+- [x] Captures `docs/shots/ease-pass/main-merged-shown-120.txt` (`it::graph_mode::every_branch_first_paint_…`), `config-merged-branches-problem-120.txt` (`event_loop::tests::theme_problems::a_graph_mode_it_does_not_take_…`), in the contact sheet after `main-opened-120.txt`. Look unjudged (rule 6), colour unverified (rule 5).
+- [x] NOTES below.
+- [x] Each tick names its test.
+
+## NOTES (builder, 2026-10-18)
+- Scout used: `.scratch/ease-pass/scouts/06h-graph-mode.md` (not re-scouted). No compaction.
+- Step-1 grep `inclusion.folded\|folded: \[` over crates: empty.
+- Shared landing fn: `history::scroll::apply::landed_at(&Window, Oid) -> Option<usize>`.
+- `keep` is filled from `History.reanchor` in `ask()` **only when no promotion rides** (a promotion's anchor is the selection already); so the worker's debug assertion holds.
+- `space` close's seek (`view_change::send`, was `keys.rs:453`): still needed when the merge row is off the rows on hand; with it on hand `keep` would land the same. Not removed.
+- `tree_answers.rs` refs read sends a `RowRequest` (asserted); the ask rides on it.
+- `apply_view_change`'s body moved to `update::keys::view_change::send` (keys.rs 487 → 474, row lowered); `switch_graph_mode` goes through it.
+- Deviations: `[graph] merged_branches` held as `Option<RawValue>` (newtype over `toml::Value`, manual `Eq`) — `toml::Value` is not `Eq` and `Config` derives it. `History::started(MergedBranches)` callers (37) updated. `AppState.graph_mode` is `pub` (integration test sets it before the walk starts). `Carried` (event_loop/places) carries the config's mode to every place; a **switch made at runtime does not carry to the next place** (each place gets a fresh `AppState`) — gap for 06i/conductor.
+- `switch_graph_mode` has `#[cfg_attr(not(test), expect(dead_code))]` until 06i calls it.
+- Q1 (question, not defect): in Every branch the M18 `JustMerged` bar never shows at all (it needs a fold count, never asked) — so `u undo the merge · P push` is also missing after a merge in that mode. `finish.rs:208-224`.
+- Captures re-shot: none needed — no existing capture test failed (full run). New: two above.
+- Design-doc wording for the conductor: §2.2 :188-189, §2.12 :581, `01-view-mockups.md` :525 "`[keys]`/`[theme]`" → "`[keys]`, `[theme]` or `graph.merged_branches`"; §2.3 :283 add "unless the graph mode is Every branch"; PROMPT §1.3 same.
+- Gap `ease/06c-suffix-stale` closed by `update::tests::graph_mode_reask::every_view_change_asks_the_folded_count_again` and `history::idle_tests::keep_tests::a_folded_ask_on_a_view_change_is_counted_under_the_new_view`.
+- Flaky seen once in a full run, passed on rerun, untouched code: `it::m7_walk::fork_rows::a_stop_inside_a_fork_names_it_on_the_banner`.
+- README: `[graph] merged_branches` line and the bad-value exception. Man page regenerated.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.

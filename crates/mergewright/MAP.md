@@ -26,6 +26,8 @@ Reading a config file off disk into a `Loaded`.
 `[theme.<kind>]`: colour overrides over a built-in theme, one token at a time.
 ## config::types
 The typed `[ui]`/`[graph]` sections and their value enums.
+- `MergedBranches` (enum) — `[graph] merged_branches`, the graph mode: `Folded` (default) / `Shown`; `from_config` turns a bad value into problem words, `as_config` spells it.
+- `RawValue` (struct) — a config value kept as written, so a bad one is a problem, not a load failure.
 ## crash
 The panic hook: restore the terminal first, then write a crash report to the state folder, then say where it went.
 - `install` (fn) — installs the hook; called once by `main` before the terminal is touched.
@@ -78,11 +80,12 @@ The first-launch line: for his first launches, until he opens the palette, the s
 Reading history for the screen: `mergewright-git`'s walk meets `mergewright-graph`'s layout here, laid out as it arrives.
 - `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase; `head_pending` while the first request waits for `HEAD` (ease-pass 06 D2).
 - `Window` (struct) — the laid-out rows the screen currently holds; `Window.fold` holds each row's `RowFold`, index for index; `Window.sought` what a find learnt, `Window::found` (fn) how it was found.
-- `View` (struct) — `follow`, `inclusion`: the view a walk lays out; `View::folded` (fn) is what the app opens on — merged branches folded, none opened.
+- `View` (struct) — `follow`, `inclusion`: the view a walk lays out; `View::folded` (fn) is what the app opens on — merged branches folded, none opened; `View::starting(MergedBranches)` (fn) the view a walk starts in per graph mode.
 - `RowFold` (struct) — `folds`, `inside`: does a merge row fold a branch; the opened merge a row sits inside.
 - `Inside` (struct) — `merge`, `label`: an opened merge and the branch name its subject gives.
 - `HistoryUpdate` (enum) — what the history worker reports back to `update`; `FoldedHits` counts asked hits hidden by the default fold.
-- `RowRequest` (struct) — the rows a move needs, sent to the worker; `RowRequest::new` (fn) with nothing riding along; `folded` carries a `FoldedAsk`.
+- `RowRequest` (struct) — the rows a move needs, sent to the worker; `RowRequest::new` (fn) with nothing riding along; `folded` carries a `FoldedAsk`; `keep` the view change's cursor commit.
+- `History::started(MergedBranches)` (fn) — a walk asked for, in that graph mode; `History::merged_branches` (fn) the mode, read from the view's fold.
 - `History::take_reveal` (fn) — the merge a find's answer left to open, once (ease-pass 06c).
 - `History::ask_folded` / `folded_ask_out` / `ask_again` (fn) — put a `FoldedAsk` on every request until answered; is one out; the request to carry it when none is due.
 - `Phase` (enum) — where the walk is: streaming, complete, and so on.
@@ -270,7 +273,7 @@ Keeping a shown cursor shown when the graph pane loses history rows without a ke
 ## update::journal
 The undo journal screen's state (`J`): cursor, marks, and the read that keeps it current.
 ## update::keys
-The graph's own keys: movement, view changes and toggles other than search and the commit-graph offer. `view_change::open_merge` is `space`'s open half, which a reveal also uses.
+The graph's own keys: movement, view changes and toggles other than search and the commit-graph offer. `view_change::open_merge` is `space`'s open half (a reveal uses it too); `view_change::switch_graph_mode` switches the graph mode.
 ## update::map
 The Map view's state and keys (`M`): built fresh on open, thrown away on close.
 ## update::mouse

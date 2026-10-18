@@ -43,6 +43,14 @@ fn head_known(
     head: Option<mergewright_core::oid::Oid>,
 ) {
     let height = next.graph_rows();
+    let kept = next.history.as_ref().and_then(|history| {
+        let view = keys::view_change::with_head_kept(&history.view, head);
+        (!history.head_pending && view.is_some()).then_some(view)
+    });
+    if kept.is_some() {
+        // A view change: a finished search's folded count rides on it.
+        super::search::ask_folded(next);
+    }
     let Some(history) = next.history.as_mut() else {
         return;
     };
@@ -53,7 +61,7 @@ fn head_known(
         }
         history.show(height)
     } else {
-        keys::view_change::with_head_kept(&history.view, head)
+        kept.flatten()
             .and_then(|view| history.change_view(view, height))
     };
     if let Some(request) = request
@@ -94,7 +102,7 @@ pub(super) fn history_started(
     if next.awaiting != Some(id) {
         return;
     }
-    let mut history = History::started();
+    let mut history = History::started(next.graph_mode);
     history.strip_rows = keys::strip_rows_for(next.tier());
     // A refresh keeps what the user folded, hid or switched to, and puts the
     // cursor back on the commit it was on — including a `Ctrl+R` that
@@ -276,6 +284,13 @@ pub(super) fn stash_entries_read(next: &mut AppState, commands: &mut Vec<Command
     let stashes = stash_entries(next);
     let head = head(next);
     let height = next.graph_rows();
+    let changes = next.history.as_ref().is_some_and(|history| {
+        !history.head_pending && refs_view(&history.view, &stashes, head).is_some()
+    });
+    if changes {
+        // A view change: a finished search's folded count rides on it.
+        super::search::ask_folded(next);
+    }
     if let Some(history) = next.history.as_mut()
         && let Some(view) = refs_view(&history.view, &stashes, head)
     {

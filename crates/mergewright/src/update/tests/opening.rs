@@ -105,6 +105,7 @@ fn every_field_spelled_out() -> AppState {
         suspend_on_ctrl_z: false,
         keymap: std::sync::Arc::default(),
         config_problems: Vec::new(),
+        graph_mode: crate::config::MergedBranches::Shown,
         config_notice: false,
         first_launch: None,
         preview: None,

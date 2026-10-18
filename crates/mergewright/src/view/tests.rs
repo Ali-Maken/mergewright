@@ -109,7 +109,7 @@ pub(crate) fn history_of(count: u8, cursor: usize) -> History {
         phase: Phase::Complete,
         cursor,
         reanchor: None,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     }
 }
 
@@ -418,7 +418,7 @@ fn history_with_subject(count: u8, cursor: usize, subject: &str) -> History {
         phase: Phase::Complete,
         cursor,
         reanchor: None,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     }
 }
 
@@ -1363,7 +1363,7 @@ fn evil_merge_state() -> AppState {
         phase: Phase::Complete,
         cursor: 0,
         reanchor: None,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     };
     AppState {
         history: Some(history),
@@ -1712,7 +1712,7 @@ fn foxtrot_explain_history() -> History {
         phase: Phase::Complete,
         cursor: 0,
         reanchor: None,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     };
     history.walk = Some(WalkFacts {
         requested: Order::Topological,
@@ -2111,7 +2111,7 @@ fn strip_capture_state() -> AppState {
         phase: Phase::Complete,
         cursor: 0,
         reanchor: None,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     };
     AppState {
         history: Some(history),

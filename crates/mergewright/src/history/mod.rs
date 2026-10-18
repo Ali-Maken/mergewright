@@ -31,6 +31,8 @@ mod views;
 #[cfg(test)]
 mod idle_tests;
 #[cfg(test)]
+mod keep_tests;
+#[cfg(test)]
 mod promotion_tests;
 #[cfg(test)]
 mod reveal_tests;

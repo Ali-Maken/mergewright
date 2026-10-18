@@ -278,7 +278,7 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     let bound = (protected + SMALL.resident_chunks) * SMALL.chunk_rows;
     assert!(bound < whole.len(), "the bound is below the history's size");
 
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let mut request = history.show(HEIGHT);
     let mut pages = 0;
     while history.phase != Phase::Complete || history.cursor + 1 < history.rows {
@@ -327,7 +327,7 @@ fn every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late() {
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let first = history.show(HEIGHT).expect("asks for the first screen");
     round_trip(&mut stream, &mut history, first, &mut || None);
 
@@ -381,7 +381,7 @@ fn scroll_from_launch(step: impl Fn(&mut History) -> Option<RowRequest>) {
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let mut request = history.show(HEIGHT);
     let mut steps = 0;
     loop {
@@ -433,7 +433,7 @@ fn a_withdrawn_jump_stops_walking_and_lands_nothing() {
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let first = history
         .show(HEIGHT)
         .expect("a fresh walk asks for its first screen");
@@ -705,7 +705,7 @@ fn selection_stays_on_its_commit_after_its_chunk_is_evicted_and_rebuilt() {
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
 
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let mut request = history.show(HEIGHT);
     let settle = |stream: &mut StreamingLayout<_>, history: &mut History, request| {
         if let Some(asked) = request {
@@ -746,7 +746,7 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
     let dir = mergewright_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let window = |request, first: usize, rows: &[Row]| {
         HistoryUpdate::Window(Window {
             request,
@@ -783,7 +783,7 @@ fn a_seek_still_out_survives_a_view_change() {
     let dir = mergewright_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let window = |request, first: usize, rows: &[Row]| {
         HistoryUpdate::Window(Window {
             request,
@@ -898,7 +898,7 @@ fn promotion_keeps_the_selected_commit_where_it_is_on_screen() {
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
 
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     history.walk = Some(WalkFacts {
         requested: Order::Topological,
         order: Order::CommitDate,
@@ -971,7 +971,7 @@ fn key_while_promotion_swaps(
         })
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     history.walk = Some(WalkFacts {
         requested: Order::Topological,
         order: Order::CommitDate,
@@ -1059,7 +1059,7 @@ fn promotion_lands_on_a_jump_in_flight(
         })
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     history.walk = Some(WalkFacts {
         requested: Order::Topological,
         order: Order::CommitDate,
@@ -1161,7 +1161,7 @@ fn a_move_between_the_two_answers_of_a_promotion_is_kept() {
         })
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     history.walk = Some(WalkFacts {
         requested: Order::Topological,
         order: Order::CommitDate,
@@ -1241,7 +1241,7 @@ fn scrolled(rows: usize, top: usize, strip_rows: Option<usize>) -> History {
         top,
         cursor: top,
         strip_rows,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     }
 }
 
@@ -1333,7 +1333,7 @@ fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
     let handle = RepoHandle::open(&dir).expect("opens");
     let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = unfolded(WalkSource::new(&handle, walk), Seeds::default());
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let first = history
         .show(HEIGHT)
         .expect("a fresh walk asks for its first screen");

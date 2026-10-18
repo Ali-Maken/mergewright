@@ -190,7 +190,7 @@ fn stale_started_is_dropped() {
     let (after_first, _, first) = refresh(&state);
     let (mut after_second, _, second) = refresh(&after_first);
     // The live walk has answered: the screen holds rows.
-    let mut live = History::started();
+    let mut live = History::started(crate::config::MergedBranches::Folded);
     live.rows = 40;
     live.phase = Phase::Complete;
     after_second.history = Some(live.clone());

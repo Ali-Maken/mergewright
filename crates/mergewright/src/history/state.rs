@@ -15,6 +15,7 @@ use mergewright_graph::{Follow, Included, Inclusion, Row};
 
 use super::fold::RowFold;
 use super::sought::{FoldedAsk, Found, Reveal, Sought};
+use crate::config::MergedBranches;
 
 /// What a walk is, known before its first commit: the order it is in and the
 /// branches its lanes are anchored on.
@@ -89,6 +90,16 @@ impl View {
             inclusion: Inclusion::folded_by_default(Vec::new(), OpenedMerges::default()),
         }
     }
+
+    /// The view a walk starts in (ease-pass 06h): `Folded` →
+    /// [`View::folded`]; `Shown` → nothing folds (`inclusion.fold == None`).
+    #[must_use]
+    pub fn starting(merged: MergedBranches) -> Self {
+        match merged {
+            MergedBranches::Folded => Self::folded(),
+            MergedBranches::Shown => Self::default(),
+        }
+    }
 }
 
 /// One ask for rows, numbered so its answer can be told from a stale one.
@@ -112,6 +123,10 @@ pub struct RowRequest {
     /// A search's ask for how many of its hits are folded, carried by every
     /// request until it is answered ([`FoldedAsk`]).
     pub folded: Option<FoldedAsk>,
+    /// The commit a view change keeps the cursor on (`History.reanchor`).
+    /// The worker answers `Sought.anchor_behind` for it as for a
+    /// promotion's anchor, so a folded-away commit lands on its merge.
+    pub keep: Option<Oid>,
 }
 
 impl RowRequest {
@@ -125,6 +140,7 @@ impl RowRequest {
             view,
             promote: None,
             folded: None,
+            keep: None,
         }
     }
 }
@@ -332,9 +348,10 @@ pub struct History {
 }
 
 impl History {
-    /// A walk that has been asked for and has sent nothing yet.
+    /// A walk that has been asked for and has sent nothing yet, in the
+    /// graph mode `merged`.
     #[must_use]
-    pub fn started() -> Self {
+    pub fn started(merged: MergedBranches) -> Self {
         History {
             walk: None,
             window: None,
@@ -346,7 +363,7 @@ impl History {
             asked: 0,
             jump: None,
             seeking: None,
-            view: View::folded(),
+            view: View::starting(merged),
             promotion: None,
             strip_rows: None,
             outstanding: None,
@@ -355,6 +372,17 @@ impl History {
             reveal: None,
             folded_ask: None,
             folded_asks: 0,
+        }
+    }
+}
+
+impl History {
+    /// The graph mode in force, read from the view: it folds, or it does not.
+    #[must_use]
+    pub fn merged_branches(&self) -> MergedBranches {
+        match self.view.inclusion.fold {
+            Some(_) => MergedBranches::Folded,
+            None => MergedBranches::Shown,
         }
     }
 }

@@ -50,6 +50,7 @@ mod gallery;
 /// m7-power-tools/47: `docs/shots/m7/fix-scroll-ghostty.png`, on the team fixture.
 #[cfg(feature = "heavy-tests")]
 mod ghostty_shot;
+mod graph_mode;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 #[cfg(feature = "heavy-tests")]

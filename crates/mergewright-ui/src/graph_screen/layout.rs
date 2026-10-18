@@ -244,7 +244,7 @@ impl<'a> GraphScreen<'a> {
             ),
             None => {}
         }
-        for phrase in lane_phrases(lanes) {
+        for phrase in lane_phrases(lanes, self.view.filters.every_branch) {
             push(phrase, muted, Drop::Lanes);
         }
         items

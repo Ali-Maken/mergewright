@@ -547,6 +547,12 @@ Lanes drawn before the rest fold behind +N. Unset: 8, 10 or 12 by terminal
 width.
 .br
 Values: any number from 2 up. Default: (unset).
+.TP
+.B merged_branches
+folded: a merged branch sits behind its merge; space opens it. shown: every
+branch on its own lane. Unset: folded. A bad value is a problem, not an error.
+.br
+Values: folded | shown. Default: (unset).
 .SS [diff]
 .TP
 .B context

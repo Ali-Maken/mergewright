@@ -84,6 +84,14 @@ pub const CONFIG_KEYS: &[ConfigKeyDoc] = &[
         "Lanes drawn before the rest fold behind +N. Unset: 8, 10 or 12 by terminal width.",
     ),
     row(
+        "graph",
+        "merged_branches",
+        "folded | shown",
+        "(unset)",
+        "folded: a merged branch sits behind its merge; space opens it. shown: every branch \
+         on its own lane. Unset: folded. A bad value is a problem, not an error.",
+    ),
+    row(
         "diff",
         "context",
         "any number of lines",

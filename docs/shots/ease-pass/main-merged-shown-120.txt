@@ -1,0 +1,39 @@
+ease-pass 06h, 120x36, `wallet_release` in Every branch (`[graph] merged_branches = "shown"`), cursor on the first merge (`HEAD`).
+What right looks like: every commit of PR 16021 and `sara/fix-toc` drawn on its own lane joining its merge; no `▸` tail on any row; the top line ends `every branch shown` and says nothing of merged branches folded. Colour unverified (rule 5).
+
+ ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
+
+▸   ◆─╮      [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-release                         GF 28h  ea2b27e
+    │ ●      [sara/fix-toc] toc: fix the anchors                                                        GF 28h  a5ab5e1
+    ◉─┴─╮    Merged PR 16021: Fix the wallet totals                                                     GF 28h  4eb2a56
+    │   ●    totals: test the sum                                                                       GF 28h  a03e550
+    │   ●    totals: drop the cache                                                                     GF 28h  3334d8b
+    │   ●    totals: round once                                                                         GF 28h  2c2a1cf
+    │   ●    totals: read the ledger                                                                    GF 28h  79709e0
+    ●───╯    Start the wallet release                                                                   GF 28h  68f9980
+  ◇─╯        [main] Add the readme                                                                      GF 28h  2b013b5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys

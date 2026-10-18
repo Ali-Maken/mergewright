@@ -149,7 +149,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `ProblemLine` (struct) — `reason`, `keys`: a failure the footer shows in place of the hints.
 - `MarkerView` (struct) — a Mistake Radar marker's `severity`, painted in the row's marker slot.
 - `GraphicsStatus` (enum) — `Ok` / `Failed(text)`: drawn `gfx ok` / `gfx: <error>`.
-- `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`; `Filters::text(keys)` is the header's words.
+- `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`, `every_branch` (graph mode, said by the lane phrases, not `text`); `Filters::text(keys)` is the header's words.
 - `Compaction` (struct, from `compaction.rs`) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept; planned with no cap while expanded, so node-less columns drop either way.
 - `LaneTally` (struct, from `header_tail.rs`) — `drawn` N, `open` M, `folded_in_view` K; `LaneTally::of(fold, window)`: the top line's `lanes drawn: N of M · K merged branches folded`, counted at render.
 - `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `author`, `when`, `sha`, `compare_marked`, `marker`, `tag`, `fold`.

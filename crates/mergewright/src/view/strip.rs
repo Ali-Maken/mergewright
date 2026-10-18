@@ -141,7 +141,7 @@ mod tests {
             phase: Phase::Complete,
             cursor: 0,
             reanchor: None,
-            ..History::started()
+            ..History::started(crate::config::MergedBranches::Folded)
         };
         AppState {
             history: Some(history),

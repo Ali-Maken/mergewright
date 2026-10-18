@@ -607,7 +607,7 @@ mod tests {
 
     fn state_with_default_branch(tip: Option<Oid>) -> AppState {
         let mut state = AppState::default();
-        let mut history = History::started();
+        let mut history = History::started(crate::config::MergedBranches::Folded);
         history.walk = Some(WalkFacts {
             requested: Order::Topological,
             order: Order::Topological,

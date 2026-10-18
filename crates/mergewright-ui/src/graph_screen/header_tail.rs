@@ -46,15 +46,19 @@ impl LaneTally {
 }
 
 /// The top line's lane words, left to right; each only while it has
-/// something to say: `[]`, `["lanes drawn: 5 of 8"]`, `["3 merged branches
-/// folded"]`, or both.
-pub(crate) fn lane_phrases(tally: LaneTally) -> Vec<String> {
+/// something to say: `lanes drawn: 5 of 8` while some lanes are not drawn,
+/// then `every branch shown` whenever `every_branch` (the graph mode,
+/// ease-pass 06h), else `3 merged branches folded` while a closed fold is in
+/// view.
+pub(crate) fn lane_phrases(tally: LaneTally, every_branch: bool) -> Vec<String> {
     let mut phrases = Vec::new();
     if tally.drawn < tally.open {
         phrases.push(format!("lanes drawn: {} of {}", tally.drawn, tally.open));
     }
     let folded = tally.folded_in_view;
-    if folded > 0 {
+    if every_branch {
+        phrases.push("every branch shown".to_owned());
+    } else if folded > 0 {
         let branches = if folded == 1 { "branch" } else { "branches" };
         phrases.push(format!("{folded} merged {branches} folded"));
     }

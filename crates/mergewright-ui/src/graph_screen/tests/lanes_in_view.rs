@@ -69,13 +69,55 @@ fn the_lane_words_say_only_what_there_is_to_say() {
         open,
         folded_in_view,
     };
+    let folded = |tally| lane_phrases(tally, false);
     assert_eq!(
-        lane_phrases(tally(5, 8, 3)),
+        folded(tally(5, 8, 3)),
         ["lanes drawn: 5 of 8", "3 merged branches folded"]
     );
-    assert!(lane_phrases(tally(8, 8, 0)).is_empty());
-    assert_eq!(lane_phrases(tally(8, 8, 1)), ["1 merged branch folded"]);
-    assert_eq!(lane_phrases(tally(5, 8, 0)), ["lanes drawn: 5 of 8"]);
+    assert!(folded(tally(8, 8, 0)).is_empty());
+    assert_eq!(folded(tally(8, 8, 1)), ["1 merged branch folded"]);
+    assert_eq!(folded(tally(5, 8, 0)), ["lanes drawn: 5 of 8"]);
+    assert_eq!(folded(tally(8, 8, 3)), ["3 merged branches folded"]);
+}
+
+/// Every branch (ease-pass 06h): the mode is said always, in the folded
+/// count's slot; the lane count stays as it is.
+#[test]
+fn every_branch_shown_takes_the_folded_counts_slot_always() {
+    let tally = |drawn, open| LaneTally {
+        drawn,
+        open,
+        folded_in_view: 0,
+    };
+    assert_eq!(
+        lane_phrases(tally(5, 8), true),
+        ["lanes drawn: 5 of 8", "every branch shown"]
+    );
+    assert_eq!(lane_phrases(tally(8, 8), true), ["every branch shown"]);
+}
+
+/// `every branch shown` is a lanes item: dropped whole, first, as the count is.
+#[test]
+fn every_branch_shown_drops_whole_with_the_lane_phrases() {
+    let item = |text: &str, drop| TailItem {
+        text: text.to_owned(),
+        style: Style::new(),
+        drop,
+    };
+    let fitted = |room| -> String {
+        let items = vec![
+            item("first parent", Drop::Filters),
+            item("gfx ok", Drop::Gfx),
+            item("every branch shown", Drop::Lanes),
+        ];
+        fitted_tail(items, room, room)
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect()
+    };
+    // 12 + 2 + 6 + 2 + 18 = 40.
+    assert_eq!(fitted(40), "first parent  gfx ok  every branch shown");
+    assert_eq!(fitted(39), "first parent  gfx ok");
 }
 
 /// The tail as one string, separators included.

@@ -194,6 +194,9 @@ pub struct Filters {
     /// Focus mode is on (DESIGN.md §5.2): rows off the selection's thread
     /// fade. Nothing is left out, but the header says so, with its way out.
     pub focused: bool,
+    /// The graph mode is Every branch (ease-pass 06h): nothing folds. Not
+    /// one of the filters' words; the lane phrases say it.
+    pub every_branch: bool,
 }
 
 impl Filters {

@@ -326,12 +326,18 @@ pub(super) fn error_chain(error: &dyn std::error::Error) -> String {
     text
 }
 
-/// A promoting request's anchor, when the new order folds it away, and the
-/// shown merge it hides behind (ease-pass 06).
+/// A promoting request's anchor, or a view change's kept commit (ease-pass
+/// 06h), when the view folds it away, and the shown merge it hides behind
+/// (ease-pass 06). Never both on one request.
 fn anchor_behind<S: CommitSource>(
     layout: &StreamingLayout<Included<S>>,
     request: &RowRequest,
 ) -> Option<(Oid, Oid)> {
-    let anchor = request.promote.as_ref()?.anchor?.commit;
+    let promoted = request.promote.as_ref().and_then(|promote| promote.anchor);
+    debug_assert!(
+        promoted.is_none() || request.keep.is_none(),
+        "promotion anchor and view-change keep on one request"
+    );
+    let anchor = promoted.map(|anchor| anchor.commit).or(request.keep)?;
     Some((anchor, landing(layout, anchor)?))
 }

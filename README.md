@@ -108,7 +108,9 @@ any of them by the name in the last column.
 (an old `graft/` or old `tributary/` folder there is moved on first launch).
 No file is the normal case, and every key is optional. An unknown key is a
 warning, so a file written for a later version still starts this one; a value
-a key does not take stops Mergewright with the line and column. Every key, its
+a key does not take stops Mergewright with the line and column — except
+`graph.merged_branches`, whose bad value is a config problem (`?` lists it)
+and opens folded. Every key, its
 values and its default are in the man page's CONFIGURATION section.
 
 In each repository it opens, Mergewright keeps its files in
@@ -126,6 +128,7 @@ overview = false        # start with the overview strip shown
 renderer = "auto"       # auto | pixel | unicode | ascii
 default_branch = "main" # unset: detected
 max_lanes = 10          # unset: 8, 10 or 12 by terminal width
+merged_branches = "folded"  # folded | shown (every branch on its own lane)
 
 [diff]
 context = 3

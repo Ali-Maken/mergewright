@@ -829,8 +829,7 @@ fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
     );
 }
 
-/// The header says what the graph leaves out, and says nothing when it
-/// leaves nothing out.
+/// The header says what the graph leaves out, and nothing when nothing is.
 #[test]
 fn filters_are_named_in_the_header_only_when_something_is_left_out() {
     use super::Filters;
@@ -839,6 +838,7 @@ fn filters_are_named_in_the_header_only_when_something_is_left_out() {
         first_parent: true,
         stash_hidden: true,
         focused: true,
+        every_branch: true,
     };
     assert_eq!(
         all.text(Keymap::shipped()),

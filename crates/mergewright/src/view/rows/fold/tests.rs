@@ -59,7 +59,7 @@ fn wallet() -> (History, [Oid; 3]) {
         rows: commits.len(),
         phase: Phase::Complete,
         view,
-        ..History::started()
+        ..History::started(crate::config::MergedBranches::Folded)
     };
     (history, [pr, named, sync])
 }

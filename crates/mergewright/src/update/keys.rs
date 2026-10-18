@@ -434,28 +434,15 @@ fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
 /// A view key (order, filter, stash visibility): asks the history job for
 /// the rows the changed view shows.
 fn apply_view_change(next: &mut AppState, commands: &mut Vec<Command>, change: ViewChange) {
-    let height = next.graph_rows();
     let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
         refs.stashes().iter().map(|&(commit, _)| commit).collect()
     });
-    let Some(history) = next.history.as_mut() else {
-        return;
-    };
-    let Some(changed) = change.apply(history, &stashes) else {
-        return;
-    };
-    let mut request = history.change_view(changed.view, height);
-    // `space` inside an opened merge: the cursor goes to the merge it
-    // closed. Rows above the merge keep their numbers when it closes, so a
-    // merge row on hand is where it will be.
-    if let Some(merge) = changed.land_on {
-        history.reanchor = None;
-        request = history.seek(merge, height).or(request);
-    }
-    if let Some(request) = request
-        && let Some(id) = next.awaiting
-    {
-        commands.push(Command::ShowRows(id, request));
+    let changed = next
+        .history
+        .as_ref()
+        .and_then(|history| change.apply(history, &stashes));
+    if let Some(changed) = changed {
+        view_change::send(next, commands, changed);
     }
 }
 

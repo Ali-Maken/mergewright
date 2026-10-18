@@ -5,7 +5,9 @@ use mergewright_core::event::{KeyCode, KeyPress};
 use mergewright_core::oid::Oid;
 use mergewright_graph::Follow;
 
+use crate::config::MergedBranches;
 use crate::history::{History, View};
+use crate::update::{AppState, Command};
 
 /// A key that changes which history is shown (PROMPT.md §1.3). DESIGN.md
 /// §2.3 assigns none of these; they are recorded there.
@@ -81,6 +83,76 @@ impl ViewChange {
         }
         Some(Changed { view, land_on })
     }
+}
+
+/// Sends a view change's request: the rows `changed.view` shows, with the
+/// cursor kept on its commit (or the merge that commit now folds behind,
+/// ease-pass 06h) and a finished search's folded count asked again on it
+/// (gap `ease/06c-suffix-stale`).
+pub(super) fn send(next: &mut AppState, commands: &mut Vec<Command>, changed: Changed) {
+    let height = next.graph_rows();
+    if next
+        .history
+        .as_ref()
+        .is_none_or(|history| history.view == changed.view)
+    {
+        return;
+    }
+    // Asked before the request is built, so it rides on it.
+    crate::update::search::ask_folded(next);
+    let Some(history) = next.history.as_mut() else {
+        return;
+    };
+    let mut request = history.change_view(changed.view, height);
+    // `space` inside an opened merge: the cursor goes to the merge it
+    // closed. Rows above the merge keep their numbers when it closes, so a
+    // merge row on hand is where it will be.
+    if let Some(merge) = changed.land_on {
+        history.reanchor = None;
+        request = history.seek(merge, height).or(request);
+    }
+    if let Some(request) = request
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
+    }
+}
+
+/// Switch the graph mode for this run (ease-pass 06h; 06i calls it on ⏎).
+/// Only the fold changes: `follow` and every filter stay, every opened
+/// merge closes, and folding again keeps `HEAD`'s line as a fresh start
+/// does. Through [`send`], so the cursor lands by `keep` and a live
+/// search's folded count is asked again. Same mode → nothing. Not an
+/// operation: no journal entry.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the `?` list's graph mode row (ease-pass 06i) calls it"
+    )
+)]
+pub(crate) fn switch_graph_mode(state: &mut AppState, to: MergedBranches) -> Vec<Command> {
+    state.graph_mode = to;
+    let mut commands = Vec::new();
+    let Some(history) = state.history.as_ref() else {
+        return commands;
+    };
+    if history.merged_branches() == to {
+        return commands;
+    }
+    let mut view = history.view.clone();
+    view.inclusion.fold = View::starting(to).inclusion.fold;
+    let head = state.refs.as_deref().and_then(crate::refs::RefBadges::head);
+    let view = with_head_kept(&view, head).unwrap_or(view);
+    send(
+        state,
+        &mut commands,
+        Changed {
+            view,
+            land_on: None,
+        },
+    );
+    commands
 }
 
 /// `view` with one folded `merge` opened — `space`'s open half, and a

@@ -740,7 +740,7 @@ fn headless_is_not_settled_before_history_exists() {
 #[test]
 fn headless_is_not_settled_while_history_is_streaming() {
     let state = AppState {
-        history: Some(crate::history::History::started()),
+        history: crate::history::History::started(crate::config::MergedBranches::Folded).into(),
         ..AppState::default()
     };
     assert!(!headless_settled(&state));
@@ -748,7 +748,7 @@ fn headless_is_not_settled_while_history_is_streaming() {
 
 #[test]
 fn headless_is_settled_once_history_completes() {
-    let mut history = crate::history::History::started();
+    let mut history = crate::history::History::started(crate::config::MergedBranches::Folded);
     history.phase = Phase::Complete;
     let state = AppState {
         history: Some(history),
@@ -759,7 +759,7 @@ fn headless_is_settled_once_history_completes() {
 
 #[test]
 fn headless_is_settled_when_the_walk_fails() {
-    let mut history = crate::history::History::started();
+    let mut history = crate::history::History::started(crate::config::MergedBranches::Folded);
     history.phase = Phase::Failed("disk read error".to_string());
     let state = AppState {
         history: Some(history),
