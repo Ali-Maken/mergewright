@@ -134,3 +134,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 2026-10-18 · user: clean start for the public repo (one fresh commit); private keeps history. In PROGRESS release row.
 - 2026-10-18 · user: clean redundant/unused files before publishing → release row.
 - gates after 11 (dfe8a965): fmt ok, clippy 0, nextest 6918/6918, doc ok (first run broke: 11's click test used 12's removed FinishFocus — fixed, compares cursor); worktree removed. Rename baseline: 6918.
+- builder-sonnet codename-rename/01 dispatched alone from 507c52e2 (baseline 6918).
