@@ -353,6 +353,7 @@ The credential prompt's view model; `secret` decides how the text is drawn, no c
 The detail pane's view model, reshaped from what `update` keeps.
 ## view::entries
 One frame's `GraphEntry` rows: the selection's thread, the uncommitted row, each row's cells and badges.
+- `cells` (mod) — one history row's `GraphEntry` (`row_entry`), its stop tag and `badge_view` (re-exported as `entries::badge_view`).
 ## view::explain
 A radar `Explanation` turned into the sanitised `ExplainView` the Explain panel draws.
 ## view::finish
@@ -384,6 +385,10 @@ The conflict resolver's `DocView`: the one sanitisation site for a conflicted fi
 The rewrite editor's view, its area and its bar's context; every non-refusal word is chosen here.
 ## view::rows
 Building `GraphView`: the rows the walk last sent, lane-folded, each folding merge given its tail, painted for this frame.
+- `header` (mod) — the header's filter words, the rows a frame draws (live or a preview's), `location`/`practised`/`home_relative`.
+- `footer` (mod) — the footer's search, compare and order-notice lines.
+- `window` (mod) — the window cut: `reveal_index`, `divider_shown`, `max_lanes`, `compaction`.
+- `hint_context` (mod) — which hint bar draws: `box_context`, `stopped_line`, `footer_context`, `pane_hint_context`, `place_context`, the graph cursor's `hint_context`, `keep_for`.
 - `resolver_context` (fn, `clash_bars`) — the resolver's bar: `clash_bar`'s, else `Resolver`; the banner is `BannerPaused` once the resolver was open.
 - `clash_bar` (fn, `clash_bars`) — a marker document's `ClashBar`: `Open`, `Picked`, `FileSolved { next }`, merge `AllSolved`; `None` for a card, a done file, a non-merge with nothing open.
 ## view::stash

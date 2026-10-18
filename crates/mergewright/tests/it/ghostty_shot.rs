@@ -176,7 +176,7 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
         ));
     }
     // As `view::max_lanes` reads it: with the detail pane closed it is
-    // `max_lanes_for(screen columns, configured)` (`view/rows.rs`,
+    // `max_lanes_for(screen columns, configured)` (`view/rows/window.rs`,
     // `view/frame/layout.rs::graph_columns`).
     if state.detail.shown {
         return Err("the detail pane is open: the lane cap would read a narrower graph".to_owned());

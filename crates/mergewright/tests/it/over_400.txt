@@ -197,13 +197,9 @@
 689 crates/mergewright/src/update/tests/keymap_words/resolver.rs
 628 crates/mergewright/src/update/tests/keymap_words/undo_journal.rs
 482 crates/mergewright/src/update/undo/tests/set_aside.rs
-407 crates/mergewright/src/view/detail.rs
-428 crates/mergewright/src/view/entries.rs
 443 crates/mergewright/src/view/frame/boxes.rs
 700 crates/mergewright/src/view/frame/tests.rs
 724 crates/mergewright/src/view/journal/tests.rs
-732 crates/mergewright/src/view/radar.rs
-844 crates/mergewright/src/view/rows.rs
 422 crates/mergewright/src/view/strips.rs
 459 crates/mergewright/src/view/strips/tests.rs
 5273 crates/mergewright/src/view/tests.rs
