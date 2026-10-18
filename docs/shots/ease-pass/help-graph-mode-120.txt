@@ -5,7 +5,7 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 ▸   ◆    [◆ │ › graph                                                                                      │y   ea2b27e
     ◉    Mer│ HERE                                                                                         │y   4eb2a56
     ●    Sta│ F3    Cycle the graph renderer                                               graph.renderer  │y   68f9980
-  ◇─╯    [ma│ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │y   2b013b5
+  ◇━╯    [ma│ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │y   2b013b5
             │ X     Decline the commit-graph offer                             graph.decline_commit_graph  │
             │ GRAPH MODE                                                                                   │
             │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
