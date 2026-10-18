@@ -179,3 +179,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - 2026-10-19 · user: history squash = public repo only (one fresh commit); private history kept.
 - 2026-10-19 · user: after 07c merges + gates green: remove its worktree and cargo clean (~42 GB).
 - 2026-10-19 · user correction: CLAUDE.md references stay; the rule is only no 'made/co-authored by Claude' wording. Shipped files checked (git grep): none. PROGRESS cleanup item removed, CLAUDE.md rule narrowed.
+- researcher name clearance: medium risk; 2 GitHub repos 'MergeWright' (git/AI merge tools, 2026); mergewright.com taken; npm mwr taken; crates/PyPI/brew/AUR free; trademark DBs not checked (browser-only) → user.
