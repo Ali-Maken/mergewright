@@ -83,7 +83,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::LoadBase(id, path, file) => self.load_base(id, path, *file),
             Command::ReadConflictSet(id) => self.read_conflict_set(id),
             Command::ReadFinishSummary(id) => self.read_finish_summary(id),
-            Command::ReadFinishDiff(id, path) => self.read_finish_diff(id, path),
+            Command::ReadFinishLook(id, ask) => self.read_finish_look(id, ask),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
             Command::CountFolded { id, merge } => self.count_folded(id, merge),

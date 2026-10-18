@@ -7,7 +7,7 @@
 //! Modal while open: [`finish_key`] runs before the resolver and the banner
 //! and claims every key but `Ctrl+C`. The review is read off the loop's
 //! thread (`jobs::finish`) under an id chosen here, and drawn only once
-//! that read lands; so is the one diff a row can show under it.
+//! that read lands. `⏎` on a row opens a read-only look ([`look`]).
 //!
 //! **The merge commits git's own message** (ease-pass/12 decision 5): the
 //! read's `FinishSummary::message` — `MERGE_MSG` with its comment lines
@@ -22,7 +22,6 @@ use mergewright_git::conflict::Take;
 use mergewright_ops::apply::Resume;
 use mergewright_ops::finish::{FinishSummary, ResultIs};
 use mergewright_ops::operation::Side;
-use mergewright_ui::detail::DiffView;
 
 use super::detail::Loading;
 use super::events::Command;
@@ -66,10 +65,10 @@ pub struct FinishState {
     pub cursor: usize,
     /// The first list line on screen.
     pub top: usize,
-    /// The row whose staged diff is shown under it.
-    pub expanded: Option<(usize, Loading<Arc<DiffView>>)>,
-    /// The diff read in flight; an answer under any other id is stale.
-    pub diff_job: Option<JobId>,
+    /// The read-only look `⏎` opened on the cursor row (ease-pass/12b).
+    pub look: Option<Look>,
+    /// The look's read in flight; an answer under any other id is stale.
+    pub look_job: Option<JobId>,
     /// Where `Esc` goes.
     pub return_to: ReturnTo,
     /// The `--continue` running under this id.
@@ -190,8 +189,8 @@ fn open_reading(state: &mut AppState, from: ReturnTo, id: JobId) {
         job: Some(id),
         cursor: 0,
         top: 0,
-        expanded: None,
-        diff_job: None,
+        look: None,
+        look_job: None,
         return_to: from,
         committing: None,
         notice: None,
@@ -235,7 +234,7 @@ pub fn fits(state: &AppState) -> bool {
     mergewright_ui::finish_summary::fits(crate::view::finish::summary_area(state))
 }
 
-/// `top` moved as little as it must for the cursor row (and its diff) to be
+/// `top` moved as little as it must for the cursor row to be
 /// on screen — the same arithmetic the widget draws with.
 fn keep_cursor_on_screen(state: &mut AppState) {
     let top = {
@@ -259,12 +258,15 @@ fn with_finish(state: &mut AppState, f: impl FnOnce(&mut FinishState)) {
 mod answers;
 mod choices;
 mod keys;
+mod look;
 mod mouse;
 mod words;
 
-pub(crate) use answers::{diff_landed, job_ended, resume_answered, summary_landed};
+pub(crate) use answers::{job_ended, resume_answered, summary_landed};
 pub(crate) use choices::{forget, record_edited, record_take, record_whole};
 pub use keys::finish_key;
+pub(crate) use look::look_landed;
+pub use look::{Look, LookAsk, LookRead, Sample, SideCounts};
 pub(crate) use mouse::finish_mouse;
 pub(crate) use words::{how_solved, subject_of};
 

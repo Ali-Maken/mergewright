@@ -5,8 +5,8 @@
 use mergewright_ui::keymap::{ActionId, KeyChord, Keymap};
 
 use super::{
-    AppState, Command, FinishState, JobId, KeyCode, KeyPress, Loading, PathBuf, Resume, ReturnTo,
-    fits, keep_cursor_on_screen, with_finish,
+    AppState, Command, FinishState, JobId, KeyCode, KeyPress, Loading, Resume, ReturnTo, fits,
+    keep_cursor_on_screen, with_finish,
 };
 
 /// The review's keys while it is open. `false` only for `Ctrl+C` (and
@@ -38,6 +38,14 @@ pub fn finish_key(
         }
         return true;
     }
+    if state
+        .finish
+        .as_ref()
+        .is_some_and(|open| open.look.is_some())
+    {
+        super::look::look_key(state, commands, key, next_id);
+        return true;
+    }
     if asks(key, "app.back") {
         escape(state);
     } else if asks(key, "confirm.yes") {
@@ -45,7 +53,7 @@ pub fn finish_key(
     } else if asks(key, "app.undo") {
         undo_pick(state, commands, next_id);
     } else if asks(key, "finish.toggle_diff") {
-        toggle_diff(state, commands, next_id);
+        super::look::open_look(state, commands, next_id);
     } else if asks(key, "app.down") {
         move_cursor(state, 1);
     } else if asks(key, "app.up") {
@@ -59,7 +67,7 @@ pub fn finish_key(
 }
 
 /// `key` is one of `action`'s chords as shipped.
-fn asks(key: KeyPress, action: &'static str) -> bool {
+pub(super) fn asks(key: KeyPress, action: &'static str) -> bool {
     KeyChord::from_press(&key)
         .is_some_and(|chord| Keymap::shipped().chords(&ActionId(action)).contains(&chord))
 }
@@ -121,40 +129,6 @@ pub(super) fn move_cursor(state: &mut AppState, by: isize) {
         return;
     }
     finish.cursor = finish.cursor.saturating_add_signed(by).min(rows - 1);
-    keep_cursor_on_screen(state);
-}
-
-/// The clashed file row `row` names; `None` on the combined row, whose
-/// look is ticket 12b's.
-pub(super) fn row_path(finish: &FinishState, row: usize) -> Option<PathBuf> {
-    let Loading::Ready(summary) = &finish.summary else {
-        return None;
-    };
-    summary.by_you.get(row).map(|file| file.path.clone())
-}
-
-/// `⏎`/`space`: show the cursor row's staged diff under it, or hide it.
-pub(super) fn toggle_diff(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    let Some(finish) = state.finish.as_mut() else {
-        return;
-    };
-    let row = finish.cursor;
-    if finish.expanded.as_ref().is_some_and(|(at, _)| *at == row) {
-        finish.expanded = None;
-        finish.diff_job = None;
-        return;
-    }
-    let Some(path) = row_path(finish, row) else {
-        return;
-    };
-    let id = next_id();
-    finish.expanded = Some((row, Loading::Pending(id)));
-    finish.diff_job = Some(id);
-    commands.push(Command::ReadFinishDiff(id, path));
     keep_cursor_on_screen(state);
 }
 

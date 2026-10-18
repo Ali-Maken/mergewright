@@ -112,8 +112,8 @@ fn the_prelude_holds_a_key_while_the_file_list_is_reading() {
     );
 }
 
-/// m6-conflicts/43: the finish summary's read (`job`) and a row's diff
-/// (`diff_job`) are jobs an earlier key started. `⏎` fed before the summary
+/// m6-conflicts/43: the finish summary's read (`job`) and a row's look
+/// (`look_job`, was the diff's) are jobs an earlier key started. `⏎` fed before the summary
 /// lands is refused ("wait", `finish/tests.rs::enter_while_reading_says_wait`)
 /// and `Space` has no row to open, so the captures after `c` recorded the
 /// summary still loading instead of the commit and the expanded row.
@@ -150,16 +150,16 @@ fn the_prelude_holds_a_key_while_the_finish_summary_is_reading() {
     let mut state = state;
     let open = state.finish.as_mut().expect("still open");
     open.job = None;
-    open.diff_job = Some(JobId::new(82));
+    open.look_job = Some(JobId::new(82));
     let (state, _) = update(&state, sized(80, 12));
     assert_eq!(
         state.harness.prelude.len(),
         1,
-        "a row's diff is in flight: ⏎ waits"
+        "a row's look is in flight: ⏎ waits"
     );
 
     let mut state = state;
-    state.finish.as_mut().expect("still open").diff_job = None;
+    state.finish.as_mut().expect("still open").look_job = None;
     let (state, _) = update(&state, sized(80, 12));
     assert!(
         state.harness.prelude.is_empty(),

@@ -1,6 +1,7 @@
 //! `update` tests: sweep screens. Moved out of `update/tests.rs` (m8/21b-5, move-only).
 
 use super::*;
+use mergewright_ui::graph_screen::hints::ReviewBar;
 
 /// The changes pane for [`screen_for`]: `tab` is where the focus sits,
 /// `⇥ diff` from the file list, the other two from the diff
@@ -177,13 +178,27 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
         }
         // The m6 summary's form: no screen picks it since ease-pass/12
         // (retiring, 03b's); its keys are the review's, so its state is
-        // the review's. The cursor stays on the clashed row: on the
-        // combined row `⏎` is drawn but waits for 12b's look (ticket 12
-        // NOTES, `enter_on_the_combined_row_does_nothing_yet`).
-        // The merge review over a resolved merge, read: one clashed row,
-        // one combined (ease-pass/12).
-        HintContext::Finish { .. } | HintContext::Review(_) => {
-            vec![finish_screen_for(walk, false)]
+        // the review's. The merge review over a resolved merge, read: one
+        // clashed row, one combined (ease-pass/12); `⏎` opens the look on
+        // either (12b).
+        HintContext::Finish { .. } | HintContext::Review(ReviewBar::List) => {
+            vec![
+                finish_screen_for(walk, false),
+                finish_screen_for(walk, true),
+            ]
+        }
+        // The look open on the clashed row, its read landed (ease-pass/12b).
+        HintContext::Review(ReviewBar::Look) => {
+            let mut state = finish_screen_for(walk, false);
+            if let Some(open) = state.finish.as_mut() {
+                open.look = Some(crate::update::finish::Look {
+                    path: Some("notes.txt".into()),
+                    read: crate::update::detail::Loading::Ready(std::sync::Arc::new(
+                        crate::update::finish::LookRead::Clashed("one\ntwo\n".to_owned()),
+                    )),
+                });
+            }
+            vec![state]
         }
     }
 }

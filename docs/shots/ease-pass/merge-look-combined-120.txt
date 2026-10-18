@@ -1,24 +1,15 @@
 MERGING
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ All 3 clashes solved. Nothing committed yet.                                                                         │
+│ 1 file git combined on its own: both sides changed different lines, so it kept both                                  │
 │                                                                                                                      │
-│ This merge will put into main:                                                                                       │
-│   1 commit from feature                                                                                              │
-│   ✓ gone.txt   you chose: ◀ yours, whole file                                                                        │
-│ ▸ ✓ notes.txt  you chose: ▶ theirs                                                                                   │
+│ ✓ README.md   theirs +1 −1                                                                                           │
 │                                                                                                                      │
-│       1   1   one                                                                                                    │
-│       2     - two from main                                                                                          │
-│           2 + TWO from feature                                                                                       │
-│       3   3   three                                                                                                  │
-│       4   4   four                                                                                                   │
-│       5   5   five                                                                                                   │
-│       6   6   six                                                                                                    │
-│       7     - seven from main                                                                                        │
-│           7 + SEVEN from feature                                                                                     │
-│   ✓ 1 file git combined on its own                                                                                   │
-│                                                                                                                      │
-│ Message  Merge branch 'feature'                                                                                      │
+│ README.md, around line 1:                                                                                            │
+│ 1  # Project                                                                                                         │
+│ 2                                                                                                                    │
+│ 3  line one                                                                                                          │
+│ 4 +line TWO   from theirs                                                                                            │
+│ 5  line three                                                                                                        │
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
@@ -36,5 +27,14 @@ MERGING
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
-╰ y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again) ─╯
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰ esc back to the review · y commit the merge ─────────────────────────────────────────────────────────────────────────╯
 

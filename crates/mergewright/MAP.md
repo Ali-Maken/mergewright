@@ -132,7 +132,7 @@ The resolver's jobs: open a conflicted path, take one side of one block, put the
 ## jobs::detail
 The detail pane's reads: changed files, one file's diff, which refs contain a commit; view models built here.
 ## jobs::finish
-The merge review's reads: `merge_review` (what lands, nothing staged) plus `HEAD..MERGE_HEAD` counted (`None` → `?`); one solved, still-unmerged file's diff against `HEAD`.
+The merge review's reads: `merge_review` (what lands, nothing staged) plus `HEAD..MERGE_HEAD` counted (`None` → `?`). `look`: the look's reads (`look_result`, `combined_look`, `read`).
 ## jobs::fold_count
 How many commits a folding merge brought in, behind its tail `▸ 4 commits from …`; kept for the session.
 ## jobs::forced
@@ -264,7 +264,7 @@ What flows through `update`: events in, commands out (`Command`), a take (`TakeR
 ## update::facts
 Facts beside the graph arriving (system git, refs, working-tree counts), their read failures, and the name prompt's key claim.
 ## update::finish
-The merge's review, drawn once its read lands; keys by id; git's message, read-only: `y` commits it as `--no-edit` would, `u` undoes a pick. Lands `✓ Merged <from> into <into>.`; `just_merged_bar` once the count is known.
+The merge's review, drawn once its read lands; keys by id; git's message,: `y` commits it as `--no-edit` would, `u` undoes a pick, `⏎` a read-only `Look`. Lands `✓ Merged <from> into <into>.`; `just_merged_bar` once the count is known.
 ## update::fold_count
 A folding merge's count: asked at rest for the merges on screen (an uncounted one keeps the loop's rest wake owed, `update::rest_owed`), counted once by a job, kept for the session.
 ## update::geometry
@@ -355,7 +355,7 @@ One frame's `GraphEntry` rows: the selection's thread, the uncommitted row, each
 ## view::explain
 A radar `Explanation` turned into the sanitised `ExplainView` the Explain panel draws.
 ## view::finish
-The merge review's view model (`ReviewView`, how each clashed file was solved from `AppState::choices`); keys, mouse and draw build the same view; its bar is `HintContext::Review(ReviewBar::List)`.
+The merge review's view model (`ReviewView`, how each clashed file was solved from `AppState::choices`); keys, mouse and draw build the same view; bar `Review(List)`, or `Look` while `look_view` is open.
 ## view::frame
 The top of the draw: picks the tier and screen, then hands off to `rows` and `status`.
 ## view::hit

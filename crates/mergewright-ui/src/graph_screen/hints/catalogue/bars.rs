@@ -45,7 +45,8 @@ pub(super) fn bar_forms() -> Vec<HintContext> {
             }));
         }
     }
-    // The merge review's list (ease-pass/12); 12b adds the look.
+    // The merge review's list (ease-pass/12) and its look (12b).
     forms.push(HintContext::Review(ReviewBar::List));
+    forms.push(HintContext::Review(ReviewBar::Look));
     forms
 }

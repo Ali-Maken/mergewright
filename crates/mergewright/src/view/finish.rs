@@ -5,15 +5,17 @@
 //! The keys and the mouse build the same view to keep the cursor on screen
 //! and to hit-test a click, so a click and the draw agree on every row.
 
+use mergewright_git::diff::Origin as GitOrigin;
 use mergewright_term::{sanitize_line, sanitize_path};
-use mergewright_ui::finish_summary::{ExpandedDiff, ReviewFile, ReviewView, SummaryState};
+use mergewright_ui::finish_summary::{ReviewFile, ReviewView, SummaryState};
 use mergewright_ui::graph_screen::HintContext;
 use mergewright_ui::graph_screen::hints::ReviewBar;
+use mergewright_ui::merge_look::{CombinedFile, LookBody, LookLine, LookView, Origin};
 use ratatui::layout::Rect;
 
 use crate::update::AppState;
 use crate::update::detail::Loading;
-use crate::update::finish::{FinishState, how_solved, subject_of};
+use crate::update::finish::{FinishState, LookRead, how_solved, subject_of};
 
 /// The review as it draws now, or `None` when none is open.
 #[must_use]
@@ -30,14 +32,6 @@ pub fn finish_view(state: &AppState) -> Option<ReviewView<'_>> {
         combined: parts.combined,
         message: parts.message,
         cursor: finish.cursor,
-        expanded: finish.expanded.as_ref().map(|(row, diff)| {
-            let shown = match diff {
-                Loading::Ready(diff) => ExpandedDiff::Ready(std::sync::Arc::clone(diff)),
-                Loading::Failed(why) => ExpandedDiff::Failed(sanitize_line(why)),
-                Loading::Idle | Loading::Pending(_) => ExpandedDiff::Loading,
-            };
-            (*row, shown)
-        }),
         // A live box claims the next key before the review does.
         focused: crate::view::rows::box_context(state).is_none(),
         notice: finish
@@ -107,11 +101,20 @@ pub fn summary_area(state: &AppState) -> Rect {
     }
 }
 
-/// The review's key context: its one bar (mock
-/// `mergewright-merge-screen.html:161`), whichever row the cursor is on.
+/// The review's key context: the list's bar (mock
+/// `mergewright-merge-screen.html:162`), whichever row the cursor is on, or
+/// the look's while it is open (`:177`, ease-pass/12b).
 #[must_use]
-pub fn finish_context(_state: &AppState) -> HintContext {
-    HintContext::Review(ReviewBar::List)
+pub fn finish_context(state: &AppState) -> HintContext {
+    let looking = state
+        .finish
+        .as_ref()
+        .is_some_and(|finish| finish.look.is_some());
+    HintContext::Review(if looking {
+        ReviewBar::Look
+    } else {
+        ReviewBar::List
+    })
 }
 
 /// The keys the review offers in an area `width` wide: the list its
@@ -122,6 +125,10 @@ pub fn finish_context(_state: &AppState) -> HintContext {
 #[cfg(test)]
 #[must_use]
 pub fn finish_hints(state: &AppState, width: u16) -> Vec<mergewright_ui::graph_screen::Hint> {
+    // Below the review's floor the look is not drawn either: only `esc`.
+    if crate::update::finish::fits(state) && look_view(state).is_some() {
+        return mergewright_ui::merge_look::look_hints(width, &state.keymap);
+    }
     if crate::update::finish::fits(state) {
         finish_view(state).map_or_else(Vec::new, |view| {
             mergewright_ui::finish_summary::footer_hints(&view, width)
@@ -156,5 +163,69 @@ pub fn finish_bar(state: &AppState) -> String {
         " committing…".to_owned()
     } else {
         String::new()
+    }
+}
+
+/// The open look as it draws now (ease-pass/12b), or `None` when no look is
+/// open.
+#[must_use]
+pub fn look_view(state: &AppState) -> Option<LookView> {
+    let look = state.finish.as_ref()?.look.as_ref()?;
+    let body = match &look.read {
+        Loading::Idle | Loading::Pending(_) => LookBody::Reading,
+        Loading::Failed(why) => LookBody::Failed(sanitize_line(why)),
+        Loading::Ready(read) => match read.as_ref() {
+            LookRead::Clashed(text) => LookBody::Clashed {
+                lines: text
+                    .lines()
+                    .zip(1u32..)
+                    .map(|(line, n)| LookLine::Plain {
+                        n,
+                        text: sanitize_line(line),
+                    })
+                    .collect(),
+            },
+            LookRead::Combined { files, sample } => LookBody::Combined {
+                files: files
+                    .iter()
+                    .map(|file| CombinedFile {
+                        path: sanitize_path(&file.path),
+                        yours: file.yours,
+                        theirs: file.theirs,
+                    })
+                    .collect(),
+                sample: sample.as_ref().map(|sample| {
+                    (
+                        sanitize_path(&sample.path),
+                        sample.lines.iter().map(sample_line).collect(),
+                    )
+                }),
+            },
+        },
+    };
+    Some(LookView {
+        path: look
+            .path
+            .as_deref()
+            .map_or_else(|| sanitize_line(""), sanitize_path),
+        body,
+        top: 0,
+    })
+}
+
+/// One sample line, its side mapped to the widget's own.
+fn sample_line((n, text, origin): &(u32, String, Option<GitOrigin>)) -> LookLine {
+    let text = sanitize_line(text);
+    match origin {
+        None => LookLine::Plain { n: *n, text },
+        Some(origin) => LookLine::From {
+            n: *n,
+            text,
+            origin: match origin {
+                GitOrigin::Yours => Origin::Yours,
+                GitOrigin::Theirs => Origin::Theirs,
+                GitOrigin::Both => Origin::Both,
+            },
+        },
     }
 }

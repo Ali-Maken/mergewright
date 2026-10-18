@@ -103,7 +103,6 @@
 445 crates/mergewright-ui/src/detail_pane/header.rs
 2067 crates/mergewright-ui/src/detail_pane/tests.rs
 558 crates/mergewright-ui/src/empty_state/tests.rs
-453 crates/mergewright-ui/src/finish_summary/tests.rs
 670 crates/mergewright-ui/src/graph_column/tests.rs
 406 crates/mergewright-ui/src/graph_screen/hints/context.rs
 3114 crates/mergewright-ui/src/graph_screen/hints/tests.rs
@@ -158,8 +157,8 @@
 412 crates/mergewright/src/update/detail/state.rs
 1025 crates/mergewright/src/update/detail/tests.rs
 576 crates/mergewright/src/update/drag/tests.rs
-586 crates/mergewright/src/update/events.rs
-461 crates/mergewright/src/update/events/command.rs
+584 crates/mergewright/src/update/events.rs
+459 crates/mergewright/src/update/events/command.rs
 511 crates/mergewright/src/update/geometry.rs
 1234 crates/mergewright/src/update/journal/tests.rs
 474 crates/mergewright/src/update/keys.rs

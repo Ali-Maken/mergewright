@@ -1,10 +1,10 @@
-//! What the review's jobs answer: the review's read, a row's diff and the
+//! What the review's jobs answer: the review's read and the
 //! `--continue` the review started.
 
 use super::keys::close;
 use super::{
-    AppState, Arc, DiffView, FinishAnswer, JobId, Loading, Operated, ReturnTo, ReviewFailed,
-    Reviewed, keep_cursor_on_screen,
+    AppState, FinishAnswer, JobId, Loading, Operated, ReturnTo, ReviewFailed, Reviewed,
+    keep_cursor_on_screen,
 };
 use crate::update::op_keys::OpKeys;
 
@@ -87,26 +87,6 @@ fn still_open(state: &mut AppState, back_to: ReturnTo, files: usize, clashes: us
 }
 
 /// A row's diff came back.
-pub(crate) fn diff_landed(state: &mut AppState, id: JobId, diff: Result<Arc<DiffView>, String>) {
-    let Some(finish) = state.finish.as_mut() else {
-        return;
-    };
-    // Dropping a stale answer is safe: `space` on another row (or on this
-    // one again) replaced or collapsed the diff it was for, and the diff on
-    // screen now has its own read in flight or none at all.
-    if finish.diff_job != Some(id) {
-        return;
-    }
-    finish.diff_job = None;
-    if let Some((_, shown)) = finish.expanded.as_mut() {
-        *shown = match diff {
-            Ok(diff) => Loading::Ready(diff),
-            Err(why) => Loading::Failed(why),
-        };
-    }
-    keep_cursor_on_screen(state);
-}
-
 /// A job the summary waits on failed or panicked: say so where its answer
 /// would have gone, so nothing reads `reading…` forever.
 pub(crate) fn job_ended(state: &mut AppState, id: JobId, failure: &dyn std::fmt::Display) {
@@ -124,10 +104,10 @@ pub(crate) fn job_ended(state: &mut AppState, id: JobId, failure: &dyn std::fmt:
         finish.job = None;
         finish.summary = Loading::Failed(failure.to_string());
     }
-    if finish.diff_job == Some(id) {
-        finish.diff_job = None;
-        if let Some((_, shown)) = finish.expanded.as_mut() {
-            *shown = Loading::Failed(failure.to_string());
+    if finish.look_job == Some(id) {
+        finish.look_job = None;
+        if let Some(look) = finish.look.as_mut() {
+            look.read = Loading::Failed(failure.to_string());
         }
     }
 }

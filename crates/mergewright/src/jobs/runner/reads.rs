@@ -227,17 +227,17 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
-    /// Reads one staged file's diff for the finish summary's `space`, under
-    /// an id `update` chose (m6-conflicts/19).
-    pub(super) fn read_finish_diff(&self, id: JobId, path: std::path::PathBuf) {
+    /// Reads the review's read-only look, under an id `update` chose
+    /// (ease-pass/12b).
+    pub(super) fn read_finish_look(&self, id: JobId, ask: crate::update::finish::LookAsk) {
         let repos = Arc::clone(&self.repos);
-        self.queue_as(id, Some(Task::ReadFinishDiff), move |_| {
+        self.queue_as(id, Some(Task::ReadFinishLook), move |_| {
             Box::new(move |cancel: &Cancel| {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let diff = finish::staged_diff(&repos, &path, cancel);
-                Outcome::Produced(Product::FinishDiff(diff))
+                let read = finish::look::read(&repos, &ask, cancel).map(Arc::new);
+                Outcome::Produced(Product::FinishLook(read))
             })
         });
     }

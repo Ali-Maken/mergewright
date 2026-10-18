@@ -116,7 +116,7 @@ fn task_label(task: &Task) -> &'static str {
         Task::LoadBase => "Started::LoadBase",
         Task::ReadConflictSet => "Started::ReadConflictSet",
         Task::ReadFinishSummary => "Started::ReadFinishSummary",
-        Task::ReadFinishDiff => "Started::ReadFinishDiff",
+        Task::ReadFinishLook => "Started::ReadFinishLook",
     }
 }
 
@@ -160,7 +160,7 @@ fn product_label(product: &Product) -> &'static str {
         Product::BaseLoaded(_) => "Produced::BaseLoaded",
         Product::ConflictSet(_) => "Produced::ConflictSet",
         Product::FinishSummary(_) => "Produced::FinishSummary",
-        Product::FinishDiff(_) => "Produced::FinishDiff",
+        Product::FinishLook(_) => "Produced::FinishLook",
         Product::Preview(_) => "Produced::Preview",
         Product::RevertedTo(_) => "Produced::RevertedTo",
         Product::Undone(_) => "Produced::Undone",

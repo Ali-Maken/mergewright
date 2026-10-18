@@ -15,15 +15,12 @@
 //! says so in words. A capture records the grid and nothing else
 //! (CLAUDE.md rule 5); colour ships unverified.
 
-use std::sync::Arc;
-
 use mergewright_term::SanitizedText;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
-use crate::detail::{DiffView, LineKindView};
 use crate::fit::fit;
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
@@ -32,13 +29,6 @@ use crate::theme::{Theme, Token};
 /// widget draws one line, `finish needs 62x18 · esc back`, and the app
 /// answers only `Esc` (and `Ctrl+C`).
 pub const FINISH_MIN: (u16, u16) = (62, 18);
-
-/// The most rows an expanded diff draws under its row. More than that adds
-/// one row, `… N more lines · ⏎ hides`.
-pub const DIFF_ROWS_MAX: usize = 12;
-
-/// Cells an expanded diff is indented by, under its row.
-const DIFF_INDENT: u16 = 4;
 
 /// What had the keyboard in the m6 finish summary's fields. The review has
 /// no fields now (ease-pass/12): kept only as the retiring
@@ -51,17 +41,6 @@ pub enum SummaryFocus {
     Subject,
     /// The body area.
     Body,
-}
-
-/// The diff drawn under an expanded row.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExpandedDiff {
-    /// Asked for, not arrived.
-    Loading,
-    /// The read failed, and why: drawn in place of the diff.
-    Failed(SanitizedText),
-    /// Arrived.
-    Ready(Arc<DiffView>),
 }
 
 /// Whether the review itself has been read.
@@ -184,8 +163,6 @@ pub struct ReviewView<'a> {
     pub message: SanitizedText,
     /// The cursor, counted over the clashed rows then the combined row.
     pub cursor: usize,
-    /// The row whose diff is shown under it, and the diff.
-    pub expanded: Option<(usize, ExpandedDiff)>,
     /// The frame has the keyboard: its border is `accent` and its keys are
     /// drawn. `false` under a live box, which claims the next key.
     pub focused: bool,

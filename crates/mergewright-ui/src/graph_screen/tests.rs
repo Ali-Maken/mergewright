@@ -2150,8 +2150,8 @@ fn row_at_is_none_off_the_body() {
 /// place after `Redo` (63) was already the changes pane's; 116 → 113 in
 /// m8/11e: `Journal`, `Stash` and `Map` deleted, their slots refilled; 113 → 114 in m8/15 A4: `StashRow`; 114 → 115 in m8/15b: `Searching`; 115 → 119 in m8/20d-b: one `⇧⇥` to the banner; 119 → 120 in m8/47: `PickerOnCurrent`; 120 → 134 in ease-pass/03b: `GraphRow` per
 /// `RowBar` (120–125), `Clash` per `ClashAt` × op (126–133); → 136 in 03r).
-/// The merge review's list (ease-pass/12): 136.
-const COVERAGE_SLOTS: usize = 137;
+/// The merge review's list (ease-pass/12): 136; its look (12b): 137.
+const COVERAGE_SLOTS: usize = 138;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2305,9 +2305,8 @@ fn coverage_slot(context: &HintContext) -> usize {
     }
 }
 
-/// [`coverage_slot`]'s finish forms: the retiring m6 summary's (32–35) and
-/// the merge review's list (136, ease-pass/12). Moved out to keep
-/// `coverage_slot` under clippy's line limit, as [`ease_slot`] is.
+/// [`coverage_slot`]'s finish forms: m6's (32–35), the review's list and look
+/// (136–137). Out of `coverage_slot` for clippy's line limit, as [`ease_slot`].
 fn finish_slot(context: &HintContext) -> usize {
     use crate::finish_summary::SummaryFocus;
     match context {
@@ -2325,6 +2324,7 @@ fn finish_slot(context: &HintContext) -> usize {
             ..
         } => 35,
         HintContext::Review(ReviewBar::List) => 136,
+        HintContext::Review(ReviewBar::Look) => 137,
         // `coverage_slot` sends only the forms above; out of the tally's
         // range, so a wrong call fails loudly.
         _ => usize::MAX,

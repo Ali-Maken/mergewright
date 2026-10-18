@@ -1,16 +1,12 @@
 //! The review's rows (mock `mergewright-merge-screen.html:158-160`): one
 //! per clashed file and how it was solved, one for what git combined on its
-//! own, and the diff expanded under a row. Where each line stands is
+//! own. Where each line stands is
 //! `layout`'s arithmetic; this only draws it.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use super::{
-    DIFF_INDENT, ExpandedDiff, FinishScreen, ListLine, ReviewRow, ReviewView, SummaryState,
-    list_lines,
-};
-use crate::detail_pane::{DiffFocus, diff_body};
+use super::{FinishScreen, ListLine, ReviewRow, ReviewView, SummaryState, list_lines};
 use crate::fit::fit;
 use crate::keymap::ActionId;
 use crate::paint::foreground;
@@ -49,35 +45,6 @@ impl FinishScreen<'_> {
             match *line {
                 ListLine::Status => self.draw_status(buf, one),
                 ListLine::Row(index) => self.draw_row(buf, one, index, &names, name_width),
-                ListLine::More { hidden, .. } => {
-                    let more = format!("\u{2026} {hidden} more lines");
-                    let words =
-                        self.view
-                            .keys
-                            .after(&more, ActionId("finish.toggle_diff"), "hides");
-                    self.text(buf, indent(one), &words, Token::TextMuted, false);
-                }
-                ListLine::Diff { nth, .. } => {
-                    // The whole visible run of this diff in one call, so a
-                    // hunk heading is drawn where `diff_body` puts it.
-                    let run = lines[at..]
-                        .iter()
-                        .take_while(|line| matches!(line, ListLine::Diff { .. }))
-                        .count();
-                    let height = run.min(usize::from(rect.bottom() - y));
-                    let height = u16::try_from(height).unwrap_or(u16::MAX);
-                    self.draw_diff(
-                        buf,
-                        Rect {
-                            height,
-                            ..indent(one)
-                        },
-                        nth,
-                    );
-                    at += usize::from(height);
-                    y += height;
-                    continue;
-                }
             }
             at += 1;
             y += 1;
@@ -207,47 +174,6 @@ impl FinishScreen<'_> {
             },
         );
     }
-
-    /// The expanded diff's lines from `nth`, into `rect`.
-    fn draw_diff(&self, buf: &mut Buffer, rect: Rect, nth: usize) {
-        let Some((_, diff)) = &self.view.expanded else {
-            return;
-        };
-        match diff {
-            ExpandedDiff::Loading => {
-                self.text(buf, rect, "reading the diff…", Token::TextMuted, false);
-            }
-            ExpandedDiff::Failed(why) => {
-                self.text(buf, rect, why.as_str(), Token::Warning, false);
-            }
-            ExpandedDiff::Ready(view) => match &view.binary {
-                Some(note) => self.text(buf, rect, note.as_str(), Token::TextMuted, false),
-                None if view.hunks.is_empty() => {
-                    self.text(buf, rect, "no change to show", Token::TextMuted, false);
-                }
-                // `truncated: None`: the review draws its own `… N more
-                // lines · ⏎ hides`, and `L load all` is not one of its keys
-                // (ticket 19 S5). The row count `diff_body` returns is for
-                // scroll clamping; `list_lines` already counted the rows
-                // (`diff_extent`), so it is not needed here.
-                None => {
-                    let _rows: usize = diff_body(
-                        &view.hunks,
-                        nth,
-                        None,
-                        rect,
-                        buf,
-                        self.theme,
-                        DiffFocus {
-                            focused: false,
-                            word_tint: true,
-                            cursor: None,
-                        },
-                    );
-                }
-            },
-        }
-    }
 }
 
 /// Each clashed file's drawn name: its last path segment, as the mock and
@@ -285,14 +211,4 @@ fn side_tints(how: &str) -> Vec<(usize, usize, Token)> {
     .into_iter()
     .filter_map(|(kind, token)| how.find(kind).map(|at| (at, at + kind.len(), token)))
     .collect()
-}
-
-/// `rect` moved right by [`DIFF_INDENT`].
-fn indent(rect: Rect) -> Rect {
-    let by = DIFF_INDENT.min(rect.width);
-    Rect {
-        x: rect.x + by,
-        width: rect.width - by,
-        ..rect
-    }
 }

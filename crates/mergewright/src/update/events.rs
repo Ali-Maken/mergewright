@@ -242,9 +242,9 @@ pub enum Task {
     /// Read what the merge about to be committed changes, for the finish
     /// summary (m6-conflicts/19).
     ReadFinishSummary,
-    /// Read one staged file's diff for the finish summary's `space`
-    /// (m6-conflicts/19).
-    ReadFinishDiff,
+    /// Read the review's read-only look (ease-pass/12b; was the inline
+    /// diff, m6-conflicts/19).
+    ReadFinishLook,
     /// Blame one file for a blame place (m7-power-tools/20).
     Blame,
     /// Trace a history place's commits (m7-power-tools/21).
@@ -467,10 +467,8 @@ pub enum Product {
     /// its finish stages (`mergewright_ops::finish::merge_review`,
     /// m6-conflicts/19, ease-pass/05b), or why it could not be read.
     FinishSummary(Result<crate::update::finish::Reviewed, crate::update::finish::ReviewFailed>),
-    /// One staged file's diff for the finish summary, or why not
-    /// (m6-conflicts/19): the same view model the detail pane draws, built
-    /// by the same code (`jobs::detail::assemble_diff`).
-    FinishDiff(Result<std::sync::Arc<mergewright_ui::detail::DiffView>, String>),
+    /// The review's read-only look, or why not (ease-pass/12b).
+    FinishLook(Result<std::sync::Arc<crate::update::finish::LookRead>, String>),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.

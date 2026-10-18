@@ -21,7 +21,7 @@ fn summary_captures() {
 
     closed_captures(&state, &repo);
     preview_captures(&state);
-    let state = expanded_capture(&app, &state);
+    let state = look_captures(&app, &state, &repo);
     drop(state);
     app.close();
     drop(scratch);
@@ -84,43 +84,64 @@ fn preview_captures(state: &AppState) {
     }
 }
 
-/// `space` on the cursor's row: [`summary_captures`]' second half.
-fn expanded_capture(app: &App, state: &AppState) -> AppState {
+/// The look (ease-pass/12b): `⏎` on `notes.txt`, then on the combined
+/// row — [`summary_captures`]' second half.
+fn look_captures(app: &App, state: &AppState, repo: &Path) -> AppState {
+    let looked = |state: AppState, what: &str| {
+        app.pump(state, what, |state| {
+            state
+                .finish
+                .as_ref()
+                .is_some_and(|open| open.look.is_some() && open.look_job.is_none())
+        })
+    };
     // `j` from `gone.txt` (the first clashed file, git's order) to
-    // `notes.txt`, then `space`: its change under it.
+    // `notes.txt`, then `⏎`: the file as it will land.
     let state = app.key(state, KeyCode::Char('j'));
-    let state = app.key(&state, KeyCode::Char(' '));
-    let state = app.pump(state, "the notes.txt diff", |state| {
-        state
-            .finish
-            .as_ref()
-            .is_some_and(|open| open.diff_job.is_none() && open.expanded.is_some())
-    });
+    let state = looked(app.key(&state, KeyCode::Enter), "the notes.txt look");
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
-    assert!(!body.contains("load all"), "no `L load all`: {body}");
-    let at = frame
-        .iter()
-        .position(|line| line.contains("▸ ✓ notes.txt"))
-        .unwrap_or_else(|| panic!("the notes.txt row: {body}"));
-    // Inside the frame: its `│ ` border and gutter come off first.
-    let under: Vec<&str> = frame
-        .iter()
-        .skip(at + 1)
-        .take_while(|line| !line.contains("git combined on its own"))
-        .map(|line| line.strip_prefix("│ ").unwrap_or(line))
-        .filter(|line| !line.trim_end_matches('│').trim().is_empty())
+    assert!(
+        body.contains("notes.txt · as it will land · read only"),
+        "{body}"
+    );
+    assert!(body.contains("2  TWO from feature"), "{body}");
+    assert!(
+        frame[frame.len() - 2].starts_with("╰ esc back to the review · y commit the merge"),
+        "{body}"
+    );
+    crate::captures::check_shot("ease-pass/merge-look-clashed-120.txt", &format!("{body}\n"));
+
+    // `esc`, `j` to the combined row, `⏎`: per file and side, and a sample.
+    let state = app.key(&state, KeyCode::Escape);
+    let state = app.key(&state, KeyCode::Char('j'));
+    let state = looked(app.key(&state, KeyCode::Enter), "the combined look");
+    let frame = crate::captures::frame(&state, 120, 40);
+    let body = frame.join("\n");
+    let base = crate::app_harness::git(repo, &["merge-base", "HEAD", "MERGE_HEAD"]);
+    let numstat = |side: &str| {
+        crate::app_harness::git(
+            repo,
+            &["diff", "--numstat", base.trim(), side, "--", "README.md"],
+        )
+    };
+    // README.md changed on theirs only: no yours part is drawn.
+    assert!(
+        numstat("HEAD").trim().is_empty(),
+        "yours left README.md alone"
+    );
+    let theirs: Vec<String> = numstat("MERGE_HEAD")
+        .split_whitespace()
+        .take(2)
+        .map(str::to_owned)
         .collect();
-    assert!(
-        !under.is_empty() && under.iter().all(|line| line.starts_with("    ")),
-        "the diff sits under the row, indented: {body}"
-    );
-    assert!(
-        under.iter().any(|line| line.contains("+ TWO from feature")),
-        "the change itself: {body}"
-    );
+    let want = format!("✓ README.md   theirs +{} −{}", theirs[0], theirs[1]);
+    assert!(body.contains(&want), "{want:?}: {body}");
+    assert!(!body.contains("yours +"), "{body}");
+    assert!(body.contains("README.md, around line"), "{body}");
+    assert!(body.contains("from theirs"), "{body}");
     crate::captures::check_shot(
-        "m6/fix-finish-summary-expanded-120x40.txt",
+        "ease-pass/merge-look-combined-120.txt",
         &format!("{body}\n"),
     );
     state
