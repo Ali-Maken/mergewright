@@ -1,6 +1,6 @@
 # vocabulary-fixes — the opened merge row's bar as the mock; bar modules named for what they hold; size ratchets back down
 
-Status: partial (Minor 5 words blocked: needs graft `update/palette/editor_tests.rs`)
+Status: done (Minor 5 words finished in a continuation)
 Blocked by: 03b-ease-vocabulary-rest (merged)
 Build with: Sonnet (builder-sonnet) — the decisions are made below and every change is pinned by a hint, sweep or golden test; no structural choice is left to the builder. Scout skipped: review 03 names every line this ticket touches (`docs/reviews/ease-pass-03.md`); conductor may add one.
 Needs: none. Feeds: 05b (`ClashBar { at, roles }`, `BannerPaused { merge }`), 07 (`RowBar::OpenedMerge`, `keymap/tests/screen_keys.rs`), 11 (`ClashBar`, file names shortened in the bar), 12 (where `ReviewBar` goes).
@@ -65,7 +65,7 @@ Every `RowBar`/`ClashBar`/`BannerPaused` match in graft-ui (`lists/rows.rs`, `li
 - [x] `Clash` at 40 cols: bar is `esc pause`; the 40-column sentence gone (`lists/clash.rs` doc). — `a_clash_bar_below_the_resolver_floor_says_only_pause`
 - [x] No file named `ease.rs` under `crates/graft-ui/src` (`find`), public paths unchanged (graft compiles with only the three named graft files touched, or blocked as above). — `find crates/graft-ui/src -name ease.rs` empty; graft compiles, only the three named graft files touched
 - [x] `over_400.txt`: `hints/context.rs` ≤511 (or removed under 400), `theme/mod.rs` ≤410, `keymap/table.rs` ≤513; graft's ratchet test green; no other line raised. — `file_size` ratchet test (graft it): context.rs 489, table.rs 452, theme/mod.rs 355 (line dropped)
-- [ ] `keymap/tests/screen_keys.rs` holds every test `keymap/tests/ease.rs` held, same names, same assertions (NOTES gives the count); `action_ids_match_the_golden_list` green; man page diff is the three `commit.toggle_*` descriptions only. — rename + 6 tests held (git rename, unchanged content), `action_ids_match_the_golden_list` green; man page unchanged because the three descriptions are **not** changed (blocked, NOTES) → left unticked
+- [x] `keymap/tests/screen_keys.rs` holds every test `keymap/tests/ease.rs` held, same names, same assertions (NOTES gives the count); `action_ids_match_the_golden_list` green; man page diff is the three `commit.toggle_*` descriptions only. — rename + 6 tests held (git rename, unchanged content), `action_ids_match_the_golden_list` green; man page diff = the three `commit.toggle_*` lines (continuation), pinned by `cli::docs_tests` stale-man-page test; labels by `update::palette::editor_tests`
 - [x] A `role-this` override at 1.1:1 warns (`contrast_misses` test). — `theme::overrides::tests::a_role_this_override_near_bg_misses_its_floor`
 - [x] graft sweeps green: `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `dead_rows_help_lists_elsewhere_match_the_known_table`, the `screen_for`/`classified_form` sweeps. Each tick names its test. — workspace nextest run (see NOTES)
 
@@ -85,3 +85,4 @@ Medium (~50k). Split point: renames, moves and ratchets (Major 3) as their own c
 - `graph_screen/tests.rs` (graft-ui) edited for the renames: `COVERAGE_SLOTS` 135 → 136 (`BannerPaused` per operation).
 - Snapshots: none edited (no `.snap` changed).
 - Two clashing files with the same last segment read alike in the clash bar — mock-exact; usability-walk question.
+- **Continuation (Minor 5 words):** three labels → `…: on / off` (`keymap/table/commit_editor.rs`); five strings in `update/palette/editor_tests.rs` updated; `docs/man/mwr.1` regenerated, diff = those 3 lines only. `tests/it/commit_screen/{rows,shots}.rs` type the old label as a palette query (still a prefix match) — left unchanged. No scout: three string edits.
