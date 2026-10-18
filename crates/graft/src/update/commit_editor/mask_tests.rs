@@ -31,6 +31,15 @@ fn git_diff(path: &str) -> graft_git::diff::FileDiff {
 /// The newest diff read in `commands`, answered with `path`'s diff the way
 /// the job assembles it (word tint on).
 fn answered(state: &AppState, commands: &[Command], path: &str) -> AppState {
+    answered_with(state, commands, git_diff(path))
+}
+
+/// The newest diff read in `commands`, answered with `raw`.
+fn answered_with(
+    state: &AppState,
+    commands: &[Command],
+    raw: graft_git::diff::FileDiff,
+) -> AppState {
     let (id, key) = commands
         .iter()
         .rev()
@@ -39,7 +48,6 @@ fn answered(state: &AppState, commands: &[Command], path: &str) -> AppState {
             _ => None,
         })
         .unwrap_or_else(|| panic!("a diff read: {commands:?}"));
-    let raw = git_diff(path);
     let view = crate::jobs::detail::assemble_diff(&raw, true);
     let event = AppEvent::Produced(
         id,
@@ -150,4 +158,46 @@ fn an_ordinary_file_is_not_masked() {
             .any(|line| !line.syntax.is_empty()),
         "syntax spans kept: {view:?}"
     );
+}
+
+/// 08v: a key file has no `KEY=value` lines; its base64 ends in `=` / `==`,
+/// which the old first-`=` split kept readable. Every line, the heading
+/// included, masks whole.
+#[test]
+fn a_key_file_is_masked_whole() {
+    assert!(graft_ops::operation::looks_like_secrets(
+        std::path::Path::new("id_rsa")
+    ));
+    let mut tree = mock_tree();
+    tree.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![
+            super::screen_tests::entry("docs/toc.md", false),
+            super::screen_tests::entry("id_rsa", true),
+        ],
+    }));
+    let open = super::screen_tests::opened(&tree);
+    let (on_key, commands) = walk(&open, vec![key(KeyCode::Down)]);
+    let text = "diff --git a/id_rsa b/id_rsa\n\
+                --- a/id_rsa\n\
+                +++ b/id_rsa\n\
+                @@ -1,0 +1,3 @@ x5dhkAbCdEfGhIDAQAB==\n\
+                +-----BEGIN OPENSSH PRIVATE KEY-----\n\
+                +b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n\
+                +x5dhkAbCdEfGhIDAQAB==\n";
+    let raw = graft_git::diff::parse_unified(text.as_bytes())
+        .expect("a well-formed diff")
+        .remove(0);
+    let state = answered_with(&on_key, &commands, raw);
+    let view = shown(&state);
+    let texts = lines(&view);
+    assert_eq!(texts.len(), 4, "{texts:?}");
+    assert!(
+        texts.iter().all(|(_, text)| text == "••••••••"),
+        "{texts:?}"
+    );
+    assert_eq!(view.hunks[0].heading.as_str(), "••••••••");
+    let drawn = format!("{:?}", crate::view::commit_screen_view(&state));
+    for leak in ["IDAQAB", "b3Bl", "BEGIN"] {
+        assert!(!drawn.contains(leak), "{leak}: {drawn}");
+    }
 }
