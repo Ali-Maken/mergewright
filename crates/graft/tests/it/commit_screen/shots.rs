@@ -8,7 +8,7 @@
 use graft::update::AppState;
 use graft_core::event::{KeyCode, KeyPress, Modifiers};
 
-use super::{landed, opened, ready, three_changed_and_a_secret, typed};
+use super::{SECRET_VALUE, landed, opened, ready, three_changed_and_a_secret, typed};
 use crate::app_harness::{App, git};
 
 /// Each capture, in the order [`screens`] draws them: its file name (the
@@ -22,7 +22,7 @@ const SHOTS: [(&str, &str, u16, u16); 7] = [
     ),
     (
         "commit-secrets",
-        "`↓` three times from the subject: the cursor on `.env` under `Staying out`, marked `!` and `looks like a secrets file`; the note `! left out: looks like a secrets file. space puts it in.` over its contents on the right.",
+        "`↓` three times from the subject: the cursor on `.env` under `Staying out`, marked `!` and `looks like a secrets file`; the note `! left out: looks like a secrets file. space puts it in.` over its contents on the right, its value drawn `TOKEN=••••••••`: the fixture's value is nowhere in this file.",
         120,
         40,
     ),
@@ -146,6 +146,10 @@ fn capture_the_commit_screen() {
     let mut captures = graft_fixtures::Captures::new();
     for ((name, judge, columns, rows), state) in SHOTS.into_iter().zip(&states) {
         let frame = crate::captures::frame_at(state, columns, rows, None);
+        assert!(
+            !frame.iter().any(|row| row.contains(SECRET_VALUE)),
+            "{name}: `.env`'s value drawn"
+        );
         let body = format!(
             "# TestBackend capture (not a pty), no colour recorded (rule 5).\n\
              # Fixture: capture_the_commit_screen in\n\

@@ -328,6 +328,7 @@ What `answer` hands the repository opening, the history walk starting, the worki
 The pure `view(state)`: reads and draws, never changes anything; everything from a repository crosses into `ui` as `SanitizedText`.
 ## view::commit_editor
 The commit screen's view model (`commit_screen_view`) for `graft_ui::commit_editor`, every repository string sanitised.
+`mask`: a secrets-looking file's diff values drawn `MASK`, key kept (`mask_secret_line`, `mask_diff`); applied as the diff arrives, so the state never keeps them.
 ## view::credential
 The credential prompt's view model; `secret` decides how the text is drawn, no character counter.
 ## view::detail

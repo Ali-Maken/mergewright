@@ -291,7 +291,9 @@ pub(crate) fn claims_diff(state: &AppState, id: JobId) -> bool {
         .is_some_and(|editor| editor.diff.job == Some(id))
 }
 
-/// The diff of the file under the cursor came back.
+/// The diff of the file under the cursor came back. A secrets-looking
+/// file's values are masked here, as it lands, in or out (08s Q1): the
+/// state never holds them past this point.
 pub fn diff_arrived(state: &mut AppState, id: JobId, result: Result<Arc<DiffView>, String>) {
     let Some(editor) = state.commit_editor.as_mut() else {
         return;
@@ -300,7 +302,16 @@ pub fn diff_arrived(state: &mut AppState, id: JobId, result: Result<Arc<DiffView
         return;
     }
     editor.diff.job = None;
-    editor.diff.view = Some(result);
+    let secret = editor
+        .diff
+        .path
+        .as_deref()
+        .is_some_and(graft_ops::operation::looks_like_secrets);
+    editor.diff.view = Some(if secret {
+        result.map(|view| Arc::new(crate::view::mask_diff(&view)))
+    } else {
+        result
+    });
 }
 
 /// The line counts came back. A failure leaves the rows without counts and
