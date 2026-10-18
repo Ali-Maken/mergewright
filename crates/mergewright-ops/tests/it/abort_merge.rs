@@ -349,7 +349,7 @@ fn git_state_files(repo: &TempRepo) -> std::collections::BTreeMap<String, Vec<u8
 /// Observed on git 2.54: `ORIG_HEAD`, `COMMIT_EDITMSG` and the rr-cache
 /// preimage stay byte-equal throughout.
 #[test]
-fn undo_of_an_abort_restores_exactly_the_merge_files_graft_knows() {
+fn undo_of_an_abort_restores_exactly_the_merge_files_mergewright_knows() {
     let repo = two_files();
     repo.git(&["config", "rerere.enabled", "true"]);
     stop_the_merge(&repo);

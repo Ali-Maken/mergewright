@@ -6,7 +6,7 @@ use super::*;
 /// cherry-pick, which still stages each file at `⏎` (ease-pass/05b moved
 /// only a merge's staging to its review).
 pub(super) fn two_file_cherry_pick() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let commit_both = |side: &str| {
@@ -14,7 +14,7 @@ pub(super) fn two_file_cherry_pick() -> Scratch {
             std::fs::write(repo.join(name), format!("{side}\n")).expect("writable scratch");
         }
         git(repo, &["add", "a.txt", "b.txt"]);
-        git_as_graft(repo, &["commit", "-m", side]);
+        git_as_mergewright(repo, &["commit", "-m", side]);
     };
     commit_both("base");
     let home = git(repo, &["rev-parse", "--abbrev-ref", "HEAD"]);

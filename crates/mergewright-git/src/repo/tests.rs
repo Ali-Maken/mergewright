@@ -628,7 +628,7 @@ fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
     );
     let peeled: Vec<&RefName> = snapshot.peeled.iter().map(|(name, _)| name).collect();
     assert!(
-        !peeled.iter().any(|name| name.is_graft_internal()),
+        !peeled.iter().any(|name| name.is_mergewright_internal()),
         "a graft ref reached the peeled pairs"
     );
     // The before-commit is reachable only from the backup ref, so if the

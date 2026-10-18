@@ -329,7 +329,7 @@ pub struct RewriteProgress {
     pub branch: Option<(RefName, usize, usize)>,
     /// A plan of Mergewright's is saved for this rebase. `false` for one begun in
     /// the shell.
-    pub begun_in_graft: bool,
+    pub begun_in_mergewright: bool,
     /// The branches of the line above this step's, bottom up, each with the
     /// commits of its own still in `pending` (m7-power-tools/07d). Empty
     /// when `branch` is `None`.

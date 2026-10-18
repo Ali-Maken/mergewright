@@ -290,7 +290,7 @@ fn interrupted_switch(repo: &Path) {
     };
     // The stash as a Mergewright build wrote it: its messages tagged `graft:`
     // and, so captures hold still, its commits dated as the fixture is.
-    let mergewright_stash = as_graft_wrote(repo, &stash);
+    let mergewright_stash = as_mergewright_wrote(repo, &stash);
     let pending = String::from_utf8_lossy(pending).replace(&stash, &mergewright_stash);
     let mut cut = written[..pending_from].to_vec();
     cut.extend_from_slice(pending.as_bytes());
@@ -311,7 +311,7 @@ fn interrupted_switch(repo: &Path) {
 /// `commit` and its parents written again with this build's tag in their
 /// messages turned into Mergewright's and the fixture's date: the commit a Mergewright
 /// build's set-aside made. Its id.
-fn as_graft_wrote(repo: &Path, commit: &str) -> String {
+fn as_mergewright_wrote(repo: &Path, commit: &str) -> String {
     let date = format!("{} +0000", PINNED_NOW - 2 * 86_400);
     let current = format!("{}: ", Generation::CURRENT.dir());
     let graft = format!("{}: ", Generation::Graft.dir());
@@ -322,7 +322,7 @@ fn as_graft_wrote(repo: &Path, commit: &str) -> String {
         let line = if in_message {
             line.replace(&current, &graft)
         } else if let Some(parent) = line.strip_prefix("parent ") {
-            format!("parent {}", as_graft_wrote(repo, parent))
+            format!("parent {}", as_mergewright_wrote(repo, parent))
         } else if line.starts_with("author ") || line.starts_with("committer ") {
             let (who, _) = line.rsplit_once("> ").unwrap_or_else(|| panic!("{line}"));
             format!("{who}> {date}")

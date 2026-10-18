@@ -16,7 +16,7 @@ use super::setup::{
 
 /// Minor 2: a `clean` repository meets `refs/tributary/x` and
 /// `refs/graft/x` with no `refs/mergewright/x` (a Tributary build died
-/// mid-move on Mergewright leftovers). The newer is carried, the older kept aside
+/// mid-move on Graft leftovers). The newer is carried, the older kept aside
 /// when it differs and deleted when it is the same; never stuck.
 #[test]
 fn two_generations_one_name_carry_the_newer() {
@@ -61,7 +61,7 @@ fn two_generations_one_name_carry_the_newer() {
     fsck_is_clean(&repo);
 }
 
-/// Minor 4: the handle was opened on Mergewright names; a Tributary build moved
+/// Minor 4: the handle was opened on Graft names; a Tributary build moved
 /// them before this settle, and this one finds a window open. The names it
 /// stays on are the ones on disk, Tributary's, not the handle's.
 #[test]
@@ -96,7 +96,7 @@ fn a_kept_aside_journal_naming_a_missing_backup_keeps_old() {
         .into_keys()
         .next()
         .expect("a backup");
-    // The journal spells it as the Mergewright build wrote it.
+    // The journal spells it as the Graft build wrote it.
     let spelled = backup.replacen(tributary.ref_prefix(), Generation::Graft.ref_prefix(), 1);
     let named = live.replace(&spelled, &format!("{spelled}-deleted"));
     assert_ne!(named, live, "the kept-aside journal names another backup");

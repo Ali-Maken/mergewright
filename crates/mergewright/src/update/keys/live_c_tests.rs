@@ -207,7 +207,7 @@ fn c_in_the_graph_mid_bisect_refuses_in_words_and_sends_nothing() {
 }
 
 #[test]
-fn c_in_the_graph_opens_the_summary_on_a_graft_begun_merge() {
+fn c_in_the_graph_opens_the_summary_on_a_mergewright_begun_merge() {
     let state = live(InProgress::Merge, Begun::InMergewright, &[], Frame::Graph);
     let (after, commands) = crate::update::finish::tests::landed(c(&state));
     let finish = after.finish.as_ref().expect("the summary is open");
@@ -244,7 +244,7 @@ fn from_the_banner(state: &AppState) -> (AppState, Vec<Command>) {
 }
 
 #[test]
-fn c_in_the_graph_continues_a_graft_begun_rebase() {
+fn c_in_the_graph_continues_a_mergewright_begun_rebase() {
     let state = live(InProgress::Rebase, Begun::InMergewright, &[], Frame::Graph);
     let (after, commands) = c(&state);
     let (banner, banner_commands) = from_the_banner(&state);

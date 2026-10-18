@@ -90,7 +90,7 @@ fn binary_exits_1_with_nothing_on_stdout_when_cancelled() {
 }
 
 #[test]
-fn binary_exits_2_naming_the_error_when_graft_is_gone() {
+fn binary_exits_2_naming_the_error_when_mergewright_is_gone() {
     let dir = tempfile::tempdir().expect("a temp dir");
     let socket = dir.path().join("ask.sock");
 

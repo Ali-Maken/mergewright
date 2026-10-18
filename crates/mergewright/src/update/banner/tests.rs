@@ -423,7 +423,7 @@ fn a_on_a_shell_merge_says_u_puts_it_back() {
 /// out, keep today's lines: the new ones promise a `u` only a shell-begun
 /// abort is known to have.
 #[test]
-fn a_on_a_merge_begun_in_graft_keeps_its_lines() {
+fn a_on_a_merge_begun_in_mergewright_keeps_its_lines() {
     let today = [
         "everything goes back to before it started",
         "the journal keeps the entry",

@@ -177,7 +177,7 @@ fn the_comment_character_is_git_s() {
 }
 
 #[test]
-fn a_graft_step_is_remembered_without_git_s_list() {
+fn a_mergewright_step_is_remembered_without_git_s_list() {
     let repo = two_file_conflict();
     mergewright_merge_stops(&repo);
     repo.write("a.txt", b"1\nboth\n3\n");
@@ -290,7 +290,7 @@ fn a_restart_reaches_the_current_steps_file() {
 
 /// A merge has one step and no `Resume` link before its finish: every link
 /// counts, as in 09 (`a_merge_lists_resolved_files_too`,
-/// `a_graft_step_is_remembered_without_git_s_list`,
+/// `a_mergewright_step_is_remembered_without_git_s_list`,
 /// `a_relaunch_lists_the_same_files`).
 #[test]
 fn a_merge_set_is_unchanged() {

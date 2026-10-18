@@ -250,7 +250,7 @@ fn u_in_a_merge_begun_in_the_shell_is_sent() {
 /// A merge Mergewright began folds its steps into its own live entry, so `a`
 /// is its way back: `u` refuses as before.
 #[test]
-fn u_still_refuses_in_a_merge_begun_in_graft() {
+fn u_still_refuses_in_a_merge_begun_in_mergewright() {
     let mut state = merging(Some(vec![EntryId::new(7, [7; 10])]));
     for redo in [false, true] {
         assert!(undo_key(&mut state, redo, &mut ids()).is_empty());

@@ -24,7 +24,7 @@ use super::run::PlanRun;
 use super::{AfterState, ApplyError};
 
 /// Every ref under `refs/` by full name, the app's own refs aside (either
-/// prefix, `RefName::is_graft_internal`).
+/// prefix, `RefName::is_mergewright_internal`).
 pub(crate) type RefStore = BTreeMap<String, Oid>;
 
 /// What a fetch moved, by full ref name.
@@ -61,7 +61,7 @@ pub(crate) fn ref_store(repo: &RepoHandle, stop: &dyn Stop) -> Result<RefStore, 
         // fetch's doing. One rule, mergewright-core's (ADR-0057, Amendment).
         let internal = RefName::new(name)
             .map_err(|why| RunError::Unparsable(format!("for-each-ref ref name: {why}")))?
-            .is_graft_internal();
+            .is_mergewright_internal();
         if internal {
             continue;
         }

@@ -13,7 +13,7 @@ use std::path::Path;
 use mergewright::update::{AppEvent, AppState, Command, Product, Status, update};
 use mergewright_core::event::{KeyCode, KeyPress};
 
-use crate::app_harness::{App, git, git_as_graft, press_for_commands};
+use crate::app_harness::{App, git, git_as_mergewright, press_for_commands};
 use crate::conflict_interim::{
     mark_resolved, open_changes_pane, stopped_on_the_conflict, tab_back_to_the_banner,
 };
@@ -40,7 +40,7 @@ fn about_to_merge() -> mergewright_fixtures::Scratch {
         "# Project\n\nline one\nline two\nline three\n",
     );
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-q", "-m", "the shared files"]);
+    git_as_mergewright(repo, &["commit", "-q", "-m", "the shared files"]);
     git(repo, &["switch", "--quiet", "-c", "feature"]);
     write(repo, "shared.rs", "fn main() { theirs() }\n");
     write(repo, "notes.md", "their plan\n");
@@ -50,12 +50,12 @@ fn about_to_merge() -> mergewright_fixtures::Scratch {
         "# Project\n\nline one\nline TWO\nline three\n",
     );
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-q", "-m", "the feature's take"]);
+    git_as_mergewright(repo, &["commit", "-q", "-m", "the feature's take"]);
     git(repo, &["switch", "--quiet", "main"]);
     write(repo, "shared.rs", "fn main() { ours() }\n");
     write(repo, "notes.md", "our plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-q", "-m", "main's take"]);
+    git_as_mergewright(repo, &["commit", "-q", "-m", "main's take"]);
     scratch
 }
 

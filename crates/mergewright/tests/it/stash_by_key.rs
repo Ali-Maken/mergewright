@@ -14,7 +14,7 @@ use std::path::Path;
 
 use mergewright_core::event::KeyCode;
 
-use crate::app_harness::{App, git, git_as_graft};
+use crate::app_harness::{App, git, git_as_mergewright};
 
 /// The committed contents of `sample.txt`, which a clean tree holds.
 const COMMITTED: &str = "one\ntwo\nthree\n";
@@ -28,7 +28,7 @@ fn repo_with_an_edit() -> mergewright_fixtures::Scratch {
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), COMMITTED).expect("the scratch repo is writable");
     git(repo, &["add", "sample.txt"]);
-    git_as_graft(repo, &["commit", "-m", "add sample"]);
+    git_as_mergewright(repo, &["commit", "-m", "add sample"]);
     std::fs::write(repo.join("sample.txt"), EDITED).expect("the scratch repo is writable");
     scratch
 }
@@ -126,7 +126,7 @@ fn s_saves_the_working_tree_and_u_takes_the_stash_back() {
 fn enter_applies_a_stash_and_u_takes_the_application_back() {
     let scratch = repo_with_an_edit();
     let repo = scratch.path();
-    git_as_graft(repo, &["stash", "push", "-m", "earlier"]);
+    git_as_mergewright(repo, &["stash", "push", "-m", "earlier"]);
     assert_eq!(sample(repo), COMMITTED, "git stashed the edit away");
 
     let (app, state) = overlay(repo);
@@ -156,7 +156,7 @@ fn enter_applies_a_stash_and_u_takes_the_application_back() {
 fn p_pops_a_stash_and_u_puts_the_entry_back() {
     let scratch = repo_with_an_edit();
     let repo = scratch.path();
-    git_as_graft(repo, &["stash", "push", "-m", "earlier"]);
+    git_as_mergewright(repo, &["stash", "push", "-m", "earlier"]);
 
     let (app, state) = overlay(repo);
     let state = crate::stash_clash::put_back(&app, &state, KeyCode::Char('p'));
@@ -181,10 +181,10 @@ fn p_pops_a_stash_and_u_puts_the_entry_back() {
 fn d_drops_a_stash_behind_the_box_and_u_puts_it_back_at_the_top() {
     let scratch = repo_with_an_edit();
     let repo = scratch.path();
-    git_as_graft(repo, &["stash", "push", "-m", "older"]);
+    git_as_mergewright(repo, &["stash", "push", "-m", "older"]);
     std::fs::write(repo.join("sample.txt"), "one\ntwo\nthree\nfive\n")
         .expect("the scratch repo is writable");
-    git_as_graft(repo, &["stash", "push", "-m", "newer"]);
+    git_as_mergewright(repo, &["stash", "push", "-m", "newer"]);
     assert_eq!(stash_list(repo).len(), 2);
 
     let (app, state) = overlay(repo);
@@ -226,10 +226,10 @@ fn d_drops_a_stash_behind_the_box_and_u_puts_it_back_at_the_top() {
 fn every_stash_entry_is_badged_on_a_real_repository() {
     let scratch = repo_with_an_edit();
     let repo = scratch.path();
-    git_as_graft(repo, &["stash", "push", "-m", "older"]);
+    git_as_mergewright(repo, &["stash", "push", "-m", "older"]);
     std::fs::write(repo.join("sample.txt"), "one\ntwo\nthree\nfive\n")
         .expect("the scratch repo is writable");
-    git_as_graft(repo, &["stash", "push", "-m", "newer"]);
+    git_as_mergewright(repo, &["stash", "push", "-m", "newer"]);
 
     let (app, state) = App::open(repo);
     let state = app.pump(state, "the refs", |state| state.refs.is_some());

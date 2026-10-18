@@ -14,7 +14,7 @@
 
 use mergewright_core::event::{KeyCode, KeyPress};
 
-use crate::app_harness::{App, changes_pane, cursor_to, git, git_as_graft};
+use crate::app_harness::{App, changes_pane, cursor_to, git, git_as_mergewright};
 use mergewright_core::on_disk::CURRENT_DIR;
 
 /// Bytes no editor would write and no diff would survive: a NUL and a byte
@@ -29,7 +29,7 @@ fn repo_with_a_commit() -> mergewright_fixtures::Scratch {
     std::fs::write(repo.join("sample.txt"), "one\ntwo\nthree\n")
         .expect("the scratch repo is writable");
     git(repo, &["add", "sample.txt"]);
-    git_as_graft(repo, &["commit", "-m", "add sample"]);
+    git_as_mergewright(repo, &["commit", "-m", "add sample"]);
     scratch
 }
 

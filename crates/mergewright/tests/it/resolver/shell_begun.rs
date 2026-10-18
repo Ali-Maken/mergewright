@@ -94,7 +94,7 @@ fn hand_edit_then_t(app: &App, state: AppState, repo: &Path) -> AppState {
 /// Until m6-conflicts/57 this walk also pressed `u` here and saw it refused
 /// (`finish or abort the merge first`). In a merge begun in the shell `u`
 /// now reaches the take (keymap §2.6a's one exception), so the refusal is
-/// gone; `u_still_refuses_in_a_merge_begun_in_graft` holds it for a merge
+/// gone; `u_still_refuses_in_a_merge_begun_in_mergewright` holds it for a merge
 /// Mergewright began.
 fn out_of_the_resolver_onto_the_banner(app: &App, state: &AppState, repo: &Path) -> AppState {
     let state = app.key(state, KeyCode::Escape);

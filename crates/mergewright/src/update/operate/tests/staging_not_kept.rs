@@ -40,7 +40,7 @@ fn staging_not_kept_rungs_cut_the_edits_back_clause_first() {
 /// Rung 1's text after `✓ checkout fix · ` is mergewright-ops' own words, so the two cannot
 /// drift.
 #[test]
-fn staging_not_kept_words_match_graft_ops() {
+fn staging_not_kept_words_match_mergewright_ops() {
     for names in [&["f.txt"][..], &["a.txt", "b.txt", "c.txt"][..]] {
         let paths = paths(names);
         let rungs = staging_not_kept_rungs(

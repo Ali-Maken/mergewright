@@ -380,7 +380,7 @@ fn a_stop_is_a_stop() {
 /// git's own boolean parser decides (`--type=bool`), and a value it refuses
 /// (`input`, `maybe`) is not git-false, so `true`.
 fn git_reads_autocrlf(dir: &Path) -> bool {
-    let as_graft = |args: &[&str]| {
+    let as_mergewright = |args: &[&str]| {
         Command::new("git")
             .args(args)
             .current_dir(dir)
@@ -391,7 +391,7 @@ fn git_reads_autocrlf(dir: &Path) -> bool {
             .output()
             .unwrap_or_else(|why| panic!("git {args:?} runs: {why}"))
     };
-    let raw = as_graft(&["config", "--get", "core.autocrlf"]);
+    let raw = as_mergewright(&["config", "--get", "core.autocrlf"]);
     match raw.status.code() {
         Some(1) => return false,
         Some(0) => {}
@@ -400,7 +400,7 @@ fn git_reads_autocrlf(dir: &Path) -> bool {
             String::from_utf8_lossy(&raw.stderr)
         ),
     }
-    let typed = as_graft(&["config", "--type=bool", "--get", "core.autocrlf"]);
+    let typed = as_mergewright(&["config", "--type=bool", "--get", "core.autocrlf"]);
     if typed.status.success() {
         String::from_utf8_lossy(&typed.stdout).trim() == "true"
     } else {

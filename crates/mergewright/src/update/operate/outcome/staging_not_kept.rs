@@ -35,7 +35,7 @@ fn with_clause(words: String, clause: Option<&str>) -> String {
 /// The cut drops `your edits are back` first: the files and the key are
 /// what he must read. `<paths>` is `<first>[ +N more]`, as mergewright-ops'
 /// `AfterState::StagingNotKept` words it (pinned by
-/// `staging_not_kept_words_match_graft_ops`).
+/// `staging_not_kept_words_match_mergewright_ops`).
 ///
 /// A staged-new file he deleted that git checked out again (`came_back`,
 /// mergewright-ops' `came_back_words`) is named before the staging news on every

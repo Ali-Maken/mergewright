@@ -5,7 +5,7 @@ use super::*;
 
 /// Twelve files stopped in one merge, each a one-line block.
 fn twelve_file_merge() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let names: Vec<String> = (1..=12)
@@ -19,13 +19,13 @@ fn twelve_file_merge() -> Scratch {
     };
     write_all("fn handle() {}");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "twelve handlers"]);
+    git_as_mergewright(repo, &["commit", "-m", "twelve handlers"]);
     git(repo, &["checkout", "-q", "-b", "feature"]);
     write_all("fn handle() { theirs() }");
-    git_as_graft(repo, &["commit", "-qam", "theirs"]);
+    git_as_mergewright(repo, &["commit", "-qam", "theirs"]);
     git(repo, &["checkout", "-q", "main"]);
     write_all("fn handle() { ours() }");
-    git_as_graft(repo, &["commit", "-qam", "ours"]);
+    git_as_mergewright(repo, &["commit", "-qam", "ours"]);
     git_stops(repo, &["merge", "feature"]);
     scratch
 }

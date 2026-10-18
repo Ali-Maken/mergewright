@@ -5174,7 +5174,7 @@ fn the_edit_stop_tags_head_s_row_stopped_here() {
                 current: None,
                 pending: Vec::new(),
                 branch: None,
-                begun_in_graft: true,
+                begun_in_mergewright: true,
                 followers: Vec::new(),
                 fork: None,
             },

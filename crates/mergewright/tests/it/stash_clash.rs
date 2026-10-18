@@ -330,7 +330,7 @@ fn two_clashing_stashes() -> mergewright_fixtures::Scratch {
 /// `b.txt`. The index is not what Mergewright last recorded, so no clash: the
 /// resolver's theirs names no stash, and `⏎` on `b.txt` drops nothing.
 #[test]
-fn a_shell_pop_after_an_unfinished_graft_pop_names_no_stash_and_drops_nothing() {
+fn a_shell_pop_after_an_unfinished_mergewright_pop_names_no_stash_and_drops_nothing() {
     let scratch = two_clashing_stashes();
     let path = scratch.path();
     let (app, state) = App::open(path);

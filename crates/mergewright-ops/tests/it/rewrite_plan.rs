@@ -576,7 +576,7 @@ fn progress_of_a_shell_rebase_has_no_branch() {
     assert_eq!(found.step, (1, 2));
     assert_eq!(found.current.map(|line| line.commit), Some(a1));
     assert_eq!(found.branch, None);
-    assert!(!found.begun_in_graft);
+    assert!(!found.begun_in_mergewright);
 }
 
 #[test]
@@ -659,7 +659,7 @@ fn progress_names_the_branch_of_the_step() {
         ),
         ("feature-b".to_owned(), 2, 3)
     );
-    assert!(found.begun_in_graft);
+    assert!(found.begun_in_mergewright);
     assert_eq!(
         found.step,
         (3, 4),

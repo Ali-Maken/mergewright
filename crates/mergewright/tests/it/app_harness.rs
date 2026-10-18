@@ -92,7 +92,7 @@ pub fn git(repo: &Path, args: &[&str]) -> String {
 }
 
 /// `git` as an identity the machine's own config cannot change.
-pub fn git_as_graft(repo: &Path, args: &[&str]) -> String {
+pub fn git_as_mergewright(repo: &Path, args: &[&str]) -> String {
     let mut full = vec![
         "-c",
         "user.name=Graft Test",
@@ -103,7 +103,7 @@ pub fn git_as_graft(repo: &Path, args: &[&str]) -> String {
     git(repo, &full)
 }
 
-/// Give `repo` the identity [`git_as_graft`] uses, in its own config, so
+/// Give `repo` the identity [`git_as_mergewright`] uses, in its own config, so
 /// what **the app** writes there (a stash, a merge, a ghost's author) is
 /// stamped the same on every machine.
 ///

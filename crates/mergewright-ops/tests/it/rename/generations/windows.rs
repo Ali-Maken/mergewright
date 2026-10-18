@@ -107,7 +107,7 @@ fn a_stray_pass_cut_short_keeps_what_tributary_wrote_next() {
 }
 
 /// The older build of [`an_older_build_moving_alongside_is_shut_out`]: a
-/// Tributary build on a repository it sees on Mergewright names. It takes its own
+/// Tributary build on a repository it sees on Graft names. It takes its own
 /// lock alone, as its code does, and if it gets it, moves: its marker, a
 /// backup under its prefix, a journal. It writes what it did to [`TRIED`].
 #[test]
@@ -144,7 +144,7 @@ fn tributary_build_moves() {
     std::fs::write(repo.join(TRIED), tried).expect("says what it did");
 }
 
-/// A Mergewright repository no Tributary build ever opened, so there is no
+/// A Graft repository no Tributary build ever opened, so there is no
 /// Tributary lock yet. A Tributary build launched while this move copies
 /// must be shut out, or what it writes must survive the move.
 #[test]
@@ -218,9 +218,9 @@ fn switched_from_tributary_cleans_up() {
     fsck_is_clean(&repo);
 }
 
-/// Major 2 (b): Mergewright `switched` after a Mergewright source, with a failed
+/// Major 2 (b): Mergewright `switched` after a Graft source, with a failed
 /// earlier move's Tributary scratch (no Tributary marker): the scratch is
-/// removed unread in the clean-up, the Mergewright copies compared.
+/// removed unread in the clean-up, the Graft copies compared.
 #[test]
 fn switched_from_graft_removes_scratch() {
     let (graft, tributary) = (Generation::Graft, Generation::Tributary);
@@ -320,7 +320,7 @@ fn copy_as_mergewright(repo: &TempRepo, from: Generation, held: &BTreeMap<String
     for machinery in [LOCK_FILE, MIGRATED_MARKER] {
         match std::fs::remove_file(to.join(machinery)) {
             Ok(()) => {}
-            // Mergewright's folder has neither.
+            // Graft's folder has neither.
             Err(why) if why.kind() == std::io::ErrorKind::NotFound => {}
             Err(why) => panic!("{machinery}: {why}"),
         }

@@ -302,7 +302,7 @@ fn a_shell_begun_edit_stop_amend_is_recorded_with_a_backup() {
 /// the live `Pending` rewrite entry (M5 hard choice 2), which `c` then still
 /// finds and finishes — and the graph re-reads, since `HEAD` moved.
 #[test]
-fn an_amend_inside_graft_s_rewrite_folds_and_c_still_continues_it() {
+fn an_amend_inside_mergewright_s_rewrite_folds_and_c_still_continues_it() {
     let repo = feature();
     let handle = repo.open();
     let mut params = plan(

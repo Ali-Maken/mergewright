@@ -155,7 +155,7 @@ fn a_first_commit_with_no_index_yet_commits_the_chosen_file_alone() {
 /// exists (review ease-pass-04, Minor 1): only the chosen file goes in, the
 /// other stays staged.
 #[test]
-fn a_chosen_amend_inside_graft_s_rewrite_folds_on_its_own_index() {
+fn a_chosen_amend_inside_mergewright_s_rewrite_folds_on_its_own_index() {
     let repo = feature();
     let handle = repo.open();
     let mut params = plan(

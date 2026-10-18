@@ -1,9 +1,9 @@
-# CAPABILITIES.md — what Graft can do
+# CAPABILITIES.md — what Mergewright can do
 
 **Generated from `docs/capabilities/*.md`. Do not hand-edit this file** — edit the capability's entry in its milestone file under `docs/capabilities/`, then regenerate:
 
 ```
-cargo run -p graft-capabilities --bin gen-capabilities
+cargo run -p mergewright-capabilities --bin gen-capabilities
 ```
 
 The browsable, filterable version of this same data is `docs/generated/capabilities.html` (open it directly, no server needed). The schema, and how to add a capability, is `docs/capabilities/README.md`.

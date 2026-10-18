@@ -337,7 +337,7 @@ fn enter_words(list: &JournalList, state: &AppState, index: usize) -> Option<Str
                 "redo this".to_owned()
             } else if matches!(entry.kind, OperationKind::Undo | OperationKind::Redo) {
                 // The time machine refuses an undo or redo row
-                // (`update::journal::enter_graft`): no promise.
+                // (`update::journal::enter_mergewright`): no promise.
                 return None;
             } else {
                 "revert to before this".to_owned()

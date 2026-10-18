@@ -139,7 +139,7 @@ impl RepoHandle {
     /// **Mergewright's own refs are left out.** This is the repository as Mergewright
     /// *draws* it, and `refs/graft/**` — the undo journal's backup chains —
     /// is bookkeeping the user never made
-    /// ([`RefName::is_graft_internal`]). Seeding the walk from them put two
+    /// ([`RefName::is_mergewright_internal`]). Seeding the walk from them put two
     /// synthetic commits above `HEAD` per undoable write, forever
     /// (m3-07 review, C1). Whoever wants the ref store as it really is calls
     /// [`references`](Self::references), which still answers for every ref;
@@ -173,7 +173,7 @@ impl RepoHandle {
             let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
             // Before any work: peeling a backup chain costs object reads for
             // a row that must never be drawn.
-            if name.is_graft_internal() {
+            if name.is_mergewright_internal() {
                 continue;
             }
             stats.refs += 1;

@@ -18,7 +18,7 @@ use mergewright::session::Clock;
 use mergewright::update::AppState;
 use mergewright_core::event::KeyCode;
 
-use crate::app_harness::{App, git, git_as_graft};
+use crate::app_harness::{App, git, git_as_mergewright};
 use mergewright_core::on_disk::CURRENT_DIR;
 
 mod capture;
@@ -81,7 +81,7 @@ pub(crate) fn dated_commit(repo: &Path, name: &str, body: &str, subject: &str, m
 fn commit(repo: &Path, name: &str, body: &str, subject: &str) {
     std::fs::write(repo.join(name), body).expect("the scratch repo is writable");
     git(repo, &["add", name]);
-    git_as_graft(repo, &["commit", "-m", subject]);
+    git_as_mergewright(repo, &["commit", "-m", subject]);
 }
 
 /// Opened, with the first rows and the refs on hand — everything `r` reads.

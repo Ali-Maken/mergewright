@@ -339,7 +339,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `squash_groups` (fn) / `SquashGroup` (struct) — `kept` + `melded` (newest first).
 - `default_message` (fn) — the kept row's message, then each melded `Squash` row's.
 - `validate` (fn) / `TodoProblem` (enum) — `MeldsIntoNothing { row }`, `EverythingDropped`; `explain()`.
-- `progress` (fn) / `RewriteProgress` (struct) — a rewrite under way: `step`, `current`, `pending`, `branch`, `begun_in_graft`, `fork`; `pending_here`.
+- `progress` (fn) / `RewriteProgress` (struct) — a rewrite under way: `step`, `current`, `pending`, `branch`, `begun_in_mergewright`, `fork`; `pending_here`.
 - `ForkStop` (struct) — `name`, `at`: the fork a stopped rewrite is replaying, for the banner.
 - `Follower` (struct) — `branch`, `tip_author`, `commits`.
 - `edit_stop` (fn) / `EditStop` (struct) — `Some` only at a rebase's `edit` stop: `stopped`, `head_on_it`, …

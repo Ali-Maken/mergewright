@@ -237,7 +237,7 @@ fn a_head_only_commit_offers_restored() {
 }
 
 #[test]
-fn a_graft_row_is_refused() {
+fn a_mergewright_row_is_refused() {
     let fetch = entry(1000, OperationKind::Fetch, "fetch origin", &[]);
     let list = list(std::slice::from_ref(&fetch), &[], None, &[]);
 
@@ -293,7 +293,7 @@ fn a_commit_held_again_is_refused() {
 
 /// Under a Mergewright reset, the branch is expected where the entry left it.
 #[test]
-fn under_a_graft_row_main_is_moved_back_from_its_after_value() {
+fn under_a_mergewright_row_main_is_moved_back_from_its_after_value() {
     let reset = entry(
         1005,
         OperationKind::Reset,

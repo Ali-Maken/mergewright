@@ -40,7 +40,7 @@ fn fork_label(name: &str) -> bool {
 /// Where the rebase in progress is. `None` when no `rebase -i` is running
 /// (an `apply`-style rebase has no `rebase-merge/`).
 ///
-/// A rebase begun in the shell reads the same, with `begun_in_graft: false`
+/// A rebase begun in the shell reads the same, with `begun_in_mergewright: false`
 /// and no branch.
 ///
 /// # Errors
@@ -100,7 +100,7 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         current,
         pending,
         branch,
-        begun_in_graft: plan.is_some(),
+        begun_in_mergewright: plan.is_some(),
         followers,
         fork,
     }))

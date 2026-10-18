@@ -103,14 +103,14 @@ fn parity(build: fn(&TempRepo), make: fn(&TempRepo) -> Operation) {
         vec!["ls-files", "-s"],
         vec!["status", "--porcelain=v2", "--untracked-files=all"],
     ] {
-        let from_graft = a
+        let from_mergewright = a
             .git(&what)
             .lines()
             .filter(|line| !line.contains(&format!("refs/{CURRENT_DIR}/")))
             .collect::<Vec<_>>()
             .join("\n");
         assert_eq!(
-            from_graft,
+            from_mergewright,
             b.git(&what),
             "`git {}` differs after {}",
             what.join(" "),
@@ -430,7 +430,7 @@ fn a_dropped_stash_survives_gc_and_comes_back() {
 // ── the compare-and-swap rail ───────────────────────────────────────────
 
 #[test]
-fn a_branch_moved_behind_graft_stops_the_undo_and_then_refuses_it() {
+fn a_branch_moved_behind_mergewright_stops_the_undo_and_then_refuses_it() {
     let repo = TempRepo::init();
     repo.write("a.rs", b"one\n");
     repo.commit_all("one");

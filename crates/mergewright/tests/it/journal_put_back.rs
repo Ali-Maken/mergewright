@@ -300,7 +300,7 @@ fn put_back_through_j(
 /// (`u` can take it back), and the commit it put back is no longer lost —
 /// no `✗` row.
 #[test]
-fn j_again_shows_a_graft_row_and_no_lost_row() {
+fn j_again_shows_a_mergewright_row_and_no_lost_row() {
     let (scratch, lost, _left) = lost_by_the_shell();
     let repo = scratch.path();
     let (app, state) = App::open(repo);

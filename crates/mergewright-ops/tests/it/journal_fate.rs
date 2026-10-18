@@ -62,7 +62,7 @@ fn fates_of(list: &JournalList, tip: Oid) -> Vec<Fate> {
 }
 
 /// Whether the row `event` points at is a `●` row.
-fn under_graft(list: &JournalList, tip: Oid) -> bool {
+fn under_mergewright(list: &JournalList, tip: Oid) -> bool {
     list.rows.iter().any(|row| match row {
         ListRow::Lost { event, commit } if commit.run.tip == tip => {
             matches!(list.rows[*event], ListRow::Mergewright(_))
@@ -82,7 +82,7 @@ fn an_undoable_rebase_replaces_its_old_tip() {
 
     assert_ne!(id(&repo, "feature"), old_tip, "the rebase moved feature");
     assert_eq!(fates_of(&list, old_tip), [Fate::Replaced], "{list:#?}");
-    assert!(under_graft(&list, old_tip), "{list:#?}");
+    assert!(under_mergewright(&list, old_tip), "{list:#?}");
 }
 
 /// The first rebase is not the next undo — the second is — but both are in
@@ -169,7 +169,7 @@ fn a_deleted_branch_reads_deleted() {
             .is_err()
     );
     assert_eq!(fates_of(&list, old_tip), [Fate::Deleted], "{list:#?}");
-    assert!(under_graft(&list, old_tip), "{list:#?}");
+    assert!(under_mergewright(&list, old_tip), "{list:#?}");
 }
 
 // ── review m8 g1, Major 2 and Minor 6 (ticket 46r) ─────────────────────
@@ -246,7 +246,7 @@ fn back_to_back_rebases_each_replace_their_old_tip() {
     );
     assert_eq!(fates_of(&list, first), [Fate::Replaced], "{list:#?}");
     assert_eq!(fates_of(&list, second), [Fate::Replaced], "{list:#?}");
-    assert!(under_graft(&list, first) && under_graft(&list, second));
+    assert!(under_mergewright(&list, first) && under_mergewright(&list, second));
     assert!(no_lost_row(&list), "{list:#?}");
 }
 

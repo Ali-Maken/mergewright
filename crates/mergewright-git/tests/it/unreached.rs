@@ -233,7 +233,7 @@ fn an_older_stash_entry_holds_too() {
 }
 
 #[test]
-fn a_commit_only_refs_graft_holds_is_lost() {
+fn a_commit_only_refs_mergewright_holds_is_lost() {
     let scratch = scratch();
     let dir = repo_in(&scratch);
     let backed_up = commit(&dir, "backed up");

@@ -1,6 +1,6 @@
 //! The move from whatever generation is in force straight to `CURRENT`
 //! (ADR-0057, Amendment 2026-10-11 §3–§7; ticket 48 Part B): a repository
-//! still on Mergewright names, one on Tributary names (`clean` or `switched`), a
+//! still on Graft names, one on Tributary names (`clean` or `switched`), a
 //! failed earlier move's scratch, every generation's lock, and what older
 //! builds write after the move. Truth comes from git (`for-each-ref`,
 //! `fsck`), the filesystem and the journal reader, never from the outcome
@@ -29,10 +29,10 @@ use setup::{
     migrate_rows, moved, no_earlier_names_left, refs_of, undo_puts_back,
 };
 
-/// Seventeen branch creates and three stages under Mergewright's names (the
+/// Seventeen branch creates and three stages under Graft's names (the
 /// 26 test's 20 entries, 3 backups): no marker, no `tributary` anywhere.
 #[test]
-fn mergewright_repo_moves_straight_to_mergewright() {
+fn graft_repo_moves_straight_to_mergewright() {
     let repo = old_repo(17, 2);
     repo.write("a.rs", b"edit 2\n");
     let state = state_of(&repo);
@@ -91,7 +91,7 @@ fn mergewright_repo_moves_straight_to_mergewright() {
     undo_puts_back(&repo, &newest, &state);
 }
 
-/// A Tributary build moved the Mergewright repository (`rename to Tributary`)
+/// A Tributary build moved the Graft repository (`rename to Tributary`)
 /// and ran two stages under its names; this build moves it on, once more.
 #[test]
 fn tributary_repo_moves_and_both_rename_rows_read() {
@@ -107,11 +107,7 @@ fn tributary_repo_moves_and_both_rename_rows_read() {
         NOW + 301,
     );
     let old = refs_of(&repo, tributary);
-    assert_eq!(
-        old.len(),
-        5,
-        "3 moved from Mergewright, 2 made under Tributary"
-    );
+    assert_eq!(old.len(), 5, "3 moved from Graft, 2 made under Tributary");
     let before = journal_for(&repo.open()).entries().to_vec();
     assert_eq!(before.len(), 23);
     let newest = before.last().expect("an entry").clone();
@@ -166,8 +162,8 @@ fn tributary_repo_moves_and_both_rename_rows_read() {
     undo_puts_back(&repo, &newest, &state);
 }
 
-/// A Tributary move killed after its switch: the Mergewright journal (a prefix of
-/// Tributary's) and refs still there, one of them moved by a Mergewright build
+/// A Tributary move killed after its switch: the Graft journal (a prefix of
+/// Tributary's) and refs still there, one of them moved by a Graft build
 /// since.
 #[test]
 fn switched_tributary_with_graft_leftovers() {
@@ -196,9 +192,7 @@ fn switched_tributary_with_graft_leftovers() {
         settled.outcome
     );
     let kept = |name: &str| {
-        let rest = name
-            .strip_prefix(graft.ref_prefix())
-            .expect("a Mergewright ref");
+        let rest = name.strip_prefix(graft.ref_prefix()).expect("a Graft ref");
         format!("{kept_prefix}{}/{rest}", graft.dir())
     };
     let mut expected = moved(&held, Generation::CURRENT);
@@ -218,7 +212,7 @@ fn switched_tributary_with_graft_leftovers() {
 }
 
 /// A failed earlier move's scratch: Tributary names in a repository still
-/// on Mergewright, with no Tributary marker. Removed after the switch, never
+/// on Graft, with no Tributary marker. Removed after the switch, never
 /// compared, never kept.
 #[test]
 fn marker_less_newer_generation_is_scratch() {
@@ -305,7 +299,7 @@ fn any_generations_lock_blocks_the_move() {
     }
 }
 
-/// After `clean`, a Tributary build writes its folder and a Mergewright build a
+/// After `clean`, a Tributary build writes its folder and a Graft build a
 /// ref: one stray pass takes both, and the next open spawns nothing.
 #[test]
 fn older_generations_writing_after_clean() {
@@ -316,8 +310,8 @@ fn older_generations_writing_after_clean() {
     ));
     let head = repo.git(&["rev-parse", "HEAD"]);
     repo.write(&in_dir(Generation::Tributary, "layout"), b"tributary\n");
-    let mergewright_y = format!("{}y", Generation::Graft.ref_prefix());
-    repo.git(&["update-ref", &mergewright_y, &head]);
+    let graft_y = format!("{}y", Generation::Graft.ref_prefix());
+    repo.git(&["update-ref", &graft_y, &head]);
     let mut expected = refs_of(&repo, Generation::CURRENT);
     expected.insert(format!("{}y", Generation::CURRENT.ref_prefix()), head);
 

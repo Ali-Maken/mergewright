@@ -11,7 +11,7 @@ use mergewright_core::event::{KeyCode, KeyPress};
 use mergewright_fixtures::{Scratch, Shape};
 use mergewright_git::state::InProgress;
 
-use super::super::file_list::rebased_onto_main_by_graft;
+use super::super::file_list::rebased_onto_main_by_mergewright;
 use super::super::{git_stops, open, opened_on, resolver_on};
 use super::lifetime::{landed_on, stages, three_step_feature};
 use super::{TWO, bytes, commit_side, pressed};
@@ -164,7 +164,7 @@ fn shift_o_at_a_rebase_stop_leaves_no_pick_to_undo() {
     let scratch = three_step_feature();
     let repo = scratch.path();
     let (app, state) = opened_on(&scratch);
-    let state = rebased_onto_main_by_graft(&app, state, "a.txt");
+    let state = rebased_onto_main_by_mergewright(&app, state, "a.txt");
     let state = landed_on(&app, state, "a.txt");
     let state = pressed(&app, &state, 'o');
     assert_eq!(state.picks.in_file(Path::new("a.txt")), 1);

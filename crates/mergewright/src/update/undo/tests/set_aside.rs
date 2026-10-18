@@ -4,6 +4,9 @@
 //! `also` when the banner takes the keys.
 
 use super::*;
+use mergewright_core::journal::EntryId;
+use mergewright_core::ref_name::RefName;
+use mergewright_ops::EditsAt;
 
 /// m6-conflicts/74: Mergewright killed mid-rebase with edits set aside; the
 /// relaunch's interrupted line names the stash they wait in, by its
@@ -29,8 +32,7 @@ fn relaunch_after_a_kill_names_the_stash_the_edits_are_in() {
         ..JournalState::default()
     };
     let with_stashes = |stashes: &[(mergewright_core::oid::Oid, usize)]| {
-        let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
-            .expect("a valid ref name");
+        let main = RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
         AppState {
             journal: journal.clone(),
             refs: Some(Arc::new(
@@ -74,44 +76,39 @@ fn the_notice_words_where_recovery_found_the_edits() {
         why: mergewright_core::journal::PutBackWhy::SetAside,
     });
     let id = entry.id.clone();
-    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
-        .expect("a valid ref name");
-    let state =
-        |edits: Vec<(mergewright_core::journal::EntryId, mergewright_ops::EditsAt)>| AppState {
-            journal: JournalState {
-                entries: Loading::Ready(Arc::new(JournalRead {
-                    entries: vec![entry.clone()],
-                    unreadable: Vec::new(),
-                    held: Vec::new(),
-                    live: Vec::new(),
-                    interrupted_edits: Vec::new(),
-                })),
-                ..JournalState::default()
-            },
-            interrupted_edits: edits,
-            refs: Some(Arc::new(
-                crate::refs::badges(
-                    &[(main.clone(), stash)],
-                    &mergewright_git::repo::HeadState::Branch(main.clone()),
-                    &std::collections::HashMap::new(),
-                    &[(stash, 0)],
-                    |_, _| Err("no upstreams in this fixture".to_owned()),
-                )
-                .expect("badges builds from plain data"),
-            )),
-            ..AppState::default()
-        };
-    let back = state(vec![(
-        id.clone(),
-        mergewright_ops::EditsAt::Back { copy: Some(0) },
-    )]);
+    let main = RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
+    let state = |edits: Vec<(EntryId, EditsAt)>| AppState {
+        journal: JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![entry.clone()],
+                unreadable: Vec::new(),
+                held: Vec::new(),
+                live: Vec::new(),
+                interrupted_edits: Vec::new(),
+            })),
+            ..JournalState::default()
+        },
+        interrupted_edits: edits,
+        refs: Some(Arc::new(
+            crate::refs::badges(
+                &[(main.clone(), stash)],
+                &mergewright_git::repo::HeadState::Branch(main.clone()),
+                &std::collections::HashMap::new(),
+                &[(stash, 0)],
+                |_, _| Err("no upstreams in this fixture".to_owned()),
+            )
+            .expect("badges builds from plain data"),
+        )),
+        ..AppState::default()
+    };
+    let back = state(vec![(id.clone(), EditsAt::Back { copy: Some(0) })]);
     assert_eq!(
         interrupted_notice(&back).as_deref(),
         Some(
             "an operation was interrupted: checkout other \u{b7} your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect"
         )
     );
-    let in_stash = state(vec![(id, mergewright_ops::EditsAt::Stash { n: 0 })]);
+    let in_stash = state(vec![(id, EditsAt::Stash { n: 0 })]);
     assert_eq!(
         interrupted_notice(&in_stash).as_deref(),
         Some(
@@ -120,8 +117,8 @@ fn the_notice_words_where_recovery_found_the_edits() {
     );
     // Another entry's: this one was closed by an earlier launch.
     let other = state(vec![(
-        mergewright_core::journal::EntryId::new(9, [9; 10]),
-        mergewright_ops::EditsAt::Back { copy: Some(0) },
+        EntryId::new(9, [9; 10]),
+        EditsAt::Back { copy: Some(0) },
     )]);
     assert_eq!(
         interrupted_notice(&other).as_deref(),
@@ -138,7 +135,7 @@ fn the_notice_drops_a_stash_that_is_gone() {
     let (entry, id) = set_aside_entry();
     let state = with_edits(
         &entry,
-        vec![(id.clone(), mergewright_ops::EditsAt::Back { copy: Some(0) })],
+        vec![(id.clone(), EditsAt::Back { copy: Some(0) })],
         &[],
     );
     assert_eq!(
@@ -147,11 +144,7 @@ fn the_notice_drops_a_stash_that_is_gone() {
             "an operation was interrupted: checkout other \u{b7} your edits are back \u{b7} J to inspect"
         )
     );
-    let popped = with_edits(
-        &entry,
-        vec![(id, mergewright_ops::EditsAt::Stash { n: 0 })],
-        &[],
-    );
+    let popped = with_edits(&entry, vec![(id, EditsAt::Stash { n: 0 })], &[]);
     let notice = interrupted_notice(&popped).expect("a notice");
     assert!(!notice.contains("stash@"), "{notice}");
 }
@@ -165,7 +158,7 @@ fn the_stash_clause_follows_the_list() {
     let stash = entry.put_back.as_ref().expect("set aside").stash;
     let state = with_edits(
         &entry,
-        vec![(id, mergewright_ops::EditsAt::Stash { n: 0 })],
+        vec![(id, EditsAt::Stash { n: 0 })],
         &[(other, 0), (stash, 1)],
     );
     assert_eq!(
@@ -176,7 +169,7 @@ fn the_stash_clause_follows_the_list() {
     );
 }
 
-fn set_aside_entry() -> (JournalEntry, mergewright_core::journal::EntryId) {
+fn set_aside_entry() -> (JournalEntry, EntryId) {
     let stash = mergewright_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes");
     let mut entry = torn_entry(0, "checkout other");
     entry.put_back = Some(mergewright_core::journal::PutBack {
@@ -189,11 +182,10 @@ fn set_aside_entry() -> (JournalEntry, mergewright_core::journal::EntryId) {
 
 fn with_edits(
     entry: &JournalEntry,
-    edits: Vec<(mergewright_core::journal::EntryId, mergewright_ops::EditsAt)>,
+    edits: Vec<(EntryId, EditsAt)>,
     stashes: &[(mergewright_core::oid::Oid, usize)],
 ) -> AppState {
-    let main = mergewright_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
-        .expect("a valid ref name");
+    let main = RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
     let tip = mergewright_core::oid::Oid::from_bytes(&[0x22; 20]).expect("20 bytes");
     AppState {
         journal: JournalState {
@@ -429,7 +421,7 @@ fn the_notice_repicks_on_resize() {
             })),
             ..JournalState::default()
         },
-        interrupted_edits: vec![(id, mergewright_ops::EditsAt::Back { copy: Some(0) })],
+        interrupted_edits: vec![(id, EditsAt::Back { copy: Some(0) })],
         ..AppState::default()
     };
     let wide = rung1("checkout fix", Some(BACK));
@@ -478,7 +470,7 @@ fn at_80_the_notice_keeps_j_to_inspect_whole() {
             unreadable: vec!["torn".to_owned()],
             ..JournalState::default()
         },
-        interrupted_edits: vec![(id, mergewright_ops::EditsAt::Stash { n: 0 })],
+        interrupted_edits: vec![(id, EditsAt::Stash { n: 0 })],
         ..AppState::default()
     };
     let wide = interrupted_notice_in(&state, usize::MAX).expect("a notice");

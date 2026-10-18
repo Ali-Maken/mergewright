@@ -346,7 +346,7 @@ fn two_clashing_stashes() -> (TempRepo, Oid, Oid) {
 /// pops B, which clashes on `b.txt`. The index now is not what Mergewright last
 /// recorded, so no clash — nothing names A, and nothing would drop it.
 #[test]
-fn a_shell_pop_after_an_unfinished_graft_pop_is_no_clash() {
+fn a_shell_pop_after_an_unfinished_mergewright_pop_is_no_clash() {
     let (repo, a, b) = two_clashing_stashes();
     clashed(
         &repo,
@@ -388,7 +388,7 @@ fn a_shell_pop_after_an_unfinished_graft_pop_is_no_clash() {
 /// (`finish`'s `index_after`) and the reader's (`index_state` now) agree,
 /// so the clash is tied and found (ADR-0045 §7, last bullet).
 #[test]
-fn a_graft_pop_clash_is_tied_to_the_index_it_left() {
+fn a_mergewright_pop_clash_is_tied_to_the_index_it_left() {
     let (repo, stashed) = about_to_pop_a_conflict();
     let (entry, _) = clashed(
         &repo,

@@ -156,9 +156,9 @@ pub(super) fn append_migrate(repo: &TempRepo, to: Generation, refs: usize, files
     std::fs::write(&path, bytes).expect("the journal writes");
 }
 
-/// What a Tributary build left after moving a Mergewright repository: the refs
+/// What a Tributary build left after moving a Graft repository: the refs
 /// and the folder copied to Tributary's names, its `Migrate` entry, its
-/// lock, and its marker reading `marker`. With `keep_graft` the Mergewright
+/// lock, and its marker reading `marker`. With `keep_graft` the Graft
 /// copies stay (a `switched` move killed before its clean-up).
 pub(super) fn as_tributary(repo: &TempRepo, marker: &str, keep_graft: bool) {
     let (graft, tributary) = (Generation::Graft, Generation::Tributary);
@@ -194,7 +194,7 @@ pub(super) fn as_tributary(repo: &TempRepo, marker: &str, keep_graft: bool) {
     );
     copy_dir(&from, &to);
     if !keep_graft {
-        std::fs::remove_dir_all(&from).expect("the Mergewright folder goes");
+        std::fs::remove_dir_all(&from).expect("the Graft folder goes");
     }
     append_migrate(repo, tributary, old.len(), 1, NOW + 150);
     repo.write(&in_dir(tributary, LOCK_FILE), b"");

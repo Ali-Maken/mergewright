@@ -35,7 +35,7 @@ fn kinds(list: &JournalList) -> Vec<String> {
 /// A Mergewright reset writes a record on `main` and its twin on `HEAD`, with the
 /// entry's own before and after: one `●`, no `$` twin (ADR-0046 §2).
 #[test]
-fn a_graft_op_is_one_row_not_two() {
+fn a_mergewright_op_is_one_row_not_two() {
     let reset = entry(
         1000,
         OperationKind::Reset,
@@ -364,7 +364,7 @@ fn a_record_that_moved_nothing_is_no_row() {
 /// A Mergewright switch records `HEAD`'s branches, not a commit; its `checkout:`
 /// record is matched by the names and the time.
 #[test]
-fn a_graft_switch_is_one_row() {
+fn a_mergewright_switch_is_one_row() {
     let mut switch = entry(1000, OperationKind::Checkout, "switch to spike", &[]);
     switch.head_after = Some(mergewright_core::journal::HeadRef::Branch(
         "refs/heads/spike".to_owned(),

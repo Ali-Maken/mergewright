@@ -12,7 +12,7 @@ use std::path::Path;
 use mergewright::update::{AppState, Status};
 use mergewright_core::event::KeyCode;
 
-use crate::app_harness::{App, git, git_as_graft};
+use crate::app_harness::{App, git, git_as_mergewright};
 use crate::remote_by_key::{local, plain, ready, rev};
 
 fn selected(state: &AppState) -> Option<String> {
@@ -89,7 +89,7 @@ fn two_commits() -> mergewright_fixtures::Scratch {
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), "one\n").expect("writable");
     git(repo, &["add", "sample.txt"]);
-    git_as_graft(repo, &["commit", "-m", "add sample"]);
+    git_as_mergewright(repo, &["commit", "-m", "add sample"]);
     scratch
 }
 

@@ -37,7 +37,7 @@ use mergewright_core::on_disk::CURRENT_DIR;
 ///
 /// Two shapes on purpose: the `UU` one is what `d` restarts, the `UD` one is
 /// the reviewer's data-loss path, where taking theirs is `git rm --quiet`.
-fn a_stopped_graft_merge() -> (TempRepo, JournalEntry) {
+fn a_stopped_mergewright_merge() -> (TempRepo, JournalEntry) {
     let repo = TempRepo::init();
     repo.write("shared.txt", b"base\n");
     repo.write("gone.txt", b"base\n");
@@ -127,7 +127,7 @@ fn entries(repo: &TempRepo) -> Vec<JournalEntry> {
 /// stages — and writes no journal line.
 #[test]
 fn folded_step_chains_a_backup() {
-    let (repo, entry) = a_stopped_graft_merge();
+    let (repo, entry) = a_stopped_mergewright_merge();
     let before_ref = backup_tip(&repo, &entry);
     let before_lines = journal_lines(&repo);
 
@@ -181,7 +181,7 @@ fn folded_step_chains_a_backup() {
 /// the chain, those bytes were gone for good.
 #[test]
 fn a_hand_edit_is_recoverable_after_the_other_side_is_taken() {
-    let (repo, _entry) = a_stopped_graft_merge();
+    let (repo, _entry) = a_stopped_mergewright_merge();
     let edit = b"main's line\nand the paragraph I wrote by hand\n";
     repo.write("gone.txt", edit);
 
@@ -220,7 +220,7 @@ fn stop_before_chain_writes_nothing() {
         }
     }
 
-    let (repo, entry) = a_stopped_graft_merge();
+    let (repo, entry) = a_stopped_mergewright_merge();
     let before_ref = backup_tip(&repo, &entry);
     let before_bytes = repo.read("shared.txt");
 
@@ -258,7 +258,7 @@ fn stop_before_chain_writes_nothing() {
 /// refused while an operation is live" is untouched by any of it.
 #[test]
 fn chain_adds_no_entries() {
-    let (repo, _entry) = a_stopped_graft_merge();
+    let (repo, _entry) = a_stopped_mergewright_merge();
     let before_lines = journal_lines(&repo);
     let before_entries = entries(&repo);
     let before_next =
@@ -293,7 +293,7 @@ fn chain_adds_no_entries() {
 /// unreachable when the ref moves to the after-commit.
 #[test]
 fn resume_chains_then_after_snapshot_parents_the_chain() {
-    let (repo, entry) = a_stopped_graft_merge();
+    let (repo, entry) = a_stopped_mergewright_merge();
     for op in [
         resolve("shared.txt", Side::Ours, UnmergedHow::BothModified),
         resolve("gone.txt", Side::Ours, UnmergedHow::DeletedByThem),
@@ -395,7 +395,7 @@ fn put_stages_back(applied: &Applied) -> bool {
 /// takes REUC away and makes the outcome itself the proof.
 #[test]
 fn restart_after_stage_brings_the_conflict_back() {
-    let (repo, _entry) = a_stopped_graft_merge();
+    let (repo, _entry) = a_stopped_mergewright_merge();
     let stages_before = unmerged_lines(&repo, "shared.txt");
     assert_eq!(
         stages_before.lines().count(),
@@ -447,7 +447,7 @@ fn restart_after_stage_brings_the_conflict_back() {
 /// by nothing else.
 #[test]
 fn restart_survives_a_relaunch() {
-    let (repo, _entry) = a_stopped_graft_merge();
+    let (repo, _entry) = a_stopped_mergewright_merge();
     let stages_before = unmerged_lines(&repo, "shared.txt");
 
     // Both paths resolved, so the index has a tree to be rebuilt from. The
@@ -514,7 +514,7 @@ fn restart_survives_a_relaunch() {
 /// silently do nothing.
 #[test]
 fn restart_refuses_without_stages() {
-    let (repo, entry) = a_stopped_graft_merge();
+    let (repo, entry) = a_stopped_mergewright_merge();
     let pre_op = backup_tip(&repo, &entry);
 
     mark_resolved(&repo, "shared.txt", b"a hand-written merge\n", NOW + 1);

@@ -102,4 +102,4 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 
 ## ref_name
 - `RefName` (struct) — a git ref's full name, validated.
-- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_graft_internal` (true under any `Generation::ref_prefix`, whichever is in force).
+- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_mergewright_internal` (true under any `Generation::ref_prefix`, whichever is in force).

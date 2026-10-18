@@ -24,7 +24,7 @@ pub(crate) fn gone_notes_and_readme_merge() -> Scratch {
 }
 
 fn gone_and_notes_merge_with(readme: bool) -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let write = |name: &str, text: &str| std::fs::write(repo.join(name), text).expect("writable");
@@ -39,7 +39,7 @@ fn gone_and_notes_merge_with(readme: bool) -> Scratch {
     write("notes.txt", "one\ntwo\nthree\nfour\nfive\nsix\nseven\n");
     write("gone.txt", "the plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "notes and a plan"]);
+    git_as_mergewright(repo, &["commit", "-m", "notes and a plan"]);
     git(repo, &["checkout", "-q", "-b", "feature"]);
     write(
         "notes.txt",
@@ -50,7 +50,7 @@ fn gone_and_notes_merge_with(readme: bool) -> Scratch {
         write("README.md", "# Project\n\nline one\nline TWO\nline three\n");
     }
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "shout, drop the plan"]);
+    git_as_mergewright(repo, &["commit", "-m", "shout, drop the plan"]);
     git(repo, &["checkout", "-q", "main"]);
     write(
         "notes.txt",
@@ -58,7 +58,7 @@ fn gone_and_notes_merge_with(readme: bool) -> Scratch {
     );
     write("gone.txt", "our plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "annotate, keep the plan"]);
+    git_as_mergewright(repo, &["commit", "-m", "annotate, keep the plan"]);
     git_stops(repo, &["merge", "feature"]);
     scratch
 }
@@ -465,13 +465,17 @@ pub(super) fn mergewright_rebase_at_step_one() -> (Scratch, App, AppState) {
     let scratch = mergewright_fixtures::copy_into_temp(Shape::TwoStopRebase);
     git(scratch.path(), &["rebase", "--abort"]);
     let (app, state) = opened_on(&scratch);
-    let state = rebased_onto_main_by_graft(&app, state, "a.txt");
+    let state = rebased_onto_main_by_mergewright(&app, state, "a.txt");
     (scratch, app, state)
 }
 
 /// The branch checked out rebased onto `main` **by Mergewright** (`r` on `main`'s
 /// row, confirmed), waited on until it stops with `first` unmerged.
-pub(super) fn rebased_onto_main_by_graft(app: &App, state: AppState, first: &str) -> AppState {
+pub(super) fn rebased_onto_main_by_mergewright(
+    app: &App,
+    state: AppState,
+    first: &str,
+) -> AppState {
     let state = app.pump(state, "the graph and its badges", |state| {
         state.refs.is_some() && state.history.is_some()
     });

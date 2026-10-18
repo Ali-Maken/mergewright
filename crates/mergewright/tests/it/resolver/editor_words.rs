@@ -20,7 +20,7 @@ use super::shell_begun::{launched_into, resolved_shell_merge};
 /// A merge begun **in the app** that stops on `shared.rs` and `notes.md`,
 /// both then resolved (written and `git add`ed) and re-read: Mergewright's entry
 /// is live, nothing is left unmerged, and the panes have the keyboard.
-fn resolved_graft_merge() -> (Scratch, App, AppState) {
+fn resolved_mergewright_merge() -> (Scratch, App, AppState) {
     let scratch = crate::conflict_interim::about_to_conflict();
     let repo = scratch.path().to_owned();
     let (app, state) = App::open(&repo);
@@ -44,7 +44,7 @@ fn resolved_graft_merge() -> (Scratch, App, AppState) {
     (scratch, app, state)
 }
 
-/// The shell-begun leg's state, as [`resolved_graft_merge`] hands it.
+/// The shell-begun leg's state, as [`resolved_mergewright_merge`] hands it.
 fn resolved_shell() -> (Scratch, App, AppState) {
     let scratch = resolved_shell_merge();
     let (app, state) = launched_into(scratch.path());
@@ -181,7 +181,7 @@ fn answers_in_words(state: &AppState, key: char, refusal: &Status) {
 /// unchanged: it never aborts.
 #[test]
 fn a_mid_operation_still_refuses_in_words() {
-    let (mergewright_begun, app, state) = resolved_graft_merge();
+    let (mergewright_begun, app, state) = resolved_mergewright_merge();
     let pane = pane_focused(&app, state);
     answers_in_words(&pane, 'a', &mergewright_merge_refusal(2));
     c_opens_the_summary(&app, &pane);
@@ -280,7 +280,7 @@ fn head_message_arriving_mid_operation_does_not_open() {
 /// no fixture stops a Mergewright cherry-pick on a conflict.
 #[test]
 fn the_pane_words_fit_at_80() {
-    let (scratch, app, state) = resolved_graft_merge();
+    let (scratch, app, state) = resolved_mergewright_merge();
     let mut pane = pane_focused(&app, state);
     pane.in_progress.as_mut().expect("live").kind = InProgress::CherryPick;
     let refused = app.key(&pane, KeyCode::Char('a'));
@@ -331,7 +331,7 @@ fn pin_the_panes_keys(app: &App, state: AppState, refusal: &Status) {
 /// begun in the shell. The words name `⇥ banner`.
 #[test]
 fn after_esc_the_panes_a_answers_in_words_and_c_opens_the_summary() {
-    let (mergewright_begun, app, state) = resolved_graft_merge();
+    let (mergewright_begun, app, state) = resolved_mergewright_merge();
     pin_the_panes_keys(&app, state, &mergewright_merge_refusal(2));
     app.close();
     drop(mergewright_begun);
@@ -366,8 +366,8 @@ pub(super) fn editor_words(state: &AppState) -> String {
 /// keys they name do what they say — `c` opens the summary, `a` the
 /// banner's abort (its confirm box, `Resume::Abort`), not the amend editor.
 #[test]
-fn the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge() {
-    let (scratch, app, state) = resolved_graft_merge();
+fn the_keys_the_commit_editor_names_reach_the_banner_on_a_mergewright_begun_merge() {
+    let (scratch, app, state) = resolved_mergewright_merge();
     let open = editor_open(&app, state);
     assert_eq!(
         editor_words(&open),
@@ -402,8 +402,8 @@ fn the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge() {
 /// **The 80x24 check (ticket 40):** on a merge Mergewright began, the whole
 /// sentence shows at the narrow breakpoint.
 #[test]
-fn the_graft_merge_words_fit_at_80_by_24() {
-    let (scratch, app, state) = resolved_graft_merge();
+fn the_mergewright_merge_words_fit_at_80_by_24() {
+    let (scratch, app, state) = resolved_mergewright_merge();
     let open = editor_open(&app, state);
     super::shell_begun::the_words_fit(
         &open,

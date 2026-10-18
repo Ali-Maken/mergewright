@@ -150,7 +150,7 @@ fn every_prefix_internal() {
         "refs/mergewright/backup/main/01J0",
     ] {
         let name = RefName::new(name).expect("valid");
-        assert!(name.is_graft_internal(), "{name:?} is the app's own");
+        assert!(name.is_mergewright_internal(), "{name:?} is the app's own");
     }
     for name in [
         "refs/heads/graft",
@@ -161,6 +161,6 @@ fn every_prefix_internal() {
         "refs/stash",
     ] {
         let name = RefName::new(name).expect("valid");
-        assert!(!name.is_graft_internal(), "{name:?} is the user's");
+        assert!(!name.is_mergewright_internal(), "{name:?} is the user's");
     }
 }

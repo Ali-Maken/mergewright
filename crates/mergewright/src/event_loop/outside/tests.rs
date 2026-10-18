@@ -222,7 +222,7 @@ fn the_input_reader_is_reading_again_afterwards() {
 /// `~/src/main.rs`: an empty new buffer in vim, "file not found" in code and
 /// zed, and a stray file the moment the user saved.
 #[test]
-fn a_porcelain_path_is_joined_onto_the_worktree_not_graft_s_own_directory() {
+fn a_porcelain_path_is_joined_onto_the_worktree_not_mergewright_s_own_directory() {
     let command = opened_in("vim", Some(12), "/code/api");
 
     assert_eq!(spelled(&command), ["vim", "+12", "/code/api/src/main.rs"]);

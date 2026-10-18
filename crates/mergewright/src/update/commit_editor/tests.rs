@@ -531,7 +531,7 @@ fn a_merge_in_progress_points_at_c() {
 /// (m6-conflicts/39): `esc, ⇥ banner, then `, never `esc, then c`, because
 /// after `Esc` the pane's `c`/`a` are Commit/Amend (keymap §2.4).
 #[test]
-fn a_graft_begun_operation_names_the_banner() {
+fn a_mergewright_begun_operation_names_the_banner() {
     use mergewright_git::state::InProgress;
     for kind in [
         InProgress::Merge,

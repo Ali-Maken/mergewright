@@ -196,7 +196,7 @@
 445 crates/mergewright/src/update/tests/keymap_words/preview_remote.rs
 689 crates/mergewright/src/update/tests/keymap_words/resolver.rs
 628 crates/mergewright/src/update/tests/keymap_words/undo_journal.rs
-490 crates/mergewright/src/update/undo/tests/set_aside.rs
+482 crates/mergewright/src/update/undo/tests/set_aside.rs
 407 crates/mergewright/src/view/detail.rs
 428 crates/mergewright/src/view/entries.rs
 443 crates/mergewright/src/view/frame/boxes.rs
@@ -260,7 +260,7 @@
 558 crates/mergewright/tests/it/quit_waits/stuck.rs
 1255 crates/mergewright/tests/it/remote_by_key.rs
 416 crates/mergewright/tests/it/resolver/editor_words.rs
-566 crates/mergewright/tests/it/resolver/file_list.rs
+570 crates/mergewright/tests/it/resolver/file_list.rs
 1387 crates/mergewright/tests/it/resolver/shell_begun.rs
 425 crates/mergewright/tests/it/resolver/whole_file.rs
 604 crates/mergewright/tests/it/stash_clash.rs

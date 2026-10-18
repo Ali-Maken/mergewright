@@ -109,7 +109,7 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
 /// `mergewright_ops`' answer, carried as it is — the job reads no stash list. A
 /// failure that set nothing aside carries none.
 #[test]
-fn a_failure_carries_where_graft_ops_says_the_edits_are() {
+fn a_failure_carries_where_mergewright_ops_says_the_edits_are() {
     let at = mergewright_ops::EditsAt::Back { copy: Some(1) };
     let mut failed = failed_checkout(None);
     if let ApplyError::Git { edits, .. } = &mut failed {

@@ -22,7 +22,7 @@ use crate::support::{NOW, Never, TempRepo, context, journal_for, run, run_redo, 
 
 /// A commit made through Mergewright on `main`, so the journal has an entry from
 /// before the merge.
-fn a_graft_commit(repo: &TempRepo, at: i64) {
+fn a_mergewright_commit(repo: &TempRepo, at: i64) {
     repo.write("extra.txt", b"an unrelated file\n");
     repo.git(&["add", "--", "extra.txt"]);
     run(
@@ -64,7 +64,7 @@ fn untouched(repo: &TempRepo) -> Untouched {
 #[test]
 fn undo_refuses_an_entry_from_before_a_live_merge() {
     let repo = two_files();
-    a_graft_commit(&repo, NOW);
+    a_mergewright_commit(&repo, NOW);
     assert_eq!(journal_ids(&repo).len(), 1, "the commit is journaled");
     assert!(
         repo.try_git(&["merge", "--no-edit", "feature"]).is_err(),
@@ -97,7 +97,7 @@ fn undo_refuses_an_entry_from_before_a_live_merge() {
 
 /// A branch created through Mergewright: an entry that touches one ref and no
 /// file, so its undo and redo need nothing clean.
-fn a_graft_branch(repo: &TempRepo, at: i64) {
+fn a_mergewright_branch(repo: &TempRepo, at: i64) {
     let at_commit = oid(repo, "HEAD");
     run(
         repo,
@@ -122,7 +122,7 @@ fn has_topic(repo: &TempRepo) -> bool {
 #[test]
 fn redo_refuses_while_a_rebase_is_live() {
     let repo = two_files();
-    a_graft_branch(&repo, NOW);
+    a_mergewright_branch(&repo, NOW);
     run_undo(&repo, NOW + 1, false)
         .unwrap_or_else(|why| panic!("undo: {}", why.explain(&crate::support::Letters)));
     assert!(!has_topic(&repo), "the undo took topic back");
@@ -163,8 +163,8 @@ fn redo_refuses_while_a_rebase_is_live() {
 #[test]
 fn revert_to_refuses_past_a_live_merge() {
     let repo = two_files();
-    a_graft_branch(&repo, NOW);
-    a_graft_commit(&repo, NOW + 1);
+    a_mergewright_branch(&repo, NOW);
+    a_mergewright_commit(&repo, NOW + 1);
     let first = entries(&repo)[0].id.clone();
     assert!(
         repo.try_git(&["merge", "--no-edit", "feature"]).is_err(),

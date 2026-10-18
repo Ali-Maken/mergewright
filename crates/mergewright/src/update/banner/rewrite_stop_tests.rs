@@ -66,7 +66,7 @@ fn read(action: TodoAction, chain: Option<(&str, usize, usize)>, edit: bool) -> 
                     of,
                 )
             }),
-            begun_in_graft: chain.is_some(),
+            begun_in_mergewright: chain.is_some(),
             followers: Vec::new(),
             fork: None,
         },
@@ -381,7 +381,7 @@ fn a_twice_at_an_edit_stop_amends_twice() {
 
 /// App side: after the amend the rewrite's entry is still the live one and
 /// `c` resumes it. (The entry `resume_target` finds on disk is mergewright-ops'
-/// `an_amend_inside_graft_s_rewrite_folds_and_c_still_continues_it`.)
+/// `an_amend_inside_mergewright_s_rewrite_folds_and_c_still_continues_it`.)
 #[test]
 fn c_after_an_amend_at_an_edit_stop_continues_the_rewrite() {
     let (launched, id) = a_amends(&edit_stop(), SUBJECT);

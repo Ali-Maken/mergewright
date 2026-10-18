@@ -18,7 +18,7 @@ use mergewright::session::Clock;
 use mergewright::update::AppState;
 use mergewright_core::event::{KeyCode, MouseButton, MouseKind};
 
-use crate::app_harness::{App, git, git_as_graft};
+use crate::app_harness::{App, git, git_as_mergewright};
 use crate::context_menu::{on_mains_row, settled};
 use crate::preview::{FORK_NOW, forked, frame_at, opened, rows_drawn};
 use mergewright_core::on_disk::CURRENT_DIR;
@@ -196,7 +196,7 @@ fn a_repo_with_a_stash() -> mergewright_fixtures::Scratch {
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), "one\n").expect("the scratch repo is writable");
     git(repo, &["add", "sample.txt"]);
-    git_as_graft(repo, &["commit", "-m", "add sample"]);
+    git_as_mergewright(repo, &["commit", "-m", "add sample"]);
     std::fs::write(repo.join("sample.txt"), "one\ntwo\n").expect("the scratch repo is writable");
     git(repo, &["stash", "push", "-m", "wip"]);
     scratch

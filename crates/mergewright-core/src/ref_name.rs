@@ -87,7 +87,7 @@ impl RefName {
     /// `refs/stash` is deliberately **not** internal: git made it, the user
     /// knows about it, and Mergewright draws stash entries on purpose.
     #[must_use]
-    pub fn is_graft_internal(&self) -> bool {
+    pub fn is_mergewright_internal(&self) -> bool {
         // Every generation, whichever is in force: a repository half-way
         // through a rename must never show any namespace in the graph. This
         // is `Generation::of_ref(..).is_some()` on bytes, so a name that is

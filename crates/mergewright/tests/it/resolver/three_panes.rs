@@ -9,7 +9,7 @@ use super::*;
 /// `feature` — with `eight` after the second, so the result pane has a
 /// plain line to number after an open block.
 fn notes_merge() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let write = |name: &str, text: &str| std::fs::write(repo.join(name), text).expect("writable");
@@ -19,7 +19,7 @@ fn notes_merge() -> Scratch {
     );
     write("gone.txt", "the plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "notes and a plan"]);
+    git_as_mergewright(repo, &["commit", "-m", "notes and a plan"]);
     git(repo, &["checkout", "-q", "-b", "feature"]);
     write(
         "notes.txt",
@@ -27,7 +27,7 @@ fn notes_merge() -> Scratch {
     );
     git(repo, &["rm", "--quiet", "gone.txt"]);
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "shout, drop the plan"]);
+    git_as_mergewright(repo, &["commit", "-m", "shout, drop the plan"]);
     git(repo, &["checkout", "-q", "main"]);
     write(
         "notes.txt",
@@ -35,7 +35,7 @@ fn notes_merge() -> Scratch {
     );
     write("gone.txt", "our plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "annotate, keep the plan"]);
+    git_as_mergewright(repo, &["commit", "-m", "annotate, keep the plan"]);
     git_stops(repo, &["merge", "feature"]);
     scratch
 }

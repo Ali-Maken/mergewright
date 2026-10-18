@@ -12,7 +12,7 @@ use mergewright_fixtures::{Scratch, Shape};
 use mergewright_git::conflict::{BlockState, ConflictFile, Take};
 
 use super::{git_stops, open, opened_on, resolver_on, settled};
-use crate::app_harness::{App, git, git_as_graft};
+use crate::app_harness::{App, git, git_as_mergewright};
 
 mod lifetime;
 mod reread;
@@ -46,7 +46,7 @@ pub(super) fn commit_side(repo: &Path, files: &[(&str, &[usize])], side: &str) {
         std::fs::write(repo.join(name), lines(clashes, side)).expect("writable scratch");
     }
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-q", "-m", side]);
+    git_as_mergewright(repo, &["commit", "-q", "-m", side]);
 }
 
 /// A merge begun in the shell, stopped on `a.txt` and `b.txt` (two clashes

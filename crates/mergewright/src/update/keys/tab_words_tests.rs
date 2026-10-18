@@ -196,7 +196,7 @@ fn a_shell_merge_refusal_counts_its_tabs() {
 /// A merge Mergewright began: `c finish`, never `c continue`, in the pane's
 /// refusal and the editor's.
 #[test]
-fn a_graft_merge_refusal_says_c_finish() {
+fn a_mergewright_merge_refusal_says_c_finish() {
     let before = state(
         Some((InProgress::Merge, Begun::InMergewright)),
         true,

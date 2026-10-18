@@ -272,7 +272,7 @@ fn still_unmerged(repo: &Path) -> String {
 /// small enough that "the last conflicted file" is reached through the
 /// real walk rather than a state built to skip it.
 fn two_file_merge() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let commit_both = |side: &str| {
@@ -280,7 +280,7 @@ fn two_file_merge() -> Scratch {
             std::fs::write(repo.join(name), format!("{side}\n")).expect("writable scratch");
         }
         git(repo, &["add", "a.txt", "b.txt"]);
-        git_as_graft(repo, &["commit", "-m", side]);
+        git_as_mergewright(repo, &["commit", "-m", side]);
     };
     commit_both("base");
     let home = git(repo, &["rev-parse", "--abbrev-ref", "HEAD"]);
@@ -295,16 +295,16 @@ fn two_file_merge() -> Scratch {
 /// A `git stash pop` stopped on a conflict in `sample.txt`: unmerged paths
 /// and no operation, so no banner (`KNOWN_GAPS.md` row 229).
 fn stash_pop_conflict() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), "base\n").expect("writable scratch");
     git(repo, &["add", "sample.txt"]);
-    git_as_graft(repo, &["commit", "-m", "base"]);
+    git_as_mergewright(repo, &["commit", "-m", "base"]);
     std::fs::write(repo.join("sample.txt"), "stashed\n").expect("writable scratch");
-    git_as_graft(repo, &["stash", "push"]);
+    git_as_mergewright(repo, &["stash", "push"]);
     std::fs::write(repo.join("sample.txt"), "committed\n").expect("writable scratch");
-    git_as_graft(repo, &["commit", "-am", "committed"]);
+    git_as_mergewright(repo, &["commit", "-am", "committed"]);
     git_stops(repo, &["stash", "pop"]);
     scratch
 }
@@ -312,16 +312,16 @@ fn stash_pop_conflict() -> Scratch {
 /// A `git stash pop` stopped on a modify/delete: the stash deleted
 /// `sample.txt`, the branch then changed it — `deleted by them`, no banner.
 fn stash_pop_delete_conflict() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     std::fs::write(repo.join("sample.txt"), "base\n").expect("writable scratch");
     git(repo, &["add", "sample.txt"]);
-    git_as_graft(repo, &["commit", "-m", "base"]);
+    git_as_mergewright(repo, &["commit", "-m", "base"]);
     git(repo, &["rm", "-q", "sample.txt"]);
-    git_as_graft(repo, &["stash", "push"]);
+    git_as_mergewright(repo, &["stash", "push"]);
     std::fs::write(repo.join("sample.txt"), "committed\n").expect("writable scratch");
-    git_as_graft(repo, &["commit", "-am", "committed"]);
+    git_as_mergewright(repo, &["commit", "-am", "committed"]);
     git_stops(repo, &["stash", "pop"]);
     scratch
 }

@@ -40,7 +40,7 @@ fn stopped_with(columns: u16, rows: u16, pending: u8, tour: bool) -> AppState {
                 })
                 .collect(),
             branch: None,
-            begun_in_graft: false,
+            begun_in_mergewright: false,
             followers: Vec::new(),
             fork: None,
         },

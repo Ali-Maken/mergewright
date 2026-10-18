@@ -10,7 +10,7 @@ use mergewright::update::{AppState, Command, Status};
 use mergewright_core::event::{KeyCode, KeyPress};
 use mergewright_fixtures::{Scratch, Shape};
 
-use super::super::file_list::rebased_onto_main_by_graft;
+use super::super::file_list::rebased_onto_main_by_mergewright;
 use super::super::{journal_entries, on_the_banner, open, opened_on, resolver_on, settled};
 use super::{TWO, bytes, clashing_merge, commit_side, cursor, doc, notice, pressed};
 use crate::app_harness::{App, git, press_for_commands};
@@ -112,7 +112,7 @@ fn a_rebase_stop_takes_and_undoes_and_its_next_stop_starts_clean() {
     let scratch = three_step_feature();
     let repo = scratch.path();
     let (app, state) = opened_on(&scratch);
-    let state = rebased_onto_main_by_graft(&app, state, "a.txt");
+    let state = rebased_onto_main_by_mergewright(&app, state, "a.txt");
     let state = landed_on(&app, state, "a.txt");
     let git_wrote = bytes(repo, "a.txt");
 

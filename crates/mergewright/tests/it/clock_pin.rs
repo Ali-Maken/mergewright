@@ -88,7 +88,7 @@ fn the_old_now_name_is_not_read() {
 /// Not whole seconds: exit 2, the words on stderr, and the terminal never
 /// taken (no alternate screen).
 #[test]
-fn a_bad_graft_now_refuses_to_launch() {
+fn a_bad_mergewright_now_refuses_to_launch() {
     let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
     let isolated = Isolated::new();
     let pty = launch(&isolated, scratch.path(), "1.5");

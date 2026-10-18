@@ -156,7 +156,7 @@ pub(super) fn after_push_chosen(
 }
 
 /// J closes, when it is shown. Guarded: `journal::close` also cancels J's
-/// stage reads, and with J hidden under a preview (`enter_graft`'s time
+/// stage reads, and with J hidden under a preview (`enter_mergewright`'s time
 /// machine) those belong to the preview's way back.
 fn close_journal(state: &mut AppState, commands: &mut Vec<Command>) {
     if state.journal.shown {

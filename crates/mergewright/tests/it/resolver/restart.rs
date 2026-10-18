@@ -223,7 +223,7 @@ fn each_working_tree_step_is_its_own_entry_in_a_shell_begun_merge() {
 /// modified) and `gone.txt` (deleted by them): `feature` rewrote the one and
 /// deleted the other, `main` rewrote both.
 pub(crate) fn app_merge_with_a_whole_file_conflict() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let write = |name: &str, body: &str| {
@@ -232,17 +232,17 @@ pub(crate) fn app_merge_with_a_whole_file_conflict() -> Scratch {
     write("shared.rs", "fn main() {}\n");
     write("gone.txt", "the plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "the shared files"]);
+    git_as_mergewright(repo, &["commit", "-m", "the shared files"]);
     git(repo, &["switch", "--quiet", "-c", "feature"]);
     write("shared.rs", "fn main() { theirs() }\n");
     git(repo, &["rm", "--quiet", "gone.txt"]);
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "the feature's take"]);
+    git_as_mergewright(repo, &["commit", "-m", "the feature's take"]);
     git(repo, &["switch", "--quiet", "main"]);
     write("shared.rs", "fn main() { ours() }\n");
     write("gone.txt", "our plan\n");
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "main's take"]);
+    git_as_mergewright(repo, &["commit", "-m", "main's take"]);
     scratch
 }
 

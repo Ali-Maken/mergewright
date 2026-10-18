@@ -810,7 +810,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicates_skip_graft_backup_refs() {
+    fn duplicates_skip_mergewright_backup_refs() {
         let (scratch, a) = scratch_with_a();
         move_ref(
             &scratch,

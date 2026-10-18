@@ -942,7 +942,7 @@ fn relaunch_into_a_live_conflict() {
 /// `u` and `U` refuse in words, on the banner and off it, and nothing
 /// is sent. `a` is its way back.
 #[test]
-fn u_still_refuses_after_relaunch_into_a_merge_begun_in_graft() {
+fn u_still_refuses_after_relaunch_into_a_merge_begun_in_mergewright() {
     let scratch = about_to_conflict();
     let repo = scratch.path();
     let (app, state) = App::open(repo);

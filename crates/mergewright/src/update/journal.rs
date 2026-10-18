@@ -203,7 +203,7 @@ impl JournalState {
     /// cursor's `●` row, or the nearest `●` above it. What the browser's
     /// drawing of the `●` rows alone selects (m3/06; 24-b draws the rest).
     #[must_use]
-    pub fn selected_graft_row(&self) -> usize {
+    pub fn selected_mergewright_row(&self) -> usize {
         let Some(list) = &self.list else {
             return 0;
         };

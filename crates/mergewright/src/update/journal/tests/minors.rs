@@ -53,7 +53,7 @@ fn no_b_hint_on_a_step_that_names_no_commit() {
 /// Minor 3: a `●` entry can move several refs or none, so `b` there says
 /// where `b` works instead of "this step names no commit".
 #[test]
-fn b_on_a_graft_row_says_where_b_works() {
+fn b_on_a_mergewright_row_says_where_b_works() {
     let mut state = opened();
     press(&mut state, KeyCode::Char('b'));
     assert!(state.name_prompt.is_none());
@@ -73,7 +73,7 @@ fn with_a_fetch_on_top() -> AppState {
 /// Minor 4: nothing to go back to on a fetch row — "before this" there is
 /// "before" the next newer `●` row, which keeps its `⏎`.
 #[test]
-fn enter_on_a_fetch_row_says_graft_doesnt_undo_it() {
+fn enter_on_a_fetch_row_says_mergewright_doesnt_undo_it() {
     let mut state = with_a_fetch_on_top();
     let (claimed, commands) = press(&mut state, KeyCode::Enter);
     assert!(claimed);
@@ -101,7 +101,7 @@ fn no_enter_hint_on_a_fetch_row_in_the_bar() {
 
 /// Minor 4's other half: a `●` row Mergewright does undo keeps the time machine.
 #[test]
-fn enter_on_a_graft_row_is_the_revert_as_before() {
+fn enter_on_a_mergewright_row_is_the_revert_as_before() {
     let mut state = with_a_fetch_on_top();
     // [fetch, commit ← u, stage]: the stage is older than `u`'s.
     put_cursor(&mut state, 2);

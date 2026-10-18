@@ -181,7 +181,7 @@ status: works
   any config load, terminal probe, or logging.
 - **Proven by:** `mergewright::tests::it::askpass_mode::binary_answers_over_socket`
   `mergewright::tests::it::askpass_mode::binary_exits_1_with_nothing_on_stdout_when_cancelled`
-  `mergewright::tests::it::askpass_mode::binary_exits_2_naming_the_error_when_graft_is_gone`
+  `mergewright::tests::it::askpass_mode::binary_exits_2_naming_the_error_when_mergewright_is_gone`
   `mergewright::cli::tests::askpass_mode_needs_the_socket_and_exactly_one_argument`
 - **Decided in:** `docs/design-notes/m4-remotes.md` Hard choice 2; `docs/design/01-view-mockups.md` §1.14
 - **Status:** works

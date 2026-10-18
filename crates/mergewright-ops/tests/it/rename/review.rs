@@ -7,6 +7,7 @@ use std::path::Path;
 
 use mergewright_core::journal::OperationKind;
 use mergewright_core::on_disk::Generation;
+use mergewright_ops::journal::parse as parse_journal;
 use mergewright_ops::rename::{KEPT_ASIDE_DIR, MigrateError, SettleOutcome, settle_names};
 
 use super::{as_new, marker, old_repo, refs_under, settle, shim, stage_edit};
@@ -88,11 +89,7 @@ fn a_failed_copy_retries_cleanly() {
     let before = repo.read(".git/graft/undo-journal.jsonl");
     stage_edit(&repo, "after the failure\n", NOW + 500);
     let grown = repo.read(".git/graft/undo-journal.jsonl");
-    let parse = |bytes: &[u8]| {
-        mergewright_ops::journal::parse(bytes)
-            .expect("parses")
-            .entries
-    };
+    let parse = |bytes: &[u8]| parse_journal(bytes).expect("parses").entries;
     assert_eq!(parse(&grown).len(), parse(&before).len() + 1);
     std::fs::remove_dir_all(repo.path().join(".git/graft/rewrite")).expect("the plan goes");
     let old = refs_under(&repo, "refs/graft/");

@@ -238,7 +238,7 @@ pub(in crate::update) fn close(next: &mut AppState, commands: &mut Vec<Command>)
 
 /// `Enter`, by the row under the cursor (keymap §2.11, 2b):
 /// - `●`: `u` on the entry `u` would take back, `U` on the one `U` would
-///   put back, and on anything older the time machine ([`enter_graft`]).
+///   put back, and on anything older the time machine ([`enter_mergewright`]).
 /// - `$` switch: switch back to the branch it left (the M7 switch rule).
 /// - any other `$`, `✗` or lost edit: ask what it puts back
 ///   (`recover_for`), answered in [`recover_answered`].
@@ -252,7 +252,7 @@ pub(super) fn enter(
     };
     let index = next.journal.selected();
     match list.rows.get(index) {
-        Some(ListRow::Mergewright(id)) => enter_graft(next, commands, id.clone(), next_id),
+        Some(ListRow::Mergewright(id)) => enter_mergewright(next, commands, id.clone(), next_id),
         Some(ListRow::Outside(step)) if switched_from(&step.record.subject).is_some() => {
             let Some(target) = switched_from(&step.record.subject) else {
                 return;
@@ -295,7 +295,7 @@ pub(super) fn enter(
 /// **hidden, not closed** — the cursor is left where it is, so `Esc` on the
 /// preview puts the browser back on the same row
 /// (`preview::close_preview`'s `return_to_journal`).
-pub(super) fn enter_graft(
+pub(super) fn enter_mergewright(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     id: EntryId,

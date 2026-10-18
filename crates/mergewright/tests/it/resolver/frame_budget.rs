@@ -41,7 +41,7 @@ const TAKEN: usize = 12;
 /// one conflicting line in every [`EVERY`] — 120 one-line blocks, so every
 /// screen of the three panes is mostly blocks.
 fn long_merge() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let lines = |side: &str| -> String {
@@ -58,15 +58,15 @@ fn long_merge() -> Scratch {
     let write = |text: &str| std::fs::write(repo.join("long.txt"), text).expect("writable");
     write(&lines("base"));
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "a long file"]);
+    git_as_mergewright(repo, &["commit", "-m", "a long file"]);
     git(repo, &["checkout", "-q", "-b", "feature"]);
     write(&lines("feature"));
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "feature's lines"]);
+    git_as_mergewright(repo, &["commit", "-m", "feature's lines"]);
     git(repo, &["checkout", "-q", "main"]);
     write(&lines("main"));
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", "main's lines"]);
+    git_as_mergewright(repo, &["commit", "-m", "main's lines"]);
     git_stops(repo, &["merge", "feature"]);
     scratch
 }

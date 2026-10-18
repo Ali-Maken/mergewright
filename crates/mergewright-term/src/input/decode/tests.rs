@@ -175,7 +175,7 @@ fn every_probe_reply_shape_is_a_reply_and_keys_between_them_survive_in_order() {
 }
 
 #[test]
-fn function_keys_in_every_encoding_graft_binds() {
+fn function_keys_in_every_encoding_mergewright_binds() {
     assert_eq!(
         decode_all(&[b"\x1bOQ\x1bOR\x1b[13~\x1b[1;2R"]),
         vec![

@@ -225,7 +225,7 @@ fn mergewright_reset(repo: &TempRepo) -> JournalEntry {
 }
 
 #[test]
-fn a_graft_reset_is_one_graft_row() {
+fn a_mergewright_reset_is_one_mergewright_row() {
     let repo = a_to_d();
     let reset = mergewright_reset(&repo);
 
@@ -301,7 +301,7 @@ fn a_stash_held_commit_is_not_lost() {
 /// Mergewright's own backup refs (under the prefix in force, `Generation::ref_prefix`) keep the reset's before-state,
 /// but hold nothing for this list: D is lost, under the Mergewright row.
 #[test]
-fn a_graft_backup_ref_does_not_hold() {
+fn a_mergewright_backup_ref_does_not_hold() {
     let repo = a_to_d();
     let reset = mergewright_reset(&repo);
     let mergewright_refs = repo.git(&[
@@ -421,7 +421,7 @@ fn a_detached_checkout_of_a_tag_is_not_a_branch() {
 /// A Mergewright switch writes `checkout: moving from main to spike` and records
 /// `HEAD`'s branches, no commit: it is still one `●` row.
 #[test]
-fn a_graft_switch_is_one_graft_row() {
+fn a_mergewright_switch_is_one_mergewright_row() {
     let repo = a_to_d();
     git_at(&repo, SHELL + 10, &["branch", "spike", "HEAD~1"]);
     let op = Operation::Checkout(mergewright_ops::operation::CheckoutParams {

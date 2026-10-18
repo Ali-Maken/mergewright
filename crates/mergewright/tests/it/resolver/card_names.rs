@@ -7,19 +7,19 @@ use super::*;
 /// blocks (lines 2 and 7), four unchanged lines apart so git keeps them
 /// apart.
 fn notes_merge() -> Scratch {
-    use crate::app_harness::{git, git_as_graft};
+    use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let write = |text: &str| std::fs::write(repo.join("notes.txt"), text).expect("writable");
     write("one\ntwo\nthree\nfour\nfive\nsix\nseven\n");
     git(repo, &["add", "notes.txt"]);
-    git_as_graft(repo, &["commit", "-m", "notes"]);
+    git_as_mergewright(repo, &["commit", "-m", "notes"]);
     git(repo, &["checkout", "-q", "-b", "feature"]);
     write("one\nTWO from feature\nthree\nfour\nfive\nsix\nSEVEN from feature\n");
-    git_as_graft(repo, &["commit", "-am", "shout"]);
+    git_as_mergewright(repo, &["commit", "-am", "shout"]);
     git(repo, &["checkout", "-q", "main"]);
     write("one\ntwo from main\nthree\nfour\nfive\nsix\nseven from main\n");
-    git_as_graft(repo, &["commit", "-am", "annotate"]);
+    git_as_mergewright(repo, &["commit", "-am", "annotate"]);
     git_stops(repo, &["merge", "feature"]);
     scratch
 }

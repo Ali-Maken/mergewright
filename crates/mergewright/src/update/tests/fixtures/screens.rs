@@ -44,7 +44,7 @@ pub(crate) fn operation_live_as(
                     current: None,
                     pending: Vec::new(),
                     branch: None,
-                    begun_in_graft: true,
+                    begun_in_mergewright: true,
                     followers: Vec::new(),
                     fork: None,
                 },

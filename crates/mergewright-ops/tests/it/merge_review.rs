@@ -181,7 +181,7 @@ fn a_file_with_two_open_clashes_is_refused_with_its_clash_count() {
 }
 
 #[test]
-fn a_graft_merge_stages_its_solved_files_and_commits_in_one_entry() {
+fn a_mergewright_merge_stages_its_solved_files_and_commits_in_one_entry() {
     let repo = two_file_conflict();
     let main = id(&repo, "main");
     mergewright_merge_stops(&repo);

@@ -334,7 +334,7 @@ fn a_stash_newer_than_head_does_not_take_the_launch_landing() {
     let mut body = std::fs::read(&path).expect("reads");
     body.extend_from_slice(b"\nparked\n");
     std::fs::write(&path, body).expect("writes");
-    crate::app_harness::git_as_graft(&repo, &["stash", "push", "-m", "parked work"]);
+    crate::app_harness::git_as_mergewright(&repo, &["stash", "push", "-m", "parked work"]);
     let isolated = Isolated::new();
     let pty = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
     pty.wait_for("the stash row", |s| s.has("parked work"));

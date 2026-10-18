@@ -447,7 +447,7 @@ fn index_of_lost(state: &AppState) -> usize {
 }
 
 #[test]
-fn j_opens_with_graft_rows_at_once() {
+fn j_opens_with_mergewright_rows_at_once() {
     let mut state = state_with_two();
     let commands = journal_enter(&mut state, &mut ids());
     let list = state.journal.list.as_ref().expect("stage 1 is on hand");
@@ -596,7 +596,7 @@ fn opened_with(extra: JournalEntry) -> AppState {
 }
 
 #[test]
-fn no_preselect_when_a_graft_row_is_newer() {
+fn no_preselect_when_a_mergewright_row_is_newer() {
     let mut state = opened_with(newer_entry(OperationKind::Commit));
     outside_lands(&mut state, shell_reset());
     lost_lands(&mut state, found(&[4]));
@@ -631,7 +631,7 @@ fn row_with_fate(event: usize, tip: u8, fate: Fate) -> ListRow {
 }
 
 #[test]
-fn a_lost_row_under_a_graft_row_is_never_preselected() {
+fn a_lost_row_under_a_mergewright_row_is_never_preselected() {
     let list = JournalList {
         rows: vec![ListRow::Mergewright(newest_entry()), lost_row(0, 4)],
         scan: LostScan::Done,
