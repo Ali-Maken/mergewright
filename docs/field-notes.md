@@ -120,3 +120,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-10-18 · licence: MIT + Apache-2.0 dual (the Rust norm).
 - 2026-10-18 · publish on GitHub with a clean start: public repo = one fresh commit of the renamed tree; private repo keeps history.
 - 2026-10-18 · `↑N to push` on every local branch with unpushed commits, not only the checked-out one (user; stacked branches).
+- 2026-10-18 · a branch never pushed reads `not pushed yet` in the graph (no number) (user).
