@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded (rule 5).
+# Fixture: capture_the_merge_preview in
+# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# Judge by eye: `m` on sara/fix-toc from wallet-release, which has no commits of its own: `Comes in 3 commits … (Sara, Omar)`, `Changes 3 files`, `Git combines nothing: no merge commit is made`, `You decide nothing: no file clashes`; `After y wallet-release moves up to sara/fix-toc.`; footer `y merge  esc cancel  ⏎ see the 3 commits`.
+=== 120x40 ===
+ ◆ api  ~/code/api · wallet-release                                                                           7 commits
+
+▸   ◆    [sara/fix-toc] [◆ wallet-release] Check every link                                             SA 55m  8805e0c
+    ●    Add notes                                                                                      OK 56m  f20e4e4
+    ●    Add a table of contents                                                                        SA 57m  c1b9826
+    ●    Add the report                                                                                 GF 59m  1ac2b32
+  ●─╯    [main] Correct the note                                                                        GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Merge sara/fix-toc into wallet-release ──────────────────────────────────────────────────────────────────────────────╮
+│ Nothing has changed yet.                                                                                             │
+│                                                                                                                      │
+│ Comes in      3 commits from sara/fix-toc (Sara, Omar)                                                               │
+│ Changes       3 files                                                                                                │
+│ Git combines  nothing: no merge commit is made                                                                       │
+│ You decide    nothing: no file clashes                                                                               │
+│                                                                                                                      │
+│ After y wallet-release moves up to sara/fix-toc.                                                                     │
+╰ y merge  esc cancel  ⏎ see the 3 commits ────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+

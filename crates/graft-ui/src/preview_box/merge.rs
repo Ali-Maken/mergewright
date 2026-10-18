@@ -55,6 +55,9 @@ pub struct MergeParts {
     /// set-aside row and the put-back's forecast (ADR-0045 §4). Drawn
     /// under the counts; empty when nothing of his is touched.
     pub edits: Vec<SanitizedText>,
+    /// The merge only moves `into` up to `from`: no merge commit, nothing
+    /// combined. Its words win over `not_checkable` (it cannot clash).
+    pub fast_forward: bool,
 }
 
 /// How a box line is painted.
@@ -154,6 +157,13 @@ impl MergeParts {
             lines.push((line.as_str().to_owned(), Tone::Text));
             return lines;
         }
+        if self.fast_forward {
+            lines.extend(self.fast_forward_lines());
+            lines.extend(edits);
+            lines.push((String::new(), Tone::Text));
+            lines.push((self.after_words(keys), Tone::Text));
+            return lines;
+        }
         if let Some(line) = &self.not_checkable {
             lines.push((line.as_str().to_owned(), Tone::Text));
             lines.extend(edits);
@@ -189,9 +199,38 @@ impl MergeParts {
         lines
     }
 
+    /// A fast-forward's three counts: what changes (when it was read —
+    /// with no check there is no count to give), and that git combines
+    /// nothing and he decides nothing.
+    fn fast_forward_lines(&self) -> Vec<(String, Tone)> {
+        let mut lines = Vec::new();
+        if self.not_checkable.is_none() {
+            lines.push((
+                labelled(
+                    "Changes",
+                    &count(self.changed, self.changed_capped, "file", "files"),
+                ),
+                Tone::Text,
+            ));
+        }
+        lines.push((
+            labelled("Git combines", "nothing: no merge commit is made"),
+            Tone::Text,
+        ));
+        lines.push((
+            labelled("You decide", "nothing: no file clashes"),
+            Tone::Text,
+        ));
+        lines
+    }
+
     /// The last line: where `y` lands him. `y` spelled through `confirm.yes`.
     fn after_words(&self, keys: &Keymap) -> String {
-        let after = if self.decide.is_empty() {
+        let moves_up;
+        let after = if self.fast_forward {
+            moves_up = format!("{} moves up to {}.", self.into.as_str(), self.from.as_str());
+            moves_up.as_str()
+        } else if self.decide.is_empty() {
             "the merge is committed."
         } else {
             "you go straight to the first clash."

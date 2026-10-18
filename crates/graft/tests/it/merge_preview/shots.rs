@@ -7,10 +7,10 @@ use graft::session::Clock;
 use graft::update::AppState;
 use graft_core::event::KeyCode;
 
-use super::{NOW, fix_toc, merge_preview, open, with_a_stray};
+use super::{NOW, fast_forward, fix_toc, merge_preview, open, with_a_stray};
 
 /// File name (width appended), what right looks like, width, height.
-const SHOTS: [(&str, &str, u16, u16); 5] = [
+const SHOTS: [(&str, &str, u16, u16); 6] = [
     (
         "merge-preview",
         "`m` on sara/fix-toc from wallet-release: title `Merge sara/fix-toc into wallet-release`; `Nothing has changed yet.`; `Comes in 3 commits … (Sara, Omar)`, `Changes 3 files`, `Git combines 2 files on its own`, `You decide 1 file clashes: report.md (2 places)`; `After y you go straight to the first clash.`; footer `y merge  esc cancel  ⏎ see the 3 commits`; no buttons; the ghost merge row above the box.",
@@ -41,6 +41,12 @@ const SHOTS: [(&str, &str, u16, u16); 5] = [
         120,
         40,
     ),
+    (
+        "merge-fast-forward",
+        "`m` on sara/fix-toc from wallet-release, which has no commits of its own: `Comes in 3 commits … (Sara, Omar)`, `Changes 3 files`, `Git combines nothing: no merge commit is made`, `You decide nothing: no file clashes`; `After y wallet-release moves up to sara/fix-toc.`; footer `y merge  esc cancel  ⏎ see the 3 commits`.",
+        120,
+        40,
+    ),
 ];
 
 #[test]
@@ -58,7 +64,11 @@ fn capture_the_merge_preview() {
     let (app, state) = open(stray.path());
     let unrelated = merge_preview(&app, state, "stray");
     app.close();
-    let states: [&AppState; 5] = [&boxed, &listed, &boxed, &clean_box, &unrelated];
+    let behind = fast_forward::behind();
+    let (app, state) = open(behind.path());
+    let moves_up = merge_preview(&app, state, "sara/fix-toc");
+    app.close();
+    let states: [&AppState; 6] = [&boxed, &listed, &boxed, &clean_box, &unrelated, &moves_up];
 
     let mut captures = graft_fixtures::Captures::new();
     for ((name, judge, columns, rows), state) in SHOTS.into_iter().zip(states) {
