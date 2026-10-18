@@ -482,7 +482,7 @@ pub(super) fn badge_at(state: &AppState, column: u16, row: u16) -> Option<super:
         .as_ref()?
         .row_at(history_row)
         .map(|history_row| history_row.commit.id)?;
-    // The base row draws `x base` first (`view::entries::row_entry`, m7-14):
+    // The base row draws `x base` first (`view::entries::cells::row_entry`, m7-14):
     // it is no ref, and every ref after it sits one place further along.
     // Same test the drawing makes (`view::entries`: `base.row == index`).
     let index = if state

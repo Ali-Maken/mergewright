@@ -1,6 +1,6 @@
 # 06s — split the four `update/` files 06 grew past 400 (review ease-pass-06 M6, update half)
 
-Status: ready (planner spec-only pass 2026-10-18, second: fitted to scout `.scratch/ease-pass/scouts/06s-split-update-files.md` at 2352d87f; its 7 contradictions ruled in Decided). Was: draft.
+Status: done (builder 2026-10-18). Was: ready (planner spec-only pass 2026-10-18, second: fitted to scout `.scratch/ease-pass/scouts/06s-split-update-files.md` at 2352d87f; its 7 contradictions ruled in Decided). Was: draft.
 Blocked by: none open — 06h merged (2352d87f; `graph_mode` field at `state.rs:431`). **Runs alone on these four files.** Conductor checks before starting:
 - **11b** and **12b** may append to `update/state.rs` (11b:10, 12b:14); the scout could not confirm. If either one's merged diff touches `update/state.rs`, this ticket starts after that merge.
 - **06i** cites `update/state.rs:1187` (`Status`) and `:1281` (`Status::done`). Don't run beside 06i; either order works, and the later ticket maps its lines through the other's NOTES.
@@ -53,15 +53,41 @@ Out: any behaviour, name, field or signature change; splitting `AppState` (C1); 
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] `keys.rs`, `selection.rs`, `preview.rs` under 400 and their rows gone from `over_400.txt`. `state.rs` holds only `AppState`, imports and re-exports, with its row lowered to the new count. No row added or raised. — it `file_size` ratchet test; `wc -l` and `git diff` in NOTES
-- [ ] Nextest count equal before and after; no test body edited (only `use` lines). — both counts and `git diff --stat -- '*tests*'` in NOTES
-- [ ] No visibility widened beyond `pub(super)` on moved items. — `git diff | grep '^+.*pub'` reviewed line by line in NOTES
-- [ ] `update/mod.rs:84–87` re-export line unchanged. — `git diff crates/mergewright/src/update/mod.rs` in NOTES
-- [ ] MAP.md has each new module. — it `map_coverage`
-- [ ] NOTES: the seam per file and why; the old-line → new-home table for 06i, 07, 07a, 07b, 09, 12b, 14; the "AppState by area" candidate restated in one line for the conductor.
+- [x] `keys.rs` 283, `selection.rs` 258, `preview.rs` 242, rows removed; `state.rs` 531 (AppState, imports, mods, re-exports), row lowered 1318 → 531; none added or raised. — it `file_size` (passes); `wc -l` at commit.
+- [x] Nextest count equal: `cargo nextest list --workspace | wc -l` = 6955 at c34ad595 and after. Test-file diff (`git diff c34ad595 --stat -- '*tests*'`): `selection/tests.rs` moved whole (de-indented 4), `preview/tests.rs` one `use` line (`Commit` added — `preview.rs` no longer imports it), two doc-comment cites (`keymap_edge/palette.rs:347`, `palette_live/dead.rs:18`). No test body edited.
+- [x] No visibility widened: each `+.*pub` line of `git diff c34ad595` read — moved items keep their visibility (`commit_graph_actionable` stays `pub(in crate::update)`, `IndexRead` re-exported `pub(crate)`); new `pub(super)` only on fns the parent still calls: `keys/modal.rs` (7), `panes::{pane_and_overlay_key, editor_key}`, `remote_key`, `move_cursor`, `apply_view_change`, `PreviewState::{planned, planning, acts}`. `panes::{journal_key, stash_key}` stay private.
+- [x] `update/mod.rs` unchanged — `git diff c34ad595 -- crates/mergewright/src/update/mod.rs` empty.
+- [x] MAP.md has each new module — it `map_coverage` (passes).
+- [x] NOTES below.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~60k (reads ~2900 lines; three of the four are plain moves). Split point if it runs over: `state.rs` alone, then the other three.
+
+## NOTES (builder, 2026-10-18)
+No compaction. Scout used; re-measured at c34ad595 (after 11b, 12b): state.rs still 1318, scout anchors hold.
+
+Seams:
+- `state.rs`: struct stays (C1). `state/screen.rs` (Screen, GraphOverlay, Size, CHROME_ROWS), `state/queries.rs` (first `impl AppState`: tier, rows, Uncommitted row, focus, overlay), `state/key_owner.rs` (second impl: should_quit, seed_keys, text field, modal key/bottom-row ownership, shown_status), `state/harness.rs` (Harness, Banner — what a harness pins), `state/quit.rs`, `state/stop.rs` (Stop, ClashState), `state/reads.rs` (RefsRead, IndexRead, HeadLanding), `state/stash_marks.rs`, `state/status.rs`. All re-exported from `state.rs`.
+- `keys.rs` keeps `before_any_key`, `key_event`, `graph_key`, `view_key`, `write_key` (the dispatch body). New `keys/modal.rs` (box/rewrite/finish/resolver/place/banner claims, `undo_key_anywhere`), `keys/panes.rs`, `keys/remote.rs`, `keys/movement.rs`; `apply_view_change` → `keys/view_change.rs`.
+- `selection.rs`: tests → `selection/tests.rs` (C6).
+- `preview.rs`: five state types + `outcome_verb` (used only by `outcome_label`) → `preview/state.rs`.
+
+Old line → new home:
+- 06i: `state.rs:1187` Status → `state/status.rs:9`; `:1281` done → `state/status.rs:103`; done_with_keys → `:112`.
+- 07: `keys/bound.rs:78`, `keys/actions.rs:45` — files untouched.
+- 07a path B, 09: append to `AppState` in `state.rs` (struct ends :531; `graph_mode` :440).
+- 07b: `update/geometry.rs:311` not moved.
+- 12b, 14: `state.rs` impl lines → `state/queries.rs` / `state/key_owner.rs` by fn name; keys.rs family fns → files above.
+
+Stale cite left: `tests/keymap_edge/sweep_swallowed.rs:26` string `"keys.rs:124-129 place_claim"` is test data (no test body edits) — now `keys/modal.rs`. `banner/focus_keys.rs:210`, `stash.rs:391` cite `keys.rs` by file and still hold. `finish/choices.rs:331`, `journal_put_back.rs:120`: grep found no `keys.rs` cite.
+
+Pre-existing failure, not this ticket: `finish::captures::summary_captures` fails at c34ad595 too (checked out and run): `docs/shots/ease-pass/merge-look-clashed-120.txt does not match what the code draws` — likely 12b's capture.
+
+Conductor add-on: `update/geometry.rs:485` comment now cites `view::entries::cells::row_entry` (checked on 06t's branch: `view/entries/cells.rs:20`).
+
+Gates: fmt, clippy clean; nextest full run 6955 run, 6953 passed, 2 failed — `summary_captures` (pre-existing, above; main 2b0b777e fixes it) and `map_coverage` (my MAP bullets; fixed, rerun 18/18); `cargo test --doc` no failures.
+
+For the conductor: "AppState by area" — split the 492-line struct into sub-structs by area (Opus+, after 07/07b/09); state.rs cannot go under 400 without it.

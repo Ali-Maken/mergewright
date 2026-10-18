@@ -277,11 +277,11 @@ Keeping a shown cursor shown when the graph pane loses history rows without a ke
 The undo journal screen's state (`J`): cursor, marks, and the read that keeps it current.
 ## update::keys
 The graph's own keys: movement, view changes and toggles other than search and the commit-graph offer. `view_change::open_merge` is `space`'s open half (a reveal uses it too); `view_change::switch_graph_mode` switches the graph mode.
-- `keys/modal.rs` — the boxes, editors, resolver, place and banner that claim a key before the panes; `undo_key_anywhere`.
-- `keys/panes.rs` — the detail pane and the overlays (J, stash, Map, strip) ahead of the graph; the commit editor's keys.
-- `keys/remote.rs` — `f`/`p`/`P` handed to `update::remote`.
-- `keys/movement.rs` — `move_cursor`: a graph motion through `selection` then `History`.
-- New shortcut: one arm in `key_event`, one handler in its family's file under `keys/` (toggles in `actions.rs`), one claim row in `bound.rs` (test-only).
+- File keys/modal.rs — the boxes, editors, resolver, place and banner that claim a key before the panes; `undo_key_anywhere`.
+- File keys/panes.rs — the detail pane and the overlays (J, stash, Map, strip) ahead of the graph; the commit editor's keys.
+- File keys/remote.rs — `f`/`p`/`P` handed to `update::remote`.
+- File keys/movement.rs — `move_cursor`: a graph motion through `selection` then `History`.
+- Adding a shortcut: one arm in `key_event`, one handler in its family's file under `keys/` (toggles in `actions.rs`), one claim row in `bound.rs` (test-only).
 ## update::map
 The Map view's state and keys (`M`): built fresh on open, thrown away on close.
 ## update::mouse
@@ -302,7 +302,7 @@ Places: the blame and history screens opened over the graph, and the `^` trail `
 The harness's key prelude: keys a gallery stop presses before its first frame, each once the state is settled.
 ## update::preview
 Ghost Preview: every history-changing key opens this first; the answer is drawn as ghost rows, `y` runs it. `PreviewState::merges`: the slice's rows the app calls merges, read off their source rows.
-- `preview/state.rs` — `PreviewSubject`, `PreviewRequest`, `PreviewFailure`, `Planned`, `PreviewState`; re-exported from `preview`.
+- File preview/state.rs — `PreviewSubject`, `PreviewRequest`, `PreviewFailure`, `Planned`, `PreviewState`; re-exported from `preview`.
 - `Showing` (enum) — `PreviewState::showing`: a merge preview's box or, after `⏎`, its incoming list. Every merge preview gets the merge box by op kind; `y` withheld over unrelated histories (`merge_view.rs`).
 - `BoxRect` (struct) — moved to `preview/rect.rs`, re-exported unchanged.
 ## update::quit
@@ -332,21 +332,21 @@ Tags a graph row carries after its subject until the next write starts, e.g. `�
 `/`: the prompt, the running search and stepping between hits; asking the walk how many hits are in folded merges (when the hits finish, after a reveal, once more when the walk completes) and taking its answer.
 ## update::selection
 The uncommitted-changes row's one-bit selection, kept beside `History`'s cursor.
-- `selection/tests.rs` — its tests, moved out whole.
+- File selection/tests.rs — its tests, moved out whole.
 ## update::stash
 The stash overlay's state (`S`) and its keys: save, apply, pop, drop.
 ## update::state
 Everything Mergewright knows as one value (`AppState`), plus the small types it is built from.
-- `state.rs` holds `AppState` alone; each type below is re-exported from it unchanged.
-- `state/screen.rs` — `Screen`, `GraphOverlay`, `Size`, `CHROME_ROWS`.
-- `state/queries.rs` — `impl AppState`: tier, graph rows, Uncommitted row, focus, overlay.
-- `state/key_owner.rs` — `impl AppState`: quitting, text fields, modal key and bottom-row ownership, `shown_status`.
-- `state/harness.rs` — `Harness`, `Banner`.
-- `state/quit.rs` — `Quit`.
-- `state/stop.rs` — `Stop`, `ClashState`.
-- `state/reads.rs` — `RefsRead`, `IndexRead`, `HeadLanding`.
-- `state/stash_marks.rs` — `StashOnlyMarks`.
-- `state/status.rs` — `Status` and its constructors.
+- File state.rs holds `AppState` alone; each type below is re-exported from it unchanged.
+- File state/screen.rs — `Screen`, `GraphOverlay`, `Size`, `CHROME_ROWS`.
+- File state/queries.rs — `impl AppState`: tier, graph rows, Uncommitted row, focus, overlay.
+- File state/key_owner.rs — `impl AppState`: quitting, text fields, modal key and bottom-row ownership, `shown_status`.
+- File state/harness.rs — `Harness`, `Banner`.
+- File state/quit.rs — `Quit`.
+- File state/stop.rs — `Stop`, `ClashState`.
+- File state/reads.rs — `RefsRead`, `IndexRead`, `HeadLanding`.
+- File state/stash_marks.rs — `StashOnlyMarks`.
+- File state/status.rs — `Status` and its constructors.
 ## update::status_read
 The working-tree status read the app is waiting on after a write, and the line that waits for it.
 ## update::strip
