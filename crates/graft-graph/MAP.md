@@ -14,14 +14,15 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `Ancestry::columns` (fn) — every lit column; the preferred set a fold weighs above ordinary columns.
 
 ## fold
-- `Keep` (struct) — `selected`, `reserved`, `preferred` columns: budget priorities for `Fold::plan`, not vetoes.
+- `Keep` (struct) — `selected`, `reserved`, `preferred` columns: budget priorities among node columns for `Fold::plan`, not vetoes.
 - `Fold` (struct) — which real columns a window draws and which fold behind the rail; a lens, never a re-layout.
-- `Fold::plan` (fn) — `plan(max_lanes, &Keep, rows) -> Fold`; admits columns in priority order up to the budget.
+- `Fold::plan` (fn) — `plan(max_lanes, &Keep, rows) -> Fold`; drops columns with no node in the window (lane 0 stays while open), then admits node columns in priority order up to the budget.
 - `Fold::is_empty` (fn) — nothing folded or dropped: the window draws as laid out.
 - `Fold::folded` / `kept` (fn) — real columns behind the marker; real columns drawn, in drawn order.
 - `Fold::drawn` / `real` (fn) — map a real column to its drawn position and back; `None` when folded or at the marker.
 - `Fold::marker` (fn) — the drawn column the rail takes, if anything folded.
 - `Fold::drawn_columns` / `folded_count` (fn) — columns drawn (marker included); lanes behind the rail.
+- `Fold::open_columns` (fn) — columns open in the window, dropped ones included: the M of `lanes drawn: N of M`.
 - `Fold::view` (fn) — `view(&Row) -> DrawnRow`; the row in drawn columns, edges into folded lanes listed apart.
 - `Toward` (enum) — `Below` / `Above`: which way a folded edge leaves the node.
 - `FoldedEdge` (struct) — `identity`, `toward`: an edge a fold took out of a row, drawn as a stub.

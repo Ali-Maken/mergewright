@@ -132,9 +132,10 @@ fn a_lane_on_the_selected_ancestry_survives_while_the_budget_allows_it() {
     commits.push(commit(1, &[], 0, b"root"));
     let rows = layout(&commits, main_seed(13 + TOPICS));
 
-    // The window is the twelve merges: the topic commits are below it, so
-    // their lanes hold no node here and a fold may take them.
-    let window = &rows[..usize::from(TOPICS)];
+    // The window is the twelve merges and the twelve topic commits: every
+    // topic lane holds a node here, so a fold may take it rather than drop
+    // it (a lane with no node in view is never drawn, ease-pass 06b).
+    let window = &rows[..2 * usize::from(TOPICS)];
     for k in 1..=4 {
         let selected = 13 + k;
         let Some(ancestry) = Ancestry::of(window, oid(selected)) else {

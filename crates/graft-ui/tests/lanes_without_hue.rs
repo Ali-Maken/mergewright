@@ -53,7 +53,7 @@ fn crowded_shapes_at_every_depth_below_truecolor() {
         let laid = lay_out(shape, &dir);
         for (name, depth, no_color) in DEPTHS {
             let theme = themed(ThemeKind::Dark, depth, no_color);
-            let buffer = draw_screen(&laid, &theme);
+            let (buffer, graph_width) = draw_screen(&laid, &theme);
             let mut text = format!(
                 "shape: {shape}{}, {name}, {COLUMNS}x{ROWS}, cursor on row 2\n\n",
                 if shape == widest { " (widest)" } else { "" }
@@ -64,7 +64,6 @@ fn crowded_shapes_at_every_depth_below_truecolor() {
                 text.push('\n');
             }
             text.push_str("\ngraph colour per cell:\n");
-            let graph_width = laid.width().min(COLUMNS);
             let drawn = laid.rows.len().min(usize::from(ROWS - CHROME_ROWS));
             for y in (1..).take(drawn) {
                 // The graph column starts after the two-cell gutter (ADR-0058).
@@ -86,8 +85,7 @@ fn neighbouring_lanes_that_share_a_colour_never_share_a_glyph() {
         let laid = lay_out(shape, dir);
         for (name, depth, no_color) in &DEPTHS[1..] {
             let theme = themed(ThemeKind::Dark, *depth, *no_color);
-            let buffer = draw_screen(&laid, &theme);
-            let graph_width = laid.width().min(COLUMNS);
+            let (buffer, graph_width) = draw_screen(&laid, &theme);
             let drawn = laid.rows.len().min(usize::from(ROWS - CHROME_ROWS));
             for y in (1..).take(drawn) {
                 // Lane cells are the even ones; compare each with the next.
@@ -125,15 +123,17 @@ fn widest_shape() -> Shape {
     widest.1
 }
 
-fn draw_screen(laid: &Laid, theme: &Theme) -> Buffer {
+/// The screen drawn, and its graph column's width.
+fn draw_screen(laid: &Laid, theme: &Theme) -> (Buffer, u16) {
     let lines = laid.lines();
     let view = screen::view(&lines, usize::from(ROWS - CHROME_ROWS), 1);
+    let graph_width = screen::graph_width(&view, theme, COLUMNS, ROWS);
     let mut terminal = Terminal::new(TestBackend::new(COLUMNS, ROWS))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
     terminal
         .draw(|frame| frame.render_widget(GraphScreen::new(&view, theme), frame.area()))
         .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
-    terminal.backend().buffer().clone()
+    (terminal.backend().buffer().clone(), graph_width)
 }
 
 /// One cell's foreground as a single character (see the module docs).

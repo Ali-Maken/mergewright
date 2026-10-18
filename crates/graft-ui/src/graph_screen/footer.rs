@@ -48,12 +48,12 @@ impl GraphScreen<'_> {
         &self,
         body: Rect,
         rows: &[GraphEntry<'_>],
-        applied: Option<&Fold>,
+        fold: &Fold,
         width: usize,
     ) -> (String, Token) {
         // Same columns the body just drew through: the reveal must agree
         // with the body on which subjects the `…` actually landed on.
-        let columns = Columns::compute(body, graph_width(body, rows, applied));
+        let columns = Columns::compute(body, graph_width(body, fold));
         let reveal_subject = self
             .view
             .reveal

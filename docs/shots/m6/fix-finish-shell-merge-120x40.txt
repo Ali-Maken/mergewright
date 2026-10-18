@@ -1,4 +1,4 @@
- ◆ api  ~/code/api · main                                                                                     6 commits
+ ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
 ▸ ◆    [◆ main] Merge branch 'feature'  ▸ 1 commit from feature                                         GF futu…0000000
   ●    main's take                                                                                      GF 2h   ddeed32

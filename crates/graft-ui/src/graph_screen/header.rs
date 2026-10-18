@@ -69,6 +69,17 @@ pub fn tail_room(view: &HeaderView<'_>, width: u16) -> u16 {
     u16::try_from(room).unwrap_or(u16::MAX)
 }
 
+/// Cells the location's last rung takes, ` · <branch>`; 0 with no branch.
+/// The lane phrases give way before it does (ease-pass 06b).
+#[must_use]
+pub(super) fn branch_floor(view: &HeaderView<'_>) -> usize {
+    if view.branch.is_empty() {
+        0
+    } else {
+        " \u{b7} ".width() + view.branch.width()
+    }
+}
+
 /// The header row at `width` cells.
 #[must_use]
 pub fn header_line(view: &HeaderView<'_>, width: u16, theme: &Theme) -> Line<'static> {

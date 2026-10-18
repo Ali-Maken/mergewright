@@ -1,8 +1,8 @@
 # m5-lane-cap-160x24.txt: 160x24, drawn by `view::view` from a real
 # AppState — a scratch repository with fourteen unmerged topic
-# branches forked from `main`'s base, scrolled to `main`'s oldest
-# commits, so fifteen columns are open over the whole window (merged
-# branches fold by default since ease-pass 06; crates/graft/tests/it/lane_cap.rs,
+# branches forked from `main`'s base, the cursor on `main`'s tip under
+# the fourteen topic tips, so fifteen columns each hold a commit in view
+# (merged branches fold by default since ease-pass 06; crates/graft/tests/it/lane_cap.rs,
 # capture_lane_cap_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with
 # no colour attributes in it — CLAUDE.md rule 5, colour ships
@@ -17,15 +17,16 @@
 #
 # What right looks like:
 #  - **The two frames differ.** With the pane open the graph folds
-#    more: the header says `+8 lanes` and a `⋮` marker column
-#    stands where the folded lanes were. With the pane closed the same
-#    repository on the same terminal says `+4 lanes`: more lanes
-#    drawn. The two used to be identical, because both asked the
+#    more: the header says `lanes drawn: 7 of 15` and a `⋮` rail
+#    stands where the folded lanes were; a topic tip whose column
+#    folded draws its commit on the rail. With the pane closed the same
+#    repository on the same terminal says `lanes drawn: 11 of 15`: more
+#    lanes drawn. The two used to be identical, because both asked the
 #    screen.
-#  - The topic tips sit above the window, so their lanes pass through
-#    rows with no node on them: those are what the cap folds. A column
-#    with a node on screen is never folded (m7-power-tools/36; the
-#    fixture reshaped again for the fold by ease-pass 06f).
+#  - Every topic tip is in view, each in a column of its own: those
+#    columns are what the cap folds. A column with no commit in view is
+#    not drawn at all (ease-pass 06b; the fixture reshaped for it, as
+#    06f reshaped it for the fold).
 #  - With the pane open the subject column starts two cells earlier
 #    and every subject is still readable.
 #  - Nothing reads as an error on either frame.
@@ -39,54 +40,54 @@
 
 == the pane open: the graph has 92 columns ==
 
- ◆ api  ~/code/api · main                                              47 commits  +8 lanes  COMMIT 35e8696
-  ● │ │ │ │ │ │ ⋮    main: step 22                                             38m  5ddbad5  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 ·…
-  ● │ │ │ │ │ │ ⋮    main: step 21                                             39m  d14d416  parents a82960b · diff vs first parent
-  ● │ │ │ │ │ │ ⋮    main: step 20                                             40m  4e7dbe8  Contained in: main
-  ● │ │ │ │ │ │ ⋮    main: step 19                                             41m  8b4dbcd
-  ● │ │ │ │ │ │ ⋮    main: step 18                                             42m  ee5b97b  A main.rs                                                     +1 −0
-  ● │ │ │ │ │ │ ⋮    main: step 17                                             43m  00e57c9  ▎
-  ● │ │ │ │ │ │ ⋮    main: step 16                                             44m  f4d3671        1 + const STEP: u32 = 1;
-  ● │ │ │ │ │ │ ⋮    main: step 15                                             45m  f29534e
-  ● │ │ │ │ │ │ ⋮    main: step 14                                             46m  3ecd32d
-  ● │ │ │ │ │ │ ⋮    main: step 13                                             47m  f48ed00
-  ● │ │ │ │ │ │ ⋮    main: step 12                                             48m  b22330a
-  ● │ │ │ │ │ │ ⋮    main: step 11                                             49m  d6a93f2
-  ● │ │ │ │ │ │ ⋮    main: step 10                                             50m  3ca8bee
-  ● │ │ │ │ │ │ ⋮    main: step 09                                             51m  3e11f3f
-  ● │ │ │ │ │ │ ⋮    main: step 08                                             52m  d9f2ae4
-  ● │ │ │ │ │ │ ⋮    main: step 07                                             53m  5008b40
-  ● │ │ │ │ │ │ ⋮    main: step 06                                             54m  95cfcdd
-  ● │ │ │ │ │ │ ⋮    main: step 05                                             55m  af48782
-  ● │ │ │ │ │ │ ⋮    main: step 04                                             56m  39580e3
-  ● │ │ │ │ │ │ ⋮    main: step 03                                             57m  4f4893e
-  ● │ │ │ │ │ │ ⋮    main: step 02                                             58m  7abe904
-▸ ● │ │ │ │ │ │ ⋮    main: step 01                                             59m  35e8696
- ⏎ open · B blame · F history · b branch · r rebase · t tag · c commit · u undo · ? keys
+ ◆ api  ~/code/api · main                                  47 commits  lanes drawn: 7 of 15  COMMIT 576e590
+                ●▾   [topic-14] Work on topic-14                               16m  8a7744e  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:30 +0000 ·…
+                ●▾   [topic-13] Work on topic-13                               17m  fba676c  parents ee20ba5 · diff vs first parent
+                ●▾   [topic-12] Work on topic-12                               18m  06237b3  Contained in: main
+                ●▾   [topic-11] Work on topic-11                               19m  7568e0c
+                ●▾   [topic-10] Work on topic-10                               20m  5e16877  M main.rs                                                     +1 −1
+                ●▾   [topic-09] Work on topic-09                               21m  3324476  ▎
+                ●▾   [topic-08] Work on topic-08                               22m  7883cc7    1     - const STEP: u32 = 29;
+                ●▾   [topic-07] Work on topic-07                               23m  8ca71dd        1 + const STEP: u32 = 30;
+    ●           ⋮    [topic-06] Work on topic-06                               24m  2d82c6c
+    │ ●         ⋮    [topic-05] Work on topic-05                               25m  aab2182
+    │ │ ●       ⋮    [topic-04] Work on topic-04                               26m  8931d7e
+    │ │ │ ●     ⋮    [topic-03] Work on topic-03                               27m  deaf074
+    │ │ │ │ ●   ⋮    [topic-02] Work on topic-02                               28m  e453903
+    │ │ │ │ │ ● ⋮    [topic-01] Work on topic-01                               29m  0e3f949
+▸ ◆ │ │ │ │ │ │ ⋮    [◆ main] main: step 30                                    30m  576e590
+  ● │ │ │ │ │ │ ⋮    main: step 29                                             31m  ee20ba5
+  ● │ │ │ │ │ │ ⋮    main: step 28                                             32m  8a5834e
+  ● │ │ │ │ │ │ ⋮    main: step 27                                             33m  323cfda
+  ● │ │ │ │ │ │ ⋮    main: step 26                                             34m  996f94e
+  ● │ │ │ │ │ │ ⋮    main: step 25                                             35m  0b91bb8
+  ● │ │ │ │ │ │ ⋮    main: step 24                                             36m  37cb782
+  ● │ │ │ │ │ │ ⋮    main: step 23                                             37m  9c54ea7
+ ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · u undo · ? keys
 
 == the same terminal, pane closed: the graph has all 160 ==
 
- ◆ api  ~/code/api · main                                                                                                                  47 commits  +4 lanes
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 22                                                                                                      GF 38m  5ddbad5
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 21                                                                                                      GF 39m  d14d416
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 20                                                                                                      GF 40m  4e7dbe8
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 19                                                                                                      GF 41m  8b4dbcd
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 18                                                                                                      GF 42m  ee5b97b
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 17                                                                                                      GF 43m  00e57c9
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 16                                                                                                      GF 44m  f4d3671
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 15                                                                                                      GF 45m  f29534e
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 14                                                                                                      GF 46m  3ecd32d
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 13                                                                                                      GF 47m  f48ed00
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 12                                                                                                      GF 48m  b22330a
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 11                                                                                                      GF 49m  d6a93f2
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 10                                                                                                      GF 50m  3ca8bee
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 09                                                                                                      GF 51m  3e11f3f
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 08                                                                                                      GF 52m  d9f2ae4
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 07                                                                                                      GF 53m  5008b40
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 06                                                                                                      GF 54m  95cfcdd
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 05                                                                                                      GF 55m  af48782
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 04                                                                                                      GF 56m  39580e3
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 03                                                                                                      GF 57m  4f4893e
-  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 02                                                                                                      GF 58m  7abe904
-▸ ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 01                                                                                                      GF 59m  35e8696
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · ? keys
+ ◆ api  ~/code/api · main                                                                                                     47 commits  lanes drawn: 11 of 15
+                        ●▾   [topic-14] Work on topic-14                                                                                        GF 16m  8a7744e
+                        ●▾   [topic-13] Work on topic-13                                                                                        GF 17m  fba676c
+                        ●▾   [topic-12] Work on topic-12                                                                                        GF 18m  06237b3
+                        ●▾   [topic-11] Work on topic-11                                                                                        GF 19m  7568e0c
+    ●                   ⋮    [topic-10] Work on topic-10                                                                                        GF 20m  5e16877
+    │ ●                 ⋮    [topic-09] Work on topic-09                                                                                        GF 21m  3324476
+    │ │ ●               ⋮    [topic-08] Work on topic-08                                                                                        GF 22m  7883cc7
+    │ │ │ ●             ⋮    [topic-07] Work on topic-07                                                                                        GF 23m  8ca71dd
+    │ │ │ │ ●           ⋮    [topic-06] Work on topic-06                                                                                        GF 24m  2d82c6c
+    │ │ │ │ │ ●         ⋮    [topic-05] Work on topic-05                                                                                        GF 25m  aab2182
+    │ │ │ │ │ │ ●       ⋮    [topic-04] Work on topic-04                                                                                        GF 26m  8931d7e
+    │ │ │ │ │ │ │ ●     ⋮    [topic-03] Work on topic-03                                                                                        GF 27m  deaf074
+    │ │ │ │ │ │ │ │ ●   ⋮    [topic-02] Work on topic-02                                                                                        GF 28m  e453903
+    │ │ │ │ │ │ │ │ │ ● ⋮    [topic-01] Work on topic-01                                                                                        GF 29m  0e3f949
+▸ ◆ │ │ │ │ │ │ │ │ │ │ ⋮    [◆ main] main: step 30                                                                                             GF 30m  576e590
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 29                                                                                                      GF 31m  ee20ba5
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 28                                                                                                      GF 32m  8a5834e
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 27                                                                                                      GF 33m  323cfda
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 26                                                                                                      GF 34m  996f94e
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 25                                                                                                      GF 35m  0b91bb8
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 24                                                                                                      GF 36m  37cb782
+  ● │ │ │ │ │ │ │ │ │ │ ⋮    main: step 23                                                                                                      GF 37m  9c54ea7
+ ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · ? keys

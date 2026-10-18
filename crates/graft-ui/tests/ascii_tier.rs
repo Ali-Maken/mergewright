@@ -3,7 +3,10 @@
 //! and the widest fixture, at 80×24, with and without colour.
 //!
 //! Every glyph drawn must come from the six-character ASCII table
-//! (`* | / \ - +`) or a space — asserted directly, not just eyeballed.
+//! (`* | / \ - +`), a folded edge's stub (`v` `^`, `graph_column`'s
+//! `to_ascii`) or a space — asserted directly, not just eyeballed. Stubs
+//! appear since ease-pass 06b: a criss-cross's connector columns hold no
+//! node in the window, so they drop and their edges draw as stubs.
 //! Read the snapshots as pictures too; do not just re-accept.
 
 mod support;
@@ -49,16 +52,18 @@ fn widest_shape() -> Shape {
     widest.1
 }
 
-fn draw_ascii(laid: &Laid, theme: &Theme) -> Buffer {
+/// The screen drawn in the ASCII tier, and its graph column's width.
+fn draw_ascii(laid: &Laid, theme: &Theme) -> (Buffer, u16) {
     let lines = laid.lines();
     let mut view = screen::view(&lines, usize::from(ROWS - CHROME_ROWS), 1);
     view.ascii = true;
+    let graph_width = screen::graph_width(&view, theme, COLUMNS, ROWS);
     let mut terminal = Terminal::new(TestBackend::new(COLUMNS, ROWS))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
     terminal
         .draw(|frame| frame.render_widget(GraphScreen::new(&view, theme), frame.area()))
         .unwrap_or_else(|why| panic!("drawing into a test backend cannot fail: {why}"));
-    terminal.backend().buffer().clone()
+    (terminal.backend().buffer().clone(), graph_width)
 }
 
 #[test]
@@ -71,9 +76,8 @@ fn crowded_shapes_draw_only_the_ascii_glyph_table() {
             ("no-color", ColorDepth::TrueColor, true),
         ] {
             let theme = themed(ThemeKind::Dark, depth, no_color);
-            let buffer = draw_ascii(&laid, &theme);
+            let (buffer, graph_width) = draw_ascii(&laid, &theme);
 
-            let graph_width = laid.width().min(COLUMNS);
             let drawn = laid.rows.len().min(usize::from(ROWS - CHROME_ROWS));
             for y in (1..).take(drawn) {
                 // The graph column starts after the two-cell gutter, whose
@@ -87,7 +91,7 @@ fn crowded_shapes_draw_only_the_ascii_glyph_table() {
                 for x in GUTTER..GUTTER + graph_width {
                     let symbol = buffer[(x, y)].symbol();
                     assert!(
-                        symbol.chars().all(|ch| "*|/\\-+ ".contains(ch)),
+                        symbol.chars().all(|ch| "*|/\\-+v^ ".contains(ch)),
                         "{shape} {name} at {x},{y}: {symbol:?} is not in the ASCII glyph table"
                     );
                 }

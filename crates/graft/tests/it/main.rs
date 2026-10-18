@@ -74,6 +74,7 @@ mod m5_walk;
 mod m6_stash_put_back;
 mod m7_walk;
 mod m8_walk;
+mod main_header;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
 mod map_coverage;

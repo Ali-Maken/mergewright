@@ -1,4 +1,4 @@
-"                                                                                                          2 rows so far "
+"                                                                                  2 rows so far  1 merged branch folded "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
 "▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "
@@ -35,7 +35,7 @@
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " config: 1 problem · ? shows them                                                                                       "
 
-"                                                                                                          2 rows so far "
+"                                                                                  2 rows so far  1 merged branch folded "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
 "▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "
@@ -72,7 +72,7 @@
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 " M merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys      "
 
-"                                                                                                          2 rows so far "
+"                                                                                  2 rows so far  1 merged branch folded "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
 "▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "

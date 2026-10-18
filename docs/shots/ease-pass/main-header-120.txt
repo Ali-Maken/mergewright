@@ -1,0 +1,39 @@
+ease-pass 06b box 9, 120x36, the main screen scrolled so `feature/ledger`'s lane passes through the window with its commit above it and its fork point below; `wallet_release_wide` (crates/graft/tests/it/main_header.rs) drawn by `view::view` from a real AppState. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branches folded` — two columns open in view, only `wallet-release`'s holds a commit, so the ledger's lane is not drawn; both merges in view are folded. `wallet-release` appears once on the top line, no `on`, no `+N lanes`.
+
+ ◆ api  ~/code/api · wallet-release                          47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
+
+  ●    release: note 30                                                                                 GF 27h  16cbf14
+  ●    release: note 29                                                                                 GF 27h  7e8fabe
+  ●    release: note 28                                                                                 GF 27h  fd70cee
+  ●    release: note 27                                                                                 GF 27h  3befda3
+  ●    release: note 26                                                                                 GF 27h  4562628
+  ●    release: note 25                                                                                 GF 27h  bd0954e
+  ●    release: note 24                                                                                 GF 27h  b16f697
+  ●    release: note 23                                                                                 GF 27h  014c9ac
+  ●    release: note 22                                                                                 GF 27h  7fe7fe3
+  ●    release: note 21                                                                                 GF 27h  925d180
+  ●    release: note 20                                                                                 GF 27h  8d8e40b
+  ●    release: note 19                                                                                 GF 27h  ac48c5d
+  ●    release: note 18                                                                                 GF 27h  6afd2e0
+  ●    release: note 17                                                                                 GF 27h  ef2a267
+  ●    release: note 16                                                                                 GF 27h  52ddb01
+  ●    release: note 15                                                                                 GF 27h  7a491cf
+  ●    release: note 14                                                                                 GF 27h  05f89d2
+  ●    release: note 13                                                                                 GF 27h  e0e328d
+  ●    release: note 12                                                                                 GF 27h  76c9147
+  ●    release: note 11                                                                                 GF 27h  5cb2bbc
+  ●    release: note 10                                                                                 GF 27h  08216b9
+  ●    release: note 09                                                                                 GF 27h  939d486
+  ●    release: note 08                                                                                 GF 27h  26785f8
+  ●    release: note 07                                                                                 GF 27h  de21cdc
+  ●    release: note 06                                                                                 GF 27h  42e3d0c
+  ●    release: note 05                                                                                 GF 27h  7ba6657
+  ●    release: note 04                                                                                 GF 27h  4c1c323
+  ●    release: note 03                                                                                 GF 27h  bdcd264
+  ●    release: note 02                                                                                 GF 27h  fda79f4
+  ●    release: note 01                                                                                 GF 27h  3842dd8
+  ◉    Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit from sara/fix-toc                    GF 28h  ea2b27e
+▸ ◉    Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021                                GF 28h  4eb2a56
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys

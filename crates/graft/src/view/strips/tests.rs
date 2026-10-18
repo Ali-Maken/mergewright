@@ -131,8 +131,23 @@ fn the_uncommitted_row_sits_on_head_in_its_strip() {
 }
 
 /// `chains` parallel lines of `length` commits under one merge at the top,
-/// laid out as a complete history in one window.
+/// laid out as a complete history in one window, each line's commits in a
+/// run: a window holds one or two lines' nodes and the rest pass by.
 pub(crate) fn fan(chains: u8, length: u8) -> History {
+    lines(chains, length, false)
+}
+
+/// [`fan`]'s lines with their commits interleaved, one row per line in
+/// turn, so every window of `chains` rows holds a node in every line's
+/// column: a graph as wide as its lines wherever it is scrolled, which the
+/// lane cap folds (ease-pass 06b: a column draws only while a node sits in
+/// it in view). With the cursor on row `r > 0` the selected column is line
+/// `(r - 1) % chains`'s, so each `j` moves the column the fold keeps first.
+pub(crate) fn woven(chains: u8, length: u8) -> History {
+    lines(chains, length, true)
+}
+
+fn lines(chains: u8, length: u8, woven: bool) -> History {
     let id = |chain: u8, index: u8| Oid::from_bytes(&[chain, index].repeat(10)).expect("20 bytes");
     let who = Identity {
         name: b"Test".to_vec(),
@@ -149,77 +164,26 @@ pub(crate) fn fan(chains: u8, length: u8) -> History {
         committer: who.clone(),
         message: b"row".to_vec(),
     };
+    let on_line = |chain: u8, index: u8| {
+        let parents = if index < length {
+            vec![id(chain, index + 1)]
+        } else {
+            Vec::new()
+        };
+        commit(id(chain, index), parents)
+    };
     let mut commits = vec![commit(id(0, 0), (1..=chains).map(|c| id(c, 1)).collect())];
-    for chain in 1..=chains {
-        for index in 1..=length {
-            let parents = if index < length {
-                vec![id(chain, index + 1)]
-            } else {
-                Vec::new()
-            };
-            commits.push(commit(id(chain, index), parents));
+    let (outer, inner) = if woven {
+        (length, chains)
+    } else {
+        (chains, length)
+    };
+    for o in 1..=outer {
+        for i in 1..=inner {
+            let (chain, index) = if woven { (i, o) } else { (o, i) };
+            commits.push(on_line(chain, index));
         }
     }
-    let rows: Vec<Row> = layout(&commits, Seeds::default());
-    History {
-        window: Some(Window {
-            request: 0,
-            first: 0,
-            laid_out: rows.len(),
-            done: true,
-            rows: rows.clone().into(),
-            promoted: false,
-            fold: [].into(),
-            anchor_behind: None,
-        }),
-        rows: rows.len(),
-        phase: Phase::Complete,
-        ..History::started()
-    }
-}
-
-/// A graph wider than the lane cap whose fold follows the selection
-/// (ADR-0025 Decision 2, class 5): one line of `length` commits on lane 0,
-/// whose first `merges` rows are merges. Merge `i`'s second parent is the
-/// line's row `reach - i`, so its side lane opens at row `i` and closes into
-/// lane 0 at row `reach - i`: nested lanes `1..=merges`, none holding a node.
-///
-/// With the cursor on merge `i`, the thread lights the side lanes of merges
-/// `i..` (`Ancestry::columns`) and lane 0, the selected column, never
-/// changes: a `j` drops one lane from `preferred`, which is what decides
-/// which side lanes the fold keeps. At 120 columns the cap is
-/// `max_lanes_for` (10 or fewer); `merges = 16` opens 17 lanes on rows
-/// `merges..reach - merges`. Pick `reach - merges` inside the first two
-/// strips so every lane closes in the drawn window.
-pub(crate) fn capped(merges: u8, reach: u8, length: u8) -> History {
-    assert!(merges < reach - merges && reach < length, "lanes nest");
-    let id = |index: u8| Oid::from_bytes(&[0xc0, index].repeat(10)).expect("20 bytes");
-    let who = Identity {
-        name: b"Test".to_vec(),
-        email: b"test@example.invalid".to_vec(),
-        when: Timestamp {
-            seconds: 0,
-            offset_seconds: 0,
-        },
-    };
-    let commits: Vec<Commit> = (0..length)
-        .map(|index| {
-            let mut parents = Vec::new();
-            if index + 1 < length {
-                parents.push(id(index + 1));
-            }
-            if index < merges {
-                parents.push(id(reach - index));
-            }
-            Commit {
-                id: id(index),
-                parents,
-                author: who.clone(),
-                committer: who.clone(),
-                message: b"row".to_vec(),
-            }
-        })
-        .collect();
     let rows: Vec<Row> = layout(&commits, Seeds::default());
     History {
         window: Some(Window {
@@ -299,10 +263,13 @@ pub(crate) fn fold_plan(state: &AppState, max_lanes: usize) -> Option<(Fold, Kee
 
 #[test]
 fn one_fold_spans_every_strip_and_its_marker_reaches_the_strip() {
-    // Rows 32..64 hold nodes of chains 1 and 2 only; chains 3..5 pass by.
-    let mut state = state(scrolled(fan(5, 40), 40), 20);
+    // Rows 32..64 hold nodes of chains 2, 3 and 4 (columns 1..=3); chain 5
+    // passes by and, holding no node there, drops (ease-pass 06b). Chain 1
+    // ended at row 16, so column 0 is closed. Three node columns at a cap
+    // of 2: two fold behind the rail.
+    let mut state = state(scrolled(fan(5, 16), 40), 20);
 
-    let folded = pixel_rows(&state, 3, STRIP_ROWS);
+    let folded = pixel_rows(&state, 2, STRIP_ROWS);
     assert_eq!(firsts_and_lengths(&folded), vec![(32, 32)]);
     let marker = folded.marker.expect("lanes past the limit fold");
     assert_eq!(
@@ -310,7 +277,7 @@ fn one_fold_spans_every_strip_and_its_marker_reaches_the_strip() {
         folded.lane_columns,
         "the rail is the last drawn column"
     );
-    assert!(folded.lane_columns <= 3, "{}", folded.lane_columns);
+    assert!(folded.lane_columns <= 2, "{}", folded.lane_columns);
     let paint = StripPaint::of(&session());
     folded.strips[0].with_layers(&folded, &paint, |strip, _| {
         assert_eq!(strip.marker, Some(marker));
@@ -319,9 +286,12 @@ fn one_fold_spans_every_strip_and_its_marker_reaches_the_strip() {
     rasterise_all(&folded);
 
     state.lanes_expanded = true;
-    let expanded = pixel_rows(&state, 3, STRIP_ROWS);
+    let expanded = pixel_rows(&state, 2, STRIP_ROWS);
     assert_eq!(expanded.marker, None);
-    assert!(expanded.lane_columns > 3);
+    assert_eq!(
+        expanded.lane_columns, 3,
+        "the three node columns, not chain 5's"
+    );
 }
 
 #[test]

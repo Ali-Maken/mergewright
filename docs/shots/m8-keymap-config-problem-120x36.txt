@@ -1,4 +1,4 @@
-"                                                                                                          2 rows so far "
+"                                                                                  2 rows so far  1 merged branch folded "
 "                                                                                                                        "
 "  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
 "▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "

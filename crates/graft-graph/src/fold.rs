@@ -12,18 +12,23 @@
 //! same place on every row, and a lane that is folded is folded on every row:
 //! a lane never changes column in the middle of its life on screen either.
 //!
+//! A lane is drawn only while its branch has a commit in view (ease-pass
+//! 06b, ADR-0063): a column open in the window with no node in it is
+//! *dropped* — not drawn, not behind the rail, not counted as folded —
+//! whatever the cap and whatever [`Keep`] says of it. Lane 0 is the one
+//! exception: it stays while open, so trunk scrolling out of view never
+//! shifts every lane left. An edge into a dropped column is a stub, as an
+//! edge into a folded one is.
+//!
 //! The cap is a budget, not a set of vetoes (ADR-0025): [`Fold::plan`] draws
-//! at most `max_lanes` columns, the rail included, admitting columns in
-//! priority order until the budget is spent. Highest first: lane 0; any
-//! column a node in the window sits in (the one class that may still exceed
-//! the budget — a row without its node is not a graph); the selected
-//! commit's own column; reserved integration lanes; the selection's thread
-//! ([`Keep::preferred`]); everything else. Within a class, ranking is
-//! least-recently-touched first, in the layout's own top-to-bottom order: a
-//! lane no row in the window touches — a pure pass-through — folds before
-//! one a row near the top touched, which folds before one a row near the
-//! bottom touched. A column is *touched* by a row whose node sits in it or
-//! whose edges close into it or open from it.
+//! at most `max_lanes` columns, the rail included, admitting the columns
+//! left in priority order until the budget is spent. Highest first: lane 0;
+//! the selected commit's own column; reserved integration lanes; the
+//! selection's thread ([`Keep::preferred`]); every other column holding a
+//! node. Within a class, ranking is least-recently-touched first, in the
+//! layout's own top-to-bottom order: a lane a row near the top touched folds
+//! before one a row near the bottom touched. A column is *touched* by a row
+//! whose node sits in it or whose edges close into it or open from it.
 
 use std::borrow::Cow;
 use std::cmp::Reverse;
@@ -34,8 +39,9 @@ use crate::identity::BranchIdentity;
 
 /// Columns a fold weighs above the ordinary least-recently-touched rank
 /// (ADR-0025). Each is a budget priority, not a veto: a column named here
-/// still folds once the budget cannot hold it — only lane 0 and a column
-/// holding a node in the window are never folded.
+/// still folds once the budget cannot hold it — only lane 0 is never
+/// folded. A column with no node in the window is dropped whatever this
+/// says of it: these rank node-holding columns only.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Keep {
     /// The selected commit's own real column; `None` when its row is not in
@@ -58,36 +64,31 @@ pub struct Fold {
     folded: Vec<usize>,
     /// How many columns the window spans as laid out, marker or not.
     columns: usize,
+    /// How many columns are open in the window, dropped ones included.
+    open: usize,
 }
 
 impl Fold {
     /// Decide the fold for `rows`, so that at most `max_lanes` columns are
-    /// drawn, the marker included — unless only unfoldable columns remain
-    /// (lane 0 and columns holding a node in the window), in which case the
-    /// window draws wider than the limit rather than hide one of those.
+    /// drawn, the marker included — unless only lane 0 remains, in which
+    /// case the window draws lane 0 and the rail. Columns open with no node
+    /// in the window are dropped first, under the cap as over it (module
+    /// docs); `usize::MAX` drops them and folds nothing.
     ///
-    /// `keep`'s columns are admitted ahead of everything else, in priority
-    /// order (module docs), but still fold once the budget runs out — they
-    /// are a priority, not a veto (ADR-0025).
+    /// `keep`'s columns are admitted ahead of the other node columns, in
+    /// priority order (module docs), but still fold once the budget runs
+    /// out — they are a priority, not a veto (ADR-0025).
     #[must_use]
     pub fn plan(max_lanes: usize, keep: &Keep, rows: &[Row]) -> Fold {
         let columns = rows.iter().map(span).max().unwrap_or(0);
-        if columns <= max_lanes {
-            return Fold {
-                kept: (0..columns).collect(),
-                folded: Vec::new(),
-                columns,
-            };
-        }
-
         let Scan {
-            open_columns,
-            required,
+            open,
+            drawable,
             candidates,
         } = scan(rows, columns, keep);
 
         let mut folded = BTreeSet::new();
-        let mut drawn = open_columns.len();
+        let mut drawn = drawable.len();
         if drawn > max_lanes {
             // Once anything folds, the marker takes a column of its own.
             let mut next = candidates.into_iter();
@@ -97,15 +98,16 @@ impl Fold {
                 drawn -= 1;
             }
         }
-        debug_assert!(required.iter().all(|c| !folded.contains(c)));
+        debug_assert!(!folded.contains(&0), "lane 0 never folds");
 
         Fold {
-            kept: open_columns
+            kept: drawable
                 .into_iter()
                 .filter(|c| !folded.contains(c))
                 .collect(),
             folded: folded.into_iter().collect(),
             columns,
+            open,
         }
     }
 
@@ -153,11 +155,19 @@ impl Fold {
         self.kept.len() + usize::from(self.marker().is_some())
     }
 
-    /// How many lanes fold behind the rail: `0` when nothing folds. The
-    /// screen's header shows it (`+N lanes`); no row carries it (ADR-0022).
+    /// How many lanes fold behind the rail: `0` when nothing folds. A
+    /// dropped column is not one of them. No row carries it (ADR-0022).
     #[must_use]
     pub fn folded_count(&self) -> usize {
         self.folded.len()
+    }
+
+    /// Columns open in the window (a lane present or touched on any row),
+    /// node-less pass-throughs included: the M of the header's
+    /// `lanes drawn: N of M`. `kept().len() + folded_count() <= open_columns()`.
+    #[must_use]
+    pub fn open_columns(&self) -> usize {
+        self.open
     }
 
     /// `row` as drawn through this fold: kept columns renumbered to their
@@ -168,9 +178,9 @@ impl Fold {
     ///
     /// Borrows `row` untouched when the fold changes nothing.
     ///
-    /// A row whose node sits in a folded column cannot come from the window
-    /// this fold was planned for; drawn anyway, its node lands on the rail
-    /// column with no lane of its own.
+    /// A row whose node sits in a folded column — node columns overflowing
+    /// the cap — has its node on the rail column, with no lane of its own;
+    /// its edges into drawn columns are drawn from there.
     #[must_use]
     pub fn view<'a>(&self, row: &'a Row) -> DrawnRow<'a> {
         if self.is_empty() {
@@ -267,24 +277,26 @@ pub struct DrawnRow<'a> {
     pub folded: Vec<FoldedEdge>,
 }
 
-/// The columns a window opens, which of them are unfoldable, and the rest in
-/// fold order: lowest priority first, so the least protected column is the
-/// first candidate to fold once the budget runs out (ADR-0025's priority
-/// list, reversed).
+/// The columns a window opens, which of them it may draw, and those it may
+/// fold in fold order: lowest priority first, so the least protected column
+/// is the first candidate to fold once the budget runs out (ADR-0025's
+/// priority list, reversed).
 struct Scan {
-    /// Columns open in some row of the window, ascending. A column open in
-    /// no row takes width and shows nothing: it is dropped, not folded, so
-    /// it never counts in `+N`.
-    open_columns: Vec<usize>,
-    /// Lane 0 and a node's own column: never folded, whatever the budget —
-    /// the one class that may still exceed `max_lanes`.
-    required: BTreeSet<usize>,
-    /// Every other open column, ordered lowest priority to fold first.
+    /// How many columns are open in some row of the window. A column open
+    /// in no row takes width and shows nothing; one open with no node in
+    /// the window shows a branch with nothing in view. Both are dropped,
+    /// not folded, so neither counts as folded.
+    open: usize,
+    /// Open columns holding a node in the window, and lane 0 while open,
+    /// ascending: every column the window may draw.
+    drawable: Vec<usize>,
+    /// Every drawable column but lane 0, ordered lowest priority to fold
+    /// first.
     candidates: Vec<usize>,
 }
 
-/// Scans `rows` for which columns are open, which are unfoldable, and how
-/// the rest rank for folding under `keep` (ADR-0025).
+/// Scans `rows` for which columns are open, which hold a node, and how the
+/// node columns rank for folding under `keep` (ADR-0025).
 fn scan(rows: &[Row], columns: usize, keep: &Keep) -> Scan {
     let mut open = vec![false; columns];
     let mut noded = vec![false; columns];
@@ -300,24 +312,18 @@ fn scan(rows: &[Row], columns: usize, keep: &Keep) -> Scan {
         }
     }
 
-    let open_columns: Vec<usize> = (0..columns).filter(|&c| open[c]).collect();
-    let required: BTreeSet<usize> = open_columns
-        .iter()
-        .copied()
-        .filter(|&c| c == 0 || noded[c])
+    let drawable: Vec<usize> = (0..columns)
+        .filter(|&c| open[c] && (c == 0 || noded[c]))
         .collect();
 
-    // Fold order within a class: untouched first, then the earliest touch;
-    // among equals the rightmost column, so the graph stays packed to the
-    // left. Unchanged from before this ADR.
-    let fold_key = |&c: &usize| (last_touch[c].is_some(), last_touch[c], Reverse(c));
+    // Fold order within a class: the earliest touch first; among equals the
+    // rightmost column, so the graph stays packed to the left. Every
+    // candidate holds a node, so every candidate was touched.
+    let fold_key = |&c: &usize| (last_touch[c], Reverse(c));
 
     let (mut other, mut preferred, mut reserved, mut selected) =
         (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-    for &c in &open_columns {
-        if required.contains(&c) {
-            continue;
-        }
+    for &c in drawable.iter().filter(|&&c| c != 0) {
         if keep.selected == Some(c) {
             selected.push(c);
         } else if keep.reserved.contains(&c) {
@@ -339,8 +345,8 @@ fn scan(rows: &[Row], columns: usize, keep: &Keep) -> Scan {
         .collect();
 
     Scan {
-        open_columns,
-        required,
+        open: open.iter().filter(|&&o| o).count(),
+        drawable,
         candidates,
     }
 }

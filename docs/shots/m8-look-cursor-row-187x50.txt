@@ -1,6 +1,6 @@
 m8-polish-and-ship/28, 187x50, cursor on `[feature/two] two: finish`: what right looks like — `▸` in the gutter's first cell and the badge `[feature/two]` on the same row; the lanes as on every other row; no `▏` in the marker slot. Judge beside m8-look-cursor-row-dark-120x36.txt and the mock-up m8-proto-4a-dark-a-b.txt. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                                                                                                                                        9 commits
+ ◆ api  ~/code/api · main                                                                                                                                9 commits  1 merged branch folded
 
     ●        [feature/three] three: in progress                                                                                                                            GF 7y   0683985
   ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                                                                                           GF 7y   5202e1c

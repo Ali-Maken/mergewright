@@ -288,11 +288,15 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   replacing an earlier version that let a single wide selected thread pin
   every one of its columns and bust the cap): lane 0 first, then reserved
   lanes, then the selected commit's own ancestry column, then the rest by
-  how recently a row touched them. Folded lanes never draw as raw digit
+  how recently a row touched them. Since ease-pass 06b a column draws only
+  while a commit of its own is in view (lane 0 excepted while open): a lane
+  passing through with no commit on screen is dropped, never folded, and
+  only columns holding a commit fold behind the rail — a folded column's
+  commit draws on the rail. Folded lanes never draw as raw digit
   wallpaper (an earlier bug showed `+54` on every single row regardless of
   content) — they draw as short coloured stubs plus one `⋮` rail column,
-  with the true count in the header (`+N lanes`) only while something is
-  folded. In the pixel tier, a folded edge fades to a short tail (about 19
+  with the count in the header (`lanes drawn: N of M`, M counting every
+  column open in view) only while some open column is not drawn. In the pixel tier, a folded edge fades to a short tail (about 19
   px, stopping before it would cross the next column's centre) rather than
   reaching for the rail, and the rail itself is a faint dotted line with no
   digits. Toggling a fold makes zero new layout calls; unfolding restores
@@ -300,16 +304,19 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   row. A user-configured cap larger than the terminal can actually hold is
   clamped so it never truncates the graph column.
 - **Proven by:**
-  `graft_graph::fold::tests::a_window_within_the_limit_draws_as_laid_out`
-  `graft_graph::fold::tests::the_least_recently_touched_lanes_fold_first_and_the_marker_fits_the_limit`
-  `graft_graph::fold::tests::a_lane_no_row_touches_folds_before_one_a_row_touched`
+  `graft_graph::fold::tests::a_window_whose_every_open_column_holds_a_node_draws_as_laid_out`
+  `graft_graph::fold::tests::the_least_recently_touched_node_columns_fold_first_and_the_marker_fits_the_limit`
+  `graft_graph::fold::tests::a_column_open_in_no_row_or_with_no_node_is_dropped_without_counting`
+  `graft_graph::fold::tests::in_view::under_the_cap_only_columns_holding_a_node_are_drawn`
+  `graft_graph::fold::tests::in_view::over_the_cap_node_columns_fold_and_node_less_ones_stay_dropped`
   `graft_graph::fold::tests::edges_into_folded_lanes_leave_the_row_as_stubs_in_their_colour`
   `graft_graph::fold::tests::a_fold_that_changes_nothing_borrows_the_row_and_folds_no_edge`
   `graft_graph::fold::tests::the_budget_admits_selected_then_reserved_then_preferred_over_a_more_recently_touched_column`
   `graft_graph::fold::tests::lane_zero_draws_alone_when_the_budget_allows_only_the_rail`
   `graft_graph::fold::tests::a_thread_of_twelve_columns_still_folds_down_to_the_budget`
-  `graft_graph::fold::tests::properties::only_required_columns_survive_when_the_budget_cannot_fit_more`
-  `graft_ui::graph_screen::tests::a_thread_of_twenty_columns_still_fits_the_configured_cap`
+  `graft_graph::fold::tests::properties::only_columns_holding_a_node_and_lane_zero_are_drawn_or_folded`
+  `graft_ui::graph_screen::tests::lanes_in_view::a_thread_of_twenty_columns_still_fits_the_configured_cap`
+  `graft_ui::graph_column::tests::a_node_whose_column_folded_draws_on_the_rail_in_its_place`
 - **Looks like:** `docs/shots/14-many-lanes.txt`,
   `docs/shots/14-many-lanes-expanded.txt`, `docs/shots/39-git-git-80x24.txt`,
   `docs/shots/40-raster-folded-on-dark.png`,
@@ -321,9 +328,10 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   explicitly left open in the source tickets: whether the folded rail
   "reads as history or decoration" at real widths was a stated question
   for the user to answer by eye on `git/git` at 120 columns, and the
-  tickets record that check as pending. One accepted residual, not
-  planned to fix: a window whose lane-0-and-node columns alone already
-  exceed `max_lanes` still draws wider than the configured limit.
+  tickets record that check as pending. The old residual (a window whose
+  node columns alone exceeded `max_lanes` drew wider than the limit) is
+  gone since ease-pass 06b: node columns fold too, so the budget holds for
+  any cap of 2 or more.
 
 ### M1-09. Folding a merge, viewing first-parent-only, and hiding stashes are independent toggles
 

@@ -4125,68 +4125,6 @@ fn a_preview_keeps_the_cursors_commit_on_screen_when_the_box_takes_rows() {
     );
 }
 
-/// A window of `lanes` occupied columns, all passing straight down past a
-/// node in lane 0: enough columns that the lane cap decides how many draw.
-pub(crate) fn history_with_lanes(lanes: usize) -> History {
-    let mut history = history_of(3, 0);
-    let window = history.window.as_mut().expect("history_of built a window");
-    let mut rows: Vec<graft_graph::row::Row> = window.rows.to_vec();
-    for row in &mut rows {
-        row.lanes = (0..lanes)
-            .map(|lane| {
-                Some(graft_graph::identity::BranchIdentity::of_name(
-                    format!("lane-{lane}").as_bytes(),
-                ))
-            })
-            .collect();
-    }
-    window.rows = rows.into();
-    history
-}
-
-/// ADR-0039's 2026-09-21 amendment, third instance (m5/21 item 4): **ask
-/// how much room this thing has, not how big the screen is.** The lane cap
-/// came off the screen's width, so a graph with the detail pane beside it on
-/// a 160-column terminal folded to the twelve lanes of a wide screen while
-/// standing in 92 columns — a narrow view by DESIGN.md's own breakpoint.
-/// The header's `+N lanes` is the count made visible: eight drawn columns
-/// (seven lanes and the marker) hide seven of fourteen, twelve hide three.
-#[test]
-fn the_lane_cap_comes_from_the_graphs_room_not_the_screens_width() {
-    use graft_ui::detail::DetailFocus;
-
-    let mut state = AppState {
-        history: Some(history_with_lanes(14)),
-        size: Size {
-            columns: 160,
-            rows: 12,
-        },
-        ..AppState::default()
-    };
-    state.detail.shown = true;
-    state.detail.focus = DetailFocus::Files;
-
-    assert_eq!(
-        super::frame::graph_columns(&state, ratatui::layout::Rect::new(0, 0, 160, 12)),
-        92,
-        "the pane leaves the graph 92 of the 160 columns"
-    );
-    let with_pane = draw(&state, 160, 12);
-    assert!(
-        with_pane.contains("+7 lanes"),
-        "92 columns is a narrow view: eight drawn columns, seven of the \
-         fourteen lanes folded away:\n{with_pane}"
-    );
-
-    // The same screen with no pane really is wide, and keeps its twelve.
-    state.detail.shown = false;
-    let full_width = draw(&state, 160, 12);
-    assert!(
-        full_width.contains("+3 lanes"),
-        "160 columns to itself folds at twelve lanes:\n{full_width}"
-    );
-}
-
 // ---------------------------------------------------------------------------
 // The hit-test measures what the frame draws (m5/33, review M1)
 // ---------------------------------------------------------------------------
@@ -4256,7 +4194,7 @@ fn two_branches_on_a_wide_graph() -> AppState {
     .expect("plain data always builds");
 
     AppState {
-        history: Some(history_with_lanes(14)),
+        history: Some(lane_cap::history_with_lanes(14)),
         refs: Some(std::sync::Arc::new(refs)),
         size: Size {
             columns: 160,
@@ -5179,6 +5117,7 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
 
 mod bottom_row;
 mod credential_footer;
+mod lane_cap;
 mod many_refs;
 mod pixel_preview;
 

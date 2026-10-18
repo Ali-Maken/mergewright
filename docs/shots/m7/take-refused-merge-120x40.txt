@@ -5,7 +5,7 @@
 #
 # Right: `o` on a merge commit — the status line `<sha7> is a merge ·
 # taking a merge isn't in Mergewright yet`; no preview box.
- ◆ api  ~/code/api · main                                                                                     6 commits
+ ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
 ▸   ◉    [merged] merge login-page  ▸ 1 commit                                                          GF now  5c42e39
   ◆ │    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7

@@ -45,7 +45,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 
-use graft_graph::fold::{Fold, Toward};
+use graft_graph::fold::{DrawnRow, Fold, Toward};
 use graft_graph::row::Row;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -273,34 +273,50 @@ impl Widget for GraphColumn<'_> {
                 }
                 self.put(buf, area, x, y, glyph, style);
             }
-            let (Some(fold), Some(drawn)) = (self.fold, &drawn) else {
-                continue;
-            };
-            if let Some(rail) = fold.marker() {
-                let style = off_thread(foreground(self.theme, Token::TextMuted), line, None);
-                self.put(buf, area, lane_x(rail), y, RAIL, style);
-            }
-            // Several folded edges on one row draw one stub, in the first
-            // edge's colour (ADR-0022). It takes the gap cell even when a
-            // kept edge runs through it: the edge reads on either side.
-            if let Some(first) = drawn.folded.first() {
-                let glyph = match first.toward {
-                    Toward::Below => STUB_BELOW,
-                    Toward::Above => STUB_ABOVE,
-                };
-                let style = off_thread(
-                    Style::new().fg(color(self.theme.branch(first.identity))),
-                    line,
-                    self.faded(first.identity),
-                );
-                let gap = lane_x(row.lane).saturating_add(1);
-                self.put(buf, area, gap, y, glyph, style);
+            if let (Some(fold), Some(drawn)) = (self.fold, &drawn) {
+                self.fold_overlay(buf, area, y, line, fold, drawn);
             }
         }
     }
 }
 
 impl GraphColumn<'_> {
+    /// What a fold adds to row `y`: the rail, and one stub for the row's
+    /// folded edges.
+    fn fold_overlay(
+        &self,
+        buf: &mut Buffer,
+        area: Rect,
+        y: u16,
+        line: &GraphLine<'_>,
+        fold: &Fold,
+        drawn: &DrawnRow<'_>,
+    ) {
+        // A node whose column folded sits on the rail (ease-pass 06b): the
+        // node shows there, not the rail, so no row loses its commit.
+        let node_on_rail = fold.drawn(line.row.lane).is_none();
+        if let Some(rail) = fold.marker().filter(|_| !node_on_rail) {
+            let style = off_thread(foreground(self.theme, Token::TextMuted), line, None);
+            self.put(buf, area, lane_x(rail), y, RAIL, style);
+        }
+        // Several folded edges on one row draw one stub, in the first edge's
+        // colour (ADR-0022). It takes the gap cell even when a kept edge runs
+        // through it: the edge reads on either side.
+        if let Some(first) = drawn.folded.first() {
+            let glyph = match first.toward {
+                Toward::Below => STUB_BELOW,
+                Toward::Above => STUB_ABOVE,
+            };
+            let style = off_thread(
+                Style::new().fg(color(self.theme.branch(first.identity))),
+                line,
+                self.faded(first.identity),
+            );
+            let gap = lane_x(drawn.row.lane).saturating_add(1);
+            self.put(buf, area, gap, y, glyph, style);
+        }
+    }
+
     /// A lane cell in its branch's colour, under the selection's thread
     /// ([`on_thread`]).
     fn threaded(

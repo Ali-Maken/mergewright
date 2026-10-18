@@ -8,11 +8,12 @@ use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
 use super::carve::{CarveInputs, row_carve};
-use super::header_tail::{Drop, TAIL_SEPARATOR, TailItem, fitted_tail};
+use super::header::branch_floor;
+use super::header_tail::{Drop, LaneTally, TAIL_SEPARATOR, TailItem, fitted_tail, lane_phrases};
 use super::{
-    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GUTTER, GraphEntry, GraphScreen, GraphView,
-    GraphicsStatus, HeaderView, MARKER_WIDTH, OrderNotice, RIGHT_MARGIN, SHA_WIDTH, SUBJECT_GAP,
-    WHEN_WIDTH, WalkView, banner_line, header_line, tail_room,
+    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, GUTTER, GraphEntry, GraphScreen, GraphView, GraphicsStatus,
+    HeaderView, MARKER_WIDTH, OrderNotice, RIGHT_MARGIN, SHA_WIDTH, SUBJECT_GAP, WHEN_WIDTH,
+    WalkView, banner_line, header_line, tail_room,
 };
 use crate::graph_column::{CELLS_PER_LANE, GraphColumn};
 use crate::paint::foreground;
@@ -81,9 +82,9 @@ impl<'a> GraphScreen<'a> {
     /// rectangle the pixel tier places its images in, every body row tall.
     #[must_use]
     pub fn graph_area(&self, area: Rect) -> Rect {
-        let (body, rows, applied) = self.body_layout(area);
+        let (body, _, fold) = self.body_layout(area);
         Rect {
-            width: graph_width(body, rows, applied.as_ref()),
+            width: graph_width(body, &fold),
             ..body
         }
     }
@@ -105,9 +106,8 @@ impl<'a> GraphScreen<'a> {
         if area.is_empty() {
             return Vec::new();
         }
-        let (body, rows, applied) = self.body_layout(area);
-        let mut xs =
-            Columns::compute(body, graph_width(body, rows, applied.as_ref())).boundaries(body);
+        let (body, _, fold) = self.body_layout(area);
+        let mut xs = Columns::compute(body, graph_width(body, &fold)).boundaries(body);
         // The gutter and the margin are blank cells beside the rows, so the
         // frame's own edges are boundaries (ADR-0058 §4). The body's right
         // edge is not: [`snap_to_columns`] rests a right edge one cell
@@ -121,14 +121,14 @@ impl<'a> GraphScreen<'a> {
     }
 
     /// The rows' rectangle, the rows that fit in it, and the fold they are
-    /// drawn through (`None` while expanded).
-    pub(super) fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
+    /// drawn through (uncapped while expanded).
+    pub(super) fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Fold) {
         body_layout(self.view, area)
     }
 
-    /// The header line; `folded_lanes` is how many lanes the drawn fold
-    /// hides behind the rail (0 when nothing folds or lanes are expanded).
-    pub(super) fn header(&self, width: u16, folded_lanes: usize) -> Line<'static> {
+    /// The header line; `lanes` is what the drawn fold and rows say of the
+    /// lanes and folds in view (ease-pass 06b).
+    pub(super) fn header(&self, width: u16, lanes: LaneTally) -> Line<'static> {
         let location = self.view.location.as_ref();
         let mut header = HeaderView {
             repo: location.map_or("", |at| at.repo.as_str()),
@@ -142,6 +142,8 @@ impl<'a> GraphScreen<'a> {
         // `MERG…` — the state gone, and the banner is the urgent half
         // (m5/16, review C1).
         let room = usize::from(tail_room(&header, width));
+        // The lane phrases give way before the branch name (ease-pass 06b).
+        let lanes_room = room.saturating_sub(branch_floor(&header));
         header.tail = Some(match &self.view.banner_op {
             // The operation banner takes the walk's place — the walk state,
             // filters, order notice and graphics status all answer "is
@@ -168,7 +170,7 @@ impl<'a> GraphScreen<'a> {
                 spans.push(Span::styled(banner, style));
                 Line::from(spans)
             }
-            None => Line::from(fitted_tail(self.tail_items(folded_lanes, room), room)),
+            None => Line::from(fitted_tail(self.tail_items(lanes, room), room, lanes_room)),
         });
         header_line(&header, width, self.theme)
     }
@@ -192,8 +194,9 @@ impl<'a> GraphScreen<'a> {
 
     /// The header's informational tail when no operation banner takes the
     /// walk's place, left to right: the search (m8/15b), the walk state,
-    /// filters, `Esc cancels`, the order notice and the graphics status.
-    fn tail_items(&self, folded_lanes: usize, room: usize) -> Vec<TailItem> {
+    /// filters, `Esc cancels`, the order notice, the graphics status and the
+    /// lane phrases (ease-pass 06b).
+    fn tail_items(&self, lanes: LaneTally, room: usize) -> Vec<TailItem> {
         let muted = foreground(self.theme, Token::TextMuted);
         let mut items: Vec<TailItem> = self.search_item().into_iter().collect();
         let mut push = |text: String, style: Style, drop: Drop| {
@@ -203,7 +206,7 @@ impl<'a> GraphScreen<'a> {
         };
         let (walk, token) = walk_text_within(&self.view.walk, room);
         push(walk, foreground(self.theme, token), Drop::Walk);
-        let filters = left_out(self.view.filters, folded_lanes, self.view.keys);
+        let filters = self.view.filters.text(self.view.keys);
         push(
             filters,
             foreground(self.theme, Token::Accent),
@@ -234,6 +237,9 @@ impl<'a> GraphScreen<'a> {
                 Drop::Gfx,
             ),
             None => {}
+        }
+        for phrase in lane_phrases(lanes) {
+            push(phrase, muted, Drop::Lanes);
         }
         items
     }
@@ -281,14 +287,13 @@ pub(super) fn body_width(columns: u16) -> u16 {
 pub(super) fn body_layout<'a>(
     view: &'a GraphView<'a>,
     area: Rect,
-) -> (Rect, &'a [GraphEntry<'a>], Option<Fold>) {
+) -> (Rect, &'a [GraphEntry<'a>], Fold) {
     let body = screen_rows(view, area).body;
     let rows = &view.rows[..view.rows.len().min(usize::from(body.height))];
     let fold = view
         .compaction
         .plan(rows.iter().map(|entry| &*entry.line.row));
-    let applied = (!view.compaction.expanded).then_some(fold);
-    (body, rows, applied)
+    (body, rows, fold)
 }
 
 /// Where the commit rows land in `area`, and the columns each of them is
@@ -311,10 +316,10 @@ pub struct RowLayout {
 /// [`GraphScreen`]'s own `render` draws from.
 #[must_use]
 pub fn row_layout(view: &GraphView<'_>, area: Rect) -> RowLayout {
-    let (body, rows, applied) = body_layout(view, area);
+    let (body, _, fold) = body_layout(view, area);
     RowLayout {
         body,
-        columns: Columns::compute(body, graph_width(body, rows, applied.as_ref())),
+        columns: Columns::compute(body, graph_width(body, &fold)),
     }
 }
 
@@ -331,7 +336,7 @@ pub fn row_at<'a>(
     area: Rect,
     screen_row: u16,
 ) -> Option<(&'a GraphEntry<'a>, Columns)> {
-    let (body, rows, applied) = body_layout(view, area);
+    let (body, rows, fold) = body_layout(view, area);
     if body.height == 0 {
         return None;
     }
@@ -340,25 +345,7 @@ pub fn row_at<'a>(
         return None;
     }
     let entry = rows.get(offset)?;
-    Some((
-        entry,
-        Columns::compute(body, graph_width(body, rows, applied.as_ref())),
-    ))
-}
-
-/// The header's account of what the drawn fold and the filters leave out:
-/// the filters, then `+N lanes` while the drawn fold hides any. The count is
-/// the screen's to say — it planned the fold — and shows only while
-/// something folds, never on a row (ADR-0022).
-fn left_out(filters: Filters, folded_lanes: usize, keys: &crate::keymap::Keymap) -> String {
-    let mut words = filters.text(keys);
-    if folded_lanes > 0 {
-        if !words.is_empty() {
-            words.push_str(" · ");
-        }
-        words.push_str(&format!("+{folded_lanes} lanes"));
-    }
-    words
+    Some((entry, Columns::compute(body, graph_width(body, &fold))))
 }
 
 /// Cells the graph column can take at most, at this screen width: half the
@@ -369,19 +356,11 @@ fn column_budget(columns: u16) -> u16 {
     columns / 2
 }
 
-/// Cells the graph column takes in the rows' `area`: what its lanes want,
-/// half the width at most — the subject is what makes a row readable.
-pub(super) fn graph_width(area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>) -> u16 {
-    let full_width = || {
-        let lanes = rows
-            .iter()
-            .map(|entry| entry.line.row.lanes.len().max(entry.line.row.lane + 1))
-            .max()
-            .unwrap_or(1);
-        GraphColumn::width_for(lanes)
-    };
-    fold.map_or_else(full_width, GraphColumn::width_through)
-        .min(column_budget(area.width))
+/// Cells the graph column takes in the rows' `area`: what the lanes drawn
+/// through `fold` want, half the width at most — the subject is what makes
+/// a row readable.
+pub(super) fn graph_width(area: Rect, fold: &Fold) -> u16 {
+    GraphColumn::width_through(fold).min(column_budget(area.width))
 }
 
 /// The most lane columns, the rail included, the graph column can hold at

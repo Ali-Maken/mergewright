@@ -62,7 +62,8 @@ fn ancestry_highlight_and_focus_on_criss_cross() {
             let height = usize::from(ROWS - CHROME_ROWS);
             let mut view = screen::view(&lines, height, SELECTED);
             view.filters.focused = focus;
-            let buffer = draw(&view, &theme(ThemeKind::Dark, depth));
+            let theme = theme(ThemeKind::Dark, depth);
+            let buffer = draw(&view, &theme);
 
             let mode = if focus { "focus" } else { "highlight" };
             let mut text = format!(
@@ -73,7 +74,7 @@ fn ancestry_highlight_and_focus_on_criss_cross() {
                 text.push('\n');
             }
             text.push_str("\nmodifiers: graph | subject\n");
-            let graph_width = laid.width();
+            let graph_width = screen::graph_width(&view, &theme, COLUMNS, ROWS);
             for (index, row) in laid.rows.iter().enumerate() {
                 let y = u16::try_from(index).expect("few rows") + 1;
                 // The graph column starts after the two-cell gutter (ADR-0058).
