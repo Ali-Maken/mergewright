@@ -158,3 +158,5 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - builder-sonnet 06t done (53456ee7): 5/5; rows.rs → rows/{header,footer,window,hint_context}, entries/cells, radar/detail tests out; 4 over_400 rows removed; 6947/6947 in worktree (19 moved, count same) · 77+ tools · skills: none. Merge after 12b gates. Stale comment geometry.rs:485 handed to 06s.
 - gates after 12b fix (2b0b777e): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
 - 06t merged; gates running. builder-sonnet 03r Minor 5 continuation dispatched beside 06s.
+- builder-sonnet 06s done (98d7d79e, ed5a3c92): 6/6; state.rs 1318→531 (row lowered), keys 283, selection 258, preview 242; worktree 6953/6955 (summary_captures = fixed on main; map_coverage fixed, rerun partial) · skills: none. Merge after 06t gates.
+- gates after 06t (7b3d5964): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
