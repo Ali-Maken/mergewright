@@ -223,7 +223,7 @@ const HEADER_SHA: usize = 7;
 /// Where the header says the user is: the repository's name, its path with
 /// `home` written `~`, and the branch — or `detached <sha7>` (DESIGN.md
 /// §1.0, ADR-0058 §4). Every string is sanitised on the way.
-fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
+pub(super) fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
     let repo = facts.path.file_name().map_or_else(
         || sanitize_path(&facts.path),
         |name| sanitize_path(Path::new(name)),
@@ -247,7 +247,7 @@ fn location(facts: &RepositoryFacts, home: Option<&Path>) -> Location {
 
 /// The header in the practice repository (ADR-0056, mock-ups §1.0): `◇`,
 /// and `practice · <tmp> · a throwaway repo, not yours` for its path.
-fn practised(mut at: Location, state: &AppState) -> Location {
+pub(super) fn practised(mut at: Location, state: &AppState) -> Location {
     if state.tour.is_some() {
         at.practice = true;
         at.path = sanitize_line(&super::tour::practice_path(at.path.as_str()));

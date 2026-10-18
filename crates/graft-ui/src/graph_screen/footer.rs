@@ -12,8 +12,10 @@ use unicode_width::UnicodeWidthStr;
 use super::hints::{
     Divider, fit_status_line, hints_for, hints_text, stopped_row, stopped_row_before_keys,
 };
-use super::layout::{Columns, ScreenRows, graph_width};
+use super::lanes::graph_width;
+use super::layout::ScreenRows;
 use super::render::subject_truncated;
+use super::row_columns::Columns;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
 use crate::keymap::{ActionId, Keymap};

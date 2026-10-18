@@ -282,9 +282,10 @@ shared with no `AppState` to hand, it lives in `graft-ui` in plain numbers
 
 | `view` fn | Called from |
 |---|---|
-| `uncommitted_shown` | `geometry.rs:332`, `:442`; `mouse.rs:139`, `:174` |
+| `uncommitted_shown` | `geometry.rs:332`, `:442`; `mouse.rs:136`, `:171` |
 | `badge_index_at` | `geometry.rs:478` |
-| `strip::strip_marks` | `mouse.rs:152` |
+| `strip::strip_marks` | `mouse.rs:149` |
+| `commit_screen_view` | `commit_editor/mouse.rs:63` |
 | `frame::palette_click`, `frame::PaletteClick` | `palette/input.rs:220-228` |
 | `finish::summary_area`, `finish::finish_view` | `finish.rs:185-195`; `finish/keys.rs:112-116`; `finish/mouse.rs:35-63` |
 | `rewrite_editor::rewrite_view`, `rewrite_editor::editor_area` | `rewrite_editor/keys.rs:99-101` |

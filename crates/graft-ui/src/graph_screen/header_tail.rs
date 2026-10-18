@@ -6,7 +6,7 @@ use ratatui::style::Style;
 use ratatui::text::Span;
 
 use super::GraphEntry;
-use super::layout::text_width;
+use super::walk_text::text_width;
 use crate::fit::fit;
 
 /// Between two items of the header's tail.

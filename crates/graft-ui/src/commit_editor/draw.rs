@@ -10,9 +10,10 @@ use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
 use super::layout::{CommitLayout, commit_layout};
-use super::words::{bar, header_line, summary_line, whole_parts};
+use super::words::{fitted_bar, header_line, summary_line};
 use super::{CommitScreen, Summary};
 use crate::fit::fit;
+use crate::graph_screen::{HeaderView, header_line as top_line};
 use crate::paint::foreground;
 use crate::text_input::{FOCUS, draw_line};
 use crate::theme::Token;
@@ -29,6 +30,9 @@ pub(super) const BODY_PLACEHOLDER: &str = "More detail, if it needs it (optional
 /// diff shows, with the keys elsewhere.
 const CURSOR_AWAY: char = '\u{203a}';
 
+/// Cells between the repository words and the commit's (the mock's gap).
+const HEADER_GAP: usize = 2;
+
 impl Widget for &CommitScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.width == 0 || area.height == 0 {
@@ -42,18 +46,10 @@ impl Widget for &CommitScreen<'_> {
         // The rectangles a click is tested against, so a click lands on
         // what is drawn (08s M5).
         let layout = commit_layout(cells_of(area));
-        let header = rect_of(layout.header);
-        buf.set_string(
-            header.x,
-            header.y,
-            fit(
-                &format!(" {}", header_line(&self.view.header)),
-                usize::from(header.width),
-            ),
-            foreground(self.theme, Token::Text).add_modifier(Modifier::BOLD),
-        );
+        self.draw_header(buf, rect_of(layout.header));
         if layout.bar.height > 0 {
-            self.draw_bar(buf, rect_of(layout.bar));
+            let diff_shown = layout.diff.is_some_and(|diff| diff.height > 0);
+            self.draw_bar(buf, rect_of(layout.bar), diff_shown);
         }
         if layout.message_box.height > 0 {
             self.draw_message_box(buf, &layout);
@@ -68,9 +64,48 @@ impl Widget for &CommitScreen<'_> {
 }
 
 impl CommitScreen<'_> {
+    /// The top row (08s m12): the repository words the graph's top line
+    /// starts with, drawn and cut by that line's own function — the path
+    /// first, from the left — in the room the commit's words leave; then
+    /// those words, which give way only to the repository's name.
+    fn draw_header(&self, buf: &mut Buffer, row: Rect) {
+        let words = header_line(&self.view.header);
+        let bold = foreground(self.theme, Token::Text).add_modifier(Modifier::BOLD);
+        let width = usize::from(row.width);
+        let Some(location) = &self.view.header.location else {
+            buf.set_string(row.x, row.y, fit(&format!(" {words}"), width), bold);
+            return;
+        };
+        let repo = HeaderView {
+            repo: location.repo.as_str(),
+            path: location.path.as_str(),
+            // The branch is in the commit's words: `committing to <branch>`.
+            branch: "",
+            tail: None,
+            practice: location.practice,
+        };
+        // The name alone, and the cell of margin `top_line` keeps.
+        let name_only = HeaderView {
+            path: "",
+            ..repo.clone()
+        };
+        let name = top_line(&name_only, row.width, self.theme).width() + 1;
+        let room = width.saturating_sub(words.width() + HEADER_GAP).max(name);
+        let line = top_line(&repo, u16::try_from(room).unwrap_or(u16::MAX), self.theme);
+        buf.set_line(row.x, row.y, &line, row.width);
+        let at = line.width() + HEADER_GAP;
+        // One cell of right margin, as the graph's top line keeps.
+        let left = width.saturating_sub(at + 1);
+        if left > 0 {
+            let x = row.x + u16::try_from(at).unwrap_or(u16::MAX);
+            buf.set_string(x, row.y, fit(&words, left), bold);
+        }
+    }
+
     /// The bar, or the failure that takes its row (hook fails: C13's
-    /// "the failure on its status row").
-    fn draw_bar(&self, buf: &mut Buffer, row: Rect) {
+    /// "the failure on its status row"). `diff_shown`: a diff is on screen
+    /// for `↑/↓` to show.
+    fn draw_bar(&self, buf: &mut Buffer, row: Rect, diff_shown: bool) {
         let (line, token) = match &self.view.status {
             Some(status) => {
                 let dismiss = self
@@ -87,11 +122,13 @@ impl CommitScreen<'_> {
             // take the bar's row (m6-conflicts/48).
             None => match &self.view.live {
                 Some(live) => (live.as_str().to_owned(), Token::Warning),
-                // Whole keys or none: the bar drops its last parts first.
+                // Whole keys or none, the least needed dropped first.
                 None => (
-                    whole_parts(
-                        &bar(self.view, self.keys),
+                    fitted_bar(
+                        self.view,
+                        self.keys,
                         usize::from(row.width).saturating_sub(1),
+                        diff_shown,
                     ),
                     Token::TextMuted,
                 ),

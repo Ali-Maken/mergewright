@@ -10,7 +10,8 @@ use ratatui::text::Line;
 use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
-use super::layout::{Columns, graph_width};
+use super::lanes::graph_width;
+use super::row_columns::Columns;
 use super::{
     Badge, BadgeKind, GraphEntry, GraphScreen, Icons, LaneTally, RULE_WIDTH, SUBJECT_GAP, TAG_GAP,
     TAG_MIN_SUBJECT, badges,
@@ -301,7 +302,7 @@ impl GraphScreen<'_> {
             0
         };
         let room = width - mark_width - tag_cells;
-        let used = u16::try_from(super::layout::text_width(subject))
+        let used = u16::try_from(super::walk_text::text_width(subject))
             .unwrap_or(u16::MAX)
             .min(room);
         draw_cell(buf, x, y, used, subject, style);
@@ -671,7 +672,7 @@ pub(super) fn subject_truncated(
             .unwrap_or(u16::MAX)
             .saturating_add(TAG_GAP)
     });
-    super::layout::text_width(entry.subject.as_str()) > usize::from(width.saturating_sub(tag))
+    super::walk_text::text_width(entry.subject.as_str()) > usize::from(width.saturating_sub(tag))
 }
 
 /// Draws `text`, clamped and padded to exactly `width` cells, at `(x, y)`.

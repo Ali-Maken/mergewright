@@ -11,27 +11,34 @@
 //! never scrolls — the viewport arrives already cut.
 //!
 //! Split across files by concern (m1-the-graph/73a): this file holds the
-//! plain-data types the other files read; [`layout`] the geometry and header;
-//! [`footer`] the footer's text (search, notices, the commit-graph offer,
-//! key hints); [`render`] the actual drawing.
+//! plain-data types the other files read, with [`view`] (the
+//! [`GraphView`]) and [`entry`] (one row) beside it; [`layout`] the geometry
+//! and header, [`lanes`] how many lanes fit, [`walk_text`] the walk's words,
+//! [`row_columns`] where the row columns stand; [`footer`] the footer's text
+//! (search, notices, the commit-graph offer, key hints); [`render`] the
+//! actual drawing.
 
 pub mod badges;
 mod banner;
 mod carve;
 pub mod columns;
 mod compaction;
+mod entry;
 mod fold_mark;
 mod footer;
 mod header;
 mod header_tail;
 pub mod hints;
+mod lanes;
 mod layout;
 mod render;
+mod row_columns;
 #[cfg(test)]
 mod tests;
+mod view;
+mod walk_text;
 
 use graft_core::mistake_radar::Severity;
-use graft_graph::identity::BranchIdentity;
 use graft_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
@@ -39,6 +46,8 @@ pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use carve::{CarveInputs, RowCarve, row_carve};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
 pub use compaction::Compaction;
+pub(crate) use entry::TAG_GAP;
+pub use entry::{AuthorChip, GraphEntry, RowTag, TAG_MIN_SUBJECT};
 pub use fold_mark::{FoldCount, FoldMark};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use header_tail::LaneTally;
@@ -47,13 +56,12 @@ pub use hints::{
     StatusRow, StopWording, TabWord, WayToBanner, blame_place_list, every_context, every_hint,
     fit_status_line, hints_for, hints_text, status_row, stopped_row, stopped_row_before_keys,
 };
-pub use layout::{
-    Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,
-    snap_to_columns,
-};
+pub use lanes::{lanes_that_fit, max_lanes_for};
+pub use layout::{RowLayout, ScreenRows, row_at, row_layout, screen_rows};
 pub use render::{badge_spans, badges_that_fit};
+pub use row_columns::{Columns, snap_to_columns};
+pub use view::GraphView;
 
-use crate::graph_column::GraphLine;
 use crate::theme::Theme;
 
 /// Cells the marker slot always takes: the cursor rule, the Mistake Radar
@@ -142,131 +150,6 @@ pub struct Location {
     pub practice: bool,
 }
 
-/// Everything the graph screen draws.
-#[derive(Clone, Debug)]
-pub struct GraphView<'a> {
-    /// His keymap: the footer spells every key from it (ticket m8/10).
-    pub keys: &'a crate::keymap::Keymap,
-    /// Where the screen is, once the repository is open.
-    pub location: Option<Location>,
-    /// The terminal is tall enough for the blank row and the rule
-    /// ([`spaced`] of the terminal's rows, which `graft`'s geometry mirrors
-    /// read too — not of this widget's area, which a tab strip or a pane
-    /// below can shorten).
-    pub spaced: bool,
-    /// Where the history walk is.
-    pub walk: WalkView,
-    /// Something went wrong and has not been superseded. Takes the footer's
-    /// place while it lasts; absent when nothing is wrong.
-    pub problem: Option<ProblemLine>,
-    /// The rows in the viewport, top first. The cursor's row is the one
-    /// painted [`RowPaint::Highlighted`].
-    pub rows: Vec<GraphEntry<'a>>,
-    /// Which glyphs ref badges draw with (`ui.icons`).
-    pub icons: Icons,
-    /// The lane cap, and whether the user lifted it (DESIGN.md §3.5).
-    pub compaction: Compaction,
-    /// What the history shown leaves out; said in the header so a folded or
-    /// first-parent graph is never mistaken for the whole one.
-    pub filters: Filters,
-    /// The row whose full subject the footer reveals in place of the key
-    /// hints: an index into [`GraphView::rows`], from a hover. `None` shows
-    /// the ordinary hints. A row whose subject was not cut with `…` draws
-    /// nothing extra even when named here — nothing to reveal.
-    pub reveal: Option<usize>,
-    /// The order notice, while the rows are not yet in their final order.
-    pub order: Option<OrderNotice>,
-    /// Draw the graph column with the ASCII glyph table rather than Unicode
-    /// box-drawing (`graph.renderer`, ticket m1-the-graph/19; DESIGN.md §4.2,
-    /// ADR-0016).
-    pub ascii: bool,
-    /// The pixel tier draws the graph: the column keeps its width but is left
-    /// blank, for the terminal's images to fill (ticket m1-the-graph/24c).
-    pub pixel: bool,
-    /// How the terminal took the last graph images, while the pixel tier
-    /// draws them; `None` at every other tier.
-    pub graphics: Option<GraphicsStatus>,
-    /// `N commit(s) to push` while `HEAD`'s branch is ahead of its upstream
-    /// (ease-pass/08 C13), at the top line's right end; `None` when level,
-    /// with no upstream, or not read yet — never a word when there is
-    /// nothing to say.
-    pub push: Option<SanitizedText>,
-    /// What the app layer did to the renderer tier the user did not ask to
-    /// be told twice — the tier-drop key said what it did. Takes the
-    /// footer's place under [`GraphView::problem`], above the hints.
-    pub notice: Option<SanitizedText>,
-    /// Where [`GraphView::notice`] stands: in the bar's row, or — a done
-    /// line over a landing bar, `graft`'s [`hints::status_row`] answer — on
-    /// its own row directly above the bar, the graph a row shorter
-    /// (ease-pass/08s M4).
-    pub status_row: hints::StatusRow,
-    /// The search prompt while `/` is open, in the footer above a notice and
-    /// under a problem; `None` otherwise (m1-the-graph/26). Once `⏎` closes
-    /// the field the search's line is [`GraphView::search_tail`] (m8/15b).
-    pub search: Option<SearchLine>,
-    /// A search that stands with its field closed: its line in the header's
-    /// tail, leftmost, so the footer is the place's keys again (m8/15b,
-    /// ticket 15 A2). `None` with no search, or while the prompt is open.
-    pub search_tail: Option<SearchTail>,
-    /// The pinned compare base's footer line (`x`, m2-details-and-diffs/11):
-    /// `"compare base <sha> — move, x again clears"`, in the same footer
-    /// slot as [`GraphView::search`]/[`GraphView::notice`] — stacked under
-    /// both, above the revealed subject and the key hints. `None` while no
-    /// base is pinned.
-    pub compare_footer: Option<SanitizedText>,
-    /// Why the live operation stopped, worded by `graft` each frame
-    /// (`merge stopped · 1 file conflicted`, m6-conflicts/12). Drawn ahead
-    /// of the key hints on their row ([`stopped_row`]) — the last rung of
-    /// the footer, so a problem, a search, a notice, the compare base and a
-    /// reveal all still win. `None` while nothing is stopped.
-    pub stopped: Option<StopWording>,
-    /// The commit-graph offer's footer line (m1-the-graph/54): directly above
-    /// the hints, below a notice. Costs one graph row while `Some`; `None`
-    /// for a repository with a commit-graph, the common case.
-    pub commit_graph: Option<CommitGraphLine>,
-    /// Lines a harness pins under the header, above the rows, each fitted to
-    /// the width: the gallery says which stop this is and what to look for
-    /// (m1-the-graph/38). The first line is the title, drawn in the accent;
-    /// the rest in the info colour. Every line costs a graph row. Empty in
-    /// the shipped binary.
-    pub banner: Vec<SanitizedText>,
-    /// The detail pane is on screen **and its divider exists to drag**: the
-    /// footer adds a `<> resize` hint, which is the only time that key does
-    /// anything (`detail-resize-and-persistence`).
-    ///
-    /// The second half is not decoration. Under 100 columns the pane is a
-    /// tab strip, not a split, and `<>` moves nothing — `view::frame` says
-    /// exactly that where it draws the Detail tab's own bar, while the
-    /// Graph tab kept the graph screen's footer, which read "a pane is
-    /// open" as "a divider is there" and drew a dead key at 40 and 80
-    /// columns (m5-history-and-ghost-preview/33, found by review M6's
-    /// width sweep). The field is named for what the footer needs so the
-    /// two cannot come apart again.
-    pub divider_shown: bool,
-    /// Where the cursor or focus is, for the footer's hint list
-    /// (`hint-bar-redesign`, ADR-0037 §4): replaces the old `changes_pane`
-    /// flag with the context [`hints::hints_for`] needs to pick the three
-    /// most relevant keys at any width.
-    pub hint_context: HintContext,
-    /// The marker column draws: `app` has seen a Mistake Radar finding this
-    /// session, on a row or on a ref (`view::radar`). Sticky once true — the
-    /// column never appears and disappears as the same session scrolls
-    /// (`docs/design-notes/m2-details-and-diffs.md`, marker column).
-    pub marker_column: bool,
-    /// The operation banner: replaces the header's ahead/behind/walk slot
-    /// while `Some` — a merge/rebase/cherry-pick/revert is `in_progress`
-    /// (DESIGN.md §1.13, ADR-0038 §3). `None` draws the header as it always
-    /// has.
-    pub banner_op: Option<BannerView>,
-    /// The practice tour's card (ADR-0056 §3, ticket m8/19b): three rows
-    /// under the banner, above the rows. `None` outside the tour.
-    pub tour: Option<crate::tour_card::TourCardView>,
-    /// The still-to-apply block at a rewrite stop, drawn boxed between the
-    /// banner and the rows (m7-power-tools/07c). `None`, or empty, draws
-    /// nothing and costs no row.
-    pub pending: Option<crate::still_to_apply::PendingView>,
-}
-
 /// A problem the footer shows in place of the key hints: a failure, read or
 /// write (`Status::Failed`/`Status::Sticky`). Split in two so the width
 /// rule (`hints::fit_status_line`, ADR-0037 §4) can keep `keys` whole and
@@ -338,112 +221,6 @@ impl Filters {
         }
         parts.join(" · ")
     }
-}
-
-/// One row of the graph screen.
-#[derive(Clone, Debug)]
-pub struct GraphEntry<'a> {
-    /// The graph column's cells for this row, and how strongly it paints.
-    pub line: GraphLine<'a>,
-    /// The refs on this commit, in the order they are drawn. Empty for
-    /// most rows.
-    pub badges: Vec<Badge>,
-    /// The commit's subject, sanitised.
-    pub subject: SanitizedText,
-    /// The author's chip: initials and the identity that colours it.
-    pub author: AuthorChip,
-    /// How long ago the commit was made, already formatted (`"2m"`, `"3h"`).
-    /// Not repository text — a clock reading `app` computed — so it needs no
-    /// sanitising.
-    pub when: String,
-    /// The commit's short SHA, lowercase hex. Not repository text either:
-    /// hex drawn from a fixed digit alphabet is safe as-is
-    /// (`graft_core::oid::Oid`'s own doc comment).
-    pub sha: String,
-    /// This row is the pinned compare base (`x`, m2-details-and-diffs/11):
-    /// draws the accent `▏` left rule. At most one row is ever `true`.
-    pub compare_marked: bool,
-    /// The Mistake Radar marker for this commit, painted in the marker
-    /// column (`view::radar::marker_for`, m2-details-and-diffs/13). `None`
-    /// on almost every row.
-    pub marker: Option<MarkerView>,
-    /// A short tag drawn after the subject — `✎ changed` on a commit a
-    /// rewrite just changed (m7-power-tools/09). `None` on almost every row.
-    pub tag: Option<RowTag>,
-    /// A folding merge's tail (ease-pass 06, mock G4), drawn muted one
-    /// space after the subject. `None` on every row that is not a merge with
-    /// a merged branch folded behind it, or opened.
-    pub fold: Option<FoldMark>,
-}
-
-/// A tag a row carries after its subject until the next write starts
-/// (m7-power-tools/09). The subject yields to it — cut with `…` first — and
-/// it is left off when fewer than [`TAG_MIN_SUBJECT`] subject cells would be
-/// left; the status line says the same thing in words.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RowTag {
-    /// `✎ changed` (ASCII `~ changed`): a commit a rewrite just changed.
-    Changed,
-    /// `HEAD · stopped here`: the commit a rewrite's `edit` stop handed him
-    /// (m7-power-tools/07b), on `HEAD`'s row while the stop lasts.
-    StoppedHere,
-    /// `↺ put back` (ASCII `put back`): the commit a put-back from the
-    /// journal brought back (m7-power-tools/24).
-    PutBack,
-    /// `○ <branch> was here` (ASCII `<branch> was here`): the tip a put-back
-    /// moved `branch` off (m7-power-tools/24).
-    WasHere {
-        /// The branch, short name, already sanitised by the caller.
-        branch: String,
-    },
-}
-
-impl RowTag {
-    /// The words drawn after the subject, in the tier the graph column
-    /// draws in: `ascii` is `GraphView::ascii`, the switch the marker glyph
-    /// mirrors too (badges' `Icons` has no ASCII form).
-    #[must_use]
-    pub fn words(&self, ascii: bool) -> std::borrow::Cow<'_, str> {
-        use std::borrow::Cow;
-        match (self, ascii) {
-            (RowTag::Changed, false) => Cow::Borrowed("\u{270e} changed"),
-            (RowTag::Changed, true) => Cow::Borrowed("~ changed"),
-            // `·` is drawn in both tiers: the ASCII tier swaps glyphs, not
-            // the middle dot every status line already uses.
-            (RowTag::StoppedHere, _) => Cow::Borrowed("HEAD \u{b7} stopped here"),
-            // The ASCII tier has no arrow or ring that reads as these, so
-            // it says the words alone rather than borrow a graph glyph.
-            (RowTag::PutBack, false) => Cow::Borrowed("\u{21ba} put back"),
-            (RowTag::PutBack, true) => Cow::Borrowed("put back"),
-            (RowTag::WasHere { branch }, false) => {
-                Cow::Owned(format!("\u{25cb} {branch} was here"))
-            }
-            (RowTag::WasHere { branch }, true) => Cow::Owned(format!("{branch} was here")),
-        }
-    }
-}
-
-/// The fewest subject cells a tag leaves; below it the tag is not drawn.
-pub const TAG_MIN_SUBJECT: u16 = 8;
-
-/// Cells between the subject and its tag.
-pub(crate) const TAG_GAP: u16 = 2;
-
-/// An author's chip: two initials, coloured by the author's identity.
-///
-/// The colour comes from [`BranchIdentity`] and the same lane palette a
-/// branch draws in ([`Theme::branch`](crate::theme::Theme::branch)) — reused
-/// rather than given its own palette, since both are "a stable colour for a
-/// hash of some bytes" and a second palette would only have to be proven
-/// colourblind-safe all over again.
-#[derive(Clone, Debug)]
-pub struct AuthorChip {
-    /// The two initials drawn in the chip, sanitised.
-    pub initials: SanitizedText,
-    /// The identity the chip's colour comes from — of the author's
-    /// `.mailmap`-resolved email, so two identities mapped to one person
-    /// share a colour along with their chip.
-    pub identity: BranchIdentity,
 }
 
 /// What the header says about the order the rows are in, when it is not the

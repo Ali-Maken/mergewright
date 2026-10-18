@@ -162,6 +162,10 @@ pub enum Refusal {
 /// The header line: where the commit goes, the push state, the options on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommitHeader {
+    /// The repository words the graph's top line starts with (08s m12):
+    /// `◆ <repo>  <~/path>`, cut the way that line cuts them — the path
+    /// first. `None` before a repository is known: the commit's words alone.
+    pub location: Option<crate::graph_screen::Location>,
     /// The branch `HEAD` is on (or `HEAD`'s short SHA when detached).
     pub branch: SanitizedText,
     /// `<sha7> <subject>` of the commit an amend rewrites; `None` for a
