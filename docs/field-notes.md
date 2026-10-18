@@ -117,3 +117,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-10-18 · merge screens: a file with every clash picked reads `✓ done`, as the mock (not `solved`); the merge box keeps `your edits: N files set aside, put back after` (beyond the mock) — his picks, both recommended.
 - 2026-10-18 · merge review: merge message read-only, as the mock — editing it there goes away (his pick, over keeping it).
 - 2026-10-18 · asked how to publish (brew/npm); order: codename rename first, then licence and release setup.
+- 2026-10-18 · licence: MIT + Apache-2.0 dual (the Rust norm).
