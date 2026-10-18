@@ -21,10 +21,13 @@ use crate::frame_box::{border_row, buttons_row, cells, content_row, reverse_butt
 use crate::keymap::Keymap;
 
 mod footer;
+mod merge;
 
+use crate::incoming_list::{IncomingList, IncomingView};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 pub use footer::Again;
+pub use merge::MergeParts;
 pub(crate) use footer::footer_label;
 use footer::too_small;
 
@@ -86,6 +89,11 @@ pub struct PreviewBox {
     /// closing boxes only because `graft/src/update/stash/tests.rs` reads it
     /// and that file is another ticket's this wave; removed with that read.
     pub back_only: bool,
+    /// A merge's own box (ease-pass 10): `lines`, `commands` and choices
+    /// unused; keys only. Set through [`PreviewBox::with_merge`].
+    pub merge: Option<MergeParts>,
+    /// The merge's incoming commits, drawn in the box's place (`⏎`).
+    pub incoming: Option<IncomingView>,
 }
 
 impl PreviewBox {
@@ -106,7 +114,19 @@ impl PreviewBox {
             again: None,
             keep: false,
             back_only: false,
+            merge: None,
+            incoming: None,
         }
+    }
+
+    /// The merge box: `parts` in place of `lines` and `commands`, no
+    /// choices (keys only, mock l.131–139), the merge footer.
+    #[must_use]
+    pub fn with_merge(mut self, parts: MergeParts) -> Self {
+        self.merge = Some(parts);
+        self.lines = Vec::new();
+        self.commands = Vec::new();
+        self.with_choices(Vec::new())
     }
 
     /// The same box with its own choices — `labels[0]` is the safe one and
@@ -148,6 +168,13 @@ impl PreviewBox {
 /// changes this function's callers.
 #[must_use]
 pub fn preview_rows(view: &PreviewBox, _width: u16) -> u16 {
+    if let Some(incoming) = &view.incoming {
+        return incoming.rows_wanted();
+    }
+    if let Some(parts) = view.merge.as_ref().filter(|_| !view.planning) {
+        let rows = 2 + parts.lines(Keymap::shipped()).len();
+        return u16::try_from(rows).unwrap_or(u16::MAX);
+    }
     let body = if view.planning { 1 } else { view.lines.len() };
     let rows = 1 // top border + title
         + body
@@ -228,6 +255,10 @@ impl PreviewBoxWidget<'_> {
         let view = self.view;
         let text_style = foreground(self.theme, Token::Text);
         let muted = foreground(self.theme, Token::TextMuted);
+        if let Some(parts) = &view.merge {
+            merge::draw(parts, (area, width), buf, self.theme, self.keys);
+            return;
+        }
 
         let mut body: Vec<(&str, Style)> = Vec::new();
         if view.planning {
@@ -294,6 +325,15 @@ impl Widget for &PreviewBoxWidget<'_> {
             return;
         }
 
+        if let Some(incoming) = &view.incoming {
+            let list = IncomingList {
+                view: incoming,
+                theme: self.theme,
+                keys: self.keys,
+            };
+            (&list).render(area, buf);
+            return;
+        }
         for y in area.top()..area.bottom() {
             buf.set_stringn(area.x, y, " ".repeat(width), width, Style::default());
         }

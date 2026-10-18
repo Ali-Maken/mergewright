@@ -14,7 +14,7 @@ fn part(keys: &Keymap, actions: &[&'static str], verb: &str) -> Option<String> {
 }
 
 /// Parts joined by the footer's two-space gap, an unbound one left out.
-fn join(parts: &[Option<String>]) -> String {
+pub(super) fn join(parts: &[Option<String>]) -> String {
     parts
         .iter()
         .flatten()

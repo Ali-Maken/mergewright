@@ -362,6 +362,12 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `max_top` (fn) — The largest `top` that still fills the list: the wheel stops there.
 - `top_for_cursor` (fn) — The `top` that puts the cursor row — and the diff under it, as much as fits — on screen, moving `view.top` as little as it must.
 
+## incoming_list
+The commits a merge brings in (ease-pass 10), `⏎` from the merge preview; docked where the box was.
+- `IncomingRow` (struct) — `subject`, `who` (first name), `age` (graph format), `is_merge`.
+- `IncomingView` (struct) — `from`, `rows` (newest first), `capped`, `withheld`, `cursor`, `ascii`; `header` / `down` / `up` / `rows_wanted` (fns).
+- `IncomingList` (struct, `Widget`) — `view`, `theme`, `keys`: header, rows (cursor `▸`, scrolled into view), footer `esc back to the preview  y merge`.
+
 ## journal_screen
 - `JournalScreen` (struct) — The browser itself: `view`, `theme`, `keys: &Keymap` (footer, legend, empty state and row marks are spelled from it). The caller paints the surface underneath.
 - `legend` (fn) — What each glyph means, on screen for as long as the rows are (J1), with `app.undo`'s key spelled from `keys` (its first chord); unbound, the legend says it in words. The `⇢` clause is appended only when it all fits.
@@ -489,6 +495,9 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `PreviewBox` (struct) — Everything the Ghost Preview box draws.
 - `new` (fn) — An empty box titled `title`, choices `Cancel`/`Confirm`, cursor on `Cancel` — the only way to build one, so the safe choice is first and under the cursor in every preview, whatever the plan does (ADR-0038 §1).
 - `with_choices` (fn) — The same box with its own choices — `labels[0]` is the safe one and is where the cursor goes back to (ADR-0038 §1).
+- `PreviewBox::merge`, `PreviewBox::incoming` (fields) — a merge's own box (ease-pass 10), and its incoming list drawn in the box's place; `preview_rows` sizes either.
+- `with_merge` (fn) — the merge box: `MergeParts` in place of `lines`/`commands`, no choices (keys only), footer `y merge  esc cancel  ⏎ see the N commits` (no `y` when withheld).
+- `MergeParts` (struct) — `from`, `into`, `incoming`/`incoming_capped`, `who`/`who_more`, `changed`/`changed_capped`, `decide: Vec<(path, places)>`, `not_checkable`, `withheld`: what the merge box says, in counts.
 - `choices` (fn) — The choices, left to right.
 - `selected` (fn) — The choice the cursor is on.
 - `left` (fn) — Moves the cursor one choice left, clamped at the first (no wrap).
