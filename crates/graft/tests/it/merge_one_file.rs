@@ -124,13 +124,8 @@ fn two_clashes_picked_read_solved_and_stay_unmerged() {
     }
     assert_eq!(row(&state, "only.md"), RowState::AllTaken);
     let drawn = crate::captures::frame(&state, 200, 40);
-    assert!(
-        drawn
-            .iter()
-            .any(|line| line.contains("only.md") && line.contains("solved")),
-        "{}",
-        drawn.join("\n")
-    );
+    let listed = crate::captures::list_row(&drawn, "only.md");
+    assert_eq!(listed, "▏✓ only.md done", "{}", drawn.join("\n"));
     assert_eq!(read(repo, "only.md"), lines("our 2", "our 8"));
     let unmerged = git(repo, &["ls-files", "-u", "--", "only.md"]);
     assert!(

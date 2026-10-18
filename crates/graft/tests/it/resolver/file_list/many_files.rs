@@ -41,11 +41,9 @@ fn file_list_many_capture() {
     assert_eq!(rows(&state).len(), 12);
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
-    assert!(frame[3].trim_end().ends_with("more"), "{body}");
-    assert!(
-        frame[4].starts_with('─'),
-        "three grid rows, then the rule: {body}"
-    );
+    // A column at 120 (ease-pass/11): every file its own row.
+    let listed = |n: usize| crate::captures::list_row(&frame, &format!("handler_{n:02}.rs"));
+    assert!((1..=12).all(|n| !listed(n).is_empty()), "{body}");
     crate::captures::check_shot("m6/fix-file-list-many-120x40.txt", &format!("{body}\n"));
     drop(state);
     app.close();

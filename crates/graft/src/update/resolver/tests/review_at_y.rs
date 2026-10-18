@@ -363,4 +363,5 @@ fn u_in_a_review_from_the_banner_opens_the_resolver_on_the_pick() {
     );
 }
 
+mod click;
 mod stages_nothing;

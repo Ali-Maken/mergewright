@@ -2,19 +2,19 @@ files   ▸ src/auth/token.rs 2/3 open   src/api/routes.rs •
 ────────────────────────────────────────────────────────────────────────────────
 ▸ src/auth/token.rs · 3 conflicts · 2 open
 
-  38 fn refresh(&mut self) {
-▏ ── conflict 1 of 3 · open ── o upstream  t yours  b both ─────────────────────
-▏ upstream · main
-▏ 39 if expired() {
-▏ 40 self.renew();
-▏ yours · 3f2a1b7 Add OAuth provider
-▏ 39 if is_expired() {
-▏ 40 self.do_refresh();
-▏ ──────────────────────────────────────────────────────────────────────────────
-  41 }
-  ── conflict 2 of 3 · took yours · 3f2a1b7 Add OAuth provider ── o upstream  b…
-  42 let tok = self.store.get();
-  ──────────────────────────────────────────────────────────────────────────────
+   38 fn refresh(&mut self) {
+┌──────────────────────────────────────────────────────────────────────────────┐
+│? upstream · main                                                             │
+│     if expired() {                                                           │
+│     self.renew();                                                            │
+│  yours · 3f2a1b7 Add OAuth provider                                          │
+│     if is_expired() {                                                        │
+│     self.do_refresh();                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+   41 }
+
+ ▶ 42 let tok = self.store.get();  took yours
+
 
 
 

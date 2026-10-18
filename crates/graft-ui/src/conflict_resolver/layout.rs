@@ -4,10 +4,7 @@
 
 use graft_term::SanitizedText;
 
-use super::{
-    Arrangement, BlockState, BlockView, Cell, DocView, LabelOf, RegionView, SIDE_BY_SIDE_MIN,
-    SideKind, TakeView,
-};
+use super::{Arrangement, BlockState, BlockView, Cell, DocView, LabelOf, RegionView, SideKind};
 
 /// One row of the document, as [`layout`] plans it. Carries indices into
 /// `doc`, not text: the widget (and any other reader, e.g. a hit test)
@@ -22,17 +19,20 @@ pub enum ScreenRow {
         /// The line itself.
         text: SanitizedText,
     },
-    /// A block's header/take-keys rule.
+    /// A block's first row: the top of its outline while it has the
+    /// cursor, blank otherwise. Every block keeps it, so no row moves as
+    /// the cursor does.
     Header {
         /// The block's index.
         block: usize,
     },
-    /// The wide-layout labels row (`yours · main │ theirs · feature`).
+    /// The side-by-side labels row, the open mark in its gutter
+    /// (`? yours · wallet-release │ theirs · sara/fix-toc`).
     Labels {
         /// The block's index.
         block: usize,
     },
-    /// A wide-layout row of the two sides, side by side. `None` pads the
+    /// A row of the two sides, side by side, unnumbered. `None` pads the
     /// shorter side.
     Pair {
         /// The block's index.
@@ -42,8 +42,9 @@ pub enum ScreenRow {
         /// Index into `theirs`, if this row has one.
         theirs: Option<usize>,
     },
-    /// A stacked-layout row (narrow, or BASE at any width): a label row
-    /// (`i` unused, `0`) or the `i`-th line of `side`.
+    /// A stacked row (below [`INLINE_FROM`](super::INLINE_FROM), or BASE
+    /// at any width): a label row (`i` unused, `0`) or the `i`-th line of
+    /// `side`.
     Side {
         /// The block's index.
         block: usize,
@@ -52,7 +53,17 @@ pub enum ScreenRow {
         /// The line's index within that section.
         i: usize,
     },
-    /// A block's closing rule.
+    /// A taken block's `i`-th kept line ([`BlockView::kept`]), numbered as
+    /// a plain line: the first carries the mark, the last the mark's
+    /// words. A pick that kept no lines still gets one row, `i` 0.
+    Kept {
+        /// The block's index.
+        block: usize,
+        /// Index into `kept`.
+        i: usize,
+    },
+    /// A block's last row: the bottom of its outline while it has the
+    /// cursor, blank otherwise.
     End {
         /// The block's index.
         block: usize,
@@ -68,6 +79,13 @@ pub enum ScreenRow {
     Note {
         /// The note.
         text: SanitizedText,
+    },
+    /// `✓ Every clash in <name> is solved.`, then the way on.
+    Solved {
+        /// The file's last path segment.
+        name: SanitizedText,
+        /// The way on, in the app's words.
+        next: SanitizedText,
     },
     /// Three panes: the titles row, `yours · main │ result │ theirs ·
     /// feature`. A body row: it scrolls with the document.
@@ -93,7 +111,7 @@ pub struct Layout {
     /// Every row, in draw order.
     pub rows: Vec<ScreenRow>,
     /// `block_row[i]` is the row index of block `i`'s [`ScreenRow::Header`]
-    /// in the card, of its rule row ([`ScreenRow::Aligned`], all
+    /// inline, of its rule row ([`ScreenRow::Aligned`], all
     /// [`Cell::Rule`]) in the three panes.
     pub block_row: Vec<usize>,
     /// The width this layout was built for.
@@ -107,7 +125,8 @@ pub struct Layout {
 #[must_use]
 pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout {
     let (rows, block_row) = match arrangement {
-        Arrangement::Card => card_rows(doc, columns),
+        Arrangement::Inline => inline_rows(doc, true),
+        Arrangement::Card => inline_rows(doc, false),
         Arrangement::ThreePane => super::panes::pane_rows(doc),
     };
     Layout {
@@ -117,8 +136,9 @@ pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout {
     }
 }
 
-/// The card's rows, and each block's header-row index.
-fn card_rows(doc: &DocView, columns: u16) -> (Vec<ScreenRow>, Vec<usize>) {
+/// The document's rows, an open clash's sides side by side or stacked, and
+/// each block's header-row index.
+fn inline_rows(doc: &DocView, side_by_side: bool) -> (Vec<ScreenRow>, Vec<usize>) {
     let mut rows = Vec::new();
     let mut block_row = Vec::new();
     for region in &doc.regions {
@@ -155,19 +175,32 @@ fn card_rows(doc: &DocView, columns: u16) -> (Vec<ScreenRow>, Vec<usize>) {
             RegionView::Block(block) => {
                 block_row.push(rows.len());
                 rows.push(ScreenRow::Header { block: block.index });
-                layout_block(doc, block, columns, &mut rows);
+                layout_block(doc, block, side_by_side, &mut rows);
                 rows.push(ScreenRow::End { block: block.index });
             }
+            RegionView::Solved { name, next } => rows.push(ScreenRow::Solved {
+                name: name.clone(),
+                next: next.clone(),
+            }),
         }
     }
     (rows, block_row)
 }
 
-/// The rows between a block's header and its closing rule.
-fn layout_block(doc: &DocView, block: &BlockView, columns: u16, rows: &mut Vec<ScreenRow>) {
+/// The rows between a block's header and its end.
+fn layout_block(doc: &DocView, block: &BlockView, side_by_side: bool, rows: &mut Vec<ScreenRow>) {
     match block.state {
-        BlockState::Took(take) => layout_taken(block, take, rows),
-        BlockState::Open if columns >= SIDE_BY_SIDE_MIN => {
+        // Shrunk to what the pick wrote; one row even when it wrote none,
+        // for the mark and its words.
+        BlockState::Took(_) => {
+            for i in 0..block.kept.len().max(1) {
+                rows.push(ScreenRow::Kept {
+                    block: block.index,
+                    i,
+                });
+            }
+        }
+        BlockState::Open if side_by_side => {
             rows.push(ScreenRow::Labels { block: block.index });
             let paired = block.ours.len().max(block.theirs.len());
             for i in 0..paired {
@@ -215,21 +248,6 @@ fn layout_block(doc: &DocView, block: &BlockView, columns: u16, rows: &mut Vec<S
     }
 }
 
-/// A taken block's rows: the taken side's lines, full width, no labels (the
-/// header already says which side).
-fn layout_taken(block: &BlockView, take: TakeView, rows: &mut Vec<ScreenRow>) {
-    match take {
-        TakeView::Ours => push_side_lines(rows, block.index, SideKind::Ours, block.ours.len()),
-        TakeView::Theirs => {
-            push_side_lines(rows, block.index, SideKind::Theirs, block.theirs.len());
-        }
-        TakeView::Both => {
-            push_side_lines(rows, block.index, SideKind::Ours, block.ours.len());
-            push_side_lines(rows, block.index, SideKind::Theirs, block.theirs.len());
-        }
-    }
-}
-
 /// `block`'s base, only when `doc.base_shown` and it is attached.
 fn base_if_shown<'a>(
     doc: &DocView,
@@ -255,11 +273,6 @@ fn push_labeled_side(
         side: SideKind::Label(label),
         i: 0,
     });
-    push_side_lines(rows, block, side, len);
-}
-
-/// `len` content rows of `side`, no label.
-fn push_side_lines(rows: &mut Vec<ScreenRow>, block: usize, side: SideKind, len: usize) {
     for i in 0..len {
         rows.push(ScreenRow::Side { block, side, i });
     }
@@ -268,6 +281,8 @@ fn push_side_lines(rows: &mut Vec<ScreenRow>, block: usize, side: SideKind, len:
 /// The row `top + screen_row` names, or `None` past the end. The app scrolls
 /// and hit-tests through this — the same indexing [`ResolverScreen`] draws
 /// with, so a click and the pixel it lands on never disagree.
+///
+/// [`ResolverScreen`]: super::ResolverScreen
 #[must_use]
 pub fn row_at(layout: &Layout, top: usize, screen_row: u16) -> Option<&ScreenRow> {
     layout.rows.get(top + usize::from(screen_row))

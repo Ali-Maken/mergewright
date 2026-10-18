@@ -1,11 +1,11 @@
-//! The strip above the document (below `THREE_PANE_MIN` columns): one row
+//! The strip above the document (below `INLINE_FROM` columns): one row
 //! when every `name · state` cell fits, then one compact row, then a grid
 //! of equal cells with `… N more` last. Planned here, drawn and hit-tested
 //! by `files` through the same [`Plan`].
 
 use unicode_width::UnicodeWidthStr;
 
-use super::super::SIDE_BY_SIDE_MIN;
+use super::super::INLINE_FROM;
 use super::{
     Cell, FileListView, FileRow, FileRowLook, Glyphs, Plan, WordsTone, cells_u16, fit_left, window,
     words_at_end,
@@ -66,7 +66,7 @@ fn one_row_cell(
     };
     let name = row.name.as_str();
     match (compact, &row.state) {
-        (true, FileRowLook::Done) => (
+        (true, FileRowLook::Done | FileRowLook::Solved) => (
             format!("{mark}{} {name}", g.check),
             Some((cells_u16(mark.width()), 1)),
         ),
@@ -88,7 +88,7 @@ fn one_row_cell(
 /// The strip: one row, one compact row, or a grid.
 pub(super) fn strip_plan(view: &FileListView, width: u16, g: Glyphs) -> Plan {
     let full = usize::from(width);
-    let forms: &[bool] = if width < SIDE_BY_SIDE_MIN {
+    let forms: &[bool] = if width < INLINE_FROM {
         &[true]
     } else {
         &[false, true]
@@ -134,7 +134,7 @@ pub(super) fn strip_plan(view: &FileListView, width: u16, g: Glyphs) -> Plan {
             };
         }
     }
-    grid_plan(view, full, width < SIDE_BY_SIDE_MIN, g)
+    grid_plan(view, full, width < INLINE_FROM, g)
 }
 
 /// One grid cell: the mark, the name shortened from the left so the file

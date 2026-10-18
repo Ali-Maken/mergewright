@@ -1,50 +1,50 @@
 MERGING
-FILES · 13 conflicted           │▸ three.txt · 3 conflicts · 2 open
-                                │
-   …ded-by-them.txt  •          │ yours · main                                     │ result                                             │ theirs · feature
-   added-by-us.txt   •          │  1 alpha                                         │  1 alpha                                           │  1 alpha
-   both-added.txt    •          │ ── not taken                                     ┊ ── 1 of 3 · took theirs · feature                  ◀ ── taken ✓
-   both-deleted.txt  •          │  2 one-ours                                      ┊  2 one-theirs                                      ┃  2 one-theirs
-   both.txt          •          │  3 b1                                            │  3 b1                                              │  3 b1
-   crlf.txt          •          │  4 b2                                            │  4 b2                                              │  4 b2
-   md.md             •          │  5 b3                                            │  5 b3                                              │  5 b3
-   nofinal.txt       •          │  6 b4                                            │  6 b4                                              │  6 b4
-   ours-deleted.txt  •          │▏── o take                                        ? ── 2 of 3 · open                                   ? ── t take
-   pic.bin           •          │▏ 7 two-ours                                      ┃    ? open · o t b                                  ┃  7 two-theirs
-   …irs-deleted.txt  •          │  8 c1                                            │  8 c1                                              │  8 c1
-▏▸ three.txt         2 of 3 open│  9 c2                                            │  9 c2                                              │  9 c2
-   zdiff3.txt        •          │ 10 c3                                            │ 10 c3                                              │ 10 c3
-                                │ 11 c4                                            │ 11 c4                                              │ 11 c4
-                                │ ── o take                                        ? ── 3 of 3 · open                                   ? ── t take
-                                │ 12 three-ours                                    ┃    ? open · o t b                                  ┃ 12 three-theirs
-                                │ 13 delta                                         │ 13 delta                                           │ 13 delta
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
-                                │
+Clashing files                │▸ three.txt · 3 conflicts · 2 open
+                              │
+   added-by-them.txt   •      │ yours · main                                      │ result                                             │ theirs · feature
+   added-by-us.txt     •      │  1 alpha                                          │  1 alpha                                           │  1 alpha
+   both-added.txt      •      │ ── not taken                                      ┊ ── 1 of 3 · took theirs · feature                  ◀ ── taken ✓
+   both-deleted.txt    •      │  2 one-ours                                       ┊  2 one-theirs                                      ┃  2 one-theirs
+   both.txt            •      │  3 b1                                             │  3 b1                                              │  3 b1
+   crlf.txt            •      │  4 b2                                             │  4 b2                                              │  4 b2
+   md.md               •      │  5 b3                                             │  5 b3                                              │  5 b3
+   nofinal.txt         •      │  6 b4                                             │  6 b4                                              │  6 b4
+   ours-deleted.txt    •      │▏── o take                                         ? ── 2 of 3 · open                                   ? ── t take
+   pic.bin             •      │▏ 7 two-ours                                       ┃    ? open · o t b                                  ┃  7 two-theirs
+   theirs-deleted.txt  •      │  8 c1                                             │  8 c1                                              │  8 c1
+▏? three.txt           2 open │  9 c2                                             │  9 c2                                              │  9 c2
+   zdiff3.txt          •      │ 10 c3                                             │ 10 c3                                              │ 10 c3
+                              │ 11 c4                                             │ 11 c4                                              │ 11 c4
+                              │ ── o take                                         ? ── 3 of 3 · open                                   ? ── t take
+                              │ 12 three-ours                                     ┃    ? open · o t b                                  ┃ 12 three-theirs
+                              │ 13 delta                                          │ 13 delta                                           │ 13 delta
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  ✓ took theirs · feature in three.txt · 2 of 3 open

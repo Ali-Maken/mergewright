@@ -263,7 +263,7 @@ fn the_last_file_of_a_rebase_shows_the_finish_row() {
 }
 
 /// Opened from the banner with every file already done (a relaunch, `u`):
-/// no event, so no summary — the finish row instead.
+/// no event, so no summary — the list's review row instead (ease-pass/11).
 #[test]
 fn a_resolver_opened_on_a_done_merge_opens_no_summary() {
     let (landed, commands) = last_stage_lands();
@@ -272,20 +272,26 @@ fn a_resolver_opened_on_a_done_merge_opens_no_summary() {
     let (after, sent) = update(&state, AppEvent::Produced(read, nothing_unmerged()));
     assert!(after.finish.is_none());
     assert_eq!(summaries(&sent), 0);
-    assert!(crate::view::resolver::finish_row(&after).is_some());
+    assert_eq!(
+        crate::view::resolver::file_list_view(&after).tail,
+        review_row()
+    );
 }
 
-/// Merge: the finish row and the bar lead with `c`.
+/// `✓ Review the merge  y`, the list's last row.
+fn review_row() -> graft_ui::conflict_resolver::ListTail {
+    graft_ui::conflict_resolver::ListTail::Review { key: "y".into() }
+}
+
+/// Merge: no finish row — the list ends with the review (ease-pass/11) —
+/// and the done file's bar leads with `c`.
 #[test]
-fn every_file_done_in_a_merge_shows_the_finish_row_and_c_first() {
+fn every_file_done_in_a_merge_shows_the_review_row_and_c_first() {
     let state = finish_row_showing();
+    assert!(crate::view::resolver::finish_row(&state).is_none());
     assert_eq!(
-        crate::view::resolver::finish_row(&state)
-            .map(|row| (row.full.as_str().to_owned(), row.short.as_str().to_owned())),
-        Some((
-            "✓ every file done — c review and finish the merge".to_owned(),
-            "✓ every file done — c review & finish".to_owned()
-        ))
+        crate::view::resolver::file_list_view(&state).tail,
+        review_row()
     );
     assert_eq!(
         super::bar(&state),
@@ -293,27 +299,32 @@ fn every_file_done_in_a_merge_shows_the_finish_row_and_c_first() {
     );
 }
 
-/// A click on the finish row does what `c` does.
+/// Outside a merge a click on the finish row does what `c` does.
 #[test]
 fn click_on_the_finish_row_is_c() {
-    let state = finish_row_showing();
+    let state = rebase_finish_row();
     let (_, _, split) =
         crate::view::resolver::resolver_split(&state, crate::update::resolver::banner_rows(&state));
-    let (after, commands) = click(&state, split.doc.x + 3, split.doc.y + 1);
-    assert_eq!(summaries(&commands), 1);
-    // The review opens when its read lands (ease-pass/05s).
-    let after = super::finish_here::review_lands(&after, &commands);
-    assert!(after.finish.is_some(), "the summary opened");
+    let (_, commands) = click(&state, split.doc.x + 3, split.doc.y + 1);
+    let (_, by_c) = press(&state, KeyCode::Char('c'));
+    assert!(!by_c.is_empty(), "c continues");
+    assert_eq!(format!("{commands:?}"), format!("{by_c:?}"));
     // The title row above it is not the finish row.
-    let (after, commands) = click(&state, split.doc.x + 3, split.doc.y);
-    assert!(after.finish.is_none());
-    assert_eq!(summaries(&commands), 0);
+    let (_, commands) = click(&state, split.doc.x + 3, split.doc.y);
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+/// [`finish_row_showing`] in a rebase, where the finish row stands.
+fn rebase_finish_row() -> AppState {
+    let state = super::review_at_y::as_rebase(finish_row_showing());
+    assert!(crate::view::resolver::finish_row(&state).is_some());
+    state
 }
 
 /// A problem notice outranks the finish row.
 #[test]
 fn a_warning_notice_outranks_the_finish_row() {
-    let mut state = finish_row_showing();
+    let mut state = rebase_finish_row();
     assert!(crate::view::resolver::finish_row(&state).is_some());
     state.resolver.as_mut().expect("open").notice = Some(("take failed".to_owned(), true));
     assert!(crate::view::resolver::finish_row(&state).is_none());
@@ -334,7 +345,7 @@ fn a_warning_notice_outranks_the_finish_row() {
 /// document, a done card, and a whole-file card.
 #[test]
 fn finish_row_on_a_whole_file_card() {
-    let state = finish_row_showing();
+    let state = rebase_finish_row();
     let doc = crate::view::resolver::resolver_view(&state, 100).expect("drawn");
     assert!(doc.finish.is_some(), "the done document");
 

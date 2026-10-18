@@ -46,23 +46,39 @@ pub enum FileRowLook {
 }
 
 impl FileRowLook {
-    /// The state's words: full, or compact (`1/2 open`, `✓`).
+    /// The state's words: full (the column's, after the row's mark:
+    /// `2 open`, `done`), or compact (`1/2 open`, `✓`).
+    ///
+    /// A solved file and a done one read the same, `✓ … done` (the user,
+    /// 2026-10-18): a solved merge file is staged by the review, and he
+    /// has nothing left to do in either.
     pub(super) fn words(&self, compact: bool, g: Glyphs) -> String {
         match (self, compact) {
-            (FileRowLook::Open { open, of }, false) => format!("{open} of {of} open"),
+            (FileRowLook::Open { open, .. }, false) => format!("{open} open"),
             (FileRowLook::Open { open, of }, true) => format!("{open}/{of} open"),
             (FileRowLook::AllTaken, false) => format!("{} marks done", g.enter),
             (FileRowLook::AllTaken, true) => g.enter.to_string(),
-            (FileRowLook::Solved, false) => format!("solved {}", g.check),
-            (FileRowLook::Done, false) => format!("done {}", g.check),
-            // Compact, solved and done draw the same tick; the tone tells
-            // them apart no more than the words do (both muted).
+            (FileRowLook::Solved | FileRowLook::Done, false) => "done".to_owned(),
             (FileRowLook::Solved | FileRowLook::Done, true) => g.check.to_string(),
             (FileRowLook::WholeFile { .. }, false) => "keep or delete".to_owned(),
             (FileRowLook::WholeFile { .. }, true) => "keep?".to_owned(),
             (FileRowLook::Binary, false) => "binary".to_owned(),
             (FileRowLook::Binary, true) => "bin".to_owned(),
             (FileRowLook::Unread, _) => g.unread.to_string(),
+        }
+    }
+
+    /// The column's mark before the name (the merge mock's list): `?`
+    /// while the file has something to decide, `✓` once it has none, a
+    /// blank while it is unread (its words say so).
+    pub(super) fn glyph(&self, g: Glyphs) -> char {
+        match self {
+            FileRowLook::Open { .. }
+            | FileRowLook::AllTaken
+            | FileRowLook::WholeFile { .. }
+            | FileRowLook::Binary => '?',
+            FileRowLook::Solved | FileRowLook::Done => g.check,
+            FileRowLook::Unread => ' ',
         }
     }
 }
@@ -122,14 +138,16 @@ mod tests {
     use super::super::Glyphs;
     use super::{FileRowLook, WordsTone};
 
-    /// A merge's solved file says so; `⏎` marks nothing there (ease-pass/05c).
+    /// A merge's solved file reads as a done one, `✓ … done`, same tone
+    /// (the user, 2026-10-18); `⏎` marks nothing there (ease-pass/05c).
     #[test]
-    fn a_solved_file_reads_solved_muted_and_names_no_key() {
-        assert_eq!(
-            FileRowLook::Solved.words(false, Glyphs::UNICODE),
-            "solved ✓"
-        );
-        assert_eq!(FileRowLook::Solved.words(true, Glyphs::UNICODE), "✓");
-        assert_eq!(FileRowLook::Solved.tone(), WordsTone::Muted);
+    fn a_solved_file_reads_done_like_a_done_one_and_names_no_key() {
+        let g = Glyphs::UNICODE;
+        for look in [FileRowLook::Solved, FileRowLook::Done] {
+            assert_eq!(look.glyph(g), '✓');
+            assert_eq!(look.words(false, g), "done");
+            assert_eq!(look.words(true, g), "✓");
+            assert_eq!(look.tone(), WordsTone::Muted);
+        }
     }
 }

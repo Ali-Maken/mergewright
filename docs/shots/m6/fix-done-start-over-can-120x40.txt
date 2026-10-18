@@ -1,40 +1,40 @@
 MERGING
-files   gone.txt · keep or delete    ▸ shared.rs · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ shared.rs · done ✓ · d starts it over
-
-  1 fn main() { ours() }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ shared.rs · done ✓ · d starts it over
+                              │
+ ? gone.txt   keep or delete  │   1 fn main() { ours() }
+▏✓ shared.rs  done            │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  d start over  e edit  esc close

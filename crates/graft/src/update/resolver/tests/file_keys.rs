@@ -351,12 +351,13 @@ fn n_from_a_done_file_with_nothing_open_says_none_open() {
     }
 }
 
-/// Every file done: 60's finish row takes the notice row and already names
-/// the next key, so `n` at the edge draws nothing new — the finish row
-/// stands, and `no open clashes left` is not drawn.
+/// Every file done in a rebase: 60's finish row takes the notice row and
+/// already names the next key, so `n` at the edge draws nothing new — the
+/// finish row stands, and `no open clashes left` is not drawn. (A merge's
+/// way on is the list's review row instead, ease-pass/11.)
 #[test]
 fn the_finish_row_outranks_no_more_this_way() {
-    let state = done_on("a.rs", &["a.rs", "b.rs"], &[]);
+    let state = super::review_at_y::as_rebase(done_on("a.rs", &["a.rs", "b.rs"], &[]));
     let (after, _) = press(&state, KeyCode::Char('n'));
     assert!(
         crate::view::resolver::finish_row(&after).is_some(),

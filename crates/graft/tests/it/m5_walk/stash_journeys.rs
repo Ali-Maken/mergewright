@@ -315,7 +315,7 @@ fn clash_landing(verb_key: KeyCode) -> Vec<Step> {
                 Sees::Has("yours · main"),
                 Sees::Has("stashed · stash@{0}"),
                 Sees::Has("stash@{0} clashed in 1 file · esc, u puts it all back"),
-                Sees::BottomStarts("o yours"),
+                Sees::BottomStarts("o take yours"),
             ],
         ),
         Step::Shell(|fixture| {
@@ -823,8 +823,8 @@ fn switch_dirty_clash() -> Scenario {
                     &[
                         Sees::Has("branch · main"),
                         Sees::Has("yours · edits set aside"),
-                        Sees::Has("t yours"),
-                        Sees::BottomStarts("o branch"),
+                        Sees::Has("t take yours"),
+                        Sees::BottomStarts("o take branch"),
                     ],
                 ),
                 key(ch('o')),

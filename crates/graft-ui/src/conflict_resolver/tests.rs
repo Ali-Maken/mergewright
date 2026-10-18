@@ -40,6 +40,7 @@ fn open_block(
         ours: lines(ours),
         base: None,
         theirs: lines(theirs),
+        kept: Vec::new(),
         first_line: ours_at,
         numbers: BlockNumbers {
             ours: ours_at,
@@ -96,6 +97,7 @@ fn three_block_doc(base_shown: bool) -> DocView {
                 ours: lines(&["old_way();"]),
                 base: None,
                 theirs: lines(&["new_way();"]),
+                kept: lines(&["new_way();"]),
                 first_line: 42,
                 numbers: BlockNumbers {
                     ours: 42,
@@ -122,19 +124,21 @@ fn block_kind(row: &ScreenRow) -> &'static str {
         ScreenRow::End { .. } => "End",
         ScreenRow::WholeFile { .. } => "WholeFile",
         ScreenRow::Note { .. } => "Note",
+        ScreenRow::Kept { .. } => "Kept",
+        ScreenRow::Solved { .. } => "Solved",
         ScreenRow::PaneTitles => "PaneTitles",
         ScreenRow::Aligned { .. } => "Aligned",
     }
 }
 
-/// `layout` at 120 columns: `Plain…`, `Header 0`, `Labels 0`, `max(ours,
-/// theirs)` `Pair` rows, `End 0`, `Plain…`, `Header 1`, `Side{Theirs}` rows
-/// only, `End 1`, `Header 2`, `Labels`, `Pair…`, `Side{Base}` rows, `End 2`
-/// — the acceptance list's order, block by block.
+/// `layout` inline: `Plain…`, `Header 0`, `Labels 0`, `max(ours, theirs)`
+/// `Pair` rows, `End 0`, `Plain…`, `Header 1`, `Kept` rows (what the pick
+/// wrote, ease-pass/11), `End 1`, `Header 2`, `Labels`, `Pair…`,
+/// `Side{Base}` rows, `End 2` — block by block.
 #[test]
 fn layout_wide_rows_in_order() {
     let doc = three_block_doc(true);
-    let laid = layout(&doc, Arrangement::Card, 120);
+    let laid = layout(&doc, Arrangement::Inline, 120);
     let shape: Vec<&'static str> = laid.rows.iter().map(block_kind).collect();
 
     // Region 0: one Plain line.
@@ -143,8 +147,8 @@ fn layout_wide_rows_in_order() {
     assert_eq!(&shape[1..6], ["Header", "Labels", "Pair", "Pair", "End"]);
     // Region: one more Plain line.
     assert_eq!(shape[6], "Plain");
-    // Block 1 (took theirs): Header, 1 Side (theirs has 1 line), End.
-    assert_eq!(&shape[7..10], ["Header", "Side", "End"]);
+    // Block 1 (took theirs): Header, 1 Kept (theirs has 1 line), End.
+    assert_eq!(&shape[7..10], ["Header", "Kept", "End"]);
     // Block 2 (open, base shown, base has 1 line): Header, Labels, 1 Pair
     // (max(1,1)), 2 Side (base label + 1 base line), End.
     assert_eq!(
@@ -168,12 +172,8 @@ fn layout_wide_rows_in_order() {
     };
     assert_eq!(*base_line, SideKind::Base);
 
-    // Block 1's lone row is `Side { side: Theirs, .. }`, no label — a taken
-    // block shows only the taken side, full width, no labels row.
-    let ScreenRow::Side { side, .. } = &laid.rows[8] else {
-        panic!("expected block 1's taken line");
-    };
-    assert_eq!(*side, SideKind::Theirs);
+    // Block 1's lone row is its kept line, no label.
+    assert_eq!(laid.rows[8], ScreenRow::Kept { block: 1, i: 0 });
 }
 
 /// The same doc at 80 columns: no `Pair` rows anywhere; a block's own
@@ -188,7 +188,7 @@ fn layout_narrow_stacks() {
             .rows
             .iter()
             .any(|row| matches!(row, ScreenRow::Pair { .. })),
-        "no Pair rows below SIDE_BY_SIDE_MIN: {:?}",
+        "no Pair rows in a card: {:?}",
         laid.rows
     );
 
@@ -490,15 +490,6 @@ fn row_text(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> String {
         .to_string()
 }
 
-/// The widths the numbering tests sweep: both sides of 100 (stacked vs
-/// paired), the 60-column floor, and wide.
-const WIDTHS: [u16; 6] = [60, 80, 99, 100, 120, 179];
-
-/// Row `y` of `buf` from past the cursor gutter to `width`.
-fn content_text(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> String {
-    row_text(buf, y, width).chars().skip(2).collect()
-}
-
 /// A doc with a whole-file card and its note, for the `Note` row.
 fn whole_file_doc() -> DocView {
     DocView {
@@ -520,215 +511,6 @@ fn whole_file_doc() -> DocView {
     }
 }
 
-/// ADR-0043 §5: a marker row is no line of any side, so no row but a
-/// content row starts with a number — header, labels (paired or stacked),
-/// end and note, at every width and in both glyph tiers.
-#[test]
-fn no_marker_row_draws_a_number() {
-    for doc in [three_block_doc(true), whole_file_doc()] {
-        for columns in WIDTHS {
-            for ascii in [false, true] {
-                let laid = layout(&doc, Arrangement::Card, columns);
-                let rows = u16::try_from(laid.rows.len()).unwrap() + HEADER_ROWS;
-                let buf = draw(&doc, &laid, 0, columns, rows, ascii);
-                for (index, row) in laid.rows.iter().enumerate() {
-                    let marker = matches!(
-                        row,
-                        ScreenRow::Header { .. }
-                            | ScreenRow::Labels { .. }
-                            | ScreenRow::End { .. }
-                            | ScreenRow::Note { .. }
-                            | ScreenRow::Side {
-                                side: SideKind::Label(_),
-                                ..
-                            }
-                    );
-                    if !marker {
-                        continue;
-                    }
-                    let y = HEADER_ROWS + u16::try_from(index).unwrap();
-                    let drawn = content_text(&buf, y, columns);
-                    assert!(
-                        !drawn.trim_start().starts_with(|c: char| c.is_ascii_digit()),
-                        "{columns} cols ascii={ascii}: {row:?} drew a number: {drawn:?}"
-                    );
-                }
-            }
-        }
-    }
-}
-
-/// ADR-0043 §5: an open card numbers yours from `numbers.ours` and theirs
-/// from `numbers.theirs`, paired and stacked alike; BASE carries none; a
-/// taken block's lines carry the result's numbers.
-/// `drawn` (a row's text past the gutter) starts with the number `n`.
-fn starts_with_number(drawn: &str, n: usize) -> bool {
-    drawn.trim_start().starts_with(&format!("{n} "))
-}
-
-/// Block `index` of `doc`.
-fn block_of(doc: &DocView, index: usize) -> &BlockView {
-    doc.regions
-        .iter()
-        .find_map(|region| match region {
-            RegionView::Block(block) if block.index == index => Some(block),
-            _ => None,
-        })
-        .unwrap()
-}
-
-/// The number a content row of `side` should lead with, `None` for BASE.
-fn expected_number(view: &BlockView, side: SideKind, i: usize) -> Option<usize> {
-    match (view.state, side) {
-        (BlockState::Open, SideKind::Ours) => Some(view.numbers.ours + i),
-        (BlockState::Open, SideKind::Theirs) => Some(view.numbers.theirs + i),
-        (BlockState::Took(TakeView::Both), SideKind::Theirs) => {
-            Some(view.numbers.result + view.ours.len() + i)
-        }
-        (BlockState::Took(_), SideKind::Ours | SideKind::Theirs) => Some(view.numbers.result + i),
-        _ => None,
-    }
-}
-
-/// Checks one drawn row's numbers; `true` when it numbered an open theirs
-/// line.
-fn check_row_numbers(doc: &DocView, row: &ScreenRow, drawn: &str, divider: char, at: &str) -> bool {
-    match *row {
-        ScreenRow::Pair {
-            block,
-            ours,
-            theirs,
-            ..
-        } => {
-            let numbers = block_of(doc, block).numbers;
-            let (left, right) = drawn.split_once(divider).expect(at);
-            if let Some(i) = ours {
-                assert!(starts_with_number(left, numbers.ours + i), "{at}");
-            }
-            if let Some(i) = theirs {
-                assert!(starts_with_number(right, numbers.theirs + i), "{at}");
-            }
-            theirs.is_some()
-        }
-        ScreenRow::Side { block, side, i } => {
-            let view = block_of(doc, block);
-            match expected_number(view, side, i) {
-                Some(n) => assert!(starts_with_number(drawn, n), "{at}"),
-                None => assert!(
-                    !drawn.trim_start().starts_with(|c: char| c.is_ascii_digit()),
-                    "{at}"
-                ),
-            }
-            view.state == BlockState::Open && side == SideKind::Theirs
-        }
-        ScreenRow::Plain { line_no, .. } => {
-            assert!(starts_with_number(drawn, line_no), "{at}");
-            false
-        }
-        _ => false,
-    }
-}
-
-/// ADR-0043 §5: an open card numbers yours from `numbers.ours` and theirs
-/// from `numbers.theirs`, paired and stacked alike; BASE carries none; a
-/// taken block's lines carry the result's numbers.
-#[test]
-fn both_sides_are_numbered_at_every_width() {
-    let doc = three_block_doc(true);
-    for columns in WIDTHS {
-        for ascii in [false, true] {
-            let laid = layout(&doc, Arrangement::Card, columns);
-            let rows = u16::try_from(laid.rows.len()).unwrap() + HEADER_ROWS;
-            let buf = draw(&doc, &laid, 0, columns, rows, ascii);
-            let divider = if ascii { '|' } else { '│' };
-            let mut theirs_numbered = 0;
-            for (index, row) in laid.rows.iter().enumerate() {
-                let y = HEADER_ROWS + u16::try_from(index).unwrap();
-                let drawn = content_text(&buf, y, columns);
-                let at = format!("{columns} cols ascii={ascii} {row:?}: {drawn:?}");
-                if check_row_numbers(&doc, row, &drawn, divider, &at) {
-                    theirs_numbered += 1;
-                }
-            }
-            assert!(theirs_numbered > 0, "{columns}: no open theirs row");
-        }
-    }
-    // The taken block (took theirs, result 42) reads 42, not its theirs 128.
-    let laid = layout(&doc, Arrangement::Card, 120);
-    let buf = draw(&doc, &laid, 0, 120, 40, false);
-    let y = HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap() + 1;
-    assert!(starts_with_number(&content_text(&buf, y, 120), 42));
-}
-
-/// The number column sits in the same cells whether a row is a bare `Plain`
-/// line or a block's own content: both draw through `content_area`, so the
-/// digit that starts a number lands at the same `x` (Major 2, m6-02-03
-/// review — a `Plain` row used to draw two cells left of a block row's
-/// number).
-#[test]
-fn plain_and_block_numbers_share_one_column() {
-    let doc = three_block_doc(false);
-    let laid = layout(&doc, Arrangement::Card, 120);
-    let buf = draw(&doc, &laid, 0, 120, 24, false);
-
-    // Row 0 (`Plain`, "38 fn refresh…") and the first `Pair` row of block 0
-    // ("39 if expired() {") should both start their digit at the same x.
-    let plain_x = first_digit_x(&buf, HEADER_ROWS, 120);
-    let block_row = HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap() + 2; // Header, Labels, then the first Pair row.
-    let block_x = first_digit_x(&buf, block_row, 120);
-    assert_eq!(
-        plain_x, block_x,
-        "plain row's number starts at {plain_x:?}, block row's at {block_x:?}"
-    );
-}
-
-/// The x of the first ASCII digit on row `y`, or `None` if there is none.
-fn first_digit_x(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> Option<u16> {
-    (0..width).find(|&x| {
-        buf[(x, y)]
-            .symbol()
-            .chars()
-            .next()
-            .is_some_and(|c| c.is_ascii_digit())
-    })
-}
-
-/// Only the cursor block's header reverses; every other row of that block —
-/// labels, pair, side, end — draws in the plain (non-reversed) style, the
-/// `▏` gutter alone carrying the cursor (Major 3, m6-02-03 review: the whole
-/// card used to reverse, a worse version of the m5/44 problem the gutter was
-/// built to fix).
-#[test]
-fn only_the_cursor_headers_reverses() {
-    let doc = three_block_doc(false); // cursor_block: Some(0)
-    let laid = layout(&doc, Arrangement::Card, 120);
-    let buf = draw(&doc, &laid, 0, 120, 24, false);
-
-    let is_reversed = |y: u16| {
-        (0..120u16).any(|x| {
-            buf[(x, y)]
-                .style()
-                .add_modifier
-                .contains(Modifier::REVERSED)
-        })
-    };
-
-    let header_row = HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap();
-    assert!(
-        is_reversed(header_row),
-        "cursor block's header must reverse"
-    );
-
-    // Every other row of block 0's card (Labels, Pair x2, End) must not.
-    for offset in 1..=4 {
-        let y = header_row + offset;
-        assert!(
-            !is_reversed(y),
-            "row {y} (block 0, offset {offset} past its header) reversed"
-        );
-    }
-}
-
 /// A `Layout` built against a stale `DocView` — one whose `blocks()` shrank
 /// after a re-read (`e`/`M`, `retake_replaces` shows 3 → 2 blocks) — draws a
 /// blank row instead of panicking (Major 5, m6-02-03 review: `block()` used
@@ -747,16 +529,21 @@ fn a_layout_naming_a_block_the_doc_no_longer_has_does_not_panic() {
     let _buf = draw(&stale_doc, &laid, 0, 120, 24, false);
 }
 
-/// ADR-0043 §1: three panes from 180 columns, the card below.
+/// ADR-0043 §1: three panes from 180 columns; inline from 100
+/// (ease-pass/11), the stacked card below.
 #[test]
-fn arrangement_turns_at_180() {
-    assert_eq!(arrangement(179), Arrangement::Card);
+fn arrangement_turns_at_100_and_180() {
+    assert_eq!(arrangement(99), Arrangement::Card);
+    assert_eq!(arrangement(INLINE_FROM), Arrangement::Inline);
+    assert_eq!(arrangement(179), Arrangement::Inline);
     assert_eq!(arrangement(180), Arrangement::ThreePane);
     assert_eq!(arrangement(THREE_PANE_MIN), Arrangement::ThreePane);
 }
 
 mod card_colours;
 mod finish_row;
+mod numbers;
+use numbers::block_of;
 mod three_panes;
 
 /// Spell sweep (c), ticket m8/10c: the too-small line names his

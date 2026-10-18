@@ -225,12 +225,12 @@ fn in_the_resolver_on(first: &'static str) -> Vec<Step> {
                 "shared.txt" => &[
                     Sees::Has("MERGING"),
                     Sees::Row("▸", "shared.txt"),
-                    Sees::BottomStarts("o yours"),
+                    Sees::BottomStarts("o take yours"),
                 ],
                 "three.txt" => &[
                     Sees::Has("MERGING"),
                     Sees::Row("▸", "three.txt"),
-                    Sees::BottomStarts("o yours"),
+                    Sees::BottomStarts("o take yours"),
                 ],
                 _ => &[
                     Sees::Has("MERGING"),
@@ -642,7 +642,7 @@ fn two_files_in_order(size: (u16, u16)) -> Scenario {
             Step::Frame(
                 "the list column and three panes",
                 &[
-                    Sees::Has("FILES · 2"),
+                    Sees::Has("Clashing files"),
                     Sees::Has("result"),
                     Sees::Lacks("files · "),
                 ],
@@ -652,8 +652,8 @@ fn two_files_in_order(size: (u16, u16)) -> Scenario {
         (
             "two-files-in-order",
             Step::Frame(
-                "the strip and the card",
-                &[Sees::Lacks("FILES · "), Sees::Lacks("│ result")],
+                "the list column, no panes",
+                &[Sees::Has("Clashing files"), Sees::Lacks("│ result")],
             ),
         )
     };

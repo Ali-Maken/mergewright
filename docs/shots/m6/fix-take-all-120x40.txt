@@ -1,40 +1,40 @@
 MERGING
-files · 13     added-by-us.txt •        both-added.txt •         both-deleted.txt •       both.txt •
-               crlf.txt •               md.md •                  nofinal.txt •            ours-deleted.txt •
-               pic.bin •                theirs-deleted.txt •   ▸ three.txt solved ✓     … 2 more
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ three.txt · 3 conflicts · 0 open
-took theirs · feature in 3 blocks · n goes to the next
-   1 alpha
-▏ ── conflict 1 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
-▏  2 one-theirs
-▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-   3 b1
-   4 b2
-   5 b3
-   6 b4
-  ── conflict 2 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
-   7 two-theirs
-  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-   8 c1
-   9 c2
-  10 c3
-  11 c4
-  ── conflict 3 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
-  12 three-theirs
-  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-  13 delta
-
-
-
-
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ three.txt · 3 conflicts · 0 open
+                              │took theirs · feature in 3 blocks · n goes to the next
+   added-by-them.txt   •      │    1 alpha
+   added-by-us.txt     •      │┌───────────────────────────────────────────────────────────────────────────────────────┐
+   both-added.txt      •      ││▶  2 one-theirs  took theirs                                                           │
+   both-deleted.txt    •      │└───────────────────────────────────────────────────────────────────────────────────────┘
+   both.txt            •      │    3 b1
+   crlf.txt            •      │    4 b2
+   md.md               •      │    5 b3
+   nofinal.txt         •      │    6 b4
+   ours-deleted.txt    •      │
+   pic.bin             •      │ ▶  7 two-theirs  took theirs
+   theirs-deleted.txt  •      │
+▏✓ three.txt           done   │    8 c1
+   zdiff3.txt          •      │    9 c2
+                              │   10 c3
+                              │   11 c4
+                              │
+                              │ ▶ 12 three-theirs  took theirs
+                              │
+                              │   13 delta
+                              │   ✓ Every clash in three.txt is solved.  n next file
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  n next file: added-by-them.txt · u undo pick · esc pause, come back later · ←/→ clashes

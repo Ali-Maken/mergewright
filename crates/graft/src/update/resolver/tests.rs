@@ -484,10 +484,10 @@ fn all_resolved_from_the_pane_offers_c_where_c_continues() {
     assert!(state.commit_editor.is_none());
     assert!(!state.banner_focus, "banner_focus unchanged");
     assert_eq!(state.resolver.as_ref().expect("open").notice, None);
+    // A merge's way on is the list's last row (ease-pass/11).
     assert_eq!(
-        crate::view::resolver::finish_row(&state).map(|row| row.full.as_str().to_owned()),
-        Some("✓ every file done — c review and finish the merge".to_owned()),
-        "the finish row offers c"
+        crate::view::resolver::file_list_view(&state).tail,
+        graft_ui::conflict_resolver::ListTail::Review { key: "y".into() },
     );
     let (state, commands) = press(&state, KeyCode::Char('c'));
     assert!(

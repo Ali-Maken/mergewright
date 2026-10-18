@@ -77,7 +77,7 @@ use dead_keys::{bar_hints, dead_keys_on};
 use detail_pane::{diff_of, list_commands, two_files};
 use doorway::pinned_harness;
 use prelude::working_tree_read;
-use resolver_screens::resolver_for;
+use resolver_screens::{clash_for, resolver_for};
 use screens::walk_started;
 use search::{found, on_hand, typed};
 use sweep::{

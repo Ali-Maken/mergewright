@@ -1,6 +1,6 @@
 # clash-screen-look — the clash screen as the mock: list column at ≥100, `? N open` / `✓ done`, inline `◀ ▶ ◆`, the review row
 
-Status: ready (reconciled 2026-10-18 with scout `.scratch/ease-pass/scouts/11-clash-screen-look.md` at 3b734080: 8 mismatches folded in; the user's answer `done` applied; split — three-pane retirement, `Combined by git`, header and banner words → 11b)
+Status: done 2026-10-18, one box open (m5-06 recapture, see NOTES) (reconciled 2026-10-18 with scout `.scratch/ease-pass/scouts/11-clash-screen-look.md` at 3b734080: 8 mismatches folded in; the user's answer `done` applied; split — three-pane retirement, `Combined by git`, header and banner words → 11b)
 Blocked by: none open (05s's door `review_door` and 05t's `FileRowLook` are at 3b734080, per both scouts)
 Build with: Opus (builder-opus) — the bar choice spans five operations and the review row's click must go through 05s's door; wrong routing passes a diff read
 Needs: 05 `Picks`, `BlockAt`, `next_open_in_file`, `next_open`; 05b `resolver.review` (`y`) and its handler; 05s `FileState::open_clashes`, `review_door`/`Door` (`update/resolver/review.rs:108`); 05t graft-ui `FileRowLook`; graft-ops `FileState`/`file_state`; 03b/03r `HintContext::Clash(ClashBar { at: ClashAt, roles: SideRoles })`, `ClashAt::{Open, Picked, FileSolved { next }, AllSolved}`, `ClashBar::is_merge()`. Feeds: 11b (list column, `ListTail`, marks), 12 (none — disjoint).
@@ -56,22 +56,33 @@ graft `view`: `fn clash_bar(state: &ResolverState /* scout: real name */) -> Opt
 `CONTEXT.md` `Solved (file)`, exact: "Shown" sentence → `Shown \`✓ done\`, like a file git took whole (user, 2026-10-18).`; `_Avoid_: resolved` (drop `done`, now what the list shows).
 
 ## Acceptance (each tick names its test)
-- [ ] Split first: `files.rs` ≤400, no row raised — `file_size::every_file_over_400_lines_is_listed_with_its_count`.
-- [ ] Fixture merge `sara/fix-toc` into `wallet-release`, `report.md` 2 clashes, `notes.md` 1, 120 cols: column 30 wide, heading `Clashing files`, `report.md` `? 2 open`, `notes.md` `? 1 open` — new render test.
-- [ ] Width 100: list column + two-column clash; width 99: strip, sides stacked — render tests at 100 and 99.
-- [ ] Open clash under cursor: `yours · wallet-release` left, `theirs · sara/fix-toc` right, box outline, no numbers inside; plain lines numbered — render test.
-- [ ] `o` → kept lines only, `◀ kept yours`; `t` → `▶ took theirs`; `b` → `◆ kept both`; ASCII `<` `>` `*` — render tests.
-- [ ] Q16 a: on a block taken `o`, `t` → `▶ took theirs` with theirs' lines, no `already taken` on screen; `u` → `◀ kept yours` back — state + buffer test.
-- [ ] `notes.md` solved: stays with `✓ Every clash in notes.md is solved.`; its row `✓ done` from `FileState::Solved` (still unmerged in `git ls-files -u`); a whole-file pick reads `✓ done` — render + state test.
-- [ ] All solved (merge): last row `✓ Review the merge y`; no notice-row finish words — render test.
-- [ ] **Click bug:** click on the review row → state equal to pressing `y` from the same start (read asked through the door, `finish` absent until the read lands, then the review) — new state test in `update/resolver/tests/`; it fails on today's `scroll.rs:94`. Non-merge finish-row click still continues — existing test, named.
-- [ ] Bar via `clash_bar` (state tests): open → starts `o take yours (left)`; taken with clashes left → `n next open clash · u undo pick`; `docs/report.md` solved, `docs/notes.md` open → `n next file: notes.md` (`next` full path); merge all solved → `y review the merge`; rebase's `o` reads its side's word from `roles`; rebase all solved → `c` words, no `y`.
-- [ ] Sweeps: `every_reachable_row_acts_or_is_listed_and_follows_its_remap` and the `screen_for`/`classified_form` sweeps green with all four `ClashAt`.
-- [ ] Q12: rebase stop fixture lands here, same marks, sides `picked · <sha7> …`, today's finish row with `c` — render test.
-- [ ] Captures (colour unverified): `docs/shots/ease-pass/merge-clash-open-120.txt`, `merge-clash-taken-120.txt`, `merge-file-solved-120.txt`, `merge-all-solved-120.txt`, `merge-clash-100.txt`, `merge-clash-90.txt`, `rebase-clash-120.txt`; the m5-06 and `fix-solved-row` recaptures.
+- [x] Split first: (`files.rs` 341; `files/tests.rs` 339 off the ratchet; four test files split, every touched row lowered) — `file_size::every_file_over_400_lines_is_listed_with_its_count`.
+- [x] Fixture merge … — `view::resolver::tests::clash_look::at_120_the_list_is_a_column_of_clashing_files_with_their_open_count`.
+- [x] Width 100/99 — `clash_look::at_100_the_clash_is_side_by_side_and_at_99_it_stacks`, graft-ui `files::tests::placement_by_width`, `arrangement_turns_at_100_and_180`.
+- [x] Open clash under cursor — `clash_look::an_open_clash_is_two_named_columns_outlined_and_unnumbered`, graft-ui `tests::numbers::open_sides_are_unnumbered_and_kept_lines_numbered_at_every_width`, `only_the_cursor_clash_is_outlined`.
+- [x] `o`/`t`/`b` marks, ASCII — `clash_look::a_taken_clash_is_its_kept_lines_marked_with_the_pick`, graft-ui `mark::tests::marks_in_both_tiers_and_their_words`.
+- [x] Q16 a — render `clash_look::a_re_take_redraws_with_its_new_mark`; state + buffer (existing, real git) `it resolver::picks::u_after_a_retake_restores_the_earlier_take`.
+- [x] Solved file stays, `✓ done` — `clash_look::a_solved_file_stays_and_points_to_the_next_file` (fixture's solved file is `report.md`); still unmerged in `ls-files -u` `it merge_one_file::two_clashes_picked_read_solved_and_stay_unmerged`; whole-file pick `✓ gone.txt done` `it resolver::file_list::a_done_file_stays_listed`.
+- [x] All solved — `clash_look::all_solved_ends_the_list_with_the_review`, `opens_itself::every_file_done_in_a_merge_shows_the_review_row_and_c_first`.
+- [x] **Click bug** — `update::resolver::tests::review_at_y::click::a_click_on_the_review_row_is_y`; non-merge `opens_itself::click_on_the_finish_row_is_c` (now on a rebase). RED not seen: the review row is new, so the test cannot exist against `scroll.rs:94`; code was written before the test.
+- [x] Bar via `clash_bar` — `view::resolver::tests::clash_bar::{an_open_clash_bars_the_picks, a_taken_clash_with_one_open_bars_next_and_undo, a_solved_file_bars_the_next_file_by_its_whole_path, a_solved_file_beside_one_in_a_folder_bars_its_whole_path, a_merge_all_solved_bars_the_review, a_rebase_names_its_sides_and_never_offers_the_review}`.
+- [x] Sweeps — `every_reachable_row_acts_or_is_listed_and_follows_its_remap`, `update::tests::sweep_screens` / `dead_keys` (`clash_for` builds all four `ClashAt`), green in the full run.
+- [x] Q12 — `clash_look::a_rebase_clash_draws_the_same_marks_in_its_words`; finish row with `c` `opens_itself::click_on_the_finish_row_is_c`, `keymap_words` rebase finish site. Sides read `yours · <sha7> …` (today's names), not `picked · …`: question below.
+- [ ] Captures (colour unverified): the seven ease-pass files written by `view::resolver::tests::clash_shots::capture_the_clash_screen`; `fix-solved-row-120x40` recaptured (`it resolver::opens_summary`). **Open:** the m5-06 files are written by the pty acceptance walk, not by cargo; not recaptured here, they still show the old look.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~70k. Split point if over: marks/outline/numbering (M7–M8) → follow-on; list, click fix, bar first.
+
+## NOTES (builder, 2026-10-18)
+- **Compacted twice.** Remaining: only the open capture box (m5-06 recapture via the acceptance walk).
+- Scout used: `.scratch/ease-pass/scouts/11-clash-screen-look.md`.
+- Deviations: `BlockState::Took(TakeView)` kept, kept lines on `BlockView.kept` (filled in `view::resolver::block_view`); `Mark::words(roles) -> String` so a rebase reads `kept upstream`; `ScreenRow::Solved` also carries `next`; solved line is a trailing `RegionView::Solved`; GUTTER 3 (space between mark and number).
+- `RowState` still read by `update::resolver::{resolved, walk, review, files, seek}` and `view::resolver::file_list`. `SIDE_BY_SIDE_MIN` gone.
+- Non-merge states still on `Resolver{..}`: whole-file card, done file, non-merge with nothing open, unread/no file.
+- Review row not reachable by `j/k` (not a list row); whether the mock lets `j` land there was not checked.
+- **Questions:** (1) title still `▸ f · N conflicts · N open`, mock says `N of M clashes open · K left` — 11b? (2) clash bar drops `d`, `B`, `c`, `n`, `⌃O/⌃T`; `d` still works unnamed. (3) rebase sides `yours · <sha7>` vs ticket `picked · <sha7>`. (4) solved/all-solved bars end `· ←/→ clashes`, not in mock. (5) at 90 cols bar says `(left)/(right)` while sides stack. (6) left side lines indent 4, right 2 (`docs/shots/ease-pass/merge-clash-open-120.txt`). (7) review tail row starts x=0, not under the file glyphs. (8) taken blocks keep blank outline rows.
+- Touches: callers of `file_at`/`review_row_at`/`finish_row_at` (scroll.rs, tests); `resolver_context` via `clash_bar`; sweeps (`sweep_screens`, `dead_keys`, `resolver_screens`); keymap_words finish site; ~45 it tests and 38 m6/m7/m8 captures re-pointed/regenerated (full run green); CONTEXT.md; both MAP.md; over_400.txt rows lowered, one removed.
+- Broken: none known. Unverified: all colour (outline, marks, muted words); m5-06 captures.

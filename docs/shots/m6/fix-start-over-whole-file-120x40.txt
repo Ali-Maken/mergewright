@@ -1,59 +1,59 @@
 MERGING
-files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ gone.txt · done ✓ · d starts it over
-
-  1 our plan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ gone.txt · done ✓ · d starts it over
+                              │
+▏✓ gone.txt   done            │   1 our plan
+ ? shared.rs  1 open          │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  d start over  e edit  esc close
 ── d ──
 MERGING
-files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ gone.txt · done ✓ · d starts it over
-
-  1 our plan
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ gone.txt · done ✓ · d starts it over
+                              │
+▏✓ gone.txt   done            │   1 our plan
+ ? shared.rs  1 open          │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
                             ╭ Start gone.txt over ─────────────────────────────────────────╮
                             │ the choice comes back: keep or delete                        │
                             │ your choices in gone.txt are dropped · not undoable while    │
@@ -63,60 +63,60 @@ files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
                             │                                                              │
                             │ ▸[ Cancel ]   [ Start over ]                                 │
                             ╰──────────────────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  y start over  ←/→ move  ⏎ choose  esc cancel
 ── → ⏎ ──
 MERGING
-files   ▸ gone.txt · keep or delete    shared.rs · 1 of 1 open
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ gone.txt · modified on yours · main, deleted on theirs · feature
-
-deleted by them · o keeps the file  t deletes it
-  1 our plan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ gone.txt · modified on yours · main, deleted on theirs · feature
+                              │
+▏? gone.txt   keep or delete  │deleted by them · o keeps the file  t deletes it
+ ? shared.rs  1 open          │   1 our plan
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  ✓ restarted gone.txt

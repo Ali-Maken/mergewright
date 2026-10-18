@@ -1,40 +1,40 @@
 MERGING
-files · 12   ▸ src/handlers/handler_01.rs 1 of 1 open     src/handlers/handler_02.rs •
-               src/handlers/handler_03.rs •               src/handlers/handler_04.rs •
-               src/handlers/handler_05.rs •             … 7 more
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ src/handlers/handler_01.rs · 1 conflict · 1 open
-
-▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
-▏ yours · main                                              │theirs · feature
-▏ 1 fn handle() { ours() }                                  │1 fn handle() { theirs() }
-▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
+Clashing files                │▸ src/handlers/handler_01.rs · 1 conflict · 1 open
+                              │
+▏? …lers/handler_01.rs  1 open│┌───────────────────────────────────────────────────────────────────────────────────────┐
+   …lers/handler_02.rs  •     ││? yours · main                              │theirs · feature                          │
+   …lers/handler_03.rs  •     ││    fn handle() { ours() }                  │  fn handle() { theirs() }                │
+   …lers/handler_04.rs  •     │└───────────────────────────────────────────────────────────────────────────────────────┘
+   …lers/handler_05.rs  •     │
+   …lers/handler_06.rs  •     │
+   …lers/handler_07.rs  •     │
+   …lers/handler_08.rs  •     │
+   …lers/handler_09.rs  •     │
+   …lers/handler_10.rs  •     │
+   …lers/handler_11.rs  •     │
+   …lers/handler_12.rs  •     │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+ o take yours (left) · t take theirs (right) · b take both · e edit by hand · u undo pick · esc pause, come back later

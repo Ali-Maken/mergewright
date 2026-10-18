@@ -41,11 +41,11 @@ fn card_names_and_numbers_capture() {
                     .any(|row| row.contains("yours · main") && row.contains("│theirs · feature")),
                 "{body}"
             );
+            // The open clash's lines carry no numbers (ease-pass/11).
             assert!(
-                frame
-                    .iter()
-                    .any(|row| row.contains("2 two from main")
-                        && row.contains("│2 TWO from feature")),
+                frame.iter().any(|row| row.contains("two from main")
+                    && row.contains("TWO from feature")
+                    && !row.contains("2 two")),
                 "{body}"
             );
         }
@@ -53,7 +53,7 @@ fn card_names_and_numbers_capture() {
         assert!(
             frame
                 .last()
-                .is_some_and(|bar| bar.contains("o yours  t theirs  b both")),
+                .is_some_and(|bar| bar.contains("o take yours") && bar.contains("t take theirs")),
             "{body}"
         );
         crate::captures::check_shot(

@@ -20,7 +20,7 @@ fn stash_pop_conflict_resolves_without_a_banner() {
     // `t` says so.
     assert!(
         rows.last()
-            .is_some_and(|bar| bar.contains("o yours  t stashed")),
+            .is_some_and(|bar| bar.contains("o take yours (left) · t take stashed (right)")),
         "the stash pop's role words are not on the bar:\n{}",
         rows.join("\n")
     );

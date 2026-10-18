@@ -108,18 +108,18 @@ pub(super) fn notice(state: &AppState) -> Option<(String, bool)> {
 }
 
 /// The notice row invites `c`: the notice's words, or the finish row that
-/// takes the row once every file is done (m6-conflicts/60).
+/// takes the row once every file is done (m6-conflicts/60). A merge's
+/// review row invites `y`, not `c` (ease-pass/11).
 fn invites_c(state: &AppState) -> bool {
     notice(state).is_some_and(|(words, _)| words.contains("· c "))
         || crate::view::resolver::finish_row(state).is_some()
 }
 
-/// The finish row's full words, when it shows.
-fn finish_row(state: &AppState) -> Option<String> {
-    crate::view::resolver::finish_row(state).map(|row| row.full.as_str().to_owned())
+/// Whether the list ends with `✓ Review the merge  y`.
+fn review_row(state: &AppState) -> bool {
+    crate::view::resolver::file_list_view(state).tail
+        == graft_ui::conflict_resolver::ListTail::Review { key: "y".into() }
 }
-
-const FINISH_ROW: &str = "✓ every file done — c review and finish the merge";
 
 /// `c` ran `--continue` — or, on a merge, opened the finish summary whose
 /// `⏎` does (m6-conflicts/19).
@@ -208,7 +208,7 @@ fn c_before_the_status_read_lands_agrees_with_the_notice() {
 
 /// `m6-conflicts/31`: while the status read is out, the notice row — not
 /// the status line — says it is checking. When it lands the notice gives
-/// way to the finish row; nothing opens on its own (ease-pass/05b).
+/// way to the review row; nothing opens on its own (ease-pass/05b).
 #[test]
 fn a_status_read_out_shows_checking_on_the_notice_row() {
     let (landed, commands) = last_stage_lands();
@@ -223,14 +223,14 @@ fn a_status_read_out_shows_checking_on_the_notice_row() {
     let (fresh, _) = update(&landed, AppEvent::Produced(owed, read(&[])));
     assert_eq!(notice(&fresh), None);
     assert!(fresh.finish.is_none(), "nothing opens on its own");
-    assert_eq!(finish_row(&fresh).as_deref(), Some(FINISH_ROW));
+    assert!(review_row(&fresh));
     assert_eq!(fresh.status, landed.status, "the status line untouched");
 }
 
 /// Every moment from the last `Stage` landing to its status read landing,
 /// and after: the notice row and `c` say the same thing. Rewritten for
 /// m6-conflicts/60: with no summary owed (so `c` is what moves on), the
-/// read landing puts up the finish row instead of notice words.
+/// read landing puts up the review row instead of notice words.
 #[test]
 fn the_notice_and_c_agree_before_and_after_the_read_lands() {
     let (landed, commands) = last_stage_lands();
@@ -260,13 +260,13 @@ fn the_notice_and_c_agree_before_and_after_the_read_lands() {
     // The read the stage asked for lands: every file done, and `c` goes.
     let (fresh, _) = update(&older, AppEvent::Produced(owed, read(&[])));
     assert_eq!(notice(&fresh), None);
-    assert_eq!(finish_row(&fresh).as_deref(), Some(FINISH_ROW));
+    assert!(review_row(&fresh));
     agree(&fresh, true, "after the read");
 
     // The same, when `c` was pressed while it was checking.
     let (fresh, _) = update(&pressed, AppEvent::Produced(owed, read(&[])));
     assert_eq!(notice(&fresh), None);
-    assert_eq!(finish_row(&fresh).as_deref(), Some(FINISH_ROW));
+    assert!(review_row(&fresh));
     agree(&fresh, true, "after the read, c pressed meanwhile");
 
     // An edit from outside left a file unmerged after all. In a merge a

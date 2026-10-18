@@ -1,11 +1,14 @@
 //! The resolver's file list (m6-conflicts/13, ADR-0043 §1): every file this
 //! step conflicted on, with its state and the open one marked.
 //!
-//! Two placements. Below [`super::THREE_PANE_MIN`] columns it is a **strip**
-//! above the document: one row when every `name · state` cell fits, then
-//! the same row with compact states, then a grid of equal cells, at most
-//! three rows, with `… N more` last. At [`super::THREE_PANE_MIN`] and wider
-//! it is a **column** beside the document.
+//! Two placements. Below [`INLINE_FROM`] columns it is a **strip** above
+//! the document: one row when every `name · state` cell fits, then the same
+//! row with compact states, then a grid of equal cells, at most three rows,
+//! with `… N more` last. From [`INLINE_FROM`] it is a **column**
+//! [`LIST_COLUMN`] wide beside the document, headed `Clashing files`, one
+//! `? name  N open` / `✓ name  done` row per file (the merge mock's list,
+//! ease-pass/11), a merge's `✓ Review the merge  y` last once nothing is
+//! open ([`ListTail`]).
 //!
 //! **One geometry.** [`FileList`] draws and [`file_at`] hit-tests through
 //! the same private plan (`strip_plan` / `column_plan`), so a click lands on
@@ -23,14 +26,16 @@ use graft_term::SanitizedText;
 
 mod column;
 mod strip;
+mod tail;
 mod words;
 
 use super::draw::set_text;
-use super::{Arrangement, arrangement};
+use super::{INLINE_FROM, LIST_COLUMN};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
-use column::{column_plan, column_width};
+use column::column_plan;
 use strip::strip_plan;
+pub use tail::{ListTail, review_row_at};
 pub use words::FileRowLook;
 use words::{WordsTone, paint_words, words_at_end};
 
@@ -52,6 +57,8 @@ pub struct FileListView {
     pub cursor: usize,
     /// git's list could not be read: `rows` are the unmerged paths only.
     pub unavailable: bool,
+    /// What the list draws after its files.
+    pub tail: ListTail,
 }
 
 /// Where the list sits.
@@ -69,31 +76,17 @@ pub enum Placement {
     },
 }
 
-impl Placement {
-    /// The arrangement this placement belongs to: a column beside three
-    /// panes, a strip above the card. The draw and the hit-test both read
-    /// the arrangement here, from the one placement `resolver_split`
-    /// made, so they can never measure a width twice and disagree.
-    #[must_use]
-    pub const fn arrangement(self) -> Arrangement {
-        match self {
-            Placement::Column { .. } => Arrangement::ThreePane,
-            Placement::Strip { .. } => Arrangement::Card,
-        }
-    }
-}
-
-/// Where the list goes at this frame width: a column at
-/// [`super::THREE_PANE_MIN`] and up, else a strip as tall as it needs.
+/// Where the list goes at this frame width: a column [`LIST_COLUMN`] wide
+/// from [`INLINE_FROM`] (three panes or not), else a strip as tall as it
+/// needs.
 #[must_use]
 pub fn placement(view: &FileListView, frame_columns: u16) -> Placement {
-    match arrangement(frame_columns) {
-        Arrangement::ThreePane => Placement::Column {
-            width: column_width(view),
-        },
-        Arrangement::Card => Placement::Strip {
-            rows: strip_plan(view, frame_columns, Glyphs::UNICODE).rows,
-        },
+    if frame_columns >= INLINE_FROM {
+        Placement::Column { width: LIST_COLUMN }
+    } else {
+        Placement::Strip {
+            rows: strip_plan(view, frame_columns, Glyphs::UNICODE).rows + view.tail.rows(),
+        }
     }
 }
 
@@ -218,6 +211,7 @@ impl Widget for FileList<'_> {
             set_text(buf, at.x, at.y, at, &cell.text, style);
             paint_words(buf, at, cell, self.theme);
         }
+        tail::draw_tail(self.view, self.placement, area, buf, self.theme, g);
     }
 }
 

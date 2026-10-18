@@ -1,40 +1,40 @@
 MERGING
-files   ▸ gone.txt · keep or delete    notes.txt · solved ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ gone.txt · modified on yours · main, deleted on theirs · feature
-▸ gone.txt
-deleted by them · o keeps the file  t deletes it
-  1 our plan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Clashing files                │▸ gone.txt · modified on yours · main, deleted on theirs · feature
+                              │▸ gone.txt
+▏? gone.txt   keep or delete  │deleted by them · o keeps the file  t deletes it
+ ✓ notes.txt  done            │   1 our plan
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
+                              │
  o yours  t theirs  e edit  n next  M mergetool  esc close

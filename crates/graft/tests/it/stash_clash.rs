@@ -157,7 +157,7 @@ fn the_stash_pane_is_named_by_its_index() {
         let drawn = frame(&state, columns, rows);
         let bar = drawn.last().expect("a bottom row");
         assert!(
-            bar.contains("o yours") && bar.contains("t stashed"),
+            bar.contains("o take yours") && bar.contains("t take stashed"),
             "{columns}x{rows}: {bar}"
         );
         assert!(

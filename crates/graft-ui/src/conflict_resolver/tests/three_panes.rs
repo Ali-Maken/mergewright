@@ -46,7 +46,9 @@ fn pane_lengths(doc: &DocView, region: &RegionView) -> [usize; 3] {
             };
             [block.ours.len(), result, block.theirs.len()]
         }
-        RegionView::WholeFile { .. } => unreachable!("the corpus has no whole-file card"),
+        RegionView::WholeFile { .. } | RegionView::Solved { .. } => {
+            unreachable!("the corpus has no whole-file card, no solved line")
+        }
     }
 }
 

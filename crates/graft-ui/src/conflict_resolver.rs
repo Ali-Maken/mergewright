@@ -2,17 +2,17 @@
 //! Decision 1, "New UI").
 //!
 //! One file, drawn as a document: plain lines as they are, each conflict
-//! block between git's `<<<<<<<`/`>>>>>>>` drawn as a labelled card with
-//! **OURS and THEIRS side by side** at [`SIDE_BY_SIDE_MIN`] columns or
-//! **stacked** below it. BASE is a third stacked section inside the card,
-//! shown on demand ([`DocView::base_shown`]) at every width. A taken block
-//! keeps its header (`took ours`/`took theirs`/`took both`) and shows only
-//! the taken side's lines, full width, until the resolver closes.
+//! block between git's `<<<<<<<`/`>>>>>>>` drawn as the merge mock's clash
+//! (ease-pass/11): an open clash marked `?`, **yours and theirs side by
+//! side** from [`INLINE_FROM`] frame columns or **stacked** below, its
+//! lines unnumbered; the cursor's clash outlined. BASE is a stacked section
+//! inside it, shown on demand ([`DocView::base_shown`]) at every width. A
+//! taken block shrinks to the lines the pick wrote, numbered as plain
+//! lines and marked `◀ kept yours` / `▶ took theirs` / `◆ kept both`.
 //!
-//! That is the **card** arrangement, below [`THREE_PANE_MIN`] frame
-//! columns. At it and up the same document is **three panes** — yours |
+//! From [`THREE_PANE_MIN`] the same document is **three panes** — yours |
 //! result | theirs, rows level by git's own regions (`panes`, ADR-0043
-//! §2) — beside the file-list column; [`Placement::arrangement`] says which.
+//! §2) — beside the file-list column; [`arrangement`] says which.
 //!
 //! [`layout`] is pure and total: it lays out `doc` into [`ScreenRow`]s for
 //! any `columns >= 1`, and [`ResolverScreen`] — the [`Widget`] — draws only
@@ -44,61 +44,36 @@ use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
+mod arrange;
 mod draw;
 mod files;
 mod finish_row;
 mod layout;
+mod mark;
 mod names;
 mod panes;
 
+pub use arrange::{Arrangement, INLINE_FROM, LIST_COLUMN, THREE_PANE_MIN, arrangement};
 use draw::set_text;
 pub use files::{
-    FileList, FileListView, FileRow, FileRowLook, Placement, ResolverAreas, file_at, placement,
-    resolver_areas,
+    FileList, FileListView, FileRow, FileRowLook, ListTail, Placement, ResolverAreas, file_at,
+    placement, resolver_areas, review_row_at,
 };
 pub use finish_row::{FinishRow, finish_row_at};
 pub use layout::{Layout, ScreenRow, layout, row_at};
+pub use mark::Mark;
 pub use names::{BlockNumbers, SideNames, SideRoles, number_width};
 pub use panes::{Cell, LineRef, three_panes};
-
-/// Columns at or above which a block's OURS/THEIRS draw side by side.
-/// Below it they stack. Decision 1's numbers: halves at 120 columns are 58
-/// cells each, readable; three full-height columns at 120 would be 38 —
-/// code is unreadable there, which is why the resolver has two shapes and
-/// not three.
-pub const SIDE_BY_SIDE_MIN: u16 = 100;
-
-/// Frame columns at or above which the resolver is three panes beside a
-/// file-list column (ADR-0043 §1); below it, a strip above the card.
-pub const THREE_PANE_MIN: u16 = 180;
-
-/// The resolver's two arrangements (ADR-0043 §1).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Arrangement {
-    /// At [`THREE_PANE_MIN`] columns and up: a list column, then panes.
-    ThreePane,
-    /// Below it: a list strip, then the card document.
-    Card,
-}
-
-/// Which arrangement a frame this wide gets.
-#[must_use]
-pub fn arrangement(frame_columns: u16) -> Arrangement {
-    if frame_columns >= THREE_PANE_MIN {
-        Arrangement::ThreePane
-    } else {
-        Arrangement::Card
-    }
-}
 
 /// Screen rows the widget reserves above the document itself: the title row
 /// and one more for the notice (blank while none is set).
 pub const HEADER_ROWS: u16 = 2;
 
-/// Cells the cursor-block gutter (`▏`/`|`) and its trailing space take, on
-/// every row of every block — not only the cursor block's, so the document
-/// column stays put whichever block has the cursor.
-const GUTTER: u16 = 2;
+/// Cells left of every row's text (ease-pass/11): the outline's `│` round
+/// the cursor's clash, the clash's mark (`?` `◀` `▶` `◆`), and a space
+/// before the line number — on every row, so the text stays put whichever
+/// clash has the cursor.
+const GUTTER: u16 = 3;
 
 /// The single line the widget draws when it has no room to draw anything
 /// else. `layout` still returns rows at this size — the app decides no key
@@ -182,6 +157,16 @@ pub enum RegionView {
         /// `ours_absent`'s twin, for the theirs pane.
         theirs_absent: Option<SanitizedText>,
     },
+    /// After the last block of a file with none left open, the file
+    /// stays on screen and says so (the merge mock, M9): `✓ Every clash in
+    /// <name> is solved.`, then `next`, the way on in the app's words.
+    Solved {
+        /// The file's last path segment.
+        name: SanitizedText,
+        /// What to do now: `n next file, 2 clashes left`, `y review the
+        /// merge`; empty for none.
+        next: SanitizedText,
+    },
 }
 
 /// One conflict block.
@@ -208,6 +193,10 @@ pub struct BlockView {
     pub first_line: usize,
     /// Where each side's lines are numbered from.
     pub numbers: BlockNumbers,
+    /// Once taken, the lines the pick wrote, as the app's resolver state
+    /// holds them: the widget draws them and never derives them from the
+    /// sides. Empty while open.
+    pub kept: Vec<SanitizedText>,
 }
 
 /// Whether a block still has a decision to make.

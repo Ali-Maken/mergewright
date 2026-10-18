@@ -100,6 +100,7 @@ pub fn number_width(doc: &DocView) -> usize {
                         BlockState::Took(TakeView::Both) => block.ours.len() + block.theirs.len(),
                     },
                 )),
+            RegionView::Solved { .. } => 0,
         })
         .max()
         .unwrap_or(0);
