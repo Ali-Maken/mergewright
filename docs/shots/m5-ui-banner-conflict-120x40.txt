@@ -70,26 +70,26 @@
 
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
-▸ ◌      Uncommitted changes (16 unmerged)
-  ◆      [◆ main] main's take                                                                           GF 87m  80393eb
-  ┃ ●    [feature] the feature's take                                                                   GF 88m  38c48dd
-  ●┄╯    the shared files                                                                               GF 89m  58854e9
-  ●      Ship release 29                                                                                GF 2h   b796998
-  ●      Ship release 28                                                                                GF 2h   8b1f759
-  ●      Ship release 27                                                                                GF 2h   0e2c4ab
-  ●      Ship release 26                                                                                GF 2h   e478821
-  ●      Ship release 25                                                                                GF 2h   4f73502
-  ●      Ship release 24                                                                                GF 2h   dbaccce
-  ●      Ship release 23                                                                                GF 2h   fcfad85
-  ●      Ship release 22                                                                                GF 2h   2b22a7d
-  ●      Ship release 21                                                                                GF 2h   f18afe9
-  ●      Ship release 20                                                                                GF 2h   8afb691
-  ●      Ship release 19                                                                                GF 2h   3c4da4b
-  ●      Ship release 18                                                                                GF 2h   56aee62
-  ●      Ship release 17                                                                                GF 2h   16ea802
-  ●      Ship release 16                                                                                GF 2h   9e9dfd0
-  ●      Ship release 15                                                                                GF 2h   a840fd9
-  ●      Ship release 14                                                                                GF 2h   0f8d5d6
+▸ ◌                           Uncommitted changes (16 unmerged)
+  ◆      main (you)           main's take  not pushed yet                                                    Graft  87m
+  ┃ ●    feature              the feature's take  not pushed yet                                             Graft  88m
+  ●┄╯    main (you)           the shared files                                                               Graft  89m
+  ●                           Ship release 29                                                                Graft   2h
+  ●                           Ship release 28                                                                Graft   2h
+  ●                           Ship release 27                                                                Graft   2h
+  ●                           Ship release 26                                                                Graft   2h
+  ●                           Ship release 25                                                                Graft   2h
+  ●                           Ship release 24                                                                Graft   2h
+  ●                           Ship release 23                                                                Graft   2h
+  ●                           Ship release 22                                                                Graft   2h
+  ●                           Ship release 21                                                                Graft   2h
+  ●                           Ship release 20                                                                Graft   2h
+  ●                           Ship release 19                                                                Graft   2h
+  ●                           Ship release 18                                                                Graft   2h
+  ●                           Ship release 17                                                                Graft   2h
+  ●                           Ship release 16                                                                Graft   2h
+  ●                           Ship release 15                                                                Graft   2h
+  ●                           Ship release 14                                                                Graft   2h
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merge stopped · 16 files conflicted · ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED

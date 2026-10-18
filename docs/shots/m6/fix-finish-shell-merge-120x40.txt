@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
-▸ ◆    [◆ main] Merge branch 'feature'  ▸ 1 commit from feature                                         GF futu…0000000
-  ●    main's take                                                                                      GF 2h   ddeed32
-  ●    the shared files                                                                                 GF 2h   b35b2f1
-  ●    Correct the note                                                                                 GF 1y   a82960b
-  ●    Add the first note                                                                               GF 1y   fadcfb3
-  ◇    Add a readme                                                                                     GF 1y   64ded19
+▸ ◆    main (you)           Merge branch 'feature'  ▸ 1 commit from feature  not pushed yet                    you fut…
+  ●                         main's take                                                                        you   2h
+  ●                         the shared files                                                                   you   2h
+  ●                         Correct the note                                                                   you   1y
+  ●                         Add the first note                                                                 you   1y
+  ◇                         Add a readme                                                                       you   1y
 
 
 

@@ -1,15 +1,15 @@
-m8-polish-and-ship/28, 80x24, cursor on `[feature/two] two: finish`: what right looks like — `▸` in the gutter's first cell and the badge `[feature/two]` on the same row; the lanes as on every other row; no `▏` in the marker slot. Judge beside m8-look-cursor-row-dark-120x36.txt and the mock-up m8-proto-4a-dark-a-b.txt. Colour unverified (rule 5).
+m8-polish-and-ship/28, 80x24, cursor on `feature/two  two: finish`: what right looks like — `▸` in the gutter's first cell and the branch column's `feature/two` on the same row; the lanes as on every other row; no `▏` in the marker slot. Judge beside m8-look-cursor-row-dark-120x36.txt and the mock-up m8-proto-4a-dark-a-b.txt. Colour unverified (rule 5).
 
  ◆ api  ~/code/api · main                     9 commits  1 merged branch folded
-    ●        [feature/three] three: in progress                    7y   0683985
-  ◆━┊━╮      [◆ main] Merge branch 'feature/two'                   7y   5202e1c
-  ║ ┊ ┃ ●    [feature/two-next] two: follow-up                     7y   e53c4a4
-▸ ║ ┊ ●┄╯    [feature/two] two: finish                             7y   e30e870
-  ║ ┊ ●      two: start                                            7y   40034e4
-  ◉ ┊ ┃      Merge branch 'feature/…  ▸ 2 commits from feature/one 7y   3a97003
-  ●┄┴━╯      Add b.txt                                             7y   de95041
-  ●          Add a.txt                                             7y   21b16b9
-  ◇          Add a readme                                          7y   daa5167
+    ●        feature/thr… three: in progress  not pushed yet         Graft   7y
+  ◆━┊━╮      main (you)   Merge branch 'feature/tw…  not pushed yet  Graft   7y
+  ║ ┊ ┃ ●    feature/two… two: follow-up  not pushed yet             Graft   7y
+▸ ║ ┊ ●┄╯    feature/two  two: finish  not pushed yet                Graft   7y
+  ║ ┊ ●                   two: start                                 Graft   7y
+  ◉ ┊ ┃      main (you)   Merge bran…  ▸ 2 commits from feature/one  Graft   7y
+  ●┄┴━╯                   Add b.txt                                  Graft   7y
+  ●                       Add a.txt                                  Graft   7y
+  ◇                       Add a readme                               Graft   7y
 
 
 

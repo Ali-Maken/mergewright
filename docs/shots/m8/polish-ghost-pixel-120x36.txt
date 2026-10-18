@@ -9,38 +9,38 @@
 
                                                                                                     120 commits  gfx ok
 
-       Commit 68␛[31m                                                                                   TE 57y  4444444
-▸      Commit 67␛[31m                                                                                   TE 57y  4343434
-       Commit 66␛[31m                                                                                   TE 57y  4242424
-       Commit 65␛[31m                                                                                   TE 57y  4141414
-       Commit 64␛[31m                                                                                   TE 57y  4040404
-       Commit 63␛[31m                                                                                   TE 57y  3f3f3f3
-       Commit 62␛[31m                                                                                   TE 57y  3e3e3e3
-       Commit 61␛[31m                                                                                   TE 57y  3d3d3d3
-       Commit 60␛[31m                                                                                   TE 57y  3c3c3c3
-       Commit 59␛[31m                                                                                   TE 57y  3b3b3b3
-       Commit 58␛[31m                                                                                   TE 57y  3a3a3a3
-       Commit 57␛[31m                                                                                   TE 57y  3939393
-       Commit 56␛[31m                                                                                   TE 57y  3838383
-       Commit 55␛[31m                                                                                   TE 57y  3737373
-       Commit 54␛[31m                                                                                   TE 57y  3636363
-       Commit 53␛[31m                                                                                   TE 57y  3535353
-       Commit 52␛[31m                                                                                   TE 57y  3434343
-       Commit 51␛[31m                                                                                   TE 57y  3333333
-       Commit 50␛[31m                                                                                   TE 57y  3232323
-       Commit 49␛[31m                                                                                   TE 57y  3131313
-       Commit 48␛[31m                                                                                   TE 57y  3030303
-       Commit 47␛[31m                                                                                   TE 57y  2f2f2f2
-       Commit 46␛[31m                                                                                   TE 57y  2e2e2e2
-       Commit 45␛[31m                                                                                   TE 57y  2d2d2d2
-       Commit 44␛[31m                                                                                   TE 57y  2c2c2c2
-       Commit 43␛[31m                                                                                   TE 57y  2b2b2b2
-       Commit 42␛[31m                                                                                   TE 57y  2a2a2a2
-       Commit 41␛[31m                                                                                   TE 57y  2929292
-       Commit 40␛[31m                                                                                   TE 57y  2828282
-       Commit 39␛[31m                                                                                   TE 57y  2727272
-       Commit 38␛[31m                                                                                   TE 57y  2626262
-       Commit 37␛[31m                                                                                   TE 57y  2525252
+                            Commit 68␛[31m                                                                    Test  57y
+▸                           Commit 67␛[31m                                                                    Test  57y
+                            Commit 66␛[31m                                                                    Test  57y
+                            Commit 65␛[31m                                                                    Test  57y
+                            Commit 64␛[31m                                                                    Test  57y
+                            Commit 63␛[31m                                                                    Test  57y
+                            Commit 62␛[31m                                                                    Test  57y
+                            Commit 61␛[31m                                                                    Test  57y
+                            Commit 60␛[31m                                                                    Test  57y
+                            Commit 59␛[31m                                                                    Test  57y
+                            Commit 58␛[31m                                                                    Test  57y
+                            Commit 57␛[31m                                                                    Test  57y
+                            Commit 56␛[31m                                                                    Test  57y
+                            Commit 55␛[31m                                                                    Test  57y
+                            Commit 54␛[31m                                                                    Test  57y
+                            Commit 53␛[31m                                                                    Test  57y
+                            Commit 52␛[31m                                                                    Test  57y
+                            Commit 51␛[31m                                                                    Test  57y
+                            Commit 50␛[31m                                                                    Test  57y
+                            Commit 49␛[31m                                                                    Test  57y
+                            Commit 48␛[31m                                                                    Test  57y
+                            Commit 47␛[31m                                                                    Test  57y
+                            Commit 46␛[31m                                                                    Test  57y
+                            Commit 45␛[31m                                                                    Test  57y
+                            Commit 44␛[31m                                                                    Test  57y
+                            Commit 43␛[31m                                                                    Test  57y
+                            Commit 42␛[31m                                                                    Test  57y
+                            Commit 41␛[31m                                                                    Test  57y
+                            Commit 40␛[31m                                                                    Test  57y
+                            Commit 39␛[31m                                                                    Test  57y
+                            Commit 38␛[31m                                                                    Test  57y
+                            Commit 37␛[31m                                                                    Test  57y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 
@@ -51,27 +51,27 @@
 
                                                                                                     120 commits  gfx ok
 
-  ●      Commit 68␛[31m                                                                                 TE 57y  4444444
-▸ ●      Commit 67␛[31m                                                                                 TE 57y  4343434
-  ●      Commit 66␛[31m                                                                                 TE 57y  4242424
-  │      after rebase
-  │ ○    replayed work                                                                                  AD —    —
-  ●─╯    Commit 65␛[31m                                                                                 TE 57y  4141414
-  ●      Commit 64␛[31m                                                                                 TE 57y  4040404
-  ●      Commit 63␛[31m                                                                                 TE 57y  3f3f3f3
-  ●      Commit 62␛[31m                                                                                 TE 57y  3e3e3e3
-  ●      Commit 61␛[31m                                                                                 TE 57y  3d3d3d3
-  ●      Commit 60␛[31m                                                                                 TE 57y  3c3c3c3
-  ●      Commit 59␛[31m                                                                                 TE 57y  3b3b3b3
-  ●      Commit 58␛[31m                                                                                 TE 57y  3a3a3a3
-  ●      Commit 57␛[31m                                                                                 TE 57y  3939393
-  ●      Commit 56␛[31m                                                                                 TE 57y  3838383
-  ●      Commit 55␛[31m                                                                                 TE 57y  3737373
-  ●      Commit 54␛[31m                                                                                 TE 57y  3636363
-  ●      Commit 53␛[31m                                                                                 TE 57y  3535353
-  ●      Commit 52␛[31m                                                                                 TE 57y  3434343
-  ●      Commit 51␛[31m                                                                                 TE 57y  3333333
-  ●      Commit 50␛[31m                                                                                 TE 57y  3232323
+  ●                           Commit 68␛[31m                                                                  Test  57y
+▸ ●                           Commit 67␛[31m                                                                  Test  57y
+  ●                           Commit 66␛[31m                                                                  Test  57y
+  │                           after rebase
+  │ ○                         replayed work                                                                    Ada    —
+  ●─╯                         Commit 65␛[31m                                                                  Test  57y
+  ●                           Commit 64␛[31m                                                                  Test  57y
+  ●                           Commit 63␛[31m                                                                  Test  57y
+  ●                           Commit 62␛[31m                                                                  Test  57y
+  ●                           Commit 61␛[31m                                                                  Test  57y
+  ●                           Commit 60␛[31m                                                                  Test  57y
+  ●                           Commit 59␛[31m                                                                  Test  57y
+  ●                           Commit 58␛[31m                                                                  Test  57y
+  ●                           Commit 57␛[31m                                                                  Test  57y
+  ●                           Commit 56␛[31m                                                                  Test  57y
+  ●                           Commit 55␛[31m                                                                  Test  57y
+  ●                           Commit 54␛[31m                                                                  Test  57y
+  ●                           Commit 53␛[31m                                                                  Test  57y
+  ●                           Commit 52␛[31m                                                                  Test  57y
+  ●                           Commit 51␛[31m                                                                  Test  57y
+  ●                           Commit 50␛[31m                                                                  Test  57y
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
 │ feature 4343434 → 1 new commit                                                                                       │

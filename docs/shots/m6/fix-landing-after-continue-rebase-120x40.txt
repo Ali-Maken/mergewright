@@ -1,8 +1,8 @@
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
-▸   ◆    [◆ feature] Change every file on feature                                                       GF futu…0000000
-  ●━╯    [main] Change every file on main                                                               GF 2h   274c7d4
-  ◇      Add the files both sides will change                                                           GF 1y   9571fc9
+▸   ◆    feature (you)        Change every file on feature  not pushed yet                                     you fut…
+  ●━╯    main                 Change every file on main  not pushed yet                                        you   2h
+  ◇                           Add the files both sides will change                                             you   1y
 
 
 

@@ -1,14 +1,14 @@
 ---
-source: crates/graft-ui/tests/ascii_tier.rs
+source: crates/mergewright-ui/tests/ascii_tier.rs
 expression: text
 ---
 shape: foxtrot-merge, no-color, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                                             4 commits
-  *-\    Merge branch 'main' into feature                          4y   84cc93e
-> * |    feature: work                                             4y   8fa6bfc
-  | *    Advance main                                              4y   18ca7c9
-  *-/    Add the base                                              4y   68d5d19
+  *-\                 Merge branch 'main' into feature               Graft   4y
+> * |                 feature: work                                  Graft   4y
+  | *                 Advance main                                   Graft   4y
+  *-/                 Add the base                                   Graft   4y
 
 
 

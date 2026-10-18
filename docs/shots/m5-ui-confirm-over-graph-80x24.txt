@@ -35,7 +35,7 @@
 #
 # What survives beside it, read back out of the frame below rather
 # than written here by hand — on the widest such row, `  ●` is
-# left of the border and `` is right of it.
+# left of the border and `2d` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -48,27 +48,27 @@
 == `P`: the push confirm, on the graph ==
 
  ◆ api  ~/code/api · main                         200 commits  1 commit to push
-▸ ◆  ⓘ [◆ main ↑1] Commit 200                                      2d   d5ae5fd
-  ●    [origin/main] Commit 199                                    2d   13e6ab1
-  ●    Commit 198                                                  2d   f5055d9
-  ●    Commit 197                                                  2d   2cce853
-  ●    Commit 196                                                  2d   325da3f
-  ●    Commit 195                                                  2d   0722297
-  ●    Commit 194                                                  2d   b6a4a47
-  ●    ╭ Push main → origin/main ──────────────────────────────────────────────╮
-  ●    │ 1 commit · can't be undone from here — origin keeps what you send     │
-  ●    │                                                                       │
-  ●    │ git push --progress origin refs/heads/main:refs/heads/main            │
-  ●    │                                                                       │
-  ●    │ ▸[ Cancel ]   [ Push ]                                                │
-  ●    ╰───────────────────────────────────────────────────────────────────────╯
-  ●    Commit 186                                                  2d   fab25df
-  ●    Commit 185                                                  2d   09ae97c
-  ●    Commit 184                                                  2d   49d7783
-  ●    Commit 183                                                  2d   22d55c9
-  ●    Commit 182                                                  2d   d212b3e
-  ●    Commit 181                                                  2d   c8254c5
-  ●    Commit 180                                                  2d   e95ccd4
-  ●    Commit 179                                                  2d   97b58e5
+▸ ◆  ⓘ main (you)   Commit 200  ↑1 to push                           Graft   2d
+  ●                 Commit 199  origin/main is here                  Graft   2d
+  ●                 Commit 198                                       Graft   2d
+  ●                 Commit 197                                       Graft   2d
+  ●                 Commit 196                                       Graft   2d
+  ●                 Commit 195                                       Graft   2d
+  ●    ╭ Push main → origin/main ────────────────────────────────────────╮   2d
+  ●    │ 1 commit · can't be undone from here — origin keeps what you    │   2d
+  ●    │ send                                                            │   2d
+  ●    │                                                                 │   2d
+  ●    │ git push --progress origin refs/heads/main:refs/heads/main      │   2d
+  ●    │                                                                 │   2d
+  ●    │ ▸[ Cancel ]   [ Push ]                                          │   2d
+  ●    ╰─────────────────────────────────────────────────────────────────╯   2d
+  ●                 Commit 186                                       Graft   2d
+  ●                 Commit 185                                       Graft   2d
+  ●                 Commit 184                                       Graft   2d
+  ●                 Commit 183                                       Graft   2d
+  ●                 Commit 182                                       Graft   2d
+  ●                 Commit 181                                       Graft   2d
+  ●                 Commit 180                                       Graft   2d
+  ●                 Commit 179                                       Graft   2d
  y push  ←/→ move  ⏎ choose  esc cancel
 

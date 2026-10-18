@@ -151,7 +151,7 @@ fn on_a_branch_row() -> (mergewright_fixtures::Scratch, App, AppState) {
     let frame = drawn(&state);
     let y = frame
         .iter()
-        .position(|line| line.contains("[topic-4]"))
+        .position(|line| line.contains("topic-4: start"))
         .unwrap_or_else(|| panic!("topic-4's row\n{}", frame.join("\n")));
     let row = u16::try_from(y).expect("short screen");
     let state = app.mouse_down(&state, MouseButton::Left, 40, row);

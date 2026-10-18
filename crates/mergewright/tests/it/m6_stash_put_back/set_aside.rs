@@ -12,7 +12,7 @@ use mergewright_fixtures::remote::LocalRemote;
 
 use super::{Keys, cursor_to, main_and_fix, planned, rev};
 use crate::app_harness::{App, git};
-use crate::captures::{check_shot, frame_at, without_invented_id};
+use crate::captures::{check_shot, frame_at};
 use crate::preview::{FORK_NOW, dated_commit, opened};
 use crate::remote_by_key::{confirm, finish, local, ready, run};
 use crate::stash_clash::{landed, quiet, stash_list, unmerged};
@@ -128,7 +128,7 @@ fn a_dirty_pull_rebase_is_three_keys() {
         "{:?}",
         state.status
     );
-    done_shot(&state, &rev(work, "HEAD"));
+    done_shot(&state);
     drop(state);
     app.close();
 }
@@ -842,7 +842,7 @@ fn landing_shot(state: &AppState) {
     );
 }
 
-fn done_shot(state: &AppState, rebased: &str) {
+fn done_shot(state: &AppState) {
     let drawn = frame_at(state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
     assert!(
         drawn
@@ -853,10 +853,7 @@ fn done_shot(state: &AppState, rebased: &str) {
     );
     check_shot(
         "m6/set-aside-done-120x40.txt",
-        &format!(
-            "{DONE_HEADER}\n{}\n",
-            without_invented_id(&drawn.join("\n"), rebased)
-        ),
+        &format!("{DONE_HEADER}\n{}\n", drawn.join("\n")),
     );
 }
 
@@ -909,9 +906,8 @@ const DONE_HEADER: &str = "\
 # AppState (crates/mergewright/tests/it/m6_stash_put_back/set_aside.rs,
 # a_dirty_pull_rebase_is_three_keys, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
-# The rebased commit is made moments before the frame, so its id is new
-# every run: it is zeroed to `0000000` here. Nothing else is normalised.
-# Its date reads `futu…`: it is dated by the wall clock, the frame by the
+# The rebased commit is drawn with no id (rows draw none since ease-pass
+# 07). Its age reads `fut…`: it is dated by the wall clock, the frame by the
 # fixtures' fixed clock (so the other rows' ages hold still), which is
 # earlier.
 #

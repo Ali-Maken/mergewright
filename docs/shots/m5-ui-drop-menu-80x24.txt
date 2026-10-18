@@ -23,9 +23,9 @@
 #    on, which is still readable above it.
 #
  ◆ api  ~/code/api · feature                                          8 commits
-▸   ◆    [◆ feature] finish the feature                            now  8d6cd28
-    ●    start the feature                                         2m   52f3b96
-  ● ┃    [main] main moves again                                   3m   45fa51d
+▸   ◆    featu… (you) finish the feature  not pushed yet             Graft  now
+    ●                 start the feature                              Graft   2m
+  ● ┃    main         main moves again  not pushed yet               Graft   3m
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main

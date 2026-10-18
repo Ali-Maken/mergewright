@@ -144,9 +144,13 @@ fn g_after_laid_out_lands_without_laying_out() {
     )
     .join("\n");
     assert!(!frame.contains("laying out"), "{frame}");
-    let root = git(path, &["rev-list", "--max-parents=0", "HEAD"]);
-    let root = root.trim().get(..7).expect("a full object id");
-    assert!(frame.contains(root), "the root commit is drawn:\n{frame}");
+    // By its subject: rows draw no SHA (ease-pass G7).
+    let root = git(
+        path,
+        &["log", "-1", "--format=%s", "--max-parents=0", "HEAD"],
+    );
+    let root = format!(" {} ", root.trim());
+    assert!(frame.contains(&root), "the root commit is drawn:\n{frame}");
     app.close();
 }
 

@@ -52,6 +52,7 @@ mod gallery;
 mod ghostty_shot;
 mod graph_mode;
 mod graph_mode_keep;
+mod graph_rows_tests;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 #[cfg(feature = "heavy-tests")]
@@ -117,6 +118,7 @@ mod rename_status;
 mod repo_truth;
 mod resolver;
 mod rewrite_stop;
+mod row_reads;
 mod seam_rule;
 mod search_folded;
 mod search_hint;

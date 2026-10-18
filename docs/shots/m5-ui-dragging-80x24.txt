@@ -23,14 +23,14 @@
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆    [◆ feature] finish the feature                            now  8d6cd28
-    ●    start the feature                                         2m   52f3b96
-  ● ┃ →  [main] main moves again                                   3m   45fa51d
-  ● ┃    main moves on                                             4m   37926a7
-  ●━╯    add the base                                              5m   ed332bc
-  ●      Correct the note                                          1y   a82960b
-  ●      Add the first note                                        1y   fadcfb3
-  ◇      Add a readme                                              1y   64ded19
+    ◆    featu… (you) finish the feature  not pushed yet             Graft  now
+    ●                 start the feature                              Graft   2m
+  ● ┃ →  main         main moves again  not pushed yet               Graft   3m
+  ● ┃                 main moves on                                  Graft   4m
+  ●━╯                 add the base                                   Graft   5m
+  ●                   Correct the note                               Graft   1y
+  ●                   Add the first note                             Graft   1y
+  ◇                   Add a readme                                   Graft   1y
 
 
 

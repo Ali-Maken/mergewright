@@ -1,8 +1,8 @@
-//! One row of the graph screen as plain data — its graph cells, badges,
-//! subject, author chip, date and SHA, and the tag that can stand in front
-//! of its subject — split out of `graph_screen` for size (ease-pass/08s M6).
+//! One row of the graph screen as plain data — its graph cells, branch,
+//! message, labels, who and age, and the tag that can follow its message —
+//! split out of `graph_screen` for size (ease-pass/08s M6).
 
-use mergewright_graph::identity::BranchIdentity;
+use mergewright_graph::LaneRole;
 use mergewright_term::SanitizedText;
 
 use super::{Badge, FoldMark, MarkerView};
@@ -13,21 +13,25 @@ use crate::graph_column::GraphLine;
 pub struct GraphEntry<'a> {
     /// The graph column's cells for this row, and how strongly it paints.
     pub line: GraphLine<'a>,
-    /// The refs on this commit, in the order they are drawn. Empty for
-    /// most rows.
+    /// The refs on this commit. Drawn as muted labels after the message
+    /// (`main is here`, `↑1 to push`, `tag v1.2`, ease-pass G7) and the
+    /// source a drag picks a branch from (§2.15). Empty for most rows.
     pub badges: Vec<Badge>,
     /// The commit's subject, sanitised.
     pub subject: SanitizedText,
-    /// The author's chip: initials and the identity that colours it.
-    pub author: AuthorChip,
+    /// The branch column (ease-pass G5): `Some` on the first row of each
+    /// run of one branch, and on a row inside an opened merge.
+    pub branch: Option<BranchCell>,
+    /// The who column (ease-pass G8): `None` on a row with no commit.
+    pub who: Option<WhoCell>,
+    /// The message draws dim: the row was made on a branch the cursor's
+    /// route does not run through (ease-pass G6), or sits inside an opened
+    /// merge (G4).
+    pub dim_message: bool,
     /// How long ago the commit was made, already formatted (`"2m"`, `"3h"`).
     /// Not repository text — a clock reading `app` computed — so it needs no
     /// sanitising.
     pub when: String,
-    /// The commit's short SHA, lowercase hex. Not repository text either:
-    /// hex drawn from a fixed digit alphabet is safe as-is
-    /// (`mergewright_core::oid::Oid`'s own doc comment).
-    pub sha: String,
     /// This row is the pinned compare base (`x`, m2-details-and-diffs/11):
     /// draws the accent `▏` left rule. At most one row is ever `true`.
     pub compare_marked: bool,
@@ -97,19 +101,27 @@ pub const TAG_MIN_SUBJECT: u16 = 8;
 /// Cells between the subject and its tag.
 pub(crate) const TAG_GAP: u16 = 2;
 
-/// An author's chip: two initials, coloured by the author's identity.
-///
-/// The colour comes from [`BranchIdentity`] and the same lane palette a
-/// branch draws in ([`Theme::branch`](crate::theme::Theme::branch)) — reused
-/// rather than given its own palette, since both are "a stable colour for a
-/// hash of some bytes" and a second palette would only have to be proven
-/// colourblind-safe all over again.
-#[derive(Clone, Debug)]
-pub struct AuthorChip {
-    /// The two initials drawn in the chip, sanitised.
-    pub initials: SanitizedText,
-    /// The identity the chip's colour comes from — of the author's
-    /// `.mailmap`-resolved email, so two identities mapped to one person
-    /// share a colour along with their chip.
-    pub identity: BranchIdentity,
+/// The branch column's cell (ease-pass G5): the branch a run of rows was
+/// made on, in its role's colour, bold unless it is [`LaneRole::Other`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BranchCell {
+    /// The branch's short name, sanitised; on a row inside an opened merge,
+    /// the last path segment of the merged branch's name.
+    pub name: SanitizedText,
+    /// What the branch is to the cursor row's branch: picks the colour.
+    pub role: LaneRole,
+    /// `HEAD` is on this branch: ` (you)` follows the name.
+    pub you: bool,
+    /// Drawn dim: a row inside an opened merge (G4).
+    pub dim: bool,
+}
+
+/// The who column's cell (ease-pass G8): the author's first name, or `you`
+/// on the user's own commits.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WhoCell {
+    /// The first name, sanitised; `you` when [`Self::own`].
+    pub name: SanitizedText,
+    /// The commit is the user's own (`user.email`): drawn bold.
+    pub own: bool,
 }

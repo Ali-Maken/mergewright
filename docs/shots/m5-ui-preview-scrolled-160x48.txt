@@ -41,40 +41,40 @@
 
  ◆ api  ~/code/api · topic                                                                                                                           70 commits
 
-    ●      redesign step 21                                                                                                                     GF 41m  43008f4
-    ●      redesign step 20                                                                                                                     GF 42m  3ed8649
-    ●      redesign step 19                                                                                                                     GF 43m  7f09e2b
-    ●      redesign step 18                                                                                                                     GF 44m  15f3c2d
-    ●      redesign step 17                                                                                                                     GF 45m  f5adc23
-    ●      redesign step 16                                                                                                                     GF 46m  b451d3b
-    ●      redesign step 15                                                                                                                     GF 47m  7543dcd
-    ●      redesign step 14                                                                                                                     GF 48m  74ea4d0
-    ●      redesign step 13                                                                                                                     GF 49m  618a7de
-    ●      redesign step 12                                                                                                                     GF 50m  a7d62f1
-    ●      redesign step 11                                                                                                                     GF 51m  5f7971c
-    ●      redesign step 10                                                                                                                     GF 52m  2e71932
-    ●      redesign step 09                                                                                                                     GF 53m  15e3640
-    ●      redesign step 08                                                                                                                     GF 54m  d9ead6d
-    ●      redesign step 07                                                                                                                     GF 55m  abc4f61
-    ●      redesign step 06                                                                                                                     GF 56m  8124484
-    ●      redesign step 05                                                                                                                     GF 57m  c2d6da1
-    ●      redesign step 04                                                                                                                     GF 58m  be1a1ac
-    ●      redesign step 03                                                                                                                     GF 59m  eb40531
-    ●      redesign step 02                                                                                                                     GF 60m  a2606d6
-    ●      redesign step 01                                                                                                                     GF 61m  3533523
-    ●      redesign step 00                                                                                                                     GF 62m  c6c79eb
-    │ ●    finish the topic                                                                                                                     GF 63m  e7e39a7
-    │ ●    start the topic                                                                                                                      GF 64m  169d215
-  ●─┴─╯    [main] main moves on (2)                                                                                                             GF 65m  107af44
-  ●        main moves on (1)                                                                                                                    GF 66m  2b2b2f1
-  ●        main moves on (0)                                                                                                                    GF 67m  ba665c1
-  │        after rebase
-  │ ○      [◆ topic] finish the topic                                                                                                           GF —    —
-  │ ○      start the topic                                                                                                                      GF —    —
-  │ ○      main moves on (2)                                                                                                                    GF —    —
-  │ ○      main moves on (1)                                                                                                                    GF —    —
-  │ ○      main moves on (0)                                                                                                                    GF —    —
-▸ │ ●      [old-release] cut release 1.0                                                                                                        GF 68m  3b09656
+    ●                           redesign step 21                                                                                                     Graft  41m
+    ●                           redesign step 20                                                                                                     Graft  42m
+    ●                           redesign step 19                                                                                                     Graft  43m
+    ●                           redesign step 18                                                                                                     Graft  44m
+    ●                           redesign step 17                                                                                                     Graft  45m
+    ●                           redesign step 16                                                                                                     Graft  46m
+    ●                           redesign step 15                                                                                                     Graft  47m
+    ●                           redesign step 14                                                                                                     Graft  48m
+    ●                           redesign step 13                                                                                                     Graft  49m
+    ●                           redesign step 12                                                                                                     Graft  50m
+    ●                           redesign step 11                                                                                                     Graft  51m
+    ●                           redesign step 10                                                                                                     Graft  52m
+    ●                           redesign step 09                                                                                                     Graft  53m
+    ●                           redesign step 08                                                                                                     Graft  54m
+    ●                           redesign step 07                                                                                                     Graft  55m
+    ●                           redesign step 06                                                                                                     Graft  56m
+    ●                           redesign step 05                                                                                                     Graft  57m
+    ●                           redesign step 04                                                                                                     Graft  58m
+    ●                           redesign step 03                                                                                                     Graft  59m
+    ●                           redesign step 02                                                                                                     Graft  60m
+    ●                           redesign step 01                                                                                                     Graft  61m
+    ●                           redesign step 00                                                                                                     Graft  62m
+    │ ●                         finish the topic                                                                                                     Graft  63m
+    │ ●                         start the topic                                                                                                      Graft  64m
+  ●─┴─╯                         main moves on (2)  main is here  not pushed yet                                                                      Graft  65m
+  ●                             main moves on (1)                                                                                                    Graft  66m
+  ●                             main moves on (0)                                                                                                    Graft  67m
+  │                             after rebase
+  │ ○                           finish the topic  topic is here  not pushed yet                                                                      Graft    —
+  │ ○                           start the topic                                                                                                      Graft    —
+  │ ○                           main moves on (2)                                                                                                    Graft    —
+  │ ○                           main moves on (1)                                                                                                    Graft    —
+  │ ○                           main moves on (0)                                                                                                    Graft    —
+▸ │ ●                           cut release 1.0  old-release is here  not pushed yet                                                                 Graft  68m
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │

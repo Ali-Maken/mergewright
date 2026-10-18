@@ -12,11 +12,11 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸   ●    [stash@{0}] On main: wip                                                                       GF 2m   92f36bb
-  ◆─╯    [◆ main] [rescued] add sample                                                                  GF 2m   da91a2e
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸   ●                         On main: wip  stash@{0}                                                        Graft   2m
+  ◆─╯                         add sample  main is here  not pushed yet  rescued is here  not pushed yet      Graft   2m
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 

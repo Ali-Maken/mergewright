@@ -8,19 +8,16 @@
 //! already sent (design note hard choice 1: a preview never loads more
 //! history mid-preview).
 
-use mergewright_graph::identity::BranchIdentity;
 use mergewright_term::sanitize_line;
 use mergewright_ui::graph_column::{GraphLine, NodeKind, RowPaint};
-use mergewright_ui::graph_screen::{
-    AuthorChip, GraphEntry, SHA_WIDTH, initials, relative_date, short_sha,
-};
+use mergewright_ui::graph_screen::{GraphEntry, relative_date};
 
 use crate::update::AppState;
 use crate::update::preview::PreviewState;
 
-use super::entries::badge_view;
+use super::entries::{badge_view, who};
 
-/// What a ghost row shows where a real row shows a short SHA and an age:
+/// What a ghost row shows where a real row shows an age:
 /// the commit does not exist, so there is nothing true to put there.
 const NOT_YET: &str = "\u{2014}";
 
@@ -159,7 +156,7 @@ pub(crate) fn picture_start(
 /// past the block keeps an unbroken `│` through the label; the ghost's own
 /// column is blank, because the ghost lane starts on the row below. Nothing
 /// on this row is a commit, so nothing on it claims to be one: no node
-/// glyph ([`NodeKind::Absent`]), no author, no age, no sha.
+/// glyph ([`NodeKind::Absent`]), no who, no age.
 fn label_entry<'a>(ghost: &mergewright_graph::row::Row, label: &str) -> GraphEntry<'a> {
     let mut line = GraphLine::owned(mergewright_graph::row::Row {
         // Never compared against a ref or a selection: `view` builds this
@@ -179,12 +176,10 @@ fn label_entry<'a>(ghost: &mergewright_graph::row::Row, label: &str) -> GraphEnt
         badges: Vec::new(),
         line,
         subject: sanitize_line(label),
-        author: AuthorChip {
-            initials: sanitize_line(""),
-            identity: BranchIdentity::of_name(b""),
-        },
+        branch: None,
+        who: None,
+        dim_message: false,
         when: String::new(),
-        sha: String::new(),
         compare_marked: false,
         marker: None,
         tag: None,
@@ -232,13 +227,6 @@ fn entry<'a>(
             RowPaint::Highlighted
         };
     }
-    let (name, email) = match mailmap {
-        Some(mailmap) => mailmap.resolve(&row.commit.author),
-        None => (
-            row.commit.author.name.clone(),
-            row.commit.author.email.clone(),
-        ),
-    };
     let subject = String::from_utf8_lossy(row.commit.subject());
     GraphEntry {
         badges: badges.map_or_else(Vec::new, |badges| {
@@ -246,19 +234,15 @@ fn entry<'a>(
         }),
         line,
         subject: sanitize_line(&subject),
-        author: AuthorChip {
-            initials: sanitize_line(&initials(&String::from_utf8_lossy(&name))),
-            identity: BranchIdentity::of_name(&email),
-        },
+        // No branch column: the slice is its own layout, and a ghost's
+        // branch is the one the preview is about.
+        branch: None,
+        who: Some(who(row, mailmap)),
+        dim_message: false,
         when: if ghost {
             NOT_YET.to_owned()
         } else {
             relative_date(row.commit.date().seconds, now)
-        },
-        sha: if ghost {
-            NOT_YET.to_owned()
-        } else {
-            short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH))
         },
         // Neither belongs to a picture: the compare pin and the Mistake
         // Radar are about history as it is, and a preview is about history

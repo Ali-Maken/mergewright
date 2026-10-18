@@ -15,12 +15,12 @@
 
  ◆ api  ~/code/api · fix                                                                                                                                   5 commits  date order, sorting…
 
-    ◌    Uncommitted changes (1 unstaged)
-▸   ◆    [◆ fix] fix changes line 7                                                                                                                                        GF 4m   f2e2ada
-  ●━╯    [main] add f                                                                                                                                                      GF 5m   330fea5
-  ●      Correct the note                                                                                                                                                  GF 1y   a82960b
-  ●      Add the first note                                                                                                                                                GF 1y   fadcfb3
-  ◇      Add a readme                                                                                                                                                      GF 1y   64ded19
+    ◌                         Uncommitted changes (1 unstaged)
+▸   ◆    fix (you)            fix changes line 7  not pushed yet                                                                                                                Graft   4m
+  ●━╯    main                 add f  not pushed yet                                                                                                                             Graft   5m
+  ●                           Correct the note                                                                                                                                  Graft   1y
+  ●                           Add the first note                                                                                                                                Graft   1y
+  ◇                           Add a readme                                                                                                                                      Graft   1y
 
 
 

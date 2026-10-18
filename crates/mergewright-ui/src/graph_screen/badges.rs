@@ -132,7 +132,7 @@ impl Badge {
 
     /// The Nerd Font glyph for this kind of ref (private-use code points, one
     /// cell wide).
-    fn nerd_icon(&self) -> char {
+    pub(super) fn nerd_icon(&self) -> char {
         match self.kind {
             // nf-dev-git_branch
             BadgeKind::Branch { .. } => '\u{e725}',

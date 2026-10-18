@@ -2,15 +2,15 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 
  ◆ wallet  ~/code/wallet · wallet-release                                                 9 commits  every branch shown
 
-▸   ◆┄╮      [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-release                         GF 3y   ea2b27e
-    ┃ ●      [sara/fix-toc] toc: fix the anchors                                                        GF 3y   a5ab5e1
-    ◉┄┴┄╮    Merged PR 16021: Fix the wallet totals                                                     GF 3y   4eb2a56
-    ┃   ●    totals: test the sum                                                                       GF 3y   a03e550
-    ┃   ●    totals: drop the cache                                                                     GF 3y   3334d8b
-    ┃   ●    totals: round once                                                                         GF 3y   2c2a1cf
-    ┃   ●    totals: read the ledger                                                                    GF 3y   79709e0
-    ●┄┄┄╯    Start the wallet release                                                                   GF 3y   68f9980
-  ◇━╯        [main] Add the readme                                                                      GF 3y   2b013b5
+▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wallet-release  not pushed yet            Graft   3y
+    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet                                       Graft   3y
+    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet totals                                     Graft   3y
+    ┃   ●    PR 16021             totals: test the sum                                                       Graft   3y
+    ┃   ●                         totals: drop the cache                                                     Graft   3y
+    ┃   ●                         totals: round once                                                         Graft   3y
+    ┃   ●                         totals: read the ledger                                                    Graft   3y
+    ●┄┄┄╯    wallet-release (you) Start the wallet release                                                   Graft   3y
+  ◇━╯        main                 Add the readme  not pushed yet                                             Graft   3y
 
 
 

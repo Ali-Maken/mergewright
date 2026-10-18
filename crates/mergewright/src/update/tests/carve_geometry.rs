@@ -70,12 +70,13 @@ fn stopped_with(columns: u16, rows: u16, pending: u8, tour: bool) -> AppState {
     }
 }
 
-/// The screen row the newest commit's subject is drawn on.
+/// The screen row the newest commit is drawn on: `HEAD`'s node, beside its
+/// subject. At 40 columns the subject is cut to `Comm…` (labels take up to
+/// half the message column, ease-pass G7), so the node finds the row.
 fn first_commit_row(drawn: &str) -> Option<u16> {
-    let subject = format!("Commit {COMMITS}");
     drawn
         .lines()
-        .position(|line| line.contains(&subject))
+        .position(|line| line.contains("Comm") && line.contains('\u{25c6}'))
         .and_then(|row| u16::try_from(row).ok())
 }
 

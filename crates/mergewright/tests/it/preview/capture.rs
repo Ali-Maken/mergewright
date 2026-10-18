@@ -35,8 +35,9 @@ fn capture_fix_preview_verb_for_docs_shots() {
         let at = line.find(subject).expect("found above");
         (line.as_str(), &line[..at])
     };
-    let (merge, merge_graph) = row_of("[◆ feature] Merge branch 'main' into feature");
-    let (lower, lower_graph) = row_of("[main] main moves again");
+    // By subject: the labels follow it (ease-pass G7).
+    let (merge, merge_graph) = row_of("Merge branch 'main' into feature");
+    let (lower, lower_graph) = row_of("main moves again");
     assert!(merge_graph.contains('╮'), "merge row:\n{text}");
     assert!(lower_graph.contains('╯'), "main's row:\n{text}");
     for row in [merge, lower] {

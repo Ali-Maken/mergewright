@@ -1,4 +1,5 @@
-//! Drawing: the [`Widget`] entry point, the rows, and their badges.
+//! Drawing: the [`Widget`] entry point and the rows; the row's text columns
+//! are `row_cells`'.
 
 use mergewright_core::capabilities::ColorDepth;
 use mergewright_core::mistake_radar::Severity;
@@ -8,17 +9,12 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::Widget;
-use unicode_width::UnicodeWidthStr;
 
 use super::lanes::graph_width;
 use super::row_columns::Columns;
-use super::{
-    Badge, BadgeKind, GraphEntry, GraphScreen, Icons, LaneTally, RULE_WIDTH, SUBJECT_GAP, TAG_GAP,
-    TAG_MIN_SUBJECT, badges,
-};
+use super::{GraphEntry, GraphScreen, LaneTally, RULE_WIDTH};
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
-use crate::keymap::Keymap;
 use crate::paint::{color, foreground};
 use crate::theme::{Token, TokenColor};
 
@@ -206,7 +202,7 @@ impl GraphScreen<'_> {
     /// §3), as is everywhere else.
     ///
     /// [`Theme::on_selection`]: crate::theme::Theme::on_selection
-    fn ink(&self, entry: &GraphEntry<'_>, ink: TokenColor) -> Style {
+    pub(super) fn ink(&self, entry: &GraphEntry<'_>, ink: TokenColor) -> Style {
         let ink = if raised(entry) {
             self.theme.on_selection(ink)
         } else {
@@ -234,101 +230,18 @@ impl GraphScreen<'_> {
         let (style, trailing_style) = self.row_emphasis(entry, y, area, columns, buf);
 
         self.draw_marker_slot(entry, y, columns, style, buf);
-        let taken = self.draw_badges(entry, y, columns, style, buf);
-        self.draw_subject(
-            entry,
+        self.draw_branch(entry, y, columns, style, buf);
+        // The gap after the branch column carries the row's emphasis too.
+        draw_cell(
+            buf,
+            columns.branch_x + columns.branch_width,
             y,
-            columns.subject_x + taken,
-            columns.subject_width - taken,
+            columns.subject_x - columns.branch_x - columns.branch_width,
+            "",
             style,
-            buf,
         );
-        let author_style =
-            trailing_style.patch(self.ink(entry, self.theme.branch(entry.author.identity)));
-        draw_cell(
-            buf,
-            columns.author_x,
-            y,
-            columns.author_width,
-            entry.author.initials.as_str(),
-            author_style,
-        );
-        draw_cell(
-            buf,
-            columns.when_x,
-            y,
-            columns.when_width,
-            &entry.when,
-            trailing_style,
-        );
-        draw_cell(
-            buf,
-            columns.sha_x,
-            y,
-            columns.sha_width,
-            &entry.sha,
-            trailing_style,
-        );
-    }
-
-    /// The subject in `width` cells from `x`, and the row's tag after it
-    /// (m7-power-tools/09): two cells after the subject's last character,
-    /// in the accent token. The subject yields — cut with `…` — before the
-    /// tag is; with fewer than [`TAG_MIN_SUBJECT`] cells left for the
-    /// subject the tag is not drawn at all, and the row is today's.
-    fn draw_subject(
-        &self,
-        entry: &GraphEntry<'_>,
-        y: u16,
-        x: u16,
-        width: u16,
-        style: Style,
-        buf: &mut Buffer,
-    ) {
-        let subject = entry.subject.as_str();
-        let mark = drawn_fold(entry, self.view.ascii, width);
-        let mark_width = mark.as_deref().map_or(0, fold_cells);
-        let tag = drawn_tag(entry, self.view.ascii, width - mark_width);
-        if mark.is_none() && tag.is_none() {
-            draw_cell(buf, x, y, width, subject, style);
-            return;
-        }
-        let tag_width = tag
-            .as_deref()
-            .map_or(0, |tag| u16::try_from(tag.width()).unwrap_or(u16::MAX));
-        let tag_cells = if tag.is_some() {
-            tag_width + TAG_GAP
-        } else {
-            0
-        };
-        let room = width - mark_width - tag_cells;
-        let used = u16::try_from(super::walk_text::text_width(subject))
-            .unwrap_or(u16::MAX)
-            .min(room);
-        draw_cell(buf, x, y, used, subject, style);
-        let mut at = x + used;
-        // Gaps and whatever the subject left carry the row's own emphasis,
-        // as every other blank cell of the row does.
-        if let Some(mark) = mark.as_deref() {
-            draw_cell(buf, at, y, FOLD_GAP, "", style);
-            let mark_style = style.patch(self.ink(entry, self.theme.token(Token::TextMuted)));
-            draw_cell(
-                buf,
-                at + FOLD_GAP,
-                y,
-                mark_width - FOLD_GAP,
-                mark,
-                mark_style,
-            );
-            at += mark_width;
-        }
-        if let Some(tag) = tag.as_deref() {
-            draw_cell(buf, at, y, TAG_GAP, "", style);
-            let tag_style = style.patch(self.ink(entry, self.theme.token(Token::Accent)));
-            draw_cell(buf, at + TAG_GAP, y, tag_width, tag, tag_style);
-            at += tag_cells;
-        }
-        draw_cell(buf, at, y, (x + width).saturating_sub(at), "", style);
+        self.draw_message(entry, y, columns, style, buf);
+        self.draw_who_age(entry, y, columns, trailing_style, buf);
     }
 
     /// The marker slot, which holds two marks that **do not queue** and the
@@ -469,216 +382,10 @@ impl GraphScreen<'_> {
     }
 }
 
-impl GraphScreen<'_> {
-    /// The row's ref badges, left of the subject, and how many cells they
-    /// took (their trailing gap included).
-    ///
-    /// Badges never take more than half the subject column: at 80 columns a
-    /// commit with a pile of refs still says what it is. What does not fit is
-    /// cut with `…` rather than pushing the subject off the row.
-    fn draw_badges(
-        &self,
-        entry: &GraphEntry<'_>,
-        y: u16,
-        columns: &Columns,
-        style: Style,
-        buf: &mut Buffer,
-    ) -> u16 {
-        let icons = self.view.icons;
-        let keys = self.view.keys;
-        for (span, index) in badge_spans(entry, columns, icons, keys) {
-            let badge = &entry.badges[index];
-            draw_cell(
-                buf,
-                span.start,
-                y,
-                span.end - span.start,
-                &badge.text(icons, keys),
-                style.patch(self.badge_style(entry, badge)),
-            );
-        }
-        badges_width(entry, icons, keys, columns)
-    }
-
-    /// The colour and weight one badge draws in: branches and remotes in
-    /// their lane's colour, so a badge and its line read as one thing — on
-    /// the cursor row lifted to stay legible on the fill ([`Self::ink`]).
-    fn badge_style(&self, entry: &GraphEntry<'_>, badge: &Badge) -> Style {
-        let token = |token: Token| self.theme.token(token);
-        match &badge.kind {
-            BadgeKind::Branch {
-                identity, current, ..
-            } => {
-                let style = self.ink(entry, self.theme.branch(*identity));
-                if *current {
-                    style.add_modifier(Modifier::BOLD)
-                } else {
-                    style
-                }
-            }
-            BadgeKind::Remote { identity } => self.ink(entry, self.theme.branch(*identity)),
-            BadgeKind::Tag => self.ink(entry, token(Token::Warning)),
-            BadgeKind::Head => self
-                .ink(entry, token(Token::Accent))
-                .add_modifier(Modifier::BOLD),
-            // What only a stash holds reads in the stash's colour.
-            BadgeKind::Stash | BadgeKind::OnlyInStash(_) => self.ink(entry, token(Token::Info)),
-            BadgeKind::CompareBase => self.ink(entry, token(Token::Accent)),
-        }
-    }
-}
-
-/// The screen columns each of `entry`'s badges occupies, as drawn: one
-/// `(range, index)` per badge that had room, `index` naming its place in
-/// [`GraphEntry::badges`]. Ascending, never overlapping, all inside the
-/// subject column's badge share.
-///
-/// **This is the packing rule itself, not a description of it.**
-/// [`GraphScreen::draw_badges`] draws from exactly these ranges, and
-/// `graft`'s mouse hit-test reads the same call to say which badge a cell
-/// belongs to (`mergewright::view::hit::badge_at`). A second, mirrored copy of the
-/// packing in the app crate is what this function exists to prevent: the
-/// `detail_pane` mirror in `mergewright::update::geometry` is a standing drift
-/// risk, and one was enough (m5/10 decision).
-///
-/// Pure arithmetic over the badges' own text widths — no buffer, no theme,
-/// no `Rect`.
-#[must_use]
-pub fn badge_spans(
-    entry: &GraphEntry<'_>,
-    columns: &Columns,
-    icons: Icons,
-    keys: &Keymap,
-) -> Vec<(std::ops::Range<u16>, usize)> {
-    if entry.badges.is_empty() {
-        return Vec::new();
-    }
-    let separator = u16::try_from(badges::separator(icons).width()).unwrap_or(u16::MAX);
-    // Room for the badges themselves; the gap after them stays blank.
-    let room = badges_width(entry, icons, keys, columns).saturating_sub(SUBJECT_GAP);
-    let end = columns.subject_x + room;
-
-    let mut spans = Vec::with_capacity(entry.badges.len());
-    let mut x = columns.subject_x;
-    for (index, badge) in entry.badges.iter().enumerate() {
-        if index > 0 {
-            x = x.saturating_add(separator).min(end);
-        }
-        let width = u16::try_from(badge.text(icons, keys).width())
-            .unwrap_or(u16::MAX)
-            .min(end - x);
-        if width == 0 {
-            break;
-        }
-        spans.push((x..x + width, index));
-        x += width;
-    }
-    spans
-}
-
-/// The most badges a row can draw on a screen `columns` wide. A row
-/// builder may stop at this many and [`badge_spans`] returns the same
-/// spans, so the same cells are drawn, whatever the commit carries
-/// (m8/12c: 16 000 refs on one commit cost 16 000 badges a row a frame).
-///
-/// Why this many is enough: the badges get at most half the subject column
-/// ([`badges_width`]), and the subject column is narrower than the screen,
-/// so they have fewer than `columns / 2` cells. Every badge's text is at
-/// least two cells (`[…]` plain, glyph and space Nerd) and each one after
-/// the first adds a separator cell, so badge `columns / 2` starts at or past
-/// the edge and [`badge_spans`] stops there. The first `columns / 2 + 1`
-/// also want at least that half column on their own, so the room the cut
-/// list is given is the room the whole list was. Whatever is pushed after
-/// the cut (`only in stash`) lands past the edge, as it did behind them.
-/// Pinned by `tests::many_refs_row_draws_like_its_first_badges`.
-#[must_use]
-pub fn badges_that_fit(columns: u16) -> usize {
-    usize::from(columns / 2) + 1
-}
-
-/// Cells a row's badges take from the subject column's left edge, the
-/// trailing gap included — half the subject column at most. The same sum
-/// [`GraphScreen::draw_badges`] draws to, so it and the footer reveal's
-/// truncation check ([`subject_truncated`]) always agree on where the
-/// subject itself actually starts.
-fn badges_width(entry: &GraphEntry<'_>, icons: Icons, keys: &Keymap, columns: &Columns) -> u16 {
-    if entry.badges.is_empty() {
-        return 0;
-    }
-    let texts: Vec<String> = entry
-        .badges
-        .iter()
-        .map(|badge| badge.text(icons, keys))
-        .collect();
-    let separator = badges::separator(icons);
-    let wanted = texts.iter().map(|text| text.width()).sum::<usize>()
-        + separator.width() * (texts.len() - 1)
-        + usize::from(SUBJECT_GAP);
-    let budget = columns.subject_width / 2;
-    u16::try_from(wanted).unwrap_or(u16::MAX).min(budget)
-}
-
-/// The row tag's words when [`GraphScreen::draw_subject`] draws them in a
-/// subject column of `width` cells: `None` for an untagged row, or when
-/// fewer than [`TAG_MIN_SUBJECT`] cells would be left for the subject.
-fn drawn_tag<'e>(
-    entry: &'e GraphEntry<'_>,
-    ascii: bool,
-    width: u16,
-) -> Option<std::borrow::Cow<'e, str>> {
-    let tag = entry.tag.as_ref()?.words(ascii);
-    let tag_width = u16::try_from(tag.width()).unwrap_or(u16::MAX);
-    (width.saturating_sub(tag_width.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)
-}
-
-/// Cells between the subject and a folding merge's tail: the mock's two.
-const FOLD_GAP: u16 = 2;
-
-/// The cells a fold tail takes, its gap included.
-fn fold_cells(mark: &str) -> u16 {
-    u16::try_from(mark.width())
-        .unwrap_or(u16::MAX)
-        .saturating_add(FOLD_GAP)
-}
-
-/// A folding merge's tail when [`GraphScreen::draw_subject`] draws it in a
-/// subject column of `width` cells: the longest form that leaves the gap and
-/// one subject cell ([`FoldMark::fitting`](super::FoldMark::fitting)); `None`
-/// off a folding merge or when not even `▸` fits. `ascii`: `GraphView::ascii`.
-fn drawn_fold(entry: &GraphEntry<'_>, ascii: bool, width: u16) -> Option<String> {
-    let room = width.saturating_sub(FOLD_GAP + 1);
-    entry.fold.as_ref()?.fitting(ascii, usize::from(room))
-}
-
-/// Whether `entry`'s subject needed a `…` to fit the subject column it is
-/// actually drawn into — badges' share and the row tag's subtracted first,
-/// the same as [`GraphScreen::draw_badges`] and
-/// [`GraphScreen::draw_subject`]. What the footer reveal
-/// ([`GraphView::reveal`]) keys off. `ascii` is `GraphView::ascii`.
-pub(super) fn subject_truncated(
-    entry: &GraphEntry<'_>,
-    (icons, keys): (Icons, &Keymap),
-    ascii: bool,
-    columns: &Columns,
-) -> bool {
-    let taken = badges_width(entry, icons, keys, columns);
-    let width = columns.subject_width.saturating_sub(taken);
-    let mark = drawn_fold(entry, ascii, width)
-        .as_deref()
-        .map_or(0, fold_cells);
-    let width = width - mark;
-    let tag = drawn_tag(entry, ascii, width).map_or(0, |tag| {
-        u16::try_from(tag.width())
-            .unwrap_or(u16::MAX)
-            .saturating_add(TAG_GAP)
-    });
-    super::walk_text::text_width(entry.subject.as_str()) > usize::from(width.saturating_sub(tag))
-}
-
 /// Draws `text`, clamped and padded to exactly `width` cells, at `(x, y)`.
 /// Does nothing when `width` is zero — the column has dropped for this
 /// area's size.
-fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
+pub(super) fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
     if width == 0 {
         return;
     }

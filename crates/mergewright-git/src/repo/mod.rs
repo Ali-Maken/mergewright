@@ -154,9 +154,15 @@ impl RepoHandle {
     /// Never fails: a missing or unreadable `.mailmap` resolves every
     /// identity to itself, which is how git treats it too — the file is
     /// optional, not a repository requirement.
+    ///
+    /// It knows the user's `user.email` as git resolves it (repository,
+    /// global and system config), for the graph's `you` (ease-pass G8);
+    /// unset, no commit reads `you`.
     #[must_use]
     pub fn mailmap(&self) -> crate::mailmap::Mailmap {
+        let me = self.repo.config_snapshot().string("user.email");
         crate::mailmap::Mailmap::from_snapshot(self.repo.open_mailmap())
+            .with_me(me.as_deref().map(AsRef::as_ref))
     }
 
     /// Where `HEAD` points right now.

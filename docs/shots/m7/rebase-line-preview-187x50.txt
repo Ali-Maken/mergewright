@@ -1,16 +1,16 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
-    ●      c1                                                                                                                                                              GF 2d   1966dda
-    │      after rebase
-    │ ○    [feature-c] c1                                                                                                                                                  GF —    —
-    │ ○    [feature-b] b1                                                                                                                                                  GF —    —
-    │ ○    [◆ feature-a] a2                                                                                                                                                GF —    —
-    │ ○    a1                                                                                                                                                              GF —    —
-▸ ●─│─╯    [main] m2                                                                                                                                                       GF 2d   9d9646b
-  │ ●      b1                                                                                                                                                              GF 2d   82392de
-  │ ●      a2                                                                                                                                                              GF 2d   15335d9
-  │ ●      a1                                                                                                                                                              GF 2d   0395451
-  ◇─╯      m1                                                                                                                                                              GF 2d   256d42c
+    ●                           c1                                                                                                                                              Graft   2d
+    │                           after rebase
+    │ ○                         c1  feature-c is here  not pushed yet                                                                                                           Graft    —
+    │ ○                         b1  feature-b is here  not pushed yet                                                                                                           Graft    —
+    │ ○                         a2  feature-a is here  not pushed yet                                                                                                           Graft    —
+    │ ○                         a1                                                                                                                                              Graft    —
+▸ ●─│─╯                         m2  main is here  not pushed yet                                                                                                                Graft   2d
+  │ ●                           b1                                                                                                                                              Graft   2d
+  │ ●                           a2                                                                                                                                              Graft   2d
+  │ ●                           a1                                                                                                                                              Graft   2d
+  ◇─╯                           m1                                                                                                                                              Graft   2d
 
 
 

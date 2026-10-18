@@ -5,7 +5,7 @@
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
 use mergewright_git::repo::HeadState;
-use mergewright_ui::graph_screen::{Badge, badge_spans, badges_that_fit, row_at};
+use mergewright_ui::graph_screen::{Badge, badges_that_fit, ref_spans, row_at};
 
 use super::{drawn_at, history_of, oid};
 use crate::refs::RefBadges;
@@ -69,7 +69,7 @@ fn built(state: &AppState) -> Vec<Badge> {
 }
 
 /// The guard: one `badge_view` per badge built (`view::entries::row_entry`),
-/// and everything after it — `badges_width`, `badge_spans`, the draw, the
+/// and everything after it — `badges_width`, `ref_spans`, the draw, the
 /// hit-test — walks that list. At 120 columns a pile of 1 000 and one of
 /// 16 000 cost the same; before 12c the row built all 16 000.
 #[test]
@@ -104,7 +104,7 @@ fn many_refs_row_hit_test_matches_draw() {
         crate::view::frame::primary_pane_area(&state, crate::view::frame::screen_area(&state))
             .expect("the graph has a pane");
     let (entry, columns) = row_at(&view, pane, y).expect("the piled row is drawn there");
-    let spans = badge_spans(entry, &columns, view.icons, view.keys);
+    let spans = ref_spans(entry, &columns, view.icons, view.keys, view.ascii);
     let (last, index) = spans.last().cloned().expect("the row draws badges");
     assert!(spans.len() > 1, "more than one badge fits at 120 columns");
 
@@ -124,10 +124,10 @@ fn many_refs_row_hit_test_matches_draw() {
         panic!("every ref in the pile is a branch");
     };
     let on = String::from_utf8_lossy(on);
-    // `[team/12]`, or `[team/1…` where the edge cut it.
-    let shown = drawn
-        .trim_start_matches('[')
-        .trim_end_matches(['…', ']', ' ']);
+    // `team/12 is here  not pushed yet` (ease-pass G7), or `team/1…` where
+    // the edge cut it.
+    let shown = drawn.split(" is here").next().unwrap_or_default();
+    let shown = shown.trim_end_matches(['…', ' ']);
     assert!(
         !shown.is_empty() && on.starts_with(shown),
         "cells {last:?} read {drawn:?}, but badge {index} is {on:?}"

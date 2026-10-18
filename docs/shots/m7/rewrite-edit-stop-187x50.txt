@@ -5,14 +5,14 @@
 │ pick a00e43d a4                                                                                                                                                                         │
 │ feature-b (Sara): 2 commits follow, on top                                                                                                                                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●    [feature-b] b2                                                                                                                                                    SA 2d   a9d179d
-    ●    b1                                                                                                                                                                SA 2d   5a1257a
-    ●    [feature-a] a5                                                                                                                                                    GF 2d   90e1a32
-    ●    a4                                                                                                                                                                GF 2d   a00e43d
-▸   ◆    [HEAD] a3  HEAD · stopped here                                                                                                                                    GF 2d   7326de5
-    ●    a2                                                                                                                                                                GF 2d   15335d9
-    ●    a1                                                                                                                                                                GF 2d   0395451
-  ◇━╯    [main] m1                                                                                                                                                         GF 2d   256d42c
+    ●    feature-b            b2  not pushed yet                                                                                                                                 Sara   2d
+    ●                         b1                                                                                                                                                 Sara   2d
+    ●                         a5  feature-a is here  not pushed yet                                                                                                             Graft   2d
+    ●                         a4                                                                                                                                                Graft   2d
+▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                                                             Graft   2d
+    ●                         a2                                                                                                                                                Graft   2d
+    ●                         a1                                                                                                                                                Graft   2d
+  ◇━╯    main                 m1  not pushed yet                                                                                                                                Graft   2d
 
 
 

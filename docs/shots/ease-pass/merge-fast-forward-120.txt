@@ -5,13 +5,13 @@
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           7 commits
 
-▸   ◆    [sara/fix-toc] [◆ wallet-release] Check every link                                             SA 55m  8805e0c
-    ●    Add notes                                                                                      OK 56m  f20e4e4
-    ●    Add a table of contents                                                                        SA 57m  c1b9826
-    ●    Add the report                                                                                 GF 59m  1ac2b32
-  ●─╯    [main] Correct the note                                                                        GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸   ◆                         Check every link  sara/fix-toc is here  not pushed yet  wallet-release is he…   Sara  55m
+    ●                         Add notes                                                                       Omar  56m
+    ●                         Add a table of contents                                                         Sara  57m
+    ●                         Add the report                                                                 Graft  59m
+  ●─╯                         Correct the note  main is here  not pushed yet                                 Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 

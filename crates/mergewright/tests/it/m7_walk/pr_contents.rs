@@ -175,9 +175,9 @@ fn cells_of(line: &str, needle: &str) -> std::ops::Range<u16> {
     u16::try_from(start).unwrap_or(u16::MAX)..u16::try_from(end).unwrap_or(u16::MAX)
 }
 
-/// `x` on main: its row reads `[x base]` first, before `[◆ main]`; the ▏
-/// rule stays. A drag from main's own badge picks up `main`; the `x base`
-/// badge is not a ref and picks up nothing.
+/// `x` on main: its row reads `x base` first of its labels; the ▏
+/// rule stays. A drag from the branch column's `main` picks it up; `x base`
+/// is not a ref and picks up nothing.
 #[test]
 fn the_base_row_carries_x_base() {
     use mergewright_core::event::{MouseButton, MouseKind};
@@ -189,18 +189,19 @@ fn the_base_row_carries_x_base() {
     let (row, line) = lines
         .iter()
         .enumerate()
-        .find(|(_, line)| line.contains("[\u{25c6} main]"))
+        .find(|(_, line)| line.contains("main (you)"))
         .unwrap_or_else(|| panic!("main's row: {lines:#?}"));
+    // The labels follow the message, the base's first (ease-pass G7).
     let base = line
-        .find("[x base]")
+        .find("x base")
         .unwrap_or_else(|| panic!("no x base on main's row: {line}"));
     assert!(
-        base < line.find("[\u{25c6} main]").unwrap_or(0),
+        base < line.find("not pushed yet").unwrap_or(usize::MAX),
         "x base first: {line}"
     );
     assert!(line.contains('\u{258f}'), "the rule stays: {line}");
     let row = u16::try_from(row).unwrap_or(u16::MAX);
-    let on_main = cells_of(line, "main]").start;
+    let on_main = cells_of(line, "main (you)").start; // the branch column's name
     let grabbed = app.mouse(&state, MouseKind::Down(MouseButton::Left), on_main, row);
     let source = grabbed
         .drag

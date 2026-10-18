@@ -28,6 +28,15 @@ pub fn initials(name: &str) -> String {
     }
 }
 
+/// The who column's name (ease-pass G8): the first whitespace-separated
+/// word of `name` ("Sara Khan" → "Sara"); empty for an empty name. Like
+/// [`initials`], computed from already-sanitised text and sanitised again
+/// by the caller.
+#[must_use]
+pub fn first_name(name: &str) -> &str {
+    name.split_whitespace().next().unwrap_or("")
+}
+
 /// How long ago `then` was, relative to `now` — both Unix seconds — in the
 /// short form a narrow column needs: `"2m"`, `"3h"`, `"2d"`, `"2w"`, `"2mo"`,
 /// `"1y"`.

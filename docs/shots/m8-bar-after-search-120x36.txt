@@ -12,8 +12,8 @@
 
  ◆ api  ~/code/api · main          /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits  1 merged branch folded
 
-▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
-  ◇    Add the base                                                                                     GF 2d   68d5d19
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
+  ◇                         Add the base                                                                     Graft   2d
 
 
 
@@ -51,8 +51,8 @@
 
  ◆ api  ~/code/api · main                                                             2 commits  1 merged branch folded
 
-▸ ◆    [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits                          GF 2d   e385b54
-  ◇    Add the base                                                                                     GF 2d   68d5d19
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
+  ◇                         Add the base                                                                     Graft   2d
 
 
 

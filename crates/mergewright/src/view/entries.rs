@@ -2,21 +2,21 @@
 //! uncommitted-changes row, and each history row's cells and badges.
 
 use mergewright_git::status::WorkingTreeStatus;
-use mergewright_graph::identity::BranchIdentity;
 use mergewright_graph::row::Row;
 use mergewright_graph::{Ancestry, Kin};
 use mergewright_term::sanitize_line;
 use mergewright_ui::graph_column::{GraphLine, NodeKind, RowPaint};
-use mergewright_ui::graph_screen::{AuthorChip, GraphEntry};
+use mergewright_ui::graph_screen::GraphEntry;
 
 use crate::history::History;
 use crate::update::AppState;
 
+mod branch_column;
 mod cells;
 mod roles;
 
-pub(super) use cells::badge_view;
 use cells::row_entry;
+pub(super) use cells::{badge_view, who};
 #[cfg(test)]
 pub(in crate::view) use roles::focus;
 pub(crate) use roles::lane_roles;
@@ -122,7 +122,8 @@ pub(super) fn visible_rows<'a>(
     // `move_from_graph` never moves `History::cursor` when it sets the flag,
     // so the two would otherwise both read as "the cursor's row" at once.
     let route = roles::frame_route(state, history);
-    uncommitted
+    let rows = history.visible(height);
+    let mut entries: Vec<GraphEntry<'a>> = uncommitted
         .map(|status| {
             let mut entry = uncommitted_entry(top_row, status, &route);
             if state.on_working_tree {
@@ -131,48 +132,60 @@ pub(super) fn visible_rows<'a>(
             entry
         })
         .into_iter()
-        .chain(
-            history
-                .visible(height)
-                .iter()
-                .zip(history.top..)
-                .map(|(row, index)| {
-                    let mut entry = row_entry(
-                        state,
-                        row,
-                        index == history.cursor && !state.on_working_tree,
-                        state.compare_base.is_some_and(|base| base.row == index),
-                        mailmap,
-                        state.refs.as_deref(),
-                        now,
-                    );
-                    entry.fold = super::rows::fold_tail(state, history, row, index);
-                    entry.line.roles = Some(lane_roles(row, &route));
-                    if let Some(thread) = thread {
-                        entry.line.thread = Some(thread.lit(index).clone());
-                    }
-                    // The Explain panel's fade (`m2-details-and-diffs/17`) is
-                    // independent of Focus mode and always wins while open:
-                    // every row outside `Explanation::highlight` fades, on
-                    // its own id, not the selection's ancestry.
-                    if state.detail.explain.is_some() {
-                        if !state.detail.explain_highlight.contains(&row.commit.id) {
-                            entry.line.paint = RowPaint::Dimmed;
-                        }
-                    } else if let Some(thread) = thread
-                        && state.focus
-                        && thread.kin(index) == Kin::Unrelated
-                    {
-                        entry.line.paint = RowPaint::Dimmed;
-                    }
-                    // The drag's two rows, last: over Focus mode's fade.
-                    if let Some(paint) = drag_paint(state, index) {
-                        entry.line.paint = paint;
-                    }
-                    entry
-                }),
-        )
-        .collect()
+        .chain(rows.iter().zip(history.top..).map(|(row, index)| {
+            let mut entry = row_entry(
+                state,
+                row,
+                index == history.cursor && !state.on_working_tree,
+                state.compare_base.is_some_and(|base| base.row == index),
+                mailmap,
+                state.refs.as_deref(),
+                now,
+            );
+            entry.fold = super::rows::fold_tail(state, history, row, index);
+            entry.line.roles = Some(lane_roles(row, &route));
+            if let Some(thread) = thread {
+                entry.line.thread = Some(thread.lit(index).clone());
+            }
+            faded(state, thread, row, index, &mut entry);
+            entry
+        }))
+        .collect();
+    let first = entries.len() - rows.len();
+    branch_column::fill(
+        state,
+        history,
+        &route,
+        (rows, history.top),
+        &mut entries[first..],
+    );
+    entries
+}
+
+/// The fades over a row's paint: the Explain panel's (`m2-details-and-diffs/17`)
+/// is independent of Focus mode and always wins while open — every row
+/// outside `Explanation::highlight` fades, on its own id, not the
+/// selection's ancestry. The drag's two rows go last: over Focus mode's fade.
+fn faded(
+    state: &AppState,
+    thread: Option<&Thread>,
+    row: &Row,
+    index: usize,
+    entry: &mut GraphEntry<'_>,
+) {
+    if state.detail.explain.is_some() {
+        if !state.detail.explain_highlight.contains(&row.commit.id) {
+            entry.line.paint = RowPaint::Dimmed;
+        }
+    } else if let Some(thread) = thread
+        && state.focus
+        && thread.kin(index) == Kin::Unrelated
+    {
+        entry.line.paint = RowPaint::Dimmed;
+    }
+    if let Some(paint) = drag_paint(state, index) {
+        entry.line.paint = paint;
+    }
 }
 
 /// Does the uncommitted-changes row take the graph pane's top screen row
@@ -192,7 +205,7 @@ pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
 /// The uncommitted-changes row's [`GraphEntry`]: `head_row` — `HEAD`'s row,
 /// or `None` on an unborn branch — gives it the same lane and lane
 /// occupancy `HEAD`'s row has, so the connector line reads as continuing
-/// down into it. Author, date and SHA stay blank (DESIGN.md §1.1's mockup):
+/// down into it. Branch, who and age stay blank (DESIGN.md §1.1's mockup):
 /// there is no commit behind this row to show them for. Its lanes take
 /// their roles from `route`, as `HEAD`'s row does.
 fn uncommitted_entry<'a>(
@@ -207,12 +220,10 @@ fn uncommitted_entry<'a>(
         badges: Vec::new(),
         line,
         subject: sanitize_line(&uncommitted_subject(status)),
-        author: AuthorChip {
-            initials: sanitize_line(""),
-            identity: BranchIdentity::of_name(b""),
-        },
+        branch: None,
+        who: None,
+        dim_message: false,
         when: String::new(),
-        sha: String::new(),
         // The compare base is always a commit row (`toggle_compare`'s `oid`
         // comes from `History::selected`/`row_at`); the working-tree row can
         // never be marked.

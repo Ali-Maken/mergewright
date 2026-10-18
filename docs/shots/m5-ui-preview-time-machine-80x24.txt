@@ -8,9 +8,7 @@
 # asserted). Not a pty capture: ratatui's TestBackend, a character grid
 # with no colour attributes — CLAUDE.md rule 5, colour ships
 # unverified. The scratch repository's temporary path is replaced by
-# `/code/api`, and the base commit's id — invented by this run, so
-# different every time — is zeroed to `0000000`; nothing else is
-# touched.
+# `/code/api`; nothing else is touched.
 #
 # What right looks like:
 #  - The journal browser is gone and the preview box is in its place. `Esc`
@@ -26,10 +24,10 @@
 #
 
  ◆ api  ~/code/api · main                                             4 commits
-▸ ◆    [◆ main] add the base                                       now  0000000
-  ●    Correct the note                                            7y   a82960b
-  ●    Add the first note                                          7y   fadcfb3
-  ◇    Add a readme                                                7y   64ded19
+▸ ◆                 add the base  main is here  not pushed yet       Graft  now
+  ●                 Correct the note                                 Graft   7y
+  ●                 Add the first note                               Graft   7y
+  ◇                 Add a readme                                     Graft   7y
 
 
 

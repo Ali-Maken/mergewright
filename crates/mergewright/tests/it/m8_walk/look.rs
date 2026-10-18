@@ -14,7 +14,7 @@ use mergewright_core::event::{KeyCode, MouseButton};
 use crate::captures::{check_shot, frame_at, settled_frame};
 use crate::look_chrome::{NOW, opened, opened_in, with_feature_two_kept};
 
-/// The cursor clicked onto `[feature/two] two: finish` at `columns`×`rows`:
+/// The cursor clicked onto `feature/two  two: finish` at `columns`×`rows`:
 /// `▸` leads the row and the branch badge is on it.
 #[test]
 fn capture_the_cursor_row_at_80x24_and_187x50() {
@@ -25,17 +25,17 @@ fn capture_the_cursor_row_at_80x24_and_187x50() {
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
         let y = drawn
             .iter()
-            .position(|line| line.contains("[feature/two]"))
+            .position(|line| line.contains("two: finish"))
             .expect("the row is drawn");
         let row = u16::try_from(y).expect("short screen");
         let state = app.mouse_down(&state, MouseButton::Left, 30, row);
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
         assert!(drawn[y].starts_with('\u{25b8}'), "{:?}", drawn[y]);
-        assert!(drawn[y].contains("[feature/two]"), "{:?}", drawn[y]);
+        assert!(drawn[y].contains("feature/two"), "{:?}", drawn[y]);
         let caption = format!(
-            "m8-polish-and-ship/28, {columns}x{rows}, cursor on `[feature/two] two: finish`: \
-             what right looks like — `▸` in the gutter's first cell and the badge \
-             `[feature/two]` on the same row; the lanes as on every other row; no `▏` in the \
+            "m8-polish-and-ship/28, {columns}x{rows}, cursor on `feature/two  two: finish`: \
+             what right looks like — `▸` in the gutter's first cell and the branch \
+             column's `feature/two` on the same row; the lanes as on every other row; no `▏` in the \
              marker slot. Judge beside m8-look-cursor-row-dark-120x36.txt and the mock-up \
              m8-proto-4a-dark-a-b.txt. Colour unverified (rule 5).\n\n"
         );

@@ -441,9 +441,9 @@ fn merged_main(app: &App, state: AppState) -> AppState {
 
 /// What right looks like (`m8-landing-undo-120x36.txt`, J20): frame 1,
 /// `u` pressed with the cursor one row below the merge — `▸` on `HEAD`'s
-/// row (`[◆ feature]`), the merge gone, the status `✓ undo: merge …`.
+/// row (`feature (you)`), the merge gone, the status `✓ undo: merge …`.
 /// Frame 2, `j` then `U` — `▸` back on the redone merge, the top row. The
-/// merge is made at run time: its id is zeroed and its date redacted
+/// merge is made at run time: its date is redacted
 /// (widths kept). Colour unverified.
 #[test]
 fn capture_landing_after_undo_and_redo() {
@@ -489,7 +489,7 @@ fn capture_landing_after_undo_and_redo() {
         undone.join("\n"),
         redone.join("\n"),
     );
-    body = crate::captures::without_invented_id(&body, &merge);
+    // The merge's id is the run's own; no row draws it (ease-pass 07).
     let made = git(
         repo,
         &[

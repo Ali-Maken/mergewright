@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
-▸ ◌      Uncommitted changes (13 unmerged)
-  ◆      [◆ main] Change every file on main                                                             GF 2h   274c7d4
-  ┃ ●    [feature] Change every file on feature                                                         GF 2h   9d44f42
-  ◇┄╯    Add the files both sides will change                                                           GF 1y   9571fc9
+▸ ◌                           Uncommitted changes (13 unmerged)
+  ◆      main (you)           Change every file on main  not pushed yet                                      Graft   2h
+  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
+  ◇┄╯    main (you)           Add the files both sides will change                                           Graft   1y
 
 
 

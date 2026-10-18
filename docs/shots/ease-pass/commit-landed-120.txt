@@ -1,13 +1,13 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
 # crates/mergewright/tests/it/commit_screen/shots.rs, real git.
-# Judge by eye: after `⏎`: the graph, the cursor on `fix toc`; the second-last row is the done line `✓ Committed 3 files to main.  u undo · P push`, tick first; the last row is the bar: `. explain` first (the new commit carries a radar `ⓘ`), then `u undo the commit, your edits come back · P push · c commit`, `c commit again` at its short rung to make room; the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out. Ids zeroed (made by the run).
+# Judge by eye: after `⏎`: the graph, the cursor on `fix toc`; the second-last row is the done line `✓ Committed 3 files to main.  u undo · P push`, tick first; the last row is the bar: `. explain` first (the new commit carries a radar `ⓘ`), then `u undo the commit, your edits come back · P push · c commit`, `c commit again` at its short rung to make room; the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out.
 === 120x40 ===
  ◆ api  ~/code/api · main                                                                   2 commits  1 commit to push
 
-  ◌    Uncommitted changes (1 untracked)
-▸ ◆  ⓘ [◆ main ↑1] fix toc                                                                              GT now  0000000
-  ◇    [origin/main] start                                                                              GT now  0000000
+  ◌                         Uncommitted changes (1 untracked)
+▸ ◆  ⓘ main (you)           fix toc  ↑1 to push                                                                you  now
+  ◇                         start  origin/main is here                                                         you  now
 
 
 

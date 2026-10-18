@@ -27,6 +27,7 @@ mod cursor_row;
 mod fold_tail;
 mod header_narrowing;
 mod lanes_in_view;
+mod row_cells_tests;
 
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
@@ -85,14 +86,15 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
                     badges: Vec::new(),
                     line,
                     subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
-                    author: AuthorChip {
-                        initials: sanitize_line(&initials(&String::from_utf8_lossy(
+                    branch: None,
+                    who: Some(WhoCell {
+                        name: sanitize_line(first_name(&String::from_utf8_lossy(
                             &row.commit.author.name,
                         ))),
-                        identity: BranchIdentity::of_name(&row.commit.author.email),
-                    },
+                        own: false,
+                    }),
+                    dim_message: false,
                     when: "2h".to_owned(),
-                    sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
                     compare_marked: false,
                     marker: None,
                     tag: None,
@@ -631,21 +633,6 @@ fn a_marker_glyph_never_touches_the_subject() {
 }
 
 #[test]
-fn the_author_chip_drops_below_the_breakpoint_and_returns_above_it() {
-    let rows = linear(2);
-    let view = view(&rows, WalkView::Complete { rows: 2 }, 0);
-
-    let narrow = text(&draw(&view, AUTHOR_BREAKPOINT - 1, 5));
-    let wide = text(&draw(&view, AUTHOR_BREAKPOINT, 5));
-
-    assert!(!narrow[1].contains("TE"), "{narrow:#?}");
-    assert!(wide[1].contains("TE"), "{wide:#?}");
-    // The date and SHA survive at both widths — only the author chip drops.
-    assert!(narrow[1].contains("2h"), "{narrow:#?}");
-    assert!(wide[1].contains("2h"), "{wide:#?}");
-}
-
-#[test]
 fn tiny_and_empty_terminals_draw_without_panicking() {
     let rows = linear(3);
     let view = view(&rows, WalkView::Complete { rows: 3 }, 0);
@@ -762,16 +749,16 @@ fn badges_are_cut_before_the_subject_disappears_at_80_columns() {
     let rows = linear(2);
     let screen = text(&draw(&badged(&rows, Icons::Plain), 80, 5));
 
-    assert!(screen[1].contains("[◆ main ⇄ origin]"), "{screen:#?}");
+    // Labels follow the subject (ease-pass G7), cut before it.
+    assert!(screen[1].contains("Commit 2  main is here"), "{screen:#?}");
     assert!(
         screen[1].contains('…'),
-        "the pile of badges is cut: {screen:#?}"
+        "the pile of labels is cut: {screen:#?}"
     );
     assert!(
-        screen[1].contains("Commit 2"),
-        "the subject survives: {screen:#?}"
+        screen[2].contains("Commit 1  topic is here  not pushed yet"),
+        "{screen:#?}"
     );
-    assert!(screen[2].contains("[topic] Commit 1"), "{screen:#?}");
 }
 
 #[test]
@@ -1930,15 +1917,15 @@ fn capture_the_ladder_for_docs_shots() {
 
 /// The hit-test and the renderer are the same code, and this is the test
 /// that says so: draw a row, then read every cell of it back and check that
-/// each one belongs to the badge [`badge_spans`] names.
+/// each one belongs to the label [`ref_spans`] names (ease-pass 07).
 ///
-/// `graft`'s mouse hit-test asks `badge_spans` which badge a column is on
+/// `graft`'s mouse hit-test asks `ref_spans` which badge a column is on
 /// (`mergewright::view::hit::badge_index_at`). If that ever stopped agreeing with
 /// what was drawn, a drag would pick up the badge next to the one under the
 /// pointer — silently, because both are branches and both look plausible.
 /// ADR-0040's lesson, one layer down.
 #[test]
-fn badge_spans_match_the_drawn_cells() {
+fn ref_spans_match_the_drawn_cells() {
     let rows = linear(3);
     let badges = three_badges();
     // Wide enough for all three, and narrow enough that the last is clipped
@@ -2057,14 +2044,26 @@ fn check_one_row(screen: &GraphView<'_>, width: u16, icons: Icons) {
             let line = &drawn[1];
             let cells: Vec<&str> = line.split("").filter(|cell| !cell.is_empty()).collect();
 
-            let spans = badge_spans(entry, &columns, icons, crate::keymap::Keymap::shipped());
+            let spans = ref_spans(
+                entry,
+                &columns,
+                icons,
+                crate::keymap::Keymap::shipped(),
+                false,
+            );
             assert!(!spans.is_empty(), "{width} columns, {icons:?}: no badges");
             for (span, index) in &spans {
                 let drawn_here: String = cells[usize::from(span.start)..usize::from(span.end)]
                     .concat()
                     .trim_end()
                     .to_owned();
-                let expected = entry.badges[*index].text(icons, crate::keymap::Keymap::shipped());
+                let expected = label_words(
+                    &entry.badges[*index],
+                    icons,
+                    crate::keymap::Keymap::shipped(),
+                    false,
+                )
+                .expect("a badge off the branch column always has a label");
                 // A badge cut off at the pane's edge is drawn elided
                 // (`draw_cell`'s `fit`), so the last one on a narrow row
                 // reads as a prefix plus `…`. The span is still the badge's
@@ -2108,11 +2107,12 @@ fn a_row_without_badges_has_no_spans() {
     };
     let (entry, columns) = row_at(&screen, area, 1).expect("a commit row");
     assert!(
-        badge_spans(
+        ref_spans(
             entry,
             &columns,
             Icons::Plain,
-            crate::keymap::Keymap::shipped()
+            crate::keymap::Keymap::shipped(),
+            false,
         )
         .is_empty()
     );

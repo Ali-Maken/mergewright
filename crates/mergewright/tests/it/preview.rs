@@ -542,10 +542,8 @@ fn three_stages_undone(repo: &Path, said: &str) {
 fn capture_time_machine_for_docs_shots() {
     let scratch = three_to_stage();
     let repo = scratch.path();
-    // `three_to_stage` commits here and now, so the id is different every run.
-    // The capture shows it, so it is zeroed out before the file is compared —
-    // otherwise no two runs could ever agree (m5-history-and-ghost-preview/40).
-    let base = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
+    // `three_to_stage` commits here and now, so the id is different every
+    // run; the rows draw no id since ease-pass 07, so none is zeroed.
     let (app, state) = App::open(repo);
     let state = stage_all_three(&app, state);
     let state = journal_at_the_oldest_row(&app, &state);
@@ -566,9 +564,7 @@ fn capture_time_machine_for_docs_shots() {
              # asserted). Not a pty capture: ratatui's TestBackend, a character grid\n\
              # with no colour attributes \u{2014} CLAUDE.md rule 5, colour ships\n\
              # unverified. The scratch repository's temporary path is replaced by\n\
-             # `/code/api`, and the base commit's id \u{2014} invented by this run, so\n\
-             # different every time \u{2014} is zeroed to `0000000`; nothing else is\n\
-             # touched.\n\
+             # `/code/api`; nothing else is touched.\n\
              #\n\
              # What right looks like:\n\
              #  - The journal browser is gone and the preview box is in its place. `Esc`\n\
@@ -591,9 +587,7 @@ fn capture_time_machine_for_docs_shots() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(format!("m5-ui-preview-time-machine-{label}.txt"));
-        if let Err(why) =
-            mergewright_fixtures::check(&path, &crate::captures::without_invented_id(&out, &base))
-        {
+        if let Err(why) = mergewright_fixtures::check(&path, &out) {
             drifted.push(why);
         }
     }
@@ -947,7 +941,7 @@ fn the_branch_badge_still_lands_on_the_newest_predicted_row() {
         .unwrap_or_else(|| panic!("no label row:\n{}", drawn.join("\n")));
     let badge = drawn
         .iter()
-        .position(|line| line.contains("[◆ topic]"))
+        .position(|line| line.contains("topic is here"))
         .unwrap_or_else(|| panic!("no topic badge:\n{}", drawn.join("\n")));
     assert_eq!(
         badge,

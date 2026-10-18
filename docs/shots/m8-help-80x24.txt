@@ -1,6 +1,6 @@
 "                                          2 rows so far  1 merged branch folded "
-"  ◆    [◆ main] a commit                                           57y  0101010 "
-"▸ ◉    [feature] a commit  ▸ 1 commit                              57y  0202020 "
+"  ◆                 a commit  main is here  not pushed yet            Test  57y "
+"▸ ◉                 a commit  ▸ 1 commit  feature is here  not pus…   Test  57y "
 "                                                                                "
 "                                                                                "
 "                                                                                "

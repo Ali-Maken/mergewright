@@ -193,7 +193,7 @@ fn empty_query_box(state: &AppState) {
     let rows: Vec<&str> = text
         .lines()
         .filter(|line| {
-            ["before", "local", "remote", "here"]
+            crate::row_reads::PICKER_KINDS
                 .iter()
                 .any(|kind| line.contains(&format!(" {kind} ")))
         })

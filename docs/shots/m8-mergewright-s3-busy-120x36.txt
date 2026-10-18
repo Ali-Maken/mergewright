@@ -4,8 +4,8 @@
 
  ◆ api  ~/code/api · main                                                                                      1 commit
 
-  ◌    Uncommitted changes (1 staged)
-▸ ◆    [b0] [b1] [b10] [b11] [b12] [b13] [b14] [b15] … start the api                                    GT 2d   fefb7a2
+  ◌                         Uncommitted changes (1 staged)
+▸ ◆    main (you)           start the api  not pushed yet  b0 is here  not pushed yet  b1 is here  not pus…    you   2d
 
 
 

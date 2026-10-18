@@ -2,8 +2,8 @@
 # capture_fix_plain_box_after_rebase in crates/mergewright/tests/it/remote_by_key.rs
 # (asserted). A teammate pushed; `P` `→` `⏎` was rejected; `p` named the
 # divergence; `r` `r` rebased onto origin/main; then `P` (m6-conflicts/49).
-# The rebased commit is drawn moments before the frame, so its id is new
-# every run: it is zeroed to `0000000` here. Nothing else is normalised.
+# The rebased commit is made moments before the frame; the rows draw no id
+# (ease-pass 07), so nothing is normalised.
 #
 # Judge by eye:
 # - The box is titled `Push main → origin/main`, not `Force-push`.
@@ -14,51 +14,51 @@
 #
  ◆ api  ~/code/api · main                                                                                                                                    202 commits  1 commit to push
 
-▸ ◆  ⓘ [◆ main ↑1] ours                                                                                                                                                    GF now  0000000
-  ●    [origin/main] theirs                                                                                                                                                GF 6y   7be74b5
-  ●    Commit 200                                                                                                                                                          GF 7y   d5ae5fd
-  ●    Commit 199                                                                                                                                                          GF 7y   13e6ab1
-  ●    Commit 198                                                                                                                                                          GF 7y   f5055d9
-  ●    Commit 197                                                                                                                                                          GF 7y   2cce853
-  ●    Commit 196                                                                                                                                                          GF 7y   325da3f
-  ●    Commit 195                                                                                                                                                          GF 7y   0722297
-  ●    Commit 194                                                                                                                                                          GF 7y   b6a4a47
-  ●    Commit 193                                                                                                                                                          GF 7y   60af0eb
-  ●    Commit 192                                                                                                                                                          GF 7y   aceb8c5
-  ●    Commit 191                                                                                                                                                          GF 7y   11d68ff
-  ●    Commit 190                                                                                                                                                          GF 7y   91900bd
-  ●    Commit 189                                                                                                                                                          GF 7y   cec3e93
-  ●    Commit 188                                                                                                                                                          GF 7y   0a91ece
-  ●    Commit 187                                                                                                                                                          GF 7y   3121935
-  ●    Commit 186                                                                                                                                                          GF 7y   fab25df
-  ●    Commit 185                                                                                                                                                          GF 7y   09ae97c
-  ●    Commit 184                                                                                                                                                          GF 7y   49d7783
-  ●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
-  ●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                                              │  GF 7y   d212b3e
-  ●    │                                                                                                                                                                │  GF 7y   c8254c5
-  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                                                     │  GF 7y   e95ccd4
-  ●    │                                                                                                                                                                │  GF 7y   97b58e5
-  ●    │ ▸[ Cancel ]   [ Push ]                                                                                                                                         │  GF 7y   1c9b7ed
-  ●    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   f93340a
-  ●    Commit 176                                                                                                                                                          GF 7y   5aaeeba
-  ●    Commit 175                                                                                                                                                          GF 7y   6be5928
-  ●    Commit 174                                                                                                                                                          GF 7y   9b67be4
-  ●    Commit 173                                                                                                                                                          GF 7y   937d32b
-  ●    Commit 172                                                                                                                                                          GF 7y   81be718
-  ●    Commit 171                                                                                                                                                          GF 7y   57b8196
-  ●    Commit 170                                                                                                                                                          GF 7y   8ea98be
-  ●    Commit 169                                                                                                                                                          GF 7y   4926766
-  ●    Commit 168                                                                                                                                                          GF 7y   0d60d60
-  ●    Commit 167                                                                                                                                                          GF 7y   fa5ef1d
-  ●    Commit 166                                                                                                                                                          GF 7y   953abf3
-  ●    Commit 165                                                                                                                                                          GF 7y   49912f3
-  ●    Commit 164                                                                                                                                                          GF 7y   1143b38
-  ●    Commit 163                                                                                                                                                          GF 7y   e135216
-  ●    Commit 162                                                                                                                                                          GF 7y   6ddbc37
-  ●    Commit 161                                                                                                                                                          GF 7y   4b6f375
-  ●    Commit 160                                                                                                                                                          GF 7y   545bf13
-  ●    Commit 159                                                                                                                                                          GF 7y   a1a658c
-  ●    Commit 158                                                                                                                                                          GF 7y   1e28a71
-  ●    Commit 157                                                                                                                                                          GF 7y   b57586d
+▸ ◆  ⓘ main (you)           ours  ↑1 to push                                                                                                                                    Graft  now
+  ●                         theirs  origin/main is here                                                                                                                         Graft   6y
+  ●                         Commit 200                                                                                                                                          Graft   7y
+  ●                         Commit 199                                                                                                                                          Graft   7y
+  ●                         Commit 198                                                                                                                                          Graft   7y
+  ●                         Commit 197                                                                                                                                          Graft   7y
+  ●                         Commit 196                                                                                                                                          Graft   7y
+  ●                         Commit 195                                                                                                                                          Graft   7y
+  ●                         Commit 194                                                                                                                                          Graft   7y
+  ●                         Commit 193                                                                                                                                          Graft   7y
+  ●                         Commit 192                                                                                                                                          Graft   7y
+  ●                         Commit 191                                                                                                                                          Graft   7y
+  ●                         Commit 190                                                                                                                                          Graft   7y
+  ●                         Commit 189                                                                                                                                          Graft   7y
+  ●                         Commit 188                                                                                                                                          Graft   7y
+  ●                         Commit 187                                                                                                                                          Graft   7y
+  ●                         Commit 186                                                                                                                                          Graft   7y
+  ●                         Commit 185                                                                                                                                          Graft   7y
+  ●                         Commit 184                                                                                                                                          Graft   7y
+  ●                         ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  Graft   7y
+  ●                         │ 1 commit · can't be undone from here — origin keeps what you send                                                                              │  Graft   7y
+  ●                         │                                                                                                                                                │  Graft   7y
+  ●                         │ git push --progress origin refs/heads/main:refs/heads/main                                                                                     │  Graft   7y
+  ●                         │                                                                                                                                                │  Graft   7y
+  ●                         │ ▸[ Cancel ]   [ Push ]                                                                                                                         │  Graft   7y
+  ●                         ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  Graft   7y
+  ●                         Commit 176                                                                                                                                          Graft   7y
+  ●                         Commit 175                                                                                                                                          Graft   7y
+  ●                         Commit 174                                                                                                                                          Graft   7y
+  ●                         Commit 173                                                                                                                                          Graft   7y
+  ●                         Commit 172                                                                                                                                          Graft   7y
+  ●                         Commit 171                                                                                                                                          Graft   7y
+  ●                         Commit 170                                                                                                                                          Graft   7y
+  ●                         Commit 169                                                                                                                                          Graft   7y
+  ●                         Commit 168                                                                                                                                          Graft   7y
+  ●                         Commit 167                                                                                                                                          Graft   7y
+  ●                         Commit 166                                                                                                                                          Graft   7y
+  ●                         Commit 165                                                                                                                                          Graft   7y
+  ●                         Commit 164                                                                                                                                          Graft   7y
+  ●                         Commit 163                                                                                                                                          Graft   7y
+  ●                         Commit 162                                                                                                                                          Graft   7y
+  ●                         Commit 161                                                                                                                                          Graft   7y
+  ●                         Commit 160                                                                                                                                          Graft   7y
+  ●                         Commit 159                                                                                                                                          Graft   7y
+  ●                         Commit 158                                                                                                                                          Graft   7y
+  ●                         Commit 157                                                                                                                                          Graft   7y
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel

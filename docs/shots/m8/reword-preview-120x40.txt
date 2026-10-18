@@ -10,13 +10,13 @@
 
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
-    ●      Show the login page                                                                          GF 2d   04fbed6
-▸   ●      Handle expired tokens                                                                        GF 2d   29033ed
-    │      the result
-    │ ○    [feature-b] Show the login page                                                              GF —    —
-    │ ○    [◆ feature-a] Handle expired tokens on refresh                                               GF —    —
-    ●─╯    Add OAuth callback                                                                           GF 2d   67fda4a
-  ◇─╯      [main] m1                                                                                    GF 2d   f1c72d6
+    ●                           Show the login page                                                          Graft   2d
+▸   ●                           Handle expired tokens                                                        Graft   2d
+    │                           the result
+    │ ○                         Show the login page  feature-b is here  not pushed yet                       Graft    —
+    │ ○                         Handle expired tokens on refresh  feature-a is here  not pushed yet          Graft    —
+    ●─╯                         Add OAuth callback                                                           Graft   2d
+  ◇─╯                           m1  main is here  not pushed yet                                             Graft   2d
 
 
 

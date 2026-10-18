@@ -3,14 +3,14 @@ What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its
 
  ◆ api  ~/code/api · wallet-release                                                   8 commits  1 merged branch folded
 
-    ◆      [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-re…  ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
-▸   ◉┄╮    Merged PR 16021: Fix the wallet totals  ▾ 4 commits from PR 16021                            GF 28h  4eb2a56
-    ┃ ●    totals: test the sum                                                                         GF 28h  a03e550
-    ┃ ●    totals: drop the cache                                                                       GF 28h  3334d8b
-    ┃ ●    totals: round once                                                                           GF 28h  2c2a1cf
-    ┃ ●    totals: read the ledger                                                                      GF 28h  79709e0
-    ●┄╯    Start the wallet release                                                                     GF 28h  68f9980
-  ◇━╯      [main] Add the readme                                                                        GF 28h  2b013b5
+    ◆      wallet-release (you) Merge branch 'sara/fix-toc' …  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
+▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  ▾ 4 commits from PR 16021            Graft  28h
+    ┃ ●    PR 16021             totals: test the sum                                                         Graft  28h
+    ┃ ●    PR 16021             totals: drop the cache                                                       Graft  28h
+    ┃ ●    PR 16021             totals: round once                                                           Graft  28h
+    ┃ ●    PR 16021             totals: read the ledger                                                      Graft  28h
+    ●┄╯                         Start the wallet release                                                     Graft  28h
+  ◇━╯      main                 Add the readme  not pushed yet                                               Graft  28h
 
 
 

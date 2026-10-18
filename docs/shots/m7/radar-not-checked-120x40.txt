@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-▸ ◆    [◆ main] add notes                                                                               GF 5m   2c59061
-  ●    Correct the note                                                                                 GF 1y   a82960b
-  ●    Add the first note                                                                               GF 1y   fadcfb3
-  ◇    Add a readme                                                                                     GF 1y   64ded19
+▸ ◆    main (you)           add notes  not pushed yet                                                        Graft   5m
+  ●                         Correct the note                                                                 Graft   1y
+  ●                         Add the first note                                                               Graft   1y
+  ◇                         Add a readme                                                                     Graft   1y
 
 
 

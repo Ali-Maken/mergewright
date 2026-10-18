@@ -14,8 +14,8 @@ use super::hints::{
 };
 use super::lanes::graph_width;
 use super::layout::ScreenRows;
-use super::render::subject_truncated;
 use super::row_columns::Columns;
+use super::row_text::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
 use crate::keymap::{ActionId, Keymap};

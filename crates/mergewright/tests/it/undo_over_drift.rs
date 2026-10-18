@@ -520,7 +520,7 @@ fn header(size: &str) -> String {
 #    under it has settled: no `sorting…` (asserted; m6-conflicts/80).
 # 2. After `y`: no changes row, and the bottom row reads `✓ undo: checkout
 #    fix  U brings back your edit to fix.txt`. `HEAD` is on `main` in
-#    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
+#    git and the graph marks `main (you)`, `fix` plain (both asserted;
 #    m6-conflicts/79). `fix`'s row reads `[fix] fix the bug`, no mark
 #    after the badge (this line said a Radar `ⓘ` until m8/28).
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `✓ redo:
@@ -583,7 +583,7 @@ fn capture_fix_undo_drift_way_back() {
         !drawn(state).contains("Uncommitted changes")
     });
     let landed = radar_answered(&app, settled_frame(&app, landed));
-    assert!(drawn(&landed).contains("[◆ main]"), "{}", drawn(&landed));
+    assert!(drawn(&landed).contains("main (you)"), "{}", drawn(&landed));
     assert_eq!(
         git(path, &["symbolic-ref", "HEAD"]).trim(),
         "refs/heads/main"
@@ -593,7 +593,7 @@ fn capture_fix_undo_drift_way_back() {
         drawn(state).contains("Uncommitted changes (1 unstaged)")
     });
     let back = radar_answered(&app, settled_frame(&app, back));
-    assert!(drawn(&back).contains("[◆ fix]"), "{}", drawn(&back));
+    assert!(drawn(&back).contains("fix (you)"), "{}", drawn(&back));
     assert_eq!(
         git(path, &["symbolic-ref", "HEAD"]).trim(),
         "refs/heads/fix"

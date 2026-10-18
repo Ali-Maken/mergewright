@@ -197,6 +197,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 ## mailmap
 - `Mailmap` (struct) — a repository's resolved `.mailmap`, wrapping gix's snapshot.
 - `Mailmap::resolve` (fn) — canonical `(name, email)` for an identity.
+- `Mailmap::with_me`, `Mailmap::is_me` (fns) — the user's `user.email`, through the mailmap; whether an identity is his (the who column's `you`).
 
 ## reflog
 - `ReflogRecord` (struct) — `refname`, `old`/`new`, `at`, message; one reflog entry.

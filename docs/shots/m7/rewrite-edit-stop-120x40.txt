@@ -5,12 +5,12 @@
 │ feature-b (Graft Fixture): 1 commit follow, on top                                                                   │
 │ feature-c (Graft Fixture): 1 commit follow, on top                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●    [feature-c] c1                                                                                 GF 2d   1966dda
-  ● ┃    [main] m2                                                                                      GF 2d   9d9646b
-  ║ ●    [feature-b] b1                                                                                 GF 2d   82392de
-  ║ ●    [feature-a] a2                                                                                 GF 2d   15335d9
-▸ ║ ◆    [HEAD] a1  HEAD · stopped here                                                                 GF 2d   0395451
-  ◇━╯    m1                                                                                             GF 2d   256d42c
+    ●    feature-c            c1  not pushed yet                                                             Graft   2d
+  ● ┃    main                 m2  not pushed yet                                                             Graft   2d
+  ║ ●    feature-c            b1  feature-b is here  not pushed yet                                          Graft   2d
+  ║ ●                         a2  feature-a is here  not pushed yet                                          Graft   2d
+▸ ║ ◆                         a1  HEAD · stopped here  HEAD is here                                          Graft   2d
+  ◇━╯    main                 m1                                                                             Graft   2d
 
 
 

@@ -14,13 +14,13 @@
 
  ◆ api  ~/code/api · fix                                                                                      7 commits
 
-▸ ◆      [main] main changes the base                                                                   GF 2m   075a112
-  │ ●    [◆ fix] fix the bug                                                                            GF 3m   fbb2394
-  ● │    main moves on                                                                                  GF 4m   37926a7
-  ●─╯    add the base                                                                                   GF 5m   ed332bc
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
+▸ ◆                           main changes the base  main is here  not pushed yet                            Graft   2m
+  │ ●                         fix the bug  fix is here  not pushed yet                                       Graft   3m
+  ● │                         main moves on                                                                  Graft   4m
+  ●─╯                         add the base                                                                   Graft   5m
+  ●                           Correct the note                                                               Graft   1y
+  ●                           Add the first note                                                             Graft   1y
+  ◇                           Add a readme                                                                   Graft   1y
 
 
 

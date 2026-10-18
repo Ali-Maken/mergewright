@@ -40,7 +40,7 @@ pub(crate) fn opened(columns: u16, rows: u16) -> (mergewright_fixtures::Scratch,
 ///
 /// `feature/two` is merged into `main`, so its rows fold by default (ease-pass
 /// 06). The cursor-row captures are about a row with a branch badge and three
-/// lanes, not about a merged branch, so they keep `[feature/two] two: finish`
+/// lanes, not about a merged branch, so they keep `feature/two  two: finish`
 /// on screen this way (06 D3, route 2: a new ref, the corpus refs untouched).
 pub(crate) fn with_feature_two_kept() -> mergewright_fixtures::Scratch {
     let scratch =
@@ -127,31 +127,32 @@ fn selected_subject(state: &AppState) -> Option<String> {
         })
 }
 
-/// The short id a graph row ends with, if `line` is a commit row.
-fn drawn_short_id(line: &str) -> Option<&str> {
-    let last = line.split_whitespace().last()?;
-    (last.len() == 7 && last.chars().all(|glyph| glyph.is_ascii_hexdigit())).then_some(last)
-}
-
 /// Clicks every commit row drawn in `state`'s frame and checks the click
-/// selects the commit whose short id that row draws; how many it checked.
+/// selects the commit whose subject that row draws; how many it checked.
 fn clicks_select_what_is_drawn(app: &App, state: &AppState, columns: u16, rows: u16) -> usize {
     let drawn = frame_at(state, columns, rows, Some(Clock::Fixed(NOW)));
     let mut checked = 0;
     for (y, line) in drawn.iter().enumerate().skip(1) {
-        let Some(short) = drawn_short_id(line) else {
+        if !crate::row_reads::is_commit_row(line) {
             continue;
-        };
+        }
         let row = u16::try_from(y).expect("a screen is shorter than u16::MAX");
         // Inside the subject column, clear of the gutter and the lanes.
         let clicked = app.mouse_down(state, MouseButton::Left, 30, row);
-        let selected = clicked
-            .history
-            .as_ref()
-            .and_then(mergewright::history::History::selected)
-            .map(|row| row.commit.id.to_string());
+        let selected = selected_subject(&clicked);
+        // At 80 columns a subject may be cut to `Merge branch 'f…`: the
+        // row reads the selected subject or a cut of it, and the redrawn
+        // frame puts the cursor on the clicked row.
+        let reads = |subject: &str| {
+            line.contains(subject)
+                || (1..subject.len()).any(|cut| {
+                    subject.is_char_boundary(cut)
+                        && line.contains(&format!("{}\u{2026}", &subject[..cut]))
+                })
+        };
+        let redrawn = frame_at(&clicked, columns, rows, Some(Clock::Fixed(NOW)));
         assert!(
-            selected.as_deref().is_some_and(|id| id.starts_with(short)),
+            selected.as_deref().is_some_and(reads) && redrawn[y].starts_with('\u{25b8}'),
             "{columns}x{rows}: a click on row {row} ({line:?}) selected {selected:?}\n{}",
             drawn.join("\n")
         );
@@ -183,7 +184,9 @@ fn every_drawn_row_is_the_row_a_click_selects_at_every_designed_size() {
         );
         let merge = drawn
             .iter()
-            .position(|line| line.contains("Merge branch 'feature/one'"))
+            .position(|line| {
+                line.contains("Merge branch 'feature/one'") || line.contains("from feature/one")
+            })
             .expect("feature/one's merge is drawn");
         let merge = u16::try_from(merge).expect("a screen is shorter than u16::MAX");
         let on_merge = app.mouse_down(&state, MouseButton::Left, 30, merge);
@@ -280,7 +283,7 @@ fn worst_on_the_fill(
 }
 
 /// m8-polish-and-ship/07, J23 (0 steps) and the ticket's two captures: the
-/// cursor on `[feature/two] two: finish` — a branch badge and three lanes.
+/// cursor on `feature/two  two: finish` — a branch badge and three lanes.
 /// The cursor row carries `▸` in the gutter, its lanes keep the ground, the
 /// fill runs from the marker slot to the margin, and every character on the
 /// fill clears 4.5:1 against it (measured from the real app's buffer, the
@@ -295,7 +298,7 @@ fn capture_the_cursor_row_in_dark_and_light() {
     let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
     let y = drawn
         .iter()
-        .position(|line| line.contains("[feature/two] two: finish"))
+        .position(|line| line.contains("two: finish"))
         .expect("the row is drawn");
     let row = u16::try_from(y).expect("short screen");
     let state = app.mouse_down(&state, MouseButton::Left, 30, row);
@@ -310,7 +313,7 @@ fn capture_the_cursor_row_in_dark_and_light() {
     );
     assert!(!line.contains('\u{258f}'), "no ▏ for the cursor: {line:?}");
     // J23: the branch is read off the `▸` row itself, no key.
-    assert!(line.contains("[feature/two]"), "its branch: {line:?}");
+    assert!(line.contains("feature/two"), "its branch: {line:?}");
     crate::m8_walk::within_the_note::<&str>("cursor-row-branch", &[]);
 
     for (name, choice, kind) in [
@@ -333,7 +336,7 @@ fn capture_the_cursor_row_in_dark_and_light() {
         let worst = worst_on_the_fill(&buffer, row, selection, name);
         assert!(worst >= 4.5, "{name}: worst text on the fill {worst:.2}:1");
         let caption = format!(
-            "m8-polish-and-ship/07, {name} theme, 120x36, cursor on `[feature/two] two: finish`: \
+            "m8-polish-and-ship/07, {name} theme, 120x36, cursor on `feature/two  two: finish`: \
              what right looks like — `▸` in the gutter's first cell; the three lanes `│ │ ●` \
              on the ground like every other row; no `▏` in the marker slot; the fill runs from \
              the marker slot to one cell short of the edge; the badge reads as text in its lane's \

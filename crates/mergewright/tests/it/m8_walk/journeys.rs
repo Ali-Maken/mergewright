@@ -74,7 +74,7 @@ fn on_a_branch_row() -> (mergewright_fixtures::Scratch, App, AppState) {
     let frame = drawn(&state);
     let y = frame
         .iter()
-        .position(|line| line.contains("[topic-4]"))
+        .position(|line| line.contains("topic-4: start"))
         .unwrap_or_else(|| panic!("topic-4's row is drawn\n{}", frame.join("\n")));
     let row = u16::try_from(y).expect("short screen");
     let state = app.mouse_down(&state, MouseButton::Left, 40, row);
@@ -247,7 +247,7 @@ fn wheel_flick() {
 fn fold_merge_count() {
     let (_scratch, app, state) = octopus();
     let merge = "Merge branches 'topic-1', 'topic-2' and 'topic-3'";
-    let topics = ["[topic-1]", "[topic-2]", "[topic-3]"];
+    let topics = [" topic 1 ", " topic 2 ", " topic 3 "]; // subjects (ease-pass G7)
     let folded = app.pump(state, "the fold's count", |state| {
         drawn(state)
             .iter()
@@ -277,22 +277,35 @@ fn fold_merge_count() {
         topics
             .iter()
             .all(|topic| frame.iter().any(|line| line.contains(topic)))
-            && frame
-                .iter()
-                .any(|line| line.contains(&format!("{merge}  \u{25be} 3 commits")))
+            && frame.iter().any(|line| opened_tail(line, merge))
     });
     let opened = settled_frame(&app, opened);
+    // An octopus names no one branch: its rows' branch cells stay blank
+    // (ease-pass G5), so nothing but lanes comes before the subject.
+    for line in drawn(&opened)
+        .iter()
+        .filter(|line| line.contains(" topic "))
+    {
+        let before = &line[..line.find(" topic ").expect("filtered on it")];
+        assert!(!before.chars().any(char::is_alphabetic), "{line:?}");
+    }
     let refreshed = app.press(&opened, KeyPress::control(KeyCode::Char('r')));
     let refreshed = settled_frame(&app, refreshed);
     assert!(
         drawn(&refreshed)
             .iter()
-            .any(|line| line.contains(&format!("{merge}  \u{25be} 3 commits"))),
+            .any(|line| opened_tail(line, merge)),
         "the count stays over Ctrl+R\n{}",
         drawn(&refreshed).join("\n")
     );
     drop(refreshed);
     app.close();
+}
+
+/// The opened octopus's row: its tail reads `▾ 3 commits`. Opened, the
+/// lanes widen and the subject is cut (`…'to…`): its start is enough.
+fn opened_tail(line: &str, merge: &str) -> bool {
+    line.contains(&merge[..24]) && line.contains("\u{25be} 3 commits")
 }
 
 /// The detail pane's title row: the first drawn row holding `title`.

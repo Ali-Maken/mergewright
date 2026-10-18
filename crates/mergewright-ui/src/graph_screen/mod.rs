@@ -32,7 +32,9 @@ pub mod hints;
 mod lanes;
 mod layout;
 mod render;
+mod row_cells;
 mod row_columns;
+mod row_text;
 #[cfg(test)]
 mod tests;
 mod view;
@@ -44,10 +46,12 @@ use mergewright_term::SanitizedText;
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
 pub use carve::{CarveInputs, RowCarve, row_carve};
-pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
+pub use columns::{
+    absolute_date, first_name, initials, relative_date, relative_date_long, short_sha,
+};
 pub use compaction::Compaction;
 pub(crate) use entry::TAG_GAP;
-pub use entry::{AuthorChip, GraphEntry, RowTag, TAG_MIN_SUBJECT};
+pub use entry::{BranchCell, GraphEntry, RowTag, TAG_MIN_SUBJECT, WhoCell};
 pub use fold_mark::{FoldCount, FoldMark};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use header_tail::LaneTally;
@@ -58,8 +62,8 @@ pub use hints::{
 };
 pub use lanes::{lanes_that_fit, max_lanes_for};
 pub use layout::{RowLayout, ScreenRows, row_at, row_layout, screen_rows};
-pub use render::{badge_spans, badges_that_fit};
-pub use row_columns::{Columns, snap_to_columns};
+pub use row_columns::{Columns, branch_width_for, snap_to_columns};
+pub use row_text::{badges_that_fit, label_words, ref_spans};
 pub use view::GraphView;
 
 use crate::theme::Theme;
@@ -82,25 +86,28 @@ const MARKER_WIDTH: u16 = 3;
 /// neighbour.
 const RULE_WIDTH: u16 = 1;
 
-/// Cells the author chip takes: two initials, then a gap.
-const AUTHOR_WIDTH: u16 = 3;
+/// The branch column's width on a row 120 cells or wider (ease-pass G5).
+pub const BRANCH_WIDE: u16 = 20;
 
-/// Cells the relative-date column takes: its widest form (`"999d"`), then a
-/// gap.
-const WHEN_WIDTH: u16 = 5;
+/// The branch column's width on a row 100–119 cells wide.
+pub const BRANCH_MIDDLE: u16 = 14;
 
-/// Cells the short-SHA column takes, and how many hex digits `short_sha`
-/// should be called with to fill it exactly (`DESIGN.md`'s mock-ups show
-/// `a1b2c3d`) — rightmost, so no trailing gap.
+/// The branch column's width on a row under 100 cells.
+pub const BRANCH_NARROW: u16 = 12;
+
+/// Cells the who column takes: a first name, or `you` (ease-pass G8).
+pub const WHO_WIDTH: u16 = 6;
+
+/// Cells the age column takes: `23h`, `9d`, `2w`, `10mo` (ease-pass G8).
+pub const AGE_WIDTH: u16 = 4;
+
+/// The blank cell between two row columns (the mock's `gap: 1ch`).
+const COLUMN_GAP: u16 = 1;
+
+/// How many hex digits `short_sha` is called with wherever a short SHA is
+/// spelled (`y`, the detail pane, the bar); the row no longer draws one
+/// (ease-pass G8).
 pub const SHA_WIDTH: u16 = 7;
-
-/// The gap left of the trailing columns, between them and the subject.
-const SUBJECT_GAP: u16 = 1;
-
-/// Below this width the author chip drops (DESIGN.md §1.2/§1.3's
-/// narrow/medium boundary); ref badges (m1-the-graph/11) drop at the same
-/// width.
-pub const AUTHOR_BREAKPOINT: u16 = 100;
 
 /// Screen rows that are not graph rows on a screen under 30 rows: the header
 /// above, the key hints below. A harness banner ([`GraphView::banner`]) adds

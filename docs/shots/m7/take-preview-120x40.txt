@@ -9,14 +9,14 @@
 # put aside and back).
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●      [login-page] [origin/sara/login-page] fix the bug                                            GF 3m   fbb2394
-    │      after cherry-pick
-    │ ○    [◆ main ⇄ origin] fix the bug                                                                GF —    —
-  ●─│─╯    main moves on                                                                                GF 4m   37926a7
-  ●─╯      [feature-a] add the base                                                                     GF 5m   ed332bc
-  ●        Correct the note                                                                             GF 1y   a82960b
-  ●        Add the first note                                                                           GF 1y   fadcfb3
-  ◇        Add a readme                                                                                 GF 1y   64ded19
+▸   ●                           fix the bug  login-page is here  not pushed yet  origin/sara/login-page is…  Graft   3m
+    │                           after cherry-pick
+    │ ○                         fix the bug  main is here                                                    Graft    —
+  ●─│─╯                         main moves on                                                                Graft   4m
+  ●─╯                           add the base  feature-a is here  not pushed yet                              Graft   5m
+  ●                             Correct the note                                                             Graft   1y
+  ●                             Add the first note                                                           Graft   1y
+  ◇                             Add a readme                                                                 Graft   1y
 
 
 
