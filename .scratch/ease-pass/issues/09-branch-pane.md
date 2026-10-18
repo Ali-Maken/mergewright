@@ -1,39 +1,51 @@
-# branch-pane — the right pane's four answers, the route behind the colours, `C` on a teammate's row
+# branch-pane — the right pane's four answers, the route behind the colours
 
-Status: ready (Needs and words revised 2026-10-17 for 01r; opened-row focus added 2026-10-17 after 06's scout)
-Blocked by: 01-roles-and-route, 01r-roles-and-route-fixes, 07-graph-rows, 07b-graph-rows-cursor, 03-ease-vocabulary
-Build with: (blank — brownfield; conductor sets after the scout)
-Needs: `branch_status`, `BranchStatus`, `Pushed`, `Merged` (`MainLine`, `Into`, `NotYet { into: Option<String> }`, `NothingToMerge`), `Behind`, `Who` (enum: `Everyone { last }`, `Authors { first, others, last }`, `NoOwnCommits`), `Candidate` (`name` = full ref name), `CandidateKind`, `route`, `short_name` (graft-ops, roles-and-route as fixed by 01r; counts are `usize`, `Who::Authors.first` is author-name bytes); `Route::new`, `LaneRole`, `made_on` (graft-graph, roles-and-route); `BranchIdentity::of_name(&[u8])` (graft-graph, existing); `AppState.route`, row layout with `GraphEntry` (graph-rows); `InsideMerge` per row (graph-fold-and-lanes, 06); role tokens (ease-vocabulary).
+Status: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/09-branch-pane.md` at c021e6a6: its 7 mismatches ruled in Decided; **split** — `C` opening the picker on a branch and the `not merged` row label are now **09b-branch-picker-and-merged-label**). History: Needs and words revised for 01r, opened-row focus added after 06's scout (2026-10-17).
+Blocked by: 07b-graph-rows-cursor (second line, `commit_rows`, `body_line`; shares `update/geometry.rs`, `update/mouse.rs`), 07c-graph-rows-rest (row columns and captures re-taken here). Built and merged: 01, 01r, 03, 06s, 06t, 07 part (f2269602: `Look.route`, `Look.colours_off`, `view/entries/roles.rs`). **Anchors are the scout's (c021e6a6, after the 06s/06t splits).** Not beside 13: this ticket changes `view/frame/layout.rs:169` `graph_columns`, which sets the strips' width. Either order works; the later one re-takes its captures.
+Build with: Opus — cross-crate (ui widget, app job, frame split, every hit-test), a cache keyed by repo state, and two settle tests before the code they decide (scout's call).
+Needs: ops `branch_status(repo, branch, candidates, upstream, stop)` (`mergewright-ops/src/branch_status/status.rs:118`), `BranchStatus`, `Pushed`, `Merged` (:55: `MainLine`, `Into`, `NotYet { into: Option<String> }`, `NothingToMerge`), `Behind`, `Who`, `Candidate { name /* full ref */ }` (`branch_status.rs:56`), `CandidateKind` (:44), `short_name` (:76); git `upstream_of(repo, branch) -> Result<Option<TrackedUpstream>, RemoteError>`; core `ref_name::shorthand` (`mergewright-core/src/ref_name.rs:61-69`); graph `Route::new`, `LaneRole`, `made_on`, `BranchIdentity::of_name`; app `AppState.look.route: Option<Route>` (`update/state/look.rs:15`), `frame_route` (`view/entries/roles.rs:27`), `focus` (`roles.rs:39`), `AppState.refs: Option<Arc<RefBadges>>` (`state.rs:97`), `RefLabel::Branch { name /* short */, current, upstream }` (`refs/mod.rs:146-152`), `seeds_for` (`history/seeds.rs:27`); 07b `SecondLine`, `commit_rows`, `body_line`; role tokens.
 
 ## Read first
-- `docs/design-notes/ease-pass.md`: Need (`:102`, `:105`), Prior art row "Branch status", Hard-to-reverse choice 1 (as revised by 01r), Journeys "Teammate's status", Mock behaviours G4, G12, New UI (graph widths, pane states), Question 1 (answered a), Question 15.
-- `docs/design/01-view-mockups.md` §1.1–1.2 (detail pane placement only). `docs/design/02-keymap.md` §2.3 `C`, §2.16.
-- `.scratch/ease-pass/issues/01r-roles-and-route-fixes.md` "The rules, corrected" (R1–R3 table and Known limits) — what each answer means now. `01-roles-and-route.md` "Signatures" for the unchanged types.
-- `crates/graft-ops/MAP.md`: `branch_status` (as roles-and-route and 01r wrote it). `crates/graft/MAP.md`: `refs`, `history::seeds`, `event_loop::rest`, `jobs::types`, `jobs::kinds`, `update::detail`, `update::picker`, `view::frame`. `crates/graft-ui/MAP.md`: `detail_pane` (`DetailLayout`, `split_area`), `graph_screen` (`row_layout`, `RowLayout`), `picker`. `crates/graft-graph/MAP.md`: `seeds` (`BranchSeed`, `Seeds`), `BranchIdentity::of_name`.
+- `docs/design-notes/ease-pass.md`: Need (`:102`, `:105`), Prior art row "Branch status", Hard-to-reverse choice 1 (as revised by 01r), Journeys "Teammate's status", Mock behaviours G4, G12, New UI (graph widths, pane states), Question 15.
+- `docs/design/01-view-mockups.md` §1.1–1.2 (detail pane placement only). `docs/design/02-keymap.md` §2.16.
+- `.scratch/ease-pass/issues/01r-roles-and-route-fixes.md` "The rules, corrected" (R1–R3 table and Known limits).
+- `crates/mergewright-ops/MAP.md`: `branch_status`. `crates/mergewright/MAP.md`: `refs`, `history::seeds`, `jobs::kinds`, `update` (settle), `update::fold_count`, `update::detail`, `view::frame`. `crates/mergewright-ui/MAP.md`: `detail_pane` (`split_area`). `crates/mergewright-git/MAP.md`: `upstream_of` (:210).
 - The main mock's visible text (right pane words).
 - The scout's file.
 
-## Scout questions (≤1 page)
-- How the frame splits graph vs detail pane today (`split_area`, `DetailLayout`) and every hit-test that assumes the graph takes the full width when the detail pane is closed.
-- Where refs, upstreams and the trunk/integration seeds are held in `AppState`; whether a per-cursor-stop job exists to copy (`event_loop::rest`).
-- **Which name form the layout hashes with `BranchIdentity::of_name`** for seeds and lane names (full `refs/heads/x` or short `x`) — file:line. `Candidate.name` is always full; the app converts to that form before `of_name`.
-- Where a branch's `CandidateKind` comes from: the seeds' trunk and integration branches (ADR-0001) — file:line; every other local branch is `Other`.
-- How the picker opens, where its cursor starts, and which name form its rows hold.
+## Settle first — one committed test each, before the code it decides
+1. **Where `Branches` lives after seeding** (scout M4). `seeds_for` reads `default_branch` and `integration_branches` (`seeds.rs:42-43`). Test `the_trunk_and_integration_names_are_held_after_open`: after open, assert whether those names are reachable from `AppState`. **Held:** `candidates` reads them. **Not held:** append `AppState.branch_names: BranchNames { trunk, integration }`, filled where `seeds_for` runs, and the test then asserts that. NOTES records which.
+2. **Name forms** (scout M7). `the_identity_of_every_candidate_is_its_lanes`: for each branch in the fixture, `identity_of(candidate) == made_on(row on it)`. It proves `of_name(shorthand(full))` matches the layout's short form (`seeds.rs:38,82,99`).
+
+## Decided here
+- **M1 — the read is asked from `settle`** (`update/mod.rs:257-260`), right after `fold_count::at_rest` (`update/fold_count.rs:33`), and copies its pattern: one `Command` per rest, plus a `Reading` state. It is not asked from `event_loop::rest`, which only times bursts. The order is fold count, then branch status (NOTES names the line).
+- **M3 — no upstream tip is held app-side; none is added.**
+  - The job reads the branch's upstream itself (`upstream_of`, then the tracking ref's tip) and passes it to `branch_status`.
+  - `StatusKey` = branch + a hash of every candidate tip. The whole cache is **cleared when a new `RefBadges` lands** (any refs read: after a fetch, push, pull, commit or branch operation).
+  - Cost: one re-read for the focus per refs read.
+  - Why: an upstream that moves always arrives with a refs read, so clearing there is exact. A key by upstream tip would need a held tip the app doesn't have.
+- **M4 — `candidates` from `RefBadges` + `Branches`.**
+  - Local branches: every `RefLabel::Branch` (short name → `refs/heads/<name>`), tip = the commit it labels.
+  - Kind: `Trunk` when the name is the default branch, `Integration` when it is in the integration list (settle 1), else `Other`.
+  - The branch's own upstream is never a candidate (01 handoff "For B").
+- **M5 — the route goes to `AppState.look.route`** = `Some(Route::new(trunk, built_on, Some(focus)))`. `frame_route` already draws it only while its focus is the frame's focus, so a stale route never colours.
+- **M6 — the focus rule is shared, not copied:** `view::entries::roles::focus` (`roles.rs:39`) becomes `pub(crate)`; `update::branch_pane` calls it (ARCHITECTURE.md:273: `update` may call `view`'s pure fns). Doc line: "shared by the pane's read and the lane colours (G4)". This is the one visibility widening; NOTES names it.
+- **M7 — `identity_of(c) = BranchIdentity::of_name(shorthand(c.name))`** with core's `shorthand`, the layout's own function. Not ops' `short_name`, which is for display only.
+- **M2 (`open_on`) → 09b.** **`not merged` row label → 09b** (it reads this ticket's cache).
+- `⏎` opens the detail pane as today; while open it **replaces** the branch pane at every width; closing brings the branch pane back.
 
 ## Scope
-In (graft-ui new module `branch_pane`; graft new `jobs::branch_status`, `update::branch_pane`, `view::branch_pane`; `view::frame` split; `update::picker` open-on-branch). **Owns `update/state.rs`, `update/events.rs`, `jobs/kinds.rs` in wave 5**; Mp adds only at the end.
-- **Pane (G12):** at ≥120 cols, 36 wide right of a `│`; 100–119, 30; <100 none (the cursor row's second line still says who/when/branch/hash). Heading = the cursor row's branch (`short_name`) in its role colour, `(you're here)` when it is HEAD's; then the four marked lines (`!` needs you, `✓` fine, `·` plain) — pushed?, merged?, behind what it was built on?, who and last commit — words as the mock; every name shown through `short_name`, author names as the first word of each name; then `built on` with the route trunk first, joined ` ─◆ `, each name in its role colour.
-- **Words for states the mock never shows** (01r; mock style, planner decision — the mock shows only unmerged branches and the trunk): `Merged::Into(c)` → `✓ merged into <c>`; `Merged::NothingToMerge` → `· nothing of its own to merge`; `Merged::NotYet { into: None }` → `· not merged`; `Behind::NoBase` → `· shares no history with <trunk>`; `Who::NoOwnCommits` → `· no commits of its own`. The mock's own words stay as they are (`not merged` on ordinary branches, `not merged into <into>` on an integration branch, `the main line: branches merge into it`, `up to date with <base>`, `<base> has N new commits since it left`, `<who>, last commit <age> ago`, `everyone, last commit …`).
-- **States (New UI):** each line `reading…` (muted) until its answer lands; a failed read → `can't tell: <reason>` in that line only; a row on no branch (`made_on` is `None` and no candidate holds it) → `<sha7> · not on a branch`. Status never reads as an error when nothing is wrong (CLAUDE.md).
-- **Read:** at rest only (`event_loop::rest`), one `branch_status` job per focus; cached per `StatusKey` (branch + every candidate tip + upstream tip); a cache hit draws at once. The result also sets `AppState.route = Route::new(trunk, built_on, Some(focus))` so G's Under role appears — each `Candidate.name` mapped to `BranchIdentity` in the form the scout found (one helper, `identity_of`). A stale answer (focus moved) is dropped by key, never drawn. `candidates` never includes the branch's own upstream (01 handoff "For B").
-- **Focus → branch:** the cursor row's `made_on` identity is matched to a `Candidate` by `identity_of(candidate) == made_on(row)`. **On a row with an `InsideMerge`** (inside an opened merge), the focus is the merge row's `made_on` — the same rule G uses for colours (G4), so the pane and the lanes always talk about the same branch. Its merged branch is usually deleted (no candidate), which is why.
-- **`⏎`** opens the detail pane as today; while it is open it **replaces** the branch pane at every width; closing it brings the branch pane back.
-- **Q1 a:** `C` on a teammate's row opens the branch picker with that branch under the cursor; `⏎` switches (2 keys). On HEAD's own row `C` opens as today.
-- **Cost:** measure `branch_status` time and spawn count on the team fixture (`scripts/41-scroll-team-fixture.sh`) from a script into `docs/perf/branch-pane.txt`; quote its summary line in NOTES (review 01 Minor 4).
-Out: graph rows (G), keymap words (V), pixel tier (X), any change to `branch_status`' rules (R, 01r).
+In: mergewright-ui new module `branch_pane`; app new `jobs::branch_status`, `update::branch_pane`, `view::branch_pane`; the `settle` ask; `view::frame` split; `roles::focus` visibility; `AppState` (append only: `branch_pane` state, the cache, `branch_names` only if settle 1 needs it); `jobs/kinds.rs`, `update/events.rs` (append).
+- **Pane (G12):** at ≥120 cols, 36 wide right of a `│`; 100–119, 30; <100 none (07b's second line still says who/when/branch/hash). Heading = the focus branch (`short_name`) in its role colour, `(you're here)` when it is HEAD's; then the four marked lines (`!` needs you, `✓` fine, `·` plain) — pushed?, merged?, behind what it was built on?, who and last commit — words as the mock; names through `short_name`, author names as the first word; then `built on`, route trunk first, joined ` ─◆ `, each name in its role colour.
+- **Words for states the mock never shows** (01r; planner decision): `Merged::Into(c)` → `✓ merged into <c>`; `NothingToMerge` → `· nothing of its own to merge`; `NotYet { into: None }` → `· not merged`; `Behind::NoBase` → `· shares no history with <trunk>`; `Who::NoOwnCommits` → `· no commits of its own`. Mock words unchanged (`not merged` on ordinary branches, `not merged into <into>` on an integration branch, `the main line: branches merge into it`, `up to date with <base>`, `<base> has N new commits since it left`, `<who>, last commit <age> ago`, `everyone, last commit …`).
+- **States (New UI):** each line `reading…` (muted) until its answer lands; a failed read → `can't tell: <reason>` in that line only; a row on no branch (`made_on` `None`, no candidate) → `<sha7> · not on a branch`. Nothing reads as an error when nothing is wrong.
+- **Focus → branch:** `focus()`'s identity matched to a candidate by `identity_of`. Inside an opened merge the focus is the merge row's branch (G4, the same helper).
+- **Frame split:** every full-width-when-closed assumption the scout listed takes the pane into account: `view/frame/layout.rs:169-170` `graph_columns`, `:313-314` `primary_pane_area`, `update/geometry.rs:89` `detail_split`, `:213,256,312,358`, `update/edge.rs:75`. `the_geometry_mirror_matches_the_rects_the_frame_hands_out` covers pane open and closed at 90/110/120.
+- **Cost:** `scripts/branch-pane-cost.sh` on the team fixture (`scripts/41-scroll-team-fixture.sh`) → `docs/perf/branch-pane.txt`: `branch_status` time and spawn count per focus, **plus** one line timing `branch_status` for every branch tip in a 40-row window (the input 09b's label question needs). Builder reads summary lines only; quotes them in NOTES (review 01 Minor 4).
+Out: `C` → picker on a branch, `not merged` label (09b); graph rows (07b/07c); keymap words; pixel tier (13); `branch_status`' rules (01r).
 
 ## Signatures
-graft-ui `branch_pane`:
+mergewright-ui `branch_pane`:
 ```rust
 pub const PANE_FROM: u16 = 100;
 pub const PANE_WIDE: u16 = 36;     // ≥120
@@ -48,42 +60,47 @@ pub enum BranchPaneView {
 }
 pub struct BranchPane<'a> { pub view: &'a BranchPaneView, pub theme: &'a Theme }   // Widget
 ```
-graft app:
+mergewright app:
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct StatusKey { pub branch: String /* full ref name */, pub tips: u64 }
-pub fn candidates(refs: &RefBadges, seeds: &Seeds) -> Vec<Candidate>;   // trunk, integration, local branches; full ref names
-pub fn identity_of(candidate: &Candidate) -> BranchIdentity;           // of_name in the layout's name form
-pub fn status_key(branch: &Candidate, candidates: &[Candidate], upstream: Option<&Tip>) -> StatusKey;
-// Command::ReadBranchStatus { key: StatusKey, branch: Candidate, candidates: Vec<Candidate>, upstream: Option<Tip> }
+pub(crate) struct StatusKey { pub(crate) branch: String /* full ref */, pub(crate) tips: u64 /* every candidate tip */ }
+pub(crate) fn candidates(refs: &RefBadges, names: &BranchNames) -> Vec<Candidate>;   // BranchNames: wherever settle 1 finds them
+pub(crate) fn identity_of(candidate: &Candidate) -> BranchIdentity;                  // of_name(shorthand(name))
+pub(crate) fn status_key(branch: &Candidate, candidates: &[Candidate]) -> StatusKey;
+// Command::ReadBranchStatus { key: StatusKey, branch: Candidate, candidates: Vec<Candidate> }   // the job reads the upstream
 // Event::BranchStatusRead { key: StatusKey, result: Result<BranchStatus, String> }
-pub fn pane_words(status: &BranchStatus, kind: CandidateKind) -> [PaneLine; 4];   // view::branch_pane, mock words
-pub fn open_on(picker: &mut PickerState, branch: &Candidate);          // update::picker; matches the picker's own name form
+pub(crate) fn pane_words(status: &BranchStatus, kind: CandidateKind) -> [PaneLine; 4];   // view::branch_pane
+// view::entries::roles: pub(in crate::view) fn focus(..) → pub(crate) fn focus(..)   (signature otherwise unchanged)
 ```
-Names of the `Command`/`Event` variants may follow the scout's convention; payloads as given. `pane_words` takes the branch's kind because the mock words differ (`not merged into <into>` only on an integration branch).
+Variant names may follow the scout's convention; payloads as given.
 
 ## Touches
-`view::frame` split and every hit-test (`update::geometry`, mouse wheel and divider drag, `row_at`); detail pane open/close (`update::detail`, `layout::save_split`); graph captures (re-taken here with the pane); `event_loop::rest` (one more job per stop — count in NOTES; 06 already asks fold counts there — say the order); jobs cancelled on focus change; the picker's tests and captures; G's focus rule for opened rows (same helper, not a copy); `docs/design/01-view-mockups.md` §1.1–1.2 (Proposed edit, NOTES only); 14's fixture (it asserts these words).
+`view::frame` split and every hit-test above; detail pane open/close (`update::detail`, `layout::save_split`); `settle` (one more ask per rest, after fold count); jobs dropped on focus change (stale key); the cache cleared on refs landing (every operation that re-reads refs); `look.route` → 07's lane colours and 13's strips (`frame_route`); `roles::focus` callers; graph captures (re-taken with the pane); `docs/design/01-view-mockups.md` §1.1–1.2 (Proposed edit, NOTES only); 14's fixture (it asserts these words); 09b (reads the cache).
 
 ## Acceptance
+Each tick names its test inline.
+- [ ] Settle tests 1–2 committed first; outcomes in NOTES.
 - [ ] `pane_width`: 36 at 120 and 200, 30 at 100 and 119, `None` at 99.
-- [ ] `identity_of`: for every branch in the fixture, `identity_of(candidate)` equals `made_on` of a row on that branch (test; proves the name forms match — the scout's file:line named in NOTES).
-- [ ] Fixture `main ← wallet-release ← sara/fix-toc`, with `wallet-release` either an integration branch in the seeds **or** given no commit after sara is cut (01r R1: an ordinary branch is a base only while it lies wholly under; say which in NOTES). Cursor on a sara row at 120 cols: heading `sara/fix-toc` (no `refs/heads/`), four lines each starting with `!`, `✓` or `·`, route line names `main`, `wallet-release`, `sara/fix-toc` in that order joined by `─◆`.
-- [ ] Sibling: add `ali/x` cut from wallet-release at sara's fork, then a commit on wallet-release. Cursor on sara: the route line never names `ali/x`; `ali/x`'s lane draws `┊` (Other), never `│` (state + glyph test).
-- [ ] `pane_words` table test: one row per `Merged`, `Behind`, `Who` variant, words exactly as Scope (mock words and the 01r words), marks `!`/`✓`/`·` as listed.
-- [ ] Cursor on HEAD's row: heading carries `(you're here)`. On a commit no branch holds: `<sha7> · not on a branch`.
-- [ ] Cursor on a row inside an opened merge: the heading names the merge row's branch (state test).
-- [ ] Before the read lands each line reads `reading…`; a forced read failure shows `can't tell:` on that line only, the other three still answer.
-- [ ] Moving the cursor within one branch issues no second job (cache hit, job count test); moving to another branch then back issues one job total for each.
-- [ ] After the read, the graph's wallet-release lane draws `│` (Under) — the route reached G's colours (state + glyph test; same fixture condition as above).
+- [ ] Fixture `main ← wallet-release ← sara/fix-toc`. `wallet-release` is either an integration branch in the seeds **or** has no commit after sara is cut (01r R1); NOTES says which. Cursor on a sara row at 120 cols:
+  - heading `sara/fix-toc` (no `refs/heads/`);
+  - four lines, each starting `!`, `✓` or `·`;
+  - route line names `main`, `wallet-release`, `sara/fix-toc` in that order, joined by `─◆`.
+- [ ] Sibling: add `ali/x` cut from wallet-release at sara's fork, then a commit on wallet-release. Cursor on sara: the route line never names `ali/x`; `ali/x`'s lane draws `┊` (Other), never `│`.
+- [ ] `pane_words` table test: one row per `Merged`, `Behind`, `Who` variant, words exactly as Scope, marks as listed.
+- [ ] HEAD's row: `(you're here)`. A commit no branch holds: `<sha7> · not on a branch`.
+- [ ] Inside an opened merge: the heading names the merge row's branch (state test through the shared `focus`).
+- [ ] Before the read lands each line reads `reading…`; a forced failure shows `can't tell:` on that line only.
+- [ ] Moving within one branch asks no second job; another branch and back asks one each (job count test). A new `RefBadges` landing clears the cache: the next rest asks again (state test).
+- [ ] The ask comes from `settle`, after the fold-count ask (state test on the command order).
+- [ ] After the read, wallet-release's lane draws `│` (Under): the route reached the colours (state + glyph test).
 - [ ] `⏎` replaces the pane with the detail pane; `esc` brings it back.
-- [ ] Q1: `C` on a teammate's row → picker open, cursor on that branch; `⏎` → switched (journey 2 keys, state test).
 - [ ] Teammate's status: 0 keys beyond moving to his row (journey test).
-- [ ] `docs/perf/branch-pane.txt` written by a script; its summary line quoted in NOTES.
-- [ ] Captures next to the main mock: `docs/shots/ease-pass/main-pane-own-120.txt`, `main-pane-teammate-120.txt`, `main-pane-100.txt`, `main-pane-reading-120.txt`; colour unverified. Each tick names its test.
+- [ ] Geometry mirror test green with the pane open and closed at 90/110/120.
+- [ ] `docs/perf/branch-pane.txt` written by the script, both lines; summary quoted in NOTES.
+- [ ] Captures next to the main mock: `docs/shots/ease-pass/main-pane-own-120.txt`, `main-pane-teammate-120.txt`, `main-pane-100.txt`, `main-pane-reading-120.txt`; colour unverified (rule 5).
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
-Medium–large (~60k).
+~70k. Split point: (i) settle tests, `candidates`, job, cache, route; (ii) pane widget, frame split and hit-tests, captures, cost script.

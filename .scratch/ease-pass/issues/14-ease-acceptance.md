@@ -1,7 +1,7 @@
 # ease-acceptance — walk the three mocks in the real app
 
 Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17; 2026-10-18 planner: the m3 pty waiter and the stale pty records / contact sheets from 08t's NOTES added — "Earlier milestones' records" below; 08u, 08v added to Blocked by)
-Blocked by: 07b-graph-rows-cursor, all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c, 06u, 08s–08v
+Blocked by: 07b-graph-rows-cursor, 07c-graph-rows-rest, 09b-not-merged (or as named), all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c, 06u, 08s–08v
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
 ease-vocabulary-rest (03b), vocabulary-fixes (03r), commit-what-goes-in, clash-reads, resolver-picks, merge-review-at-y (05b),
