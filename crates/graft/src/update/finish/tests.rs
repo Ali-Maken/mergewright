@@ -168,7 +168,7 @@ fn the_summary_lands_with_gits_message_and_the_cursor_on_what_git_combined() {
 
 #[test]
 fn unread_summary_has_no_names() {
-    let state = key(&stopped(InProgress::Merge, &[]), KeyCode::Char('c'));
+    let state = review::reading();
     let view = crate::view::finish::finish_view(&state).expect("drawn");
     assert_eq!(view.names, None, "no invented names while reading");
     assert_eq!(
@@ -224,9 +224,7 @@ fn an_empty_subject_is_refused_in_words() {
 
 #[test]
 fn y_while_reading_says_wait() {
-    let state = stopped(InProgress::Merge, &[]);
-    let state = key(&state, KeyCode::Char('c'));
-    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
+    let (state, commands) = press(&review::reading(), plain(KeyCode::Char('y')));
     assert!(resumes(&commands).is_empty());
     assert_eq!(
         finish(&state).notice,
@@ -327,12 +325,8 @@ fn esc_goes_back_and_keeps_the_draft() {
     );
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
     assert!(resumes(&commands).is_empty());
-    assert_eq!(
-        finish(&state).subject.text(),
-        "Merge branch 'feature' for 2.4"
-    );
     // git's message does not overwrite the draft when the summary lands.
-    let id = finish(&state).job.expect("reading");
+    let id = review::read_id(&commands);
     let (state, _) = update(
         &state,
         AppEvent::Produced(id, Product::FinishSummary(Ok(summary().into()))),
@@ -800,3 +794,4 @@ fn backtab_steps_focus_back() {
 }
 
 mod review;
+pub(crate) use review::landed;

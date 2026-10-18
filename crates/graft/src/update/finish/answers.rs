@@ -10,14 +10,28 @@ use crate::update::op_keys::OpKeys;
 
 /// The summary read came back.
 ///
-/// A read that found files with a clash still open (ease-pass/05b) closes
-/// the review: the words go where `c` or `y` was pressed — the status line
-/// over the banner, the notice row of the resolver.
+/// The read a door asked for (ease-pass/05s, `ask_review`) opens the review
+/// only now: `Ready` and `Failed` open it, as if it had been waiting on
+/// this read; `StillOpen` opens nothing and says how many where `c` or `y`
+/// was pressed — the status line over the banner, the notice row of the
+/// resolver. A review already open (`open_finish`) that hears `StillOpen`
+/// closes and says the same.
 pub(crate) fn summary_landed(
     state: &mut AppState,
     id: JobId,
     summary: Result<Reviewed, ReviewFailed>,
 ) {
+    if let Some(from) = state.picks.review_answered(id) {
+        if let Err(ReviewFailed::StillOpen { files, clashes }) = summary {
+            still_open(state, from, files, clashes);
+            return;
+        }
+        // `ask_review` asks only while no review is open; one opened since
+        // (`open_finish`) waits on its own read and keeps it.
+        if state.finish.is_none() {
+            super::open_reading(state, from, id);
+        }
+    }
     let Some(finish) = state.finish.as_mut() else {
         return;
     };
@@ -102,6 +116,13 @@ pub(crate) fn diff_landed(state: &mut AppState, id: JobId, diff: Result<Arc<Diff
 /// A job the summary waits on failed or panicked: say so where its answer
 /// would have gone, so nothing reads `reading…` forever.
 pub(crate) fn job_ended(state: &mut AppState, id: JobId, failure: &dyn std::fmt::Display) {
+    // A door's read that never answered: the review opens showing why, as
+    // a `Failed` answer would.
+    if let Some(from) = state.picks.review_answered(id)
+        && state.finish.is_none()
+    {
+        super::open_reading(state, from, id);
+    }
     let Some(finish) = state.finish.as_mut() else {
         return;
     };

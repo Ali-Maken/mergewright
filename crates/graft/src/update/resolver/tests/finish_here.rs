@@ -48,9 +48,35 @@ pub(super) fn every_file_done_sent() -> (AppState, Vec<Command>) {
     press(&merge_solved(), KeyCode::Char('y'))
 }
 
-/// [`every_file_done_sent`]'s state: the summary open over the resolver.
+/// [`every_file_done_sent`]'s state, its read landed: the summary open over
+/// the resolver (it opens only when the read lands, ease-pass/05s).
 fn every_file_done() -> AppState {
-    every_file_done_sent().0
+    summary_open()
+}
+
+/// The review's one read in `commands`, answered with a summary: the
+/// review opens now (ease-pass/05s).
+pub(super) fn review_lands(state: &AppState, commands: &[Command]) -> AppState {
+    let id = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadFinishSummary(id) => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("the summary is read: {commands:?}"));
+    let summary = std::sync::Arc::new(graft_ops::finish::FinishSummary {
+        into: b"main".to_vec(),
+        from: b"feature".to_vec(),
+        by_you: Vec::new(),
+        by_git: Vec::new(),
+        message: b"Merge branch 'feature'\n".to_vec(),
+        recorded: true,
+    });
+    update(
+        state,
+        AppEvent::Produced(id, Product::FinishSummary(Ok(summary.into()))),
+    )
+    .0
 }
 
 /// The review `y` opened, closed with `Esc`: the resolver, every clash
@@ -76,15 +102,17 @@ fn nothing_sent(commands: &[Command]) {
 fn c_in_the_resolver_opens_the_summary() {
     let state = finish_row_showing();
     let (after, commands) = press(&state, KeyCode::Char('c'));
-    let finish = after.finish.as_ref().expect("c opened the summary");
-    assert_eq!(finish.return_to, ReturnTo::Resolver);
-    assert!(after.resolver.is_some(), "the resolver stays under it");
     assert!(
         commands
             .iter()
             .any(|command| matches!(command, Command::ReadFinishSummary(_))),
         "{commands:?}"
     );
+    // The review opens when its read lands (ease-pass/05s).
+    let after = review_lands(&after, &commands);
+    let finish = after.finish.as_ref().expect("c opened the summary");
+    assert_eq!(finish.return_to, ReturnTo::Resolver);
+    assert!(after.resolver.is_some(), "the resolver stays under it");
 }
 
 #[test]
@@ -163,26 +191,7 @@ fn c_in_a_rebase_resolver_continues() {
 /// The review `y` opened, with its read answered.
 fn summary_open() -> AppState {
     let (state, commands) = every_file_done_sent();
-    let id = commands
-        .iter()
-        .find_map(|command| match command {
-            Command::ReadFinishSummary(id) => Some(*id),
-            _ => None,
-        })
-        .expect("the summary is read");
-    let summary = std::sync::Arc::new(graft_ops::finish::FinishSummary {
-        into: b"main".to_vec(),
-        from: b"feature".to_vec(),
-        by_you: Vec::new(),
-        by_git: Vec::new(),
-        message: b"Merge branch 'feature'\n".to_vec(),
-        recorded: true,
-    });
-    update(
-        &state,
-        AppEvent::Produced(id, Product::FinishSummary(Ok(summary.into()))),
-    )
-    .0
+    review_lands(&state, &commands)
 }
 
 #[test]

@@ -475,8 +475,7 @@ fn last_file_staged_from_the_pane() -> AppState {
 /// commit editor). Since m6-conflicts/31 that is the resolver itself: it
 /// stays open after the last file, whichever way it was opened, and the
 /// keyboard stays where it was. Nothing opens on its own (ease-pass/05b):
-/// the finish row offers `c`, and `c` opens the summary — never the commit
-/// editor.
+/// the finish row offers `c`, and `c` opens the summary, never the editor.
 #[test]
 fn all_resolved_from_the_pane_offers_c_where_c_continues() {
     let state = last_file_staged_from_the_pane();
@@ -495,15 +494,16 @@ fn all_resolved_from_the_pane_offers_c_where_c_continues() {
         state.commit_editor.is_none(),
         "c did not open the commit editor"
     );
-    // A merge's `c` shows the finish summary, whose `y` commits
-    // (m6-conflicts/19): nothing is written by `c` itself.
-    assert!(state.finish.is_some(), "c opened the finish summary");
+    // A merge's `c` reads the summary, whose `y` commits (m6-conflicts/19);
+    // it opens when the read lands (ease-pass/05s).
     assert!(
         commands
             .iter()
             .any(|command| matches!(command, Command::ReadFinishSummary(_))),
         "c on the merge reads the summary: {commands:?}"
     );
+    let state = finish_here::review_lands(&state, &commands);
+    assert!(state.finish.is_some(), "c opened the finish summary");
 }
 
 // ------------------------------------------------------------ scrolling

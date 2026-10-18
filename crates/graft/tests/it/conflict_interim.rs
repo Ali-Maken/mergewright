@@ -475,10 +475,10 @@ fn banner_is_modal_when_focused() {
 /// (m6-conflicts/19); `y` in it runs the continue, pumped to its answer.
 fn committed_from_the_summary(app: &App, state: &AppState) -> AppState {
     let state = app.key(state, KeyCode::Char('c'));
-    assert!(state.finish.is_some(), "`c` on a merge shows the summary");
     let state = app.pump(state, "the finish summary", |state| {
         state.finish.as_ref().is_some_and(|open| open.job.is_none())
     });
+    assert!(state.finish.is_some(), "`c` on a merge shows the summary");
     let state = app.key(&state, KeyCode::Char('y'));
     assert!(state.operating.is_some(), "`y` commits");
     app.pump(state, "the continue", |state| state.operating.is_none())

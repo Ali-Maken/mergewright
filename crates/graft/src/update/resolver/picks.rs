@@ -22,6 +22,8 @@ use graft_core::oid::Oid;
 use graft_git::conflict::{BlockState, ConflictFile};
 use graft_ops::conflict::Restore;
 
+use crate::update::finish::ReturnTo;
+
 /// One keypress's worth of takes: `o`/`t`/`b` one block; `O`/`T`,
 /// `⌃O`/`⌃T` every block it changed — so one `u` undoes the whole keypress.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -85,6 +87,11 @@ pub struct Picks {
     /// banner then reads as a pause, `⏎ back to the clashes`. A launch, or
     /// a stop nobody has opened yet, leaves it false: `⏎ resolve`.
     seen: bool,
+    /// The merge review's read in flight and where it was asked for
+    /// (ease-pass/05s): the review opens only when it lands, so nothing is
+    /// drawn between the key and the answer. Beside the stop's picks so it
+    /// ends with the stop.
+    asked: Option<(JobId, ReturnTo)>,
 }
 
 /// An untake's landing on a file the resolver was not showing.
@@ -139,6 +146,7 @@ impl Picks {
         self.stack.clear();
         self.landing = None;
         self.seen = false;
+        self.asked = None;
     }
 
     /// The resolver opened at this stop.
@@ -207,6 +215,25 @@ impl Picks {
     /// top, where it was — nothing could land a pick while it was out.
     pub fn put_back(&mut self, pick: Pick) {
         self.stack.push(pick);
+    }
+
+    /// The review's read `id` is out, asked for from `from`.
+    pub fn ask_review(&mut self, id: JobId, from: ReturnTo) {
+        self.asked = Some((id, from));
+    }
+
+    /// Is a review's read out? `y`/`c` again while it runs do nothing.
+    #[must_use]
+    pub fn review_asked(&self) -> bool {
+        self.asked.is_some()
+    }
+
+    /// Where the review read `id` that answered was asked for; spent.
+    /// `None`: not the read out (stale, or none was asked).
+    pub fn review_answered(&mut self, id: JobId) -> Option<ReturnTo> {
+        self.asked
+            .take_if(|(out, _)| *out == id)
+            .map(|(_, from)| from)
     }
 
     /// The untake `id` opens the resolver on its pick when it lands: the

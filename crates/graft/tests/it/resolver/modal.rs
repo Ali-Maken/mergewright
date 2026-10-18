@@ -21,7 +21,18 @@ fn resolver_is_modal() {
         KeyCode::Char('S'),
     ] {
         let (after, commands) = press_for_commands(&before, KeyPress::plain(code));
-        assert!(commands.is_empty(), "{code:?} queued {commands:?}");
+        if code == KeyCode::Char('c') {
+            // `c` is the resolver's own in a merge: with a file it has not
+            // read, its door asks the review's read and draws nothing until
+            // the answer (ease-pass/05s). Nothing leaves the resolver.
+            assert!(
+                matches!(commands.as_slice(), [Command::ReadFinishSummary(_)]),
+                "{code:?} queued {commands:?}"
+            );
+            assert!(after.finish.is_none(), "{code:?} drew a review early");
+        } else {
+            assert!(commands.is_empty(), "{code:?} queued {commands:?}");
+        }
         assert!(after.resolver.is_some(), "{code:?} closed the resolver");
         assert!(after.confirm.is_none(), "{code:?} opened a box");
         assert!(after.search.is_none(), "{code:?} opened the search field");

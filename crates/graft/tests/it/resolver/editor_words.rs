@@ -144,8 +144,8 @@ pub(super) fn shell_merge_refusal(count: usize) -> Status {
 
 /// `c` in `state` opens the finish summary, as the banner's `c` does
 /// (m6-conflicts/52): no editor, and `Esc` from it goes to the banner.
-fn c_opens_the_summary(state: &AppState) {
-    let after = press_for_commands(state, KeyPress::plain(KeyCode::Char('c'))).0;
+fn c_opens_the_summary(app: &App, state: &AppState) {
+    let after = crate::finish::review_landed(app, app.key(state, KeyCode::Char('c')));
     assert!(after.commit_editor.is_none(), "`c` opened the editor");
     assert_eq!(
         after.finish.as_ref().map(|finish| finish.return_to),
@@ -184,14 +184,14 @@ fn a_mid_operation_still_refuses_in_words() {
     let (graft_begun, app, state) = resolved_graft_merge();
     let pane = pane_focused(&app, state);
     answers_in_words(&pane, 'a', &graft_merge_refusal(2));
-    c_opens_the_summary(&pane);
+    c_opens_the_summary(&app, &pane);
     app.close();
     drop(graft_begun);
 
     let (shell_begun, app, state) = resolved_shell();
     let pane = pane_focused(&app, state);
     answers_in_words(&pane, 'a', &shell_merge_refusal(2));
-    c_opens_the_summary(&pane);
+    c_opens_the_summary(&app, &pane);
     app.close();
     drop(shell_begun);
 }
@@ -225,7 +225,7 @@ fn every_way_to_open_the_editor_refuses_mid_operation() {
     ] {
         eprintln!("{where_}");
         answers_in_words(state, 'a', &refusal);
-        c_opens_the_summary(state);
+        c_opens_the_summary(&app, state);
     }
     app.close();
     drop(scratch);
@@ -322,7 +322,7 @@ fn pin_the_panes_keys(app: &App, state: AppState, refusal: &Status) {
         "`Esc` lands in the pane, not the banner"
     );
     answers_in_words(&closed, 'a', refusal);
-    c_opens_the_summary(&closed);
+    c_opens_the_summary(app, &closed);
 }
 
 /// **Ticket 39's Step 0 pin, rewritten to m6-conflicts/48 and 52:** after
@@ -376,7 +376,7 @@ fn the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge() {
 
     let (banner, tabs) = esc_then_tabs_to_the_banner(&app, &open);
     assert_eq!(tabs, 2, "Files → Diff → banner");
-    let c = app.key(&banner, KeyCode::Char('c'));
+    let c = crate::finish::review_landed(&app, app.key(&banner, KeyCode::Char('c')));
     assert_eq!(
         c.finish.as_ref().map(|finish| finish.return_to),
         Some(ReturnTo::Banner),

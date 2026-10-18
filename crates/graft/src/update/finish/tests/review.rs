@@ -1,8 +1,21 @@
 //! The merge review's door from the banner (ease-pass/05b): `c` asks the
-//! read, which judges the files on disk. Moved from `finish/tests.rs`
-//! (ease-pass/05s), same names.
+//! read, and the review opens only when it lands (05s). Moved from
+//! `finish/tests.rs` (ease-pass/05s), same names.
 
 use super::*;
+
+/// The review with its read still out: `open_finish` itself — the doors
+/// open it only once the read lands (ease-pass/05s).
+pub(super) fn reading() -> AppState {
+    let mut state = stopped(InProgress::Merge, &[]);
+    let mut next = 0;
+    let opened = open_finish(&mut state, &mut Vec::new(), ReturnTo::Banner, &mut || {
+        next += 1;
+        JobId::new(next)
+    });
+    assert!(opened);
+    state
+}
 
 #[test]
 fn c_on_a_resolved_merge_opens_the_summary_not_the_commit() {
@@ -13,13 +26,16 @@ fn c_on_a_resolved_merge_opens_the_summary_not_the_commit() {
         "nothing written: {commands:?}"
     );
     assert!(state.operating.is_none());
-    let open = finish(&state);
-    assert!(
-        commands.iter().any(
-            |command| matches!(command, Command::ReadFinishSummary(id) if Some(*id) == open.job)
+    // Nothing is drawn until the read lands (ease-pass/05s).
+    assert!(state.finish.is_none());
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            read_id(&commands),
+            Product::FinishSummary(Ok(summary().into())),
         ),
-        "the summary is read under the id it waits on: {commands:?}"
     );
+    let open = finish(&state);
     assert_eq!(open.focus, FinishFocus::Files);
     assert_eq!(
         state.graph_overlay(),
@@ -27,7 +43,16 @@ fn c_on_a_resolved_merge_opens_the_summary_not_the_commit() {
     );
 }
 
-fn read_id(commands: &[Command]) -> JobId {
+/// A key's `(state, commands)` with the review's read among the commands,
+/// answered with a summary: the review opens only now (ease-pass/05s). The
+/// key's commands ride along unchanged.
+pub(crate) fn landed((state, commands): (AppState, Vec<Command>)) -> (AppState, Vec<Command>) {
+    let answer = Product::FinishSummary(Ok(summary().into()));
+    let (state, _) = update(&state, AppEvent::Produced(read_id(&commands), answer));
+    (state, commands)
+}
+
+pub(super) fn read_id(commands: &[Command]) -> JobId {
     commands
         .iter()
         .find_map(|command| match command {
@@ -40,7 +65,7 @@ fn read_id(commands: &[Command]) -> JobId {
 /// Banner `c` in a merge with a file still unmerged (ease-pass/05b): the
 /// files git still calls unmerged may be solved on disk, which only the
 /// review's read can tell, so `c` asks it; a read that finds a clash still
-/// open closes the review and refuses in today's words, counting the open
+/// open opens no review and refuses in today's words, counting the open
 /// files. Nothing is written.
 #[test]
 fn c_with_a_file_still_open_is_refused_by_the_review_read() {

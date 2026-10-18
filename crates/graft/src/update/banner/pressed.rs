@@ -53,8 +53,8 @@ pub(crate) fn continue_pressed(
     // A merge shows what will land before anything is written, and only
     // the summary's `⏎` commits (m6-conflicts/19). Rebase, cherry-pick and
     // revert continue straight away until M7 gives them a summary.
-    if live(state).is_some_and(|detail| detail.kind == InProgress::Merge) {
-        let _opened: bool = crate::update::finish::open_finish(state, commands, from, next_id);
+    if merge {
+        merge_door(state, commands, from, next_id);
         return;
     }
     // `resume` sends nothing while a write runs; say why, in the summary's
@@ -99,6 +99,23 @@ pub(crate) fn continue_pressed(
         Resume::Continue { solved: Vec::new() },
         next_id,
     );
+}
+
+/// A merge's `c` (and the resolver's `y` once its own door, `review_door`,
+/// has let it through): the review, asked of its read and drawn only when
+/// it lands (ease-pass/05s). Over the banner it always asks the read,
+/// never refuses at once: once the resolver has closed there is no
+/// per-file count, and a count kept from it would go stale while he fixes
+/// files in his editor. A read already out: nothing — one at a time.
+fn merge_door(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    from: ReturnTo,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    // `false`, nothing sent, while a read is out (the one-at-a-time rule)
+    // or a review is open (its modal keys claim `c` before this door).
+    let _asked: bool = crate::update::finish::ask_review(state, commands, from, next_id);
 }
 
 /// `git <kind> --continue` came back from the shell hand-over (07c). One

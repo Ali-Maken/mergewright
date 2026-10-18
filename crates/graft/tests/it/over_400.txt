@@ -162,7 +162,7 @@
 576 crates/graft/src/update/drag/tests.rs
 576 crates/graft/src/update/events.rs
 457 crates/graft/src/update/events/command.rs
-802 crates/graft/src/update/finish/tests.rs
+797 crates/graft/src/update/finish/tests.rs
 511 crates/graft/src/update/geometry.rs
 1215 crates/graft/src/update/journal/tests.rs
 487 crates/graft/src/update/keys.rs
@@ -266,7 +266,7 @@
 1253 crates/graft/tests/it/remote_by_key.rs
 416 crates/graft/tests/it/resolver/editor_words.rs
 669 crates/graft/tests/it/resolver/file_list.rs
-1400 crates/graft/tests/it/resolver/shell_begun.rs
+1395 crates/graft/tests/it/resolver/shell_begun.rs
 423 crates/graft/tests/it/resolver/whole_file.rs
 597 crates/graft/tests/it/stash_clash.rs
 510 crates/graft/tests/it/submodule_truth.rs
