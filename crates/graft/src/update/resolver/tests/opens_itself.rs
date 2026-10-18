@@ -300,8 +300,10 @@ fn click_on_the_finish_row_is_c() {
     let (_, _, split) =
         crate::view::resolver::resolver_split(&state, crate::update::resolver::banner_rows(&state));
     let (after, commands) = click(&state, split.doc.x + 3, split.doc.y + 1);
-    assert!(after.finish.is_some(), "the summary opened");
     assert_eq!(summaries(&commands), 1);
+    // The review opens when its read lands (ease-pass/05s).
+    let after = super::finish_here::review_lands(&after, &commands);
+    assert!(after.finish.is_some(), "the summary opened");
     // The title row above it is not the finish row.
     let (after, commands) = click(&state, split.doc.x + 3, split.doc.y);
     assert!(after.finish.is_none());

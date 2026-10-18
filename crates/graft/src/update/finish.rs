@@ -152,8 +152,8 @@ impl From<Arc<FinishSummary>> for Reviewed {
 /// Why the review has nothing to show.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ReviewFailed {
-    /// Files still have a clash open: the review closes and says how many
-    /// (ease-pass/05b, banner `c` in a merge; clashes counted since 05s).
+    /// Files still have a clash open: no review; where it was asked for
+    /// says how many (ease-pass/05b; clashes counted since 05s).
     StillOpen {
         /// How many files.
         files: usize,
@@ -183,8 +183,11 @@ pub enum FinishAnswer {
     Closed,
 }
 
-/// Open the summary over the banner (or, later, the resolver) and start
-/// reading it. `false` when one is already open.
+/// Open the summary over the banner (or the resolver) and start reading
+/// it: the review drawn `reading…` until its read lands. `false` when one
+/// is already open. The app's doors ask with [`ask_review`] instead, which
+/// draws nothing until the answer; this stays for a view of the read in
+/// flight.
 pub fn open_finish(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -195,6 +198,33 @@ pub fn open_finish(
         return false;
     }
     let id = next_id();
+    open_reading(state, from, id);
+    commands.push(Command::ReadFinishSummary(id));
+    true
+}
+
+/// Ask the merge review's read (ease-pass/05s): nothing is drawn until it
+/// lands (`answers::summary_landed`) — `Ready` or `Failed` opens the
+/// review, `StillOpen` says how many where it was asked for. `false`, and
+/// nothing sent, while a review is open or a read is already out.
+pub(crate) fn ask_review(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    from: ReturnTo,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    if state.finish.is_some() || state.picks.review_asked() {
+        return false;
+    }
+    let id = next_id();
+    state.picks.ask_review(id, from);
+    commands.push(Command::ReadFinishSummary(id));
+    true
+}
+
+/// The review, open from `from`, waiting on the read `id`: the draft the
+/// last `Esc` kept goes back in its fields.
+fn open_reading(state: &mut AppState, from: ReturnTo, id: JobId) {
     let draft = state.finish_draft.take();
     let from_draft = draft.is_some();
     let (subject, body) = draft.unwrap_or_default();
@@ -215,8 +245,6 @@ pub fn open_finish(
         from_draft,
         solved: Vec::new(),
     }));
-    commands.push(Command::ReadFinishSummary(id));
-    true
 }
 
 /// After a resize: the cursor row back on screen.

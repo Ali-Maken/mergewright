@@ -558,15 +558,13 @@ pub(super) fn launched_into(repo: &Path) -> (App, AppState) {
 /// `c` on the resolved banner, and the summary's read landed.
 fn c_on_the_banner(app: &App, state: AppState) -> AppState {
     let state = on_the_banner(app, state);
-    let state = app.key(&state, KeyCode::Char('c'));
+    let state = crate::finish::review_landed(app, app.key(&state, KeyCode::Char('c')));
     assert!(
         state.finish.is_some(),
         "`c` opens the summary: {:?}",
         state.status
     );
-    app.pump(state, "the finish summary", |state| {
-        state.finish.as_ref().is_some_and(|open| open.job.is_none())
-    })
+    state
 }
 
 /// `y` in the summary, the finish it sends, and the landing it owes.
@@ -818,13 +816,10 @@ fn c_y_after_u_finishes_the_merge_again() {
     let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD")).expect("MERGE_HEAD");
     let mut keys = 0;
 
-    let state = app.key(&state, KeyCode::Char('c'));
+    let state = crate::finish::review_landed(&app, app.key(&state, KeyCode::Char('c')));
     keys += 1;
     assert!(state.finish.is_some(), "`c` opened the summary");
     assert!(state.commit_editor.is_none(), "not the commit editor");
-    let state = app.pump(state, "the finish summary", |state| {
-        state.finish.as_ref().is_some_and(|open| open.job.is_none())
-    });
     let state = app.key(&state, KeyCode::Char('y'));
     keys += 1;
     assert!(state.operating.is_some(), "`y` commits");
@@ -1006,7 +1001,7 @@ fn the_keys_the_commit_editor_names_reach_the_summary() {
 
     let (banner, tabs) = super::editor_words::esc_then_tabs_to_the_banner(&app, &open);
     assert_eq!(tabs, 2, "Files → Diff → banner");
-    let state = app.key(&banner, KeyCode::Char('c'));
+    let state = crate::finish::review_landed(&app, app.key(&banner, KeyCode::Char('c')));
     assert_eq!(
         state.finish.as_ref().map(|finish| finish.return_to),
         Some(graft::update::finish::ReturnTo::Banner),
@@ -1180,7 +1175,7 @@ fn c_in_the_changes_pane_opens_the_summary() {
         pane.on_changes_pane() && !pane.graph_has_focus(),
         "the pane"
     );
-    let state = app.key(&pane, KeyCode::Char('c'));
+    let state = crate::finish::review_landed(&app, app.key(&pane, KeyCode::Char('c')));
     let finish = state.finish.as_ref().expect("`c` opens the summary");
     assert_eq!(finish.return_to, graft::update::finish::ReturnTo::Banner);
     assert!(state.commit_editor.is_none(), "no commit editor");

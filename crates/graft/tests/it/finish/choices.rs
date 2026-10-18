@@ -55,15 +55,13 @@ pub(super) fn c_for_the_summary(app: &App, state: AppState) -> AppState {
     } else {
         crate::resolver::on_the_banner(app, state)
     };
-    let state = app.key(&state, KeyCode::Char('c'));
+    let state = super::review_landed(app, app.key(&state, KeyCode::Char('c')));
     assert!(
         state.finish.is_some(),
         "`c` opens the summary: {:?}",
         state.status
     );
-    app.pump(state, "the finish summary", |state| {
-        state.finish.as_ref().is_some_and(|open| open.job.is_none())
-    })
+    state
 }
 
 /// The drawn line naming `path` under `RESOLVED BY YOU`, at 120×40.

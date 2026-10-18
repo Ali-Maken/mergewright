@@ -1,10 +1,11 @@
 //! `y` (and `c`) in a merge's resolver: the review (ease-pass/05b).
 //!
 //! A merge stages nothing while the user picks; the review is where the
-//! solved files are staged, inside the finish itself. So `y` opens it once
-//! nothing the resolver knows of is still open, and says how many clashes
-//! are left otherwise. Files the resolver has not read are the review
-//! read's to judge (`graft_ops::finish::merge_review`).
+//! solved files are staged, inside the finish itself. One door
+//! ([`review_door`], ease-pass/05s): `y` refuses at once, saying how many
+//! clashes are left, when the resolver's count is whole; otherwise the
+//! review's read judges the files on disk (`graft_ops::finish::merge_review`)
+//! and the review opens only when it lands.
 
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
@@ -12,7 +13,7 @@ use graft_git::state::InProgress;
 use graft_ops::conflict::FileState;
 use graft_ui::keymap::{ActionId, Keymap};
 
-use super::files::{RowState, listed_files};
+use super::files::{ListedFile, RowState, listed_files};
 use super::handover;
 use super::resolved::set_notice;
 use crate::update::events::Command;
@@ -72,18 +73,54 @@ fn review_pressed(
         state.status = Status::sticky(words);
         return;
     }
-    if let Some(words) = clashes_open(state) {
+    // One read in flight: `y` and `c` again wait for its answer.
+    if state.picks.review_asked() {
+        return;
+    }
+    if let Door::Refuse { clashes, .. } = review_door(&listed_files(state)) {
+        let words = clashes_still_open(clashes, &state.keymap);
         set_notice(state, (words, false));
         return;
     }
     crate::update::banner::continue_pressed(state, commands, ReturnTo::Resolver, next_id);
 }
 
-/// `N clash(es) still open · n goes to the next`, when any clash this
-/// resolver has read is open.
-fn clashes_open(state: &AppState) -> Option<String> {
-    let open = open_clashes(state);
-    (open > 0).then(|| clashes_still_open(open, &state.keymap))
+/// What `y` or `c` does in a merge (ease-pass/05s).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Door {
+    /// The resolver's count is whole and a clash is open: say so now — no
+    /// job, no review.
+    Refuse {
+        /// Files with a clash open.
+        files: usize,
+        /// Their open clashes.
+        clashes: usize,
+    },
+    /// Ask the review's read: only it can judge a file the resolver has
+    /// not read, or confirm nothing is open.
+    Read,
+}
+
+/// The door for the resolver's `rows` ([`listed_files`]): refuse at once
+/// when a file it has read has a clash open **and** it has read every
+/// file — none `Unread`; one `ConflictSet::solved` names is listed solved,
+/// not unread — so the count is whole. Else the read.
+pub(crate) fn review_door(rows: &[ListedFile]) -> Door {
+    if rows.iter().any(|row| row.state == RowState::Unread) {
+        return Door::Read;
+    }
+    let open: Vec<usize> = rows
+        .iter()
+        .map(|row| row_open(&row.state))
+        .filter(|open| *open > 0)
+        .collect();
+    if open.is_empty() {
+        return Door::Read;
+    }
+    Door::Refuse {
+        files: open.len(),
+        clashes: open.iter().sum(),
+    }
 }
 
 /// `N clash(es) still open · n goes to the next`: the resolver's words for
@@ -93,6 +130,13 @@ fn clashes_open(state: &AppState) -> Option<String> {
 pub fn clashes_still_open(clashes: usize, keys: &Keymap) -> String {
     let noun = if clashes == 1 { "clash" } else { "clashes" };
     still_open_words(&format!("{clashes} {noun} still open"), keys)
+}
+
+/// `N clash(es) still open · n goes to the next`, when any clash this
+/// resolver has read is open.
+fn clashes_open(state: &AppState) -> Option<String> {
+    let open = open_clashes(state);
+    (open > 0).then(|| clashes_still_open(open, &state.keymap))
 }
 
 /// The notice once the status read a stage asked for has landed

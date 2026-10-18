@@ -209,7 +209,7 @@ fn c_in_the_graph_mid_bisect_refuses_in_words_and_sends_nothing() {
 #[test]
 fn c_in_the_graph_opens_the_summary_on_a_graft_begun_merge() {
     let state = live(InProgress::Merge, Begun::InGraft, &[], Frame::Graph);
-    let (after, commands) = c(&state);
+    let (after, commands) = crate::update::finish::tests::landed(c(&state));
     let finish = after.finish.as_ref().expect("the summary is open");
     assert_eq!(finish.return_to, ReturnTo::Banner);
     assert!(after.commit_editor.is_none());
@@ -230,7 +230,7 @@ fn c_in_the_graph_with_details_open_opens_the_summary() {
         &[],
         Frame::GraphWithDetails,
     );
-    let (after, _) = c(&state);
+    let (after, _) = crate::update::finish::tests::landed(c(&state));
     let finish = after.finish.as_ref().expect("the summary is open");
     assert_eq!(finish.return_to, ReturnTo::Banner);
     assert!(after.commit_editor.is_none());

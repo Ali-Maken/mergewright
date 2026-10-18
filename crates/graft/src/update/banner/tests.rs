@@ -906,10 +906,10 @@ fn code_for(key: &str) -> KeyCode {
 /// `c` with nothing unmerged: what it queued.
 fn continued(key: &str, verb: &str, before: &AppState, after: &AppState, commands: &[Command]) {
     match live(before).map(|detail| detail.kind) {
-        // A merge shows the finish summary first (m6-conflicts/19):
-        // nothing is written until its `⏎`.
+        // A merge shows the finish summary first (m6-conflicts/19), drawn
+        // once its read lands (05s): nothing is written until its `⏎`.
         Some(InProgress::Merge) => {
-            assert!(after.finish.is_some(), "`{key} {verb}` opened no summary");
+            assert!(after.finish.is_none(), "`{key} {verb}` drew a review early");
             assert!(
                 matches!(commands, [Command::ReadFinishSummary(_)]),
                 "`{key} {verb}` queued {commands:?}"

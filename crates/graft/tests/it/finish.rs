@@ -59,6 +59,14 @@ fn about_to_merge() -> graft_fixtures::Scratch {
     scratch
 }
 
+/// The merge review's read, out since `c` (or `y`), landed: the review
+/// opens only now (ease-pass/05s), so a test asserts on it after this.
+pub(crate) fn review_landed(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the finish summary", |state| {
+        state.finish.as_ref().is_some_and(|open| open.job.is_none())
+    })
+}
+
 /// The merge started with `m`, both files resolved and marked, back on the
 /// banner, `c` pressed and the summary read.
 fn summary_open(app: &App, state: AppState, repo: &Path) -> AppState {
@@ -71,15 +79,14 @@ fn summary_open(app: &App, state: AppState, repo: &Path) -> AppState {
     let state = mark_resolved(app, state, "shared.rs");
     let state = tab_back_to_the_banner(app, state);
     let state = app.key(&state, KeyCode::Char('c'));
+    assert!(state.operating.is_none(), "`c` writes nothing");
+    let state = review_landed(app, state);
     assert!(
         state.finish.is_some(),
         "`c` on the merge opens the summary: {:?}",
         state.status
     );
-    assert!(state.operating.is_none(), "and writes nothing");
-    app.pump(state, "the finish summary", |state| {
-        state.finish.as_ref().is_some_and(|open| open.job.is_none())
-    })
+    state
 }
 
 /// `y` (or whatever `key` is) and the `--continue` it runs, to its answer.
