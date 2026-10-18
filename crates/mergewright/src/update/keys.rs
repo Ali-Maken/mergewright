@@ -46,9 +46,9 @@ use modal::{
 use movement::move_cursor;
 use panes::{editor_key, pane_and_overlay_key};
 use predicates::{
-    is_commit_key, is_compare_key, is_context_menu_key, is_copy_key, is_focus_toggle,
-    is_lane_toggle, is_name_key, is_quit, is_refresh, is_remote_key, is_rewrite_key,
-    is_screen_toggle, is_tier_cycle, is_undo_key, motion_for,
+    is_colours_key, is_commit_key, is_compare_key, is_context_menu_key, is_copy_key,
+    is_focus_toggle, is_lane_toggle, is_name_key, is_quit, is_refresh, is_remote_key,
+    is_rewrite_key, is_screen_toggle, is_tier_cycle, is_undo_key, motion_for,
 };
 pub(in crate::update) use refresh::refresh_key;
 use remote::remote_key;
@@ -209,6 +209,9 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         cycle_tier(next, commands);
     } else if is_copy_key(key) {
         copy_selected_sha(next, commands);
+    } else if is_colours_key(key) {
+        // The whole screen, until quit; never saved (Q3 a).
+        next.look.colours_off = !next.look.colours_off;
     } else if is_compare_key(key) {
         toggle_compare_selected(next, commands);
     } else if is_context_menu_key(key) {

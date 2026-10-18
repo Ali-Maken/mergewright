@@ -303,7 +303,9 @@ fn capture_the_cursor_row_in_dark_and_light() {
     let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
     let line = &drawn[y];
     assert!(
-        line.starts_with("\u{25b8} \u{2502} \u{2502} \u{25cf}"),
+        // The lanes by role (ease-pass 07): main the trunk `║`, feature/three
+        // another branch `┊`, then the cursor row's own node.
+        line.starts_with("\u{25b8} \u{2551} \u{250a} \u{25cf}"),
         "{line:?}"
     );
     assert!(!line.contains('\u{258f}'), "no ▏ for the cursor: {line:?}");

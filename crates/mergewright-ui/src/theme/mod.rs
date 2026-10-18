@@ -39,6 +39,8 @@ mod lanes;
 mod overrides;
 
 #[cfg(test)]
+mod colourless_tests;
+#[cfg(test)]
 mod tests;
 
 use mergewright_core::capabilities::{
@@ -311,6 +313,21 @@ impl Theme {
     /// [`ColorDepth::Palette16`] (KNOWN_GAPS.md M0).
     pub fn color_depth(&self) -> ColorDepth {
         self.depth
+    }
+
+    /// This theme with every colour taken out: what `NO_COLOR` resolves to
+    /// (every token and lane [`TokenColor::Default`], depth
+    /// [`ColorDepth::None`]), for `#` (ease-pass G14). Bold, dim and the
+    /// glyphs are the widgets' and stay.
+    #[must_use]
+    pub fn colourless(&self) -> Theme {
+        Theme {
+            kind: self.kind,
+            depth: ColorDepth::None,
+            chrome: [TokenColor::Default; TOKEN_COUNT],
+            lanes: [TokenColor::Default; LANE_COUNT],
+            rgb: self.rgb,
+        }
     }
 
     /// The colour for one chrome token.

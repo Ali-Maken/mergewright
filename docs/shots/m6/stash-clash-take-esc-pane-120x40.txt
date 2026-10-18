@@ -18,8 +18,8 @@
 
 ▸ ◌      Uncommitted changes (1 unmerged)
   ◆      [◆ main] commit over the notes                                                                 GF 3m   f3742ab
-  │ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                 GF 4m   fa9e094
-  ●─╯    add the notes                                                                                  GF 5m   cfa370c
+  ┃ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                 GF 4m   fa9e094
+  ●┄╯    add the notes                                                                                  GF 5m   cfa370c
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
   ◇      Add a readme                                                                                   GF 1y   64ded19

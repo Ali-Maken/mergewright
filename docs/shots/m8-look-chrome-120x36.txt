@@ -3,9 +3,9 @@ m8-polish-and-ship/06 at 120x36: what right looks like — the first row is ` �
  ◆ api  ~/code/api · main                                                           6 commits  2 merged branches folded
 
 ▸   ●    [feature/three] three: in progress                                                             GF 7y   0683985
-  ◆ │    [◆ main] Merge branch 'feature/two'  ▸ 2 commits from feature/two                              GF 7y   5202e1c
-  ◉ │    Merge branch 'feature/one'  ▸ 2 commits from feature/one                                       GF 7y   3a97003
-  ●─╯    Add b.txt                                                                                      GF 7y   de95041
+  ◆ ┃    [◆ main] Merge branch 'feature/two'  ▸ 2 commits from feature/two                              GF 7y   5202e1c
+  ◉ ┃    Merge branch 'feature/one'  ▸ 2 commits from feature/one                                       GF 7y   3a97003
+  ●━╯    Add b.txt                                                                                      GF 7y   de95041
   ●      Add a.txt                                                                                      GF 7y   21b16b9
   ◇      Add a readme                                                                                   GF 7y   daa5167
 

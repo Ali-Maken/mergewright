@@ -43,12 +43,14 @@ use crate::update::edge::context_of;
 /// What a press did, as far as anyone can see. `selected` is the Map's
 /// row: it is drawn as a fill only (ADR-0058 §3), which a text frame cannot
 /// show (rule 5), so it is read from the state (m8/09d Major 3).
+/// `colours_off` the same way: `#` changes colour only (ease-pass 07).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Seen {
     commands: Vec<Command>,
     quit: String,
     frame: String,
     selected: usize,
+    colours_off: bool,
 }
 
 pub(super) fn seen(state: &AppState, press: KeyPress) -> Seen {
@@ -81,6 +83,7 @@ pub(super) fn seen_as(state: &AppState, press: KeyPress, keys: &Arc<Keymap>) -> 
         quit: format!("{:?}", after.quit),
         frame: crate::view::tests::draw(&after, after.size.columns, after.size.rows),
         selected: after.map.selected,
+        colours_off: after.look.colours_off,
     }
 }
 

@@ -69,9 +69,9 @@ What right looks like: first the graph, its bottom row `config: 3 problems · ? 
 "            │ H     Hide / show the stash                                                graph.hide_stash  │            "
 "            │ y     Copy the commit's SHA                                                  graph.copy_sha  │            "
 "            │ J     Undo journal                                                            graph.journal  │            "
+"            │ #     Turn colours off / on (lines keep their shapes)                     graph.colours_off  │            "
 "            │ F2    Status screen                                                            graph.status  │            "
 "            │ F3    Cycle the graph renderer                                               graph.renderer  │            "
-"            │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │            "
 "────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯────────────"
 " ↑↓ move  ⏎ run  esc close                                                                                              "
 

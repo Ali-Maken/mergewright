@@ -72,8 +72,8 @@
  ◆ api  ~/code/api · fix                        6 commits  date order, sorting…
     ◌    Uncommitted changes (1 unstaged)
 ▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
-  ● │    [main] main moves on                                      4m   37926a7
-  ●─╯    add the base                                              5m   ed332bc
+  ● ┃    [main] main moves on                                      4m   37926a7
+  ●━╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇   ╭ Undo “checkout fix”? ──────────────────────────────────────────────────╮

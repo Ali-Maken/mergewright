@@ -13,8 +13,8 @@
  ◆ api  ~/code/api · main                                             6 commits
 ▸ ◌      Uncommitted changes (1 unmerged)
   ◆      [◆ main] commit over the notes                            3m   f3742ab
-  │ ■    [stash@{0}] WIP on main: cfa370c add the notes            4m   fa9e094
-  ●─╯    add the notes                                             5m   cfa370c
+  ┃ ■    [stash@{0}] WIP on main: cfa370c add the notes            4m   fa9e094
+  ●┄╯    add the notes                                             5m   cfa370c
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19

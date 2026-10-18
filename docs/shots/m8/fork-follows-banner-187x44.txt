@@ -5,11 +5,11 @@
 │ pick 86eea6e feature a: part 2                                                                                                                                                          │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
     ●        [feature-c] c1                                                                                                                                                GF 2d   c3bb926
-▸   │ ◆      [HEAD] [feature-b] b1  HEAD · stopped here                                                                                                                    GF 2d   c9b786e
-    │ │ ●    [feature-a] feature a: part 3                                                                                                                                 GF 2d   bb8335d
-    ●─│─╯    feature a: part 2                                                                                                                                             GF 2d   86eea6e
-    ●─╯      feature a: part 1                                                                                                                                             GF 2d   1875dfa
-  ◇─╯        [main] m1                                                                                                                                                     GF 2d   fb4d697
+▸   ┊ ◆      [HEAD] [feature-b] b1  HEAD · stopped here                                                                                                                    GF 2d   c9b786e
+    ┊ ┃ ●    [feature-a] feature a: part 3                                                                                                                                 GF 2d   bb8335d
+    ●┄┃┄╯    feature a: part 2                                                                                                                                             GF 2d   86eea6e
+    ●━╯      feature a: part 1                                                                                                                                             GF 2d   1875dfa
+  ◇┄╯        [main] m1                                                                                                                                                     GF 2d   fb4d697
 
 
 

@@ -2,8 +2,8 @@
             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
 ▸ ◌      Unc│ ›                                                                                            │
     ●    [fe│ IN PROGRESS                                                                                  │y   ea19160
-  ◆ │  ⓘ [HE│▸c     Continue                                                           operation.continue  │y   36c271e
-  ●─╯    add│ s     Skip this commit                                                       operation.skip  │y   982c1d3
+  ◆ ┃  ⓘ [HE│▸c     Continue                                                           operation.continue  │y   36c271e
+  ●━╯    add│ s     Skip this commit                                                       operation.skip  │y   982c1d3
   ●      Cor│ a     Abort                                                                 operation.abort  │y   a82960b
   ●      Add│ M     Launch the mergetool on the first conflicted file                 operation.mergetool  │y   fadcfb3
   ◇      Add│ e     Open the first conflicted file in $EDITOR                              operation.edit  │y   64ded19

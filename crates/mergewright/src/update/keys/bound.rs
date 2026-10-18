@@ -76,6 +76,7 @@ const BOUND_ACTIONS: &[ActionId] = &[
     id("graph.lanes"),        // `is_lane_toggle`
     id("graph.focus"),        // `is_focus_toggle`
     id("graph.copy_sha"),     // `is_copy_key` → `copy_selected_sha`
+    id("graph.colours_off"),  // `is_colours_key` → `AppState::colours_off`
     id("graph.compare"),      // `is_compare_key` → `toggle_compare_selected`
     id("graph.commit"),       // `is_commit_key` → `commit_editor::open`
     id("graph.amend"),        // `is_commit_key`, amending; `amend_at_edit_stop`

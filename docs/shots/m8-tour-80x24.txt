@@ -8,9 +8,9 @@ m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 
 ▸ ◆      ⓘ [◆ main ↑1] Add today's specials                        6y   ecad443
   ●        [origin/main] Name the chef                             6y   9855ec8
   ●        Pie for dessert                                         6y   eb4b686
-  │ ●      [clash] Ice cream for dessert                           6y   ebf3d77
-  │ │ ●    [feature] Add opening hours                             6y   8393dfc
-  ●─┴─╯    Add a side dish                                         6y   4a6c890
+  ┃ ●      [clash] Ice cream for dessert                           6y   ebf3d77
+  ┃ ┊ ●    [feature] Add opening hours                             6y   8393dfc
+  ●┄┴┄╯    Add a side dish                                         6y   4a6c890
   ◇        Start the menu                                          6y   4baa76b
 
 

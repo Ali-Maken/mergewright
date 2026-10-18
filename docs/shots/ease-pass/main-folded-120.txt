@@ -6,7 +6,7 @@ What right looks like: no row of a merged branch; the PR's merge ends `▸ 4 com
 ▸   ◆    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rele…  ▸ 1 commit from sara/fix-toc GF 28h  ea2b27e
     ◉    Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021                              GF 28h  4eb2a56
     ●    Start the wallet release                                                                       GF 28h  68f9980
-  ◇─╯    [main] Add the readme                                                                          GF 28h  2b013b5
+  ◇━╯    [main] Add the readme                                                                          GF 28h  2b013b5
 
 
 

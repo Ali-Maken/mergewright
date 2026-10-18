@@ -65,6 +65,7 @@ finish.edit_outside
 finish.toggle_diff
 graph.amend
 graph.branch
+graph.colours_off
 graph.commit
 graph.compare
 graph.copy_sha

@@ -16,7 +16,7 @@
  ◆ api  ~/code/api · fix                        5 commits  date order, sorting…
     ◌    Uncommitted changes (1 unstaged)
 ▸   ◆    [◆ fix] fix changes line 7                                4m   f2e2ada
-  ●─╯    [main] add f                                              5m   330fea5
+  ●━╯    [main] add f                                              5m   330fea5
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19

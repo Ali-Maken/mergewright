@@ -3,7 +3,7 @@
 ▸   ◆    [◆ wallet-release] Merge branch 'sara/fix-toc' into wallet-rel…  ▸ 2 commits from sara/fix-toc GF now  0000000
     ●    release notes                                                                                  GF 1y   43f9889
     ●    the report                                                                                     GF 1y   55f07e5
-  ●─╯    [main] Correct the note                                                                        GF 7y   a82960b
+  ●━╯    [main] Correct the note                                                                        GF 7y   a82960b
   ●      Add the first note                                                                             GF 7y   fadcfb3
   ◇      Add a readme                                                                                   GF 7y   64ded19
 

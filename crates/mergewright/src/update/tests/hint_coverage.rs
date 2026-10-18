@@ -81,6 +81,10 @@ const NEVER_HINTED: &[(ActionId, &str)] = &[
         ActionId("app.redo"),
         "keymap §2.2: global, and §2.1's Shift pair of the `u undo` the bar does draw",
     ),
+    (
+        ActionId("graph.colours_off"),
+        "keymap `#` (ADR-0063): a look toggle, not a next step; listed in `?` and the palette",
+    ),
 ];
 
 /// **The converse direction** (m5/33, review M4).

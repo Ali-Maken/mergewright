@@ -55,7 +55,7 @@
  ◆ api  ~/code/api · feature                                          8 commits
     ◆    [◆ feature] finish the feature                            now  8d6cd28
     ●    start the feature                                         2m   52f3b96
-▸ ● │    [main] main moves again                                   3m   45fa51d
+▸ ● ┊    [main] main moves again                                   3m   45fa51d
  Checkout main
  Cherry-pick 45fa51d (o)
  Copy SHA (y)

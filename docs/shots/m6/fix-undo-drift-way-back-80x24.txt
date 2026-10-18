@@ -26,8 +26,8 @@
  ◆ api  ~/code/api · fix                                              6 commits
     ◌    Uncommitted changes (1 unstaged)
 ▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
-  ● │    [main] main moves on                                      4m   37926a7
-  ●─╯    add the base                                              5m   ed332bc
+  ● ┃    [main] main moves on                                      4m   37926a7
+  ●━╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇   ╭ Undo “checkout fix”? ──────────────────────────────────────────────────╮
@@ -51,8 +51,8 @@
 === frame 2: `y`, the landing ===
  ◆ api  ~/code/api · main                                             6 commits
     ●    [fix] fix the bug                                         3m   fbb2394
-▸ ◆ │    [◆ main] main moves on                                    4m   37926a7
-  ●─╯    add the base                                              5m   ed332bc
+▸ ◆ ┊    [◆ main] main moves on                                    4m   37926a7
+  ●┄╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19
@@ -78,8 +78,8 @@
  ◆ api  ~/code/api · fix                                              6 commits
     ◌    Uncommitted changes (1 unstaged)
 ▸   ◆    [◆ fix] fix the bug                                       3m   fbb2394
-  ● │    [main] main moves on                                      4m   37926a7
-  ●─╯    add the base                                              5m   ed332bc
+  ● ┃    [main] main moves on                                      4m   37926a7
+  ●━╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19
@@ -104,8 +104,8 @@
  ◆ api  ~/code/api · main                                             7 commits
 ▸   ●    [fix2] fix it again                                       2m   84d95f8
     ●    [fix] fix the bug                                         3m   fbb2394
-  ◆ │    [◆ main] main moves on                                    4m   37926a7
-  ●─╯    add the base                                              5m   ed332bc
+  ◆ ┃    [◆ main] main moves on                                    4m   37926a7
+  ●━╯    add the base                                              5m   ed332bc
   ●      Correct the note                                          1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19

@@ -82,6 +82,11 @@ pub(super) fn is_tier_cycle(key: KeyPress) -> bool {
     key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
 }
 
+/// `#`: colours off, and on again (ease-pass G14, Q3 a).
+pub(super) fn is_colours_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('#') && !key.modifiers.control && !key.modifiers.alt
+}
+
 /// `y`: copy the selected commit's full SHA (vim's yank; ADR-0023).
 pub(super) fn is_copy_key(key: KeyPress) -> bool {
     key.code == KeyCode::Char('y') && !key.modifiers.control && !key.modifiers.alt

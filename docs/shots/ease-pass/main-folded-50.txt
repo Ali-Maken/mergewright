@@ -6,7 +6,7 @@ What right looks like: the PR's merge ends `▸ 4 commits`, two cells after its 
 ▸   ◆    [◆ wallet-r… M…  ▸ 1 commit 28h  ea2b27e
     ◉    Merged PR 160…  ▸ 4 commits 28h  4eb2a56
     ●    Start the wallet release    28h  68f9980
-  ◇─╯    [main] Add the readme       28h  2b013b5
+  ◇━╯    [main] Add the readme       28h  2b013b5
 
 
 

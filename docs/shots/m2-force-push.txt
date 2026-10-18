@@ -18,9 +18,9 @@
 #   the diff never arrives. Only the header line is what this shot is about.
 #
 "                                                                       3 commits  2 commits to push "
-"  ◉─╮    Merge branch 'feature'                                                     TE 57y  0303030 "
-"▸ ◆ │  ⚠ [◆ main ↑2 ↓2] Ship the release notes                                      TE 57y  0202020 "
-"  ◇─╯    Start the feature branch                                                   TE 57y  0101010 "
+"  ◉┄╮    Merge branch 'feature'                                                     TE 57y  0303030 "
+"▸ ◆ ┊  ⚠ [◆ main ↑2 ↓2] Ship the release notes                                      TE 57y  0202020 "
+"  ◇┄╯    Start the feature branch                                                   TE 57y  0101010 "
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
