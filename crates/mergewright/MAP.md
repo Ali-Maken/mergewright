@@ -192,6 +192,9 @@ Which refs sit on which commit and how far each branch is from its upstream: eve
 - `RefLabel` (enum) — one ref before sanitising: detached `HEAD`, branch, remote, tag, stash entry.
 - `badges` (fn) — the pure half of `read`: refs, `HEAD`, upstreams, stashes → `RefBadges`.
 - `Upstream` (enum) — where a local branch stands against its upstream.
+- `AheadOfUpstream` (enum) — `NotPushed` or `By(n)`: what a local branch has to push.
+## refs::ahead
+What a local branch has to push, read off its label: `RefLabel::ahead_of_upstream` (no walk, no new read).
 ## rename
 Where the app meets the one-time move to the new on-disk names: every repository is settled the moment it opens.
 - `open_settled` (fn) — opens a path with its names settled first.
