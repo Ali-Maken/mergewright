@@ -1,7 +1,7 @@
 # m2-explain-panel.txt: TestBackend capture (not a pty), 160x24 — wide
 # enough for the `Right` breakpoint, so the pane's full height shows the
 # sketch and the footer without scrolling. Fixture:
-# capture_m2_explain_panel in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_explain_panel in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). Three synthetic commits: a root (0101010), its
 # real branch tip (0202020), and a merge (0303030) whose first parent is
 # the root, not the tip — classify_commit's Foxtrot shape. `open_explain`
@@ -16,7 +16,7 @@
 # - `view::entries`'s Explain fade (every row outside the explanation's
 #   highlight dims) is a colour-only effect — this plain-text capture
 #   cannot show it; `explain_open_fades_rows_outside_its_highlight`
-#   (crates/graft/src/view/tests.rs) is what proves that behaviour.
+#   (crates/mergewright/src/view/tests.rs) is what proves that behaviour.
 #
 "                                                                                  3 commits  COMMIT 0303030                                                     "
 "▸ ◉─╮  ⚠ Merge branch 'feature'                                                57y  0303030  Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y         "

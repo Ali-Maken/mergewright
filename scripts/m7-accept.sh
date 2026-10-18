@@ -53,7 +53,7 @@ out "1 nextest: ${line:-no summary (build failed?)} · rc=$rc · $ACCEPT/nextest
 # ── 2. pty walks, compare mode ──────────────────────────────────────────────
 cargo build -q -p mergewright --example m3_walk --example m4_walk --example m5_walk --bin mwr \
   > "$ACCEPT/pty-build.txt" 2>&1 \
-  && cargo build -q -p graft-fixtures --bin graft-fixtures >> "$ACCEPT/pty-build.txt" 2>&1
+  && cargo build -q -p mergewright-fixtures --bin mergewright-fixtures >> "$ACCEPT/pty-build.txt" 2>&1
 if [ $? -ne 0 ]; then
   out "2 pty: build failed · $ACCEPT/pty-build.txt"
   failed=1
@@ -151,7 +151,7 @@ under=0
 over=0
 other=0
 for id in $ids; do
-  test=$(ID="$id" perl -0ne 'print $1 if /\(\s*"\Q$ENV{ID}\E",\s*"[^"]+",\s*"([^"]+)"/' crates/graft/tests/it/m7_walk.rs)
+  test=$(ID="$id" perl -0ne 'print $1 if /\(\s*"\Q$ENV{ID}\E",\s*"[^"]+",\s*"([^"]+)"/' crates/mergewright/tests/it/m7_walk.rs)
   [ -n "$test" ] || { other=$((other + 1)); continue; }
   hits=$(grep -E "(PASS|FAIL) .*m7_walk::.*::$test$|(PASS|FAIL) .*m7_walk::$test$" "$ACCEPT/nextest.txt" | head -1)
   case "$hits" in

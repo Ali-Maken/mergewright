@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_merge_preview in
-# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# crates/mergewright/tests/it/merge_preview/shots.rs, real git.
 # Judge by eye: a merge with no clash: `You decide nothing: no file clashes`; `After y the merge is committed.`
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           8 commits

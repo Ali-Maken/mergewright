@@ -1,5 +1,5 @@
 # m8/reword-preview-120x40.txt: drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/m7_walk/amend_into.rs,
+# (crates/mergewright/tests/it/m7_walk/amend_into.rs,
 # reword_head_with_a_line_built_on_it, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #

@@ -1,4 +1,4 @@
-# Graft: Design — Terminal-capability detection
+# Mergewright: Design — Terminal-capability detection
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Graph layout algorithm](03-graph-layout-algorithm.md) · Next: [Visualization](05-visualization.md)
@@ -50,7 +50,7 @@ never stalls launch.
 ### 4.2 Tier decision
 
 The order is **Kitty → Unicode → iTerm2 → Sixel → ASCII** (ADR-0016). Unicode
-is not a fallback: it is what Graft picks for every terminal that is not
+is not a fallback: it is what Mergewright picks for every terminal that is not
 running the Kitty graphics protocol, because the terminals the graph is read
 in most days — Zed's and VS Code's — have no image protocol at all. Kitty is
 the one protocol that outranks it, because it is the one verified end to end
@@ -90,7 +90,7 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
 
 - Detected via `$TMUX`.
 - Passthrough for the Kitty protocol needs tmux ≥ 3.3 with
-  `allow-passthrough` set, and depends on the *outer* terminal too. Graft
+  `allow-passthrough` set, and depends on the *outer* terminal too. Mergewright
   checks the tmux version and then re-sends the capability probe wrapped in
   tmux's passthrough sequence (`\ePtmux;...\e\\`), applying the same
   per-query fallback as §4.1.
@@ -100,7 +100,7 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
   hint alone is not enough: the tier is pixel only if the passthrough re-probe
   answered (ADR-0014).
 - If the wrapped probe fails, times out, or the tmux version is too old,
-  Graft settles on the Unicode tier — deliberately, not by hoping passthrough
+  Mergewright settles on the Unicode tier — deliberately, not by hoping passthrough
   happens to work. That is the ordinary tier for a terminal without the Kitty
   protocol (§4.2, ADR-0016), not a consolation for a failed probe. It is also
   what PROMPT.md §7.1's manual-checklist pass condition ("a correct pixel
@@ -119,7 +119,7 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
   tmux re-probe is a second round and gets a full budget of its own, so a slow
   first round cannot starve it into misreporting passthrough. Two silent
   probe rounds cost 400 ms locally, 1 s over SSH, and only inside tmux.
-- **Inside tmux, `tmux -V` is the third bound**, and the largest. Graft runs
+- **Inside tmux, `tmux -V` is the third bound**, and the largest. Mergewright runs
   it when `$TMUX` is set and tmux has not published its version in
   `$TERM_PROGRAM_VERSION`, and waits at most 200 ms — the same scale as a
   probe round, because tmux is a local binary printing one short line, and a
@@ -135,7 +135,7 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
   font-size change or a window drag to a different-DPI display changes
   pixels-per-cell without changing the tier.
 - **`OSC 11`** is re-queried on focus regain (piggybacking on the existing
-  refresh-on-focus behaviour), so a terminal theme switched while Graft was
+  refresh-on-focus behaviour), so a terminal theme switched while Mergewright was
   in the background is picked up without a restart.
 
 ### 4.6 `NO_COLOR` and colour-depth fallback
@@ -147,7 +147,7 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
   changing the tier: `NO_COLOR` is about colour, not about protocol
   capability, so a pixel-tier terminal keeps drawing real graphics, just
   without colour.
-- When truecolor isn't available but colour is (`NO_COLOR` unset), Graft
+- When truecolor isn't available but colour is (`NO_COLOR` unset), Mergewright
   checks terminfo/`$TERM` capabilities for 256- or 16-colour support and maps
   each lane's truecolor hue to the nearest palette entry using a perceptual
   distance (not naive per-channel rounding), so adjacent lanes stay
@@ -164,6 +164,6 @@ The loop never writes ahead of the terminal.
 - A fence unanswered after 500 ms draws anyway; three in a row stop fencing for the run, and frames are then capped
   at one per 16 ms. A terminal that did not answer the startup DSR (§4.1) never fences.
 - Wheel events applied in one turn sum into one scroll.
-- Inside tmux, tmux answers the DSR itself: the fence paces Graft against tmux, which paces its own output.
+- Inside tmux, tmux answers the DSR itself: the fence paces Mergewright against tmux, which paces its own output.
 
 ---

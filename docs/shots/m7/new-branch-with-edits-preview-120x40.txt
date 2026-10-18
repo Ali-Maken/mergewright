@@ -1,5 +1,5 @@
 # m7/new-branch-with-edits-preview-120x40.txt: drawn by `view::view` from a
-# real AppState (crates/graft/tests/it/m7_walk/switch.rs,
+# real AppState (crates/mergewright/tests/it/m7_walk/switch.rs,
 # new_branch_at_head_with_edits_previews_edits_stay, asserted). Not a pty
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).

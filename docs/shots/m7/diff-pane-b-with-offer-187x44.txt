@@ -1,5 +1,5 @@
 # m7/diff-pane-b-with-offer-187x44.txt: 187x44, drawn by `view::view` from a
-# real AppState (crates/graft/tests/it/offer_and_blame.rs,
+# real AppState (crates/mergewright/tests/it/offer_and_blame.rs,
 # b_in_the_diff_pane_blames_while_the_offer_is_up, asserted). Not a pty
 # capture: no colour (CLAUDE.md rule 5, colour unverified).
 #

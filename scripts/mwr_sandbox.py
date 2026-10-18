@@ -42,7 +42,7 @@ def check_sandboxed(env):
 def scratch_root(scenario):
     """The fixed folder a walk's fixtures are copied into (m8/22 item 9).
 
-    Passed as MWR_SCRATCH_ROOT (graft-fixtures `FIXED_ROOT_VAR`): the
+    Passed as MWR_SCRATCH_ROOT (mergewright-fixtures `FIXED_ROOT_VAR`): the
     capture shows the repository path, and `/tmp/graft-capture/<scenario>` is
     the same on every macOS machine, unlike a per-user $TMPDIR.
     """

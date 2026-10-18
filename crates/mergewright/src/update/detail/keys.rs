@@ -1,0 +1,429 @@
+//! The pane's own keys: divider resize, focus cycling, the files/diff
+//! region's own bindings, and the view-option keys both regions share.
+
+use mergewright_core::event::{KeyCode, KeyPress, Modifiers};
+use mergewright_core::job::JobId;
+use mergewright_ui::detail::{DetailFocus, DiffMode, FileRowKind};
+use mergewright_ui::keymap::{ActionId, KeyChord, Keymap};
+
+use crate::update::events::Command;
+use crate::update::state::AppState;
+
+use super::control::{diff_content_len_of, effective_layout};
+use super::state::{DetailSpec, DetailState, Loading};
+
+/// `PageUp`/`PageDown` step, in rows, for the files list and the diff body.
+const PAGE_STEP: isize = 10;
+/// `]`'s and `[`'s ceiling on context lines: past this, more context stops
+/// changing what most diffs show.
+const MAX_CONTEXT: u8 = 20;
+
+/// `Esc`'s two priority arms, answered before anything else `Esc` does:
+/// closing the Explain panel first (`m2-details-and-diffs/17`, the pane
+/// stays, on the same commit), then clearing a pinned compare base
+/// (`m2-details-and-diffs/11`, closing the pane in the same press when it
+/// is shown — ADR-0023's own `Escape if detail.shown` arm, further down
+/// [`detail_key`]). `true` when either one answered the key.
+fn escape_priority(next: &mut AppState, key: KeyPress) -> bool {
+    if key.code != KeyCode::Escape {
+        return false;
+    }
+    if next.detail.explain.is_some() {
+        super::control::close_explain(next);
+        return true;
+    }
+    if next.compare_base.take().is_some() {
+        if next.detail.shown {
+            next.detail.close();
+        }
+        return true;
+    }
+    false
+}
+
+/// **Has `⏎` anything left to open?** The one answer two places read: the
+/// key handler below, which consumes `Enter` and does nothing when it has
+/// not, and `view::rows::hint_context`, which stops the bar drawing
+/// `⏎ open` in the same state (`mergewright_ui::graph_screen::HintContext::PaneFocused`).
+///
+/// They were two facts before, and they disagreed: the bar said `⏎ open` on
+/// the Detail tab at 80 columns while the key did nothing (m5 review Q2,
+/// m5/31). One function is why they cannot disagree again.
+///
+/// `false` only with the pane open *and* its diff focused — that is where
+/// the opening has already happened. From the graph `⏎` opens the pane; with
+/// the files list focused it opens the diff.
+pub(crate) fn enter_opens(detail: &DetailState) -> bool {
+    !(detail.shown && detail.focus == DetailFocus::Diff)
+}
+
+/// **Does `space` fold something in the files list?** The files list has
+/// focus and its cursor is on a directory row — the one row [`files_key`]'s
+/// `space` acts on (`FileListView::toggle_dir` leaves every other row
+/// alone). Read by `view::rows::hint_context` for the bar's `space fold`
+/// (`HintContext::PaneFocused`'s `folds`, m7-power-tools/20h).
+pub(crate) fn space_folds(detail: &DetailState) -> bool {
+    detail.shown
+        && detail.focus == DetailFocus::Files
+        && match &detail.files {
+            Loading::Ready(files) => files
+                .rows
+                .get(files.cursor)
+                .is_some_and(|row| matches!(row.kind, FileRowKind::Dir { .. })),
+            Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => false,
+        }
+}
+
+/// The pane's two blame rungs (m7-power-tools/20). `Esc` with a trail
+/// hidden (`⏎` landed on the graph and this pane) goes back to it before it
+/// closes the pane — graph or pane focused, once the graph's own open things
+/// are closed (`place::esc_goes_back` decides; keymap §2.1, 20i). `B`
+/// blames at the line he is on, commit-graph offer or not: the offer's `B`
+/// lives only on the graph (keymap §2.5; m7-power-tools/36).
+fn place_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    match key.code {
+        KeyCode::Escape => crate::update::place::show_again(next, commands),
+        KeyCode::Char('B') if !key.modifiers.control && !key.modifiers.alt => {
+            crate::update::place::b_key(next, commands)
+        }
+        // `F` on a file — its row or any line of its diff — is its history
+        // (m7-power-tools/21); anywhere else it falls through to Focus mode
+        // (`update::keys::graph_key`), unchanged.
+        KeyCode::Char('F') if !key.modifiers.control && !key.modifiers.alt => {
+            crate::update::place::f_key(next, commands)
+        }
+        _ => false,
+    }
+}
+
+/// The pane's keys, answered before the graph's. `true` when the key was the pane's.
+pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let plain = key.modifiers == Modifiers::NONE;
+    // `<`/`>` (ADR-0028): the focused divider, whichever region has focus,
+    // whenever the pane is shown — the pane being shown is what makes the
+    // divider exist. A no-op (nothing changes, no command) in the `Tab`
+    // layout, hidden, or against a bound: `resize_pane` says so itself.
+    if plain && next.detail.shown && matches!(key.code, KeyCode::Char('<' | '>')) {
+        let grow = key.code == KeyCode::Char('>');
+        let size = (next.size.columns, next.size.rows);
+        let layout = effective_layout(next.detail.focus, &next.detail.pane_size, size);
+        if next.detail.resize_pane(&layout, grow, size) {
+            commands.push(Command::SaveLayout(next.detail.pane_size));
+        }
+        return true;
+    }
+    if escape_priority(next, key) || place_key(next, commands, key) {
+        return true;
+    }
+    if changes_pane_write_key(next, commands, key, plain) {
+        return true;
+    }
+    // The diff region's line cursor scrolls only as far as it must to stay in
+    // view, so it needs the region's height; read it before `next` is split
+    // up below.
+    let body_rows = super::super::geometry::diff_body_rows(next);
+    let trail_hidden = next.trail.hidden();
+    let AppState {
+        detail, local_jobs, ..
+    } = next;
+    let ids = &mut || local_jobs.next_id();
+    match key.code {
+        KeyCode::Enter if plain && !enter_opens(detail) => {
+            // Diff already has focus: Enter has nothing further to open.
+            // The bar does not draw `⏎ open` here either — same function,
+            // read by both (`view::rows::hint_context`, m5/31).
+            true
+        }
+        KeyCode::Enter if plain && detail.shown && detail.focus == DetailFocus::Files => {
+            detail.focus = DetailFocus::Diff;
+            true
+        }
+        KeyCode::Enter if plain => {
+            let Some(spec) = next.selected_spec() else {
+                return false;
+            };
+            let AppState {
+                detail, local_jobs, ..
+            } = next;
+            commands.extend(detail.open(spec, &mut || local_jobs.next_id()));
+            true
+        }
+        // Not while a trail is hidden: this pane is where `⏎` landed, and
+        // `Esc` goes back to blame first (`place_key` above), or closes the
+        // graph's search or Focus first (`update::keys::escape_key`). It
+        // closes again once the trail has ended (keymap §2.1, 20i).
+        KeyCode::Escape if detail.shown && !trail_hidden => {
+            detail.close();
+            true
+        }
+        KeyCode::Tab if detail.shown => {
+            detail.cycle_focus(plain);
+            true
+        }
+        KeyCode::BackTab if detail.shown => {
+            detail.cycle_focus(false);
+            true
+        }
+        _ if detail.shown && detail.focus == DetailFocus::Files => {
+            files_key(detail, commands, ids, key, plain)
+        }
+        _ if detail.shown && detail.focus == DetailFocus::Diff => {
+            diff_key(detail, commands, ids, key, plain, body_rows)
+        }
+        _ => false,
+    }
+}
+
+/// Write keys on the changes pane (m3-working-tree-undo-and-stash/04), tried
+/// before the ordinary region keys in [`files_key`]/[`diff_key`].
+///
+/// Which region has focus decides what the key acts on, and nothing else
+/// does: in the file list `Space`/`s`/`d` mean the whole file (or every file
+/// of a section heading), in the diff region they mean the hunk or line under
+/// the line cursor. A write that cannot apply (one already in flight, no file
+/// row under the cursor) falls through to `Space`'s other meaning, folding a
+/// directory. `d` and `Ctrl+A` have no other meaning on this pane.
+/// `⏎` on a `CONFLICTS` row opens the resolver (`docs/design/02-keymap.md`
+/// §2.4, m6-conflicts/04), and answers `false` on any other row — where
+/// `⏎` keeps all three meanings it already has: open the pane, focus the
+/// diff, or nothing once the diff has focus.
+fn open_the_resolver(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
+    let Some(path) = super::super::banner::cursor_conflict(next) else {
+        return false;
+    };
+    let mut local_jobs = next.local_jobs;
+    let opened = super::super::resolver::open_resolver(
+        next,
+        commands,
+        path,
+        super::super::resolver::OpenedFrom::Pane,
+        &mut || local_jobs.next_id(),
+    );
+    next.local_jobs = local_jobs;
+    opened
+}
+
+fn changes_pane_write_key(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    key: KeyPress,
+    plain: bool,
+) -> bool {
+    if !(next.detail.shown && next.detail.spec == Some(DetailSpec::WorkingTree)) {
+        return false;
+    }
+    let in_diff = match next.detail.focus {
+        DetailFocus::Files => false,
+        DetailFocus::Diff => true,
+        DetailFocus::Graph => return false,
+    };
+    if plain && key.code == KeyCode::Enter && open_the_resolver(next, commands) {
+        return true;
+    }
+    // A conflicted row answers `M` and `e` itself: the mergetool, and the
+    // editor at the file's first `<<<<<<< ` rather than at the diff cursor.
+    // The pane's diff for an unmerged file is the file as it stands against
+    // HEAD (`jobs::detail::diff_spec_for`, `DiffSpec::WorkingTreeVsHead`):
+    // it shows the markers, but the cursor may rest on any changed line,
+    // and the first marker is where resolving starts
+    // (m5-history-and-ghost-preview/09). Both act on the row under the
+    // cursor, not on the banner's first conflict.
+    if plain && matches!(key.code, KeyCode::Char('M' | 'e')) {
+        if let Some(path) = super::super::banner::cursor_conflict(next) {
+            return match key.code {
+                KeyCode::Char('M') => {
+                    super::super::banner::open_mergetool(next, commands, Some(&path))
+                }
+                _ => super::super::banner::edit_conflict(next, commands, Some(&path)),
+            };
+        }
+        // `M` has no other meaning on this pane; `e` does, below.
+        if key.code == KeyCode::Char('M') {
+            return false;
+        }
+    }
+    // `e` is not a write, but it reads the same cursor: the file the file
+    // list names, at the line the diff cursor is on
+    // (m3-working-tree-undo-and-stash/05).
+    if plain && key.code == KeyCode::Char('e') {
+        if let Some((path, line)) = super::super::operate::edit_target(next) {
+            commands.push(Command::OpenExternalEditor { path, line });
+            return true;
+        }
+        return false;
+    }
+    let mut local_jobs = next.local_jobs;
+    let mut ids = || local_jobs.next_id();
+    let handled = if plain && matches!(key.code, KeyCode::Char(' ' | 's')) {
+        if in_diff {
+            super::super::operate::stage_at_diff_cursor(next, commands, &mut ids)
+        } else {
+            super::super::operate::stage_selected(next, commands, &mut ids)
+        }
+    } else if plain && key.code == KeyCode::Char('d') {
+        if in_diff {
+            super::super::operate::request_discard_at_diff_cursor(next)
+        } else {
+            super::super::operate::request_discard(next)
+        }
+    } else if key.code == KeyCode::Char('a') && key.modifiers == Modifiers::CONTROL {
+        // `Ctrl+A` has no other meaning here: staging nothing says why.
+        if let Err(why) = super::super::operate::stage_all(next, commands, &mut ids) {
+            next.status = why.status();
+        }
+        true
+    } else {
+        false
+    };
+    next.local_jobs = local_jobs;
+    handled
+}
+
+/// `key` is one of `action`'s chords as shipped. The edge hands a handler
+/// shipped chords only (`update/edge.rs`), so this is the action itself,
+/// whichever of its chords he pressed and whatever he moved it to.
+fn shipped_as(key: KeyPress, action: &'static str) -> bool {
+    KeyChord::from_press(&key)
+        .is_some_and(|chord| Keymap::shipped().chords(&ActionId(action)).contains(&chord))
+}
+
+/// Keys active with the files list focused: cursor movement, paging, home/end
+/// and `Space` to fold or unfold a directory row.
+fn files_key(
+    detail: &mut DetailState,
+    commands: &mut Vec<Command>,
+    ids: &mut impl FnMut() -> JobId,
+    key: KeyPress,
+    plain: bool,
+) -> bool {
+    let code = key.code;
+    match code {
+        KeyCode::Char('j') | KeyCode::Down => {
+            commands.extend(detail.move_files_cursor(1, ids));
+            true
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            commands.extend(detail.move_files_cursor(-1, ids));
+            true
+        }
+        KeyCode::PageDown => {
+            commands.extend(detail.move_files_cursor(PAGE_STEP, ids));
+            true
+        }
+        KeyCode::PageUp => {
+            commands.extend(detail.move_files_cursor(-PAGE_STEP, ids));
+            true
+        }
+        // Every chord of `app.top`/`app.bottom`, not `g`/`G` alone: `Home`
+        // and `End` went past the pane to the graph (m8/09g C).
+        _ if shipped_as(key, "app.top") => {
+            commands.extend(detail.move_files_cursor(isize::MIN, ids));
+            true
+        }
+        _ if shipped_as(key, "app.bottom") => {
+            commands.extend(detail.move_files_cursor(isize::MAX, ids));
+            true
+        }
+        KeyCode::Char(' ') if plain => {
+            if let Loading::Ready(files) = &mut detail.files {
+                let cursor = files.cursor;
+                std::sync::Arc::make_mut(files).toggle_dir(cursor);
+            }
+            true
+        }
+        _ => diff_option_key(detail, commands, ids, code, plain),
+    }
+}
+
+/// Keys active with the diff body focused: the line cursor, plus the same
+/// view-option keys `files_key` falls back to (both panes share them).
+fn diff_key(
+    detail: &mut DetailState,
+    commands: &mut Vec<Command>,
+    ids: &mut impl FnMut() -> JobId,
+    key: KeyPress,
+    plain: bool,
+    body_rows: usize,
+) -> bool {
+    let code = key.code;
+    let delta = match code {
+        KeyCode::Char('j') | KeyCode::Down => Some(1),
+        KeyCode::Char('k') | KeyCode::Up => Some(-1),
+        KeyCode::PageDown => Some(PAGE_STEP),
+        KeyCode::PageUp => Some(-PAGE_STEP),
+        // Every chord of `app.top`/`app.bottom`, not `g`/`G` alone: `Home`
+        // and `End` went past the pane to the graph (m8/09h R5).
+        _ if shipped_as(key, "app.top") => Some(isize::MIN),
+        _ if shipped_as(key, "app.bottom") => Some(isize::MAX),
+        _ => None,
+    };
+    if let Some(delta) = delta {
+        let len = diff_content_len_of(detail);
+        // The cursor leads and the view follows, in every diff
+        // (m7-power-tools/20b): on the changes pane it is what `Space` and
+        // `d` act on, in a commit's diff what `B` blames. One meaning for
+        // `j`/`k` in a diff, whichever pane (UX §3.6).
+        detail.move_body_cursor(delta, len, body_rows);
+        return true;
+    }
+    diff_option_key(detail, commands, ids, code, plain)
+}
+
+/// View-option keys shared by both the files and diff panes (anywhere the
+/// pane is shown and not focused on the graph): mode, whitespace, context and
+/// the full-file load.
+fn diff_option_key(
+    detail: &mut DetailState,
+    commands: &mut Vec<Command>,
+    ids: &mut impl FnMut() -> JobId,
+    code: KeyCode,
+    plain: bool,
+) -> bool {
+    if !plain {
+        return false;
+    }
+    match code {
+        // `space` belongs to the focused pane at every width: claimed here
+        // with no effect so it never falls through to the graph's merge fold,
+        // on a screen that may not even be drawn (m7-power-tools/20l,
+        // keymap §2.2). `files_key` claims it earlier for its own fold.
+        KeyCode::Char(' ') => true,
+        KeyCode::Char('v') => {
+            detail.mode = match detail.mode {
+                DiffMode::Unified => DiffMode::SideBySide,
+                DiffMode::SideBySide => DiffMode::Unified,
+            };
+            true
+        }
+        KeyCode::Char('w') => {
+            let mut options = detail.options;
+            options.ignore_whitespace = !options.ignore_whitespace;
+            commands.extend(detail.set_options(options, ids));
+            true
+        }
+        // `word_tint` has no place in `mergewright_git::diff::DiffOptions` (a
+        // git-query option, not a display one) — `W` flips it directly and
+        // re-renders from the diff already in hand, no re-fetch.
+        KeyCode::Char('W') => {
+            detail.word_tint = !detail.word_tint;
+            true
+        }
+        KeyCode::Char('[') => {
+            let mut options = detail.options;
+            options.context = options.context.saturating_sub(1);
+            commands.extend(detail.set_options(options, ids));
+            true
+        }
+        KeyCode::Char(']') => {
+            let mut options = detail.options;
+            options.context = options.context.saturating_add(1).min(MAX_CONTEXT);
+            commands.extend(detail.set_options(options, ids));
+            true
+        }
+        KeyCode::Char('L') => {
+            commands.extend(detail.load_all(ids));
+            true
+        }
+        _ => false,
+    }
+}

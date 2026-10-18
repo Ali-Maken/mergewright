@@ -1,5 +1,5 @@
 # m2-map-view.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_map_view in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_map_view in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). Three synthetic branches: main (current, tip in
 # the
 # newest bucket), feature/auth (merged into main's row, elbow at bucket 3),

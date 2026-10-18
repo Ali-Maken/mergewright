@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
-# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# crates/mergewright/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: `c`, `fix toc`, then `Amend the last commit` from `⌃P`: the header reads `amending 0000000 start` in place of `committing to main` (the id zeroed: the run made it); no push words; the line above the files reads `3 files go in, +4 −0, into the last commit. 1 stays out.`; message and files as they were.
 === 120x40 ===
  ◆ api  ~/code/api  amending 0000000 start

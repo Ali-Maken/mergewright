@@ -1,4 +1,4 @@
-ease-pass 06b box 9, 120x36, the main screen scrolled so `feature/ledger`'s lane passes through the window with its commit above it and its fork point below; `wallet_release_wide` (crates/graft/tests/it/main_header.rs) drawn by `view::view` from a real AppState. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+ease-pass 06b box 9, 120x36, the main screen scrolled so `feature/ledger`'s lane passes through the window with its commit above it and its fork point below; `wallet_release_wide` (crates/mergewright/tests/it/main_header.rs) drawn by `view::view` from a real AppState. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
 What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branches folded` — two columns open in view, only `wallet-release`'s holds a commit, so the ledger's lane is not drawn; both merges in view are folded. `wallet-release` appears once on the top line, no `on`, no `+N lanes`.
 
  ◆ api  ~/code/api · wallet-release                          47 commits  lanes drawn: 1 of 2 · 2 merged branches folded

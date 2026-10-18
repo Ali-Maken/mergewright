@@ -2,8 +2,8 @@
 # from a real AppState — a real repository (`main` three commits, `feature`
 # forked off the first with two of its own, `feature` checked out), opened
 # over the real job pool, cursor moved to `main`'s row and `r` pressed
-# through `update`, then the real `graft_ops::preview::plan` run
-# (crates/graft/tests/it/preview.rs, capture_preview_for_docs_shots,
+# through `update`, then the real `mergewright_ops::preview::plan` run
+# (crates/mergewright/tests/it/preview.rs, capture_preview_for_docs_shots,
 # asserted). Not a pty capture: the terminal is ratatui's TestBackend, so
 # this is a character grid with no colour attributes in it — CLAUDE.md rule
 # 5, colour ships unverified. The scratch repository's temporary path is

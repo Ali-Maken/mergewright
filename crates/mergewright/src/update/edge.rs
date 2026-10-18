@@ -1,0 +1,109 @@
+//! The edge: where a pressed key meets his `[keys]` remaps (ADR-0055 §3–4).
+//!
+//! One call, ahead of every dispatcher: a key pressed into a text field goes
+//! on as typed; otherwise it is translated in the context the claim chain
+//! would hand it to — a moved action's new chord becomes its default chord,
+//! a default whose action moved away becomes a key nobody answers — and the
+//! dispatchers below only ever see default chords. They are not edited and
+//! do not know remapping exists.
+
+use mergewright_core::event::KeyPress;
+use mergewright_ui::detail::DetailFocus;
+use mergewright_ui::keymap::{ContextId, KeyChord, Translated};
+
+use super::detail::DetailSpec;
+use super::{AppState, Command};
+
+/// A key, from the terminal to the dispatchers (`core_event`'s `Key` arm).
+pub(super) fn key(next: &mut AppState, commands: &mut Vec<Command>, pressed: KeyPress) {
+    // Typed text is never remapped (§2.1): every field `text_field_open`
+    // names takes the press as it came.
+    if next.text_field_open() {
+        super::dispatch_key(next, commands, pressed);
+        return;
+    }
+    let Some(chord) = KeyChord::from_press(&pressed) else {
+        // Command held: no chord can name it, so no remap can move it.
+        super::dispatch_key(next, commands, pressed);
+        return;
+    };
+    let context = context_of(next);
+    // `tour.leave` moved off `Esc` by his `[keys]` (m8/19b): pressed on the
+    // graph with nothing over it, and no graph row taking the chord, it
+    // leaves the tour. `Esc` itself goes down the graph's ladder, which
+    // leaves last (`keys::escape::escape_key`).
+    if context == ContextId::Graph
+        && chord != KeyChord::plain(mergewright_core::event::KeyCode::Escape)
+        && super::tour::moved_leave_key(next, chord)
+    {
+        return;
+    }
+    match next.keymap.translate(context, chord) {
+        Translated::Pass => super::dispatch_key(next, commands, pressed),
+        Translated::Default(default) => {
+            super::dispatch(next, commands, default.to_press(), pressed);
+        }
+        Translated::Unbound => unanswered(next, pressed, context),
+    }
+}
+
+/// What a key no dispatcher answers does (a default whose action was moved):
+/// whatever happens to *any* key before it is answered — an unseen failure
+/// dismissed, or a `Done` acknowledged — a badge in the air dropped, and the
+/// `.` menu closed, which every key it does not claim does
+/// (`context_menu_key`). Nothing else, and no status.
+fn unanswered(next: &mut AppState, pressed: KeyPress, context: ContextId) {
+    if super::keys::before_any_key(next, &pressed) {
+        return;
+    }
+    next.drag = None;
+    if context == ContextId::Menu {
+        next.context_menu = None;
+    }
+}
+
+/// The context the claim chain (`core_event`, then `keys::key_event`) would
+/// hand a key to, in the order it claims keys.
+///
+/// A text field over a place is that place: the edge passes the field's keys
+/// before this matters. `Palette` while the palette is up (a text field:
+/// translate passes every key); never `Tour` (no tour yet); the name
+/// prompt has no context — it is a text field.
+#[must_use]
+pub(crate) fn context_of(state: &AppState) -> ContextId {
+    use ContextId as C;
+    let detail_focused = state.detail.shown && state.detail.focus != DetailFocus::Graph;
+    let graph_focused = !detail_focused;
+    let chain: [(bool, ContextId); 17] = [
+        (state.credential.is_some(), C::Credential),
+        (state.palette.is_some(), C::Palette),
+        (state.drag.is_some(), C::Graph),
+        (state.confirm.is_some(), C::Confirm),
+        (state.preview.is_some(), C::Preview),
+        (state.rewrite.editor.is_some(), C::Rewrite),
+        (state.finish.is_some(), C::Finish),
+        (state.resolver.is_some(), C::Resolver),
+        (super::picker::shown(state), C::Picker),
+        (state.banner_focus, C::Banner),
+        (state.trail.on_screen().is_some(), C::Blame),
+        (state.trail.history_on_screen().is_some(), C::History),
+        (state.context_menu.is_some(), C::Menu),
+        (state.commit_editor.is_some(), C::CommitEditor),
+        // The overlays take the keys before the pane only while the graph
+        // has focus (`keys::pane_and_overlay_key`).
+        (graph_focused && state.journal.shown, C::Journal),
+        (graph_focused && state.stash.shown, C::Stash),
+        (graph_focused && state.map.shown, C::Map),
+    ];
+    if let Some((_, context)) = chain.iter().find(|(up, _)| *up) {
+        return *context;
+    }
+    if detail_focused {
+        return if state.detail.spec == Some(DetailSpec::WorkingTree) {
+            C::Changes
+        } else {
+            C::Diff
+        };
+    }
+    C::Graph
+}

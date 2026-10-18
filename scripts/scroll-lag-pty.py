@@ -64,7 +64,7 @@ from mwr_sandbox import sandbox_env  # noqa: E402
 BEGIN = b"\x1b[?2026h"
 QUIET = 1.5
 
-# Replies to Mergewright's probe (crates/graft-term/src/detect/probe.rs:20-30).
+# Replies to Mergewright's probe (crates/mergewright-term/src/detect/probe.rs:20-30).
 REPLIES = [
     (b"\x1b_Gi=31,", b"\x1b_Gi=31;OK\x1b\\", "kitty"),
     (b"\x1b_Gi=32,", b"\x1b_Gi=32;OK\x1b\\", "deflate-yes"),

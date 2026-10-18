@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_fix_c_live_frames in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). The two frames
+# crates/mergewright/tests/it/resolver/shell_begun.rs (asserted). The two frames
 # that drew `c commit` while an operation was live (m6-conflicts/52).
 #
 # Judge by eye:

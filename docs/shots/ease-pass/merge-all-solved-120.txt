@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
-# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: every clash in both files taken: the list `✓ notes.md  done`, `✓ report.md  done`, then `✓ Review the merge  y`; the solved line ends `y review the merge`; no `every file done` words on the notice row; the bar `y review the merge`.
 === 120x40 ===
 MERGING                                                                                                                 

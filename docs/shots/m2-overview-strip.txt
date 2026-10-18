@@ -1,7 +1,7 @@
 # m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_overview_strip in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_overview_strip in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). Seven synthetic commits mirroring
-# graft_fixtures::Shape::FeatureBranches: two feature branches each merged
+# mergewright_fixtures::Shape::FeatureBranches: two feature branches each merged
 # into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
 # would set it). First block is the Unicode tier, second is ASCII
 # (`F3`/`renderer_override`). The strip is bucketed over the whole 24-row

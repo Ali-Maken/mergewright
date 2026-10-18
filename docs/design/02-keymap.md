@@ -1,4 +1,4 @@
-# Graft: Design — Keymap
+# Mergewright: Design — Keymap
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](03-graph-layout-algorithm.md)
@@ -57,7 +57,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 
   Everything else that is bound **is a candidate for a slot**, and a row or
   ambient verb that never appears anywhere is a finding, not a default.
-  `crates/graft/src/update/tests.rs::every_bound_action_is_hinted_live_or_is_named_here`
+  `crates/mergewright/src/update/tests.rs::every_bound_action_is_hinted_live_or_is_named_here`
   is the test that holds this; its `NEVER_HINTED` list is the first class
   above and nothing else. **Adding a row to that list is a spec change and
   belongs here first.**
@@ -142,7 +142,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     user might press what's inside them.** `(forecast)` is a label, not a
     shortcut, and sat in trailing parens anyway; a user reading the preview
     box has every reason to expect `f` does something, because that's what
-    parens mean everywhere else in Graft. Scoping the rule to the menu left
+    parens mean everywhere else in Mergewright. Scoping the rule to the menu left
     the next surface free to rediscover the collision on its own, which is
     exactly how `(forecast)` got there. Fixing that label is a code change
     (the preview box, not this doc) and isn't done by this note.
@@ -181,7 +181,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   (`graph.merge`, `app.undo`, `operation.continue`), shown beside its key in
   `?`; it is the config's name for it and is never renamed after release.
   `config.toml`: `[keys.<context>] <verb> = "<chord>"` or a list of chords;
-  `"none"` unbinds. Graft translates a pressed chord to the action's default
+  `"none"` unbinds. Mergewright translates a pressed chord to the action's default
   chord before any pane sees it; a default whose action was moved is
   unbound. Collisions (both actions named, defaults included), unknown
   actions, unparsable chords and reserved chords (`Ctrl+C`) are warned
@@ -218,7 +218,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Space` | Toggle stage where staging applies, else expand/collapse. In a commit's file list: a directory folds / unfolds; a file has nothing to toggle, so `space` is unbound there and not offered. While a pane has the keyboard (its file list or its diff), the graph's merge fold (§2.3) is not live and not offered: `space` never acts on a screen other than the focused one (Amended 2026-09-27, M7/spacefold; M7/20h-diff-space) |
 
 `Ctrl+Shift+Z` is not a reliable binding: many terminals collapse it to the
-same byte sequence as `Ctrl+Z`, so Graft cannot tell the two apart on every
+same byte sequence as `Ctrl+Z`, so Mergewright cannot tell the two apart on every
 terminal it targets. `U` is therefore not just a convenience alias — it's
 the binding that actually works everywhere, and the one the help overlay
 and any redo prompt should lead with.
@@ -234,17 +234,17 @@ whether the write can stop halfway:
   fails, you stay to see it`. `y` closes the box; nothing is cancelled; the status row reads
   `<op> · quitting when it finishes · esc stays`, and keeps it while the write's progress updates.
   - The write **ends done**: its answer is applied and journaled first (a write with a put-back after it, such as
-    edits set aside around a rebase, ends after the put-back), then Graft quits. `u` on the next launch takes it back.
+    edits set aside around a rebase, ends after the put-back), then Mergewright quits. `u` on the next launch takes it back.
   - The write **stops** (a conflict) **or fails or ends incomplete**: the wait is dropped, and he lands where that
-    event always lands (resolver, banner, error row), with its own words. Graft stays open.
+    event always lands (resolver, banner, error row), with its own words. Mergewright stays open.
   - `Esc` while waiting drops the wait; the write runs on. It comes before the write's own `Esc` line and after a held
     failure's dismiss (§2.2 `Esc`). `q` again while waiting does nothing: the status row already says it.
 - Why not a Cancel-only box: a box with no work in it is a dismiss step (ux-principles §3.1), and he would have to
   watch for the end and press `q` again. Why not stop it: a rebase stopped halfway by a signal is the state the M3
   promise rules out. Two keys, `q y`, the same as the fetch box (heuristic 4: one box, one `y`).
 - `Ctrl+C` over a write that can't stop does what `q` does: the same box, the same wait. Over the quit box itself it does not quit (**Proposed**, M8/13b, conductor 2026-10-02).
-- **A stuck write** (**Proposed**, M8/13b review fix; a stop leaves the operation paused, nothing lost: the user's ruling 2026-10-04, field notes :91): after 10 s of waiting the status row reads `<op> · still running after 10 s · q stop it now · esc stays`. `q` or `Ctrl+C` then opens `Quit now?`, with the lines `<op> is still running · a git hook may be stuck` and `quit now stops it half-way · the next launch shows where it stopped`, and `[ Cancel ] [ Quit ]`; `y` quits. Before 10 s, `q` and `Ctrl+C` while waiting do nothing. Why 10 s: a merge or rebase with ordinary hooks ends inside it, and an earlier offer invites stopping a write that was about to land. The shell then reads one line saying where git was left: paused (the next launch offers continue or abort), landed, or stopped before git could pause it (`u` puts the files back). Graft ends a merge's, cherry-pick's or revert's stuck hook first, so git pauses it itself; a rebase is stopped where it stands and stays paused at its step (**Proposed**, M8/13c–13d).
-- **Quit from outside** (SIGTERM, SIGHUP, or the terminal closing; **Proposed**, M8/13b, 13g): the terminal is given back first. A write that can't stop gets up to 60 s to land; then Graft stops it as `q` `y` does (its stuck hook first, so git pauses it), and the same signal again stops it at once. The shell gets the line saying where git was left. When the terminal has closed nothing is printed: the next launch shows where git was left (paused: the banner offers continue or abort; landed: the graph).
+- **A stuck write** (**Proposed**, M8/13b review fix; a stop leaves the operation paused, nothing lost: the user's ruling 2026-10-04, field notes :91): after 10 s of waiting the status row reads `<op> · still running after 10 s · q stop it now · esc stays`. `q` or `Ctrl+C` then opens `Quit now?`, with the lines `<op> is still running · a git hook may be stuck` and `quit now stops it half-way · the next launch shows where it stopped`, and `[ Cancel ] [ Quit ]`; `y` quits. Before 10 s, `q` and `Ctrl+C` while waiting do nothing. Why 10 s: a merge or rebase with ordinary hooks ends inside it, and an earlier offer invites stopping a write that was about to land. The shell then reads one line saying where git was left: paused (the next launch offers continue or abort), landed, or stopped before git could pause it (`u` puts the files back). Mergewright ends a merge's, cherry-pick's or revert's stuck hook first, so git pauses it itself; a rebase is stopped where it stands and stays paused at its step (**Proposed**, M8/13c–13d).
+- **Quit from outside** (SIGTERM, SIGHUP, or the terminal closing; **Proposed**, M8/13b, 13g): the terminal is given back first. A write that can't stop gets up to 60 s to land; then Mergewright stops it as `q` `y` does (its stuck hook first, so git pauses it), and the same signal again stops it at once. The shell gets the line saying where git was left. When the terminal has closed nothing is printed: the next launch shows where git was left (paused: the banner offers continue or abort; landed: the graph).
 
 ### 2.3 Graph / history pane
 
@@ -319,7 +319,7 @@ whether the write can stop halfway:
 | `Enter` | On a `CONFLICTS` row: opens the resolver (§2.2's global open / drill in, applied — not a new letter; see §2.6) |
 | `M` | On a `CONFLICTS` row only: launch the configured mergetool on that file (§2.6a) |
 | `i` | Add to `.gitignore` |
-| `c` / `a` | Commit / amend (as above — same verbs, same keys). While an operation is live, `c` is the banner's `c` (§2.6a: a merge opens the finish summary, a rebase begun in Graft continues) and `a` refuses in words (P14, approved 2026-09-24) |
+| `c` / `a` | Commit / amend (as above — same verbs, same keys). While an operation is live, `c` is the banner's `c` (§2.6a: a merge opens the finish summary, a rebase begun in Mergewright continues) and `a` refuses in words (P14, approved 2026-09-24) |
 
 ### 2.5 Diff pane (view options; active wherever a diff is shown)
 
@@ -349,7 +349,7 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `O` / `T` | Yours / theirs in every open block of this file, mark it done, move to the next file; on a whole-file card, same as `o`/`t` (P6; the named §2.1 exception) |
 | `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
 | `d` on a file marked done | Start it over, as before `Enter`: box `Start <file> over`, line `your choices in <file> are dropped`, `y` confirms. Where the stages were not kept: `git can't bring back the conflict in <file>: <reason>` (Times I left :109) |
-| `d` | Start this file over, behind a confirm box — not undoable while the operation is open (the box says so). A file with conflict markers: `git checkout --merge`. A file one side deleted or added whole (`UD`/`DU`/`AU`/`UA`), in an operation begun in Graft: its conflict stages and the surviving side's file come back, the box saying `the choice comes back: keep or delete` (approved 2026-09-24). Offered only where it can act (ops' gate); still refused in a merge begun in the shell |
+| `d` | Start this file over, behind a confirm box — not undoable while the operation is open (the box says so). A file with conflict markers: `git checkout --merge`. A file one side deleted or added whole (`UD`/`DU`/`AU`/`UA`), in an operation begun in Mergewright: its conflict stages and the surviving side's file come back, the box saying `the choice comes back: keep or delete` (approved 2026-09-24). Offered only where it can act (ops' gate); still refused in a merge begun in the shell |
 | `n` / `N` | `n`: the first open clash from the top, across files (Decided below). `N`: previous block, taken ones included; at the file's first block, cross to the previous file; past the start, wrap to the first open block (`wrapped · 2 still open`), else `no open clashes left` (with `· ←/→ step through them` when the file holds a taken block) (P2; ticket 05r). On a done file, `N` crosses straight to the next file not done (ticket 17 D6). |
 | `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `N`, `←`/`→`, `PgUp`/`PgDn`, `g`/`G` (`Home`/`End` as `g`/`G`; conductor 2026-09-24: they scroll today, kept), the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open. When every file is done and the summary is not open (after `Esc` from it; a rebase, cherry-pick or revert), the resolver shows the finish row `✓ every file done — c …`, `c` leads the bar, and a click on the row does what `c` does (P8, P11) |
@@ -399,7 +399,7 @@ approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo t
 | `a` | Abort, back to where the operation started, behind a confirm box. A merge begun in the shell aborts too (`git merge --abort`), journaled, so `u` puts the merge back as it was (approved 2026-09-24) |
 | `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
 | `e` | Open the first conflicted file in `$EDITOR` at its first marker (§2.4) |
-| `q` | Quit, the same `q` as §2.2, answered from the focused banner too (M8/13 Major 1). A write running (a `c` continue, say): §2.2's "`q` while a write runs" box — a write that can't stop is waited for, then Graft quits. Git stopped, nothing running: quits at once, no box; git's stopped state stays on disk and the next launch keeps the banner, which offers continue or abort (design note 2b). The banner's hint bar draws `q quit` **last**, and drops it first when the row is narrow, as the graph bar's tail does: `q` is bound and is not a navigation global, so it is a slot candidate (§2.1), and a stop is where he lands (P5), so the way out is shown there (heuristic 6). Planner 2026-10-02; approved 2026-10-02 (field notes :89) |
+| `q` | Quit, the same `q` as §2.2, answered from the focused banner too (M8/13 Major 1). A write running (a `c` continue, say): §2.2's "`q` while a write runs" box — a write that can't stop is waited for, then Mergewright quits. Git stopped, nothing running: quits at once, no box; git's stopped state stays on disk and the next launch keeps the banner, which offers continue or abort (design note 2b). The banner's hint bar draws `q quit` **last**, and drops it first when the row is narrow, as the graph bar's tail does: `q` is bound and is not a navigation global, so it is a slot candidate (§2.1), and a stop is where he lands (P5), so the way out is shown there (heuristic 6). Planner 2026-10-02; approved 2026-10-02 (field notes :89) |
 | `Tab` / `Shift+Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn. `Tab` lands on the graph, `Shift+Tab` on the diff (the cycle reversed, m8/20d). `Esc` never aborts (KNOWN_GAPS :549; Amended 2026-09-26 (M7, user "all yes")) |
 
 With focus given back, `M` and `e` keep working on the file under the
@@ -411,11 +411,11 @@ it. Nothing else here is bound outside the banner.
 (§2.2), but an undo on top of an unfinished operation is a second history
 write over the first, and the banner is where the first one ends either way.
 **One exception** (approved 2026-09-24): in a merge **begun in the shell**,
-`u`/`U` undo or redo a step Graft journaled inside that same merge — a
+`u`/`U` undo or redo a step Mergewright journaled inside that same merge — a
 whole-file choice or a start-over (`d`) — which is how a file it overwrote
 comes back. Those steps are entries of their own there; a block take (`o`,
 `t`, `b` on a marker block) is a file write inside the merge, not an entry.
-Anything older than the merge still refuses. A merge begun in Graft folds its
+Anything older than the merge still refuses. A merge begun in Mergewright folds its
 steps into one entry, so `a` is its way back.
 Amend refuses for the same reason and names the same keys (M5/15), except at
 an `edit` stop, where `a` amends the stopped commit (Amended 2026-09-26 (M7, user "all yes")); `c` is
@@ -510,7 +510,7 @@ cursor line. `Esc` goes back (after `^`, to the newer blame). Amended
 | Key | Action |
 |---|---|
 | `s` | Save a new stash (message prompt; **modal**, §2.1 — `Tab` switches staged-only vs everything, `Enter` saves, `Esc` cancels) |
-| `Enter` | Open the **apply preview** for the selected stash (Ghost Preview frame, §2.3b): the files it writes (untracked ones included), whether it may clash with the tree now, `stash@{n} stays in the list`. `y` applies; `Enter` is the choice under the cursor (Cancel first, ADR-0038 §1); `Esc` back to the list. Refused in the box, nothing written, when unsaved, untracked or ignored files are in the way (Graft refuses them before git runs, ADR-0049); an ignored one reads `<path> (ignored) is in the way · move it aside first`, since `S` can't take it. A clash opens the resolver on the first clashed file; the stash is kept (ADR-0045) |
+| `Enter` | Open the **apply preview** for the selected stash (Ghost Preview frame, §2.3b): the files it writes (untracked ones included), whether it may clash with the tree now, `stash@{n} stays in the list`. `y` applies; `Enter` is the choice under the cursor (Cancel first, ADR-0038 §1); `Esc` back to the list. Refused in the box, nothing written, when unsaved, untracked or ignored files are in the way (Mergewright refuses them before git runs, ADR-0049); an ignored one reads `<path> (ignored) is in the way · move it aside first`, since `S` can't take it. A clash opens the resolver on the first clashed file; the stash is kept (ADR-0045) |
 | `p` | Open the **pop preview**: as `Enter`, with `stash@{n} is dropped · u brings it back`. `y` pops. A clash opens the resolver; the stash is kept until the last file is done, then dropped, `u` brings it back (ADR-0045) |
 | `d` | Drop (undoable) |
 | `b` | Create a branch from this stash — built (m3/m5 name prompt, `update/stash.rs`) |
@@ -545,7 +545,7 @@ or `?` off the text fields (`?` types in the subject and body) (Q8 a);
 | Key | Action |
 |---|---|
 | `↑ ↓`, `j k` | Move |
-| `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged; none on a step Graft doesn't undo, such as a fetch); `$` put that ref back to before it, and on a switch row switch back to the branch it left; `✗` put back what held the commit, or a lost edit's file, replacing what is in that file now (Ghost Preview, `y`; `u` brings it back) (M7) |
+| `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged; none on a step Mergewright doesn't undo, such as a fetch); `$` put that ref back to before it, and on a switch row switch back to the branch it left; `✗` put back what held the commit, or a lost edit's file, replacing what is in that file now (Ghost Preview, `y`; `u` brings it back) (M7) |
 | `b` | New branch at a `$` or `✗` row's commit (name prompt; prefilled `<branch>-restored` when the row names one); on a `●` row it says so (M7) |
 | `/` | Find a row by the words that name it, as blame's find (§2.8): `Enter` keeps it, `Esc` drops it (M7) |
 | `n` / `N` | Next / previous match; with no find, next / previous `✗` row (`⇢` rows passed over) (M7) |
@@ -642,7 +642,7 @@ password), so there is never more than one field open to move between.
   §1.3's hover line): the full message, parents and containing branches live
   in the detail pane, M2.
 - Mouse capture never sends `XTSHIFTESCAPE` with `n=1` — `Shift`+drag stays
-  the terminal's native text selection, never captured by Graft (ADR-worthy
+  the terminal's native text selection, never captured by Mergewright (ADR-worthy
   rule already fixed by PROMPT.md §3; noted here because it constrains how
   the `term` module configures crossterm's mouse capture).
 

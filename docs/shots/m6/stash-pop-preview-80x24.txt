@@ -1,5 +1,5 @@
 # m6/stash-pop-preview-80x24.txt: 80x24, drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/m6_stash_put_back/stash_preview.rs,
+# AppState (crates/mergewright/tests/it/m6_stash_put_back/stash_preview.rs,
 # the_pop_preview_fits_80_columns, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #

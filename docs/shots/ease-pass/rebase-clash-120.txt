@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
-# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: a rebase stopped on the same file: the same screen, sides by the rebase's names (`upstream · …` left, `yours · …` right); the bar `o take upstream (left)`.
 === 120x40 ===
 REBASING                                                                                                                

@@ -36,7 +36,7 @@ BIN=$(grep -oE '\(target/[^)]*it-[0-9a-f]+\)|\([^)]*/deps/it-[0-9a-f]+\)' "$LOG.
 case "$BIN" in /*) ;; *) BIN="$CARGO_TARGET_DIR/${BIN#target/}";; esac
 each=()
 for _ in $(seq 1 "$RUNS"); do
-  ( cd "$SRC/crates/graft" && "$BIN" "$FILTER" --exact --test-threads=1 --nocapture ) >>"$LOG" 2>&1
+  ( cd "$SRC/crates/mergewright" && "$BIN" "$FILTER" --exact --test-threads=1 --nocapture ) >>"$LOG" 2>&1
   us=$(grep -oE 'g_after_idle build=idle-advance .*latency_us=[0-9]+' "$LOG" | tail -1 | grep -oE '[0-9]+$')
   each+=("${us:-?}")
 done

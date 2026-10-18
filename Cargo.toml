@@ -12,34 +12,34 @@ publish = false
 [workspace.dependencies]
 # Test-only: a dev-dependency everywhere it is used, so it is not an
 # internal dependency edge (ADR-0006).
-graft-fixtures = { path = "crates/graft-fixtures" }
-graft-core = { path = "crates/graft-core" }
-graft-graph = { path = "crates/graft-graph" }
-graft-git = { path = "crates/graft-git" }
-graft-ops = { path = "crates/graft-ops" }
-graft-term = { path = "crates/graft-term" }
-graft-ui = { path = "crates/graft-ui" }
+mergewright-fixtures = { path = "crates/mergewright-fixtures" }
+mergewright-core = { path = "crates/mergewright-core" }
+mergewright-graph = { path = "crates/mergewright-graph" }
+mergewright-git = { path = "crates/mergewright-git" }
+mergewright-ops = { path = "crates/mergewright-ops" }
+mergewright-term = { path = "crates/mergewright-term" }
+mergewright-ui = { path = "crates/mergewright-ui" }
 
 # Error types are declarations, not `Display` implementations to be
 # hand-written and kept in step (PROMPT.md 6.2). Only the crates that define
 # an error type depend on it.
 thiserror = "2.0.20"
-# The undo journal is JSONL (DESIGN.md §6.1): `graft-core` derives the entry
-# shape, `graft-ops` writes and parses the lines. Versions match `crates/graft`.
+# The undo journal is JSONL (DESIGN.md §6.1): `mergewright-core` derives the entry
+# shape, `mergewright-ops` writes and parses the lines. Versions match `crates/mergewright`.
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 # Wipes the credential prompt's typed password on drop and on every clone
-# (`graft_ui::text_input::SecretField`, M5 secret-field ticket): a plain
+# (`mergewright_ui::text_input::SecretField`, M5 secret-field ticket): a plain
 # assignment can be optimised away as a dead store, so zeroing needs the
 # volatile-write + compiler-barrier pair this crate provides. Shared between
-# `graft-ui` (where the field lives) and `graft` (where the answer is built
-# and handed to `graft-git`'s own `Secret`), at one version. `alloc` only.
+# `mergewright-ui` (where the field lives) and `graft` (where the answer is built
+# and handed to `mergewright-git`'s own `Secret`), at one version. `alloc` only.
 zeroize = { version = "1.9.0", default-features = false, features = ["alloc"] }
 
 # PROMPT.md 6.2's "enforced, not hoped for": every rule that a lint can check
 # is a lint, so the gate catches it instead of a reviewer. Each crate root
 # also carries `#![forbid(unsafe_code)]`. Two crates are the exceptions and
-# each says why at its root: `graft-term` (ADR-0013) and `graft-fixtures`
+# each says why at its root: `mergewright-term` (ADR-0013) and `mergewright-fixtures`
 # (ADR-0015).
 [workspace.lints.rust]
 # Every public item has a doc comment.

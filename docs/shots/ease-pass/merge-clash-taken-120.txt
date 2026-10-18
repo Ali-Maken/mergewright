@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
-# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: `o` on the first clash: it shrinks to `let tax = round_cents(total * rate);`, numbered 3, marked `◀`, ending `kept yours`; the second clash still open below; the list `report.md  1 open`; the bar `n next open clash · u undo pick`.
 === 120x40 ===
 MERGING                                                                                                                 

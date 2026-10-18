@@ -4,18 +4,18 @@
 # this machine (m8-polish-and-ship/24).
 #
 # Mergewright finds git on PATH and nowhere else: every spawn is `Command::new("git")`
-# (graft-git/src/run.rs, the fixtures, the tests). So this script builds each
+# (mergewright-git/src/run.rs, the fixtures, the tests). So this script builds each
 # git from its release tarball into a cache folder and puts that folder's
 # `bin` first on PATH for the test run. Nothing else changes.
 #
 # Which tests: the ones whose answer depends on git's own behaviour.
-#   * `rewrite_preview::` (graft-ops): the rebase preview must equal what git
+#   * `rewrite_preview::` (mergewright-ops): the rebase preview must equal what git
 #     does when it runs, checked by running git in a copy. Until this script,
 #     checked on the machine's git only.
 #   * `cherry_pick::git_alone_stops_on_a_pick_of_an_ancestor`: what plain git
 #     does with an ancestor pick, the case Mergewright refuses.
 #
-# Versions: the floor (`GitVersion::MINIMUM`, graft-git/src/version.rs), 2.40.0
+# Versions: the floor (`GitVersion::MINIMUM`, mergewright-git/src/version.rs), 2.40.0
 # (below it the rebase preview's conflict forecast says "not checked" by
 # design, and the forecast tests cannot pass), and the newest release on
 # kernel.org when this was written. Pass others as
@@ -23,7 +23,7 @@
 # version (TESTING.md says so); it is never answered with a skipped test.
 #
 # Where it goes:
-#   built gits and full test logs: ${XDG_CACHE_HOME:-~/.cache}/graft-git-matrix/
+#   built gits and full test logs: ${XDG_CACHE_HOME:-~/.cache}/mergewright-git-matrix/
 #   summary lines:                 docs/release/git-matrix.txt (committed)
 #
 # Needs: curl, tar with xz, make, a C compiler. Network only for a version not
@@ -35,7 +35,7 @@
 set -eu
 cd "$(dirname "$0")/.." || exit 1
 
-cache="${XDG_CACHE_HOME:-$HOME/.cache}/graft-git-matrix"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/mergewright-git-matrix"
 out="docs/release/git-matrix.txt"
 mirror="https://mirrors.edge.kernel.org/pub/software/scm/git"
 filter='test(/^rewrite_preview::/) | test(=cherry_pick::git_alone_stops_on_a_pick_of_an_ancestor)'
@@ -82,7 +82,7 @@ cargo nextest run --workspace --no-run >"$cache/compile.log" 2>&1
 status=0
 for version in $versions; do
     if ! build_git "$version"; then
-        echo "git $version: BUILD FAILED (log: graft-git-matrix/build-$version.log)" >>"$out"
+        echo "git $version: BUILD FAILED (log: mergewright-git-matrix/build-$version.log)" >>"$out"
         status=1
         continue
     fi

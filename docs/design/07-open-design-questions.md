@@ -1,4 +1,4 @@
-# Graft: Design — Open design questions
+# Mergewright: Design — Open design questions
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Undo journal design](06-undo-journal-design.md) · Next: [Architecture](08-architecture.md)

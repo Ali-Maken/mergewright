@@ -1,4 +1,4 @@
-# Graft: Design — Visualization
+# Mergewright: Design — Visualization
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Terminal-capability detection](04-terminal-capability-detection.md) · Next: [Undo journal design](06-undo-journal-design.md)

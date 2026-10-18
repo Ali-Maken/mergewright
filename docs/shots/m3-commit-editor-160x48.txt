@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_commit_editor in crates/graft/src/view/tests.rs (asserted;
+# capture_m3_commit_editor in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). `c` on the scripted dirty tree, a subject typed,
 # then Tab to the body and a sentence typed there.
 #

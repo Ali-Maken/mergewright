@@ -1,4 +1,4 @@
-# Graft: Architecture
+# Mergewright: Architecture
 
 A one-page map of the crates: what each one owns, what it may depend on, and
 where to start reading. Read this before adding a module or moving code
@@ -6,7 +6,7 @@ between crates — and update it in the same ticket if that ticket changes the
 crate map. The full reasoning behind every choice here is
 [`DESIGN.md` §8](DESIGN.md#8-architecture); this file is the short version.
 
-"Graft" is a codename (see `CLAUDE.md`). Domain vocabulary — lane, default
+"Mergewright" is a codename (see `CLAUDE.md`). Domain vocabulary — lane, default
 branch, rendering tier, Ghost Preview, Mistake Radar, marker, ref badge,
 operation, undo journal, Command Log, job — is fixed in `CONTEXT.md`; this
 file uses those terms rather than redefining them.
@@ -31,11 +31,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 
 - **Changing how history is drawn** (lanes, compaction, a new rendering tier)
   → `graph`. Start at `DESIGN.md` §3 for the algorithm.
-- **Changing what Graft reads from a repo** (status, log, diff parsing) →
+- **Changing what Mergewright reads from a repo** (status, log, diff parsing) →
   `git`. Reads are `gix`-primary; `git2` backs single named gaps only
   (ADR-0011), never a second full adapter.
 - **Changing what a write operation does, or how undo works** → `ops`. Start
-  at `DESIGN.md` §6, then `graft-ops/src/operation.rs` (one enum, four
+  at `DESIGN.md` §6, then `mergewright-ops/src/operation.rs` (one enum, four
   properties: `check`, `plan`, `touches`, and `undo::inverse`). The
   execution half is `apply.rs` (the §6.2 protocol: read, check, back up,
   journal, run, journal again), `snapshot.rs` (both trees from one copy of
@@ -50,7 +50,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   rule: `ops` decides, `app` wires.** `app` never builds a `GitInvocation` for
   a write, never touches the journal file, never chooses a snapshot; a key
   becomes an `Operation` and `ops` does the rest. Guarded by
-  `crates/graft/tests/it/seam_rule.rs`: `GitInvocation` under `graft/src/`
+  `crates/mergewright/tests/it/seam_rule.rs`: `GitInvocation` under `graft/src/`
   only inside `jobs/` (reads); the journal's `render_*` and the inverse's
   `Step::`/`PathScope::` constructors nowhere in `app`. The seam is
   visibility where it can be (`snapshot::{chain_backup, commit_trees,
@@ -65,43 +65,43 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `graft/src/jobs/remote.rs` for the remote facts read; `ops::operation` for
   what actually runs.
 - **Changing terminal detection or an image protocol** → `term`. Start at
-  `DESIGN.md` §4, then `graft-term/src/detect/`: `environment` reads the env
+  `DESIGN.md` §4, then `mergewright-term/src/detect/`: `environment` reads the env
   vars, `probe` writes the queries, `reply` parses what comes back, `tmux`
   owns the passthrough round, and `mod` is the decision that turns all of it
   into a `Capabilities`. `detect::tty` writes the queries to the real
   terminal and reads replies through the input mux, so everything above it
   is tested against scripted replies.
-- **Changing what `y` sends to the clipboard** → `graft-term/src/clipboard.rs`
+- **Changing what `y` sends to the clipboard** → `mergewright-term/src/clipboard.rs`
   builds the OSC 52 request; `graft/src/event_loop` writes it through the
   session's `Transport` (ADR-0023).
 - **Changing how keys, mouse or terminal replies are read** →
-  `graft-term/src/input/`. `mux` is the one thread that owns stdin for the
+  `mergewright-term/src/input/`. `mux` is the one thread that owns stdin for the
   whole run; `decode` is the pure bytes → events/replies decoder, where every
   key encoding lives. A reply goes to every open `ReplyWaiter`; anything else
   is an event queued in arrival order. `app`'s `event_loop::input` only
   forwards those events into the loop.
 - **Changing what counts as hostile repository text** (a new escape or
-  invisible-character class) → `graft-term/src/sanitize/`. One function and
+  invisible-character class) → `mergewright-term/src/sanitize/`. One function and
   a small set of entry points; `DESIGN.md` §8.2 sets the minimum classes and
   the replacement policy, and the module doc is the authority on what is
   actually neutralised (it takes all of Unicode's `Cf` category, which is a
   superset).
 - **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
   key-to-`Command` mapping. Start at `DESIGN.md` §1–§2.
-- **Changing a key, or words that name one** → one table, `graft-ui`
-  `keymap/table.rs`; its ids are golden in `graft-ui/tests/keymap_ids.txt`
+- **Changing a key, or words that name one** → one table, `mergewright-ui`
+  `keymap/table.rs`; its ids are golden in `mergewright-ui/tests/keymap_ids.txt`
   and never renamed (ADR-0055). Where a chord lands in a place:
   `ContextId::scope()` (own rows, then `borrows()`, then the rest), less
   `stands_down()`. His remaps are translated at the edge
-  (`graft::update::edge::key`, place from `context_of`) before any handler;
+  (`mergewright::update::edge::key`, place from `context_of`) before any handler;
   a handler matches every shipped chord of the action it answers, never a
   second raw arm. Every printed key is spelled from the live table at render
   (`Keymap::spell_*`, `key_verb`, `after`, `HintKey`); inside a text field,
-  `Keymap::shipped()` (ADR-0055, ADR-0058). graft-ops names keys only as
-  `OpKey` through `KeyNames` (`graft-ops/src/keys.rs`), answered by
+  `Keymap::shipped()` (ADR-0055, ADR-0058). mergewright-ops names keys only as
+  `OpKey` through `KeyNames` (`mergewright-ops/src/keys.rs`), answered by
   `graft/src/update/op_keys.rs`; jobs carry an `Arc<Keymap>`. Kept honest by
-  the behavioural sweep (`graft::update::tests::keymap_edge::sweep`) and the
-  `graft-ui/tests/no_literal_keys.rs` ratchet, which fails a literal key.
+  the behavioural sweep (`mergewright::update::tests::keymap_edge::sweep`) and the
+  `mergewright-ui/tests/no_literal_keys.rs` ratchet, which fails a literal key.
 - **Changing the detail pane, a diff view or the Explain panel** →
   `ui::detail_pane` for the widget (header, file list, unified and
   side-by-side diff bodies, the Explain panel's own render), `app::view::detail`
@@ -114,7 +114,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `app::view::frame::overlays::draw_place` for drawing it over the graph,
   `app::jobs::detail` for the blame job (m7-power-tools/20).
 - **Changing the history place** (a line's or a file's history, from blame's
-  `L` or the pane's `F`) → `graft-ui::history` for the picture (pure draw, no
+  `L` or the pane's `F`) → `mergewright-ui::history` for the picture (pure draw, no
   state), `app::update::place` with `place/history.rs` (state),
   `place/history/open.rs` (`open_history`, `f_key`), `place/history/view.rs`
   (view, title, row words), `place/history_keys.rs` (its keys and mouse) and
@@ -157,9 +157,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `app::jobs::rewrite` (`jobs/rewrite.rs`) for the job, `app::update::row_tags`
   for the `changed` tag it leaves on rows (m7-power-tools/09).
 - **Changing how branch config is journaled** (upstream set by Track, undone
-  by `u`) → `graft-ops/src/branch_config.rs` for the reads and writes,
-  `Step::SetBranchConfig` in `graft-ops/src/undo.rs` for the inverse.
-- **Changing pull's fetch-first path** → `graft-ops/src/apply/pull.rs`.
+  by `u`) → `mergewright-ops/src/branch_config.rs` for the reads and writes,
+  `Step::SetBranchConfig` in `mergewright-ops/src/undo.rs` for the inverse.
+- **Changing pull's fetch-first path** → `mergewright-ops/src/apply/pull.rs`.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
   runner both live there. **The exception is the commands the loop carries
@@ -171,19 +171,19 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   the query),
   `find.rs` (BRANCHES/TAGS/FILES/COMMITS and their jobs' answers),
   `run.rs` (`⏎`), `input.rs` (opening, edits, paste, mouse);
-  `graft-ui/src/palette.rs` for how it draws; `app::jobs::palette` for the
-  find jobs; `graft_ops::matcher` for the one fuzzy matcher.
+  `mergewright-ui/src/palette.rs` for how it draws; `app::jobs::palette` for the
+  find jobs; `mergewright_ops::matcher` for the one fuzzy matcher.
 - **Changing the branch picker** → `app/src/update/picker.rs` for its keys
-  and state, `graft-ui/src/picker.rs` for how it draws.
+  and state, `mergewright-ui/src/picker.rs` for how it draws.
 - **Changing `o` (take the cursor commit, previewed; m7-power-tools/11)** →
   `app/src/update/keys.rs` for the key, `app/src/update/context_menu/`
   (`slots.rs`, `verbs.rs`) for menu slot 2 and its dim refusal,
-  `app/src/update/preview/take.rs` for the preview, `graft-ui/src/context_menu.rs`
+  `app/src/update/preview/take.rs` for the preview, `mergewright-ui/src/context_menu.rs`
   for the drawn label.
 - **Changing the still-to-apply list (m7-power-tools/07c)** →
-  `graft-ui/src/still_to_apply.rs`; the graph screen places it
-  (`graft-ui/src/graph_screen/layout.rs`, `render.rs`).
-- **Running another program in Graft's terminal** (`$EDITOR`, a `SIGTSTP`
+  `mergewright-ui/src/still_to_apply.rs`; the graph screen places it
+  (`mergewright-ui/src/graph_screen/layout.rs`, `render.rs`).
+- **Running another program in Mergewright's terminal** (`$EDITOR`, a `SIGTSTP`
   suspend) → `app::event_loop::outside`. See the hand-over rule below.
 - **Anything that needs the open repository from a job** → `app/src/repos.rs`.
   It owns the one open repository for the run; see the seam below before
@@ -192,29 +192,29 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 ## Handing the terminal over
 
 `Ctrl+E`, `e` and `Ctrl+Z` run another program — the user's editor, or the
-shell they suspended to — inside the terminal Graft is drawing on. The
+shell they suspended to — inside the terminal Mergewright is drawing on. The
 six commands that do this (`EditCommitMessage`, `OpenExternalEditor`,
 `OpenMergetool`, `OpenConflictEditor`, `ContinueInGit`, `Suspend`;
-`hands_over` in `crates/graft/src/event_loop/running/carry.rs`) **hand the
+`hands_over` in `crates/mergewright/src/event_loop/running/carry.rs`) **hand the
 terminal over**, so they are **carried out by the frame loop rather than
 queued as jobs** (the full list of such commands: `not_a_job` in
-`crates/graft/src/jobs/runner/dispatch.rs`), and
+`crates/mergewright/src/jobs/runner/dispatch.rs`), and
 that is not a shortcut: the job pool's threads do not own the session or the
 input mux, and only the thread that owns both can give the terminal up. A job
 that tried would leave two readers on one file descriptor and the user's
-keystrokes split between Graft and their editor.
+keystrokes split between Mergewright and their editor.
 
 The rule is `run_outside_terminal(session, mux, f)` in
 `app::event_loop::outside`:
 
 1. `InputMux::pause` first, and refuse the whole hand-over if it will not
    stop — a reader still on the terminal is worse than no editor.
-2. `TerminalSession::suspend`: every mode Graft turned on, back off, in the
+2. `TerminalSession::suspend`: every mode Mergewright turned on, back off, in the
    reverse order, alt screen last so the editor draws over the shell.
 3. Run `f`.
 4. Re-enter through a guard, so no path out of the function can skip it:
    modes back first, then the reader, then a full redraw — the editor has
-   scribbled over every cell Graft thought it knew.
+   scribbled over every cell Mergewright thought it knew.
 
 The loop answers with `Product::ExternalEditor` / `Product::HandedOver`, so
 `update` sees the outcome as it sees any other product and stays pure.
@@ -228,14 +228,14 @@ on the frame thread.
 
 ## The crates
 
-Every package is named with a `graft-` prefix — `graft-core`, `graft-graph`,
-`graft-git`, `graft-ops`, `graft-term`, `graft-ui` — because a bare package
+Every package is named with a `graft-` prefix — `mergewright-core`, `mergewright-graph`,
+`mergewright-git`, `mergewright-ops`, `mergewright-term`, `mergewright-ui` — because a bare package
 called `core` collides with Rust's built-in `core`. `app` is the binary, and
-its package is `mergewright` (dir `crates/graft`, lib `graft`, bin `mwr`;
+its package is `mergewright` (dir `crates/mergewright`, lib `graft`, bin `mwr`;
 ADR-0057 §9); the crates keep `graft-*`. This page uses the short names throughout; the
-prefix exists only in `Cargo.toml` and in `use` paths (`graft_core::…`).
+prefix exists only in `Cargo.toml` and in `use` paths (`mergewright_core::…`).
 
-`app` is a library (`crates/graft/src/lib.rs`) with a thin binary
+`app` is a library (`crates/mergewright/src/lib.rs`) with a thin binary
 (`main.rs`) on top of it. Everything lives in the library so that `app`'s own
 tests, its integration tests and the manual `terminal_probe` example all drive
 the same code the binary runs; `main.rs` only starts it. This is a target
@@ -275,10 +275,10 @@ never name the rendering library (`update::tests::purity` greps for it) — so
 that a hit-test, a scroll bound or a refusal reads the renderer's own answer
 instead of a hand-kept copy of it. The diagram's `Event ─▶ update ─▶ view`
 is about who draws, not who may ask. Where layout arithmetic has to be
-shared with no `AppState` to hand, it lives in `graft-ui` in plain numbers
-(`graft_ui::Cells`: `graph_screen::row_carve`, `preview_box::dock_cells`,
+shared with no `AppState` to hand, it lives in `mergewright-ui` in plain numbers
+(`mergewright_ui::Cells`: `graph_screen::row_carve`, `preview_box::dock_cells`,
 `picker::picker_box`) and both sides call it. The production calls today
-(`grep -rn 'crate::view' crates/graft/src/update`, test modules left out):
+(`grep -rn 'crate::view' crates/mergewright/src/update`, test modules left out):
 
 | `view` fn | Called from |
 |---|---|
@@ -302,7 +302,7 @@ real one. Its one user is
 `update::geometry::detail_split` against `view::frame::detail_rects`
 (`pub(crate)` for this). `detail_split` stays a copy on purpose: its `Right`
 graph region is one column wider than `split_area`'s, the gutter routing to
-the region it came out of (`graft-ui/src/detail_pane/layout.rs:81-84`).
+the region it came out of (`mergewright-ui/src/detail_pane/layout.rs:81-84`).
 
 ### The open repository: `SharedRepo` and `RepoStore`
 
@@ -321,7 +321,7 @@ The seam is two types:
   object database. `handle()` turns it into a thread-local
   `RepoHandle` for the cost of a clone of some `Arc`s, and sets the object
   cache. This is why `gix`'s `parallel` feature is on
-  (`graft-git/Cargo.toml`): without it `gix-features` uses `Rc`, and
+  (`mergewright-git/Cargo.toml`): without it `gix-features` uses `Rc`, and
   `SharedRepo` is not `Send`.
 - `app::repos::RepoStore` — one per run, owned by the job runner and never by
   the state. It opens the repository the first time a job asks, keeps it, and
@@ -345,7 +345,7 @@ offers exactly what an implementation needs: `history::Walk::next_chunk`
 `app::history::WalkSource`, beside the seed builder (`history::seeds_for`) and
 the driver that hands each laid-out chunk to the UI thread
 (`history::stream`, m1-07). The test one in
-`graft-graph/tests/it/streaming.rs` sits on that crate's dev-dependency edge
+`mergewright-graph/tests/it/streaming.rs` sits on that crate's dev-dependency edge
 to `git`, which ADR-0006's rule does not count.
 
 Inside `graph`, `layout.rs` is the cursor's own file — its state and public,
@@ -358,7 +358,7 @@ snapshots) and `stream` (`StreamingLayout`, the one type callers see).
 
 ### `fixtures`: test-only, outside the table
 
-`graft-fixtures` (`crates/graft-fixtures/`) is the whole test harness, for
+`mergewright-fixtures` (`crates/mergewright-fixtures/`) is the whole test harness, for
 all three tiers ([`TESTING.md`](TESTING.md)):
 
 - the named fixture corpus — one small repository per history or ref shape
@@ -374,11 +374,11 @@ It is **not** a row in the table above, because nothing in the shipped binary
 may reach it: it is `publish = false` and appears only in
 `[dev-dependencies]`. The `cargo metadata` edge test deliberately ignores
 dev-dependency edges (ADR-0006), so the enforced edge set is unchanged by it.
-`graft-term` depends on it that way for the case count, `graft-git` and `app`
+`mergewright-term` depends on it that way for the case count, `mergewright-git` and `app`
 for the corpus, and each re-exports the feature as its own `heavy-tests` so
 one `--features heavy-tests` turns the tier on across the workspace.
 
-It depends on no other Graft crate, in either direction. That is the rule
+It depends on no other Mergewright crate, in either direction. That is the rule
 that keeps it usable: the corpus can be built before the crate that reads it
 exists, and a change to `core` or `git` can never make the fixtures fail to
 build. It shells out to real `git` and owns nothing a production code path
@@ -386,7 +386,7 @@ would want.
 
 ### `capabilities`: repo metadata tooling, outside the table
 
-`graft-capabilities` (`crates/graft-capabilities/`) is the feature database:
+`mergewright-capabilities` (`crates/mergewright-capabilities/`) is the feature database:
 it parses `docs/capabilities/*.md`, checks every citation in it (a test
 name, a capture path, an ADR or design note) against the repository on
 disk, and generates `CAPABILITIES.md` and
@@ -395,14 +395,14 @@ workflow are `docs/capabilities/README.md`.
 
 It is **not** a row in the table above: nothing it produces ships in the
 binary, and nothing in the binary reads it back. It has no `[dependencies]`
-on another Graft crate and — unlike `graft-fixtures` — no other Graft crate
+on another Mergewright crate and — unlike `mergewright-fixtures` — no other Mergewright crate
 depends on it either, not even as a dev-dependency: it is not test
 infrastructure, it is a standalone checker that happens to live in the
 workspace so `cargo nextest run` picks up `tests/checker.rs` without a
-separate script anyone has to remember to run. `crates/graft` and
-`crates/graft-ops` in particular must never gain a dependency on it.
+separate script anyone has to remember to run. `crates/mergewright` and
+`crates/mergewright-ops` in particular must never gain a dependency on it.
 
-### The acceptance walks: `crates/graft/tests/it/`
+### The acceptance walks: `crates/mergewright/tests/it/`
 
 Every integration test of the app crate is a module of one binary
 (`tests/it/main.rs`, PROMPT.md §7.1). The milestone acceptance walks live

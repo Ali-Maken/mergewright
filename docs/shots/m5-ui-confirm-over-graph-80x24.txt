@@ -2,7 +2,7 @@
 # `view::view` from a real AppState — the Linear corpus cloned into a
 # `file://` bare, the clone left one commit ahead of it, the walk let
 # settle, then `P` pressed
-# (crates/graft/tests/it/two_boxes_over_content.rs,
+# (crates/mergewright/tests/it/two_boxes_over_content.rs,
 # capture_two_boxes_over_real_content_for_docs_shots, asserted).
 # Not a pty capture: the terminal is ratatui's TestBackend, so this is
 # a character grid with no colour attributes in it — CLAUDE.md rule 5,
@@ -25,7 +25,7 @@
 # its longest line used as right-hand padding. Judge that by eye.
 #
 # The snap is computed where the screen is laid out
-# (`graft::view::frame`, from `GraphScreen::column_boundaries`), not
+# (`mergewright::view::frame`, from `GraphScreen::column_boundaries`), not
 # inside the widget — ADR-0040 clause 3, so the box stays a box and
 # knows nothing about the graph.
 #
@@ -40,7 +40,7 @@
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
 # docs/shots/m5-ui-undo-after-push-80x24.txt. It is not reproduced
-# here: reaching it needs a commit Graft makes **during** the run,
+# here: reaching it needs a commit Mergewright makes **during** the run,
 # and git stamps that commit from the wall clock, so its oid — which
 # the box and the header both draw — would move every run and this
 # file could not be diffed.

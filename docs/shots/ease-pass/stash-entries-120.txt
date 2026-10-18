@@ -1,4 +1,4 @@
-ease-pass 06r M1, 120x36, a repository with two stash entries, at first paint: drawn by `view::view` from a real AppState over the job pool (crates/graft/tests/it/stash_nodes.rs, `two_stashes`: `stash@{0}` pushed with `-u`, so git gives it three parents). Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+ease-pass 06r M1, 120x36, a repository with two stash entries, at first paint: drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/stash_nodes.rs, `two_stashes`: `stash@{0}` pushed with `-u`, so git gives it three parents). Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
 What right looks like: `stash@{0}` (newest, with an untracked file) draws `■`, not `◉`; its index and untracked commits are not drawn; `stash@{1}` (older) is not a row (only in the reflog); `HEAD` (`Write the second note`) draws `◆`.
 
  ◆ api  ~/code/api · main                                                                                     3 commits

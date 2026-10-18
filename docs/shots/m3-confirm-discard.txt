@@ -1,6 +1,6 @@
 # m3-confirm-discard.txt: TestBackend capture (not a pty), 120x40, no colour
 # recorded. Fixture: capture_m3_confirm_discard in
-# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
+# crates/mergewright/src/view/tests.rs (asserted; regenerate on purpose).
 # `d` pressed with the diff region focused and the line cursor on an added
 # line of src/api/routes.rs.
 #

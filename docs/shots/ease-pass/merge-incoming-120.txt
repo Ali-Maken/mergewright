@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_merge_preview in
-# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# crates/mergewright/tests/it/merge_preview/shots.rs, real git.
 # Judge by eye: `⏎` from the box: `The 3 commits that come in from sara/fix-toc`, newest first, `▸` on the first, who and age right-aligned; footer `esc back to the preview  y merge`.
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           8 commits

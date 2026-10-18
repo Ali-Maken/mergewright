@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
+# capture_m3_journal in crates/mergewright/src/view/tests.rs (asserted; regenerate
 # on purpose). `J` on a scripted journal of six entries, drawn
 # against a fixed clock so the ages never move. Opened as `J` opens it,
 # and the shell's steps and the lost-commit scan answered empty, so the
@@ -10,7 +10,7 @@
 # - The title reads JOURNAL · what happened in this repo, newest first.
 # - Newest first: the undo is the top row, the 26-hour-old stage the last.
 # - Every mark the browser has is on screen, one row each, no row with two.
-#   Not "looks right": the marks are `graft_ops`' own next_undo, next_redo
+#   Not "looks right": the marks are `mergewright_ops`' own next_undo, next_redo
 #   and in_force answers, so a mark on the wrong row means the key and the
 #   browser disagree.
 #     ← U          on the undo (top row): what `U` would put back.

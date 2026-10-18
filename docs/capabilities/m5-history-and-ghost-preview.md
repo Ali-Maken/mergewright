@@ -36,7 +36,7 @@ unverified_aspect: whether the password buffer is actually zeroed after drop —
 - **Behaviour (buffer):** the typed password lives in a `Zeroizing<String>` reserved once at
   256 bytes; growth past that builds a fresh buffer rather than reallocating in place, so no
   reallocation ever frees a block with unwiped plaintext in it.
-- **Proven by:** `graft_ui::text_input::tests::masked_prompt_draws_only_glyphs`, `graft_ui::text_input::tests::every_keystroke_visibly_changes_the_masked_row`, `graft_ui::text_input::tests::the_resting_row_is_decided_by_the_seed_not_the_length`, `graft_ui::text_input::tests::secret_field_never_reallocates_silently`, `graft_ui::text_input::tests::secret_field_debug_and_eq_never_compare_content`, `graft::update::credential::tests::secret_never_in_debug`
+- **Proven by:** `mergewright_ui::text_input::tests::masked_prompt_draws_only_glyphs`, `mergewright_ui::text_input::tests::every_keystroke_visibly_changes_the_masked_row`, `mergewright_ui::text_input::tests::the_resting_row_is_decided_by_the_seed_not_the_length`, `mergewright_ui::text_input::tests::secret_field_never_reallocates_silently`, `mergewright_ui::text_input::tests::secret_field_debug_and_eq_never_compare_content`, `mergewright::update::credential::tests::secret_never_in_debug`
 - **Looks like:** `docs/shots/m4-credential-prompt-in-app.txt` (regenerated in-app capture, seeded pulse)
 - **Decided in:** `docs/adr/0038-m5-spec-decisions.md` §2
 - **Status:** works, with a disclosed limit (live keystroke counting by a bystander watching from prompt-open is still possible; zero-after-drop is unverifiable from safe Rust — see gaps)
@@ -56,7 +56,7 @@ status: works
   field of any length, digit-free, identical for a 7-character and a 30-character secret.
   `AppState`'s own debug redaction was extended to scan real recorded states from three
   password-typing scenarios, not just the field in isolation.
-- **Proven by:** `graft_ui::text_input::tests::secret_field_debug_and_eq_never_compare_content`, `graft::update::credential::tests::secret_never_in_debug`, `graft::m4_walk::every_scenario::wrong_password_then_right`, `graft::m4_walk::every_scenario::password_prompt_esc_cancels`, `graft::m4_walk::every_scenario::username_then_password`
+- **Proven by:** `mergewright_ui::text_input::tests::secret_field_debug_and_eq_never_compare_content`, `mergewright::update::credential::tests::secret_never_in_debug`, `mergewright::m4_walk::every_scenario::wrong_password_then_right`, `mergewright::m4_walk::every_scenario::password_prompt_esc_cancels`, `mergewright::m4_walk::every_scenario::username_then_password`
 - **Decided in:** `docs/adr/0037-m4-checkpoint-decisions.md` §5
 - **Status:** works
 
@@ -69,7 +69,7 @@ milestone: m5-history-and-ghost-preview
 status: works
 ```
 
-- **How:** internal — the operations layer (`graft-ops`) that the app's key bindings and
+- **How:** internal — the operations layer (`mergewright-ops`) that the app's key bindings and
   menus call into (wiring for most of these keys is not yet built at the app layer — see
   "Not yet built").
 - **Behaviour:** each of the eleven kinds is journaled with a before/after snapshot of every
@@ -80,7 +80,7 @@ status: works
   (`Refusal::Moved`); a rebase or a checkout-with-switch onto a dirty **tracked** tree is
   refused (`DirtyTree`) — untracked files never count toward that refusal, so an untracked
   collision still reaches git and fails with git's own wording rather than Graft's.
-- **Proven by:** `graft_ops::tests::it::history_ops::{merge,rebase,cherry_pick,revert,reset,checkout,branch_create,branch_delete,tag_create,tag_delete,branch_from_stash}_applies_undoes_redoes` (eleven kinds; branch-from-stash's redo leg was added in the fix round after review found it missing)
+- **Proven by:** `mergewright_ops::tests::it::history_ops::{merge,rebase,cherry_pick,revert,reset,checkout,branch_create,branch_delete,tag_create,tag_delete,branch_from_stash}_applies_undoes_redoes` (eleven kinds; branch-from-stash's redo leg was added in the fix round after review found it missing)
 - **Decided in:** `docs/design/06-undo-journal-design.md` §6.3–§6.4; `.scratch/m5-history-and-ghost-preview/as-built.md`
 - **Status:** works (ops layer only; not yet reachable through most app keys — see "Not yet built")
 
@@ -99,7 +99,7 @@ status: works
   from what `apply` actually runs. Verified for ten of eleven local kinds by equality; push
   (which needs a remote) is checked by content instead (the `--force-with-lease=` flag is
   present, a bare `--force` never is).
-- **Proven by:** `graft_ops::tests::it::history_ops::preview_commands_come_from_plan`, `graft_ops::tests::it::history_ops::repush_old_tip_with_lease`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::preview_commands_come_from_plan`, `mergewright_ops::tests::it::history_ops::repush_old_tip_with_lease`
 - **Decided in:** `.scratch/m5-history-and-ghost-preview/as-built.md` §2
 - **Status:** works
 
@@ -119,7 +119,7 @@ status: works
   2.38+, where the flag exists), so `rebase.updateRefs=true` can't move branches the preview
   never mentioned. Pull was checked and found already honest: it runs `fetch` + `merge
   --ff-only`, never `git pull`, so `pull.rebase` can't reach it.
-- **Proven by:** `graft_ops::tests::it::history_ops::a_merge_follows_the_picture_not_the_readers_merge_ff`, `graft_ops::tests::it::history_ops::a_rebase_moves_only_the_branch_the_entry_records`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::a_merge_follows_the_picture_not_the_readers_merge_ff`, `mergewright_ops::tests::it::history_ops::a_rebase_moves_only_the_branch_the_entry_records`
 - **Decided in:** `.scratch/m5-history-and-ghost-preview/as-built.md` §8 (fix round on the m5/07 review, Majors M1–M2)
 - **Status:** works
 
@@ -143,7 +143,7 @@ status: works
   and the finish — is one entry that `u` takes back as a unit once resume exists. This rule
   also protects an operation started outside Graft (in a shell): such a step runs but is
   never adopted into a Graft entry, because Graft has no entry to fold it onto.
-- **Proven by:** `graft_ops::tests::it::history_ops::conflict_span_is_one_entry_and_undoes_to_before_the_merge`, `graft_ops::tests::it::history_ops::resolving_each_file_in_turn_still_leaves_the_span_one_entry`, `graft_ops::tests::it::history_ops::a_resolve_step_joins_the_live_entrys_commands`, `graft_ops::tests::it::history_ops::a_shell_merge_is_not_adopted_as_grafts_own_entry`, `graft_ops::tests::it::history_ops::rebase_conflicts_twice_same_entry`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::conflict_span_is_one_entry_and_undoes_to_before_the_merge`, `mergewright_ops::tests::it::history_ops::resolving_each_file_in_turn_still_leaves_the_span_one_entry`, `mergewright_ops::tests::it::history_ops::a_resolve_step_joins_the_live_entrys_commands`, `mergewright_ops::tests::it::history_ops::a_shell_merge_is_not_adopted_as_grafts_own_entry`, `mergewright_ops::tests::it::history_ops::rebase_conflicts_twice_same_entry`
 - **Decided in:** `.scratch/m5-history-and-ghost-preview/as-built.md` §1; DESIGN §6.4, hard choice 2
 - **Status:** works (ops layer; fixed at the cause in the final review round after an earlier build made the merge unreachable by `u` — see `docs/reviews/m5-07-ops-history-operations.md` C1). Not yet exercised by a live user session: no key opens or resolves a conflict yet (group 09, unbuilt).
 
@@ -161,7 +161,7 @@ status: works
   match what was recorded before the operation started (someone edited mid-conflict), the
   discrepancy is treated honestly rather than assumed away, and the pre-op backup still
   holds the original tree.
-- **Proven by:** `graft_ops::tests::it::history_ops::abort_restores_before_state`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::abort_restores_before_state`
 - **Decided in:** `.scratch/m5-history-and-ghost-preview/as-built.md` §1
 - **Status:** works (ops layer only; not yet reachable by a key)
 
@@ -180,7 +180,7 @@ status: works
   since then and inverts each — but it now skips `Undo`/`Redo` entries themselves. Without
   this, reverting to before a cherry-pick that was later undone would re-create the branch
   that undo had removed.
-- **Proven by:** `graft_ops::tests::it::history_ops::the_time_machine_does_not_redo_what_was_undone`, `graft_ops::tests::it::history_ops::time_machine_reverts_in_order`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::the_time_machine_does_not_redo_what_was_undone`, `mergewright_ops::tests::it::history_ops::time_machine_reverts_in_order`
 - **Decided in:** `docs/design/06-undo-journal-design.md` §6.6; fixed in the m5/07 review round (Critical C2)
 - **Status:** works (ops layer only)
 
@@ -204,7 +204,7 @@ unverified_aspect: the capture — the user has not judged it
   stays solid and its own colour — only the lanes the preview names, plus the ghost's own
   cell, dash — so a real ancestor can never be mistaken for part of the preview or the
   reverse.
-- **Proven by:** `graft_ops::tests::it::history_ops::ghost_matches_git_merge`, `..._rebase`, `..._cherry_pick`, `..._revert`, `..._reset`; `graft_ui::graph_column::tests::a_real_lane_through_a_ghost_row_stays_solid_and_keeps_its_colour`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::ghost_matches_git_merge`, `..._rebase`, `..._cherry_pick`, `..._revert`, `..._reset`; `mergewright_ui::graph_column::tests::a_real_lane_through_a_ghost_row_stays_solid_and_keeps_its_colour`
 - **Looks like:** `docs/shots/m5-ui-ghost-rows.txt`
 - **Decided in:** `docs/adr/0038-m5-spec-decisions.md` §5; DESIGN §1.7; `docs/design/05-visualization.md`
 - **Status:** works as a widget/data pair; unverified by eye (the user has not judged this capture — rule 6)
@@ -243,7 +243,7 @@ unverified_aspect: the captures — unverified by eye
   not wrap onto the acting choice; only `Tab`/`Shift+Tab` cycle around. `PreviewBox` (the
   Ghost Preview's own confirm) shares this: its only constructor starts on `Cancel` too, and
   `choices`/`cursor` are private so no caller can build one that starts elsewhere.
-- **Proven by:** `graft_ui::confirm::tests::every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked`, `graft::update::confirm::tests::left_on_cancel_stays_on_cancel`, `graft::update::confirm::tests::right_moves_onto_the_acting_choice_and_clamps`, `graft_ui::preview_box::tests::the_only_constructor_opens_on_cancel`
+- **Proven by:** `mergewright_ui::confirm::tests::every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked`, `mergewright::update::confirm::tests::left_on_cancel_stays_on_cancel`, `mergewright::update::confirm::tests::right_moves_onto_the_acting_choice_and_clamps`, `mergewright_ui::preview_box::tests::the_only_constructor_opens_on_cancel`
 - **Looks like:** `docs/shots/m5-ui-confirm-over-graph-80x24.txt`, `docs/shots/m5-ui-confirm-over-graph-160x48.txt`, `docs/shots/m5-ui-preview-box.txt`
 - **Decided in:** `docs/adr/0038-m5-spec-decisions.md` §1
 - **Status:** works; captures unverified by eye
@@ -264,7 +264,7 @@ unverified_aspect: the capture — unverified by eye
   row, blank ones included — not just the first and last. Below its floor (4 rows) or when
   the frame itself is too small, it draws one line: `preview needs 40x12 · esc closes`
   (`esc` still works blind).
-- **Proven by:** `graft_ui::preview_box::tests::every_interior_row_is_a_bordered_content_row`, `graft_ui::preview_box::tests::a_taller_rect_still_draws_a_box_on_every_interior_row`, `graft_ui::preview_box::tests::too_small_screen_shows_one_line_and_nothing_else`
+- **Proven by:** `mergewright_ui::preview_box::tests::every_interior_row_is_a_bordered_content_row`, `mergewright_ui::preview_box::tests::a_taller_rect_still_draws_a_box_on_every_interior_row`, `mergewright_ui::preview_box::tests::too_small_screen_shows_one_line_and_nothing_else`
 - **Looks like:** `docs/shots/m5-ui-preview-box.txt`
 - **Decided in:** review fix round, `docs/reviews/m5-04-ui-ghost-banner-conflict.md` Critical 1 — an earlier build compared the box's minimum size against its own docked height rather than the frame, so it silently never drew a frame at all; the capture that was supposed to show it also filtered the blank rows that would have exposed the bug
 - **Status:** works; capture unverified by eye
@@ -298,12 +298,12 @@ status: partial
   Each row names how it's unmerged in words (once wired to real git status data — currently
   every row says "unmerged" rather than "both modified"/"deleted by them", see gaps).
   `Space` on a conflicted file **marks it resolved** (staging an unmerged path is how git
-  records a resolution, group 09) — refused in words by `graft_ops` while `<<<<<<< ` is
+  records a resolution, group 09) — refused in words by `mergewright_ops` while `<<<<<<< ` is
   still in the file, so a half-resolved file can never be marked done. `d` (discard) on one
   still answers the key with a status-line reason rather than guessing which side to throw
   away. `M` opens the configured mergetool on the row's file, `e` the editor at its first
   marker.
-- **Proven by:** `graft::update::operate::tests::space_on_a_conflicted_file_stages_it_as_the_resolution`, `graft::update::operate::tests::d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head`, `graft::update::operate::tests::d_in_the_diff_region_of_a_conflicted_file_says_why_instead_of_asking`
+- **Proven by:** `mergewright::update::operate::tests::space_on_a_conflicted_file_stages_it_as_the_resolution`, `mergewright::update::operate::tests::d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head`, `mergewright::update::operate::tests::d_in_the_diff_region_of_a_conflicted_file_says_why_instead_of_asking`
 - **Looks like:** `docs/shots/m5-ui-conflicts.txt`
 - **Decided in:** DESIGN §1.13 New UI
 - **Status:** the widget and refusal wiring work; the section is never populated with real conflicts yet — `jobs/detail.rs` has no code path that builds an `Unmerged` group (group 09, unbuilt); the "how" wording is a placeholder, not the real porcelain-derived words
@@ -342,7 +342,7 @@ status: works
   the commit being re-pushed is still on the branch — the same check the preview already
   drew, now also enforced at the point that actually writes, so a caller cannot bypass the
   safety by skipping the preview.
-- **Proven by:** `graft_ops::tests::it::history_ops::a_repush_of_a_commit_that_is_not_on_the_branch_is_refused`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::a_repush_of_a_commit_that_is_not_on_the_branch_is_refused`
 - **Decided in:** `docs/adr/0038-m5-spec-decisions.md` §4
 - **Status:** works at the ops layer; the app-level "re-push old tip" confirm box itself is not built (all three call sites pass `source_commit: None` for now — see gaps)
 
@@ -363,7 +363,7 @@ status: works
   the pool entirely and starve every other read behind them (this was the M4 acceptance
   walk's `journal-rows` scenario, which needed a manual "wait for ready" workaround before
   this fix; that workaround is now removed).
-- **Proven by:** `graft::tests::it::refresh_race::two_refreshes_before_started_leave_one_history_job`, `graft::tests::it::refresh_race::refresh_cancels_the_walk_it_replaces`, `graft::update::tests::stale_started_is_dropped`, `graft::tests::it::m4_walk::every_scenario::journal_rows`
+- **Proven by:** `mergewright::tests::it::refresh_race::two_refreshes_before_started_leave_one_history_job`, `mergewright::tests::it::refresh_race::refresh_cancels_the_walk_it_replaces`, `mergewright::update::tests::stale_started_is_dropped`, `mergewright::tests::it::m4_walk::every_scenario::journal_rows`
 - **Decided in:** `docs/adr/0037-m4-checkpoint-decisions.md` §6
 - **Status:** works
 
@@ -382,7 +382,7 @@ status: works
   cancels it — only a read that's refreshing a list already on hand can be cancelled by
   `Esc`. This avoids a narrower fix (a blanket "don't re-request" flag) that would have
   turned churn into a real loss of that notice.
-- **Proven by:** `graft::update::journal::tests::esc_on_a_pending_journal_read_does_not_rerequest`
+- **Proven by:** `mergewright::update::journal::tests::esc_on_a_pending_journal_read_does_not_rerequest`
 - **Decided in:** `KNOWN_GAPS.md` row 217 (M3); fixed as part of the refresh-race group
 - **Status:** works
 
@@ -406,7 +406,7 @@ status: works
   width budget is too scarce to spend on dead keys. A guard test checks both directions: every
   hinted key/verb pair is really bound, and every planned pair fails the build the moment it's
   bound without its hint being flipped to live.
-- **Proven by:** `graft::update::tests::every_hinted_key_is_bound`, `graft::update::tests::every_planned_hint_is_still_unbound`, `graft_ui::graph_screen::hints::tests::eighty_columns_leads_with_three_and_fills_the_row`, `graft_ui::graph_screen::hints::tests::a_wider_row_takes_more_hints_and_still_fits`, `graft::tests::it::hint_bar::the_tip_row_hints_the_current_branch_context`, `graft::tests::it::hint_bar::the_changes_pane_hints_the_keys_that_write`, `graft::tests::it::hint_bar::the_uncommitted_row_hints_the_working_tree_context`
+- **Proven by:** `mergewright::update::tests::every_hinted_key_is_bound`, `mergewright::update::tests::every_planned_hint_is_still_unbound`, `mergewright_ui::graph_screen::hints::tests::eighty_columns_leads_with_three_and_fills_the_row`, `mergewright_ui::graph_screen::hints::tests::a_wider_row_takes_more_hints_and_still_fits`, `mergewright::tests::it::hint_bar::the_tip_row_hints_the_current_branch_context`, `mergewright::tests::it::hint_bar::the_changes_pane_hints_the_keys_that_write`, `mergewright::tests::it::hint_bar::the_uncommitted_row_hints_the_working_tree_context`
 - **Looks like:** `docs/shots/m5-hints-branch-80x24.txt`, `docs/shots/m5-hints-branch-120x40.txt`, `docs/shots/m5-hints-branch-160x48.txt`, `docs/shots/m5-hints-changes-80x24.txt`, `docs/shots/m5-hints-uncommitted-80x24.txt`, `docs/shots/m5-hints-plain-80x24.txt` (and their 120/160 pairs)
 - **Decided in:** `docs/adr/0037-m4-checkpoint-decisions.md` §4
 - **Status:** works, fixed at the cause after two Criticals in review: the changes pane's own hint arm was unreachable for a whole build (the working-tree check ran first and always matched, so the pane never showed `space stage`/`d discard` — the two keys it exists for), and the guard test that was meant to catch dead-key hints carved out exemptions instead of checking real bindings
@@ -427,7 +427,7 @@ status: works
   function the dropped key would have called (proven by equivalence, not by duplicated
   logic). `S` stash, `J` journal and `/` search still aren't in the menu yet — they open
   their own overlays and haven't been factored out to be callable from here.
-- **Proven by:** `graft::update::context_menu::tests::every_menu_lists_the_dropped_keys`, `graft::update::context_menu::tests::the_menu_runs_what_the_dropped_keys_run`
+- **Proven by:** `mergewright::update::context_menu::tests::every_menu_lists_the_dropped_keys`, `mergewright::update::context_menu::tests::the_menu_runs_what_the_dropped_keys_run`
 - **Decided in:** `docs/adr/0039-the-hint-bar-degrades-to-a-doorway.md`
 - **Status:** works, with the three named exceptions above still absent
 
@@ -446,7 +446,7 @@ status: works
   the reason text with `…` when the line doesn't fit; only if even the keys portion doesn't
   fit does it start cutting keys from the right. A failure or sticky state that carries no
   keys of its own is now given `esc dismiss` rather than shown keyless.
-- **Proven by:** `graft_ui::graph_screen::hints::tests::status_line_keeps_its_keys`, `graft::tests::it::hint_bar::a_failure_still_names_the_key_that_clears_it`
+- **Proven by:** `mergewright_ui::graph_screen::hints::tests::status_line_keeps_its_keys`, `mergewright::tests::it::hint_bar::a_failure_still_names_the_key_that_clears_it`
 - **Decided in:** `docs/adr/0037-m4-checkpoint-decisions.md` §4
 - **Status:** works
 
@@ -468,7 +468,7 @@ status: works
   So the "never hide every key" guarantee holds here too, at the cost of one row, only
   below 100 columns, only where nothing else is already spending it (m5-history-and-
   ghost-preview/29).
-- **Proven by:** `graft::tests::it::hint_bar::the_tab_layout_draws_the_panes_own_keys`, `graft::tests::it::hint_bar::every_tab_context_draws_a_bar`
+- **Proven by:** `mergewright::tests::it::hint_bar::the_tab_layout_draws_the_panes_own_keys`, `mergewright::tests::it::hint_bar::every_tab_context_draws_a_bar`
 - **Decided in:** `docs/adr/0039-the-hint-bar-degrades-to-a-doorway.md`
 - **Status:** works
 
@@ -493,7 +493,7 @@ status: works
   on disk, never spawning git for this. `first_marker_line` finds the first `<<<<<<<` line in
   a file, correctly on non-UTF-8 content, CRLF line endings, and files with no trailing
   newline.
-- **Proven by:** `graft_git::history_reads::tests::it::merge_base_matches_git_merge_base_and_is_none_for_unrelated_history`, `graft_git::history_reads::tests::it::forecast_merge_finds_a_real_conflict_and_a_clean_pair`, `graft_git::history_reads::tests::it::forecast_merge_conflict_paths_are_raw_bytes_for_non_ascii_and_special_names`, `graft_git::state::tests::in_progress_detail_reports_step_head_name_and_onto_mid_rebase`, `graft_git::history_reads::tests::first_marker_line_finds_the_marker_on_its_own_line`, `graft_git::history_reads::tests::first_marker_line_reads_past_a_non_utf8_byte_before_the_marker`, `graft_git::history_reads::tests::first_marker_line_finds_the_marker_in_a_crlf_file`
+- **Proven by:** `mergewright_git::history_reads::tests::it::merge_base_matches_git_merge_base_and_is_none_for_unrelated_history`, `mergewright_git::history_reads::tests::it::forecast_merge_finds_a_real_conflict_and_a_clean_pair`, `mergewright_git::history_reads::tests::it::forecast_merge_conflict_paths_are_raw_bytes_for_non_ascii_and_special_names`, `mergewright_git::state::tests::in_progress_detail_reports_step_head_name_and_onto_mid_rebase`, `mergewright_git::history_reads::tests::first_marker_line_finds_the_marker_on_its_own_line`, `mergewright_git::history_reads::tests::first_marker_line_reads_past_a_non_utf8_byte_before_the_marker`, `mergewright_git::history_reads::tests::first_marker_line_finds_the_marker_in_a_crlf_file`
 - **Decided in:** `docs/design-notes/m5-history-and-ghost-preview.md` Interfaces, G4 block
 - **Status:** works. One real limit, stated plainly by the code: a forecast only checks one pair of commits, so a rebase or cherry-pick replaying several commits can still stop on a later one even after a clean forecast — wording is always "may conflict", never "will"
 
@@ -542,7 +542,7 @@ ledger. What that means concretely:
   ops-layer safety check is (M5-16). All three current call sites explicitly pass
   `source_commit: None`.
 - **The CONFLICTS section's file rows say only "unmerged"**, not the real porcelain words
-  ("both modified", "deleted by them") — carrying that through needs a `graft-git` change no
+  ("both modified", "deleted by them") — carrying that through needs a `mergewright-git` change no
   group in this milestone held (`KNOWN_GAPS.md` row 473).
 
 ## Deliberately not built

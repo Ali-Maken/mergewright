@@ -1,5 +1,5 @@
 # m6/stash-preview-in-the-way-120x40.txt: 120x40, drawn by `view::view`
-# from a real AppState (crates/graft/tests/it/m6_stash_put_back/
+# from a real AppState (crates/mergewright/tests/it/m6_stash_put_back/
 # stash_preview.rs, unsaved_edits_in_the_way_are_named_in_the_box,
 # asserted). Not a pty capture: a character grid with no colour (CLAUDE.md
 # rule 5, colour unverified).

@@ -1,5 +1,5 @@
 # m8/polish-blame-whitespace-counted-120x36: drawn by `view::view` from a real
-# AppState (crates/graft/tests/it/look_polish.rs). Not a pty capture: a character
+# AppState (crates/mergewright/tests/it/look_polish.rs). Not a pty capture: a character
 # grid, no colour (CLAUDE.md rule 5 — colour unverified).
 #
 # Blame of src/auth/session.rs after `w`. Right: the title ends

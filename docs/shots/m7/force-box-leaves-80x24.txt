@@ -1,6 +1,6 @@
 # force-box-leaves-80x24.txt: TestBackend capture (not a pty), 80x24, no colour
 # recorded (colour unverified). Fixture: capture_force_box_leaves in
-# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
+# crates/mergewright/src/view/tests.rs (asserted; regenerate on purpose).
 #
 # Right: line 1 (origin/main 9f8e7d6 → <ours> · refused if …), then
 # `rewrites history for everyone who has 9f8e7d6`, then `leaves origin/main:`,

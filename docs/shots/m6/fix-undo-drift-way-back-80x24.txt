@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), 80x24, no colour recorded. Fixture:
-# capture_fix_undo_drift_way_back in crates/graft/tests/it/undo_over_drift.rs
+# capture_fix_undo_drift_way_back in crates/mergewright/tests/it/undo_over_drift.rs
 # (asserted). m6-conflicts/77: a menu checkout of `fix`, `fix.txt` edited,
 # then `u`, `y`, `U`.
 #

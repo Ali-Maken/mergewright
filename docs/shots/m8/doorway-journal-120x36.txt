@@ -1,6 +1,6 @@
 # m8/doorway-journal-120x36.txt: 120x36, drawn by `view::view` from the AppState
 # `update::tests` builds for: journal row 0
-# (crates/graft/src/update/tests/doorway.rs, capture_the_keys_doorway_for_docs_shots).
+# (crates/mergewright/src/update/tests/doorway.rs, capture_the_keys_doorway_for_docs_shots).
 # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour
 # unverified).
 #

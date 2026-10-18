@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_merge_preview in
-# crates/graft/tests/it/merge_preview/shots.rs, real git.
+# crates/mergewright/tests/it/merge_preview/shots.rs, real git.
 # Judge by eye: `m` on `stray`, which shares no history: `Comes in` stays; one line `Can't merge: stray and wallet-release share no history.`; no Changes/You decide/After lines; footer `esc cancel  ⏎ see the 1 commit` (no `y`).
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           9 commits

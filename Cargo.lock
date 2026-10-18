@@ -1561,105 +1561,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graft-capabilities"
-version = "0.1.0"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
-name = "graft-core"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "graft-fixtures"
-version = "0.1.0"
-dependencies = [
- "libc",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "graft-git"
-version = "0.1.0"
-dependencies = [
- "gix",
- "graft-core",
- "graft-fixtures",
- "nix",
- "proptest",
- "sha1",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "graft-graph"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "graft-core",
- "graft-fixtures",
- "graft-git",
- "insta",
- "proptest",
- "thiserror",
- "tiny-skia",
-]
-
-[[package]]
-name = "graft-ops"
-version = "0.1.0"
-dependencies = [
- "graft-core",
- "graft-fixtures",
- "graft-git",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "graft-term"
-version = "0.1.0"
-dependencies = [
- "graft-core",
- "graft-fixtures",
- "libc",
- "miniz_oxide 0.8.9",
- "png",
- "proptest",
-]
-
-[[package]]
-name = "graft-ui"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "graft-core",
- "graft-fixtures",
- "graft-git",
- "graft-graph",
- "graft-term",
- "insta",
- "proptest",
- "ratatui",
- "similar 3.2.0",
- "syntect",
- "unicode-width",
- "zeroize",
-]
-
-[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1957,14 +1858,14 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "getrandom 0.3.4",
- "graft-core",
- "graft-fixtures",
- "graft-git",
- "graft-graph",
- "graft-ops",
- "graft-term",
- "graft-ui",
  "insta",
+ "mergewright-core",
+ "mergewright-fixtures",
+ "mergewright-git",
+ "mergewright-graph",
+ "mergewright-ops",
+ "mergewright-term",
+ "mergewright-ui",
  "nix",
  "ratatui",
  "rustix",
@@ -1975,6 +1876,105 @@ dependencies = [
  "thiserror",
  "tiny-skia",
  "toml",
+ "unicode-width",
+ "zeroize",
+]
+
+[[package]]
+name = "mergewright-capabilities"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
+name = "mergewright-core"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "mergewright-fixtures"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "mergewright-git"
+version = "0.1.0"
+dependencies = [
+ "gix",
+ "mergewright-core",
+ "mergewright-fixtures",
+ "nix",
+ "proptest",
+ "sha1",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "mergewright-graph"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "insta",
+ "mergewright-core",
+ "mergewright-fixtures",
+ "mergewright-git",
+ "proptest",
+ "thiserror",
+ "tiny-skia",
+]
+
+[[package]]
+name = "mergewright-ops"
+version = "0.1.0"
+dependencies = [
+ "mergewright-core",
+ "mergewright-fixtures",
+ "mergewright-git",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "mergewright-term"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "mergewright-core",
+ "mergewright-fixtures",
+ "miniz_oxide 0.8.9",
+ "png",
+ "proptest",
+]
+
+[[package]]
+name = "mergewright-ui"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "insta",
+ "mergewright-core",
+ "mergewright-fixtures",
+ "mergewright-git",
+ "mergewright-graph",
+ "mergewright-term",
+ "proptest",
+ "ratatui",
+ "similar 3.2.0",
+ "syntect",
  "unicode-width",
  "zeroize",
 ]

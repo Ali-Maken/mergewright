@@ -96,7 +96,7 @@ out "4 install (quoted from docs/release/, dated in each file's first line):"
 # ── 5. journey tally ────────────────────────────────────────────────────────
 fence=$(awk '/^```journey-counts/{on=1; next} /^```/{on=0} on && $1 !~ /^#/ && NF {print $1}' \
   docs/design-notes/m8-polish-and-ship.md | sort -u)
-walked=$(grep -oE '^\s+\("[a-z-]+",|^\s+"[a-z-]+",$' crates/graft/tests/it/m8_walk/mod.rs \
+walked=$(grep -oE '^\s+\("[a-z-]+",|^\s+"[a-z-]+",$' crates/mergewright/tests/it/m8_walk/mod.rs \
   | grep -oE '"[a-z-]+"' | tr -d '"' | sort -u)
 missing=$(comm -23 <(echo "$fence") <(echo "$walked") | tr '\n' ' ')
 out "5 journeys: $(echo "$fence" | wc -l | tr -d ' ') in the fence · missing a walk: ${missing:-none}"

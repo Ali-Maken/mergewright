@@ -2,7 +2,7 @@
 # m7-power-tools/44: what one cursor move costs per strip at the Pixel tier
 # once the selection's paint is its own layer (ADR-0053), against today's
 # full strip with the thread baked in. Release build, from the ignored test
-# `emphasis_layer::emphasis_cost` in crates/graft-graph/tests/it. Recorded,
+# `emphasis_layer::emphasis_cost` in crates/mergewright-graph/tests/it. Recorded,
 # not asserted (the gate is the held-key test, ticket 42).
 #
 # Writes docs/perf/44-scroll-emphasis-layer.txt (or $1); summary lines:
@@ -22,14 +22,14 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 
-cargo test --release --quiet -p graft-graph --test it --no-run 2>"$WORK/build.err" || {
+cargo test --release --quiet -p mergewright-graph --test it --no-run 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
 }
 
 LOAD_BEFORE=$(uptime)
-cargo test --release --quiet -p graft-graph --test it emphasis_layer::emphasis_cost \
+cargo test --release --quiet -p mergewright-graph --test it emphasis_layer::emphasis_cost \
   -- --ignored --nocapture --test-threads=1 >"$WORK/run.out" 2>"$WORK/run.err"
 status=$?
 LOAD_AFTER=$(uptime)

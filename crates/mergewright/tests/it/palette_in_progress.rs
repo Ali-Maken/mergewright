@@ -1,0 +1,175 @@
+//! J7 (m8-polish-and-ship/11): a rebase stopped on a conflict he has
+//! resolved and added; `?` puts `IN PROGRESS` first with `c` Continue on
+//! the cursor, and `⏎` asks for what `c` does there. Real `git`, the real pool.
+#![allow(
+    clippy::expect_used,
+    reason = "a test fixture that cannot be built has nothing to test; the panic names why"
+)]
+
+use mergewright_core::event::KeyCode;
+
+use crate::app_harness::{App, git};
+use crate::preview::dated_commit;
+
+/// `feature` and `main` both edit `shared.txt`: rebasing `feature` onto
+/// `main` stops on its one commit.
+fn stopped_and_resolved() -> mergewright_fixtures::Scratch {
+    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    dated_commit(path, "shared.txt", "base\n", "add shared", 1);
+    git(path, &["branch", "feature"]);
+    dated_commit(path, "shared.txt", "main's line\n", "main edits shared", 2);
+    git(path, &["switch", "feature"]);
+    dated_commit(
+        path,
+        "shared.txt",
+        "feature's line\n",
+        "feature edits shared",
+        3,
+    );
+    let stop = std::process::Command::new("git")
+        .args(["rebase", "main"])
+        .current_dir(path)
+        .output()
+        .expect("git runs");
+    assert!(!stop.status.success(), "the rebase stops on the conflict");
+    std::fs::write(path.join("shared.txt"), "both lines\n").expect("write the resolution");
+    git(path, &["add", "shared.txt"]);
+    scratch
+}
+
+fn rebasing(path: &std::path::Path) -> bool {
+    let dir = git(path, &["rev-parse", "--git-dir"]);
+    let dir = path.join(dir.trim());
+    dir.join("rebase-merge").exists() || dir.join("rebase-apply").exists()
+}
+
+#[test]
+fn j7_help_mid_rebase_puts_continue_first_and_enter_asks_what_c_asks() {
+    let scratch = stopped_and_resolved();
+    let path = scratch.path();
+    assert!(rebasing(path));
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 36);
+    let state = crate::conflict_interim::launched(&app, state);
+    let state = crate::captures::settled_frame(&app, state);
+    let state = app.key(&state, KeyCode::Char('?'));
+    crate::m8_walk::within_the_note("stopped-how-go-on", &["?"]);
+    let frame = crate::captures::frame(&state, 120, 36);
+    let shot = frame.join("\n");
+    // `docs/shots/m8-help-rebase-stop-120x36.txt` (m8/11b). What right looks
+    // like: the rebase stopped and resolved, `?` open — `IN PROGRESS` the
+    // first group, `▸c Continue` under the cursor, then `HERE` and
+    // `EVERYWHERE`. Colour unverified (rule 5).
+    crate::captures::check_shot("m8-help-rebase-stop-120x36.txt", &shot);
+    let headers: Vec<&String> = frame
+        .iter()
+        .filter(|row| {
+            ["IN PROGRESS", "HERE", "EVERYWHERE"]
+                .iter()
+                .any(|h| row.contains(&format!("│{h}")) || row.contains(&format!("│ {h}")))
+        })
+        .collect();
+    assert!(
+        headers
+            .first()
+            .is_some_and(|row| row.contains("IN PROGRESS")),
+        "IN PROGRESS first\n{shot}"
+    );
+    assert!(
+        frame
+            .iter()
+            .any(|row| row.contains("▸c") && row.contains("Continue")),
+        "the cursor on `c` Continue\n{shot}"
+    );
+    // `⏎` asks for what `c` asks for at this stop: the terminal handed to
+    // `git rebase --continue` (`Command::ContinueInGit`). The handover is
+    // the loop's, never the job pool's, so this harness cannot carry it
+    // out: git's answer is not observed here, the command is.
+    let (after, by_palette) = crate::app_harness::press_for_commands(
+        &state,
+        mergewright_core::event::KeyPress::plain(KeyCode::Enter),
+    );
+    assert!(after.finish.is_none() && after.operating.is_none());
+    let closed = crate::app_harness::press_for_commands(
+        &state,
+        mergewright_core::event::KeyPress::plain(KeyCode::Escape),
+    )
+    .0;
+    let (_, by_c) = crate::app_harness::press_for_commands(
+        &closed,
+        mergewright_core::event::KeyPress::plain(KeyCode::Char('c')),
+    );
+    assert_eq!(by_palette, by_c);
+    assert!(
+        matches!(
+            by_palette.as_slice(),
+            [mergewright::update::Command::ContinueInGit { .. }]
+        ),
+        "{by_palette:?}"
+    );
+    assert!(rebasing(path), "nothing ran yet");
+    app.close();
+}
+
+/// A rebase stopped at an `edit` of its one commit, begun in the shell:
+/// `HEAD` is the stopped commit, the graph has the keyboard.
+fn stopped_at_an_edit() -> mergewright_fixtures::Scratch {
+    let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    dated_commit(path, "edit.txt", "one\n", "the commit to edit", 1);
+    git(
+        path,
+        &[
+            "-c",
+            "sequence.editor=sed -i.bak -e 1s/^pick/edit/",
+            "rebase",
+            "-q",
+            "-i",
+            "HEAD~1",
+        ],
+    );
+    scratch
+}
+
+/// m8/12e (review m8-palette-theme Major 1): at an edit stop with the graph
+/// focused, `?` `↓` `↓` `⏎` on `a Abort` asks to abort the rebase — the
+/// banner's `a` — and never reaches the graph's `a`, which amends there.
+/// `HEAD` is the same commit after the app has closed (every job done).
+#[test]
+fn walk_abort_from_the_graph_at_an_edit_stop() {
+    let scratch = stopped_at_an_edit();
+    let path = scratch.path();
+    assert!(rebasing(path), "git stopped on the edit");
+    let head = git(path, &["rev-parse", "HEAD"]);
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 36);
+    let state = crate::conflict_interim::launched(&app, state);
+    let state = app.pump(state, "the stop, read", |state| {
+        state
+            .stopped
+            .as_ref()
+            .is_some_and(|stop| stop.rewrite.is_some())
+    });
+    let state = crate::captures::settled_frame(&app, state);
+    assert!(!state.banner_focus, "the graph has the keyboard");
+    let state = app.key(&state, KeyCode::Char('?'));
+    let state = app.key(&state, KeyCode::Down);
+    let state = app.key(&state, KeyCode::Down);
+    let frame = crate::captures::frame(&state, 120, 36).join("\n");
+    assert!(
+        frame.contains("▸a") && frame.contains("Abort"),
+        "the cursor on `a` Abort\n{frame}"
+    );
+    let state = app.key(&state, KeyCode::Enter);
+    let frame = crate::captures::frame(&state, 120, 36).join("\n");
+    assert!(
+        frame.contains("Abort the rebase?"),
+        "the abort preview\n{frame}"
+    );
+    assert!(state.operating.is_none(), "nothing written");
+    drop(state);
+    app.close();
+    assert_eq!(git(path, &["rev-parse", "HEAD"]), head, "HEAD unchanged");
+    assert!(rebasing(path), "still stopped");
+}

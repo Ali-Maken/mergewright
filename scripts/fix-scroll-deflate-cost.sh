@@ -16,7 +16,7 @@ trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$PWD/target}
 
-cargo test --release --quiet -p graft-term --lib --no-run 2>"$WORK/build.err" || {
+cargo test --release --quiet -p mergewright-term --lib --no-run 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
@@ -25,7 +25,7 @@ cargo test --release --quiet -p graft-term --lib --no-run 2>"$WORK/build.err" ||
 LOAD_BEFORE=$(uptime)
 status=0
 for _ in 1 2 3 4 5; do
-  cargo test --release --quiet -p graft-term --lib deflate_shrinks_a_sparse_strip -- --nocapture \
+  cargo test --release --quiet -p mergewright-term --lib deflate_shrinks_a_sparse_strip -- --nocapture \
     >>"$WORK/run.out" 2>>"$WORK/run.err" || status=$?
 done
 LOAD_AFTER=$(uptime)

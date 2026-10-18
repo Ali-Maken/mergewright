@@ -1,4 +1,4 @@
-# Graft: Design — Graph layout algorithm
+# Mergewright: Design — Graph layout algorithm
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Keymap](02-keymap.md) · Next: [Terminal-capability detection](04-terminal-capability-detection.md)
@@ -71,7 +71,7 @@ file** (ADR-0008):
 
 - **Commit-graph present** — the common case: `git gc` and
   `fetch.writeCommitGraph` both write one, and any commit-graph written by
-  git ≥2.38 (Graft's minimum) carries generation numbers, which gix
+  git ≥2.38 (Mergewright's minimum) carries generation numbers, which gix
   exposes via `gix-commitgraph`. Use git's own incremental topo-sort:
   explore commits through a queue ordered by generation number,
   descending. A child's generation always exceeds its parent's, so once
@@ -88,7 +88,7 @@ file** (ADR-0008):
   rev-walk's natural streaming order, already a first-class walk strategy,
   through the same `layout_chunk` machinery — and still lands inside
   150 ms. Two things then happen off-thread: a full topo-order walk of the
-  visible range runs as a background job, and Graft offers — **once per
+  visible range runs as a background job, and Mergewright offers — **once per
   repo**, remembered if declined — to run `git commit-graph write
   --reachable` in the background so every later open takes the fast path.
   When the background topo walk finishes, the view **promotes** to strict
@@ -381,7 +381,7 @@ tier.
 - **Where it lives:** inside `graph`'s pixel renderer, as renderer-private
   state (§8.4 — an internal seam, invisible to callers). Three LRUs
   (backdrops, and for iTerm2 emphasis images and composites; Kitty's
-  emphasis pieces are not cached in Graft, see the key below) under one **byte budget**
+  emphasis pieces are not cached in Mergewright, see the key below) under one **byte budget**
   (`ByteBudget`, 96 MiB, `event_loop/graphics.rs` `STRIP_BUDGET`), evicting
   the least recently used entry of any layer until the cache weighs no more
   than it (m8 04). Counted strips were not a bound: a strip weighs lanes ×

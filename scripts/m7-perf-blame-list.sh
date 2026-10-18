@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # m7-power-tools/18e: blame on the long file with an ignore list in effect,
-# from `crates/graft-git/examples/blame_longfile.rs --with-list`. On git
+# from `crates/mergewright-git/examples/blame_longfile.rs --with-list`. On git
 # before 2.50 this includes the human-format pass for the marks. Release
 # build, 10 runs. Usage:
 #   scripts/m7-perf-blame-list.sh [<dir holding the git to use>] [<out file>]
@@ -16,7 +16,7 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 
-cargo build --release --quiet -p graft-git --example blame_longfile 2>"$WORK/build.err" || {
+cargo build --release --quiet -p mergewright-git --example blame_longfile 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1

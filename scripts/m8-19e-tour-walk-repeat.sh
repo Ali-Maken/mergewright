@@ -26,13 +26,13 @@ cargo test --no-run --message-format=json >"$WORK/build.json" 2>"$WORK/build.err
   exit 1
 }
 # The integration-test binary of the graft package: the `it` target of the package at
-# crates/graft (graft-ops has an `it` too).
+# crates/mergewright (mergewright-ops has an `it` too).
 BIN=$(python3 -c '
 import json, sys
 for line in open(sys.argv[1]):
     m = json.loads(line)
     if (m.get("reason") == "compiler-artifact" and m.get("executable")
-            and m["target"]["name"] == "it" and "/crates/graft#" in m["package_id"]):
+            and m["target"]["name"] == "it" and "/crates/mergewright#" in m["package_id"]):
         print(m["executable"])
 ' "$WORK/build.json")
 [ -x "$BIN" ] || { echo "no it binary of package graft in the build" >&2; exit 1; }
@@ -46,7 +46,7 @@ pass=0
 for n in $(seq 1 "$RUNS"); do
   start=$(date +%s)
   # As cargo runs it: from the package's folder, never regenerating captures.
-  if (cd crates/graft && env -u MWR_UPDATE_SHOTS "$BIN" "$TEST" --exact >"$WORK/run-$n.out" 2>&1); then
+  if (cd crates/mergewright && env -u MWR_UPDATE_SHOTS "$BIN" "$TEST" --exact >"$WORK/run-$n.out" 2>&1); then
     pass=$((pass + 1))
     verdict=pass
   else

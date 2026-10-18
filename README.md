@@ -44,7 +44,7 @@ From a checkout of this repository, today (needs stable Rust, MSRV 1.88, and
 `git` 2.38 or newer on `PATH`). It installs the `mwr` command:
 
 ```sh
-cargo install --locked --path crates/graft
+cargo install --locked --path crates/mergewright
 ```
 
 Then `man ./docs/man/mwr.1` reads the manual: every flag, every key in every

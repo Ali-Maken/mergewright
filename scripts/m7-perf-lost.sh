@@ -2,7 +2,7 @@
 # m7-power-tools/19: how long finding lost commits takes — 500 reflog
 # candidates on the heavy synthetic repository with 50 000 refs, three
 # methods, 10 warm runs each. Release build, from
-# `crates/graft-git/examples/lost_cost.rs`. Writes
+# `crates/mergewright-git/examples/lost_cost.rs`. Writes
 # docs/perf/lost-commit-cost.txt (or $1); its last line is the summary:
 #   lost-commit-cost: method=<m> p95=<ms> cands=500 refs=<n> · budget 1000 ms · <held|missed>
 # Any further arguments go to the example (`<commits> <refs>`: a smaller
@@ -16,13 +16,13 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 
-cargo build --release --quiet -p graft-git --features heavy-tests --example lost_cost 2>"$WORK/build.err" || {
+cargo build --release --quiet -p mergewright-git --features heavy-tests --example lost_cost 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
 }
 
-cargo run --release --quiet -p graft-git --features heavy-tests --example lost_cost -- "$@" >"$WORK/run.out" 2>"$WORK/run.err"
+cargo run --release --quiet -p mergewright-git --features heavy-tests --example lost_cost -- "$@" >"$WORK/run.out" 2>"$WORK/run.err"
 status=$?
 
 {

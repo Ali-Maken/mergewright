@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # m7-power-tools/18b (review Major 3): how long blame takes on a long file
-# with interleaved history, from `crates/graft-git/examples/blame_longfile.rs`.
+# with interleaved history, from `crates/mergewright-git/examples/blame_longfile.rs`.
 # Release build, 10 runs. Appends a block to docs/perf/trace-readers.txt (or
 # $1) whose last line is the summary:
 #   blame-longfile p95=<ms>
@@ -12,13 +12,13 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 
-cargo build --release --quiet -p graft-git --example blame_longfile 2>"$WORK/build.err" || {
+cargo build --release --quiet -p mergewright-git --example blame_longfile 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
 }
 
-cargo run --release --quiet -p graft-git --example blame_longfile >"$WORK/run.out" 2>"$WORK/run.err"
+cargo run --release --quiet -p mergewright-git --example blame_longfile >"$WORK/run.out" 2>"$WORK/run.err"
 status=$?
 
 {

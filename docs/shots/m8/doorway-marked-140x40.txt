@@ -1,5 +1,5 @@
 # m8/doorway-marked-140x40.txt: 140x40, drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/hint_bar.rs, capture_the_doorway_on_a_marked_row_for_docs_shots).
+# (crates/mergewright/tests/it/hint_bar.rs, capture_the_doorway_on_a_marked_row_for_docs_shots).
 # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).
 #
 # Here the cursor is on an evil merge that is the current branch's tip, marked by the

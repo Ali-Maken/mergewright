@@ -2,7 +2,7 @@
 # m7-power-tools/14a: how long `only_in_stash` takes for 1 and 10 stash
 # entries on the fixture `lost_cost` builds (heavy synthetic, 50 000 refs,
 # no commit-graph). Release build, from
-# `crates/graft-git/examples/stash_only_cost.rs`. Writes
+# `crates/mergewright-git/examples/stash_only_cost.rs`. Writes
 # docs/perf/stash-only-cost.txt (or $1); summary lines:
 #   stash-only-cost: unreached cands=500 p50=<ms> p95=<ms> refs=<n> · the bound, this run
 #   stash-only-cost: entries=<n> p50=<ms> p95=<ms> per-entry=<ms> refs=<n> · bound <ms> ms per entry (unreached p95, same run) · <held|missed>
@@ -18,14 +18,14 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 
-cargo build --release --quiet -p graft-git --features heavy-tests --example stash_only_cost 2>"$WORK/build.err" || {
+cargo build --release --quiet -p mergewright-git --features heavy-tests --example stash_only_cost 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
 }
 
 LOAD_BEFORE=$(uptime)
-cargo run --release --quiet -p graft-git --features heavy-tests --example stash_only_cost -- "$@" >"$WORK/run.out" 2>"$WORK/run.err"
+cargo run --release --quiet -p mergewright-git --features heavy-tests --example stash_only_cost -- "$@" >"$WORK/run.out" 2>"$WORK/run.err"
 status=$?
 LOAD_AFTER=$(uptime)
 

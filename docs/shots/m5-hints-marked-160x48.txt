@@ -7,7 +7,7 @@
 # are captured through the whole app instead — m5-hints-branch-*,
 # -plain-*, -uncommitted-*, -changes-*. Fixture:
 # capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# crates/mergewright-ui/src/graph_screen/tests.rs (asserted;
 # regenerate on purpose).
 #
 # Judge by eye: the footer's last row reads the marked row's hints for

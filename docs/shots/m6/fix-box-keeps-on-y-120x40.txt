@@ -1,6 +1,6 @@
 # m6-conflicts/47, retaken by m6-conflicts/50: the force (lease) push box open,
 # `y` pressed (120x40). TestBackend capture (not a pty); colour unverified.
-# Fixture: capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs.
+# Fixture: capture_fix_box_takes_y in crates/mergewright/tests/it/remote_by_key.rs.
 # The plain push box takes `y` since ticket 50, so the box that keeps on `y`
 # is the lease box: a force push is never one habitual key away.
 # What right looks like: the frame after `y` is the frame before it, byte for

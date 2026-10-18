@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_fix_editor_names_the_banner in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# crates/mergewright/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
 # begun in the shell, resolved; the commit editor opened from the changes
 # pane with `c` (m6-conflicts/40).
 #

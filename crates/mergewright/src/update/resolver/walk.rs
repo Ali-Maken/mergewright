@@ -1,0 +1,377 @@
+//! `n`: the first open clash of the whole operation, from the top
+//! (ease-pass 05, [`first_open`]). `N`: the previous block, taken or not,
+//! then the previous file in the list (m6-conflicts/15, unchanged — the
+//! walk below is written for both directions).
+//!
+//! Before the first block, one rule decides, by position only (keymap
+//! §2.6, the user's call of 2026-09-24):
+//! 1. another file in the list not done → cross to it;
+//! 2. else this file has an open block → wrap to it;
+//! 3. else nothing is open anywhere: a notice, [`none_open_words`] (`no
+//!    open clashes left`, and `←/→` when this file holds a taken clash,
+//!    ticket ease-pass/05r) — on a whole-file card, which is itself the one
+//!    conflict left, [`NO_MORE_THIS_WAY`]. The bar keeps its own hints.
+//!
+//! Crossing first is what keeps `N` from circling a file that still has an
+//! open block and never leaving it.
+
+use std::path::PathBuf;
+
+use mergewright_core::job::JobId;
+use mergewright_git::conflict::{BlockState, ConflictFile};
+use mergewright_ui::keymap::{ActionId, Keymap};
+
+use super::files::{RowState, listed_files, select_file};
+use super::picks::{BlockAt, blocks_of, next_open};
+use super::scrolled_to;
+use super::take::pending_file;
+use crate::update::events::Command;
+use crate::update::state::AppState;
+
+/// Rule 3's words on a whole-file card: no other conflict this way
+/// (m6-conflicts/61). An info notice on the notice row, never the status
+/// line, so the bar keeps its own hints. A document with nothing open
+/// anywhere says [`none_open_words`] instead (ticket ease-pass/05r): its
+/// clashes are there, taken.
+pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
+
+/// `n` with the cursor already where `n` goes: said, an info notice, so the
+/// bar's `n` is never a dead key (the mock's `n` does nothing there).
+pub(crate) const ON_FIRST_OPEN: &str = "already on the first open clash";
+
+/// `n`: the first open clash of the whole operation, from the top of the
+/// list (ease-pass 05, the mock's `nextOpen`) — taken blocks and finished
+/// files skipped. In the file on screen the cursor moves to it; another
+/// file is opened, and its read lands on its first open block (`answers`:
+/// a fresh read has every block open; one showing its picks, the first
+/// still open). A
+/// whole-file card, or a file not read yet, counts as open: there is a
+/// choice in it to make. Already there: [`ON_FIRST_OPEN`]. Nothing open
+/// anywhere: [`none_open_words`].
+pub(super) fn first_open(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    first_open_or(state, commands, none_open, next_id);
+}
+
+/// `⏎` on a solved file in a merge (ease-pass/05b): where `n` goes, and
+/// with nothing open anywhere, `every clash is solved · y reviews the
+/// merge`.
+pub(super) fn solved_next(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    first_open_or(
+        state,
+        commands,
+        |state, _| {
+            let words = super::review::reviews_the_merge(EVERY_SOLVED, &state.keymap);
+            say(state, &words);
+        },
+        next_id,
+    );
+}
+
+/// The head of [`solved_next`]'s words with nothing open anywhere.
+const EVERY_SOLVED: &str = "every clash is solved";
+
+/// [`first_open`], with `none` saying what nothing open means for the key
+/// that asked (`taken`: the document on screen holds a taken block).
+fn first_open_or(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    none: impl FnOnce(&mut AppState, bool),
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    let here = match pending_file(open) {
+        Some(Ok(file)) if open.done.is_none() => blocks_of(&file),
+        // The take in flight names a block the document lacks: a take's
+        // words, and no walk over a document that cannot be what is on disk.
+        Some(Err(missing)) => {
+            if let Some(open) = state.resolver.as_mut() {
+                open.notice = Some((no_block(missing.0), true));
+            }
+            return;
+        }
+        _ if open.done.is_none() && open.whole_file.is_some() => vec![ANY_OPEN],
+        // Done, or its opening read still out: nothing here to go to.
+        _ => Vec::new(),
+    };
+    let (path, card, cursor) = (
+        open.path.clone(),
+        open.whole_file.is_some(),
+        open.cursor_block,
+    );
+    let listed = listed_files(state);
+    let files: Vec<(PathBuf, Vec<BlockAt>)> = listed
+        .iter()
+        .map(|row| {
+            let blocks = if row.path == path {
+                here.clone()
+            } else {
+                row_blocks(&row.state)
+            };
+            (row.path.clone(), blocks)
+        })
+        .collect();
+    let taken = here.iter().any(|block| !block.open);
+    match next_open(&files) {
+        Some((index, _)) if listed[index].path != path => {
+            cross(state, commands, index, true, next_id);
+        }
+        // A card has no block for the cursor: it is already where `n` goes.
+        Some(_) if card => say(state, ON_FIRST_OPEN),
+        Some((_, block)) if cursor == Some(block) => say(state, ON_FIRST_OPEN),
+        Some((_, block)) => move_cursor(state, block, None),
+        None => none(state, taken),
+    }
+}
+
+/// A file not on screen, as `n` counts it: one open block where anything
+/// is left to choose, none where nothing is.
+fn row_blocks(row: &RowState) -> Vec<BlockAt> {
+    match row {
+        RowState::Open { open, .. } if *open > 0 => vec![ANY_OPEN],
+        RowState::Open { .. } | RowState::AllTaken | RowState::Done => Vec::new(),
+        RowState::WholeFile { .. } | RowState::Binary | RowState::Unread => vec![ANY_OPEN],
+    }
+}
+
+/// A file's first block, open — where its fresh read lands the cursor.
+const ANY_OPEN: BlockAt = BlockAt {
+    index: 0,
+    open: true,
+};
+
+/// `n`/`N`: the next or previous block, then the three rules above.
+pub(super) fn walk_blocks(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    forward: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    // A done file has no blocks: it is past its own end, so rule 1 only,
+    // and nothing to mark done in rule 3 (m6-conflicts/17 D6).
+    if state
+        .resolver
+        .as_ref()
+        .is_some_and(|open| open.done.is_some())
+    {
+        cross_from_done(state, commands, forward, next_id);
+        return;
+    }
+    let (pending, card, cursor) = {
+        let Some(open) = state.resolver.as_ref() else {
+            return;
+        };
+        (
+            pending_file(open),
+            open.whole_file.is_some(),
+            open.cursor_block,
+        )
+    };
+    // With neither a document nor a card the opening read is still in
+    // flight, and there is nothing yet to walk from.
+    let file = match pending {
+        Some(Ok(file)) => Some(file),
+        // The document lacks a block a take in flight names: the same
+        // words a take gets for it, and no walk over a document that
+        // cannot be what is on disk.
+        Some(Err(missing)) => {
+            if let Some(open) = state.resolver.as_mut() {
+                open.notice = Some((no_block(missing.0), true));
+            }
+            return;
+        }
+        None if card => None,
+        None => return,
+    };
+    // A whole-file card has no blocks, so it is at its own end straight
+    // away: rule 1 only (m6-05 review, Major 1).
+    if let Some(block) = file
+        .as_ref()
+        .and_then(|file| next_block(file, cursor, forward))
+    {
+        move_cursor(state, block, None);
+        return;
+    }
+    if let Some(index) = cross_target(state, forward) {
+        cross(state, commands, index, forward, next_id);
+        return;
+    }
+    if let Some((block, left)) = file.as_ref().and_then(|file| wrap_target(file, forward)) {
+        move_cursor(state, block, Some(format!("wrapped · {left} still open")));
+        return;
+    }
+    match file {
+        // Rule 3 on a document: no other file is left and nothing here is
+        // open — so nothing is open anywhere (review ease-pass-05 M1).
+        Some(file) => none_open(state, file.open() < file.blocks().len()),
+        // On a card the card itself is the one conflict left, open: there
+        // is truly none *this way*, so the m6 words stand there.
+        None => no_more_conflicts(state),
+    }
+}
+
+/// Rule 3 on a whole-file card: no other file to cross to — say so on the
+/// notice row. The status line is not touched, so the bar under the card
+/// keeps its side keys (m6-conflicts/61). A document says
+/// [`none_open_words`] instead: nothing is open anywhere there.
+fn no_more_conflicts(state: &mut AppState) {
+    say(state, NO_MORE_THIS_WAY);
+}
+
+/// What `n` and `N` say with no open clash left anywhere (review
+/// ease-pass-05 M1): `no open clashes left`, and — when this file's
+/// document holds a taken clash — the keys that step back through it,
+/// spelled from his keymap (`· ←/→ step through them`; left out when both
+/// are unbound). `taken`: the document on screen holds a taken block.
+#[must_use]
+pub fn none_open_words(taken: bool, keys: &Keymap) -> String {
+    let step = [
+        ActionId("resolver.step_prev"),
+        ActionId("resolver.step_next"),
+    ];
+    match taken
+        .then(|| keys.key_verb(&step, "step through them"))
+        .flatten()
+    {
+        Some(clause) => format!("{NONE_OPEN} \u{b7} {clause}"),
+        None => NONE_OPEN.to_owned(),
+    }
+}
+
+/// The head of [`none_open_words`].
+const NONE_OPEN: &str = "no open clashes left";
+
+/// [`none_open_words`] on the notice row, as information.
+fn none_open(state: &mut AppState, taken: bool) {
+    // In a merge nothing is staged until the review (ease-pass/05b): the
+    // way on from here is `y`.
+    let words = if super::review::in_a_merge(state) {
+        super::review::reviews_the_merge(NONE_OPEN, &state.keymap)
+    } else {
+        none_open_words(taken, &state.keymap)
+    };
+    say(state, &words);
+}
+
+/// `words` on the notice row, as information.
+pub(super) fn say(state: &mut AppState, words: &str) {
+    if let Some(open) = state.resolver.as_mut() {
+        open.notice = Some((words.to_owned(), false));
+    }
+}
+
+/// `n`/`N` on a done file: cross to the next (previous) file not done, or
+/// say there is none (m6-conflicts/17 D6).
+fn cross_from_done(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    forward: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    match cross_target(state, forward) {
+        Some(index) => cross(state, commands, index, forward, next_id),
+        // Every other file done, and this one too: nothing open anywhere,
+        // and a done file shows no taken blocks to step through.
+        None => none_open(state, false),
+    }
+}
+
+/// Rule 2: this file's first (`N`: last) open block, and how many are
+/// open, or `None` when none is.
+fn wrap_target(file: &ConflictFile, forward: bool) -> Option<(usize, usize)> {
+    let open = file
+        .blocks()
+        .into_iter()
+        .filter(|at| at.state == BlockState::Open)
+        .map(|at| at.index);
+    let block = if forward { open.min() } else { open.max() }?;
+    Some((block, file.open()))
+}
+
+/// The cursor onto `block`, scrolled into view, with `notice` under the
+/// title (`None` clears it).
+pub(super) fn move_cursor(state: &mut AppState, block: usize, notice: Option<String>) {
+    let top = scrolled_to(state, block);
+    if let Some(open) = state.resolver.as_mut() {
+        open.cursor_block = Some(block);
+        open.top = top;
+        open.notice = notice.map(|words| (words, false));
+    }
+}
+
+/// Open row `index` of the list: `n` lands on its first block, `N` on its
+/// last. A refusal (a take in flight, a box up) is `select_file`'s, in its
+/// words, and leaves this file open.
+fn cross(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    index: usize,
+    forward: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let was = state.resolver.as_ref().map(|open| open.path.clone());
+    let Some(target) = listed_files(state).into_iter().nth(index) else {
+        return;
+    };
+    let spent = select_file(state, commands, index, next_id);
+    debug_assert!(spent, "index came from listed_files");
+    let Some(open) = state.resolver.as_mut() else {
+        return;
+    };
+    if Some(&open.path) == was.as_ref() {
+        // Refused: the resolver is as it was, and the status says why.
+        return;
+    }
+    open.land_last = !forward;
+    open.notice = Some((format!("▸ {}", target.path.display()), false));
+}
+
+/// The words a take or a walk gets when the document has no block `index`.
+pub(super) fn no_block(index: usize) -> String {
+    format!("no block {index} · re-read the file")
+}
+
+/// The next block from `from` in `forward`'s direction, **taken or not**,
+/// or `None` past the end. `from: None` starts outside the file, so it
+/// answers the first (or last) block.
+#[must_use]
+pub fn next_block(file: &ConflictFile, from: Option<usize>, forward: bool) -> Option<usize> {
+    let count = file.blocks().len();
+    match (from, forward) {
+        (_, _) if count == 0 => None,
+        (None, true) => Some(0),
+        (None, false) => Some(count - 1),
+        (Some(cursor), true) => cursor.checked_add(1).filter(|next| *next < count),
+        (Some(cursor), false) => cursor
+            .checked_sub(1)
+            .map(|previous| previous.min(count - 1)),
+    }
+}
+
+/// The `listed_files` index `n` (or `N`) crosses to: the next row not done
+/// after the open file's, in the list's order and wrapping — never the
+/// open file itself.
+pub(super) fn cross_target(state: &AppState, forward: bool) -> Option<usize> {
+    let open = state.resolver.as_ref()?;
+    let listed = listed_files(state);
+    let count = listed.len();
+    let at = listed.iter().position(|file| file.path == open.path)?;
+    (1..count)
+        .map(|step| {
+            if forward {
+                (at + step) % count
+            } else {
+                (at + count - step) % count
+            }
+        })
+        .find(|index| listed[*index].state != RowState::Done)
+}

@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
-# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: both clashes taken (`◀ kept yours`, `▶ took theirs`): under the file `✓ Every clash in report.md is solved.  n next file, 1 clash left`; the list `✓ report.md  done`; the bar names `n next file: notes.md`.
 === 120x40 ===
 MERGING                                                                                                                 

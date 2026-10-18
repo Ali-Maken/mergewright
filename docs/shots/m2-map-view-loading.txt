@@ -1,5 +1,5 @@
 # m2-map-view-loading.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_map_view_loading in crates/graft/src/view/tests.rs (asserted;
+# capture_m2_map_view_loading in crates/mergewright/src/view/tests.rs (asserted;
 # regenerate on purpose). `state.map.progress = Some((2, 5))`, no build
 # landed yet.
 #

@@ -2,7 +2,7 @@
 # AppState — a scratch repository with fourteen unmerged topic
 # branches forked from `main`'s base, the cursor on `main`'s tip under
 # the fourteen topic tips, so fifteen columns each hold a commit in view
-# (merged branches fold by default since ease-pass 06; crates/graft/tests/it/lane_cap.rs,
+# (merged branches fold by default since ease-pass 06; crates/mergewright/tests/it/lane_cap.rs,
 # capture_lane_cap_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with
 # no colour attributes in it — CLAUDE.md rule 5, colour ships

@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_commit_screen in
-# crates/graft/tests/it/commit_screen/shots.rs, real git.
+# crates/mergewright/tests/it/commit_screen/shots.rs, real git.
 # Judge by eye: every file left out with `space`, then `⏎`: nothing committed; all four under `Staying out`; the line above the files reads `Nothing goes in. Put a file in with space.`; the bar's `⏎` slot reads `put a file in first`.
 === 120x40 ===
  ◆ api  ~/code/api  committing to main

@@ -2,7 +2,7 @@
 # AppState over a real repository (`main` three commits, `feature` forked off
 # the first with two of its own, `feature` checked out); cursor on `main`'s
 # row, `m` pressed through `update`, the real plan landed
-# (crates/graft/tests/it/preview/capture.rs, capture_fix_preview_verb_for_docs_shots).
+# (crates/mergewright/tests/it/preview/capture.rs, capture_fix_preview_verb_for_docs_shots).
 # TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).
 #
 # What right looks like:

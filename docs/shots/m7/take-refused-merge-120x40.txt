@@ -1,5 +1,5 @@
 # m7/take-refused-merge-120x40.txt: drawn by `view::view` from a real AppState
-# (crates/graft/tests/it/m7_walk/picker.rs, take_refused_on_a_merge, asserted). Not a pty
+# (crates/mergewright/tests/it/m7_walk/picker.rs, take_refused_on_a_merge, asserted). Not a pty
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).
 #

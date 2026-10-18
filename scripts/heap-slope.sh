@@ -24,7 +24,7 @@ machine_state_begin "$out"
 raw=target/heap-slope-hk02
 mkdir -p "$raw" docs/perf
 
-cargo build --release -p graft-fixtures --features heavy-tests --example synthetic || exit 1
+cargo build --release -p mergewright-fixtures --features heavy-tests --example synthetic || exit 1
 ( cd prototypes/heap-slope-hk02 && cargo build --release ) || exit 1
 bin=prototypes/heap-slope-hk02/target/release/heapslope
 

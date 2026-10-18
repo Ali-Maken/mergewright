@@ -1,0 +1,135 @@
+[package]
+name = "mergewright"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+# What the release tools (dist's installer, our Homebrew formula) print about
+# it. `<owner>` is the account the release is published from, filled in at
+# publishing (ADR-0057: nothing is published until the trademark search).
+description = "Terminal Git client that shows the shape of history"
+repository = "https://github.com/<owner>/mergewright"
+homepage = "https://github.com/<owner>/mergewright"
+# The workspace has four binaries in four crates, so plain `cargo run` could
+# not tell which one was meant and refused — the first thing the user hit
+# when he tried to open his own app (m5-history-and-ghost-preview/33).
+# `cargo run -- <repo>` now runs Mergewright.
+default-run = "mwr"
+
+# The package is `mergewright`, the command `mwr` (ADR-0057 amendment
+# 2026-10-11). The library stays `graft` (code uses `mergewright::…`) and the dir
+# stays `crates/mergewright`; an explicit bin target on `src/main.rs` stops Cargo
+# inferring a `mergewright` binary as well.
+[lib]
+name = "mergewright"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mwr"
+path = "src/main.rs"
+
+# `app` is the only crate allowed to see every other crate (ARCHITECTURE.md).
+[dependencies]
+# Only what the terminal session needs: `events` carries the mouse, focus and
+# keyboard-enhancement commands, `bracketed-paste` the paste ones, `windows`
+# the platform shim. `derive-more` is left off here, though `ratatui-crossterm`
+# depends on crossterm without disabling defaults, so it is on in the build
+# anyway — turning it off here still documents that Mergewright needs none of it.
+crossterm = { version = "0.29", default-features = false, features = [
+    "events",
+    "bracketed-paste",
+    "windows",
+] }
+mergewright-core.workspace = true
+mergewright-git.workspace = true
+mergewright-graph.workspace = true
+mergewright-ops.workspace = true
+mergewright-term.workspace = true
+mergewright-ui.workspace = true
+thiserror.workspace = true
+# One journal entry id's random half (`mergewright_core::journal::EntryId`,
+# ADR-0010's ULID). Already in the lock file at this version through other
+# crates' transitive deps, so naming it directly adds no new version.
+getrandom = "0.3"
+# The drawing half of the loop (PROMPT.md Technology). Defaults off because
+# they pull `underline-color`, `scrolling-regions` and the palette crates;
+# `std` and the crossterm 0.29 backend are all the view needs, and the backend
+# feature must match the crossterm above or two versions get linked at once.
+ratatui = { version = "0.30", default-features = false, features = [
+    "std",
+    "crossterm_0_29",
+] }
+# The config file (PROMPT.md Technology: "TOML via `serde`"). `toml`'s
+# `display` default is off — Mergewright reads config and never writes it, so the
+# serializer would be dead weight — and its error `Display` is what gives a bad
+# config file its line, column and quoted source line.
+serde = { version = "1.0.229", features = ["derive"] }
+# Signals, without a signal handler of Mergewright's own: signal-hook's handler only
+# writes to a self-pipe, so the loop can treat `SIGINT`/`SIGTERM`/`SIGHUP` like
+# any other event and still unwind, which is what restores the terminal
+# (`event_loop/signals.rs`).
+signal-hook = "0.3"
+toml = { version = "1.1.6", default-features = false, features = [
+    "parse",
+    "serde",
+    "std",
+] }
+# The relaunch notice's ladder measures in display cells, with the same crate
+# and version the footer's cut (`mergewright_ui::fit`) uses (30d); moved up from
+# dev-dependencies.
+unicode-width = "0.2"
+# `Answer::new` takes the typed password by value straight out of
+# `SecretField::into_bytes`'s zeroizing buffer, into `mergewright-git`'s `Secret`
+# (see the workspace `Cargo.toml` for why zeroize, not hand-rolled zeroing).
+zeroize.workspace = true
+
+# `tests/it/dependency_edges.rs` parses `cargo metadata`'s JSON. `serde_json`
+# alone is enough for that; the `cargo_metadata` crate would pull a much larger
+# tree for typed structs this one test doesn't need.
+[dev-dependencies]
+# Snapshots of what `view` draws. The rendered frame is a block of text, and
+# a diff of two blocks of text is the only readable way to review a layout
+# change.
+mergewright-fixtures.workspace = true
+insta = "1"
+serde_json = "1.0.151"
+# Config files under test go in a temporary directory, never in a real home
+# (PROMPT.md Technology; ticket 07).
+tempfile = "3.27.0"
+# `tests/it/ghostty_shot.rs` (m7-power-tools/47) writes the Ghostty-path
+# capture as a PNG over a background, as `mergewright-graph`'s raster tests do; the
+# same version and features as there, so no new package.
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "png-format"] }
+# `tests/it/pty.rs` (m8-polish-and-ship/08) runs the real binary on a pseudo
+# terminal: the empty state only exists on a tty. The version `mergewright-git`
+# already ships with; `term` is the safe `openpty` wrapper, so no `unsafe`.
+nix = { version = "0.29", default-features = false, features = ["poll", "term"] }
+# `tests/it/quit_waits/pty_session.rs` (m8-polish-and-ship/13l): the hang-up
+# harness's re-exec'd child makes itself a session leader on the pty —
+# `setsid`, `TIOCSCTTY`, `dup2` — through rustix's safe wrappers, so the `it`
+# crate needs no `unsafe` (it is `forbid`den there). Already in the lock,
+# through crossterm and tempfile, so no new package.
+rustix = { version = "1.1.4", default-features = false, features = ["std", "process", "stdio"] }
+
+[features]
+# Forwards the heavy tier to the fixture corpus, per TESTING.md, so one
+# `cargo test --features heavy-tests` at the workspace root reaches every
+# crate that uses it.
+heavy-tests = ["mergewright-fixtures/heavy-tests"]
+# The two `frames::` tests on the ~300 MiB 1M-commit fixture (ADR-0018
+# amendment, 2026-09-17): too expensive for the standard heavy-tier command
+# to sweep up by accident, so they compile only behind this feature, never
+# `#[ignore]`d. Implies `heavy-tests` so `--features heavy-1m` alone is
+# enough. Never in `default`.
+heavy-1m = ["heavy-tests"]
+
+[lints]
+workspace = true
+
+# The workspace is `publish = false`, which dist reads as "not shipped"; this
+# is the one package it ships. The man page rides in every archive
+# (m8-polish-and-ship/24); the path is from this crate's folder.
+[package.metadata.dist]
+dist = true
+include = ["../../docs/man/mwr.1"]

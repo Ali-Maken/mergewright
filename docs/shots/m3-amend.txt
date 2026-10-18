@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_amend in crates/graft/src/view/tests.rs (asserted). `a` on the
+# capture_m3_amend in crates/mergewright/src/view/tests.rs (asserted). `a` on the
 # scripted tree, with HEAD's message already prefilled.
 #
 # Judge by eye:

@@ -1,6 +1,6 @@
 # m5-ui-undo-after-push-80x24.txt: 80x24, drawn by `view::view` from a
 # real AppState — a scratch repository pushed to a `file://` bare,
-# then `u` (crates/graft/tests/it/remote_by_key.rs,
+# then `u` (crates/mergewright/tests/it/remote_by_key.rs,
 # capture_undo_after_push_for_docs_shots, asserted). Not a pty
 # capture: the terminal is ratatui's TestBackend, so this is a
 # character grid with no colour attributes in it — CLAUDE.md rule 5,
@@ -21,7 +21,7 @@
 #  - **The command line says `--force-with-lease`**, never a bare
 #    `--force`. At 80 columns the box is narrower than the full
 #    command, so the tail is clipped — the same clipping the M4 lease
-#    box already takes (noted in the ticket; the fix is in graft-ops).
+#    box already takes (noted in the ticket; the fix is in mergewright-ops).
 #  - Your local branch keeps every commit it has: re-push moves the
 #    remote back, not you.
 #

@@ -1,4 +1,4 @@
-//! Fuzzes `graft_git::diff::parse_file_list` with arbitrary bytes: it must
+//! Fuzzes `mergewright_git::diff::parse_file_list` with arbitrary bytes: it must
 //! return `Ok` or `Err`, never panic, for any input at all.
 //!
 //! `parse_file_list` takes two byte slices (`--raw -z` and `--numstat -z`);
@@ -6,7 +6,7 @@
 //! between them.
 #![no_main]
 
-use graft_git::diff::parse_file_list;
+use mergewright_git::diff::parse_file_list;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {

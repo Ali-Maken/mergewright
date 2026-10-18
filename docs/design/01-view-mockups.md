@@ -1,4 +1,4 @@
-# Graft: Design — View mockups
+# Mergewright: Design — View mockups
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Next: [Keymap](02-keymap.md)
@@ -196,7 +196,7 @@ panes — the user's own terminal is 187, so he sees the `200x50` shape; below
 180 it is a strip above the card. Don't build a cell-exact test
 against them; it cannot pass, and one build round was spent discovering that.
 The layout is pinned instead by golden files generated from the widget's own
-render (`crates/graft-ui/tests/shots/resolver-*.txt`), which catch drift but
+render (`crates/mergewright-ui/tests/shots/resolver-*.txt`), which catch drift but
 claim nothing about whether the screen looks right — that is judged by eye, by
 the user, on the M6 acceptance capture (CLAUDE.md rule 6).
 
@@ -443,7 +443,7 @@ with the printed relative age so it never depends on colour alone.
 
 Shown in place of the ahead/behind indicator in the top bar whenever
 `rebase-merge/`, `MERGE_HEAD`, `CHERRY_PICK_HEAD` or `BISECT_LOG` exist; also
-the first thing offered on relaunch if Graft (or the machine) died mid-op.
+the first thing offered on relaunch if Mergewright (or the machine) died mid-op.
 
 **The banner says the state and the step, and nothing else** (m5/20, the
 user's ruling). It does not name a conflicted file: the changes pane lists
@@ -455,7 +455,7 @@ pair came off a `width >= 100` tier that was fed the banner's **own** region
 rather than the screen's, so the wider terminal drew the terser spelling.
 The `[ Continue ] [ Skip ] [ Abort ]` row is gone (m5/16) — nothing answered
 a click on it, and the keys are taught on the footer, where every other key
-in Graft is taught.
+in Mergewright is taught.
 
 ### 1.14 Credential prompt (in-app askpass)
 
@@ -469,7 +469,7 @@ in Graft is taught.
 ```
 
 `GIT_TERMINAL_PROMPT=0` is set on every git invocation, and `GIT_ASKPASS`
-points at a small helper that talks back to Graft over a local socket/pipe so
+points at a small helper that talks back to Mergewright over a local socket/pipe so
 the prompt renders in-app instead of falling through to a blocked terminal
 prompt or failing silently.
 
@@ -490,7 +490,7 @@ prompt or failing silently.
  o open… · i init · c clone… · t practice tour · ⏎ open the selected · ? keys · q quit
 ```
 
-- Shown when Graft starts in, or is pointed at, a folder that is not inside a repository. `Mergewright` is the product
+- Shown when Mergewright starts in, or is pointed at, a folder that is not inside a repository. `Mergewright` is the product
   name (one constant, `APP_NAME`, read from the names table). The second line is the folder, `~`-abbreviated; a path that does not exist
   reads `~/foo · no such folder` there.
 - RECENT: newest first, the newest preselected, so "open what I had yesterday" is `⏎`. Name bold, path muted, age

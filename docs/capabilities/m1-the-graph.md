@@ -12,7 +12,7 @@ under budget while scrolling" promises get re-proven at ever larger scale
 and against ever more real repository shapes, and the rows below fold those
 chains together rather than listing each fix separately.
 
-**Invisible foundations / test-infra:** the `graft-fixtures` corpus (13
+**Invisible foundations / test-infra:** the `mergewright-fixtures` corpus (13
 deterministic repository shapes plus real-scale synthetic ones, checked
 with two independent builds compared byte-for-byte); the heavy test tier,
 gated by Cargo features (`heavy-tests`, `heavy-1m`) rather than `#[ignore]`
@@ -51,10 +51,10 @@ unverified_aspect: real tmux and real SSH rendering — tmux not installed on th
   The footer shows `renderer: <tier> (F3 cycles)` whenever not at the top
   tier.
 - **Proven by:**
-  `graft::view::tests::every_graph_renderer_config_value_draws_as_it_says`
-  `graft_term::detect::tests::tmux_too_old_to_pass_anything_through_falls_back_to_unicode`
-  `graft_term::detect::tests::tmux_with_passthrough_reaches_the_outer_terminal`
-  `graft_term::detect::tests::ssh_buys_the_terminal_an_extra_round_trip`
+  `mergewright::view::tests::every_graph_renderer_config_value_draws_as_it_says`
+  `mergewright_term::detect::tests::tmux_too_old_to_pass_anything_through_falls_back_to_unicode`
+  `mergewright_term::detect::tests::tmux_with_passthrough_reaches_the_outer_terminal`
+  `mergewright_term::detect::tests::ssh_buys_the_terminal_an_extra_round_trip`
 - **Looks like:** `docs/shots/19-ascii-tier-drop-key.txt`,
   `docs/shots/33-pty-tier-cycle.txt`, `docs/shots/08-unicode-graph-column.txt`
 - **Decided in:** `docs/design/04-terminal-capability-detection.md` §4.2–4.3;
@@ -89,22 +89,22 @@ status: works
   strategy the streaming layout might use — splitting the same history into
   different-sized chunks changes nothing about the rows produced.
 - **Proven by:**
-  `graft_graph::layout::tests::linear_chain_stays_in_lane_zero_for_its_whole_life`
-  `graft_graph::layout::tests::root_commit_reached_by_two_branches_lane_zero_wins`
-  `graft_graph::layout::tests::freed_column_is_not_reused_on_the_freeing_row_only_the_next_one`
-  `graft_graph::layout::tests::reserved_lane_root_never_reused`
-  `graft_graph::layout::tests::reserved_integration_lane_never_reused_via_convergence`
-  `graft_graph::layout::tests::a_reserved_lane_closing_at_its_own_tip_bends_no_edge_in`
-  `graft_graph::layout::tests::octopus_merge_opens_a_distinct_lane_per_extra_parent`
-  `graft_graph::layout::tests::two_layout_runs_over_the_same_commits_are_byte_identical`
-  `graft_graph::layout::tests::chunk_boundaries_do_not_change_the_rows_produced`
-  `graft_graph::layout::tests::equal_dates_change_nothing_and_two_runs_still_agree`
+  `mergewright_graph::layout::tests::linear_chain_stays_in_lane_zero_for_its_whole_life`
+  `mergewright_graph::layout::tests::root_commit_reached_by_two_branches_lane_zero_wins`
+  `mergewright_graph::layout::tests::freed_column_is_not_reused_on_the_freeing_row_only_the_next_one`
+  `mergewright_graph::layout::tests::reserved_lane_root_never_reused`
+  `mergewright_graph::layout::tests::reserved_integration_lane_never_reused_via_convergence`
+  `mergewright_graph::layout::tests::a_reserved_lane_closing_at_its_own_tip_bends_no_edge_in`
+  `mergewright_graph::layout::tests::octopus_merge_opens_a_distinct_lane_per_extra_parent`
+  `mergewright_graph::layout::tests::two_layout_runs_over_the_same_commits_are_byte_identical`
+  `mergewright_graph::layout::tests::chunk_boundaries_do_not_change_the_rows_produced`
+  `mergewright_graph::layout::tests::equal_dates_change_nothing_and_two_runs_still_agree`
   plus property tests `rows_replay_cleanly_from_the_outside`,
   `the_default_branch_is_lane_zero_and_straight`,
   `open_lanes_are_only_ever_touched_by_the_row_they_are_waiting_for`,
   `output_is_deterministic_and_independent_of_chunking`,
   `every_incoming_column_is_a_lane_the_row_draws`,
-  `every_invariant_holds_under_every_inclusion` (`graft_graph::layout::
+  `every_invariant_holds_under_every_inclusion` (`mergewright_graph::layout::
   tests::properties`).
 - **Decided in:** `docs/design/03-graph-layout-algorithm.md` §3.1–§3.3, §3.7
   ("Invariants → tests").
@@ -132,12 +132,12 @@ status: works
   children before parents — a plain tie-break alone couldn't do this
   because it doesn't see an unseen same-date child coming.
 - **Proven by:**
-  `graft_git::history::tests::the_topological_walk_emits_before_it_has_walked_the_range`
-  `graft_git::history::tests::a_repository_with_no_commit_graph_file_falls_to_date_order_and_says_so`
-  `graft_git::history::tests::a_repository_with_a_commit_graph_file_runs_the_topological_path`
-  `graft_git::history::tests::tied_dates_never_put_a_parent_above_its_child_before_or_after_promotion`
-  `graft::repos::tests::a_repository_is_opened_once_however_often_it_is_asked_for`
-  `graft::repos::tests::jobs_on_different_threads_share_one_open_repository`
+  `mergewright_git::history::tests::the_topological_walk_emits_before_it_has_walked_the_range`
+  `mergewright_git::history::tests::a_repository_with_no_commit_graph_file_falls_to_date_order_and_says_so`
+  `mergewright_git::history::tests::a_repository_with_a_commit_graph_file_runs_the_topological_path`
+  `mergewright_git::history::tests::tied_dates_never_put_a_parent_above_its_child_before_or_after_promotion`
+  `mergewright::repos::tests::a_repository_is_opened_once_however_often_it_is_asked_for`
+  `mergewright::repos::tests::jobs_on_different_threads_share_one_open_repository`
 - **Decided in:** `docs/design/03-graph-layout-algorithm.md` §3.2 (walk
   strategy selection); ADR-0008.
 - **Status:** works. Fixing the tied-date case cost nothing measurable: 1M
@@ -194,13 +194,13 @@ status: works
   ahead/behind counting always runs on a background worker, never on the
   event-loop thread.
 - **Proven by:**
-  `graft_term::sanitize::tests::an_author_name_carrying_an_escape_sequence_comes_out_inert`
-  `graft::view::tests::a_branch_name_with_an_escape_sequence_renders_inert`
-  `graft_git::mailmap::tests::two_identities_resolve_to_one_canonical_author`
-  `graft_ui::graph_screen::tests::the_marker_slot_is_the_same_width_empty_or_filled`
-  `graft_ui::graph_screen::tests::ui_icons_changes_how_badges_render`
-  `graft::jobs::tests::ahead_behind_is_counted_on_a_worker_never_the_loops_thread`
-  `graft_git::repo::tests::ahead_behind_counts_the_ref_states_branches`
+  `mergewright_term::sanitize::tests::an_author_name_carrying_an_escape_sequence_comes_out_inert`
+  `mergewright::view::tests::a_branch_name_with_an_escape_sequence_renders_inert`
+  `mergewright_git::mailmap::tests::two_identities_resolve_to_one_canonical_author`
+  `mergewright_ui::graph_screen::tests::the_marker_slot_is_the_same_width_empty_or_filled`
+  `mergewright_ui::graph_screen::tests::ui_icons_changes_how_badges_render`
+  `mergewright::jobs::tests::ahead_behind_is_counted_on_a_worker_never_the_loops_thread`
+  `mergewright_git::repo::tests::ahead_behind_counts_the_ref_states_branches`
 - **Looks like:** `docs/shots/10-row-columns.txt`, `docs/shots/11-ref-badges.txt`
 - **Decided in:** `docs/design/01-view-mockups.md`.
 - **Status:** works.
@@ -226,7 +226,7 @@ status: works
   also now immune to wall-clock drift in tests (a fixed clock, not
   `SystemTime::now()`, on the render path).
 - **Proven by:**
-  `graft_ui::graph_screen::columns::tests::matches_git_log_date_relative_at_every_boundary`
+  `mergewright_ui::graph_screen::columns::tests::matches_git_log_date_relative_at_every_boundary`
 - **Looks like:** `docs/shots/48-relative-dates.txt`,
   `docs/shots/53-relative-dates-fixed-clock.txt`
 - **Decided in:** design finding from a live user bug report, not a
@@ -307,21 +307,21 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   row. A user-configured cap larger than the terminal can actually hold is
   clamped so it never truncates the graph column.
 - **Proven by:**
-  `graft_graph::fold::tests::a_window_whose_every_open_column_holds_a_node_draws_as_laid_out`
-  `graft_graph::fold::tests::the_least_recently_touched_node_columns_fold_first_and_the_marker_fits_the_limit`
-  `graft_graph::fold::tests::a_column_open_in_no_row_or_with_no_node_is_dropped_without_counting`
-  `graft_graph::fold::tests::in_view::under_the_cap_only_columns_holding_a_node_are_drawn`
-  `graft_graph::fold::tests::in_view::over_the_cap_node_columns_fold_and_node_less_ones_stay_dropped`
-  `graft_graph::fold::tests::edges_into_folded_lanes_leave_the_row_as_stubs_in_their_colour`
-  `graft_graph::fold::tests::a_fold_that_changes_nothing_borrows_the_row_and_folds_no_edge`
-  `graft_graph::fold::tests::the_budget_admits_selected_then_reserved_then_preferred_over_a_more_recently_touched_column`
-  `graft_graph::fold::tests::lane_zero_draws_alone_when_the_budget_allows_only_the_rail`
-  `graft_graph::fold::tests::a_thread_of_twelve_columns_still_folds_down_to_the_budget`
-  `graft_graph::fold::tests::properties::node_columns_draw_or_fold_connectors_draw_or_drop_and_pass_throughs_never_draw`
-  `graft_graph::fold::tests::in_view::a_column_joining_two_commits_in_view_is_drawn`
-  `graft_graph::fold::tests::in_view::a_connector_past_the_budget_drops_and_never_folds`
-  `graft_ui::graph_screen::tests::lanes_in_view::a_thread_of_twenty_columns_still_fits_the_configured_cap`
-  `graft_ui::graph_column::tests::a_node_whose_column_folded_draws_on_the_rail_in_its_place`
+  `mergewright_graph::fold::tests::a_window_whose_every_open_column_holds_a_node_draws_as_laid_out`
+  `mergewright_graph::fold::tests::the_least_recently_touched_node_columns_fold_first_and_the_marker_fits_the_limit`
+  `mergewright_graph::fold::tests::a_column_open_in_no_row_or_with_no_node_is_dropped_without_counting`
+  `mergewright_graph::fold::tests::in_view::under_the_cap_only_columns_holding_a_node_are_drawn`
+  `mergewright_graph::fold::tests::in_view::over_the_cap_node_columns_fold_and_node_less_ones_stay_dropped`
+  `mergewright_graph::fold::tests::edges_into_folded_lanes_leave_the_row_as_stubs_in_their_colour`
+  `mergewright_graph::fold::tests::a_fold_that_changes_nothing_borrows_the_row_and_folds_no_edge`
+  `mergewright_graph::fold::tests::the_budget_admits_selected_then_reserved_then_preferred_over_a_more_recently_touched_column`
+  `mergewright_graph::fold::tests::lane_zero_draws_alone_when_the_budget_allows_only_the_rail`
+  `mergewright_graph::fold::tests::a_thread_of_twelve_columns_still_folds_down_to_the_budget`
+  `mergewright_graph::fold::tests::properties::node_columns_draw_or_fold_connectors_draw_or_drop_and_pass_throughs_never_draw`
+  `mergewright_graph::fold::tests::in_view::a_column_joining_two_commits_in_view_is_drawn`
+  `mergewright_graph::fold::tests::in_view::a_connector_past_the_budget_drops_and_never_folds`
+  `mergewright_ui::graph_screen::tests::lanes_in_view::a_thread_of_twenty_columns_still_fits_the_configured_cap`
+  `mergewright_ui::graph_column::tests::a_node_whose_column_folded_draws_on_the_rail_in_its_place`
 - **Looks like:** `docs/shots/14-many-lanes.txt`,
   `docs/shots/14-many-lanes-expanded.txt`, `docs/shots/39-git-git-80x24.txt`,
   `docs/shots/40-raster-folded-on-dark.png`,
@@ -359,9 +359,9 @@ status: works
   predicates applied before layout, so the §1.2 graph invariants (M1-02)
   hold identically with any combination on.
 - **Proven by:**
-  `graft_graph::inclusion::tests::fold_by_default::opening_a_merge_invalidates_only_the_rows_from_the_merge_down`
-  `graft_graph::inclusion::tests::a_hidden_stash_takes_its_own_commits_with_it_but_not_its_base`
-  `graft_graph::inclusion::tests::first_parent_view_follows_the_default_branch_only`
+  `mergewright_graph::inclusion::tests::fold_by_default::opening_a_merge_invalidates_only_the_rows_from_the_merge_down`
+  `mergewright_graph::inclusion::tests::a_hidden_stash_takes_its_own_commits_with_it_but_not_its_base`
+  `mergewright_graph::inclusion::tests::first_parent_view_follows_the_default_branch_only`
 - **Looks like:** `docs/shots/15-first-parent.txt`,
   `docs/shots/ease-pass/main-folded-120.txt`,
   `docs/shots/ease-pass/main-opened-120.txt`,
@@ -421,7 +421,7 @@ status: works
   had to move. On exit, mouse reporting is confirmed disabled in the raw
   byte stream (no leftover mouse-tracking mode left on in the user's real
   terminal).
-- **Proven by:** `graft::history::tests::a_wheel_scroll_during_a_far_seek_withdraws_the_seek`
+- **Proven by:** `mergewright::history::tests::a_wheel_scroll_during_a_far_seek_withdraws_the_seek`
   (a related fix: a wheel scroll arriving during an in-flight search/far
   jump used to strand the "seeking" indicator forever, recoverable only by
   `Esc`; fixed to withdraw the pending jump the same way selecting a row
@@ -457,12 +457,12 @@ status: works
   Author, date, parents and body detail are deferred to a later
   milestone's detail pane.
 - **Proven by:**
-  `graft_ui::graph_screen::tests::a_reveal_replaces_the_hints_with_the_full_subject`
-  `graft_ui::graph_screen::tests::revealing_a_row_that_was_never_truncated_leaves_the_hints_alone`
-  `graft_ui::graph_screen::tests::no_reveal_shows_the_ordinary_hints`
-  `graft_ui::graph_screen::tests::escape_sequences_render_inert_in_the_reveal`
-  `graft::view::tests::a_reveal_renders_an_escape_sequence_inert`
-  `graft::view::tests::hover_names_the_reveal_row`
+  `mergewright_ui::graph_screen::tests::a_reveal_replaces_the_hints_with_the_full_subject`
+  `mergewright_ui::graph_screen::tests::revealing_a_row_that_was_never_truncated_leaves_the_hints_alone`
+  `mergewright_ui::graph_screen::tests::no_reveal_shows_the_ordinary_hints`
+  `mergewright_ui::graph_screen::tests::escape_sequences_render_inert_in_the_reveal`
+  `mergewright::view::tests::a_reveal_renders_an_escape_sequence_inert`
+  `mergewright::view::tests::hover_names_the_reveal_row`
 - **Looks like:** `docs/shots/41-hover-reveal.txt`, `docs/shots/41-peek.txt`,
   `docs/shots/41-no-reveal.txt`
 - **Decided in:** ADR-0023 (supersedes ADR-0020, the original tooltip
@@ -486,8 +486,8 @@ unverified_aspect: whether the OS clipboard actually received the copied SHA —
   running inside tmux. The footer shows `<7 hex>… → clipboard (osc 52)`
   until the next key is pressed. A write failure (e.g. output already
   closed) propagates as a real error, never silently dropped.
-- **Proven by:** `graft::event_loop::tests::a_failed_clipboard_write_ends_the_loop_with_its_error`
-  and the `graft_term::clipboard` module's own tests
+- **Proven by:** `mergewright::event_loop::tests::a_failed_clipboard_write_ends_the_loop_with_its_error`
+  and the `mergewright_term::clipboard` module's own tests
   (`abc_is_the_exact_sequence`, `base64_matches_the_rfc_vectors`,
   `a_full_sha_encodes_to_fifty_six_characters`,
   `inside_tmux_it_is_wrapped_alone_with_every_escape_doubled`,
@@ -525,10 +525,10 @@ unverified_aspect: the 100k-search responsiveness claim — not independently re
   tiers (`F2`) 401 times during an active search had a median response of
   3.5 ms, max 9.2 ms, no keys lost.
 - **Proven by:**
-  `graft::search::tests::a_scan_finds_the_last_commit_by_each_field`
-  `graft::search::tests::a_scan_finds_a_commit_by_its_body`
-  `graft::search::tests::a_scan_with_no_hit_finishes_with_nothing`
-  `graft::search::tests::a_cancelled_scan_stops_after_the_chunk_in_hand`
+  `mergewright::search::tests::a_scan_finds_the_last_commit_by_each_field`
+  `mergewright::search::tests::a_scan_finds_a_commit_by_its_body`
+  `mergewright::search::tests::a_scan_with_no_hit_finishes_with_nothing`
+  `mergewright::search::tests::a_cancelled_scan_stops_after_the_chunk_in_hand`
 - **Looks like:** `docs/shots/26-search-far.txt`, `docs/shots/26-search-typing.txt`
 - **Decided in:** `PROMPT.md` §4 "History" (search by message, author,
   committer, SHA, path, content or date range — M1 covers the row-level
@@ -579,15 +579,15 @@ unverified_aspect: pixel-tier rendering at the application level in a real termi
   slower and are recorded, never asserted against the budget (ADR-0021 —
   frame budgets are a release-only promise).
 - **Proven by:**
-  `graft_graph::strip_cache::tests::the_selection_never_misses_a_backdrop`
-  `graft::view::strips::tests::every_strip_waits_while_the_cursor_row_has_not_arrived`
-  `graft::history::tests::a_request_lays_out_only_the_rows_it_names`
-  `graft::history::tests::every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late`
-  `graft_graph::layout::stream::tests::a_viewport_before_every_kept_checkpoint_still_evicts_the_rows_before_it`
-  `graft_graph::raster_pixels::tests::strips_keep_every_byte`
-  `graft::event_loop::tests::no_strip_is_prefetched_while_input_is_queued`
-  `graft::event_loop::tests::a_key_arriving_mid_prefetch_waits_for_at_most_one_strip`
-  `graft::event_loop::tests::page_keys_find_their_strips_already_rasterised`
+  `mergewright_graph::strip_cache::tests::the_selection_never_misses_a_backdrop`
+  `mergewright::view::strips::tests::every_strip_waits_while_the_cursor_row_has_not_arrived`
+  `mergewright::history::tests::a_request_lays_out_only_the_rows_it_names`
+  `mergewright::history::tests::every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late`
+  `mergewright_graph::layout::stream::tests::a_viewport_before_every_kept_checkpoint_still_evicts_the_rows_before_it`
+  `mergewright_graph::raster_pixels::tests::strips_keep_every_byte`
+  `mergewright::event_loop::tests::no_strip_is_prefetched_while_input_is_queued`
+  `mergewright::event_loop::tests::a_key_arriving_mid_prefetch_waits_for_at_most_one_strip`
+  `mergewright::event_loop::tests::page_keys_find_their_strips_already_rasterised`
 - **Looks like:** `docs/shots/22-raster-criss-cross-merge.png`,
   `docs/shots/22-raster-foxtrot-merge.png`, `docs/shots/22-raster-octopus-merge.png`,
   `docs/shots/22-raster-rings-on-dark.png`, `docs/shots/42-raster-rings-on-dark.png`,
@@ -722,7 +722,7 @@ status: works
   across 7 runs, worst case 19.1 ms; cause named (CPU power-state recovery
   after idle) but not removed.
 - **Proven by:**
-  `graft::history::tests::every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late`
+  `mergewright::history::tests::every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late`
   (shared with M1-15; this is the same window/prefetch machinery, proven
   once and applied to both tiers)
 - **Decided in:** ADR-0021 (frame budgets fail only in release builds; a
@@ -750,8 +750,8 @@ status: works
   opening the commit graph at all). First paint with 50,000 refs is 57 ms
   in release, under the 150 ms budget.
 - **Proven by:**
-  `graft::many_refs::tests::reading_tips_from_50k_real_refs_is_within_budget`
-  `graft_git::repo::tests::refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed`
+  `mergewright::many_refs::tests::reading_tips_from_50k_real_refs_is_within_budget`
+  `mergewright_git::repo::tests::refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed`
 - **Decided in:** part of the same ADR-0021 release-only budget policy as
   M1-19.
 - **Status:** works in release. Debug-build first paint at 50k refs stays
@@ -777,7 +777,7 @@ status: works
   O(1) instead of O(refs). This alone cut release-mode Unicode 50k-refs
   frame times from a 13–15 ms max to a 5–6 ms max.
 - **Proven by:**
-  `graft::update::tests::the_next_state_shares_the_ref_badges_instead_of_copying_them`
+  `mergewright::update::tests::the_next_state_shares_the_ref_badges_instead_of_copying_them`
 - **Decided in:** finding from the M1 review's first round, not a
   pre-written ticket.
 - **Status:** works. One small, honestly reported oddity: the pixel tier's
@@ -869,9 +869,9 @@ status: works
   writing, `git commit-graph verify` exits 0, and the same repository
   re-measured afterward moves from the no-commit-graph memory/speed
   numbers to the with-commit-graph ones (see M1-27).
-- **Proven by:** `graft_git::commit_graph::offer_state` and its state
+- **Proven by:** `mergewright_git::commit_graph::offer_state` and its state
   transitions (`Absent`/`Offered`/`Writing`/`Written`/`Declined`/`Failed`)
-  are covered by the module's own test suite; `graft_fixtures::copy_into_temp`
+  are covered by the module's own test suite; `mergewright_fixtures::copy_into_temp`
   supports the test scaffolding that exercises the write path on a real
   temp repository.
 - **Looks like:** `docs/shots/54-commit-graph-offer-80.txt`,
@@ -906,12 +906,12 @@ status: works
   RSS from 933 MiB to 646–650 MiB, before the later handle-scale fixes
   below took it further (see M1-27).
 - **Proven by:**
-  `graft::history::tests::page_down_past_the_rows_on_hand_while_promotion_swaps_keeps_its_place`
-  `graft_core::commit_handle::tests::parents_collect_into_the_inline_shape_for_their_count`
-  `graft_core::commit_handle::tests::parents_read_back_in_order_whatever_the_shape`
-  `graft_core::commit_handle::tests::an_empty_set_allocates_nothing`
-  `graft_core::commit_handle::tests::a_set_costs_a_bit_per_handle_up_to_the_largest`
-  `graft_core::commit_handle::tests::two_sets_with_the_same_members_are_equal_however_they_got_there`
+  `mergewright::history::tests::page_down_past_the_rows_on_hand_while_promotion_swaps_keeps_its_place`
+  `mergewright_core::commit_handle::tests::parents_collect_into_the_inline_shape_for_their_count`
+  `mergewright_core::commit_handle::tests::parents_read_back_in_order_whatever_the_shape`
+  `mergewright_core::commit_handle::tests::an_empty_set_allocates_nothing`
+  `mergewright_core::commit_handle::tests::a_set_costs_a_bit_per_handle_up_to_the_largest`
+  `mergewright_core::commit_handle::tests::two_sets_with_the_same_members_are_equal_however_they_got_there`
   plus property test `a_handle_set_behaves_like_a_hash_set`.
 - **Decided in:** ADR-0026 (everything that's O(history) uses a dense,
   handle-indexed representation, 8–16 bytes/commit; the walk reads the
@@ -944,7 +944,7 @@ status: works
   stays bounded at roughly 2× the chunk size plus a small buffer — not the
   whole history.
 - **Proven by:**
-  `graft_graph::layout::stream::tests::a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read`
+  `mergewright_graph::layout::stream::tests::a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read`
 - **Decided in:** `docs/design/03-graph-layout-algorithm.md` §3.6; a
   design amendment mid-ticket chose deferred merge-lane identity
   (resolved only when a row is actually assembled) over reading every
@@ -983,13 +983,13 @@ unverified_aspect: first paint at 1M commits right after clearing the OS page ca
   with an even grid so far jumps stay fast without holding everything;
   parent lists stored as a compact array instead of per-commit allocations;
   and paging the string interner instead of one growing table.
-- **Proven by:** `graft::heavy::tests::slopes_per_commit_with_a_commit_graph`
-  `graft::heavy::tests::budgets_hold_on_the_100k_fixture_with_a_commit_graph`
-  `graft::heavy::tests::budgets_hold_on_the_100k_fixture_without_a_commit_graph`
-  `graft::heavy::tests::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph`
-  `graft::heavy::tests::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph`
-  `graft::heavy::tests::budgets_hold_on_the_100k_fixture_with_50k_refs`
-  `graft::heavy::tests::child_gated_run` (guards measure inside a real
+- **Proven by:** `mergewright::heavy::tests::slopes_per_commit_with_a_commit_graph`
+  `mergewright::heavy::tests::budgets_hold_on_the_100k_fixture_with_a_commit_graph`
+  `mergewright::heavy::tests::budgets_hold_on_the_100k_fixture_without_a_commit_graph`
+  `mergewright::heavy::tests::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph`
+  `mergewright::heavy::tests::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph`
+  `mergewright::heavy::tests::budgets_hold_on_the_100k_fixture_with_50k_refs`
+  `mergewright::heavy::tests::child_gated_run` (guards measure inside a real
   child process, not the parent's lifetime-max RSS, so a run's peak can't
   leak forward and falsely pass a later, smaller fixture)
 - **Looks like:** `docs/shots/m1-memory-curve.txt`,
@@ -1065,12 +1065,12 @@ status: works
   promptly with its error, rather than hanging waiting for history that
   will never arrive. Piped output never contains a raw escape byte.
 - **Proven by:**
-  `graft::event_loop::tests::headless_is_not_settled_before_history_exists`
-  `graft::event_loop::tests::headless_is_not_settled_while_history_is_streaming`
-  `graft::event_loop::tests::headless_is_settled_once_history_completes`
-  `graft::event_loop::tests::headless_is_settled_when_the_walk_fails`
-  `graft::tests::it::piped_stdout::piped_stdout_never_contains_an_escape_byte`
-  `graft::tests::it::piped_stdout::a_repository_that_fails_to_open_exits_with_its_error_never_hangs`
+  `mergewright::event_loop::tests::headless_is_not_settled_before_history_exists`
+  `mergewright::event_loop::tests::headless_is_not_settled_while_history_is_streaming`
+  `mergewright::event_loop::tests::headless_is_settled_once_history_completes`
+  `mergewright::event_loop::tests::headless_is_settled_when_the_walk_fails`
+  `mergewright::tests::it::piped_stdout::piped_stdout_never_contains_an_escape_byte`
+  `mergewright::tests::it::piped_stdout::a_repository_that_fails_to_open_exits_with_its_error_never_hangs`
 - **Decided in:** bug found during M1's memory-scale work, not a
   pre-written ticket.
 - **Status:** works.

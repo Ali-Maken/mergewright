@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
-# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: 100 columns, the narrowest with the list column: the clash still two columns side by side.
 === 100x40 ===
 MERGING                                                                                             

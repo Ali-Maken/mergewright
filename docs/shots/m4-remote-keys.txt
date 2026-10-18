@@ -1,5 +1,5 @@
 # m4-remote-keys.txt: TestBackend capture (not a pty), 120x40, no colour
-# recorded. Fixture: capture_m4_remote_keys in crates/graft/src/view/tests.rs
+# recorded. Fixture: capture_m4_remote_keys in crates/mergewright/src/view/tests.rs
 # (asserted; regenerate on purpose). Two screens.
 #
 # 1. `P` after git refused a push as not a fast-forward: the lease box.

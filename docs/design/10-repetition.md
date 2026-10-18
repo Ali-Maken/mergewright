@@ -1,4 +1,4 @@
-# Graft: Design — Repetition
+# Mergewright: Design — Repetition
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Proposed changes](09-proposed-changes.md)

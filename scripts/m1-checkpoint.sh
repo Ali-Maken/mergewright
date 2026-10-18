@@ -15,7 +15,7 @@
 #
 # Every scenario but `list` ends by handing control to `cargo run -p mergewright --`,
 # so `q` quits it the same way as any other Mergewright session. `-p mergewright` is
-# required at the workspace root now that `graft-fixtures` also builds a
+# required at the workspace root now that `mergewright-fixtures` also builds a
 # binary (its corpus-report `main.rs`) — bare `cargo run --` is ambiguous
 # there (KNOWN_GAPS.md, m1-the-graph/28).
 #
@@ -45,14 +45,14 @@ open_shape() {
 	local shape=$1 look=$2
 	require cargo "builds and runs Mergewright and the fixtures crate"
 
-	printf 'building the fixture corpus (cargo run -p graft-fixtures)...\n' >&2
-	if ! cargo run --quiet -p graft-fixtures >&2; then
+	printf 'building the fixture corpus (cargo run -p mergewright-fixtures)...\n' >&2
+	if ! cargo run --quiet -p mergewright-fixtures >&2; then
 		printf 'error: the fixture corpus could not be built — see the cargo output above.\n' >&2
 		exit 1
 	fi
 
 	local path
-	if ! path=$(cargo run --quiet -p graft-fixtures --example shape_path -- "$shape"); then
+	if ! path=$(cargo run --quiet -p mergewright-fixtures --example shape_path -- "$shape"); then
 		printf 'error: fixture shape "%s" is not available on this machine — see the error above.\n' "$shape" >&2
 		exit 1
 	fi

@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
-# crates/graft/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
+# crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: the list a column 30 wide headed `Clashing files`: `? notes.md  1 open`, `▏? report.md  2 open` (the open file); the first clash outlined, `? yours · wallet-release` left, `theirs · sara/fix-toc` right, its lines unnumbered, the plain lines numbered; the bar starts `o take yours (left)`.
 === 120x40 ===
 MERGING                                                                                                                 
