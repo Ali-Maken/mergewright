@@ -193,6 +193,7 @@ pub fn drive(
 /// his config's problems (said on the first repository screen only, ticket
 /// 08 Scope), the first-launch line and its warning (R7: counted once, a
 /// failure said once), and what the last place handed on.
+#[cfg_attr(test, derive(Default))]
 struct Carried {
     keymap: Arc<mergewright_ui::keymap::Keymap>,
     problems: Vec<String>,
@@ -211,6 +212,8 @@ struct Carried {
     /// The next place is the way back from the tour (or from a tour that
     /// could not start): not put on the recent list again (§A6).
     returning: bool,
+    /// The graph mode every repository's walk starts in (ease-pass 06h).
+    graph_mode: crate::config::MergedBranches,
     /// The session clock, for the whole process (`MWR_NOW`, m8/19d-b):
     /// every repository's harness and the practice repo's `now`.
     clock: Clock,
@@ -221,12 +224,14 @@ impl Carried {
         let Arrival {
             keymap,
             config_problems,
+            graph_mode,
             ..
         } = Arrival::first(config, no_color);
         let (first_launch, warning) = first_launch::for_this_launch(config_dir);
         Self {
             keymap,
             problems: config_problems,
+            graph_mode,
             first_launch,
             warning,
             notice: None,
@@ -286,6 +291,7 @@ impl Carried {
             keymap: self.keymap.clone(),
             config_problems: std::mem::take(&mut self.problems),
             first_launch: self.first_launch.line(),
+            graph_mode: self.graph_mode,
         }
     }
 }

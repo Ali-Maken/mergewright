@@ -11,7 +11,9 @@ use crate::update::tests::reveal::{find_for, oid_of, on, revealed};
 fn a_commit_row_on_a_folded_commit_opens_its_merge_and_lands_on_it() {
     let walk = JobId::new(4242);
     let mut state = with_a_tag();
-    state.history = Some(crate::history::History::started());
+    state.history = Some(crate::history::History::started(
+        crate::config::MergedBranches::Folded,
+    ));
     state.awaiting = Some(walk);
     let (open, _) = press(&state, KeyPress::control(KeyCode::Char('p')));
     let (typing, _) = typed(&open, "login");

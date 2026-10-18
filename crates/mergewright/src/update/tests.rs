@@ -52,6 +52,8 @@ mod pane_space;
 
 mod first_launch;
 mod folded_merge;
+mod graph_mode;
+mod graph_mode_reask;
 mod head_keep;
 mod place_footers;
 

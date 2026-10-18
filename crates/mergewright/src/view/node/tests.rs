@@ -124,7 +124,7 @@ pub(crate) fn every_node(cursor: usize) -> AppState {
             phase: Phase::Complete,
             cursor,
             reanchor: None,
-            ..History::started()
+            ..History::started(crate::config::MergedBranches::Folded)
         }),
         refs: Some(Arc::new(refs)),
         size: Size {

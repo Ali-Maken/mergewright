@@ -34,22 +34,34 @@ pub(in crate::event_loop) struct Arrival {
     /// switch read now (`FirstLaunch::line`), so a line ended in an earlier
     /// place stays gone. `None` by default (`run`, the gallery, the walks).
     pub first_launch: Option<std::path::PathBuf>,
+    /// The graph mode a walk starts in (`[graph] merged_branches`).
+    pub graph_mode: crate::config::MergedBranches,
 }
 
 impl Arrival {
     /// The first repository screen of a process started on `config`: its
     /// keymap, and every problem with the file — the file's and the keymap's
     /// (`config::keymap_from`), then each contrast floor his `[theme.*]`
-    /// colours miss (none under `NO_COLOR`, where no colour is drawn).
+    /// colours miss (none under `NO_COLOR`, where no colour is drawn),
+    /// then a `graph.merged_branches` it does not take (ease-pass 06h).
     pub(in crate::event_loop) fn first(config: &crate::config::Loaded, no_color: bool) -> Self {
         let (keymap, mut config_problems) = crate::config::keymap_from(config);
         config_problems.extend(crate::config::theme_problems(
             &config.config.theme,
             no_color,
         ));
+        let raw = config.config.graph.merged_branches.as_ref();
+        let graph_mode = match crate::config::MergedBranches::from_config(raw.map(|raw| &raw.0)) {
+            Ok(mode) => mode,
+            Err(problem) => {
+                config_problems.push(problem);
+                crate::config::MergedBranches::Folded
+            }
+        };
         Self {
             keymap: Arc::new(keymap),
             config_problems,
+            graph_mode,
             ..Self::default()
         }
     }
@@ -61,6 +73,7 @@ impl Arrival {
 /// one sticky line), and the cursor on `HEAD`.
 pub(in crate::event_loop) fn arrive(state: &mut AppState, arrival: Arrival) {
     state.seed_keys(arrival.keymap, arrival.config_problems);
+    state.graph_mode = arrival.graph_mode;
     state.first_launch = arrival.first_launch.map(Box::new);
     if let Some(reason) = super::super::places::joined(arrival.notice, arrival.status) {
         state.status = crate::update::Status::Sticky { reason, keys: None };

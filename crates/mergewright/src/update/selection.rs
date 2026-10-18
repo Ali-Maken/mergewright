@@ -311,7 +311,7 @@ mod tests {
     /// A state with refs answered, `HEAD` at row 0, and a dirty tree — the
     /// row is shown, cursor at the top.
     fn shown_state() -> AppState {
-        let mut history = History::started();
+        let mut history = History::started(crate::config::MergedBranches::Folded);
         history.rows = 3;
         history.top = 0;
         history.cursor = 0;

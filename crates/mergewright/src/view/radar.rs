@@ -275,7 +275,7 @@ mod tests {
     /// context whose default chain is exactly `chain`.
     fn ready_state(chain: &[Oid], previous_default_tips: Vec<Oid>) -> AppState {
         let mut state = AppState::default();
-        let mut history = History::started();
+        let mut history = History::started(crate::config::MergedBranches::Folded);
         history.walk = Some(WalkFacts {
             requested: Order::Topological,
             order: Order::Topological,

@@ -425,10 +425,10 @@ pub struct AppState {
     /// config at startup (`config::keymap_from`); the default keymap until
     /// then and in tests.
     pub(crate) keymap: std::sync::Arc<mergewright_ui::keymap::Keymap>,
-    /// Everything wrong with his config file, in words: the file's warnings,
-    /// then the keymap's. Filled at startup on the first repository screen
-    /// of the process; `?` lists them (ticket 11).
+    /// Everything wrong with his config file, in words (`Arrival::first`); `?` lists them.
     pub(crate) config_problems: Vec<String>,
+    /// The mode a walk starts in (ease-pass 06h); `switch_graph_mode` sets it.
+    pub graph_mode: crate::config::MergedBranches,
     /// The bottom row reads `config: N problems · ? shows them` until the
     /// first key or click acknowledges it, as a `Done` is
     /// (`keys::acknowledge`). Set at startup only when there are problems.

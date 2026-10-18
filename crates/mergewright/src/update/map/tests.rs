@@ -118,7 +118,9 @@ fn a_product_lands_as_ready_and_a_stale_one_is_dropped() {
 #[test]
 fn enter_on_a_row_closes_the_view_and_seeks_its_tip() {
     let mut state = state_with_columns(100);
-    state.history = Some(crate::history::History::started());
+    state.history = Some(crate::history::History::started(
+        crate::config::MergedBranches::Folded,
+    ));
     let mut commands = Vec::new();
     map_key(&mut state, &mut commands, key(KeyCode::Char('M')));
     let Loading::Pending(id) = state.map.data else {
@@ -139,7 +141,9 @@ fn enter_on_a_merged_branch_opens_its_merge_and_lands_on_its_tip() {
     use crate::update::tests::reveal::{find_for, oid_of, on, revealed};
     let walk = JobId::new(4242);
     let mut state = state_with_columns(100);
-    state.history = Some(crate::history::History::started());
+    state.history = Some(crate::history::History::started(
+        crate::config::MergedBranches::Folded,
+    ));
     let mut commands = Vec::new();
     map_key(&mut state, &mut commands, key(KeyCode::Char('M')));
     state.map.data = Loading::Ready(sample_data(2));

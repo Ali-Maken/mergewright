@@ -87,7 +87,7 @@ fn views_with(line: &Line, config: StreamConfig) -> LineViews<'_> {
 /// A walk that has said it is provisional: a topological order was asked
 /// for, commit-date order is what it walks.
 fn provisional() -> History {
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     history.walk = Some(WalkFacts {
         requested: Order::Topological,
         order: Order::CommitDate,

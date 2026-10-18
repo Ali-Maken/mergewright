@@ -8,14 +8,14 @@ use super::super::fold::landing;
 use super::*;
 
 /// Views over `handle`'s walk, seeded as the app seeds them.
-fn seeded<'o>(handle: &'o RepoHandle, pulls: &'o AtomicUsize) -> Counted<'o> {
+pub(super) fn seeded<'o>(handle: &'o RepoHandle, pulls: &'o AtomicUsize) -> Counted<'o> {
     let refs = handle.references().expect("refs read");
     let branches = mergewright_git::branches::Branches::resolve(handle, None).expect("resolve");
     counted(handle, seeds_for(&refs, &branches), pulls)
 }
 
 /// Every commit of `handle`'s full view, top to bottom.
-fn every_commit(handle: &RepoHandle) -> Vec<Oid> {
+pub(super) fn every_commit(handle: &RepoHandle) -> Vec<Oid> {
     let pulls = AtomicUsize::new(0);
     let mut views = seeded(handle, &pulls);
     shown(&mut views, &View::default(), 0..1);
@@ -28,14 +28,17 @@ fn every_commit(handle: &RepoHandle) -> Vec<Oid> {
 
 /// Asks for `rows` of the folded view through `Views::answer`, as `serve`
 /// does: the window it sends is the one idle work keeps up to date.
-fn answered_folded(views: &mut Counted<'_>, rows: std::ops::Range<usize>) -> Window {
+pub(super) fn answered_folded(views: &mut Counted<'_>, rows: std::ops::Range<usize>) -> Window {
     let request = RowRequest::new(1, Wanted::Rows(rows), View::folded());
     answered(views, request).0
 }
 
 /// Answers `request` through `Views::answer`: its window, and every other
 /// update sent on the way.
-fn answered(views: &mut Counted<'_>, request: RowRequest) -> (Window, Vec<HistoryUpdate>) {
+pub(super) fn answered(
+    views: &mut Counted<'_>,
+    request: RowRequest,
+) -> (Window, Vec<HistoryUpdate>) {
     let mut window = None;
     let mut others = Vec::new();
     let ended = views
@@ -186,7 +189,7 @@ fn a_find_answers_how_many_asked_hits_fold_even_when_superseded() {
 
 /// Every commit asked as a search's hits, in `view` laid out to the end:
 /// how many the answer counts folded.
-fn folded_of_every_commit(views: &mut Counted<'_>, all: &[Oid], view: View) -> usize {
+pub(super) fn folded_of_every_commit(views: &mut Counted<'_>, all: &[Oid], view: View) -> usize {
     shown(views, &view, 0..usize::MAX);
     let request = RowRequest {
         folded: Some(FoldedAsk {

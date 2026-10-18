@@ -87,6 +87,76 @@ pub struct Graph {
     /// sense.
     #[serde(deserialize_with = "lane_limit", default)]
     pub max_lanes: Option<usize>,
+    /// `graph.merged_branches`, raw, so a bad value is a problem, not a load
+    /// failure (ease-pass 06h). Read through [`MergedBranches::from_config`].
+    pub merged_branches: Option<RawValue>,
+}
+
+/// A config value kept as written, for a setting that reports a bad value
+/// as a problem instead of refusing the file.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct RawValue(pub toml::Value);
+
+// `toml::Value` is not `Eq` only because a float is not; a float here is a
+// bad value either way, and equality is only ever asked of whole configs in
+// tests.
+impl Eq for RawValue {}
+
+/// A scalar as the file spells it; a table or array by its kind.
+fn written(value: &toml::Value) -> String {
+    match value {
+        toml::Value::String(text) => format!("\"{text}\""),
+        toml::Value::Integer(number) => number.to_string(),
+        toml::Value::Float(number) => number.to_string(),
+        toml::Value::Boolean(flag) => flag.to_string(),
+        other => format!("a {}", other.type_str()),
+    }
+}
+
+/// `[graph] merged_branches`: the graph mode. Folded merges, or every branch
+/// on its own lane (ease-pass 06h).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MergedBranches {
+    /// `"folded"`: behind their merge, `▸ N commits from …`; `space` opens
+    /// one. The default.
+    #[default]
+    Folded,
+    /// `"shown"`: every merged branch on its own lane; nothing folds.
+    Shown,
+}
+
+impl MergedBranches {
+    /// The setting's name, as a config problem spells it.
+    pub const KEY: &'static str = "graph.merged_branches";
+
+    /// Unset → `Folded`. A value it doesn't take → `Err(problem words)`;
+    /// the caller uses `Folded`.
+    ///
+    /// # Errors
+    /// The problem in words, when the value is neither `"folded"` nor
+    /// `"shown"`.
+    pub fn from_config(raw: Option<&toml::Value>) -> Result<Self, String> {
+        match raw {
+            None => Ok(Self::Folded),
+            Some(toml::Value::String(text)) if text == "folded" => Ok(Self::Folded),
+            Some(toml::Value::String(text)) if text == "shown" => Ok(Self::Shown),
+            Some(other) => Err(format!(
+                "{} = {} — takes \"folded\" or \"shown\"; using folded",
+                Self::KEY,
+                written(other)
+            )),
+        }
+    }
+
+    /// The value the file spells: `"folded"` / `"shown"`.
+    #[must_use]
+    pub fn as_config(self) -> &'static str {
+        match self {
+            Self::Folded => "folded",
+            Self::Shown => "shown",
+        }
+    }
 }
 
 /// `[diff]`: the detail pane's diff options — context, whitespace and word

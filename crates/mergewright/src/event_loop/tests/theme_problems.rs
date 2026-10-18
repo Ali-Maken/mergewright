@@ -116,3 +116,70 @@ fn capture_theme_problems() {
         format!("{graph}\n{status}"),
     );
 }
+
+/// Ease-pass 06h: `graph.merged_branches = "open"` beside a bad `[keys]`
+/// entry and a bad theme colour — three problems, the graph's last; the
+/// app starts folded. `docs/shots/ease-pass/config-merged-branches-problem-120.txt`:
+/// the status row, then `?` open with `YOUR CONFIG` first.
+#[test]
+fn a_graph_mode_it_does_not_take_is_the_last_problem_and_the_app_starts_folded() {
+    let file = "[graph]\nmerged_branches = \"open\"\n\n[keys.app]\nundo = \"o\"\n\n\
+                [theme.dark]\ntext = \"red\"\n";
+    let arrival = Arrival::first(&loaded_from_a_file(file), false);
+    assert_eq!(arrival.graph_mode, crate::config::MergedBranches::Folded);
+    let mut state = AppState {
+        history: Some(crate::view::tests::history_of(5, 0)),
+        size: Size {
+            columns: 120,
+            rows: 36,
+        },
+        ..AppState::default()
+    };
+    super::super::startup::arrive(&mut state, arrival);
+    assert_eq!(
+        state.config_problems.len(),
+        3,
+        "{:?}",
+        state.config_problems
+    );
+    assert_eq!(
+        state.config_problems[2],
+        "graph.merged_branches = \"open\" — takes \"folded\" or \"shown\"; using folded"
+    );
+    assert_eq!(state.graph_mode, crate::config::MergedBranches::Folded);
+    let walk = crate::history::History::started(state.graph_mode);
+    assert_eq!(walk.view, crate::history::View::folded(), "it folds");
+
+    let graph = draw(&state);
+    assert!(
+        graph.contains("config: 3 problems · ? shows them"),
+        "{graph}"
+    );
+    let press = KeyPress::plain(KeyCode::Char('?'));
+    let help = draw(&update(&state, AppEvent::Core(Event::Key(press))).0);
+    let config = help.find("YOUR CONFIG").expect("YOUR CONFIG listed");
+    let positions: Vec<usize> = state
+        .config_problems
+        .iter()
+        .map(|problem| {
+            let cut: String = problem.chars().take(30).collect();
+            help.find(&cut)
+                .unwrap_or_else(|| panic!("{problem}:\n{help}"))
+        })
+        .collect();
+    assert!(positions.iter().all(|&at| at > config), "{help}");
+    assert!(positions.windows(2).all(|pair| pair[0] < pair[1]), "{help}");
+    mergewright_fixtures::capture(
+        format!(
+            "{}/../../docs/shots/ease-pass/config-merged-branches-problem-120.txt",
+            env!("CARGO_MANIFEST_DIR")
+        ),
+        format!(
+            "ease-pass 06h, 120x36: `[graph] merged_branches = \"open\"` beside a bad `[keys]` \
+             entry and a bad theme colour.\nWhat right looks like: first the graph, its bottom \
+             row `config: 3 problems · ? shows them`; then `?` open, `YOUR CONFIG` first, the \
+             graph problem last, reading `graph.merged_branches = \"open\" — takes \"folded\" \
+             or \"shown\"; using folded`. Colour unverified (rule 5).\n\n{graph}\n{help}\n"
+        ),
+    );
+}

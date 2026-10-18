@@ -216,18 +216,7 @@ fn stopping_the_clone_ends_it_on_the_prompt() {
 
 /// A process's carry with nothing in it yet.
 fn carried() -> Carried {
-    Carried {
-        keymap: Arc::new(Keymap::default()),
-        problems: Vec::new(),
-        first_launch: FirstLaunch::default(),
-        warning: None,
-        notice: None,
-        at: None,
-        practice: false,
-        tour_done: false,
-        returning: false,
-        clock: crate::session::Clock::Wall,
-    }
+    Carried::default()
 }
 
 /// A clone that landed with a notice (its askpass socket not cleaned up):

@@ -292,10 +292,8 @@ fn ask_and_lay_out(
     promote: Option<Promote>,
 ) -> history::Window {
     asks.send(RowRequest {
-        id,
-        wanted: Wanted::Rows(0..commits),
-        view: View::default(),
         promote,
+        ..RowRequest::new(id, Wanted::Rows(0..commits), View::default())
     })
     .expect("the stream is still reading requests");
     let window = until_window_for(told, id);

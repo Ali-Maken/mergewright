@@ -292,6 +292,10 @@ impl History {
             id: self.asked,
             wanted,
             view: self.view.clone(),
+            // A view change's commit rides until its answer lands, as the
+            // folded ask does: a seek replacing the request keeps it. A
+            // promotion's anchor is the selection already, and lands it.
+            keep: self.reanchor.filter(|_| promote.is_none()),
             promote,
             folded: self.folded_ask.clone(),
         }

@@ -50,9 +50,10 @@ impl History {
                     self.phase = Phase::Complete;
                 }
                 // A view change moves row numbers: find the selected commit
-                // among the new rows. Not there, the cursor keeps its index.
+                // among the new rows, or the merge it now folds behind
+                // (ease-pass 06h). Neither there, the cursor keeps its index.
                 if let Some(id) = self.reanchor.take()
-                    && let Some(at) = window.rows.iter().position(|row| row.commit.id == id)
+                    && let Some(at) = landed_at(&window, id)
                 {
                     self.cursor = window.first + at;
                     self.follow(height.max(1));
@@ -140,22 +141,8 @@ impl History {
         }
         // Folded away in the new order (ease-pass 06): the cursor lands on
         // the merge it now hides behind.
-        let behind = window
-            .sought
-            .as_deref()
-            .and_then(|sought| sought.anchor_behind);
-        let landed = |commit| match behind {
-            Some((anchor, merge)) if anchor == commit => merge,
-            _ => commit,
-        };
         let found = anchor.and_then(|anchor| {
-            let shown = window.rows.iter().any(|row| row.commit.id == anchor.commit);
-            let commit = if shown {
-                anchor.commit
-            } else {
-                landed(anchor.commit)
-            };
-            let at = window.rows.iter().position(|row| row.commit.id == commit)?;
+            let at = landed_at(&window, anchor.commit)?;
             Some((window.first + at, anchor.offset))
         });
         if let Some((row, offset)) = found {
@@ -271,4 +258,17 @@ impl History {
         }
         self.wanted(height, true)
     }
+}
+
+/// Where `commit` lands among `window`'s rows, as an index into them: its
+/// own row, or — folded away by the view the window answers — the merge it
+/// hides behind, when the walk said so (`Sought::anchor_behind`). The one
+/// landing a promotion's anchor and a view change's kept commit share
+/// (ease-pass 06, 06h).
+fn landed_at(window: &Window, commit: mergewright_core::oid::Oid) -> Option<usize> {
+    let at = |id| window.rows.iter().position(|row| row.commit.id == id);
+    at(commit).or_else(|| {
+        let (anchor, merge) = window.sought.as_deref()?.anchor_behind?;
+        (anchor == commit).then_some(merge).and_then(at)
+    })
 }

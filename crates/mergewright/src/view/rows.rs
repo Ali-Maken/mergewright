@@ -137,14 +137,14 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 /// its badges — last, so `update::geometry::badge_at`, which counts refs
 /// from the front, never takes it for one. The cursor's highlight and a
 /// drag's paint win over the dimming: the row is still one the cursor can
-/// stand on. The pixel tier reads none of this (`view::strips` paints its
-/// own rows); see the ticket's NOTES.
+/// stand on. The pixel tier reads none of this (`view::strips`, ticket NOTES).
 /// The header's filter words: what the walk leaves out, and the focus.
 fn filters(state: &AppState, history: &History) -> Filters {
     Filters {
         first_parent: history.view.follow == mergewright_graph::Follow::FirstParent,
         stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
         focused: state.focus,
+        every_branch: history.merged_branches() == crate::config::MergedBranches::Shown,
     }
 }
 

@@ -12,7 +12,7 @@ use mergewright_graph::Row;
 
 use super::*;
 
-fn oid(byte: u8) -> Oid {
+pub(super) fn oid(byte: u8) -> Oid {
     Oid::from_sha1([byte; Oid::SHA1_BYTES])
 }
 
@@ -43,7 +43,7 @@ fn row(byte: u8) -> Row {
 }
 
 /// The answer to request `request`: rows `bytes` from row 0, and `sought`.
-fn answer(request: u64, bytes: &[u8], sought: Option<Sought>) -> HistoryUpdate {
+pub(super) fn answer(request: u64, bytes: &[u8], sought: Option<Sought>) -> HistoryUpdate {
     HistoryUpdate::Window(Window {
         request,
         first: 0,
@@ -66,7 +66,7 @@ fn found(found: Found) -> Sought {
 /// A walk whose first window holds rows 1..=5, the cursor on row 0 —
 /// then a seek to 9, which no row on hand holds: the find it asks.
 fn seeking_9() -> (History, RowRequest) {
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let first = history.show(5).expect("asks the first rows");
     history.apply(answer(first.id, &[1, 2, 3, 4, 5], None), 5);
     let find = history.seek(oid(9), 5).expect("not on hand: a find");
@@ -112,7 +112,7 @@ fn a_find_answered_row_or_not_in_view_owes_nothing() {
 
 #[test]
 fn a_promoted_anchor_the_new_order_folds_lands_on_its_merge_and_opens_nothing() {
-    let mut history = History::started();
+    let mut history = History::started(crate::config::MergedBranches::Folded);
     let first = history.show(5).expect("asks the first rows");
     history.apply(answer(first.id, &[1, 2, 3, 4, 5], None), 5);
     history.cursor = 3;
