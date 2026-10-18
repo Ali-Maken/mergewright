@@ -25,6 +25,8 @@ pub struct MergeLook {
     /// The commits that come in: the source's, not yet on the branch
     /// merged into, oldest first, capped at [`INCOMING_CAP`].
     pub incoming: Range,
+    /// The merge only moves `into` up: no merge commit, nothing combined.
+    pub fast_forward: bool,
 }
 
 impl MergeLook {
@@ -38,7 +40,8 @@ impl MergeLook {
 }
 
 /// Reads the look for merging `theirs` into `ours`: one `merge_forecast`
-/// and one `rev-list theirs ^ours`.
+/// and one `rev-list theirs ^ours`. `fast_forward` is the plan's own
+/// answer (no merge commit is made), carried for the box's words.
 ///
 /// # Errors
 /// A `git` read failed ([`PreviewError::Read`]) or the caller stopped
@@ -49,11 +52,16 @@ pub(super) fn look(
     git: &GitVersion,
     ours: Oid,
     theirs: Oid,
+    fast_forward: bool,
     stop: &dyn Stop,
 ) -> Result<MergeLook, PreviewError> {
     let check = history_reads::merge_forecast(repo, git, ours, theirs, stop)?;
     let incoming = history_reads::commits_between(repo, ours, theirs, INCOMING_CAP, stop)?;
-    Ok(MergeLook { check, incoming })
+    Ok(MergeLook {
+        check,
+        incoming,
+        fast_forward,
+    })
 }
 
 /// What `plan.conflicts` holds for a merge, from the same read (one
@@ -102,6 +110,7 @@ mod tests {
                 commits: Vec::new(),
                 capped: false,
             },
+            fast_forward: false,
         }
     }
 

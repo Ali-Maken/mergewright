@@ -136,3 +136,20 @@ fn an_up_to_date_merge_has_no_look() {
     let plan = plan_of(&repo, &merge_of(&repo, "behind"));
     assert_eq!(plan.merge, None);
 }
+
+/// A fast-forward makes no merge commit: the look says so, and a true
+/// merge's does not.
+#[test]
+fn a_fast_forward_plan_says_so_and_a_true_merge_does_not() {
+    let repo = clashing();
+    repo.git(&["switch", "-q", "-c", "behind", "main~1"]);
+    let plan = plan_of(&repo, &merge_of(&repo, "main"));
+    let look = plan.merge.as_ref().expect("a fast-forward has a look");
+    assert!(look.fast_forward, "behind moves up to main");
+    assert_eq!(look.incoming.commits.len(), 1, "main's one commit comes in");
+
+    repo.git(&["switch", "-q", "main"]);
+    let plan = plan_of(&repo, &merge_of(&repo, "topic"));
+    let look = plan.merge.as_ref().expect("a merge look");
+    assert!(!look.fast_forward, "topic and main diverged");
+}

@@ -28,10 +28,10 @@ pub(crate) fn summary_landed(
     }
     finish.job = None;
     match summary {
-        Err(ReviewFailed::StillOpen { count }) => {
+        Err(ReviewFailed::StillOpen { files, clashes }) => {
             let back_to = finish.return_to;
             close_keeping_draft(state);
-            still_open(state, back_to, count);
+            still_open(state, back_to, files, clashes);
             return;
         }
         Ok(Reviewed { summary, solved }) => {
@@ -56,25 +56,23 @@ pub(crate) fn summary_landed(
     keep_cursor_on_screen(state);
 }
 
-/// `count` files still have a clash open: said where the review was asked
-/// for. Over the banner, today's `c` refusal; in the resolver, the way to
-/// the next open clash.
-fn still_open(state: &mut AppState, back_to: ReturnTo, count: usize) {
-    let files = if count == 1 { "file" } else { "files" };
+/// `files` files, `clashes` clashes, still open: said where the review was
+/// asked for. Over the banner, today's `c` refusal, counting files; in the
+/// resolver, the clashes and the way to the next — the unit its own `y`
+/// says (ease-pass/05s, Minor 3).
+fn still_open(state: &mut AppState, back_to: ReturnTo, files: usize, clashes: usize) {
     match back_to {
         ReturnTo::Banner => {
+            let noun = if files == 1 { "file" } else { "files" };
             state.banner_focus = crate::update::banner::banner_view(state).is_some();
             state.status = crate::update::banner::continue_refused(
-                format!("{count} {files} still conflicted"),
+                format!("{files} {noun} still conflicted"),
                 crate::update::banner::refused_at(state),
                 &state.keymap,
             );
         }
         ReturnTo::Resolver => {
-            let words = crate::update::resolver::still_open_words(
-                &format!("{count} {files} still open"),
-                &state.keymap,
-            );
+            let words = crate::update::resolver::clashes_still_open(clashes, &state.keymap);
             crate::update::resolver::set_notice(state, (words, false));
         }
     }

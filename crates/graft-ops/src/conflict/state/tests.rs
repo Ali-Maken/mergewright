@@ -84,3 +84,11 @@ fn a_path_git_no_longer_calls_unmerged_is_done_whatever_its_bytes() {
         assert_eq!(file_state(&opened, false), FileState::Done);
     }
 }
+
+#[test]
+fn open_clashes_counts_a_whole_file_card_as_one() {
+    assert_eq!(FileState::Open { open: 3 }.open_clashes(), 3);
+    assert_eq!(FileState::Open { open: 0 }.open_clashes(), 1);
+    assert_eq!(FileState::Solved.open_clashes(), 0);
+    assert_eq!(FileState::Done.open_clashes(), 0);
+}

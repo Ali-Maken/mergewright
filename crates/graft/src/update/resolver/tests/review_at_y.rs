@@ -85,7 +85,7 @@ fn y_with_clashes_still_open_says_how_many_and_where_next() {
 }
 
 /// The review read found a file the resolver had not read still open: it
-/// closes, and the resolver says how many files.
+/// closes, and the resolver says how many clashes — the unit `y` says.
 #[test]
 fn a_review_read_that_finds_a_file_open_closes_back_to_the_resolver() {
     let state = on("a", solved(), &["a", "b"], &["a", "b"]);
@@ -95,13 +95,16 @@ fn a_review_read_that_finds_a_file_open_closes_back_to_the_resolver() {
         &state,
         AppEvent::Produced(
             id,
-            Product::FinishSummary(Err(ReviewFailed::StillOpen { count: 1 })),
+            Product::FinishSummary(Err(ReviewFailed::StillOpen {
+                files: 1,
+                clashes: 2,
+            })),
         ),
     );
     assert!(state.finish.is_none());
     assert_eq!(
         notice(&state),
-        Some("1 file still open · n goes to the next")
+        Some("2 clashes still open · n goes to the next")
     );
 }
 

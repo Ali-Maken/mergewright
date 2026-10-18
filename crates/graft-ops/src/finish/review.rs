@@ -30,9 +30,9 @@ pub struct MergeReview {
 ///
 /// # Errors
 /// [`SummaryError::NotMerging`] unless git has a merge in progress;
-/// [`SummaryError::StillUnmerged`] counting the unmerged files not solved
+/// [`SummaryError::ClashesOpen`] counting the unmerged files not solved
 /// (a clash still open, a whole-file or binary conflict, markers that do
-/// not parse); a file that would not read as
+/// not parse) and their open clashes; a file that would not read as
 /// [`FactsError::Markers`]; otherwise as [`finish_preview`].
 pub fn merge_review(repo: &RepoHandle, stop: &dyn Stop) -> Result<MergeReview, SummaryError> {
     let in_progress = state::in_progress(repo).map_err(FactsError::State)?;
@@ -41,7 +41,7 @@ pub fn merge_review(repo: &RepoHandle, stop: &dyn Stop) -> Result<MergeReview, S
     }
     let status = graft_git::status::read(repo, stop).map_err(FactsError::from)?;
     let mut solved = Vec::new();
-    let mut open = 0;
+    let (mut files, mut clashes) = (0, 0);
     for entry in status.entries.iter().filter(|entry| entry.unmerged) {
         let state = match open_conflict(repo, &status, &entry.path) {
             Ok(opened) => file_state(&opened, true),
@@ -59,18 +59,25 @@ pub fn merge_review(repo: &RepoHandle, stop: &dyn Stop) -> Result<MergeReview, S
         };
         match state {
             FileState::Solved => solved.push(entry.path.clone()),
-            FileState::Open { .. } | FileState::Done => open += 1,
+            // `Done` cannot come back for a path read as unmerged; counted
+            // as open, not solved, should the rule ever change.
+            FileState::Open { .. } | FileState::Done => {
+                files += 1;
+                clashes += state.open_clashes().max(1);
+            }
         }
     }
-    if open > 0 {
-        return Err(SummaryError::StillUnmerged { count: open });
+    if files > 0 {
+        return Err(SummaryError::ClashesOpen { files, clashes });
     }
-    let summary = summary_of(repo, &solved, stop)?;
+    let summary = finish_preview(repo, &solved, stop)?;
     Ok(MergeReview { summary, solved })
 }
 
 /// The review's facts as if `solved` were staged: a scratch index, never the
-/// real one (ease-pass/05b, hard choice 3).
+/// real one (ease-pass/05b, hard choice 3). Crate-only: it stages what it
+/// is given, markers included, so [`merge_review`] — which judges each path
+/// on disk first — is the one public door (ease-pass/05s, Minor 5).
 ///
 /// The real index is copied to a temporary file beside the journal,
 /// `git add -- <solved>` runs on the copy (`GIT_INDEX_FILE`, the snapshot
@@ -87,7 +94,7 @@ pub fn merge_review(repo: &RepoHandle, stop: &dyn Stop) -> Result<MergeReview, S
 /// [`SummaryError::StillUnmerged`] counting the unmerged paths not in
 /// `solved`; [`SummaryError::Scratch`] when the copy could not be made or
 /// removed; the read's own failure otherwise.
-pub fn finish_preview(
+pub(crate) fn finish_preview(
     repo: &RepoHandle,
     solved: &[PathBuf],
     stop: &dyn Stop,
@@ -130,10 +137,15 @@ pub(super) fn summary_of(
     let index = copy.as_ref().map(TempIndex::path);
     let summary = summary_on(repo, in_progress, &status, index, stop);
     match copy {
-        // Removed before the summary is returned, so a copy that would not
-        // go is said rather than left behind in silence.
+        // Removed before the summary is returned. A copy that would not go
+        // is said when the read succeeded; when the read failed, its error
+        // is the one returned.
         Some(copy) => {
             let removed = copy.remove();
+            // Safe to drop the removal's error when the read failed: the
+            // copy is inert scratch under a name no other run takes (as
+            // `snapshot/temp_index.rs` argues for its own), and the read's
+            // failure is the one he can act on.
             let summary = summary?;
             removed.map_err(|why| SummaryError::Scratch(SnapshotError::Io(why)))?;
             Ok(summary)
@@ -171,3 +183,6 @@ fn review_index(
         .run(stop)?;
     Ok(copy)
 }
+
+#[cfg(test)]
+mod tests;

@@ -63,7 +63,7 @@
 543 crates/graft-ops/tests/it/chained_backup.rs
 449 crates/graft-ops/tests/it/cherry_pick.rs
 620 crates/graft-ops/tests/it/conflict_ops.rs
-453 crates/graft-ops/tests/it/finish.rs
+421 crates/graft-ops/tests/it/finish.rs
 819 crates/graft-ops/tests/it/finish_merge.rs
 1202 crates/graft-ops/tests/it/fork_follows.rs
 2712 crates/graft-ops/tests/it/history_ops.rs
@@ -144,7 +144,7 @@
 537 crates/graft/src/trace.rs
 920 crates/graft/src/update/amend_into/tests.rs
 571 crates/graft/src/update/banner/rewrite_stop_tests.rs
-1977 crates/graft/src/update/banner/tests.rs
+1945 crates/graft/src/update/banner/tests.rs
 537 crates/graft/src/update/banner/tests/resume_words.rs
 552 crates/graft/src/update/clash.rs
 892 crates/graft/src/update/clash/tests.rs
@@ -162,7 +162,7 @@
 576 crates/graft/src/update/drag/tests.rs
 576 crates/graft/src/update/events.rs
 457 crates/graft/src/update/events/command.rs
-896 crates/graft/src/update/finish/tests.rs
+802 crates/graft/src/update/finish/tests.rs
 511 crates/graft/src/update/geometry.rs
 1215 crates/graft/src/update/journal/tests.rs
 487 crates/graft/src/update/keys.rs

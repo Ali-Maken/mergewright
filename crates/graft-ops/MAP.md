@@ -73,7 +73,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Opened` (struct) — `file: Option<ConflictFile>` (`None` for a whole-file shape or binary), `how: UnmergedHow`, `binary`.
 - `OpenError` (enum) — `Refused(Refusal)`, `Read(io::Error)`, `TooLarge { bytes }`, `Markers(ParseError)`.
 - `open_conflict` (fn) — `(repo, status, path)`: the parsed conflicted file; malformed markers surface as `Markers` with their line.
-- `FileState` (enum) / `file_state` (fn) — `(opened, unmerged)`: `Open { open }` (a whole-file card is `open: 0`), `Solved` (unmerged marker document, 0 open), `Done` (not unmerged).
+- `FileState` (enum) / `file_state` (fn) — `(opened, unmerged)`: `Open { open }` (whole-file card: `open: 0`), `Solved` (marker document, 0 open), `Done`. `open_clashes()`: the one clash count; a whole-file card is one.
 - `TakeError` (enum) — `Changed { now: Oid }`, `NoSuchBlock(usize)`, `Write(WriteError)`.
 - `DoneFile` (enum) / `open_done` (fn) — a path no longer unmerged, read-only for the done card: `Text { file, unstaged }`, `Binary { unstaged }`, `Removed`.
 - `apply_take` (fn) — `(repo, path, file, block, take)`: one block's side written back against `file.fingerprint`; takes the document so blocks stay stable.
@@ -98,10 +98,9 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `FinishSummary` (struct) — what a merge will commit: `into`, `from`, `by_you`, `by_git`, `message` (`MERGE_MSG` minus comments), `recorded`.
 - `ByYou` (struct) / `ResultIs` (enum) — a conflicted path's staged result: `Yours`, `Theirs`, `Deleted`, `Combined`.
 - `ByGit` (struct) / `Change` (enum) — every other staged change: `Added`, `Modified`, `Deleted`, `Renamed { from }`, `TypeChanged`.
-- `SummaryError` (enum) — `NotMerging`, `StillUnmerged { count }`, `Facts`, `Run`, `Io`, `Conflicts`, `Diff`, `Scratch`.
+- `SummaryError` (enum) — `NotMerging`, `StillUnmerged { count }` (`finish_summary` only), `ClashesOpen { files, clashes }` (`merge_review` only), `Facts`, `Run`, `Io`, `Conflicts`, `Diff`, `Scratch`.
 - `finish_summary` (fn) — `(repo)`: merge only, nothing unmerged; reads only.
-- `finish_preview` (fn) — `(repo, solved, stop)`: the summary as if `solved` were staged, read from a temp copy of the index; the real index untouched.
-- `merge_review` (fn) / `MergeReview` (struct) — `(repo, stop)`: every unmerged path sorted by `file_state` on disk; any not solved → `StillUnmerged { count }`; else `finish_preview` over the solved, with them.
+- `merge_review` (fn) / `MergeReview` (struct) — `(repo, stop)`: every unmerged path sorted by `file_state` on disk; any not solved → `ClashesOpen { files, clashes }`; else `finish_preview` over the solved, with them.
 
 ## in_the_way
 - `Blocking` (struct) — `ignored`, `untracked`: files git doesn't keep where a write puts its own, sorted and unique; `is_empty`.
@@ -285,7 +284,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 
 ## preview
 - `PreviewPlan` (struct) — what a write would do: `description`, `commands`, `ghosts`, `ref_moves`, `head`, `worktree`, `conflicts`, `undo`, `against`, `set_aside`, `forks`, `merge`, …
-- `MergeLook` (struct) — `check`, `incoming`: a merge plan's own reads, on any merge that changes something; `conflicts` derives from `check` (one forecast). `unrelated()`: git refuses it, `y` is withheld.
+- `MergeLook` (struct) — `check`, `incoming`, `fast_forward` (no merge commit): a merge plan's own reads; `conflicts` derives from `check` (one forecast). `unrelated()`: git refuses it, `y` is withheld.
 - `INCOMING_CAP` (const) — 200: incoming commits read before `capped`.
 - `Target` (enum) — `Real(Oid)` or `Ghost(usize)`: how a row points at a commit not written yet.
 - `GhostCommit` (struct) — `oid`, `parents: Vec<Target>`, `subject`, `author`, `replays: Option<Oid>`.

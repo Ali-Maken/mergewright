@@ -153,10 +153,12 @@ impl From<Arc<FinishSummary>> for Reviewed {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ReviewFailed {
     /// Files still have a clash open: the review closes and says how many
-    /// (ease-pass/05b, banner `c` in a merge).
+    /// (ease-pass/05b, banner `c` in a merge; clashes counted since 05s).
     StillOpen {
         /// How many files.
-        count: usize,
+        files: usize,
+        /// Their open clashes; a whole-file card is one.
+        clashes: usize,
     },
     /// The read failed, in `graft_ops`' own words: shown in the review.
     Failed(String),

@@ -24,6 +24,19 @@ pub enum FileState {
     Done,
 }
 
+impl FileState {
+    /// Open clashes this file counts for; a whole-file card (`Open { open:
+    /// 0 }`) is one. The one count the resolver's words and the review's
+    /// refusal both say.
+    #[must_use]
+    pub fn open_clashes(self) -> usize {
+        match self {
+            Self::Open { open } => open.max(1),
+            Self::Solved | Self::Done => 0,
+        }
+    }
+}
+
 /// `opened`'s state, `unmerged` being whether git's status still calls the
 /// path unmerged. The one rule the resolver, the review and a relaunch read.
 #[must_use]

@@ -129,6 +129,7 @@ pub(super) fn merge_box(preview: &PreviewState) -> Option<PreviewBox> {
         not_checkable,
         withheld,
         edits: edits(preview),
+        fast_forward: look.fast_forward,
     }))
 }
 

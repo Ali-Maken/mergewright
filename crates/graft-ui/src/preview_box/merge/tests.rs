@@ -33,6 +33,7 @@ fn clashing() -> MergeParts {
         not_checkable: None,
         withheld: None,
         edits: Vec::new(),
+        fast_forward: false,
     }
 }
 
@@ -202,4 +203,75 @@ fn a_narrow_footer_drops_the_list_key_first() {
     let footer = rows.last().expect("a footer");
     assert!(footer.contains("y merge  esc cancel"), "{footer}");
     assert!(!footer.contains("see the"), "{footer}");
+}
+
+/// The box's text rows between the borders, each cut of its frame and
+/// trailing blanks: what he reads, top to bottom.
+fn texts(rows: &[String]) -> Vec<String> {
+    rows.iter()
+        .map(|row| {
+            row.trim_start_matches(['│', '╭', '─', ' '])
+                .trim_end_matches(['│', '╮', '─', ' '])
+                .to_owned()
+        })
+        .collect()
+}
+
+fn fast_forward() -> MergeParts {
+    MergeParts {
+        decide: Vec::new(),
+        changed: 5,
+        who: vec![sanitize_line("Sara")],
+        fast_forward: true,
+        ..clashing()
+    }
+}
+
+#[test]
+fn a_fast_forward_says_nothing_is_combined_and_into_moves_up() {
+    let rows = drawn(fast_forward(), 100);
+    let texts = texts(&rows);
+    assert_eq!(
+        texts[..texts.len() - 1],
+        [
+            "Merge sara/fix-toc into wallet-release",
+            "Nothing has changed yet.",
+            "",
+            "Comes in      3 commits from sara/fix-toc (Sara)",
+            "Changes       5 files",
+            "Git combines  nothing: no merge commit is made",
+            "You decide    nothing: no file clashes",
+            "",
+            "After y wallet-release moves up to sara/fix-toc.",
+        ],
+        "{rows:#?}"
+    );
+    let footer = rows.last().expect("a footer");
+    assert!(
+        footer.contains("╰ y merge  esc cancel  ⏎ see the 3 commits ─"),
+        "{footer}"
+    );
+}
+
+/// A fast-forward cannot clash, so its words win over `not checked`;
+/// with no check there is no count of files to give, so `Changes` goes.
+#[test]
+fn a_fast_forward_with_no_check_still_says_it_only_moves_up() {
+    let parts = MergeParts {
+        changed: 0,
+        not_checkable: Some(sanitize_line("conflicts: not checked (git 2.38+ needed)")),
+        ..fast_forward()
+    };
+    let rows = drawn(parts, 100);
+    for line in [
+        "│ Git combines  nothing: no merge commit is made",
+        "│ You decide    nothing: no file clashes",
+        "│ After y wallet-release moves up to sara/fix-toc.",
+    ] {
+        assert!(has(&rows, line), "{line:?} in {rows:#?}");
+    }
+    for gone in ["not checked", "Changes"] {
+        assert!(!has(&rows, gone), "{gone:?} gone: {rows:#?}");
+    }
+    assert!(has(&rows, "y merge  esc cancel"));
 }
