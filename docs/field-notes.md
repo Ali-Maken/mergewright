@@ -118,3 +118,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-10-18 · merge review: merge message read-only, as the mock — editing it there goes away (his pick, over keeping it).
 - 2026-10-18 · asked how to publish (brew/npm); order: codename rename first, then licence and release setup.
 - 2026-10-18 · licence: MIT + Apache-2.0 dual (the Rust norm).
+- 2026-10-18 · publish on GitHub with a clean start: public repo = one fresh commit of the renamed tree; private repo keeps history.
