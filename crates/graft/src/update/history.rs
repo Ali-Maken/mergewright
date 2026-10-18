@@ -3,10 +3,11 @@
 
 use graft_core::job::JobId;
 
-use crate::history::{HistoryUpdate, Phase, Promotion};
+use crate::history::{HistoryUpdate, Phase, Promotion, Reveal};
 
 use super::events::Command;
-use super::state::AppState;
+use super::place::short;
+use super::state::{AppState, Status};
 
 #[cfg(test)]
 mod tests;
@@ -29,11 +30,43 @@ pub(super) fn walk_progress(
             commands.push(Command::PromoteHistory);
         }
         history.apply(update, height);
+        // Before any route looks at where its seek landed: a reveal seeks
+        // again, so every route keeps waiting through it.
+        if let Some(owed) = history.take_reveal() {
+            reveal(next, commands, id, owed);
+        }
         super::search::seek_landed(next, commands, id);
     }
     // Otherwise it is from a walk that was cancelled or superseded. Dropped
     // here, which is the whole reason the id travels with it: no chunk lands
     // after `Esc`.
+}
+
+/// Carries out the reveal a find's answer left owed (ease-pass 06c): opens
+/// the merge — one view change, as `space` opens it — and seeks the commit
+/// again in the opened view. Not journaled: a view change, not an
+/// operation. A merge already open means the walk answered for a view it
+/// was not asked for: the seek ends on the merge, not in this view, and the
+/// failure is said.
+fn reveal(next: &mut AppState, commands: &mut Vec<Command>, walk: JobId, owed: Reveal) {
+    let height = next.graph_rows();
+    let Some(history) = next.history.as_mut() else {
+        return;
+    };
+    let Some(view) = super::keys::view_change::open_merge(&history.view, owed.merge) else {
+        next.status = Status::Failed(format!(
+            "the history walk put {} behind {}, which is open already",
+            short(owed.target),
+            short(owed.merge)
+        ));
+        return;
+    };
+    let changed = history.change_view(view, height);
+    // The find replaces the view change's own request: it carries the same
+    // view, and only the newest request is answered.
+    if let Some(request) = history.seek(owed.target, height).or(changed) {
+        commands.push(Command::ShowRows(walk, request));
+    }
 }
 
 /// A topological sort has started (ADR-0008). Only the newest is wanted: an

@@ -82,12 +82,7 @@ fn counted<'o>(handle: &'o RepoHandle, seeds: Seeds, pulls: &'o AtomicUsize) -> 
 /// Answers `rows` in `view`, as the first screen's request would be: the
 /// view the worker then lays out ahead in.
 fn shown(views: &mut Counted<'_>, view: &View, rows: std::ops::Range<usize>) {
-    let request = RowRequest {
-        id: 1,
-        wanted: Wanted::Rows(rows),
-        view: view.clone(),
-        promote: None,
-    };
+    let request = RowRequest::new(1, Wanted::Rows(rows), view.clone());
     let layout = views.layout(view).expect("opens");
     let ended = answer(layout, request, &mut || None, &never, &mut |_| {
         Delivery::Received
@@ -211,13 +206,8 @@ fn a_cancel_stops_the_idle_step_within_one_pull() {
     let pulls = AtomicUsize::new(0);
     let mut views = counted(&handle, Seeds::default(), &pulls);
     let (asks, requests) = mpsc::channel();
-    asks.send(RowRequest {
-        id: 1,
-        wanted: Wanted::Rows(0..10),
-        view: View::default(),
-        promote: None,
-    })
-    .expect("the receiver is right here");
+    asks.send(RowRequest::new(1, Wanted::Rows(0..10), View::default()))
+        .expect("the receiver is right here");
 
     // Cancelled once the idle advance has made one pull past the answer.
     let answered_at = Cell::new(None::<usize>);
@@ -334,12 +324,7 @@ fn serve_lays_out_to_the_end_between_requests() {
                 },
             )
         });
-        let ask = |id, wanted| RowRequest {
-            id,
-            wanted,
-            view: View::default(),
-            promote: None,
-        };
+        let ask = |id, wanted| RowRequest::new(id, wanted, View::default());
         asks.send(ask(1, Wanted::Rows(0..10)))
             .expect("the worker listens");
         let next = || updates.recv().expect("the worker reports");

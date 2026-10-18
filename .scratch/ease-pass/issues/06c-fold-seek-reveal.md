@@ -1,6 +1,6 @@
 # fold-seek-reveal — going to a commit inside a folded merge opens that merge and lands on it
 
-Status: ready
+Status: partial — reveal half built (11/18 boxes); "Search folded count" half handed off (see Handoff below)
 Blocked by: 06-graph-fold-and-lanes
 Build with: Opus (`builder-opus-xhigh`) — the history worker's Find and serve, the app's reveal and six routes across two crates; every outcome is checkable by a state test per route (scout 06c confirms; facts don't change it).
 Needs: from 06: `FoldWalk::behind(CommitHandle) -> Option<CommitHandle>` (`graft-graph/src/inclusion/fold_walk.rs:254`), `Included::walked`/`shown`/`fold` (`inclusion/included.rs:119,125,133`), `HandleLookup::handle_of` / `id_of` (MAP `layout`; called inside `included.rs:332`), `OpenedMerges::open` (`inclusion.rs:91`), `Inclusion::opened_mut` (`:134`), the `space` open path (`update/keys/view_change.rs:41-57`, `update/keys.rs:447-454`). Existing: `History::seek` (`graft/src/history/scroll/query.rs:79-96`, `find` `:102-115`), `Wanted::Find` (`history/state.rs:51-63`), serve (`history/serve.rs:187-188`, answer range `:221-227`), answer applied (`history/scroll/apply.rs:155-171`, cursor-stays `:166`, `jump`/`seeking` cleared `:176-177`), promotion re-seek (`apply.rs:93`). Paths under `crates/`.
@@ -97,24 +97,24 @@ Search: the hit summary the footer reads gains `folded: usize` (name file:line i
 - Layout cost: rows laid out for a Find to a walked hidden commit, before/after — one number in NOTES.
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] `whereabouts` answers `Shown`, `Folded { behind }` (the shown merge), `Filtered` (hidden stash), `NotWalked`, without advancing (graft-graph `inclusion` tests: `whereabouts_*`).
-- [ ] Detail on a folded merge, follow parent 2 → merge opened, cursor on parent 2 (`update/detail/landing/tests.rs`).
-- [ ] Search hit on a merged PR's commit → merge opened, cursor on hit; `n` to the next hit in the same PR opens nothing new (`OpenedMerges` unchanged) (`update/search` state test).
-- [ ] 4 hits, 3 inside folded merges (two merges): footer `4 matches · 3 in folded merges`; `n` from the first visits all 4 in walk order, each revealed and landed; after, footer `4 matches` (state test + footer-words test on `search.rs` `line`).
-- [ ] Same search, `N` from the first: wraps to the last, merge opened, cursor on it; `N` again visits the rest backwards; no `(not in this view)` at any step (state test).
-- [ ] No folded hit: footer byte-equal to today's (footer-words test).
-- [ ] Map `⏎`, picker `⇥` on a merged branch, palette commit find — each on a hidden commit → revealed and landed (one test each, in `update/map`, `update/picker`, `update/palette`).
-- [ ] `J` → put back a commit on a merged branch → lands on it, merge opened (`update/journal` or `update/recover` test); or NOTES says the put-back has no landing, with file:line.
-- [ ] Nested: commit behind a merge behind a folded merge → both open, cursor on it (state test, two reveal rounds asserted).
-- [ ] `Folded` naming an already-open merge → seek ends as not-in-this-view, error logged (state test).
-- [ ] Promotion: cursor commit hidden by the exact fold → cursor on its merge, `OpenedMerges` unchanged (`history::scroll` test).
-- [ ] First-parent `1`, hit off the line → `(not in this view)`, nothing opened, no suffix (state test).
-- [ ] Find to a walked hidden commit lays out no further than the walk already is (`history::serve` test, row count before/after).
-- [ ] `FoldedHits` survives a superseding `RowRequest`; re-asked on walk completion when `unwalked > 0` (`history::serve` / `update::search` tests).
-- [ ] Ghost Preview slice identical with every merge folded and opened (row-set test); overview strip marks unchanged (strip test).
-- [ ] Reveal is not journaled; `u` after a reveal does what it did before it (state test).
-- [ ] Capture `docs/shots/ease-pass/main-search-folded-120.txt`: footer with suffix before `n`, cursor on the first hit (06e's `wallet_release` fixture, 120×36). Look unjudged (rule 6), colour unverified (rule 5).
-- [ ] `m8/search-hint-120x36` re-shot: footer carries ` · 3 in folded merges`; NOTES gives its D3 classification (suffix-only, or a stop).
+- [x] `whereabouts` answers `Shown`, `Folded { behind }` (the shown merge), `Filtered` (hidden stash), `NotWalked`, without advancing (graft-graph `inclusion` tests: `whereabouts_*`). **Ticked:** graft-graph `inclusion::tests::fold_by_default::{whereabouts_answers_shown_and_folded_behind_its_merge, whereabouts_names_the_shown_merge_through_a_hidden_one, whereabouts_answers_filtered_for_a_view_he_chose, whereabouts_answers_not_walked_without_advancing}`.
+- [x] Detail on a folded merge, follow parent 2 → merge opened, cursor on parent 2 (`update/detail/landing/tests.rs`). **Ticked:** `update::detail::landing::tests::reveal::show_line_on_a_folded_merges_second_parent_opens_the_merge_and_lands`.
+- [x] Search hit on a merged PR's commit → merge opened, cursor on hit; `n` to the next hit in the same PR opens nothing new (`OpenedMerges` unchanged) (`update/search` state test). **Ticked:** `update::search::tests::reveal::n_onto_a_merged_prs_commit_opens_it_and_n_within_the_pr_opens_nothing_new`.
+- [ ] 4 hits, 3 inside folded merges (two merges): footer `4 matches · 3 in folded merges`; `n` from the first visits all 4 in walk order, each revealed and landed; after, footer `4 matches` (state test + footer-words test on `search.rs` `line`). **Open:** second group — the footer suffix is not built. The `N` half of this shape is covered below.
+- [x] Same search, `N` from the first: wraps to the last, merge opened, cursor on it; `N` again visits the rest backwards; no `(not in this view)` at any step (state test). **Ticked:** `update::search::tests::reveal::capital_n_from_the_first_wraps_and_reveals_each_hit_backwards` (4 hits, 3 behind two merges; `missed` false at every step).
+- [ ] No folded hit: footer byte-equal to today's (footer-words test). **Open:** second group (footer).
+- [x] Map `⏎`, picker `⇥` on a merged branch, palette commit find — each on a hidden commit → revealed and landed (one test each, in `update/map`, `update/picker`, `update/palette`). **Ticked:** `update::map::tests::enter_on_a_merged_branch_opens_its_merge_and_lands_on_its_tip`, `update::picker::tests::seek::tab_on_a_merged_branchs_tip_opens_its_merge_and_lands_on_it`, `update::palette::tests::seek::a_commit_row_on_a_folded_commit_opens_its_merge_and_lands_on_it`.
+- [x] `J` → put back a commit on a merged branch → lands on it, merge opened (`update/journal` or `update/recover` test); or NOTES says the put-back has no landing, with file:line. **Ticked**, as a chain of two tests: `J` → `Recover(Recreate)` is the existing `update::journal::tests::enter_on_a_gone_branch_opens_make_it_again`; the put-back's `Done` → `Landing::Commit` → `stop.rs:378` seek → reveal is the new `update::operate::tests::landing::a_put_back_onto_a_merged_branch_opens_its_merge_and_lands_on_it`. No single test drives the `J` key through to the landing.
+- [x] Nested: commit behind a merge behind a folded merge → both open, cursor on it (state test, two reveal rounds asserted). **Ticked:** `update::history::tests::reveal::a_commit_behind_two_merges_opens_both_in_two_rounds_and_lands`.
+- [x] `Folded` naming an already-open merge → seek ends as not-in-this-view, error logged (state test). **Ticked:** `update::history::tests::reveal::folded_behind_a_merge_already_open_ends_the_seek_and_says_so` (`Status::Failed`, seek over, cursor on the merge, nothing re-asked).
+- [x] Promotion: cursor commit hidden by the exact fold → cursor on its merge, `OpenedMerges` unchanged (`history::scroll` test). **Ticked:** `history::reveal_tests::a_promoted_anchor_the_new_order_folds_lands_on_its_merge_and_opens_nothing` (in `history/reveal_tests.rs`, not `history::scroll`).
+- [ ] First-parent `1`, hit off the line → `(not in this view)`, nothing opened, no suffix (state test). **Open:** "nothing opened" holds — `update::history::tests::reveal::off_the_first_parent_line_opens_nothing` and worker `history::idle_tests::folded_tests::a_find_answers_row_for_a_shown_commit_and_not_in_view_off_the_first_parent_line`; the footer words and "no suffix" wait for the second group.
+- [x] Find to a walked hidden commit lays out no further than the walk already is (`history::serve` test, row count before/after). **Ticked:** `history::idle_tests::folded_tests::a_find_to_a_walked_folded_commit_lays_out_no_further_and_answers_its_merge` — ManyLanes fixture: 3 rows laid out now, 40 under the old rule (to the end).
+- [ ] `FoldedHits` survives a superseding `RowRequest`; re-asked on walk completion when `unwalked > 0` (`history::serve` / `update::search` tests). **Open:** worker half holds — `history::idle_tests::folded_tests::a_find_answers_how_many_asked_hits_fold_even_when_superseded`, `history::reveal_tests::a_folded_ask_rides_on_every_request_until_its_answer`; the app's re-ask on walk completion is second group.
+- [ ] Ghost Preview slice identical with every merge folded and opened (row-set test); overview strip marks unchanged (strip test). **Open:** not started (second group). `view/preview.rs` is untouched; `view/strip.rs` changed only in its test fixture (`anchor_behind: None` → `sought: None`, line 138).
+- [x] Reveal is not journaled; `u` after a reveal does what it did before it (state test). **Ticked:** `update::history::tests::reveal::a_reveal_is_not_journaled_and_u_is_unchanged`.
+- [ ] Capture `docs/shots/ease-pass/main-search-folded-120.txt`: footer with suffix before `n`, cursor on the first hit (06e's `wallet_release` fixture, 120×36). Look unjudged (rule 6), colour unverified (rule 5). **Open:** second group.
+- [ ] `m8/search-hint-120x36` re-shot: footer carries ` · 3 in folded merges`; NOTES gives its D3 classification (suffix-only, or a stop). **Open:** second group.
 
 ## User-visible vs the mock (for the conductor)
 - Nested reveal: one round trip per level — a frame may show the outer merge opened before the cursor arrives. Final state as decided.
@@ -126,3 +126,70 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~70k. If it runs over, the split line is "Search folded count": `FoldedAsk`/`FoldedHits`, the suffix and both captures become a second group.
+
+## NOTES (builder, 2026-10-18)
+- **Scout used:** `.scratch/ease-pass/scouts/06c-fold-seek-reveal.md`.
+- **Compacted: yes**, once, during the route tests. Stopped at the split line afterwards; the remainder is the Handoff below.
+- **The apply arm:** `crates/graft/src/update/history.rs` `walk_progress` takes the owed reveal after `history.apply` and before `search::seek_landed`, and hands it to `reveal()` in the same file. History side: `history/scroll/reveal.rs::land_find`, called from `history/scroll/apply.rs` (plain find landing and the promoted path).
+- **Where this differs from the ticket** (flagged here, not a silent change):
+  - a. **No `OnFold`.** The "promotion re-seek" (`apply.rs:95`) asks again for a route's seek that is still in flight, under the new order. Landing it on the merge without opening it would make a search hit there read "(not in this view)". So it reveals like any other find. The promotion's own cursor anchor still lands on its merge with nothing opened, through the existing `anchor_behind`. That is the ticket's promotion box.
+  - b. **`open_merge(&View, Oid) -> Option<View>` is pure**, rather than taking state and returning a bool. The reveal must send the find, not the request `change_view` makes.
+  - c. **`FoldedAsk.search` is a per-ask counter on `History` (`folded_asks`)**, not the search's `JobId`. `Search.job` is cleared when the job ends, and each re-ask after a reveal needs its own number.
+  - d. **`found` rides in `Window.sought: Option<Box<Sought>>`**, together with `anchor_behind`.
+- **`.seek(` callers** (`grep -rn '\.seek(' crates/graft/src`, non-test):
+  - Reveal on a folded answer, each with a test:
+    - `update/search.rs:178` — `seek_landed` returns early while `history.seeking` is set again.
+    - `update/map.rs:208` `seek_to` — Map `⏎`, picker `⇥`, palette `run.rs:62`.
+    - `update/detail/landing.rs:151`.
+    - `update/banner/stop.rs:378` — tested through `operate`. No banner file was edited.
+  - Unchanged:
+    - `update/tour.rs:178` — `HEAD` is a keep tip, never folded. Not tested here.
+    - `update/keys.rs:453` — `space` lands on a shown merge. The existing `space` tests pass.
+  - `history/scroll/apply.rs:95` — the promotion re-ask (deviation a).
+  - `update/history.rs:67` — the reveal's own re-seek.
+- **Landing hooks after a reveal:**
+  - search `seek_landed` waits through the re-seek.
+  - detail `sought()` polls `history.seeking`, so it also waits.
+  - the banner landing is a one-shot seek with no hook after it.
+- **Layout cost:** a Find to a walked hidden commit lays out **3 rows now vs 40 under the old rule** (to the end of the graph). Measured on the ManyLanes fixture in the test above, by a temporary `eprintln` that has since been removed. A fixture number, not a measurement on a real repo.
+- **Ratchet rows** (all moves are move-only):
+  - Lowered: `history/tests.rs` 1475→1446 (`RowRequest::new`); `picker/tests.rs` 628→616 (the `Tab` seek test moved to `picker/tests/seek.rs`).
+  - Removed: `update/map.rs`, whose inline tests moved to `update/map/tests.rs`; `update/palette/tests.rs`, whose placeholder test moved to `palette/tests/placeholder.rs`.
+  - `jobs/tests.rs` is back at 1285 after fmt.
+- **Touches:**
+  - Every `HistoryUpdate` match: the new arm was added in `event_loop/label.rs`, `history/tests.rs` and `jobs/tests.rs`; the compiler confirms the matches are exhaustive.
+  - Every `Window` literal: the field rename covers 26 sites; the compiler confirms them.
+  - `space`: the existing view-change tests pass.
+  - Ghost Preview: `view/preview.rs` is untouched.
+  - Overview strip: `view/strip.rs` changed only in a test fixture.
+  - Keymap: no key added.
+  - Journal and undo: covered by a test.
+  - MAP: graft-graph `inclusion`; graft `history`, `history::sought` and `update::keys`.
+  - Captures: none re-shot in this half.
+- **Broken vs unverified:**
+  - Nothing known broken.
+  - Unverified: the intermediate frame of a nested reveal (the outer merge open before the cursor arrives) has not been seen by eye. No capture was taken in this half.
+
+## Handoff — "Search folded count" (second group)
+**Done, worker side:**
+- `HistoryUpdate::FoldedHits { search, folded, unwalked }` is sent after each `Window` whenever `RowRequest.folded` is set. It is built by `history/serve.rs::folded_hits` and never lays out further.
+- `History::ask_folded(ids) -> u64`, `folded_ask_out()` and `ask_again(height)` live in `history/scroll/reveal.rs`.
+- `apply` clears `folded_ask` when the answer with the same number arrives.
+- `query.rs` puts the ask on every request.
+
+**Not done, app side:** nothing reads the count yet. Exact next steps:
+1. **`update/history.rs::walk_progress`:** before `history.apply`, pass a `FoldedHits` whose number matches the search's ask to a new `update::search::folded_hits`.
+2. **`Search` (`crates/graft/src/search.rs`):** gains `folded`, its ask number and `unwalked`. The file has a row of 634 in the ratchet list, so split something out before adding.
+3. **Asking:** call `history.ask_folded(<all hit ids>)` at three points:
+   - when the hits finish (`search_job_ended`, Done);
+   - in `reveal()` before the re-seek, while a search is live, so the find carries the ask;
+   - once when the walk completes, if `unwalked > 0`.
+   If no request is due, push `history.ask_again(height)` as `ShowRows`.
+4. **Footer:** `line()` (`search.rs:327-350`) appends ` · N in folded merges` while `folded > 0`, and stays byte-equal otherwise.
+5. **Remaining boxes:** 4-hits footer, no-folded-hit footer, first-parent footer, app re-ask on completion, Ghost Preview/strip, and both captures (06e's `wallet_release` fixture, 120×36).
+
+**Gotchas:**
+- The package is `mergewright`. Use `-p mergewright` while iterating; run the gates workspace-wide.
+- `over_400.txt` rows must match the counts after `cargo fmt`.
+- The Bash isolation guard refuses `export`, `$VAR` in paths and long `&&` chains. Use absolute paths.
+- Shared fixtures: `crate::update::tests::reveal::{answer, find_for, folded_answer, revealed, on, oid_of}`.

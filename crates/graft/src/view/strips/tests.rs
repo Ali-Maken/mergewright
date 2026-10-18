@@ -194,7 +194,7 @@ fn lines(chains: u8, length: u8, woven: bool) -> History {
             rows: rows.clone().into(),
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         }),
         rows: rows.len(),
         phase: Phase::Complete,

@@ -115,7 +115,7 @@ impl<S: CommitSource> Views<'_, S> {
                                 done,
                                 promoted: false,
                                 fold,
-                                anchor_behind: None,
+                                sought: None,
                                 ..sent.window.clone()
                             }))
                         })
@@ -127,7 +127,7 @@ impl<S: CommitSource> Views<'_, S> {
                             done,
                             promoted: false,
                             fold,
-                            anchor_behind: None,
+                            sought: None,
                             ..sent.window.clone()
                         })
                     })

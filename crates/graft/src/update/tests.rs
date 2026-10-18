@@ -35,6 +35,7 @@ use std::sync::Arc as DetailArc;
 
 mod fixtures;
 use fixtures::facts;
+pub(crate) use fixtures::reveal;
 pub(crate) use fixtures::{
     asked_view, awaiting, commit_pane, core, key, merge_on_screen, operation_live_as, order,
     progress, request, resolver_card_on_screen, resolver_on_screen, rows, rows_for, sized,

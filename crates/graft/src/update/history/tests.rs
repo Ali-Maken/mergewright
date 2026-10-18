@@ -63,3 +63,5 @@ fn a_provisional_window_after_sorted_keeps_the_order_notice() {
     let facts = history.walk.as_ref().expect("facts");
     assert_eq!(facts.order, Order::Topological);
 }
+
+mod reveal;

@@ -2,6 +2,7 @@
 //! `Included` and `reinclude`. `FoldWalk`'s own rule is tested beside it.
 
 use super::*;
+use crate::inclusion::Whereabouts;
 
 fn folded() -> Inclusion {
     Inclusion::folded_by_default(Vec::new(), OpenedMerges::default())
@@ -214,4 +215,96 @@ proptest! {
         reinclude(&mut streamed, folded()).expect("in memory");
         prop_assert_eq!(all_rows(&mut streamed), original);
     }
+}
+
+/// main: 1 merges `release` (10), which merged `topic` (20) — a merge
+/// behind a merge (ease-pass 06c's nested reveal).
+fn nested_merges() -> Vec<Commit> {
+    vec![
+        commit(1, &[2, 10], 90, b"Merge branch 'release'"),
+        commit(10, &[11, 20], 80, b"Merge branch 'topic' into release"),
+        commit(20, &[4], 70, b"topic work"),
+        commit(11, &[4], 60, b"release work"),
+        commit(2, &[4], 50, b"main work"),
+        commit(4, &[], 10, b"root"),
+    ]
+}
+
+/// An `Included` over `walk`, pulled to the end.
+fn walked(walk: &[Commit], follow: Follow, inclusion: Inclusion) -> Included<VecSource> {
+    let mut source = Included::new(VecSource::new(walk), seeds(1), follow, inclusion);
+    while !source.pull(usize::MAX, &never).expect("in memory").done {}
+    source
+}
+
+#[test]
+fn whereabouts_answers_shown_and_folded_behind_its_merge() {
+    let source = walked(&merged_topic(), Follow::AllParents, folded());
+    assert_eq!(source.whereabouts(oid(1)), Whereabouts::Shown);
+    assert_eq!(source.whereabouts(oid(2)), Whereabouts::Shown);
+    for hidden in [3, 5] {
+        assert_eq!(
+            source.whereabouts(oid(hidden)),
+            Whereabouts::Folded { behind: oid(1) },
+            "{hidden} hides behind the merge"
+        );
+    }
+}
+
+#[test]
+fn whereabouts_names_the_shown_merge_through_a_hidden_one() {
+    let source = walked(&nested_merges(), Follow::AllParents, folded());
+    assert_eq!(
+        source.whereabouts(oid(20)),
+        Whereabouts::Folded { behind: oid(1) },
+        "behind 10, which is itself behind 1: the shown one is named"
+    );
+    let source = walked(&nested_merges(), Follow::AllParents, opened(&[oid(1)]));
+    assert_eq!(source.whereabouts(oid(10)), Whereabouts::Shown);
+    assert_eq!(
+        source.whereabouts(oid(20)),
+        Whereabouts::Folded { behind: oid(10) },
+        "with 1 open, the inner merge is the shown one"
+    );
+}
+
+#[test]
+fn whereabouts_answers_filtered_for_a_view_he_chose() {
+    let walk = vec![
+        commit(9, &[2, 8], 50, b"WIP on main: 2 work"),
+        commit(1, &[2], 40, b"main tip"),
+        commit(8, &[2], 30, b"index on main: 2 work"),
+        commit(2, &[], 10, b"work"),
+    ];
+    let mut hidden = folded();
+    hidden.hidden_stashes.insert(oid(9));
+    let source = walked(&walk, Follow::AllParents, hidden);
+    assert_eq!(source.whereabouts(oid(9)), Whereabouts::Filtered);
+    assert_eq!(source.whereabouts(oid(8)), Whereabouts::Filtered);
+
+    let source = walked(&merged_topic(), Follow::FirstParent, folded());
+    assert!(
+        matches!(
+            source.whereabouts(oid(3)),
+            Whereabouts::Filtered | Whereabouts::NotWalked
+        ),
+        "off the first-parent line is never folded"
+    );
+}
+
+#[test]
+fn whereabouts_answers_not_walked_without_advancing() {
+    let (walk, seeds) = long_history();
+    let mut source = Included::new(VecSource::new(&walk), seeds, Follow::AllParents, folded());
+    source.pull(4, &never).expect("in memory");
+    let pulls = source.inner().pulls;
+    let walked = source.walked().clone();
+    assert_eq!(source.whereabouts(oid(30)), Whereabouts::NotWalked);
+    assert_eq!(
+        source.whereabouts(oid(200)),
+        Whereabouts::NotWalked,
+        "no handle at all"
+    );
+    assert_eq!(source.inner().pulls, pulls, "never advances the walk");
+    assert_eq!(source.walked(), &walked);
 }

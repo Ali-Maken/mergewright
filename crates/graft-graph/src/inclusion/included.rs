@@ -15,8 +15,10 @@ use crate::seeds::Seeds;
 use super::{Admit, FoldWalk, Follow, Frontier, Inclusion, Mark, drawn_link, seeds_for};
 
 mod redecide;
+mod whereabouts;
 
 pub use redecide::{advance_folded, repair};
+pub use whereabouts::Whereabouts;
 
 /// A [`CommitSource`] that lets through only what a view shows.
 ///

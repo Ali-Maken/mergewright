@@ -222,6 +222,30 @@ fn a_put_back_of_an_unchecked_branch_lands_on_the_restored_commit_not_head() {
     assert!(!state.land_on_head, "spent");
 }
 
+/// `J` puts back a branch that was merged (ease-pass 06c): its commit sits
+/// behind the merge the default fold keeps closed, so the merge opens and
+/// the cursor lands on the commit.
+#[test]
+fn a_put_back_onto_a_merged_branch_opens_its_merge_and_lands_on_it() {
+    use crate::update::tests::reveal::{find_for, on, revealed};
+    let walk = JobId::new(4242);
+    let (merge, at) = (oid(3), oid(9));
+    let mut state = on_the_graph();
+    let recreate = RecoverTarget::Recreate {
+        name: "spike".to_owned(),
+        at,
+    };
+    let _refresh = run_to_done(&mut state, recover(recreate));
+    state.awaiting = Some(walk);
+    let seek = refresh_lands(&mut state);
+    let find = find_for(&seek, at);
+
+    let opened: &[u8] = &[5, 4, 3, 9, 2, 1];
+    let (state, _) = revealed(&state, walk, find, (merge, at), (&[5, 4, 3, 2, 1], opened));
+
+    assert_eq!(on(&state), Some(at), "the cursor on the restored commit");
+}
+
 #[test]
 fn a_file_put_back_lands_on_the_changes_pane_on_the_file() {
     let mut state = on_the_graph();

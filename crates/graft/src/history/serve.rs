@@ -3,17 +3,20 @@
 //! ahead between them.
 
 use std::cell::RefCell;
+use std::ops::Range;
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use std::sync::Arc;
 
 use graft_core::oid::Oid;
 use graft_graph::Included;
+use graft_graph::inclusion::Whereabouts;
 use graft_graph::layout::{CommitSource, StreamError, StreamingLayout};
 
 use crate::jobs::Delivery;
 
 use super::fold::{landing, lay_out};
+use super::sought::{FoldedAsk, Found, Sought};
 use super::state::{Ended, HistoryUpdate, RowRequest, Wanted, Window};
 use super::views::{IdleWork, Views, aim, reach};
 
@@ -184,7 +187,7 @@ pub(super) fn answer<S: CommitSource>(
             // A far hit is reached by laying out forward from the frontier;
             // rows already emitted are found through the retained order and
             // rebuilt from their checkpoint, never re-walked (DESIGN.md §3.6).
-            Wanted::Find { commit, .. } if layout.row_of(*commit).is_some() => 0,
+            Wanted::Find { commit, .. } if located(layout, *commit).is_some() => 0,
             Wanted::Last(_) | Wanted::Find { .. } => usize::MAX,
         };
         if layout.is_done() || layout.rows_emitted() >= reach {
@@ -213,20 +216,8 @@ pub(super) fn answer<S: CommitSource>(
         }
     }
 
-    let behind = anchor_behind(layout, &request);
     let laid_out = layout.rows_emitted();
-    let range = match request.wanted {
-        Wanted::Rows(rows) => rows.start.min(laid_out)..rows.end.min(laid_out),
-        Wanted::Last(count) => laid_out.saturating_sub(count)..laid_out,
-        Wanted::Find {
-            commit,
-            rows,
-            fallback,
-        } => match layout.row_of(commit) {
-            Some(row) => row.saturating_sub(rows)..row.saturating_add(rows + 1).min(laid_out),
-            None => fallback.start.min(laid_out)..fallback.end.min(laid_out),
-        },
-    };
+    let (range, sought) = answered(layout, &request);
     layout.set_viewport(range.clone());
     let rows = layout.rows(range.clone())?;
     let window = Window {
@@ -237,12 +228,89 @@ pub(super) fn answer<S: CommitSource>(
         done: layout.is_done(),
         promoted: request.promote.is_some(),
         fold: Arc::from([]),
-        anchor_behind: behind,
+        sought: (sought != Sought::default()).then(|| Box::new(sought)),
     };
     if report(HistoryUpdate::Window(window)) == Delivery::NobodyListening {
         return Ok(Some(Ended::NobodyListening));
     }
+    if let Some(ask) = &request.folded
+        && report(folded_hits(layout, ask)) == Delivery::NobodyListening
+    {
+        return Ok(Some(Ended::NobodyListening));
+    }
     Ok(None)
+}
+
+/// The rows `request` is answered with, once laid out far enough, and what
+/// a find or a promotion learnt on the way.
+fn answered<S: CommitSource>(
+    layout: &StreamingLayout<Included<S>>,
+    request: &RowRequest,
+) -> (Range<usize>, Sought) {
+    let mut sought = Sought {
+        anchor_behind: anchor_behind(layout, request),
+        found: None,
+    };
+    let laid_out = layout.rows_emitted();
+    let range = match &request.wanted {
+        Wanted::Rows(rows) => rows.start.min(laid_out)..rows.end.min(laid_out),
+        Wanted::Last(count) => laid_out.saturating_sub(*count)..laid_out,
+        Wanted::Find {
+            commit,
+            rows,
+            fallback,
+        } => {
+            let (at, found) = located(layout, *commit).unwrap_or((None, Found::NotInView));
+            sought.found = Some(found);
+            match at {
+                Some(row) => row.saturating_sub(*rows)..row.saturating_add(rows + 1).min(laid_out),
+                None => fallback.start.min(laid_out)..fallback.end.min(laid_out),
+            }
+        }
+    };
+    (range, sought)
+}
+
+/// Where a find's `commit` stands once the walk has decided it: the row to
+/// centre on (its own, or the shown merge the default fold hides it behind)
+/// and how it was found. `None` while the walk has not decided it — or
+/// decided it shown, or folded behind a merge, without the row laid out yet
+/// — so the find lays out further. Hidden by a view he chose: no row.
+fn located<S: CommitSource>(
+    layout: &StreamingLayout<Included<S>>,
+    commit: Oid,
+) -> Option<(Option<usize>, Found)> {
+    if let Some(row) = layout.row_of(commit) {
+        return Some((Some(row), Found::Row));
+    }
+    match layout.source().whereabouts(commit) {
+        Whereabouts::Folded { behind } => {
+            let row = layout.row_of(behind)?;
+            Some((Some(row), Found::Folded { behind }))
+        }
+        Whereabouts::Filtered => Some((None, Found::NotInView)),
+        Whereabouts::Shown | Whereabouts::NotWalked => None,
+    }
+}
+
+/// The answer to `ask`, from what the walk has decided so far.
+fn folded_hits<S: CommitSource>(
+    layout: &StreamingLayout<Included<S>>,
+    ask: &FoldedAsk,
+) -> HistoryUpdate {
+    let (mut folded, mut unwalked) = (0, 0);
+    for &id in ask.ids.iter() {
+        match layout.source().whereabouts(id) {
+            Whereabouts::Folded { .. } => folded += 1,
+            Whereabouts::NotWalked => unwalked += 1,
+            Whereabouts::Shown | Whereabouts::Filtered => {}
+        }
+    }
+    HistoryUpdate::FoldedHits {
+        search: ask.search,
+        folded,
+        unwalked,
+    }
 }
 
 /// An error and every cause under it, on one line: `StreamError::Source`
@@ -263,7 +331,7 @@ pub(super) fn error_chain(error: &dyn std::error::Error) -> String {
 fn anchor_behind<S: CommitSource>(
     layout: &StreamingLayout<Included<S>>,
     request: &RowRequest,
-) -> Option<Box<(Oid, Oid)>> {
+) -> Option<(Oid, Oid)> {
     let anchor = request.promote.as_ref()?.anchor?.commit;
-    Some(Box::new((anchor, landing(layout, anchor)?)))
+    Some((anchor, landing(layout, anchor)?))
 }

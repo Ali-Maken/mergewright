@@ -54,7 +54,7 @@ fn wallet() -> (History, [Oid; 3]) {
             rows: rows.into(),
             promoted: false,
             fold: fold.into(),
-            anchor_behind: None,
+            sought: None,
         }),
         rows: commits.len(),
         phase: Phase::Complete,

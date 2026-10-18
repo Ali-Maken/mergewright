@@ -4,6 +4,7 @@
 
 use super::*;
 
+pub(crate) mod reveal;
 mod screens;
 pub(crate) use screens::{
     commit_pane, operation_live_as, resolver_card_on_screen, resolver_on_screen,
@@ -62,7 +63,7 @@ pub(crate) fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
             },
         ]
         .into(),
-        anchor_behind: None,
+        sought: None,
     };
     let (mut state, _) = update(
         &awaiting(id),
@@ -142,7 +143,7 @@ pub(crate) fn rows(id: JobId, n: usize) -> AppEvent {
             done: false,
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         })),
     )
 }
@@ -170,13 +171,8 @@ pub(crate) fn progress(state: &AppState) -> (Phase, usize) {
 }
 
 pub(crate) fn request(id: u64, wanted: Wanted) -> RowRequest {
-    RowRequest {
-        id,
-        wanted,
-        // What a walk starts in: merges folded by default (ease-pass 06).
-        view: View::folded(),
-        promote: None,
-    }
+    // What a walk starts in: merges folded by default (ease-pass 06).
+    RowRequest::new(id, wanted, View::folded())
 }
 
 pub(crate) fn sized(columns: u16, rows: u16) -> AppEvent {
@@ -201,7 +197,7 @@ pub(crate) fn rows_for(id: JobId, request: u64, span: Range<usize>, laid_out: us
             done: false,
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         })),
     )
 }

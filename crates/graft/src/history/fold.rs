@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use graft_core::oid::Oid;
-use graft_graph::inclusion::repair;
+use graft_graph::inclusion::{Whereabouts, repair};
 use graft_graph::layout::{Advance, CommitSource, StreamError, StreamingLayout};
 use graft_graph::{Included, Row, recover_branch_name};
 
@@ -153,18 +153,14 @@ fn label_of<S: CommitSource>(
 /// The shown merge a walked, hidden `commit` folds behind — through any
 /// hidden merges on the way — or `None` when `commit` is shown, not walked
 /// yet, or the view does not fold. Where a promotion's anchor lands once
-/// the topological order hides it (ADR-0008).
+/// the topological order hides it (ADR-0008); `Included::whereabouts`'s
+/// `Folded`, the one place that reads the chain.
 pub(super) fn landing<S: CommitSource>(
     layout: &StreamingLayout<Included<S>>,
     commit: Oid,
 ) -> Option<Oid> {
-    let included = layout.source();
-    let fold = included.fold()?;
-    let mut merge = fold.behind(included.handle_of(&commit)?)?;
-    // A hidden merge's own `behind` carries on the chain; each step is to a
-    // merge admitted before it, so the chain ends.
-    while let Some(outer) = fold.behind(merge) {
-        merge = outer;
+    match layout.source().whereabouts(commit) {
+        Whereabouts::Folded { behind } => Some(behind),
+        Whereabouts::Shown | Whereabouts::Filtered | Whereabouts::NotWalked => None,
     }
-    Some(included.id_of(merge))
 }

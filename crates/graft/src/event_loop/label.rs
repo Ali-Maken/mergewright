@@ -54,6 +54,7 @@ fn progress_label(progress: &Progress) -> &'static str {
         Progress::History(HistoryUpdate::Progress { .. }) => "Progress::History::Progress",
         Progress::History(HistoryUpdate::Window(_)) => "Progress::History::Window",
         Progress::History(HistoryUpdate::LaidOut { .. }) => "Progress::History::LaidOut",
+        Progress::History(HistoryUpdate::FoldedHits { .. }) => "Progress::History::FoldedHits",
         Progress::Search(_) => "Progress::Search",
         Progress::Map { .. } => "Progress::Map",
         Progress::Operating { .. } => "Progress::Operating",
@@ -206,7 +207,7 @@ mod tests {
             done: false,
             promoted: false,
             fold: [].into(),
-            anchor_behind: None,
+            sought: None,
         };
         let wakes = [
             Wake::Event(AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char(

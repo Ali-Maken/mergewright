@@ -40,12 +40,7 @@ fn views(handle: &RepoHandle) -> Views<'_, WalkSource<'_>> {
 
 /// Answers rows `0..4` of the full view; the window `views` then holds.
 fn sent(views: &mut Views<'_, WalkSource<'_>>) -> Window {
-    let request = RowRequest {
-        id: 7,
-        wanted: Wanted::Rows(0..4),
-        view: View::default(),
-        promote: None,
-    };
+    let request = RowRequest::new(7, Wanted::Rows(0..4), View::default());
     let mut window = None;
     views
         .answer(request, &mut || None, &never, &mut |update| {
