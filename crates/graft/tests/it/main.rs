@@ -115,6 +115,7 @@ mod repo_truth;
 mod resolver;
 mod rewrite_stop;
 mod seam_rule;
+mod search_folded;
 mod search_hint;
 mod stash_by_key;
 mod stash_clash;

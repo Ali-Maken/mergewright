@@ -20,26 +20,47 @@ pub(super) fn walk_progress(
     update: HistoryUpdate,
 ) {
     let height = next.graph_rows();
-    if next.awaiting == Some(id)
-        && let Some(history) = next.history.as_mut()
+    // From a walk that was cancelled or superseded: dropped here, which is
+    // the whole reason the id travels with it — no chunk lands after `Esc`.
+    let Some(history) = next.history.as_mut().filter(|_| next.awaiting == Some(id)) else {
+        return;
+    };
+    // ADR-0008: a provisional order is sorted properly off-thread.
+    if let HistoryUpdate::Started(facts) = &update
+        && facts.is_provisional()
     {
-        // ADR-0008: a provisional order is sorted properly off-thread.
-        if let HistoryUpdate::Started(facts) = &update
-            && facts.is_provisional()
-        {
-            commands.push(Command::PromoteHistory);
-        }
-        history.apply(update, height);
-        // Before any route looks at where its seek landed: a reveal seeks
-        // again, so every route keeps waiting through it.
-        if let Some(owed) = history.take_reveal() {
-            reveal(next, commands, id, owed);
-        }
-        super::search::seek_landed(next, commands, id);
+        commands.push(Command::PromoteHistory);
     }
-    // Otherwise it is from a walk that was cancelled or superseded. Dropped
-    // here, which is the whole reason the id travels with it: no chunk lands
-    // after `Esc`.
+    let counted = match &update {
+        HistoryUpdate::FoldedHits {
+            search,
+            folded,
+            unwalked,
+        } => Some((*search, *folded, *unwalked)),
+        _ => None,
+    };
+    let was_whole = walked_whole(history);
+    history.apply(update, height);
+    let completed = !was_whole && walked_whole(history);
+    // Before any route looks at where its seek landed: a reveal seeks
+    // again, so every route keeps waiting through it.
+    if let Some(owed) = history.take_reveal() {
+        reveal(next, commands, id, owed);
+    }
+    if let Some((asked, folded, unwalked)) = counted {
+        super::search::folded_hits(next, asked, folded, unwalked);
+    }
+    super::search::seek_landed(next, commands, id);
+    if completed {
+        super::search::walk_completed(next, commands);
+    }
+}
+
+/// Has the walk laid out to the end of history — by an answer that reached
+/// it, or by idle work ([`HistoryUpdate::LaidOut`])? Every commit the view
+/// can show has been walked then.
+fn walked_whole(history: &crate::history::History) -> bool {
+    history.phase == Phase::Complete || history.laid_out.is_some()
 }
 
 /// Carries out the reveal a find's answer left owed (ease-pass 06c): opens
@@ -47,10 +68,11 @@ pub(super) fn walk_progress(
 /// again in the opened view. Not journaled: a view change, not an
 /// operation. A merge already open means the walk answered for a view it
 /// was not asked for: the seek ends on the merge, not in this view, and the
-/// failure is said.
+/// failure is said. A finished search on screen asks its fold count again,
+/// on the same request: the merge opened may hold its hits.
 fn reveal(next: &mut AppState, commands: &mut Vec<Command>, walk: JobId, owed: Reveal) {
     let height = next.graph_rows();
-    let Some(history) = next.history.as_mut() else {
+    let Some(history) = next.history.as_ref() else {
         return;
     };
     let Some(view) = super::keys::view_change::open_merge(&history.view, owed.merge) else {
@@ -59,6 +81,12 @@ fn reveal(next: &mut AppState, commands: &mut Vec<Command>, walk: JobId, owed: R
             short(owed.target),
             short(owed.merge)
         ));
+        return;
+    };
+    // Asked before either request below is built, so whichever is sent
+    // carries it.
+    super::search::ask_folded(next);
+    let Some(history) = next.history.as_mut() else {
         return;
     };
     let changed = history.change_view(view, height);

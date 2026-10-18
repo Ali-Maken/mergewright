@@ -184,6 +184,47 @@ fn a_find_answers_how_many_asked_hits_fold_even_when_superseded() {
     );
 }
 
+/// Every commit asked as a search's hits, in `view` laid out to the end:
+/// how many the answer counts folded.
+fn folded_of_every_commit(views: &mut Counted<'_>, all: &[Oid], view: View) -> usize {
+    shown(views, &view, 0..usize::MAX);
+    let request = RowRequest {
+        folded: Some(FoldedAsk {
+            search: 9,
+            ids: Arc::from(all),
+        }),
+        ..RowRequest::new(5, Wanted::Rows(0..2), view)
+    };
+    let (_, others) = answered(views, request);
+    match others.as_slice() {
+        [
+            HistoryUpdate::FoldedHits {
+                search: 9, folded, ..
+            },
+        ] => *folded,
+        other => panic!("one count answers the ask: {other:?}"),
+    }
+}
+
+/// First-parent `1` is a view he chose: a hit off its line is not in this
+/// view, never "in a folded merge" (ease-pass 06c, search count). The same
+/// hits in the folded view do count some folded.
+#[test]
+fn hits_off_the_first_parent_line_are_not_counted_folded() {
+    let dir = graft_fixtures::borrow(Shape::ManyLanes);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let all = every_commit(&handle);
+    let pulls = AtomicUsize::new(0);
+    let mut views = seeded(&handle, &pulls);
+    let first_parent = View {
+        follow: graft_graph::Follow::FirstParent,
+        ..View::folded()
+    };
+
+    assert!(folded_of_every_commit(&mut views, &all, View::folded()) > 0);
+    assert_eq!(folded_of_every_commit(&mut views, &all, first_parent), 0);
+}
+
 #[test]
 fn a_window_sent_before_its_merge_folded_is_sent_again_once_it_does() {
     let dir = graft_fixtures::borrow(Shape::FeatureBranches);

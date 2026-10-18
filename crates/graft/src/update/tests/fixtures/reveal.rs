@@ -1,7 +1,7 @@
 //! Going to a commit the default fold hides, from any route (ease-pass 06c):
 //! the walk's two answers a reveal takes — folded behind a merge, then the
 //! commit's own row once the app has opened it — shared by every route's
-//! test.
+//! test; and the search's fold count, asked beside the rows.
 
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_graph::Row;
 
-use crate::history::{Found, HistoryUpdate, Sought, Wanted, Window};
+use crate::history::{FoldedAsk, Found, HistoryUpdate, Sought, Wanted, Window};
 use crate::update::events::{AppEvent, Command, Progress};
 use crate::update::state::AppState;
 use crate::update::update;
@@ -127,4 +127,23 @@ pub(crate) fn revealed(
 pub(crate) fn on(state: &AppState) -> Option<Oid> {
     let history = state.history.as_ref()?;
     history.selected().map(|row| row.commit.id)
+}
+
+/// The fold count the newest row request in `commands` carries, if any.
+pub(crate) fn asked_folded(commands: &[Command]) -> Option<FoldedAsk> {
+    commands.iter().rev().find_map(|command| match command {
+        Command::ShowRows(_, request) => request.folded.clone(),
+        _ => None,
+    })
+}
+
+/// Walk `walk`'s answer to fold count `search`: `folded` hits behind a
+/// folded merge, `unwalked` not reached yet.
+pub(crate) fn folded_hits(walk: JobId, search: u64, folded: usize, unwalked: usize) -> AppEvent {
+    let update = HistoryUpdate::FoldedHits {
+        search,
+        folded,
+        unwalked,
+    };
+    AppEvent::Progress(walk, Progress::History(update))
 }

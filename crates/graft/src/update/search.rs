@@ -1,6 +1,8 @@
 //! `/`'s own share of [`super::update`]: the prompt, the running search and
 //! stepping between hits.
 
+use std::sync::Arc;
+
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
@@ -235,7 +237,8 @@ pub(in crate::update) fn cancel_search(next: &mut AppState, commands: &mut Vec<C
 
 /// The search job ended — finished, cancelled or failed: record how. A
 /// failure shows on the search's own line, by state, not the status line.
-pub(super) fn search_job_ended(next: &mut AppState, event: Event) {
+/// Finished, its hits are final: the walk is asked how many it folds.
+pub(super) fn search_job_ended(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     let Some(search) = next.search.as_mut() else {
         return;
     };
@@ -247,6 +250,77 @@ pub(super) fn search_job_ended(next: &mut AppState, event: Event) {
     };
     search.job = None;
     search.state = state;
+    ask_folded_now(next, commands);
+}
+
+/// Puts the finished search's fold count on the walk's requests (ease-pass
+/// 06c): how many of its hits the default fold hides now. It rides on every
+/// request until answered ([`folded_hits`]). `false` when there is nothing
+/// to ask — no finished search with hits, or no walk.
+pub(in crate::update) fn ask_folded(next: &mut AppState) -> bool {
+    let (Some(search), Some(history)) = (next.search.as_mut(), next.history.as_mut()) else {
+        return false;
+    };
+    if !matches!(search.state, SearchState::Done { .. }) || search.hits() == 0 {
+        return false;
+    }
+    let ids: Arc<[Oid]> = search
+        .batches
+        .iter()
+        .flat_map(|batch| batch.iter().copied())
+        .collect();
+    search.folded_ask = Some(history.ask_folded(ids));
+    true
+}
+
+/// [`ask_folded`], with a request sent now for the ask to ride on: none is
+/// due when the search finishes or the walk completes. Not while the first
+/// request still waits for `HEAD` — that request will carry it.
+fn ask_folded_now(next: &mut AppState, commands: &mut Vec<Command>) {
+    if !ask_folded(next) {
+        return;
+    }
+    let height = next.graph_rows();
+    if let (Some(history), Some(walk)) = (next.history.as_mut(), next.awaiting)
+        && !history.head_pending
+        && let Some(request) = history.ask_again(height)
+    {
+        commands.push(Command::ShowRows(walk, request));
+    }
+}
+
+/// The walk has just laid out to the end. If its last count of the search's
+/// hits left some unreached, it is asked once more — unless an ask is out
+/// already, whose answer will count them.
+pub(in crate::update) fn walk_completed(next: &mut AppState, commands: &mut Vec<Command>) {
+    let unreached = next
+        .search
+        .as_ref()
+        .is_some_and(|search| search.unwalked > 0);
+    let asking = next
+        .history
+        .as_ref()
+        .is_some_and(crate::history::History::folded_ask_out);
+    if unreached && !asking {
+        ask_folded_now(next, commands);
+    }
+}
+
+/// The walk's count of a search's hits the default fold hides: the
+/// search's own if it answers the search's newest ask, else dropped (a
+/// newer ask is out, or the search it was for has gone).
+pub(in crate::update) fn folded_hits(
+    next: &mut AppState,
+    asked: u64,
+    folded: usize,
+    unwalked: usize,
+) {
+    if let Some(search) = next.search.as_mut()
+        && search.folded_ask == Some(asked)
+    {
+        search.folded = folded;
+        search.unwalked = unwalked;
+    }
 }
 
 #[cfg(test)]

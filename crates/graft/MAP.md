@@ -206,7 +206,7 @@ What Graft reads from a repository at startup and keeps.
 ## search
 Search over history (`/`): the typed query, the pure test of one commit against it, and how a search job stands.
 - `Query` (struct) — a case-insensitive literal needle; sha prefix only when all hex.
-- `Search` (struct) — a running or finished search's state in `AppState`.
+- `Search` (struct) — a running or finished search's state in `AppState`; `folded`: hits the default fold hides, as the walk last counted (`· N in folded merges` while > 0).
 - `CommitHit` (struct) — one palette match: id and subject.
 - `first_hits` (fn) — the palette's commit match over the same walk, stopping at a limit.
 ## session
@@ -315,7 +315,7 @@ The rewrite editor (`R`): the branch as rows, the plan and squashed message show
 ## update::row_tags
 Tags a graph row carries after its subject until the next write starts, e.g. `✎ changed`.
 ## update::search
-`/`: the prompt, the running search and stepping between hits.
+`/`: the prompt, the running search and stepping between hits; asking the walk how many hits are in folded merges (when the hits finish, after a reveal, once more when the walk completes) and taking its answer.
 ## update::selection
 The uncommitted-changes row's one-bit selection, kept beside `History`'s cursor.
 ## update::stash

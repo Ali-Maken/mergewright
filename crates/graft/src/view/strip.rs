@@ -199,4 +199,31 @@ mod tests {
             .expect("root commit is a resident row");
         assert!(marks.marks.contains(&(row_of_oid_1, StripMark::SearchHit)));
     }
+
+    /// ease-pass 06c: hits in folded merges are the search's count, not
+    /// strip marks. The strip marks the one resident hit (`root`, row 6),
+    /// the same whether the walk counted the other two folded or not.
+    #[test]
+    fn hits_in_folded_merges_leave_the_strip_marks_unchanged() {
+        let mut state = feature_branches_state();
+        let query = crate::search::Query::parse("totals").expect("a non-empty query");
+        let mut search = crate::search::Search::new(query, 0, (0, 0));
+        search.batches = vec![std::sync::Arc::from(vec![oid(1), oid(0x40), oid(0x41)])];
+        search.state = crate::search::SearchState::Done { hits: 3 };
+        state.search = Some(search.clone());
+        let uncounted = strip_marks(&state);
+        search.folded = 2;
+        state.search = Some(search);
+
+        let counted = strip_marks(&state);
+
+        assert_eq!(counted, uncounted);
+        let hits: Vec<usize> = counted
+            .marks
+            .iter()
+            .filter(|(_, mark)| *mark == StripMark::SearchHit)
+            .map(|(row, _)| *row)
+            .collect();
+        assert_eq!(hits, [6]);
+    }
 }
