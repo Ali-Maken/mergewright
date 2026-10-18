@@ -111,14 +111,14 @@ Many are likely the deliberate legacy-name migration (`rename*` tests, `on_disk.
 
 ## 7. Secrets / personal data (SHIP side)
 
-`git grep -nE '/Users/[a-z]|devuser|devuser|BEGIN .*PRIVATE|ghp_|AKIA|@gmail'` excluding `.scratch .claude docs/log docs/reviews`:
+A search for home-directory paths, the owner's account and email names, private-key headers and common token prefixes, excluding `.scratch .claude docs/log docs/reviews`:
 
 - `crates/mergewright-fixtures/src/capture/machine.rs:321` — `"devuser"` in a list of account names to scrub/test. Personal username in shipped code — question: rename to a neutral name?
 - `crates/mergewright/src/update/commit_editor/mask_tests.rs:184` — `-----BEGIN OPENSSH PRIVATE KEY-----` header: test fixture for secret masking; check the body is fake.
 - `crates/mergewright/src/update/credential/tests.rs:366` — `https://ali@github.com` in a prompt string; first name only, test data.
 - `crates/mergewright-git/src/mailmap/tests.rs:18` — `Rui M <reza@example.com>`; example.com, but "Rui M" echoes the user's email name — question: neutralise?
 - All other emails are `@example.com`/`.invalid`; `git@github.com` strings are protocol text.
-- No `/Users/` absolute path in any tracked SHIP file (grep empty). No `.pem/.key/.env` files tracked.
+- No absolute home-directory path in any tracked SHIP file (search empty). No `.pem/.key/.env` files tracked.
 - Not scanned: binary files (PNG metadata), `fuzz/corpus` contents, git author identities (moot: fresh commit sets its own author).
 
 ## 8. Proposed export allow-list (globs)

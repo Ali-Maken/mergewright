@@ -166,3 +166,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - researcher export inventory · 9 tools: docs/release/export-inventory.md; 32 stale-looking captures (filename grep, needs shot-drift), 7 stale scripts; no LICENSE; personal names in 2 tests; test key fake (checked by conductor). Rulings appended.
 - gates after 06s (9bd053d2): fmt ok, clippy 0, nextest 6955/6955, doc ok; worktree removed.
 - 03r merged; gates running. builder-sonnet 06i dispatched beside 07.
+- gates after 03r (817bee6a): 6954/6955 — the 1 red was published_repo: my export-inventory.md quoted a home path/account in its search pattern (conductor's own leak). Reworded; that test green; rest of the run unaffected (doc-only change). Worktree removed.
