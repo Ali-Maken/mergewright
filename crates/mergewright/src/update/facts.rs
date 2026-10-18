@@ -93,7 +93,7 @@ pub(super) fn took_fact(
         | Product::BaseLoaded(_)
         | Product::ConflictSet(_)
         | Product::FinishSummary(_)
-        | Product::FinishDiff(_) => {}
+        | Product::FinishLook(_) => {}
     }
 }
 

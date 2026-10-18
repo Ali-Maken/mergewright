@@ -26,6 +26,7 @@ pub mod incoming_list;
 pub mod journal_screen;
 pub mod keymap;
 pub mod map_screen;
+pub mod merge_look;
 pub mod name_prompt;
 pub mod overview_strip;
 pub mod paint;

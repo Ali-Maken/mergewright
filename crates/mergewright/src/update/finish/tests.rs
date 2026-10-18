@@ -255,43 +255,6 @@ fn esc_goes_back_to_the_banner() {
     assert!(state.banner_focus, "back on the banner, focused");
 }
 
-/// `⏎`/`space` on a clashed row: its diff under it, again hides it; a stale
-/// answer is dropped (decision 10: today's inline diff until 12b).
-#[test]
-fn space_expands_a_clashed_file() {
-    let state = opened();
-    let (state, commands) = press(&state, plain(KeyCode::Char(' ')));
-    let reads: Vec<_> = commands
-        .iter()
-        .filter_map(|command| match command {
-            Command::ReadFinishDiff(id, path) => Some((*id, path.clone())),
-            _ => None,
-        })
-        .collect();
-    let [(first, path)] = reads.as_slice() else {
-        panic!("one diff read: {commands:?}");
-    };
-    assert_eq!(path, &PathBuf::from("notes.txt"));
-    assert_eq!(finish(&state).expanded, Some((0, Loading::Pending(*first))));
-    let collapsed = key(&state, KeyCode::Enter);
-    assert_eq!(finish(&collapsed).expanded, None, "⏎ hides it");
-    let (after, _) = update(
-        &collapsed,
-        AppEvent::Produced(*first, Product::FinishDiff(Err("late".to_owned()))),
-    );
-    assert_eq!(finish(&after).expanded, None, "a stale answer is dropped");
-}
-
-/// Decision 10: on the combined row `⏎` does nothing until 12b's look.
-#[test]
-fn enter_on_the_combined_row_does_nothing_yet() {
-    let state = key(&opened(), KeyCode::Char('j'));
-    assert_eq!(finish(&state).cursor, 1, "the combined row");
-    let (after, commands) = press(&state, plain(KeyCode::Enter));
-    assert_eq!(after, state);
-    assert!(commands.is_empty(), "{commands:?}");
-}
-
 #[test]
 fn keys_outside_2_6b_do_nothing() {
     let state = opened();
@@ -364,6 +327,7 @@ fn arrows_and_pages_move_the_file_cursor() {
 
 mod answers;
 mod landing;
+mod look;
 mod review;
 mod words;
 pub(crate) use review::landed;

@@ -12,4 +12,7 @@ pub enum ReviewBar {
     /// · ⏎ look at it · u undo last pick · esc back to the clashes (y
     /// brings you here again)` (03 Handoff).
     List,
+    /// The read-only look `⏎` opens from the review (ease-pass/12b): `esc
+    /// back to the review · y commit the merge` (03 Handoff).
+    Look,
 }

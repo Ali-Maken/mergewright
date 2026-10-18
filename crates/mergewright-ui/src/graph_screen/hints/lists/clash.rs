@@ -100,7 +100,7 @@ fn take_words(roles: SideRoles) -> ((&'static str, &'static str), (&'static str,
 /// The merge review's bar (ease-pass/12, 03 Handoff; mock
 /// `mergewright-merge-screen.html:162`): the mock's words, each with a
 /// one-word short rung so the floor of three fits the narrowest bar (47). `⏎` is `finish.toggle_diff`'s first
-/// chord: today's inline diff until 12b's look.
+/// chord: the read-only look (12b).
 pub(super) fn review_list() -> Vec<Hint> {
     vec![
         named(CONFIRM_YES, "commit the merge", "commit"),
@@ -112,6 +112,15 @@ pub(super) fn review_list() -> Vec<Hint> {
             "back to the clashes (y brings you here again)",
             "back",
         ),
+    ]
+}
+
+/// The look's bar (ease-pass/12b, 03 Handoff; mock
+/// `mergewright-merge-screen.html:177`).
+pub(super) fn review_look() -> Vec<Hint> {
+    vec![
+        named(BACK, "back to the review", "back"),
+        named(CONFIRM_YES, "commit the merge", "commit"),
     ]
 }
 

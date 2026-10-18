@@ -85,7 +85,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::LoadBase(..)
         | Command::ReadConflictSet(..)
         | Command::ReadFinishSummary(..)
-        | Command::ReadFinishDiff(..)
+        | Command::ReadFinishLook(..)
         | Command::ReadBlame(..)
         | Command::TraceHistory { .. }
         | Command::ReadWholeFile { .. } => false,

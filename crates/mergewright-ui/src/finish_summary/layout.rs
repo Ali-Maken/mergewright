@@ -3,29 +3,13 @@
 //! view and the area; the widget draws with it and the app's keys and mouse
 //! ask it (`mergewright::update::finish`).
 
-use super::{
-    DIFF_ROWS_MAX, DiffView, ExpandedDiff, FINISH_MIN, LineKindView, Rect, ReviewView, SummaryState,
-};
+use super::{FINISH_MIN, Rect, ReviewView, SummaryState};
 
 /// One line of the scrolled list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ListLine {
     /// A row, by its cursor index.
     Row(usize),
-    /// Line `nth` of the diff expanded under row `row`.
-    Diff {
-        /// The row it hangs under.
-        row: usize,
-        /// Which of its lines.
-        nth: usize,
-    },
-    /// `… N more lines · ⏎ hides`, under row `row`'s diff.
-    More {
-        /// The row it hangs under.
-        row: usize,
-        /// Lines not drawn.
-        hidden: usize,
-    },
     /// The list's one line while the review has no rows: loading, or
     /// unavailable.
     Status,
@@ -56,60 +40,13 @@ pub fn fits(area: Rect) -> bool {
     area.width >= FINISH_MIN.0 && area.height >= FINISH_MIN.1
 }
 
-/// Rows an expanded diff draws, and how many of its lines it leaves out.
-fn diff_extent(diff: &ExpandedDiff) -> (usize, usize) {
-    let DiffView {
-        hunks,
-        binary,
-        truncated,
-        ..
-    } = match diff {
-        ExpandedDiff::Loading | ExpandedDiff::Failed(_) => return (1, 0),
-        ExpandedDiff::Ready(view) => view.as_ref(),
-    };
-    if binary.is_some() || hunks.is_empty() {
-        return (1, 0);
-    }
-    // The rows `diff_body` draws: one per hunk heading, then each hunk's
-    // own lines (a heading-kind line inside `lines` is drawn as the heading,
-    // not twice — `detail_pane::unified::flatten`).
-    let rows: usize = hunks
-        .iter()
-        .map(|hunk| {
-            1 + hunk
-                .lines
-                .iter()
-                .filter(|line| line.kind != LineKindView::HunkHeading)
-                .count()
-        })
-        .sum();
-    // Lines the job itself left out (`(shown, total)`) are hidden too.
-    let cut = truncated.map_or(0, |(shown, total)| total.saturating_sub(shown));
-    let drawn = rows.min(DIFF_ROWS_MAX);
-    (drawn, rows - drawn + cut)
-}
-
-/// The list, line by line, from the top: the rows, and the diff under the
-/// expanded row.
+/// The list, line by line, from the top: one per row.
 #[must_use]
 pub fn list_lines(view: &ReviewView<'_>) -> Vec<ListLine> {
     if !matches!(view.state, SummaryState::Ready) {
         return vec![ListLine::Status];
     }
-    let mut lines = Vec::new();
-    for row in 0..view.row_count() {
-        lines.push(ListLine::Row(row));
-        if let Some((expanded, diff)) = &view.expanded
-            && *expanded == row
-        {
-            let (drawn, hidden) = diff_extent(diff);
-            lines.extend((0..drawn).map(|nth| ListLine::Diff { row, nth }));
-            if hidden > 0 {
-                lines.push(ListLine::More { row, hidden });
-            }
-        }
-    }
-    lines
+    (0..view.row_count()).map(ListLine::Row).collect()
 }
 
 /// Where each part goes in `area`, or `None` below [`FINISH_MIN`].
@@ -187,8 +124,7 @@ pub fn max_top(view: &ReviewView<'_>, area: Rect) -> usize {
         .saturating_sub(list_height(view, area))
 }
 
-/// The `top` that puts the cursor row — and the diff under it, as much as
-/// fits — on screen, moving `view.top` as little as it must.
+/// The `top` that puts the cursor row on screen, moving `view.top` as little as it must.
 #[must_use]
 pub fn top_for_cursor(view: &ReviewView<'_>, area: Rect) -> usize {
     let height = list_height(view, area);
@@ -203,17 +139,11 @@ pub fn top_for_cursor(view: &ReviewView<'_>, area: Rect) -> usize {
     else {
         return top;
     };
-    let end = lines[at + 1..]
-        .iter()
-        .take_while(|line| matches!(line, ListLine::Diff { .. } | ListLine::More { .. }))
-        .count()
-        + at;
     if at < top {
         return at;
     }
-    if end >= top + height {
-        // As much of the diff as fits, never the row itself off the top.
-        return (end + 1 - height).min(at);
+    if at >= top + height {
+        return at + 1 - height;
     }
     top
 }

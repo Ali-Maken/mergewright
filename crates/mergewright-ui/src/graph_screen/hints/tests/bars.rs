@@ -305,3 +305,14 @@ fn the_review_bar_draws_the_mock_words() {
         assert_eq!(bar(&review, columns), want, "{columns}");
     }
 }
+
+/// The look's bar (ease-pass/12b, 03 Handoff, mock
+/// `mergewright-merge-screen.html:177`): exactly the mock's two hints.
+#[test]
+fn the_look_bar_draws_the_mock_words() {
+    let look = HintContext::Review(ReviewBar::Look);
+    assert_eq!(
+        bar(&look, 120),
+        " esc back to the review · y commit the merge"
+    );
+}

@@ -955,8 +955,8 @@ fn summary_open_git_combined() -> Scenario {
                 Step::WaitFor(Wait::FinishReady),
                 the_summary(),
                 // `j j` (not counted) past the two clashed files to the
-                // combined row, whose `space` does nothing until 12b's look
-                // shows what git combined (ease-pass/12 decision 10).
+                // combined row, whose `space` opens the look at what git
+                // combined (ease-pass/12b).
                 key(ch('j')),
                 key(ch('j')),
                 route(),
@@ -964,10 +964,10 @@ fn summary_open_git_combined() -> Scenario {
                 Step::WaitFor(Wait::FrameSettled),
                 end(),
                 Step::Frame(
-                    "the combined row: nothing opens until ease-pass/12b",
+                    "the combined row: the look at what git combined",
                     &[
-                        Sees::Row("▸", "git combined"),
-                        Sees::Lacks("feature's line"),
+                        Sees::Has("git combined on its own: both sides"),
+                        Sees::Has("esc back to the review"),
                     ],
                 ),
             ],

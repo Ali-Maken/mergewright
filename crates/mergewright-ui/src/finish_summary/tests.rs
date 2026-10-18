@@ -9,7 +9,6 @@ use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
 
 use super::*;
-use crate::detail::{FileStatusView, HunkView, LineView};
 use crate::test_support::terminal as test_capabilities;
 use crate::theme::ThemeKind;
 
@@ -51,7 +50,6 @@ fn view<'a>() -> ReviewView<'a> {
         combined: 2,
         message: sanitize_line("Merge branch 'sara/fix-toc' into wallet-release"),
         cursor: 0,
-        expanded: None,
         focused: true,
         notice: None,
         busy: false,
@@ -267,62 +265,6 @@ fn too_small_says_so() {
     assert_eq!(short[0], "finish needs 62x18 · esc back");
     let fits = draw(&view(), 62, 18);
     assert!(fits.iter().any(|line| line.contains("Message")));
-}
-
-fn long_diff(lines: usize) -> Arc<DiffView> {
-    let mut hunk = vec![LineView {
-        kind: LineKindView::HunkHeading,
-        old_no: None,
-        new_no: None,
-        text: sanitize_line("@@ -1,30 +1,30 @@"),
-        words: Vec::new(),
-        syntax: Vec::new(),
-        pair: None,
-    }];
-    hunk.extend((0..lines).map(|n| LineView {
-        kind: LineKindView::Added,
-        old_no: None,
-        new_no: u32::try_from(n + 1).ok(),
-        text: sanitize_line(&format!("added line {n}")),
-        words: Vec::new(),
-        syntax: Vec::new(),
-        pair: None,
-    }));
-    Arc::new(DiffView {
-        path: sanitize_line("notes.md"),
-        old_path: None,
-        status: FileStatusView::Modified,
-        hunks: vec![HunkView {
-            heading: sanitize_line("@@ -1,30 +1,30 @@"),
-            lines: hunk,
-        }],
-        binary: None,
-        // What the job reports when it cut the diff: the review must still
-        // say `⏎ hides`, never `L load all`.
-        truncated: Some((30, 40)),
-        untracked: false,
-    })
-}
-
-/// Until 12b's look, `⏎` on a clashed row is today's inline diff.
-#[test]
-fn a_long_diff_stops_at_12_rows_and_says_enter_hides() {
-    let mut expanded = view();
-    expanded.cursor = 1;
-    expanded.expanded = Some((1, ExpandedDiff::Ready(long_diff(30))));
-    let grid = draw(&expanded, 120, 40);
-    let text = grid.join("\n");
-    let notes = line_of(&grid, "▸ ✓ notes.md");
-    let more = line_of(&grid, "more lines · ⏎ hides");
-    assert_eq!(more, notes + 1 + DIFF_ROWS_MAX, "{text}");
-    assert!(grid[more].contains("… 29 more lines · ⏎ hides"), "{text}");
-    assert!(inside(&grid[more]).starts_with("    …"), "{text}");
-    assert!(!text.contains("load all"), "{text}");
-    assert_eq!(
-        line_of(&grid, "✓ 2 files git combined"),
-        more + 1,
-        "the rows after it move down:\n{text}"
-    );
 }
 
 #[test]

@@ -22,6 +22,7 @@ One line per public item. Update when a public item changes.
 - `journal_screen` (mod) — the journal overlay.
 - `keymap` (mod) — every key binding as data, and the translate that remaps them.
 - `map_screen` (mod) — the Map view widget.
+- `merge_look` (mod) — the merge review's read-only look (ease-pass/12b).
 - `name_prompt` (mod) — the one-field name/create prompt.
 - `overview_strip` (mod) — the one-column whole-history strip.
 - `paint` (mod) — token-to-style helpers for widgets.
@@ -345,9 +346,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 ## finish_summary
 The merge's review (ease-pass/12, mock `mergewright-merge-screen.html:155-162`): every clashed file and how it was solved, what git combined, the message read-only.
 - `FINISH_MIN` (const) — The smallest area the review draws in, `(columns, rows)`.
-- `DIFF_ROWS_MAX` (const) — The most rows an expanded diff draws under its row.
 - `SummaryFocus` (enum) — The m6 summary's field focus: kept only as the retiring `HintContext::Finish`'s field, which nothing picks.
-- `ExpandedDiff` (enum) — The diff drawn under an expanded row.
 - `SummaryState` (enum) — Whether the review itself has been read.
 - `PickCounts` (struct) — One clashed file's picks by kind: `yours`, `theirs`, `both`.
 - `HowSolved` (enum) — `Picks(PickCounts)`, `Whole(word)`, `ByHand`; `words` (`you chose: ◀ yours (1) · ▶ theirs (1)`, `solved in the file`) and `clashes` (the title's count) (fns).
@@ -438,6 +437,17 @@ Decides, never draws: which action a chord means in which place (`ContextId` sco
 - `KeyWarning` (enum) — One problem with one override line: `UnknownAction`, `BadKey`, `Collision { line, places: Vec<Clash> }` (every place a key changed hands), `Reserved`, `Fixed`, `SwitchOff`, `Follows { action, leader }`.
 - `Clash` (struct) — `key`, `context`, `kept`, `lost`, `keeps: Option<KeyChord>` (the loser's key left there, for the words).
 - `words` (fn) — The problem in one lowercase line, keys spelled as the app spells them.
+
+## merge_look
+The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen.html:163-177`): a solved file as it will land, or what git combined per file and side with one sample marked `from yours`/`from theirs`.
+- `Origin` (enum) — `Yours`, `Theirs`, `Both`; `words` (fn) `from yours`.
+- `LookLine` (enum) — `Plain { n, text }`, `From { n, text, origin }`.
+- `CombinedFile` (struct) — `path`, `yours`/`theirs` `(added, deleted)`.
+- `LookBody` (enum) — `Reading`, `Failed(why)`, `Clashed { lines }`, `Combined { files, sample }`.
+- `LookView` (struct) — `path`, `body`, `top`.
+- `MergeLook` (struct) — the widget: `view`, `theme`, `keys`; rounded frame, `Review(Look)` bar in its bottom border.
+- `look_hints` (fn) — the look's bar fitted to a frame `width` wide.
+- `side_words` (fn) — `yours +a −d`, zero parts left out; empty for no change.
 
 ## map_screen
 - `MapMarkView` (enum) — `Tag(SanitizedText)` or `Radar(Severity)`: a mark on one bucket, sanitised for drawing.

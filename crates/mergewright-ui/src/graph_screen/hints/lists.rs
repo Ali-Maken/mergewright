@@ -86,6 +86,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
         HintContext::Review(ReviewBar::List) => clash::review_list(),
+        HintContext::Review(ReviewBar::Look) => clash::review_look(),
         HintContext::Blame {
             finding,
             ignore_file,

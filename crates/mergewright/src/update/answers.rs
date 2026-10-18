@@ -156,7 +156,7 @@ pub(super) fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobI
         | Task::LoadBase
         | Task::ReadConflictSet
         | Task::ReadFinishSummary
-        | Task::ReadFinishDiff
+        | Task::ReadFinishLook
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::ReadCommitFiles

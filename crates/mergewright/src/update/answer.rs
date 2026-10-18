@@ -186,8 +186,8 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
         AppEvent::Produced(id, Product::FinishSummary(result)) => {
             finish::summary_landed(next, id, result);
         }
-        AppEvent::Produced(id, Product::FinishDiff(result)) => {
-            finish::diff_landed(next, id, result);
+        AppEvent::Produced(id, Product::FinishLook(result)) => {
+            finish::look_landed(next, id, result);
         }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);

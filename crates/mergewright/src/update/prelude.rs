@@ -95,13 +95,13 @@ fn settled(state: &AppState) -> bool {
         state.resolver.as_ref().is_none_or(|open| {
             open.job.is_none() && open.base_job.is_none() && open.set_job.is_none()
         }) && (state.resolver.is_none() || state.status_read.is_none());
-    // M6's finish summary: `c` starts its read, `⏎`/`Space` a row's diff.
+    // M6's finish summary: `c` starts its read, `⏎`/`Space` a row's look.
     // `y` fed before the read lands is refused ("wait") — a capture would
     // show the summary still loading, not the commit (m6-conflicts/43, 59).
     let finish_read = state
         .finish
         .as_ref()
-        .is_none_or(|open| open.job.is_none() && open.diff_job.is_none());
+        .is_none_or(|open| open.job.is_none() && open.look_job.is_none());
     // A finished write that moved `HEAD` owes the cursor a landing on its
     // new row (`AppState::land_on_head`): a key fed before it is spent acts
     // on the row the cursor was on, and a capture shows it mid-way

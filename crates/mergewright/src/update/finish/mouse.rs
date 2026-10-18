@@ -1,6 +1,5 @@
 //! The review's mouse: wheel scroll and row clicks.
 
-use super::keys::toggle_diff;
 use super::{
     AppState, Command, JobId, MouseButton, MouseInput, MouseKind, WHEEL_LINES, fits,
     keep_cursor_on_screen, with_finish,
@@ -66,7 +65,7 @@ pub(super) fn click(
     };
     if let Some(row) = landed {
         with_finish(state, |finish| finish.cursor = row);
-        toggle_diff(state, commands, next_id);
+        super::look::open_look(state, commands, next_id);
         keep_cursor_on_screen(state);
     }
 }

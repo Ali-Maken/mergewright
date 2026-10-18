@@ -421,11 +421,9 @@ pub enum Command {
     /// summary (`c` on a merge, m6-conflicts/19), under an id `update`
     /// chose so a stale answer can be dropped.
     ReadFinishSummary(JobId),
-    /// Read one staged file's diff for the finish summary's `space`, under
-    /// an id `update` chose (m6-conflicts/19 S4). Its own command rather
-    /// than [`Command::ReadFileDiff`]: that one carries the detail pane's
-    /// `DiffKey`, and its answer always goes to the detail pane.
-    ReadFinishDiff(JobId, std::path::PathBuf),
+    /// Read the review's read-only look under an id `update` chose
+    /// (ease-pass/12b).
+    ReadFinishLook(JobId, crate::update::finish::LookAsk),
     /// Blame one file, under an id `update` chose (a blame place,
     /// m7-power-tools/20). Cancellable: `Esc` while it reads stops git.
     ReadBlame(JobId, Box<crate::update::place::BlameRequest>),

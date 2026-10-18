@@ -163,6 +163,20 @@ pub(super) fn draw_finish(
         ..body
     };
     let tier = tier_in_force(session, state);
+    // Below the review's floor the review draws its one line instead.
+    if let Some(look) = crate::view::finish::look_view(state)
+        && crate::update::finish::fits(state)
+    {
+        frame.render_widget(
+            &mergewright_ui::merge_look::MergeLook {
+                view: &look,
+                theme: &session.theme,
+                keys: &state.keymap,
+            },
+            summary,
+        );
+        return None;
+    }
     frame.render_widget(
         &mergewright_ui::finish_summary::FinishScreen {
             view: &view,

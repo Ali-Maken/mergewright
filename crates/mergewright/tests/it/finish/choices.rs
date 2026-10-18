@@ -131,11 +131,11 @@ fn shift_t_records_its_choices() {
     drop(scratch);
 }
 
-/// Review m6-amend-19-34 Major 3: a file that kept yours is staged but equal
-/// to `HEAD`, so `space` on its row must say so plainly, not warn
-/// `<path> is not staged`.
+/// `⏎` on a kept-yours row (ease-pass/12b): the look shows the file as it
+/// will land — the worktree text, numbered — and typing in it changes
+/// neither the app nor the file.
 #[test]
-fn space_on_a_kept_yours_row_warns_nothing() {
+fn the_look_on_a_clashed_row_is_the_worktree_file() {
     let (scratch, app, state) = stopped_on_gone_and_notes();
     let state = both_resolved_in_the_app(&app, state);
     let state = c_for_the_summary(&app, state);
@@ -147,7 +147,6 @@ fn space_on_a_kept_yours_row_warns_nothing() {
             .expect("gone.txt is resolved by you"),
         other => panic!("the summary is not read: {other:?}"),
     };
-    // The cursor opens wherever the summary puts it: go to the top first.
     let mut state = state;
     for _ in 0..4 {
         state = app.key(&state, KeyCode::Char('k'));
@@ -155,20 +154,36 @@ fn space_on_a_kept_yours_row_warns_nothing() {
     for _ in 0..row {
         state = app.key(&state, KeyCode::Char('j'));
     }
-    let state = app.key(&state, KeyCode::Char(' '));
-    let state = app.pump(state, "the diff read", |state| {
-        state.finish.as_ref().is_some_and(|open| {
-            open.diff_job.is_none()
-                || !matches!(
-                    open.expanded,
-                    Some((_, mergewright::update::detail::Loading::Pending(_)))
-                )
-        })
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the look's read", |state| {
+        state
+            .finish
+            .as_ref()
+            .is_some_and(|open| open.look.is_some() && open.look_job.is_none())
     });
-    let drawn = crate::captures::frame(&state, 120, 40).join("\n");
-    assert!(!drawn.contains("not staged"), "{drawn}");
-    assert!(drawn.contains("no change to show"), "{drawn}");
-    drop(state);
+    let on_disk = std::fs::read_to_string(scratch.path().join("gone.txt")).expect("readable");
+    let drawn = crate::captures::frame(&state, 120, 40);
+    let body = drawn.join("\n");
+    assert!(
+        body.contains("gone.txt · as it will land · read only"),
+        "{body}"
+    );
+    for (n, line) in on_disk.lines().enumerate() {
+        let want = format!("{}  {line}", n + 1);
+        assert!(body.contains(&want), "{want:?}: {body}");
+    }
+    let typed = app.key(&state, KeyCode::Char('o'));
+    let typed = app.key(&typed, KeyCode::Char('x'));
+    assert_eq!(typed.finish, state.finish, "typing changes nothing");
+    assert_eq!(
+        std::fs::read_to_string(scratch.path().join("gone.txt")).expect("readable"),
+        on_disk
+    );
+    let back = app.key(&typed, KeyCode::Escape);
+    let open = back.finish.as_ref().expect("still the review");
+    assert!(open.look.is_none());
+    assert_eq!(open.cursor, row, "the cursor kept on gone.txt");
+    drop(back);
     app.close();
     drop(scratch);
 }
