@@ -1,6 +1,6 @@
 # fold-rule-pinned — tests that pin "merged = merged into any shown line" on teammates' dependent branches
 
-Status: draft
+Status: ready; was draft
 Build with: Sonnet — tests only, in modules 06 already built (`inclusion::tests::fold_by_default`, app `fold_by_default`); no production change, no design call. A failing test is a stop, not a fix.
 Needs: none (06, 06d, 06e merged). Calls only existing: `Inclusion::folded_by_default`, `OpenedMerges`, `FoldWalk::{folds, behind}`, `Included::fold`, the 06e repo-fixture helpers.
 Scout: not needed — test-only; 06's NOTES name the modules and helpers.
