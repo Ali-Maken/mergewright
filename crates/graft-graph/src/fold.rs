@@ -13,35 +13,53 @@
 //! a lane never changes column in the middle of its life on screen either.
 //!
 //! A lane is drawn only while its branch has a commit in view (ease-pass
-//! 06b, ADR-0063): a column open in the window with no node in it is
-//! *dropped* — not drawn, not behind the rail, not counted as folded —
-//! whatever the cap and whatever [`Keep`] says of it. Lane 0 is the one
-//! exception: it stays while open, so trunk scrolling out of view never
-//! shifts every lane left. An edge into a dropped column is a stub, as an
-//! edge into a folded one is.
+//! 06b and 06u, ADR-0063). Each column open in the window is one of three
+//! kinds:
+//! - a **node column** holds a commit of the window;
+//! - a **connector** holds none, but carries an edge whose two ends are both
+//!   commits in the window (main merged into a feature branch, a
+//!   criss-cross, a merge of an ancestor);
+//! - a **pass-through** is any other open column: every edge it carries
+//!   leads out of view.
+//!
+//! A pass-through is *dropped* — not drawn, not behind the rail, not counted
+//! as folded — whatever the cap and whatever [`Keep`] says of it. Lane 0 is
+//! the one exception: it stays while open, whatever its kind, so trunk
+//! scrolling out of view never shifts every lane left. An edge into a
+//! dropped column is a stub, as an edge into a folded one is.
 //!
 //! The cap is a budget, not a set of vetoes (ADR-0025): [`Fold::plan`] draws
-//! at most `max_lanes` columns, the rail included, admitting the columns
-//! left in priority order until the budget is spent. Highest first: lane 0;
-//! the selected commit's own column; reserved integration lanes; the
-//! selection's thread ([`Keep::preferred`]); every other column holding a
-//! node. Within a class, ranking is least-recently-touched first, in the
-//! layout's own top-to-bottom order: a lane a row near the top touched folds
+//! at most `max_lanes` columns, the rail included, admitting in priority
+//! order until the budget is spent: lane 0; the node columns — the selected
+//! commit's own column, reserved integration lanes, the selection's thread
+//! ([`Keep::preferred`]), every other; then the connectors, in the same
+//! classes. Within a class, ranking is least-recently-touched first, in the
+//! layout's own top-to-bottom order: a lane a row near the top touched goes
 //! before one a row near the bottom touched. A column is *touched* by a row
 //! whose node sits in it or whose edges close into it or open from it.
+//!
+//! A node column past the budget folds behind the rail. A connector past
+//! the budget, or one with no edge whose two end nodes are both drawn, is
+//! dropped like a pass-through, never folded: the rail marks hidden commits
+//! only.
 
 use std::borrow::Cow;
-use std::cmp::Reverse;
 use std::collections::BTreeSet;
 
 use crate::Row;
 use crate::identity::BranchIdentity;
 
+mod scan;
+
+#[cfg(test)]
+use scan::touched;
+use scan::{Scan, scan, span};
+
 /// Columns a fold weighs above the ordinary least-recently-touched rank
 /// (ADR-0025). Each is a budget priority, not a veto: a column named here
-/// still folds once the budget cannot hold it — only lane 0 is never
-/// folded. A column with no node in the window is dropped whatever this
-/// says of it: these rank node-holding columns only.
+/// still folds or drops once the budget cannot hold it — only lane 0 is
+/// never folded. A pass-through is dropped whatever this says of it: these
+/// rank node columns, and then connectors, within their own kind.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Keep {
     /// The selected commit's own real column; `None` when its row is not in
@@ -71,27 +89,29 @@ pub struct Fold {
 impl Fold {
     /// Decide the fold for `rows`, so that at most `max_lanes` columns are
     /// drawn, the marker included — unless only lane 0 remains, in which
-    /// case the window draws lane 0 and the rail. Columns open with no node
-    /// in the window are dropped first, under the cap as over it (module
-    /// docs); `usize::MAX` drops them and folds nothing.
+    /// case the window draws lane 0 and the rail. Pass-throughs are dropped
+    /// first, under the cap as over it; then lane 0, the node columns and
+    /// the connectors are admitted in that order (module docs).
+    /// `usize::MAX` drops the pass-throughs and folds nothing.
     ///
-    /// `keep`'s columns are admitted ahead of the other node columns, in
-    /// priority order (module docs), but still fold once the budget runs
-    /// out — they are a priority, not a veto (ADR-0025).
+    /// `keep`'s columns are admitted ahead of the others of their kind, in
+    /// priority order (module docs), but still fold or drop once the budget
+    /// runs out — they are a priority, not a veto (ADR-0025).
     #[must_use]
     pub fn plan(max_lanes: usize, keep: &Keep, rows: &[Row]) -> Fold {
         let columns = rows.iter().map(span).max().unwrap_or(0);
         let Scan {
             open,
-            drawable,
-            candidates,
+            nodes,
+            fold_order,
+            connectors,
         } = scan(rows, columns, keep);
 
         let mut folded = BTreeSet::new();
-        let mut drawn = drawable.len();
+        let mut drawn = nodes.len();
         if drawn > max_lanes {
             // Once anything folds, the marker takes a column of its own.
-            let mut next = candidates.into_iter();
+            let mut next = fold_order.into_iter();
             while drawn + 1 > max_lanes {
                 let Some(column) = next.next() else { break };
                 folded.insert(column);
@@ -99,12 +119,27 @@ impl Fold {
             }
         }
         debug_assert!(!folded.contains(&0), "lane 0 never folds");
+        let mut kept: BTreeSet<usize> = nodes.into_iter().filter(|c| !folded.contains(c)).collect();
+
+        // Connectors take only what the node columns and the rail left, and
+        // only while one of their edges joins two drawn nodes: one past the
+        // budget, or leading to a commit on the rail, drops instead.
+        let rail = usize::from(!folded.is_empty());
+        let mut room = max_lanes.saturating_sub(kept.len() + rail);
+        for connector in connectors {
+            if room == 0 {
+                break;
+            }
+            let joins_drawn =
+                |&(upper, lower): &(usize, usize)| kept.contains(&upper) && kept.contains(&lower);
+            if connector.ends.iter().any(joins_drawn) {
+                kept.insert(connector.column);
+                room -= 1;
+            }
+        }
 
         Fold {
-            kept: drawable
-                .into_iter()
-                .filter(|c| !folded.contains(c))
-                .collect(),
+            kept: kept.into_iter().collect(),
             folded: folded.into_iter().collect(),
             columns,
             open,
@@ -275,95 +310,6 @@ pub struct DrawnRow<'a> {
     pub row: Cow<'a, Row>,
     /// Edges into folded columns, taken out of `row`.
     pub folded: Vec<FoldedEdge>,
-}
-
-/// The columns a window opens, which of them it may draw, and those it may
-/// fold in fold order: lowest priority first, so the least protected column
-/// is the first candidate to fold once the budget runs out (ADR-0025's
-/// priority list, reversed).
-struct Scan {
-    /// How many columns are open in some row of the window. A column open
-    /// in no row takes width and shows nothing; one open with no node in
-    /// the window shows a branch with nothing in view. Both are dropped,
-    /// not folded, so neither counts as folded.
-    open: usize,
-    /// Open columns holding a node in the window, and lane 0 while open,
-    /// ascending: every column the window may draw.
-    drawable: Vec<usize>,
-    /// Every drawable column but lane 0, ordered lowest priority to fold
-    /// first.
-    candidates: Vec<usize>,
-}
-
-/// Scans `rows` for which columns are open, which hold a node, and how the
-/// node columns rank for folding under `keep` (ADR-0025).
-fn scan(rows: &[Row], columns: usize, keep: &Keep) -> Scan {
-    let mut open = vec![false; columns];
-    let mut noded = vec![false; columns];
-    let mut last_touch: Vec<Option<usize>> = vec![None; columns];
-    for (index, row) in rows.iter().enumerate() {
-        for (column, lane) in row.lanes.iter().enumerate() {
-            open[column] |= lane.is_some();
-        }
-        noded[row.lane] = true;
-        for column in touched(row) {
-            open[column] = true;
-            last_touch[column] = Some(index);
-        }
-    }
-
-    let drawable: Vec<usize> = (0..columns)
-        .filter(|&c| open[c] && (c == 0 || noded[c]))
-        .collect();
-
-    // Fold order within a class: the earliest touch first; among equals the
-    // rightmost column, so the graph stays packed to the left. Every
-    // candidate holds a node, so every candidate was touched.
-    let fold_key = |&c: &usize| (last_touch[c], Reverse(c));
-
-    let (mut other, mut preferred, mut reserved, mut selected) =
-        (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-    for &c in drawable.iter().filter(|&&c| c != 0) {
-        if keep.selected == Some(c) {
-            selected.push(c);
-        } else if keep.reserved.contains(&c) {
-            reserved.push(c);
-        } else if keep.preferred.contains(&c) {
-            preferred.push(c);
-        } else {
-            other.push(c);
-        }
-    }
-    for class in [&mut other, &mut preferred, &mut reserved, &mut selected] {
-        class.sort_by_key(fold_key);
-    }
-    let candidates: Vec<usize> = other
-        .into_iter()
-        .chain(preferred)
-        .chain(reserved)
-        .chain(selected)
-        .collect();
-
-    Scan {
-        open: open.iter().filter(|&&o| o).count(),
-        drawable,
-        candidates,
-    }
-}
-
-/// How many columns a row spans as laid out: its lanes, and any column an
-/// edge reaches past them (a lane closing into a node is not always in
-/// `lanes` on that row).
-fn span(row: &Row) -> usize {
-    let reach = touched(row).map(|c| c + 1).max().unwrap_or(0);
-    row.lanes.len().max(reach)
-}
-
-/// The columns a row touches: its node's, and every edge's.
-fn touched(row: &Row) -> impl Iterator<Item = usize> + '_ {
-    std::iter::once(row.lane)
-        .chain(row.incoming.iter().copied())
-        .chain(row.outgoing.iter().map(|&(c, _)| c))
 }
 
 #[cfg(test)]

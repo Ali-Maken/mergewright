@@ -14,10 +14,10 @@
 # - The pane body reads "reading…": no file-list job runs in a capture, so
 #   the diff never arrives. Only the header line is what this shot is about.
 #
-"                                                                     3 commits  lanes drawn: 1 of 2 "
-"▸ ◉▾ ⚠ Merge branch 'feature'                                                       TE 57y  0303030 "
-"  ●    Ship the release notes                                                       TE 57y  0202020 "
-"  ◇▴   Start the feature branch                                                     TE 57y  0101010 "
+"                                                                                          3 commits "
+"▸ ◉─╮  ⚠ Merge branch 'feature'                                                     TE 57y  0303030 "
+"  ● │    Ship the release notes                                                     TE 57y  0202020 "
+"  ◇─╯    Start the feature branch                                                   TE 57y  0101010 "
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "

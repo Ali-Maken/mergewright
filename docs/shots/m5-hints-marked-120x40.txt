@@ -21,12 +21,12 @@
 # where the user's table names one and their full verb where it does
 # not, and the bar is never all hidden — never a key that does nothing.
 
- ◆ api  /code/api · main                                                                 5 commits  lanes drawn: 1 of 2
-  ●    Commit 5                                                                                         TE 2h   0505050
-▸ ◉▾   Commit 4                                                                                         TE 2h   0404040
-  ●    Commit 3                                                                                         TE 2h   0303030
-  ●▴   Commit 2                                                                                         TE 2h   0202020
-  ◇    Commit 1                                                                                         TE 2h   0101010
+ ◆ api  /code/api · main                                                                                      5 commits
+  ●      Commit 5                                                                                       TE 2h   0505050
+▸ ◉─╮    Commit 4                                                                                       TE 2h   0404040
+  ● │    Commit 3                                                                                       TE 2h   0303030
+  ●─╯    Commit 2                                                                                       TE 2h   0202020
+  ◇      Commit 1                                                                                       TE 2h   0101010
 
 
 
