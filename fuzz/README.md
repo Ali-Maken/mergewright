@@ -1,6 +1,6 @@
-# `graft-git` diff-parser fuzz targets
+# `mergewright-git` diff-parser fuzz targets
 
-`cargo-fuzz` scaffold for `graft_git::diff`'s two pure parsers: `parse_unified`
+`cargo-fuzz` scaffold for `mergewright_git::diff`'s two pure parsers: `parse_unified`
 and `parse_file_list`. Standalone crate (its own `[workspace]`, not a member
 of the root workspace — see `fuzz/Cargo.toml`), so it never affects the main
 build or `cargo test`.
@@ -9,7 +9,7 @@ build or `cargo test`.
 
 Both parsers take arbitrary git output and must never panic — a malformed or
 truncated byte stream is a `ParseError`, not a crash. Neither target spawns
-`git`; the fixture round-trip test (`crates/graft-git/tests/it/diff_fixture.rs`)
+`git`; the fixture round-trip test (`crates/mergewright-git/tests/it/diff_fixture.rs`)
 is what proves the parsers agree with real git output. Fuzzing is for the
 bytes real git would never produce.
 
@@ -37,5 +37,5 @@ where an actual fuzzing run (not just the build) happens, per
 
 `cargo fuzz run <target>` writes interesting inputs to `fuzz/corpus/<target>/`
 by default (gitignored). Seed it from the hand-written cases in
-`crates/graft-git/tests/it/diff_cases.rs` if a review wants a head start
+`crates/mergewright-git/tests/it/diff_cases.rs` if a review wants a head start
 rather than starting from nothing.

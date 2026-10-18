@@ -6,7 +6,7 @@ exit: 1
 nextest: Summary [ 371.489s] 6207 tests run: 6204 passed (6 slow), 3 failed, 14 skipped
 doctests: 3 passed, 0 failed (9 crates)
 failing tests:
-    FAIL [   0.162s] (4483/6207) graft-ops::it cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so
-    FAIL [   0.441s] (2895/6207) graft::it partial_fetch::capture_a_partial_fetch
-    FAIL [   0.934s] (2876/6207) graft::it outside_repo::launch_and_open_land_alike
+    FAIL [   0.162s] (4483/6207) mergewright-ops::it cherry_pick::a_pick_over_edits_stopped_before_git_paused_it_says_so
+    FAIL [   0.441s] (2895/6207) mergewright::it partial_fetch::capture_a_partial_fetch
+    FAIL [   0.934s] (2876/6207) mergewright::it outside_repo::launch_and_open_land_alike
 HungRemote/teardown modules (m4_walk::|m8_walk::clone|partial_fetch::|remote_by_key::|clone::|remote::): 196 passed, 1 failed

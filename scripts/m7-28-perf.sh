@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # What the in-the-way read (ADR-0049, `in_the_way::blocking`) costs a switch
 # on a big repository (review 28, m5). Runs the ignored measurement test in
-# graft-ops, release build, and writes its lines to docs/perf/m7-28.txt; a
+# mergewright-ops, release build, and writes its lines to docs/perf/m7-28.txt; a
 # reader takes the `summary` line.
 #
 # Never run inside a helper's context. The 100k-commit fixture is built once
@@ -16,7 +16,7 @@ OUT="$ROOT/docs/perf/m7-28.txt"
 machine_state_begin "$OUT"
 export MWR_M728_FILES=${1:-20000}
 
-LINES=$(cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft-ops \
+LINES=$(cargo test --release --manifest-path "$ROOT/Cargo.toml" -p mergewright-ops \
   --features heavy-tests --test it -- --ignored --nocapture --test-threads=1 \
   in_the_way::perf 2>/dev/null | grep '^m7-28')
 

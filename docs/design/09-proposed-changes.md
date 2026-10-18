@@ -1,4 +1,4 @@
-# Graft: Design — Proposed changes
+# Mergewright: Design — Proposed changes
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Architecture](08-architecture.md) · Next: [Repetition](10-repetition.md)

@@ -1,4 +1,4 @@
-# Graft: Design — index
+# Mergewright: Design — index
 
 `DESIGN.md` was split into one file per top-level section (housekeeping/01,
 2026-09-18) so a helper reads one section instead of the whole document.

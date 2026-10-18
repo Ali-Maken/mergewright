@@ -6,7 +6,7 @@
 # at most one side since the merge base, because a conflict — and so a hand
 # resolution — needs both sides to have touched the path.
 #
-# The rule below mirrors `split_remerge_files` in graft-ops and must be kept
+# The rule below mirrors `split_remerge_files` in mergewright-ops and must be kept
 # in step with it. Since review round 1e that includes renames: each side is
 # read with `-M --name-status`, both ends of a rename count as touched, and a
 # rename carries "both sides changed it" from the old name to the new one.

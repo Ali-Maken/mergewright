@@ -1,4 +1,4 @@
-# Graft: Design
+# Mergewright: Design
 
 This is the design produced by PROMPT.md section 10, step one: view mockups, the
 full keymap, the graph layout algorithm, terminal-capability detection, and the

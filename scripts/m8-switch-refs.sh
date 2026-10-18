@@ -2,7 +2,7 @@
 # m8-polish-and-ship/12c: `switch_refs` (BRANCHES `reading…`, the `C` picker)
 # split by phase on the piled fixture of scripts/perf-palette.sh (40 000
 # branches + 10 000 tags on 3 commits), release. Measurement only, no fix.
-# Runs crates/graft-git/examples/switch_refs_cost.rs; writes
+# Runs crates/mergewright-git/examples/switch_refs_cost.rs; writes
 # docs/perf/m8-switch-refs.txt, summary lines only, numbers only.
 # The fixture must exist: run scripts/perf-palette.sh piled first.
 set -euo pipefail
@@ -17,7 +17,7 @@ cp -R "$FIXTURE" "$WORK/repo"
 chmod -R u+w "$WORK/repo"
 
 cd "$ROOT"
-cargo build --release --quiet -p graft-git --example switch_refs_cost
+cargo build --release --quiet -p mergewright-git --example switch_refs_cost
 started_load=$(uptime | sed 's/.*load average[s]*: //')
 "$TARGET/release/examples/switch_refs_cost" "$WORK/repo" >"$WORK/run.out"
 

@@ -6,7 +6,7 @@ set -eu
 cd "$(dirname "$0")/.."
 out=docs/perf/41-scroll-team-fixture.txt
 log=$(mktemp)
-cargo test -q -p graft-fixtures --features heavy-tests --test it -- \
+cargo test -q -p mergewright-fixtures --features heavy-tests --test it -- \
   --nocapture --test-threads=1 team:: >"$log" 2>&1
 {
   echo "# 41-scroll-team-fixture: fresh build into a temp dir, debug test profile"

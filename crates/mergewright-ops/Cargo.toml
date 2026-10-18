@@ -1,0 +1,38 @@
+[package]
+name = "mergewright-ops"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+mergewright-core.workspace = true
+mergewright-git.workspace = true
+# The journal file is JSONL (DESIGN.md §6.1); `journal.rs` renders and parses
+# its lines. Nothing else in this crate serialises.
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[features]
+# Forwards the heavy tier to the fixtures, as `mergewright-git` does, so one
+# `cargo test --features heavy-tests` at the workspace root reaches every
+# crate that borrows the corpus.
+heavy-tests = ["mergewright-fixtures/heavy-tests"]
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+# The named fixture corpus (m1-the-graph/01): the Mistake Radar matrix test
+# classifies every commit of every shape. A dev-dependency only, so it is
+# not an internal dependency edge (ADR-0006).
+mergewright-fixtures.workspace = true
+# `restore::raw`'s unit tests write into a scratch directory
+# (m8-polish-and-ship/21). Same version `mergewright-git` ships with.
+tempfile = "3.27.0"
+# Property test for `submodule::parse` (m8-polish-and-ship/21). PROMPT.md
+# §7.1 mandates `proptest`; the fast tier caps it at 64 cases, as in
+# `mergewright-git`. Default features off, as there: no fork/timeout harness.
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }

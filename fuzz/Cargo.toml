@@ -15,8 +15,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 
-[dependencies.graft-git]
-path = "../crates/graft-git"
+[dependencies.mergewright-git]
+path = "../crates/mergewright-git"
 
 [[bin]]
 name = "parse_unified"

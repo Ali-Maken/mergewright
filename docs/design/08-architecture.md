@@ -1,4 +1,4 @@
-# Graft: Design — Architecture
+# Mergewright: Design — Architecture
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Open design questions](07-open-design-questions.md) · Next: [Proposed changes](09-proposed-changes.md)
@@ -276,7 +276,7 @@ quietly erode," which is true but incomplete: cycle-rejection alone does
 nothing about a direct, acyclic `ui → git` edge, which is exactly the kind
 of erosion §6.1 is trying to prevent and which the compiler happily accepts.
 
-Graft therefore enforces the full edge set, not just acyclicity: a fast-tier
+Mergewright therefore enforces the full edge set, not just acyclicity: a fast-tier
 test parses `cargo metadata`'s dependency graph and asserts it matches
 §8.1's table exactly — no more edges, no fewer. It lives in `app`'s test
 suite, since `app` is the only crate that already depends on everything it

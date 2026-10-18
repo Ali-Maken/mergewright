@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # m7-power-tools/30q-c (ADR-0052, ticket 30q R2's cost): what the
 # before-snapshot costs now that it keeps raw bytes.
-# Release `graft-ops --example snapshot_cost`, one run: three cases on a
-# 5 000-file repository the example builds (no graft-fixtures Scale grows
+# Release `mergewright-ops --example snapshot_cost`, one run: three cases on a
+# 5 000-file repository the example builds (no mergewright-fixtures Scale grows
 # the tree), 20 runs each; `take` and `raw_record` timed apart.
 #   case1 no conversion, 5 changed files
 #   case2 no conversion, clean worktree
@@ -21,14 +21,14 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 machine_state_begin "$OUT"
 
-cargo build --release -p graft-ops --example snapshot_cost --quiet 2>"$WORK/build.err" || {
+cargo build --release -p mergewright-ops --example snapshot_cost --quiet 2>"$WORK/build.err" || {
   echo "release build failed:" >&2
   tail -20 "$WORK/build.err" >&2
   exit 1
 }
 
 t0=$SECONDS
-cargo run --release -p graft-ops --example snapshot_cost --quiet >"$WORK/run.out" 2>&1
+cargo run --release -p mergewright-ops --example snapshot_cost --quiet >"$WORK/run.out" 2>&1
 status=$?
 
 {
@@ -36,7 +36,7 @@ status=$?
   echo "# HEAD $(git rev-parse --short HEAD)$(git diff --quiet HEAD -- crates || echo ' +uncommitted')"
   echo "# $(sysctl -n machdep.cpu.brand_string 2>/dev/null || uname -m), $(sysctl -n hw.ncpu 2>/dev/null) cpus, $(uname -sr)"
   echo "# $(git --version)"
-  echo "# release, graft-ops example snapshot_cost, 5000 files, 20 runs per case; exit $status, $((SECONDS - t0))s"
+  echo "# release, mergewright-ops example snapshot_cost, 5000 files, 20 runs per case; exit $status, $((SECONDS - t0))s"
   echo
   sed 's/^case/SUMMARY case/' "$WORK/run.out"
   python3 - "$WORK/run.out" "$status" <<'PY'

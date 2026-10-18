@@ -99,7 +99,7 @@ page has a "has unverified aspect" filter checkbox for the same query:
 - **`Proven by`** — one citation per line (or per clause), each a
   backtick-quoted, `::`-joined path of two or more segments
   (`crate::module::tests::name`, or a module-level citation like
-  `graft::view::journal`). A brace group —
+  `mergewright::view::journal`). A brace group —
   `` `crate::tests::{a,b,c}_shared_suffix` `` — expands to one citation per
   alternative. Anything backtick-quoted that *isn't* `::`-joined (a
   keystroke like `` `Enter` ``, a file path with a `/`) is prose, not a
@@ -145,7 +145,7 @@ happened, or move it to "Deliberately not built" if it was never shipped.
 ## Regenerating
 
 ```
-cargo run -p graft-capabilities --bin gen-capabilities
+cargo run -p mergewright-capabilities --bin gen-capabilities
 ```
 
 Regenerates two files from `docs/capabilities/*.md`, both marked generated
@@ -162,7 +162,7 @@ at the top — never hand-edit either:
 
 ## The checker
 
-`crates/graft-capabilities/tests/checker.rs` runs under the normal fast
+`crates/mergewright-capabilities/tests/checker.rs` runs under the normal fast
 tier (`cargo nextest run`, workspace-wide — never `-p`). It fails when:
 
 - a cited test (`Proven by`) no longer exists anywhere in `crates/` — dead,
@@ -173,7 +173,7 @@ tier (`cargo nextest run`, workspace-wide — never `-p`). It fails when:
   match its heading, or an unrecognised `status` value.
 
 A failure names the file, the capability's heading line, and the exact dead
-citation — see `crates/graft-capabilities/src/check.rs`'s `Finding`/
+citation — see `crates/mergewright-capabilities/src/check.rs`'s `Finding`/
 `FindingKind` and `tests/checker.rs`'s assertion message. This is the reason
 the crate exists: the first pass at these files cited four tests that were
 real when their ticket was written and had been renamed or deleted by later
@@ -182,8 +182,8 @@ remembers to run it would have missed that again.
 
 ## Why this lives outside the product crate graph
 
-`graft-capabilities` (`crates/graft-capabilities/`) is repo metadata
+`mergewright-capabilities` (`crates/mergewright-capabilities/`) is repo metadata
 tooling, not product code — see `ARCHITECTURE.md`, "`capabilities`: repo
 metadata tooling, outside the table". It has no dependency on any other
-Graft crate, and nothing may depend on it, `crates/graft` and
-`crates/graft-ops` included.
+Graft crate, and nothing may depend on it, `crates/mergewright` and
+`crates/mergewright-ops` included.

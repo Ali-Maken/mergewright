@@ -1,0 +1,318 @@
+//! Reflog records into steps (ADR-0046 §2).
+//!
+//! git writes more than one record for one act: a `reset` moves the branch
+//! and `HEAD` (two records, same old and new, same second); a rebase writes
+//! a `HEAD` record per replayed commit and one finish record on the branch;
+//! `git stash` resets `HEAD` to itself. The list shows one row per act, so
+//! the records are grouped first:
+//!
+//! 1. A run of `HEAD` records whose subjects start `rebase`, one rebase's
+//!    (from its `(start)` to its `(finish): returning to`), folds into the
+//!    branch's `rebase (finish): refs/heads/<b> onto …` record written
+//!    within [`PAIR_WINDOW_SECS`] of the run's newest, or into the run's
+//!    newest record when there is none.
+//! 2. A record that moved nothing (old = new) is dropped, unless it is a
+//!    `checkout:` — a switch between branches on one commit moves `HEAD`'s
+//!    branch, if not its commit. Dropping one loses no lost commit: `HEAD`'s
+//!    log is contiguous, so its value is the next record's old value, or
+//!    `HEAD`'s value now.
+//! 3. A `HEAD` record pairs with a branch record of the same old and new
+//!    values written within [`PAIR_WINDOW_SECS`] of it.
+//!
+//! [`super::owners`] then says which steps are Mergewright's own.
+
+use std::collections::BTreeMap;
+
+use mergewright_git::reflog::ReflogRecord;
+
+use super::{OutsideRecord, PAIR_WINDOW_SECS};
+
+/// One act: the records that are one row.
+#[derive(Clone, Debug)]
+pub(super) struct Step {
+    /// The record the row stands for (an index into the records).
+    pub primary: usize,
+    /// Every record of the act, the primary included.
+    pub members: Vec<usize>,
+    /// How many `HEAD` records folded into it.
+    pub folded: usize,
+    /// A rebase's upstream, from its `rebase (start): checkout <x>` record.
+    pub onto: Option<String>,
+}
+
+/// The records grouped into steps, and which branch `HEAD` was on at each.
+#[derive(Clone, Debug)]
+pub(super) struct Steps {
+    /// Newest first.
+    pub steps: Vec<Step>,
+    /// Per record: the branch, short name, it moved (a branch record's own;
+    /// for a `HEAD` record, the branch `HEAD` was on, where the logs say).
+    pub on: Vec<Option<String>>,
+}
+
+/// The steps, newest first.
+pub(super) fn steps(outside: &[OutsideRecord]) -> Steps {
+    let records: Vec<&ReflogRecord> = outside.iter().map(|each| &each.record).collect();
+    let mut taken = vec![false; records.len()];
+    let mut steps = fold_rebases(&records, &mut taken);
+    for (index, record) in records.iter().enumerate() {
+        if !taken[index] && record.old == record.new && !is_checkout(&record.subject) {
+            taken[index] = true;
+        }
+    }
+    steps.extend(pair_head_records(&records, &mut taken));
+    for (index, _) in records.iter().enumerate() {
+        if !taken[index] {
+            steps.push(Step {
+                primary: index,
+                members: vec![index],
+                folded: 0,
+                onto: None,
+            });
+        }
+    }
+    steps.sort_by_key(|step| step.primary);
+    let on = head_branches(&records, &steps);
+    Steps { steps, on }
+}
+
+fn is_checkout(subject: &str) -> bool {
+    subject.starts_with("checkout: moving from ")
+}
+
+/// A record a rebase writes on `HEAD`: `rebase (<step>): …`, and
+/// `rebase: fast-forward` — the sequencer's word for a pick that moves `HEAD`
+/// without a new commit (git 2.54.0 writes it for picks after an
+/// `update-ref` line; m8-polish-and-ship/14).
+pub(super) fn is_rebase(subject: &str) -> bool {
+    ["rebase (", "rebase -i (", "rebase: ", "rebase -i: "]
+        .iter()
+        .any(|prefix| subject.starts_with(prefix))
+}
+
+/// `rebase (finish): refs/heads/<b> onto …` → `refs/heads/<b>`.
+fn rebase_finish_branch(subject: &str) -> Option<&str> {
+    let rest = subject
+        .strip_prefix("rebase (finish): ")
+        .or_else(|| subject.strip_prefix("rebase -i (finish): "))?;
+    let name = rest.split(' ').next()?;
+    name.starts_with("refs/heads/").then_some(name)
+}
+
+/// `rebase (finish): returning to <x>` (`HEAD`'s last record of a rebase)
+/// → `<x>`: `refs/heads/<b>`, or a hex id after a detached rebase.
+fn returning_to(subject: &str) -> Option<&str> {
+    subject
+        .strip_prefix("rebase (finish): returning to ")
+        .or_else(|| subject.strip_prefix("rebase -i (finish): returning to "))
+}
+
+/// `rebase (start): checkout <x>`: `HEAD`'s first record of a rebase.
+fn is_rebase_start(subject: &str) -> bool {
+    subject.starts_with("rebase (start)") || subject.starts_with("rebase -i (start)")
+}
+
+fn close_in_time(left: &ReflogRecord, right: &ReflogRecord) -> bool {
+    (left.at - right.at).abs() <= PAIR_WINDOW_SECS
+}
+
+/// Step 1: each run of `HEAD` rebase records, with its branch's finish.
+fn fold_rebases(records: &[&ReflogRecord], taken: &mut [bool]) -> Vec<Step> {
+    let head: Vec<usize> = (0..records.len())
+        .filter(|index| records[*index].refname == "HEAD")
+        .collect();
+    let mut steps = Vec::new();
+    let mut at = 0;
+    while at < head.len() {
+        if !is_rebase(&records[head[at]].subject) {
+            at += 1;
+            continue;
+        }
+        // One rebase per run: two with no switch between (rebase, fetch,
+        // rebase again) write one unbroken stretch of `rebase` records, and
+        // one run would leave the older one's finish and old tip to the
+        // newer one's event (review m8 g1, Major 2).
+        let mut end = at;
+        while end + 1 < head.len()
+            && is_rebase(&records[head[end + 1]].subject)
+            && !is_rebase_start(&records[head[end]].subject)
+            && returning_to(&records[head[end + 1]].subject).is_none()
+        {
+            end += 1;
+        }
+        let run: Vec<usize> = head[at..=end].to_vec();
+        steps.push(fold_one(records, taken, &run));
+        at = end + 1;
+    }
+    steps
+}
+
+/// One rebase run (newest first) into one step.
+fn fold_one(records: &[&ReflogRecord], taken: &mut [bool], run: &[usize]) -> Step {
+    let newest = run[0];
+    // The branch the run says it returned to. Two rebases in one second (a
+    // chain of branches rebased in turn) put both finishes in the window:
+    // nearness alone paired a run with the other branch's finish (m8/46).
+    let returned_to = run
+        .iter()
+        .find_map(|index| returning_to(&records[*index].subject));
+    let finish = (0..records.len())
+        .filter(|index| {
+            let branch = rebase_finish_branch(&records[*index].subject);
+            !taken[*index]
+                && branch.is_some()
+                && returned_to.is_none_or(|name| branch == Some(name))
+                && records[*index].refname.starts_with("refs/heads/")
+                && close_in_time(records[*index], records[newest])
+        })
+        .min_by_key(|index| index.abs_diff(newest));
+    let onto = run.last().and_then(|oldest| {
+        let subject = &records[*oldest].subject;
+        subject
+            .strip_prefix("rebase (start): checkout ")
+            .or_else(|| subject.strip_prefix("rebase -i (start): checkout "))
+            .map(str::to_owned)
+    });
+    for index in run {
+        taken[*index] = true;
+    }
+    let mut members = run.to_vec();
+    let (primary, folded) = match finish {
+        Some(branch) => {
+            taken[branch] = true;
+            members.push(branch);
+            (branch, run.len())
+        }
+        None => (newest, run.len() - 1),
+    };
+    Step {
+        primary,
+        members,
+        folded,
+        onto,
+    }
+}
+
+/// Step 3: each `HEAD` record with the branch record that is its twin.
+fn pair_head_records(records: &[&ReflogRecord], taken: &mut [bool]) -> Vec<Step> {
+    let mut steps = Vec::new();
+    for head in 0..records.len() {
+        if taken[head] || records[head].refname != "HEAD" {
+            continue;
+        }
+        let twin = (0..records.len())
+            .filter(|index| {
+                let branch = records[*index];
+                !taken[*index]
+                    && branch.refname.starts_with("refs/heads/")
+                    && branch.old == records[head].old
+                    && branch.new == records[head].new
+                    && close_in_time(branch, records[head])
+            })
+            .min_by_key(|index| index.abs_diff(head));
+        if let Some(branch) = twin {
+            taken[head] = true;
+            taken[branch] = true;
+            steps.push(Step {
+                primary: branch,
+                members: vec![branch, head],
+                folded: 0,
+                onto: None,
+            });
+        }
+    }
+    steps
+}
+
+/// The short name of `refs/heads/<b>`, else `None`.
+pub(super) fn branch_short(refname: &str) -> Option<&str> {
+    refname.strip_prefix("refs/heads/")
+}
+
+/// git's name for where `HEAD` went in a `checkout:` subject is what the
+/// user typed; a full hex id there is a detached `HEAD`, not a branch.
+pub(super) fn is_hex_id(name: &str) -> bool {
+    (name.len() == 40 || name.len() == 64) && name.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+/// `checkout: moving from <a> to <b>` → `(a, b)`.
+pub(super) fn checkout_names(subject: &str) -> Option<(&str, &str)> {
+    subject
+        .strip_prefix("checkout: moving from ")?
+        .split_once(" to ")
+}
+
+/// Which branch each record moved: a branch record its own; a `HEAD` record
+/// the branch `HEAD` was on — its twin's, or the newest older switch's
+/// target, or a rebase's `returning to` branch. `None` where the logs do not
+/// say (detached, or older than the records read).
+fn head_branches(records: &[&ReflogRecord], steps: &[Step]) -> Vec<Option<String>> {
+    let mut on: Vec<Option<String>> = records
+        .iter()
+        .map(|record| branch_short(&record.refname).map(str::to_owned))
+        .collect();
+    let mut twin_of: BTreeMap<usize, usize> = BTreeMap::new();
+    for step in steps {
+        if records[step.primary].refname != "HEAD" {
+            for member in &step.members {
+                twin_of.insert(*member, step.primary);
+            }
+        }
+    }
+    let next_leave = next_switch_from(records);
+    let mut current: Option<String> = None;
+    for index in (0..records.len()).rev() {
+        let record = records[index];
+        if record.refname != "HEAD" {
+            continue;
+        }
+        if let Some(twin) = twin_of.get(&index) {
+            current = branch_short(&records[*twin].refname).map(str::to_owned);
+        }
+        on[index].clone_from(&current);
+        current = after_head_record(&record.subject, current, next_leave[index]);
+    }
+    on
+}
+
+/// Per record, the `from` of the next newer `checkout:` record in `HEAD`'s
+/// log: how git named where `HEAD` was when it next left. Records are newest
+/// first.
+fn next_switch_from<'a>(records: &[&'a ReflogRecord]) -> Vec<Option<&'a str>> {
+    let mut next = vec![None; records.len()];
+    let mut newer: Option<&'a str> = None;
+    for (index, record) in records.iter().enumerate() {
+        next[index] = newer;
+        if record.refname == "HEAD"
+            && let Some((from, _)) = checkout_names(&record.subject)
+        {
+            newer = Some(from);
+        }
+    }
+    next
+}
+
+/// Where `HEAD` is after a record with this subject. `next_leave` is the
+/// `from` of the next switch away ([`next_switch_from`]).
+fn after_head_record(
+    subject: &str,
+    current: Option<String>,
+    next_leave: Option<&str>,
+) -> Option<String> {
+    if let Some((_, to)) = checkout_names(subject) {
+        // `to` is what he typed: `origin/main`, `v1` and `HEAD~3` read like
+        // branch names but leave `HEAD` detached (review m7-22, M1). It is a
+        // branch only when the next switch leaves it by that name — git
+        // writes the hex id when leaving a detached `HEAD`. Otherwise it
+        // stays unknown until a branch record pairs with a later `HEAD`
+        // record (the twin, above).
+        return (!is_hex_id(to) && next_leave == Some(to)).then(|| to.to_owned());
+    }
+    if let Some(rest) = returning_to(subject) {
+        return branch_short(rest).map(str::to_owned);
+    }
+    if is_rebase_start(subject) {
+        return None;
+    }
+    current
+}

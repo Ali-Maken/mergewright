@@ -292,7 +292,7 @@ if [ -n "$pane" ] && [ -d "$REPO" ]; then
     echo "# the cursor's fill are not recorded (CLAUDE.md rule 5)."
     cat "$WORK/grid.txt"
   } >"$GRID"
-  cargo run -q -p graft-fixtures -- redact "$GRID" >"$WORK/redact.txt" 2>&1 \
+  cargo run -q -p mergewright-fixtures -- redact "$GRID" >"$WORK/redact.txt" 2>&1 \
     || miss "redact failed on $GRID: $WORK/redact.txt"
   say "capture $GRID rows=$rows lines=$(grep -vc '^#' "$GRID")"
 else

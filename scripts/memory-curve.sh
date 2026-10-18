@@ -57,7 +57,7 @@ fi
 
 SIZES=("$@"); [ ${#SIZES[@]} -eq 0 ] && SIZES=(10000 100000 1000000)
 OUT=docs/shots/m1-memory-curve.txt
-cargo build --release -p graft-fixtures --features heavy-tests --example synthetic
+cargo build --release -p mergewright-fixtures --features heavy-tests --example synthetic
 {
   echo "# The memory curve: scripts/memory-curve.sh ${SIZES[*]} ($(date +%F), release, 3 runs per cell, one process at a time)"
   echo "# Gate: peak RSS < 300 MB with a commit-graph (ADR-0026); without one at 1M: reported, footprint < 300 MB."

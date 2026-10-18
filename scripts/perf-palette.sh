@@ -24,8 +24,8 @@
 #              row. Built under $SCRATCH (default $CARGO_TARGET_DIR/perf-palette)
 #              if none is there.
 #   with-refs  the heavy tier's `Scale::HEAVY.with_commit_graph()
-#              .with_refs(50_000)` (crates/graft/tests/it/many_refs.rs), refs
-#              spread over history; built or found by graft-fixtures'
+#              .with_refs(50_000)` (crates/mergewright/tests/it/many_refs.rs), refs
+#              spread over history; built or found by mergewright-fixtures'
 #              `synthetic` example.
 #   paths      one commit whose tree holds 100 000 paths (src/mNNN/fN.rs),
 #              every entry one blob, written with `update-index --index-info`;
@@ -89,7 +89,7 @@ piled_fixture() {
 }
 
 with_refs_fixture() {
-  (cd "$ROOT" && cargo run --release -q -p graft-fixtures --features heavy-tests \
+  (cd "$ROOT" && cargo run --release -q -p mergewright-fixtures --features heavy-tests \
     --example synthetic -- 100000 --commit-graph --refs 50000) | cut -f1
 }
 

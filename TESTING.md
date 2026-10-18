@@ -47,7 +47,7 @@ git diff --stat docs/shots/              # read it before you commit it
 **A regeneration is always a red run.** The files are rewritten *and* the tests
 fail, so a changed capture cannot reach a commit without someone having looked
 at it. One pass rewrites everything: a generator that owns several files
-collects its mismatches (`graft_fixtures::Captures`) instead of aborting at the
+collects its mismatches (`mergewright_fixtures::Captures`) instead of aborting at the
 first. Then run the gate again, plain, and it is green.
 
 A capture must be reproducible on any machine, so nothing the run invents may
@@ -59,7 +59,7 @@ a test committed itself, same width, every prefix. A capture that differs for
 any other reason is a defect, and neither is a place to hide one.
 
 **Nothing in a tracked file names the machine it was written on**
-(m5-history-and-ghost-preview/41). `graft_fixtures::capture` redacts three
+(m5-history-and-ghost-preview/41). `mergewright_fixtures::capture` redacts three
 classes out of what the code drew, before it compares or writes it — a home
 directory, a path under the OS scratch directory, and a port the OS picked —
 each replaced by a placeholder of exactly the width it took, so no grid moves.
@@ -73,19 +73,19 @@ which cannot be committed without `-f`, and index content the working tree no
 longer has, since it reads files from disk. It says what to do:
 
 ```sh
-cargo run -q -p graft-fixtures -- redact <path>...   # a file older than the rule
+cargo run -q -p mergewright-fixtures -- redact <path>...   # a file older than the rule
 ```
 
 Write `<home>` by hand where a test or a document needs a home directory; a
 test that needs one of these literally assembles it from pieces, the way
-`graft_fixtures::capture::machine` spells its own roots and ports. The
+`mergewright_fixtures::capture::machine` spells its own roots and ports. The
 pty walks do not write to `docs/shots/` themselves: they pipe each frame to
-`graft-fixtures capture <path>`, which is the same mechanism on the same terms,
+`mergewright-fixtures capture <path>`, which is the same mechanism on the same terms,
 so a walk asserts like everything else and `MWR_UPDATE_SHOTS=1` is how it
 regenerates.
 
 **Records, not asserted** (m8/22c). "Every file is asserted" holds only for a
-file some test passes to `captures::check_shot` / `graft_fixtures::capture`:
+file some test passes to `captures::check_shot` / `mergewright_fixtures::capture`:
 nothing lists `docs/shots/` and fails on a file no test owns. Hand-shot files
 from before m5/40 are therefore **records of their ticket**, not current
 output — their chrome is stale and no run checks them. Do not hand-edit them
@@ -114,9 +114,9 @@ when the tour starts, which then does not start).
   it. The trade-off: a stray pin draws wrong ages for that session, with no
   marker on screen (a marker would change every pty capture); unset, they are
   right again and nothing persisted. The pty harness sets it to
-  `graft_fixtures::PINNED_NOW` unless the test names it. So no pty test may
+  `mergewright_fixtures::PINNED_NOW` unless the test names it. So no pty test may
   assert a journal stamp's value, and no capture may draw a journal entry's
-  age. Test: `clock_pin::graft_now_never_stamps_the_journal`.
+  age. Test: `clock_pin::mergewright_now_never_stamps_the_journal`.
 - **`MWR_PRACTICE_EPOCH` dates the practice repo**, the tour's temp
   repository (removed on every ending), so its commits and their ids are the
   same every run.
@@ -145,12 +145,12 @@ stays visible.
 | 2026-09-23 · walk | Fix a block by hand | Until M6: `$EDITOR` from a shell. M6: **0** — `e` in the resolver, re-read on return (`editor-edits-are-never-clobbered`) | m6-conflicts |
 | 2026-09-23 · walk | Keep one side of a whole file | Until M6: `git checkout --ours`/`--theirs` + `git add`. M6: **0** — `o`/`t` in the resolver (`every-whole-file-shape`, `crlf-and-no-final-newline-survive`) | m6-conflicts |
 | 2026-09-23 · walk | Accept a delete | Until M6: `git rm`. M6: **0** — `t` on the card (`every-whole-file-shape`) | m6-conflicts |
-| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **0** — `c y` on the banner (P4, P12; `crates/graft/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`), or `y` in the summary the last file opened (`m5_walk::every_scenario::journey_b_whole_two_files`). Was: the shell, ruling F5 (`graft-ops/src/operation.rs:581-585`). | closed (m6-conflicts, shell_begun::c_y_finishes_a_shell_begun_merge) |
-| 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | **0** in a merge Graft began — open the done file, `d y` (m6-conflicts/28; words and `y` m7-power-tools/17; walk `crates/graft/tests/it/m7_walk.rs::restart_after_done`). Still refused in a merge begun in the shell (no stages kept), in words: `git can't bring back the conflict in <file>: <reason>`. | closed (m7-power-tools/17, 26; `m7_walk::restart_after_done`) |
+| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Mergewright) | M6: **0** — `c y` on the banner (P4, P12; `crates/mergewright/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`), or `y` in the summary the last file opened (`m5_walk::every_scenario::journey_b_whole_two_files`). Was: the shell, ruling F5 (`mergewright-ops/src/operation.rs:581-585`). | closed (m6-conflicts, shell_begun::c_y_finishes_a_shell_begun_merge) |
+| 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | **0** in a merge Mergewright began — open the done file, `d y` (m6-conflicts/28; words and `y` m7-power-tools/17; walk `crates/mergewright/tests/it/m7_walk.rs::restart_after_done`). Still refused in a merge begun in the shell (no stages kept), in words: `git can't bring back the conflict in <file>: <reason>`. | closed (m7-power-tools/17, 26; `m7_walk::restart_after_done`) |
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
-| 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
-| 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **0** — `u` on the banner undoes the whole-file take (`crates/graft/tests/it/resolver/shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`), and `a y` aborts the merge with `u` to put it back (`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`). Was: `git merge --abort`, then `Ctrl+R`, `u` — both keys refused while the merge was open. Source: ticket 08 `## Review fixes, part 2`. | closed (m6-conflicts/57, shell_begun::a_on_the_banner_aborts_a_shell_merge, shell_begun::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge) |
+| 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`mergewright-git/src/conflict.rs:345`). Expires M7 | open (M7) |
+| 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **0** — `u` on the banner undoes the whole-file take (`crates/mergewright/tests/it/resolver/shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`), and `a y` aborts the merge with `u` to put it back (`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`). Was: `git merge --abort`, then `Ctrl+R`, `u` — both keys refused while the merge was open. Source: ticket 08 `## Review fixes, part 2`. | closed (m6-conflicts/57, shell_begun::a_on_the_banner_aborts_a_shell_merge, shell_begun::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge) |
 | 2026-09-24 · review N3 | Finish a stash pop that clashed | Until the put-back pass: the clashing pop read as a git error and sent him to the shell — **11 keys** (review N3, `docs/design-notes/m6-stash-put-back.md` :15). Now **5**: `S p y o ⏎` (`y` confirms the pop preview since m6-conflicts/86), the resolver opens on the clash and the last file done drops the stash (`m5_walk::every_scenario::journey_stash_pop_clash_to_done`, `m6_stash_put_back::a_stash_pop_that_clashes_is_five_keys`) | closed (m6-conflicts/72b, 75, 86; `stash-pop-clash-to-done`) |
 | 2026-09-24 · review N4 | Pull and push with edits in the tree | Until the put-back pass: the dirty rebase was refused after confirm — **16 keys** walked (review N4, `m6-stash-put-back.md` :16). Now **5**: `p r r P y`, the edits set aside and put back (`m5_walk::every_scenario::journey_rejected_push_dirty_to_pushed`, `m6_stash_put_back::set_aside::a_rejected_push_with_edits_is_five_keys`). A fast-forward pull over edits to files it brings: was refused (m6-conflicts/85 D, 7 keys through a stash); now **1**, `p` (m7-power-tools/03b, `m7_walk::pull::pull_ff_over_edits`) | closed (m6-conflicts/73, 74, 75; `rejected-push-dirty-to-pushed`) |
 | M8 · daily use (to fill) | _each time M8's app sends him to the shell or another tool: what he wanted, one line, the day it happens_ | _what he ran instead_ | open (M8 daily use) |
@@ -177,7 +177,7 @@ afterwards.
 feature, so a default build does not even compile them. To prove it:
 
 ```sh
-cargo test --test it -p graft-fixtures -- --list | grep -c '^heavy::'   # 0
+cargo test --test it -p mergewright-fixtures -- --list | grep -c '^heavy::'   # 0
 ```
 
 A fast-tier test that takes more than 10 seconds is a bug, not a slow test
@@ -359,7 +359,7 @@ build speed too. Peak RSS fails in both builds. Every milestone review runs both
 release numbers.
 
 **Slope guards measure each fixture in a child process** (m1-the-graph/57).
-`getrusage`'s peak and `graft_fixtures::footprint`'s peak are both lifetime
+`getrusage`'s peak and `mergewright_fixtures::footprint`'s peak are both lifetime
 maxima of the *process*, never of the work just done — fine for a ceiling
 test (`budgets_hold_* < 300 MB` can only over-report), wrong for a slope
 (100k peak minus 10k peak): measure both fixtures in the same test binary
@@ -551,7 +551,7 @@ Neither is required: a test that needs a fixture builds it. But to build
 the corpus on its own, or to see what it cost:
 
 ```sh
-cargo run -p graft-fixtures
+cargo run -p mergewright-fixtures
 ```
 
 The synthetic repository is only reachable from the heavy tier. To build
@@ -919,7 +919,7 @@ Judge stop 8 by running the walk, not by that file.
 
 ### Reading the entries
 
-The fixture facts come from `crates/graft-fixtures/src/shapes/`: subjects,
+The fixture facts come from `crates/mergewright-fixtures/src/shapes/`: subjects,
 branch names, parent order. "Row" counts from the top of the graph, after
 any `Uncommitted changes` row (the fixtures' trees are clean, so none has
 one; `graft-self` might).
@@ -1027,7 +1027,7 @@ Press `F3` at any stop: the text right of the graph must not move.
     bottom — one commit sitting right at each unit's own threshold (5
     seconds; 90 seconds; 90 minutes; 36 hours; 14, 70, 400 days ago), so
     every unit the column can show appears exactly once, in order. Viewed
-    at `graft_fixtures::CORPUS_NOW`, a fixed instant (m1-the-graph/53), not
+    at `mergewright_fixtures::CORPUS_NOW`, a fixed instant (m1-the-graph/53), not
     the wall clock: the same seven units, any day, any machine — the
     capture never goes stale.
 14. **tags** — 4 rows, one tag each, reading down: `[◆ main] [tag: v2.0]` on
@@ -1191,7 +1191,7 @@ identity.
 
 ### Reading the entries
 
-Fixture facts come from `crates/graft-fixtures/src/shapes/history.rs` and
+Fixture facts come from `crates/mergewright-fixtures/src/shapes/history.rs` and
 the M1 entries above; the fixture SHAs are stable (`0683985` is `three: in
 progress` in every build). "Row" counts from the top of the graph.
 
@@ -1234,7 +1234,7 @@ ASCII: `! i + * o # :`.
 
 1. **feature-branches · Enter** — row 0 is `three: in progress` (feature/three's
    tip sits above `Merge branch 'feature/two'`), so the pane opens on
-   `COMMIT 0683985`: `Graft Fixture <fixture@example.invalid> · 2020-01-01
+   `COMMIT 0683985`: `Mergewright Fixture <fixture@example.invalid> · 2020-01-01
    00:09 +0000`, `parents de95041 · diff vs first parent`, `Contained in:
    feature/three`, then `no upstream (feature/three)`. Files: one row,
    `A three.txt +1 −0`, highlighted. Body: `1 + a`. Row 0 carries `ⓘ`; so do
@@ -1339,7 +1339,7 @@ Stop 1 at three sizes (`m2-01-feature-branches-enter-*`):
 - **160+ columns:** the pane is a right column from row 3 down; the graph
   keeps its badges and SHAs; the banner stays on the left.
 - **100–159:** the pane sits **below** the graph: graph rows to about the
-  middle, then the header folded to one line (`COMMIT 0683985 · Graft
+  middle, then the header folded to one line (`COMMIT 0683985 · Mergewright
   Fixture …`), tree and body under it. Banner still on top.
 - **< 100:** a tab strip `Graph  [Detail]` replaces both; the `Detail` tab
   is the whole screen (`COMMIT`, author, `three: in progress · no upstream
@@ -1384,7 +1384,7 @@ and **no backup commit drawn in the history window** — every row's subject is
 the user's, never any generation's `<dir> <ulid> …` (current `mergewright`) (m3-07 review, C1; the check is
 `no_bookkeeping_in_the_graph`, run after every scenario).
 
-The walk's own `git` runs under `graft_fixtures::git::run_isolated`, and each
+The walk's own `git` runs under `mergewright_fixtures::git::run_isolated`, and each
 scenario's repository overrides the settings that would otherwise decide what
 a write means (`neutralise_global_config`): the 22 tests pass the same on a
 machine with `commit.gpgsign`, a global `core.hooksPath` or
@@ -1406,7 +1406,7 @@ it carries no colour** — the user judges by eye.
 
 - **Every write and undo ran through the app against live git.** Nothing is
   injected: the keys are the user's keys (`update` fed directly, the job
-  pool real), the journal, backups and restores are graft-ops's, and the
+  pool real), the journal, backups and restores are mergewright-ops's, and the
   verdict is git's.
 - **Byte-for-byte is checked as bytes.** The untracked binary scenario uses
   `00 ff 0a 0d fe`; the tracked ones compare whole-file contents and blob
@@ -1870,7 +1870,7 @@ scenario ends with `git fsck --no-dangling` saying nothing but notices.
 `fix-rebase-instead`, left failing by m5/38 as a finding and fixed by
 m5/43: the rebase plan drew a ghost for a **merge commit** inside the
 replayed range (one ghost per commit in the range
-`graft-git/src/history_reads.rs` handed back — `rev-list` with no
+`mergewright-git/src/history_reads.rs` handed back — `rev-list` with no
 `--no-merges`), and `git rebase` without `--rebase-merges` drops it, so the
 box promised two new commits where git makes one and the branch's predicted
 tip was a commit that never exists. The range the preview counts now
@@ -1887,8 +1887,8 @@ in m5/32:
   the line diffed the two tips the operation mentions, which also counts
   `HEAD`'s own commits. It now answers one question — which files differ
   between the tree `HEAD` has now and the tree it will have once the
-  operation lands — in one place (`graft-ops/src/preview.rs`, `Landing`
-  and `worktree`). Direct tests: `graft-ops::it history_ops::
+  operation lands — in one place (`mergewright-ops/src/preview.rs`, `Landing`
+  and `worktree`). Direct tests: `mergewright-ops::it history_ops::
   a_no_ff_merge_names_only_the_files_the_source_brings`,
   `a_rebase_names_only_the_files_onto_brings`,
   `a_cherry_pick_names_only_the_picked_patch`,
@@ -1964,7 +1964,7 @@ keeps every `m5-*.txt` captioned).
 - **Does not walk** the real `git mergetool` hand-over, the real `$EDITOR`
   hand-over (`e` is pressed for its commands and never dispatched), or an
   interactive rebase — all external programs or M6/M7 work. The
-  cancel-mid-undo *step boundary* is `graft-ops::it undo_cancel`'s, not
+  cancel-mid-undo *step boundary* is `mergewright-ops::it undo_cancel`'s, not
   this walk's (scenario 46).
 - **No drop-menu capture, no name-prompt capture, no stale-preview
   capture**: a pty run has no mouse prelude and no hook between two keys.
@@ -2183,7 +2183,7 @@ and the exact git command are from the captures only.
     never does — `Esc` always beats the worker to `restore::execute`'s
     first `should_stop`, so no journal entry is opened at all and the
     `Aborted("cancelled")` row m5/11 asked for is unreachable here.
-    `graft-ops`' own `it undo_cancel` owns every step boundary, with a
+    `mergewright-ops`' own `it undo_cancel` owns every step boundary, with a
     stop keyed to the plan's effect.
 47. **ctrl-r-twice-leaves-one-history-job** — two `⌃R`s with nothing
     pumped between them: one walk is awaited, none is being promoted, and
@@ -2305,8 +2305,8 @@ fast-tier time is in `docs/perf/m6-07.txt` (the ticket's bar is 60 s).
 
 Captures: `docs/shots/m6/m6-<nn>-<what>-<WxH>.txt` at 120x40 and 80x24,
 Unicode tier, from `.scratch/m6-conflicts/pty-walk-m6.py <WxH>` (build
-`-p mergewright --example m5_walk --bin mwr` and `-p graft-fixtures --bin
-graft-fixtures` first; `MWR_TARGET` names the target directory;
+`-p mergewright --example m5_walk --bin mwr` and `-p mergewright-fixtures --bin
+mergewright-fixtures` first; `MWR_TARGET` names the target directory;
 `MWR_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
 the **real `mwr` binary** relaunched after the script sends the capture
 run `SIGKILL` and checks it died on signal 9. All nine captures exist at
@@ -2415,7 +2415,7 @@ credential capture M6 changed.
    file on disk has the stop's **three** `<<<<<<< ` lines, and the identity
    row reads `three.txt · 3 conflicts · 3 open` again (the resolver's
    `(open, blocks)`, which the row prints). Start over **after** `⏎` is proven **at the ops level only**:
-   `graft-ops` `tests/it/chained_backup.rs::restart_after_stage_brings_the_conflict_back`
+   `mergewright-ops` `tests/it/chained_backup.rs::restart_after_stage_brings_the_conflict_back`
    (git's REUC answers it) and `::restart_survives_a_relaunch` (the recorded
    stage tree answers it). **The app's entry point is not built** — a
    staged path has no `CONFLICTS` row and `u` is refused mid-operation; a
@@ -2505,7 +2505,7 @@ table at the top of this file, dated, the same day (ADR-0033).
 M6's journeys, **counted** (m6-conflicts/21, 43; pipeline step 7). Each is
 the user's own route from where he is to done, walked over the real app and
 real git by the same walk as above. The count is **read from the note**,
-not restated: `crates/graft/tests/it/m5_walk/journeys.rs` parses the one
+not restated: `crates/mergewright/tests/it/m5_walk/journeys.rs` parses the one
 fence tagged `journey-counts` in `docs/design-notes/m6-conflicts.md`, and a
 journey that sends more inputs than its row fails, naming both numbers and
 the keys. A key, a chord (`Ctrl+T` = 1) or a click counts 1; waits and
@@ -2577,7 +2577,7 @@ day.
 
 **Times I left, row "Finish a merge begun in the shell":** closed —
 `c y` on the banner (P4, P12), proven by
-`crates/graft/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`,
+`crates/mergewright/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`,
 or `y` in the summary the last file opened, walked here by `b-finish` and
 `b-whole-two-files`. **Row "Get back a hand edit … begun in the shell":**
 closed — `a y` aborts from the banner and `u` puts the merge back
@@ -2589,7 +2589,7 @@ walked by `b-abort-shell-merge` and `b-undo-a-take-in-the-shell`.
 ### The stash put-back journeys
 
 Picks 15–17 (m6-conflicts/75; `docs/design-notes/m6-stash-put-back.md`
-"Journeys"). Walked in `crates/graft/tests/it/m5_walk/stash_journeys.rs`,
+"Journeys"). Walked in `crates/mergewright/tests/it/m5_walk/stash_journeys.rs`,
 counted against the same fence as above, git's truth read at the end. The
 whole pass, one command, route table to a file:
 
@@ -2640,17 +2640,17 @@ edit is in the tree or in `git stash list`, and when it is listed the
 relaunch line reads `an operation was interrupted: checkout fix · edits in
 stash@{0} · J to inspect`. The kill lands at the first poll after the step
 before's mark, so "before step 3" came with `stash store` done; the
-not-yet-listed case is graft-ops' `a_stop_before_each_step_loses_nothing`.
+not-yet-listed case is mergewright-ops' `a_stop_before_each_step_loses_nothing`.
 
 **Put-back failure line** (m6-conflicts/84, ADR-0045 §5 amended): a
 set-aside that ends neither clean nor in a clash is sticky, the
-operation's own failure first, then where `graft_ops` says the edits are
+operation's own failure first, then where `mergewright_ops` says the edits are
 (`EditsAt`), the clause kept whole at 80 with the failure cut first:
 `your edits are in stash@{n} · S p puts them back` (not in the tree);
 `your edits are back · a copy stays in stash@{n}` (drop failed; no `S p`);
 `u restores the backup · a copy is in stash@{n}` (stopped after the
 store). Unit-proven (`operate::tests::edits_words`), not walked: the
-faults are graft-ops' (`tests/it/set_aside.rs`, hooks and permissions).
+faults are mergewright-ops' (`tests/it/set_aside.rs`, hooks and permissions).
 
 **Preview warns a put-back clash** (m6-conflicts/84):
 `set_aside::the_preview_warns_before_a_switch_that_clashes` — `. ⏎` on
@@ -2710,7 +2710,7 @@ change between runs. Sizes: **120x40** and **160x48** (strip and card),
 and three panes), **80x24** (the floor). **Colour:** the band, the tints
 and the state colours are proven by buffer tests (cell fg, bg and modifier
 per block state, ADR-0041/0044):
-`graft-ui conflict_resolver::tests::three_panes::band::band_follows_the_block_state`
+`mergewright-ui conflict_resolver::tests::three_panes::band::band_follows_the_block_state`
 (and its 16-colour, high-contrast, `NO_COLOR` and ASCII siblings in the
 same file), `conflict_resolver::tests::card_colours::card_tints_follow_the_block_state`,
 `conflict_resolver::files::tests::file_list_state_colours`,
@@ -2726,7 +2726,7 @@ already on <b>` is asserted from the cells the app draws by
 slot 2, `Cherry-pick (o) — already on main`, too; none of `Copy SHA (y)`'s). The resolver's
 roles for a stash (`stashed · stash@{0}`) and for set-aside edits (`set
 aside · your edits`) are **words only** — the role picks the pane names
-(`graft-ui/src/conflict_resolver/draw/block.rs:35`), the tints follow the
+(`mergewright-ui/src/conflict_resolver/draw/block.rs:35`), the tints follow the
 block state as in a merge — asserted by
 `conflict_resolver::names::tests::set_aside_roles_name_the_panes_yours_and_set_aside`,
 the walks' frames and the captures below. No buffer test runs the band under
@@ -2849,7 +2849,7 @@ the width rule runs, so the bar never teaches a key that does nothing
 did nothing at all). The group that binds one flips that word and the hint
 appears.
 
-Unit tests (`crates/graft-ui/src/graph_screen/hints/tests.rs`): (a)
+Unit tests (`crates/mergewright-ui/src/graph_screen/hints/tests.rs`): (a)
 `no_context_hides_every_key` — every context but `Preview` shows something
 at every width 40..=200, with and without a pane; (b)
 `eighty_columns_shows_three_and_more`; (c) `hundred_twenty_shows_six`; (d)
@@ -2859,10 +2859,10 @@ at every width 40..=200, with and without a pane; (b)
 force` whole, cuts the reason with `…`; (g) `no_planned_hint_is_ever_drawn`;
 (h) `the_divider_hint_follows_the_pane_not_the_context` and
 `the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it`. Frame test
-`footer_eighty_branch_row` (`crates/graft-ui/src/graph_screen/tests.rs`).
+`footer_eighty_branch_row` (`crates/mergewright-ui/src/graph_screen/tests.rs`).
 
 Both directions of "only keys that work" are walked in
-`crates/graft/src/update/tests.rs` against `update::keys::bound_actions()`
+`crates/mergewright/src/update/tests.rs` against `update::keys::bound_actions()`
 (43 (key, verb) pairs, each annotated with the dispatcher that answers it):
 `every_hinted_key_is_bound` — every context × divider × 40/80/100/120/160/
 200 columns, key *and* verb, no exemptions — and
@@ -2871,7 +2871,7 @@ binds a planned key without flipping its hint.
 
 **Which context the app picks** is proved from a real repository, over the
 real job pool, with the keys pressed through `update` and the footer read
-off a drawn frame (`crates/graft/tests/it/hint_bar.rs`):
+off a drawn frame (`crates/mergewright/tests/it/hint_bar.rs`):
 `the_tip_row_hints_the_current_branch_context`,
 `a_plain_row_hints_the_plain_context`,
 `the_uncommitted_row_hints_the_working_tree_context`,
@@ -2884,7 +2884,7 @@ Captures: `docs/shots/m5-hints-{branch,plain,uncommitted,changes}-{80x24,
 120x40,160x48}.txt` come from that app path
 (`cargo test -p mergewright --test it hint_bar::capture_hint_bar_for_docs_shots -- --ignored --nocapture`);
 `m5-hints-marked-*` stays a hand-built `GraphScreen` fixture
-(`cargo test -p graft-ui graph_screen::tests::capture_hint_bar_for_docs_shots -- --ignored --nocapture`),
+(`cargo test -p mergewright-ui graph_screen::tests::capture_hint_bar_for_docs_shots -- --ignored --nocapture`),
 because a Mistake Radar marker needs a corpus built to trip it. Every
 capture says at its head which it is. None of them records colour (rule 5).
 
@@ -2929,11 +2929,11 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 
 | Journey | Start | Keys | Right looks like |
 |---|---|---|---|
-| `pr-contents` | cursor on `main`, pane closed, `feature-a`'s tip one row below | `x j` = 2 (note: 2) | pane opens on `x`; after `j` the header reads `changes on feature-a since it left main · 3 commits · 2 files +2 −0`; the file list holds only feature-a's files (`src/login.rs`, `src/token.rs`), never main's later `README.md`/`CHANGELOG.md`. Under 100 columns the pane is a tab: `Tab` shows it (not counted). Walk: `crates/graft/tests/it/m7_walk/pr_contents.rs::pr_contents`; captures `docs/shots/m7/compare-since-split-{187x50,80x24}.txt`. `[x base]` first on main's row (187x50). Colour unverified. |
+| `pr-contents` | cursor on `main`, pane closed, `feature-a`'s tip one row below | `x j` = 2 (note: 2) | pane opens on `x`; after `j` the header reads `changes on feature-a since it left main · 3 commits · 2 files +2 −0`; the file list holds only feature-a's files (`src/login.rs`, `src/token.rs`), never main's later `README.md`/`CHANGELOG.md`. Under 100 columns the pane is a tab: `Tab` shows it (not counted). Walk: `crates/mergewright/tests/it/m7_walk/pr_contents.rs::pr_contents`; captures `docs/shots/m7/compare-since-split-{187x50,80x24}.txt`. `[x base]` first on main's row (187x50). Colour unverified. |
 
 ## M7: one switch rule (m7-power-tools/10b)
 
-`.` Checkout and `b ⇥` switch at once on a clean tree; with unsaved tracked edits (or a detached target) they open the preview, then `y`. Untracked files alone never count. Walks: `crates/graft/tests/it/m7_walk/switch.rs`. Colour unverified (rule 5).
+`.` Checkout and `b ⇥` switch at once on a clean tree; with unsaved tracked edits (or a detached target) they open the preview, then `y`. Untracked files alone never count. Walks: `crates/mergewright/tests/it/m7_walk/switch.rs`. Colour unverified (rule 5).
 
 | Journey | Start | Keys | What right looks like |
 |---|---|---|---|
@@ -2941,11 +2941,11 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 | switch with edits by the menu | `main`, `base.txt` staged + a shared file unstaged; cursor on `feature-b` | `. ⏎ y` = 3 | preview first; on `feature-b`, both edits back, staged split kept, stash list empty; `✓ on feature-b · your edits are back  u goes back`. `u`: on `main`, split as before (`switch_with_edits_via_menu`) |
 | new branch with edits | same edits; cursor on `feature-b` | `b nb ⇥ ⏎ y` = 5 (typed name counts 1) | was refused (`DirtyTree`); now the preview; on `nb` at `feature-b`'s commit, edits back with staging, no stash left. `u`: `nb` gone, on `main` (`new_branch_with_edits`) |
 | new branch at HEAD with edits | same edits; cursor on `main` (HEAD) | `b feature-c ⇥ ⏎` | preview: `feature-c (new) → <sha7>`, `HEAD → feature-c`, `your edits stay as they are`; nothing set aside; `esc` writes nothing (`new_branch_at_head_with_edits_previews_edits_stay`; capture `docs/shots/m7/new-branch-with-edits-preview-120x40.txt`) |
-| remote-only branch (for the picker, 10) | `origin/sara/x` fetched, no local `sara/x` | — (no key yet: the picker is ticket 10) | graft-ops only: `switch --create sara/x --track refs/remotes/origin/sara/x`; `sara/x@{upstream}` = `origin/sara/x` even with `branch.autoSetupMerge=false`; `u` deletes `sara/x`, HEAD back (`graft-ops tests/it/switch_rule.rs::track_*`) |
+| remote-only branch (for the picker, 10) | `origin/sara/x` fetched, no local `sara/x` | — (no key yet: the picker is ticket 10) | mergewright-ops only: `switch --create sara/x --track refs/remotes/origin/sara/x`; `sara/x@{upstream}` = `origin/sara/x` even with `branch.autoSetupMerge=false`; `u` deletes `sara/x`, HEAD back (`mergewright-ops tests/it/switch_rule.rs::track_*`) |
 
 ## Switching (m7-power-tools/10, the branch picker)
 
-`C` on the graph opens the picker over the lower graph: the branch before first, then his local branches, the remote's with no copy of his, and the one he is on last. Typing filters (a segment prefix above a substring). `⏎` switches by the one switch rule above (instant on a clean tree; a preview, then `y`, over edits); `⇥` shows the row's tip on the graph and writes nothing; `esc` closes. A click selects a row, a double-click switches. Walks: `crates/graft/tests/it/m7_walk/picker.rs`, each counted against the M7 note's fence. Fixture: `main` clean, `feature-a` before (built on `main`), `login-page` local, `origin/sara/login-page` remote-only, `main` tracking `origin/main`. Colour unverified (rule 5).
+`C` on the graph opens the picker over the lower graph: the branch before first, then his local branches, the remote's with no copy of his, and the one he is on last. Typing filters (a segment prefix above a substring). `⏎` switches by the one switch rule above (instant on a clean tree; a preview, then `y`, over edits); `⇥` shows the row's tip on the graph and writes nothing; `esc` closes. A click selects a row, a double-click switches. Walks: `crates/mergewright/tests/it/m7_walk/picker.rs`, each counted against the M7 note's fence. Fixture: `main` clean, `feature-a` before (built on `main`), `login-page` local, `origin/sara/login-page` remote-only, `main` tracking `origin/main`. Colour unverified (rule 5).
 
 | Journey | Start | Keys | What right looks like |
 |---|---|---|---|
@@ -2960,7 +2960,7 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 
 ## M7: put staged changes into their commits (m7-power-tools/09)
 
-`a` reads the cursor: on an older commit of his branch it previews putting the staged changes into it; on `HEAD` it is today's amend unless something is built on his branch. `.` on the uncommitted row offers absorb. Every route ends in the Ghost Preview and `y`. Walks: `crates/graft/tests/it/m7_walk/amend_into.rs`. Colour unverified (rule 5).
+`a` reads the cursor: on an older commit of his branch it previews putting the staged changes into it; on `HEAD` it is today's amend unless something is built on his branch. `.` on the uncommitted row offers absorb. Every route ends in the Ghost Preview and `y`. Walks: `crates/mergewright/tests/it/m7_walk/amend_into.rs`. Colour unverified (rule 5).
 
 | Journey | Start | Keys | What right looks like |
 |---|---|---|---|
@@ -2975,18 +2975,18 @@ A fast-forward pull whose fetch brings a file he has edited (staged or not) sets
 
 | Journey | Start | Keys | What right looks like |
 |---|---|---|---|
-| `pull_ff_over_edits` | the graph on `main`, origin one ahead changing line 1 of `shared.txt`, his unsaved edit to line 10 | `p` = 1 (03 "Decided"; the note's fence has no row; no best-tool count — the prior-art study has no pull row) | HEAD at origin's tip; `shared.txt` holds both changes, his diff lines byte-equal and still unstaged; no stash left; the cursor (`▏`) on the new HEAD's row; the line `✓ pulled origin/main · your edits are back`. Walk: `crates/graft/tests/it/m7_walk/pull.rs::pull_ff_over_edits`; capture `docs/shots/m7/pull-over-edits-120x40.txt` (taken by the walk). At 80 columns both clauses whole: `pull_over_edits::a_ff_pull_over_edits_says_they_are_back`. |
+| `pull_ff_over_edits` | the graph on `main`, origin one ahead changing line 1 of `shared.txt`, his unsaved edit to line 10 | `p` = 1 (03 "Decided"; the note's fence has no row; no best-tool count — the prior-art study has no pull row) | HEAD at origin's tip; `shared.txt` holds both changes, his diff lines byte-equal and still unstaged; no stash left; the cursor (`▏`) on the new HEAD's row; the line `✓ pulled origin/main · your edits are back`. Walk: `crates/mergewright/tests/it/m7_walk/pull.rs::pull_ff_over_edits`; capture `docs/shots/m7/pull-over-edits-120x40.txt` (taken by the walk). At 80 columns both clauses whole: `pull_over_edits::a_ff_pull_over_edits_says_they_are_back`. |
 | pull clash | same, his edit on line 1 | `p` = 1 | the pull is done; the put-back clashes; he lands on the resolver on `shared.txt`, the clash is a set-aside's, his edit kept in the stash until the last file is done (`pull_over_edits::a_ff_pull_clash_lands_on_the_resolver`). No capture: the resolver's own captures cover the screen. |
 
-graft-ops, against real repositories (`crates/graft-ops/tests/it/pull_set_aside.rs`): the journal record of a clean pull and of a failed fetch is as before 03b; `u` puts back HEAD, the staged split and every file; ADR-0045 §7's tree table round-trips; a stop before each of steps 1–6 leaves his edits in the tree or the stash list.
+mergewright-ops, against real repositories (`crates/mergewright-ops/tests/it/pull_set_aside.rs`): the journal record of a clean pull and of a failed fetch is as before 03b; `u` puts back HEAD, the staged split and every file; ADR-0045 §7's tree table round-trips; a stop before each of steps 1–6 leaves his edits in the tree or the stash list.
 
 ## M7: stashes in history (m7-power-tools/16)
 
 | Scenario | Right looks like |
 |---|---|
-| A stash in the graph | One row per drawn stash (`On <branch>: <message>`, `■`, `[stash@{0}]`); **no** `index on …` and **no** `untracked files on …` row. Only `stash@{0}` is ever a row — older entries live in the reflog, not the walk. Test: `crates/graft/tests/it/stash_in_history.rs::stash_index_and_untracked_commits_are_not_drawn`. |
+| A stash in the graph | One row per drawn stash (`On <branch>: <message>`, `■`, `[stash@{0}]`); **no** `index on …` and **no** `untracked files on …` row. Only `stash@{0}` is ever a row — older entries live in the reflog, not the walk. Test: `crates/mergewright/tests/it/stash_in_history.rs::stash_index_and_untracked_commits_are_not_drawn`. |
 | A commit only a stash reaches (its branch deleted or rebased away) | That row draws `□`, dimmed, with `[only in stash@{0}]` last among its badges; a branch put back on it and `Ctrl+R` unmarks it; `H` hides it with the stash. ASCII tier: `*` like every node, the badge carries it. Pixel tier: the row is dimmed (`view/strips/tests.rs::a_stash_only_commit_is_dimmed_in_its_strip`); with a selection only an off-thread row reads dim (pre-existing, ticket 16 NOTES). Tests: `stash_in_history.rs::{a_commit_only_a_stash_reaches_is_drawn_as_only_in_stash, a_rebased_base_on_a_branch_again_loses_the_mark, h_hides_the_only_in_stash_rows_too}`. Captures `docs/shots/m7/stash-in-history-{120x40,80x24}.txt`. Colour (dimming, badge colour) unverified. |
-| A stash's detail header | No `evil merge` line of any kind on a stash entry's commit. Test: `crates/graft/src/view/radar.rs::a_stash_commit_has_no_evil_merge_line`. |
+| A stash's detail header | No `evil merge` line of any kind on a stash entry's commit. Test: `crates/mergewright/src/view/radar.rs::a_stash_commit_has_no_evil_merge_line`. |
 
 ## M7: the force box names what leaves (m7-power-tools/16b)
 
@@ -2996,29 +2996,29 @@ graft-ops, against real repositories (`crates/graft-ops/tests/it/pull_set_aside.
 
 ## M7: the journal, J (m7-power-tools/24-a2, 24-b)
 
-Walks: `cargo nextest run --workspace -E 'test(/m7_walk::journal/) | test(/journal_screen/) | test(/journal_put_back/) | test(/put_back_box/)'`. Fixture: `graft_fixtures::lost_work` (journeys 13 → 14 → 15 in one repo, git's clock pinned); the put-back box on a Trivial repo.
+Walks: `cargo nextest run --workspace -E 'test(/m7_walk::journal/) | test(/journal_screen/) | test(/journal_put_back/) | test(/put_back_box/)'`. Fixture: `mergewright_fixtures::lost_work` (journeys 13 → 14 → 15 in one repo, git's clock pinned); the put-back box on a Trivial repo.
 
 | Scenario | Right looks like |
 |---|---|
-| `J` on the "lost work" fixture (journey 13's start) | Ticket 24-b (journey 13): `J` on the "lost work" fixture, every stage in. Title `JOURNAL · what happened in this repo, newest first`. Newest first: `●  Mergewright` fetch, then `$  outside` steps each with its `git: "…"` column, a `└ ✗ lost` row under the reset (`a65d7e4 "Add rate limiter" · was main's tip · no branch holds it`, preselected `▸`) and under the switch (`419e109 "Try redis cache" · was spike's tip · spike is gone`), the undo `●` row marked `← U` with `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` under it, the discard `undone`. Last list line: `a branch deleted outside Mergewright and never checked out leaves no trace here` (muted). No status row (nothing wrong). Legend line, then the bar `⏎ put main back to it  b new branch here  / find  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-187x50.txt`. |
-| J at 140x40, cursor on the reset's `$` row | Ticket 24-b: J at 140x40 (120–179), cursor moved to the reset's `$` row: no `git:` column; the selected row's `git: "reset: moving to HEAD~1"` on the line under it; the source word (`Mergewright` / `outside`) still drawn. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-140x40.txt`. |
-| J at 100x30 | Ticket 24-b: J at 100x30 (under 120): no source word (the legend carries it); the ✗ rows keep their words; the legend cut at a word with `…`; the bar whole. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-100x30.txt`. |
-| J at 187x24 | Ticket 24-b: J at 187x24: title, legend and bar kept; the list fits, so nothing scrolls here (scrolling is `journal_screen.rs::at_24_rows_the_frame_stays_and_the_rows_scroll`). Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-187x24.txt`. |
-| The shell's `reset --hard HEAD~1` lost "Add rate limiter"; `J`, then `⏎` on the lost row | Tickets 24-a2 + 24-b: the shell's `reset --hard HEAD~1` lost "Add rate limiter"; `J`, `⏎` on the lost row. J's real rows above (24-b): the `$` reset row, its `└ ✗ lost  <sha7> "Add rate limiter" · was main's tip · no branch holds it` row selected, the commit's `$` row; the `fast-import` row is the Trivial fixture's own build, stamped by the wall clock, so against the capture's fixed clock it reads `future` (not a thing he meets). The box at the bottom titled `Preview: put main back to <sha7> "Add rate limiter"`; now / after y / your files: / u undoes it; footer starts `y put it back`; J's own bar blank under it. Test `crates/graft/tests/it/put_back_box.rs::the_put_back_box_draws_over_j`. Colour unverified. Capture `docs/shots/m7/put-back-preview-187x50.txt`. |
-| `y` on the put-back box (journey 13 lands) | Ticket 24-b (journey 13 landed): after `J ⏎ y`. The graph: `main` on "Add rate limiter" tagged `↺ put back`; "Add metrics endpoint" tagged `○ main was here`; the bottom row `✓ put back · main has "Add rate limiter" again  u undoes`. The commit-graph notice above it is the fixture's (no commit-graph file), not J's. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/put-back-landed-187x50.txt`. |
-| `J` again after the put-back | Ticket 24-b (journey 14's start): `J` again after the put-back. A new `●  Mergewright  now  put main back to a65d7e4 (the shell's reset)` row on top marked `← u`; the ✗ row for "Add rate limiter" gone (main holds it); spike's ✗ row still there. Nothing preselected (the newest step is Mergewright's). Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-after-put-back-120x40.txt`. |
-| `J n ⏎` on his lost edit, the file as the forced undo left it (journey 15, no shell step) | Ticket 30o-a: J's rows above, the `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` row selected; the box titled `Preview: put back your edit to src/a.rs`; `your files: src/a.rs comes back · what's in src/a.rs now is replaced`; `u undoes it`; footer starts `y put it back`; J's bar blank. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-edit-preview-187x50.txt`. |
-| `y` on the edit's box (journey 15 lands) | Ticket 30o-a: the graph with the changes pane open on `src/a.rs` (`▾ src/`, `M a.rs`, its diff adding the lost edit's `2`; the pane's cursor row is colour only); the bottom row `✓ your edit to src/a.rs is back  u undoes` (as `done_status` orders it). Then `u` (uncounted) puts back what was in the file: the walk reads `src/a.rs` = `DISCARDED_EDIT`. Test `crates/graft/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-edit-landed-187x50.txt`. |
-| `J n ⏎` on his lost edit over a **staged** file (journey 15, `src/a.rs` staged then edited) | Ticket 30p-a (journey 15, `J n ⏎`, over a staged file: `src/a.rs` staged as `S`, then edited): the box titled `Preview: put back your edit to src/a.rs`, with the line `your files: src/a.rs comes back · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`, then `u undoes it`. The footer starts `y put it back`. J's rows above it, the lost edit's row selected; its two newest `$` rows are the test's shell stand-in for journeys 13 and 14. Test `crates/graft/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-staged-preview-187x50.txt`. |
-| `y` on that box (the staged file lands) | Ticket 30p-a (journey 15 over a staged file, after `y`): the changes pane shows `STAGED (1)` and `UNSTAGED (1)`, each with `M a.rs`. The diff shown is the lost edit's (`2` added, over the staged `3`). The bottom row is `✓ your edit to src/a.rs is back  u undoes`. The cursor row is colour only (30o-a NOTES). Then `u` (uncounted): the walk reads `src/a.rs` = `W` and `git show :src/a.rs` = `S`. Test `crates/graft/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-staged-landed-187x50.txt`. |
-| `space` on a `●` row | Ticket 24-b: `space` on the discard's `●` row: under it `commands Mergewright ran`, then `┆ git --literal-pathspecs restore --worktree -- src/a.rs` — `┆`, never `$`, so `$` only ever means outside Mergewright. The bar `⏎ revert to before this  / find  space command log  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::journal_expanded_capture`. Colour unverified. Capture `docs/shots/m7/journal-expanded-120x40.txt`. |
-| `/spike ⏎` in J | Ticket 30o-c: `J` on the "lost work" fixture, then `/spike ⏎`. The title ends in blame's find tail, `JOURNAL · what happened in this repo, newest first · find "spike" 1 of 4` (the four rows naming spike: the two switches, spike's lost `✗` 419e109 and the commit on spike). `▸` on `switch from spike to main`, the first row naming spike at or below where the cursor stood (the preselected `✗` a65d7e4). Find is `⏎`-driven as blame's: typing alone moves nothing. The bar `⏎ switch back to spike  b new branch here  / find  n N match  J/esc close`. Test `crates/graft/tests/it/m7_walk/journal.rs::journal_find_capture`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-find-187x50.txt`. |
+| `J` on the "lost work" fixture (journey 13's start) | Ticket 24-b (journey 13): `J` on the "lost work" fixture, every stage in. Title `JOURNAL · what happened in this repo, newest first`. Newest first: `●  Mergewright` fetch, then `$  outside` steps each with its `git: "…"` column, a `└ ✗ lost` row under the reset (`a65d7e4 "Add rate limiter" · was main's tip · no branch holds it`, preselected `▸`) and under the switch (`419e109 "Try redis cache" · was spike's tip · spike is gone`), the undo `●` row marked `← U` with `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` under it, the discard `undone`. Last list line: `a branch deleted outside Mergewright and never checked out leaves no trace here` (muted). No status row (nothing wrong). Legend line, then the bar `⏎ put main back to it  b new branch here  / find  J/esc close`. Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-187x50.txt`. |
+| J at 140x40, cursor on the reset's `$` row | Ticket 24-b: J at 140x40 (120–179), cursor moved to the reset's `$` row: no `git:` column; the selected row's `git: "reset: moving to HEAD~1"` on the line under it; the source word (`Mergewright` / `outside`) still drawn. Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-140x40.txt`. |
+| J at 100x30 | Ticket 24-b: J at 100x30 (under 120): no source word (the legend carries it); the ✗ rows keep their words; the legend cut at a word with `…`; the bar whole. Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-100x30.txt`. |
+| J at 187x24 | Ticket 24-b: J at 187x24: title, legend and bar kept; the list fits, so nothing scrolls here (scrolling is `journal_screen.rs::at_24_rows_the_frame_stays_and_the_rows_scroll`). Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-187x24.txt`. |
+| The shell's `reset --hard HEAD~1` lost "Add rate limiter"; `J`, then `⏎` on the lost row | Tickets 24-a2 + 24-b: the shell's `reset --hard HEAD~1` lost "Add rate limiter"; `J`, `⏎` on the lost row. J's real rows above (24-b): the `$` reset row, its `└ ✗ lost  <sha7> "Add rate limiter" · was main's tip · no branch holds it` row selected, the commit's `$` row; the `fast-import` row is the Trivial fixture's own build, stamped by the wall clock, so against the capture's fixed clock it reads `future` (not a thing he meets). The box at the bottom titled `Preview: put main back to <sha7> "Add rate limiter"`; now / after y / your files: / u undoes it; footer starts `y put it back`; J's own bar blank under it. Test `crates/mergewright/tests/it/put_back_box.rs::the_put_back_box_draws_over_j`. Colour unverified. Capture `docs/shots/m7/put-back-preview-187x50.txt`. |
+| `y` on the put-back box (journey 13 lands) | Ticket 24-b (journey 13 landed): after `J ⏎ y`. The graph: `main` on "Add rate limiter" tagged `↺ put back`; "Add metrics endpoint" tagged `○ main was here`; the bottom row `✓ put back · main has "Add rate limiter" again  u undoes`. The commit-graph notice above it is the fixture's (no commit-graph file), not J's. Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/put-back-landed-187x50.txt`. |
+| `J` again after the put-back | Ticket 24-b (journey 14's start): `J` again after the put-back. A new `●  Mergewright  now  put main back to a65d7e4 (the shell's reset)` row on top marked `← u`; the ✗ row for "Add rate limiter" gone (main holds it); spike's ✗ row still there. Nothing preselected (the newest step is Mergewright's). Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified. Capture `docs/shots/m7/journal-after-put-back-120x40.txt`. |
+| `J n ⏎` on his lost edit, the file as the forced undo left it (journey 15, no shell step) | Ticket 30o-a: J's rows above, the `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup` row selected; the box titled `Preview: put back your edit to src/a.rs`; `your files: src/a.rs comes back · what's in src/a.rs now is replaced`; `u undoes it`; footer starts `y put it back`; J's bar blank. Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-edit-preview-187x50.txt`. |
+| `y` on the edit's box (journey 15 lands) | Ticket 30o-a: the graph with the changes pane open on `src/a.rs` (`▾ src/`, `M a.rs`, its diff adding the lost edit's `2`; the pane's cursor row is colour only); the bottom row `✓ your edit to src/a.rs is back  u undoes` (as `done_status` orders it). Then `u` (uncounted) puts back what was in the file: the walk reads `src/a.rs` = `DISCARDED_EDIT`. Test `crates/mergewright/tests/it/m7_walk/journal.rs::the_three_lost_work_journeys`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-edit-landed-187x50.txt`. |
+| `J n ⏎` on his lost edit over a **staged** file (journey 15, `src/a.rs` staged then edited) | Ticket 30p-a (journey 15, `J n ⏎`, over a staged file: `src/a.rs` staged as `S`, then edited): the box titled `Preview: put back your edit to src/a.rs`, with the line `your files: src/a.rs comes back · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`, then `u undoes it`. The footer starts `y put it back`. J's rows above it, the lost edit's row selected; its two newest `$` rows are the test's shell stand-in for journeys 13 and 14. Test `crates/mergewright/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-staged-preview-187x50.txt`. |
+| `y` on that box (the staged file lands) | Ticket 30p-a (journey 15 over a staged file, after `y`): the changes pane shows `STAGED (1)` and `UNSTAGED (1)`, each with `M a.rs`. The diff shown is the lost edit's (`2` added, over the staged `3`). The bottom row is `✓ your edit to src/a.rs is back  u undoes`. The cursor row is colour only (30o-a NOTES). Then `u` (uncounted): the walk reads `src/a.rs` = `W` and `git show :src/a.rs` = `S`. Test `crates/mergewright/tests/it/journal_put_back.rs::a_staged_path_put_back_lands_on_its_unstaged_row`. Colour unverified (rule 5). Capture `docs/shots/m7/put-back-staged-landed-187x50.txt`. |
+| `space` on a `●` row | Ticket 24-b: `space` on the discard's `●` row: under it `commands Mergewright ran`, then `┆ git --literal-pathspecs restore --worktree -- src/a.rs` — `┆`, never `$`, so `$` only ever means outside Mergewright. The bar `⏎ revert to before this  / find  space command log  J/esc close`. Test `crates/mergewright/tests/it/m7_walk/journal.rs::journal_expanded_capture`. Colour unverified. Capture `docs/shots/m7/journal-expanded-120x40.txt`. |
+| `/spike ⏎` in J | Ticket 30o-c: `J` on the "lost work" fixture, then `/spike ⏎`. The title ends in blame's find tail, `JOURNAL · what happened in this repo, newest first · find "spike" 1 of 4` (the four rows naming spike: the two switches, spike's lost `✗` 419e109 and the commit on spike). `▸` on `switch from spike to main`, the first row naming spike at or below where the cursor stood (the preselected `✗` a65d7e4). Find is `⏎`-driven as blame's: typing alone moves nothing. The bar `⏎ switch back to spike  b new branch here  / find  n N match  J/esc close`. Test `crates/mergewright/tests/it/m7_walk/journal.rs::journal_find_capture`. Colour unverified (rule 5). Capture `docs/shots/m7/journal-find-187x50.txt`. |
 
 ## M7: the rewrite editor (m7-power-tools/08)
 
 Walks: `cargo nextest run --workspace -E 'test(/m7_walk::rewrite_editor/) | test(rewrite_editor)'`. Fixture: `feature-a` 5 commits since `main` (one `fixup!`, opens pre-marked), `feature-b` built on it.
 
-- `squash-last-three`: on HEAD, `R s s y`, 4 keys, fenced (`squash_last_three`). After it `main..feature-a` is `Handle expired tokens`, `Add OAuth callback` (three became one; the fixup melded); its message is the MESSAGE block the editor drew, line for line; `feature-b^` is the new `feature-a`; the cursor lands on the new HEAD (`moves_head` covers `Rewrite`, graft-ops `operation.rs:1278`); `u` puts every branch back.
+- `squash-last-three`: on HEAD, `R s s y`, 4 keys, fenced (`squash_last_three`). After it `main..feature-a` is `Handle expired tokens`, `Add OAuth callback` (three became one; the fixup melded); its message is the MESSAGE block the editor drew, line for line; `feature-b^` is the new `feature-a`; the cursor lands on the new HEAD (`moves_head` covers `Rewrite`, mergewright-ops `operation.rs:1278`); `u` puts every branch back.
 - `swap-adjacent`: on HEAD's parent (placed, not counted), `R Alt+↑ y`, 3 keys, fenced (`swap_adjacent`). The two newest commits trade places; `u` puts every branch back.
 - Look and leave: `R s esc` (`rewrite_look_and_leave_writes_nothing`): branches, index, files and the journal's entries unchanged.
 - Mouse: a click selects the row drawn there; a drag moves it and replans once (`a_click_selects_the_row`, `a_drag_moves_the_row`).
@@ -3051,7 +3051,7 @@ Walks: `cargo nextest run --workspace -E 'test(rewrite_stops) | test(continue_in
 - `c` on a rebase/cherry-pick begun in the shell: the terminal goes to `git <kind> --continue`; back in Mergewright: finished → graph + `✓ git <kind> --continue finished`; conflicted again → resolver; non-zero, still live → `git <kind> --continue exited <code> · still stopped` (`continue_in_git` tests). A shell revert still refuses in words.
 - Capture `m7/rewrite-edit-stop-187x50.txt` — right: `still to apply · not commits yet` boxed; his two `pick` rows only (`a5`, `a4`); `feature-b (Sara): 2 commits follow, on top`; `▏` on `HEAD · stopped here`; bar contains `a amend it`, `c continue`, `space stage` (`capture_edit_stop_sizes`).
 - Capture `m7/rewrite-edit-stop-80x24.txt` — right: `REBASING  step 3 of 12` whole; no `change files` hint; six `pick` rows then `+1 more` (7 pending, 6 drawn); the follower row `feature-b (Sara): 2 commits follow, on top` is drawn (`capture_edit_stop_sizes`).
-- Capture `m7/rewrite-edit-stop-120x40.txt` — right: `pick a2` then `feature-b` and `feature-c` follower rows; bar `⇥ banner  a amend it  c continue`, then `space` and `⏎` bare (the width ladder). Reads `1 commit follow` — a grammar defect in graft-ui's follower line, open.
+- Capture `m7/rewrite-edit-stop-120x40.txt` — right: `pick a2` then `feature-b` and `feature-c` follower rows; bar `⇥ banner  a amend it  c continue`, then `space` and `⏎` bare (the width ladder). Reads `1 commit follow` — a grammar defect in mergewright-ui's follower line, open.
 - Colour unverified.
 
 ## M7 acceptance (m7-power-tools/26)
@@ -3129,7 +3129,7 @@ carrier (words, glyphs, cursor row), never colour.
   included); then main on D again, spike on E, and `src/a.rs` holds his lost edit.
   **Fails today (2026-10-01, 26b):** the `u` step now holds (30s); the last step fails — `J n ⏎ y` writes his lost
   edit to `src/a.rs` in CRLF, where he had LF (`recover.rs:123`; the write is `git restore --source=… --worktree`,
-  `graft-ops/src/operation/recover.rs:239-247`). Gap `M7/30q-putback-fwd`.
+  `mergewright-ops/src/operation/recover.rs:239-247`). Gap `M7/30q-putback-fwd`.
 - [ ] **Guard at 80 columns** (review 28 Q2) · `C <branch> ⏎` over an ignored
   `src/services/authentication/providers/oauth2/callbacks/session-cache.json`, branch
   `feature/sara-long-running-oauth-token-refresh-rework` ·
@@ -3139,7 +3139,7 @@ carrier (words, glyphs, cursor row), never colour.
 ### Coverage, captures, perf
 
 - [ ] Every id of both fences has a walk: `m7_walk::every_m7_journey_id_has_a_walk` (id → test table `WALKS` in
-  `crates/graft/tests/it/m7_walk.rs`).
+  `crates/mergewright/tests/it/m7_walk.rs`).
 - [ ] Every m3–m6 pty capture matches in compare mode (script step 2).
 - [ ] Contact sheet `docs/shots/m7/m7-contact-sheet*.txt`: every M7 capture under its Right line, the journal's first,
   each file ≤ 200 KB. Judged by eye by the user only (rule 6).
@@ -3196,7 +3196,7 @@ known gap" under The heavy tier above. **Colour: unverified (rule 5)** for every
 
 ## M8: how he runs the trace (m8-polish-and-ship G-trace)
 
-`MWR_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/graft/src/trace.rs`):
+`MWR_PERF_TRACE=<file>` makes the real app write one line of numbers per drawn frame (`crates/mergewright/src/trace.rs`):
 where the frame's time went (`update_us`, `draw_us`, `write_us`), how many bytes it sent, how many keys it drew
 (`motions`) and how old the oldest was when it finished (`input_age_us`). **Numbers only** — no path, branch, sha
 or subject; the header's only words are the tier and `$TERM_PROGRAM`. `history_rows` is the rows laid out so far,
@@ -3253,17 +3253,17 @@ What can run today runs from scripts, writing summary lines to `docs/release/`:
 | `scripts/linux-fast-tier.sh` (needs Docker) | the fast tier on Linux, in a throwaway official `rust` container, as a plain user | `linux.txt` |
 | `scripts/git-matrix.sh` | the git-sensitive tests against git built from source: the floor (2.38.0) and the newest release | `git-matrix.txt` |
 
-A failure on the floor in `git-matrix.txt` raises the floor (`GitVersion::MINIMUM`, `graft-git/src/version.rs`) to the
+A failure on the floor in `git-matrix.txt` raises the floor (`GitVersion::MINIMUM`, `mergewright-git/src/version.rs`) to the
 oldest passing version, with a line here; it is never answered by skipping a test.
 
 **2026-10-09 (m8/24): the floor fails, by design, and is not raised yet — the user decides at the M8 stop.** git 2.38.0:
-16 of 26 passed; all 10 failures are the rebase preview's conflict forecast, which `graft-ops/src/preview/chain.rs:31`
+16 of 26 passed; all 10 failures are the rebase preview's conflict forecast, which `mergewright-ops/src/preview/chain.rs:31`
 (`MERGE_BASE_MIN`, used at :78) turns off below git 2.40 ("conflicts: not checked"); 2.40.0 and 2.56.0: 26 of 26. The
 fast tier as a whole assumes 2.40+: on Debian bookworm's git 2.39.5 (an early run, before `--init`) 146 failed, 50 of
 them printing "git 2.40+ needed" (`docs/release/linux-git-2.39.txt`). Either the floor rises to 2.40, or 2.38–2.39 stay supported with a forecast that
 says "not checked" and the fast tier is documented as needing 2.40.
 
-`cargo install --locked --path crates/graft` from a clean tree into an empty `CARGO_HOME`: `docs/release/cargo-install.txt`.
+`cargo install --locked --path crates/mergewright` from a clean tree into an empty `CARGO_HOME`: `docs/release/cargo-install.txt`.
 
 A person's steps, after publishing, **on a clean macOS account** (one that never had Mergewright; Homebrew installed). Two
 steps, as homebrew-core's tools (design note J16):

@@ -1,4 +1,4 @@
-# Graft: Design — Undo journal design
+# Mergewright: Design — Undo journal design
 
 [See also: docs/design/README.md](README.md) for the full section index and cross-references.
 Previous: [Visualization](05-visualization.md) · Next: [Open design questions](07-open-design-questions.md)
@@ -17,14 +17,14 @@ only place allowed to run a write operation.
   `git rev-parse --git-path graft/undo-journal.jsonl` resolves to — never a
   literal `.git/` join, because at the root of a linked worktree `.git` is
   a *file* pointing at the real git dir, not a directory. Every other path
-  Graft keeps under the git dir resolves the same way. `--git-path` puts
+  Mergewright keeps under the git dir resolves the same way. `--git-path` puts
   the journal in the **per-worktree** git dir: `.git/graft/…` for the main
   worktree, `.git/worktrees/<name>/graft/…` for a linked one. The journal
   is deliberately per-worktree (ADR-0010): every entry's index and
   working-tree state belongs to exactly the worktree the operation ran in,
   so an entry can never be replayed against the wrong working tree — and
   an operation is undoable only from the worktree it ran in. Repo-local
-  (travels with the repo, not with Graft's global config), never committed
+  (travels with the repo, not with Mergewright's global config), never committed
   to the repo's own history, human-readable enough to inspect by hand if
   something goes wrong.
 - **Backup content:** real git objects under
@@ -77,7 +77,7 @@ JournalEntry {
    `worktree_after` — what §6.7 later compares against), and append a
    `Committed` record referencing the same `id`. The log is append-only —
    this is a second line, not an edit to the first — so a crash between steps 1 and 3 leaves a
-   `Pending` record with no matching `Committed` one. On next launch, Graft
+   `Pending` record with no matching `Committed` one. On next launch, Mergewright
    treats an unmatched `Pending` entry the same way it treats a stray
    `rebase-merge/` directory (PROMPT.md §6): surfaced explicitly, offered for
    inspection, never silently dropped or silently assumed to have succeeded.
@@ -173,14 +173,14 @@ described as fully browsable even for entries off the current undo/redo path.
 
 Selecting an entry in the browser (§1.10) and confirming reverts state to
 just *before* that entry, by applying each entry's specific inverse from the
-most recent one back to the target, in order. Before confirming, Graft draws
+most recent one back to the target, in order. Before confirming, Mergewright draws
 the predicted resulting ref state as a Ghost Preview (§1.7) — undo gets the
 same "see it before you do it" treatment as every other history-changing
 operation, per PROMPT.md §1.5.
 
 ### 6.7 Safety rails
 
-Before applying an undo, Graft compares the state the journal entry says
+Before applying an undo, Mergewright compares the state the journal entry says
 the operation left behind against what's actually there now — three
 comparisons, not one:
 
@@ -191,7 +191,7 @@ comparisons, not one:
   combined-tree hash (§6.3's mechanism, untracked files included) of the
   working tree as it is now.
 
-If any of the three differ — a bare `git` command run outside Graft, or
+If any of the three differ — a bare `git` command run outside Mergewright, or
 just an edited file — undo doesn't silently overwrite the unexpected
 state: it stops, explains exactly which of the three changed, and asks
 before proceeding. A plain working-tree edit never moves a ref, which is

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # m7-power-tools/42: held `j` at his scale, both tiers, into a draining
-# terminal (`held_key::` in crates/graft/tests/it/held_key.rs). Release
+# terminal (`held_key::` in crates/mergewright/tests/it/held_key.rs). Release
 # build. Writes docs/perf/fix-scroll-held-key.txt (or $1): the HEAD, the
 # machine and its load, the measured macOS pty capacity beside the model's
 # 16 KiB pipe, then every `SUMMARY held_key` and `VERDICT held_key` line and

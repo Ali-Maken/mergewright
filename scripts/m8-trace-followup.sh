@@ -47,7 +47,7 @@ awk '$1 == "frame" { n++; for (i = 2; i <= NF; i++) { split($i, kv, "="); f[n, k
            for (k = last + 1; k <= n; k++) printf " [bytes=%s draw_us=%s]", f[k, "bytes"], f[k, "draw_us"]
            print "" }' "$TRACE"
 # Where the bytes went: Kitty uploads by layer (an id with bit 31 set is an
-# emphasis image, graft-term/src/kitty/mod.rs:47), with the most common
+# emphasis image, mergewright-term/src/kitty/mod.rs:47), with the most common
 # upload sizes in pixels. Read from the raw stream, which is deleted with $WORK.
 python3 -I - "$WORK/stream.bin" <<'PY'
 import collections, re, sys

@@ -1,9 +1,9 @@
-//! Fuzzes `graft_git::blame::parse_porcelain` with arbitrary bytes: it must
+//! Fuzzes `mergewright_git::blame::parse_porcelain` with arbitrary bytes: it must
 //! return `Ok` or `Err`, never panic, and every committed line it accepts
 //! names a commit it also returns (m7-power-tools/18).
 #![no_main]
 
-use graft_git::blame::parse_porcelain;
+use mergewright_git::blame::parse_porcelain;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
