@@ -88,7 +88,7 @@ fn formula_template_names_the_table() {
         .find_map(|line| line.strip_prefix("license = "))
         .expect("the workspace names a licence");
     assert!(
-        template.contains(&format!("  license {license}\n")),
+        template.contains(&format!("  license {}\n", brew_license(license))),
         "the template's licence is the workspace's {license}"
     );
 
@@ -184,4 +184,15 @@ fn readme_install_lines_match_the_plan() {
             );
         }
     }
+}
+
+/// The workspace's SPDX licence as Homebrew spells it: `A OR B` becomes
+/// `any_of: ["A", "B"]`; a single id stays the quoted string.
+fn brew_license(license: &str) -> String {
+    let spdx = license.trim_matches('"');
+    if !spdx.contains(" OR ") {
+        return license.to_string();
+    }
+    let ids: Vec<String> = spdx.split(" OR ").map(|id| format!("\"{id}\"")).collect();
+    format!("any_of: [{}]", ids.join(", "))
 }
