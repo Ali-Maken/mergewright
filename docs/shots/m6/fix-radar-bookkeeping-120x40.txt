@@ -22,9 +22,9 @@
 
 ▸ ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
-  │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
-  │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
-  ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
+  ┃ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
+  ┃ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
+  ●┄╯    Commit 200                                                                                     GF 7y   d5ae5fd
   ●      Commit 199                                                                                     GF 7y   13e6ab1
   ●      Commit 198                                                                                     GF 7y   f5055d9
   ●      Commit 197                                                                                     GF 7y   2cce853
@@ -65,9 +65,9 @@
 
   ◆      [◆ main ⇄ origin] ours                                                                         GF now  0000000
   ●      theirs                                                                                         GF 6y   7be74b5
-▸ │ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
-  │ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
-  ●─╯    Commit 200                                                                                     GF 7y   d5ae5fd
+▸ ║ ■    [stash@{0}] On main: wip                                                                       GF 6y   e79bc4b
+  ║ □    [only in stash@{0}] ours                                                                       GF 6y   739071c
+  ●━╯    Commit 200                                                                                     GF 7y   d5ae5fd
   ●      Commit 199                                                                                     GF 7y   13e6ab1
   ●      Commit 198                                                                                     GF 7y   f5055d9
   ●      Commit 197                                                                                     GF 7y   2cce853

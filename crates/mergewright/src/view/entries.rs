@@ -13,9 +13,13 @@ use crate::history::History;
 use crate::update::AppState;
 
 mod cells;
+mod roles;
 
 pub(super) use cells::badge_view;
 use cells::row_entry;
+#[cfg(test)]
+pub(in crate::view) use roles::focus;
+pub(crate) use roles::lane_roles;
 
 /// The selection's thread through the window the walk last sent, keyed by
 /// history row number. Worked out from rows already on hand — one pass over
@@ -117,9 +121,10 @@ pub(super) fn visible_rows<'a>(
     // the highlight moves onto it and off the history cursor's row —
     // `move_from_graph` never moves `History::cursor` when it sets the flag,
     // so the two would otherwise both read as "the cursor's row" at once.
+    let route = roles::frame_route(state, history);
     uncommitted
         .map(|status| {
-            let mut entry = uncommitted_entry(top_row, status);
+            let mut entry = uncommitted_entry(top_row, status, &route);
             if state.on_working_tree {
                 entry.line.paint = RowPaint::Highlighted;
             }
@@ -142,6 +147,7 @@ pub(super) fn visible_rows<'a>(
                         now,
                     );
                     entry.fold = super::rows::fold_tail(state, history, row, index);
+                    entry.line.roles = Some(lane_roles(row, &route));
                     if let Some(thread) = thread {
                         entry.line.thread = Some(thread.lit(index).clone());
                     }
@@ -187,10 +193,16 @@ pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
 /// or `None` on an unborn branch — gives it the same lane and lane
 /// occupancy `HEAD`'s row has, so the connector line reads as continuing
 /// down into it. Author, date and SHA stay blank (DESIGN.md §1.1's mockup):
-/// there is no commit behind this row to show them for.
-fn uncommitted_entry<'a>(head_row: Option<&Row>, status: &WorkingTreeStatus) -> GraphEntry<'a> {
+/// there is no commit behind this row to show them for. Its lanes take
+/// their roles from `route`, as `HEAD`'s row does.
+fn uncommitted_entry<'a>(
+    head_row: Option<&Row>,
+    status: &WorkingTreeStatus,
+    route: &mergewright_graph::Route,
+) -> GraphEntry<'a> {
     let mut line = GraphLine::owned(uncommitted_row(head_row));
     line.node = NodeKind::Uncommitted;
+    line.roles = Some(lane_roles(&line.row, route));
     GraphEntry {
         badges: Vec::new(),
         line,

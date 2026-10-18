@@ -1,11 +1,10 @@
 //! The ease pass's vocabulary (ticket ease-pass/03, ADR-0063): the commit
 //! options' keyless rows, and every key the mocks reuse where it was.
 //!
-//! `graph.colours_off` (`#`) is decided but not in the table yet: `graft`'s
-//! dead-key sweeps (`update/tests/keymap_edge/sweep.rs`,
-//! `update/tests/palette_live.rs`) refuse a row nothing answers, so it lands
-//! with its handler (G). `resolver.review` (`y`) landed with its handler
-//! (ease-pass/05b).
+//! `graph.colours_off` (`#`) landed with its handler (ease-pass/07): the
+//! app's dead-key sweeps (`update/tests/keymap_edge/sweep.rs`,
+//! `update/tests/palette_live.rs`) refuse a row nothing answers.
+//! `resolver.review` (`y`) landed with its handler (ease-pass/05b).
 
 use mergewright_core::event::KeyCode;
 
@@ -54,11 +53,15 @@ fn the_arrows_step_between_clashes_in_the_resolver() {
     );
 }
 
-/// `#` is unbound on the graph and everything that falls through to it.
+/// `#` turns colours off on the graph and everything that falls through to it.
 #[test]
-fn hash_is_free_on_the_graph() {
+fn hash_is_colours_off_on_the_graph() {
     for ctx in [ContextId::Graph, ContextId::Changes, ContextId::Diff] {
-        assert_eq!(acting(ctx, KeyChord::key('#')), None, "{ctx:?}");
+        assert_eq!(
+            acting(ctx, KeyChord::key('#')),
+            Some("graph.colours_off"),
+            "{ctx:?}"
+        );
     }
 }
 

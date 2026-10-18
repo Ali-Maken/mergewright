@@ -111,7 +111,7 @@
 548 crates/mergewright-ui/src/history/tests.rs
 467 crates/mergewright-ui/src/journal_screen.rs
 731 crates/mergewright-ui/src/journal_screen/tests.rs
-452 crates/mergewright-ui/src/keymap/table.rs
+409 crates/mergewright-ui/src/keymap/table.rs
 658 crates/mergewright-ui/src/preview_box/tests.rs
 639 crates/mergewright-ui/src/rewrite_editor/tests.rs
 451 crates/mergewright-ui/src/stash_screen/tests.rs

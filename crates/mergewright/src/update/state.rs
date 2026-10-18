@@ -14,6 +14,7 @@ use super::events::{CommitGraphOffer, GitCheck};
 
 mod harness;
 mod key_owner;
+mod look;
 mod queries;
 mod quit;
 mod reads;
@@ -23,6 +24,7 @@ mod status;
 mod stop;
 
 pub use harness::{Banner, Harness};
+pub(crate) use look::Look;
 pub use quit::Quit;
 pub(crate) use reads::IndexRead;
 pub use reads::{HeadLanding, RefsRead};
@@ -32,10 +34,6 @@ pub use status::Status;
 pub use stop::{ClashState, Stop};
 
 /// Everything Mergewright knows, as one value.
-///
-/// Minimal for now, on purpose: this ticket builds the loop, not the
-/// application. Screens, the repository and the selection arrive with the
-/// tickets that need them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AppState {
     /// Set once Mergewright is leaving, and why. The event loop reads it after every
@@ -528,4 +526,6 @@ pub struct AppState {
     /// known, its row's bar is `RowBar::JustMerged`. Cleared by any other
     /// write landing.
     pub last_merge: Option<mergewright_core::oid::Oid>,
+    /// Colours on or off, and the route the lanes are drawn by.
+    pub(crate) look: Look,
 }

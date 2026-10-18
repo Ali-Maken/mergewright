@@ -2,8 +2,8 @@
 
   ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
-▸ │ ●    [feature] the feature's take                                                                   GF 2h   f43f326
-  ●─╯    the shared files                                                                               GF 2h   b35b2f1
+▸ ║ ●    [feature] the feature's take                                                                   GF 2h   f43f326
+  ●━╯    the shared files                                                                               GF 2h   b35b2f1
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
   ◇      Add a readme                                                                                   GF 1y   64ded19

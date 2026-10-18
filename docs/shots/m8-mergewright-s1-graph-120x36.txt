@@ -6,7 +6,7 @@
  ◆ api  ~/code/api · b0                                                                                       2 commits
 
     ■    [stash@{0}] On main: graft: your edits, set aside for checkout b0                              GT 2d   6fbbc10
-▸ ◆─╯    [◆ b0] [b1] [b10] [b11] [b12] [b13] [b14] [b1… start the api                                   GT 2d   fefb7a2
+▸ ◆┄╯    [◆ b0] [b1] [b10] [b11] [b12] [b13] [b14] [b1… start the api                                   GT 2d   fefb7a2
 
 
 

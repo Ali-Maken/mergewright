@@ -8,8 +8,8 @@
  ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
 ▸   ◉    [merged] merge login-page  ▸ 1 commit                                                          GF now  5c42e39
-  ◆ │    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
-  ●─╯    [feature-a] add the base                                                                       GF 5m   ed332bc
+  ◆ ┃    [◆ main ⇄ origin] main moves on                                                                GF 4m   37926a7
+  ●━╯    [feature-a] add the base                                                                       GF 5m   ed332bc
   ●      Correct the note                                                                               GF 1y   a82960b
   ●      Add the first note                                                                             GF 1y   fadcfb3
   ◇      Add a readme                                                                                   GF 1y   64ded19

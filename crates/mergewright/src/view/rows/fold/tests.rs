@@ -224,3 +224,39 @@ fn the_graph_draws_each_folding_merge_with_its_tail() {
         "a sync merge has no tail\n{screen}"
     );
 }
+
+/// G4: on a row inside an opened merge, the lanes are coloured for the
+/// branch the merge's row was made on, not the row's own.
+#[test]
+fn inside_an_opened_merge_the_focus_is_the_merges_branch() {
+    let (mut history, _) = wallet();
+    let merge_row = row(&history, 0);
+    history.cursor = 1;
+    let focus = crate::view::entries::focus(&history);
+    assert_eq!(focus, mergewright_graph::made_on(&merge_row));
+    assert_ne!(
+        focus,
+        mergewright_graph::made_on(&row(&history, 1)),
+        "the fixture tells the two apart"
+    );
+    history.cursor = 3;
+    assert_eq!(
+        crate::view::entries::focus(&history),
+        mergewright_graph::made_on(&row(&history, 3)),
+        "outside the opened merge, the row's own branch"
+    );
+}
+
+/// A lane with no branch behind it draws as another branch's; one role per
+/// real column.
+#[test]
+fn an_unnamed_lane_is_other() {
+    use mergewright_graph::identity::BranchIdentity;
+    use mergewright_graph::{LaneRole, Route};
+    let (history, _) = wallet();
+    let main = BranchIdentity::of_name(b"main");
+    let mut row = row(&history, 0);
+    row.lanes = vec![Some(main), None, None];
+    let roles = crate::view::entries::lane_roles(&row, &Route::unread(main, None));
+    assert_eq!(roles, [LaneRole::Trunk, LaneRole::Other, LaneRole::Other]);
+}

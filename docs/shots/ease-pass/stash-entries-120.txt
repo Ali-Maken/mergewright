@@ -4,7 +4,7 @@ What right looks like: `stash@{0}` (newest, with an untracked file) draws `■`,
  ◆ api  ~/code/api · main                                                                                     3 commits
 
 ▸   ■    [stash@{0}] On main: newest, with an untracked file                                            GF 28h  c7e3010
-  ◆─╯    [◆ main] Write the second note                                                                 GF 28h  cecd010
+  ◆━╯    [◆ main] Write the second note                                                                 GF 28h  cecd010
   ◇      Add the notes                                                                                  GF 28h  73af027
 
 

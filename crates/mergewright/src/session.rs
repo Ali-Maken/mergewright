@@ -230,6 +230,21 @@ impl Session {
         }
     }
 
+    /// This session with its colours taken out (`#`, ease-pass G14): the
+    /// theme is [`Theme::colourless`], the rest unchanged. Built per frame
+    /// while colours are off, never stored: `#` again draws as before.
+    #[must_use]
+    pub(crate) fn colours_off(&self) -> Session {
+        Session {
+            capabilities: self.capabilities.clone(),
+            theme: self.theme.colourless(),
+            rendering: self.rendering,
+            notes: self.notes.clone(),
+            overrides: self.overrides.clone(),
+            chosen: self.chosen,
+        }
+    }
+
     /// Rebuild the theme as `kind`, with that kind's overrides — the only way
     /// the theme changes mid-run (a re-detected background; the palette's
     /// theme rows). `true` when the theme drawn changed.

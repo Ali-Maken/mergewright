@@ -3,9 +3,9 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
  ◆ api  ~/code/api · main                                                                                                                              6 commits  2 merged branches folded
                                              ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
 ▸   ●    [feature/three] three: in progress  │ ›                                                                                            │                              GF 7y   0683985
-  ◆ │    [◆ main] Merge branch 'feature/two' │ HERE                                                                                         │                              GF 7y   5202e1c
-  ◉ │    Merge branch 'feature/one'  ▸ 2 comm│▸c     Commit                                                                   graph.commit  │                              GF 7y   3a97003
-  ●─╯    Add b.txt                           │ a     Amend                                                                     graph.amend  │                              GF 7y   de95041
+  ◆ ┃    [◆ main] Merge branch 'feature/two' │ HERE                                                                                         │                              GF 7y   5202e1c
+  ◉ ┃    Merge branch 'feature/one'  ▸ 2 comm│▸c     Commit                                                                   graph.commit  │                              GF 7y   3a97003
+  ●━╯    Add b.txt                           │ a     Amend                                                                     graph.amend  │                              GF 7y   de95041
   ●      Add a.txt                           │ R     Open the rewrite editor                                                 graph.rewrite  │                              GF 7y   21b16b9
   ◇      Add a readme                        │ C     Switch branch (branch picker)                                            graph.switch  │                              GF 7y   daa5167
                                              │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │
@@ -27,6 +27,7 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
                                              │ H     Hide / show the stash                                                graph.hide_stash  │
                                              │ y     Copy the commit's SHA                                                  graph.copy_sha  │
                                              │ J     Undo journal                                                            graph.journal  │
+                                             │ #     Turn colours off / on (lines keep their shapes)                     graph.colours_off  │
                                              │ F2    Status screen                                                            graph.status  │
                                              │ F3    Cycle the graph renderer                                               graph.renderer  │
                                              │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
@@ -47,6 +48,5 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
                                              │ esc   Back out / close / cancel                                                    app.back  │
                                              │ u     Undo                                                                         app.undo  │
                                              │ U     Redo                                                                         app.redo  │
-                                             │ ⌃R    Refresh                                                                   app.refresh  │
 ─────────────────────────────────────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯──────────────────────────────────────────────
  ↑↓ move  ⏎ run  esc close

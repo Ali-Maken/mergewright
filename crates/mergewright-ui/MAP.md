@@ -138,6 +138,9 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `GraphColumn` (struct, `Widget`) — draws consecutive rows, filling its area exactly.
 - `GraphColumn::new`, `GraphColumn::ascii`, `GraphColumn::through` (fns) — lines in a theme; the ASCII glyph table; drawn through a `Fold`.
 - `GraphColumn::width_for`, `GraphColumn::width_through` (fns) — cells for N lanes; cells for a window through a `Fold`.
+- `GraphLine` roles field — `Option<Vec<LaneRole>>` by real column: when set, an owned lane draws by role (shape + `Role*` token) instead of by lane hue (ease-pass 07).
+- `lane_glyph`, `join_glyph` (fns, `graph_column/roles.rs`) — `(role, ascii)`: a role's vertical and horizontal line (`┃ │ ║ ┊`, `━ ─ ═ ┄`; ASCII `| | | :`, `- - - .`).
+- `role_token` (fn) — the `Role*` colour token a `LaneRole` draws in.
 
 ## graph_screen
 - `SHA_WIDTH` (const) — 7: cells the short-SHA column takes.
@@ -649,6 +652,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `Theme` (struct) — a resolved theme; no path hands a widget a colour the terminal can't show.
 - `new` (fn) — Resolve `kind` against what the terminal can do.
 - `kind` (fn) — which theme this is (diagnostics, config round-trips).
+- `colourless` (fn) — this theme as `NO_COLOR` resolves it: every token `Default`, depth `None` (`#`, ease-pass G14).
 - `color_depth` (fn) — How much colour this terminal has, or [`ColorDepth::None`] if `NO_COLOR` was set — the same reduction [`Theme::new`] applied to every token.
 - `token` (fn) — the colour for one chrome token. Conflict tokens use private `pinned` (fixed 256/16 entries, dark and high contrast) then `depth::nearest_256_cube` (16–231, never the grey ramp); a dropped tint is `TokenColor::Default`.
 - `lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.

@@ -164,6 +164,10 @@ pub fn view_with_graphics(
         // this size for a moment (ADR-0012) — so there is nothing to report.
         return None;
     }
+    // `#` (ease-pass G14): every screen, chrome and graph alike, draws
+    // through the colourless theme while colours are off.
+    let colourless = state.look.colours_off.then(|| session.colours_off());
+    let session = colourless.as_ref().unwrap_or(session);
     let pixels = draws_pixels(session, state);
 
     // The screen first, then the modal boxes over it — **outside** the
@@ -289,6 +293,8 @@ fn check_status_row(state: &AppState, screen: &GraphView<'_>) {
     );
 }
 
+#[cfg(test)]
+mod colours_off_tests;
 #[cfg(test)]
 mod landing_tests;
 #[cfg(test)]

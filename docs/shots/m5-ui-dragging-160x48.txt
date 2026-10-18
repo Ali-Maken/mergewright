@@ -26,9 +26,9 @@
 
     ◆    [◆ feature] finish the feature                                                                                                         GF now  8d6cd28
     ●    start the feature                                                                                                                      GF 2m   52f3b96
-  ● │ →  [main] main moves again                                                                                                                GF 3m   45fa51d
-  ● │    main moves on                                                                                                                          GF 4m   37926a7
-  ●─╯    add the base                                                                                                                           GF 5m   ed332bc
+  ● ┃ →  [main] main moves again                                                                                                                GF 3m   45fa51d
+  ● ┃    main moves on                                                                                                                          GF 4m   37926a7
+  ●━╯    add the base                                                                                                                           GF 5m   ed332bc
   ●      Correct the note                                                                                                                       GF 1y   a82960b
   ●      Add the first note                                                                                                                     GF 1y   fadcfb3
   ◇      Add a readme                                                                                                                           GF 1y   64ded19

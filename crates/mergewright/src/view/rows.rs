@@ -20,7 +20,7 @@ pub(crate) use clash_bars::banner_context;
 pub use clash_bars::resolver_context;
 pub(crate) use context::back_to_place;
 use context::{cursor_row_context, live_wrapped, search_wrapped};
-pub(super) use fold::fold_tail;
+pub(super) use fold::{fold_tail, inside_merge};
 mod footer;
 mod header;
 mod hint_context;

@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                             4 commits
 ▸   ●    [feature/sara-long-running… two on the branch             now  d79fe16
-  ◆─╯    [◆ main] Correct the note                                 1y   a82960b
+  ◆━╯    [◆ main] Correct the note                                 1y   a82960b
   ●      Add the first note                                        1y   fadcfb3
   ◇      Add a readme                                              1y   64ded19
 

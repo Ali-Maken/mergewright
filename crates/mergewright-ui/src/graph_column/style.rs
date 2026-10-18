@@ -110,8 +110,10 @@ pub(super) fn dashed(glyph: char) -> char {
 /// colour depth, so at this tier that redundancy is not drawn.
 pub(super) fn to_ascii(glyph: char) -> char {
     match glyph {
-        '│' | '╎' => '|',
-        '─' | '╌' => '-',
+        // The role shapes (ease-pass G1, G2): `|` and `-` for this, built
+        // on and trunk; `:` and `.` for other, below with the ghost's.
+        '│' | '╎' | '┃' | '║' => '|',
+        '─' | '╌' | '━' | '═' => '-',
         '╯' | '╭' => '/',
         '╰' | '╮' => '\\',
         '┤' | '├' | '┴' | '┬' | '┼' => '+',
@@ -120,7 +122,7 @@ pub(super) fn to_ascii(glyph: char) -> char {
         // Ghost Preview's dashed rail (`┊`, ADR-0038 §5) shares the solid
         // rail's glyph at this tier — ASCII has no seventh glyph to spare.
         RAIL | '┊' => ':',
-        '┈' => '.',
+        '┈' | '┄' => '.',
         '○' => 'o',
         '◎' => 'O',
         ' ' => ' ',

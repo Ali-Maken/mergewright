@@ -17,13 +17,6 @@ use crate::update::fold_count::FoldCount as Asked;
 /// name recovered from that merge's subject — what the graph draws the
 /// opened rows from (dim, the branch's last path segment; ease-pass 07).
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "ease-pass 07 (graph rows) draws the opened rows from it"
-    )
-)]
 pub(crate) struct InsideMerge {
     /// The opened merge.
     pub(crate) merge: Oid,
@@ -33,13 +26,6 @@ pub(crate) struct InsideMerge {
 
 /// The opened merge row `at` sits inside, if the fold says it does.
 #[must_use]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "ease-pass 07 (graph rows) draws the opened rows from it"
-    )
-)]
 pub(crate) fn inside_merge(history: &History, at: usize) -> Option<InsideMerge> {
     let inside = history.fold_at(at)?.inside.as_ref()?;
     Some(InsideMerge {

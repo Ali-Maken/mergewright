@@ -4,7 +4,7 @@
     ●    [feature-b] Show the login page                                                                GF 2d   3064a46
 ▸   ◆    [◆ feature-a] Handle expired tokens                                                            GF 2d   7c99d12
     ●    Add OAuth callback  ✎ changed                                                                  GF 2d   fc29f85
-  ◇─╯    [main] m1                                                                                      GF 2d   f1c72d6
+  ◇━╯    [main] m1                                                                                      GF 2d   f1c72d6
 
 
 

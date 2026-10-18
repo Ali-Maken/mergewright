@@ -45,6 +45,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 
+use mergewright_graph::LaneRole;
 use mergewright_graph::fold::{DrawnRow, Fold, Toward};
 use mergewright_graph::row::Row;
 use ratatui::buffer::Buffer;
@@ -59,9 +60,11 @@ use crate::theme::{Theme, Token};
 
 mod geometry;
 mod kinds;
+mod roles;
 mod style;
 
 pub use kinds::{NodeKind, RowPaint};
+pub use roles::{join_glyph, lane_glyph, role_token};
 
 use geometry::{BLANK, row_cells};
 use style::{
@@ -111,6 +114,14 @@ pub struct GraphLine<'a> {
     /// conservative reading: a real lane is never made to look unreal by
     /// omission.
     pub ghost_lanes: BTreeSet<usize>,
+    /// Each column's role to the cursor row's branch (ease-pass G1), index
+    /// for index with `row.lanes` — real columns: the fold is planned at
+    /// render, so a column it drops is simply never drawn. Lanes and
+    /// connectors take the role's shape and colour ([`lane_glyph`],
+    /// [`join_glyph`], [`role_token`]); a column past the end is
+    /// [`LaneRole::Other`]. `None` draws by branch identity as
+    /// before: Ghost Preview rows and the pixel tier's palette keep it.
+    pub roles: Option<Vec<LaneRole>>,
 }
 
 impl<'a> GraphLine<'a> {
@@ -123,6 +134,7 @@ impl<'a> GraphLine<'a> {
             paint: RowPaint::Normal,
             thread: None,
             ghost_lanes: BTreeSet::new(),
+            roles: None,
         }
     }
 
@@ -148,6 +160,7 @@ impl<'a> GraphLine<'a> {
             paint: RowPaint::Normal,
             thread: None,
             ghost_lanes: BTreeSet::new(),
+            roles: None,
         }
     }
 }
@@ -265,6 +278,15 @@ impl Widget for GraphColumn<'_> {
                         style = foreground(self.theme, Token::TextMuted)
                             .add_modifier(line.paint.modifier());
                     }
+                } else if let (Some(owner), Some(roles)) = (cell.owner, &line.roles) {
+                    // By role: the shape carries it, so no parity dash.
+                    let real = real_column(owner.column);
+                    let role = real
+                        .and_then(|column| roles.get(column).copied())
+                        .unwrap_or(LaneRole::Other);
+                    glyph = roles::in_role(glyph, role);
+                    let coloured = style.fg(color(self.theme.token(role_token(role))));
+                    style = on_thread(coloured, line, real, None);
                 } else if let Some(owner) = cell.owner {
                     style = self.threaded(style, line, owner.identity, real_column(owner.column));
                     if dashes && real_column(owner.column).is_some_and(|c| c % 2 == 1) {
@@ -307,11 +329,22 @@ impl GraphColumn<'_> {
                 Toward::Below => STUB_BELOW,
                 Toward::Above => STUB_ABOVE,
             };
-            let style = off_thread(
-                Style::new().fg(color(self.theme.branch(first.identity))),
-                line,
-                self.faded(first.identity),
-            );
+            // By role, a folded lane has no drawn column to take one
+            // from: it reads as the quiet `Other`, like the rail it sits
+            // behind.
+            let style = if line.roles.is_some() {
+                off_thread(
+                    Style::new().fg(color(self.theme.token(Token::RoleOther))),
+                    line,
+                    None,
+                )
+            } else {
+                off_thread(
+                    Style::new().fg(color(self.theme.branch(first.identity))),
+                    line,
+                    self.faded(first.identity),
+                )
+            };
             let gap = lane_x(drawn.row.lane).saturating_add(1);
             self.put(buf, area, gap, y, glyph, style);
         }

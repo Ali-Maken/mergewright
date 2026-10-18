@@ -133,6 +133,13 @@ fn every_field_spelled_out() -> AppState {
         followed: Some(super::super::FollowKey::WorkingTree),
         last_commit: None,
         last_merge: None,
+        look: crate::update::state::Look {
+            colours_off: true,
+            route: Some(mergewright_graph::Route::unread(
+                mergewright_graph::identity::BranchIdentity::of_name(b"main"),
+                None,
+            )),
+        },
     }
 }
 
