@@ -1,8 +1,7 @@
 //! What a preview says an operation would do: the plan and each effect it names.
 
 use super::{
-    DropSuggestion, FactsError, FilesEffect, Identity, Oid, PathBuf, RefName, Refusal, RunError,
-    SetAside, Tip,
+    DropSuggestion, FilesEffect, Identity, MergeLook, Oid, PathBuf, RefName, SetAside, Tip,
 };
 
 /// How many replayed commits a rebase forecasts one by one. Past it the
@@ -345,7 +344,7 @@ pub struct PreviewPlan {
     /// Whether `u` takes it back.
     pub undo: UndoNote,
     /// The tips this plan was drawn against: `check` refuses
-    /// [`Refusal::Moved`] if any of them has moved by confirm time.
+    /// [`Refusal::Moved`](crate::operation::Refusal::Moved) if any of them has moved by confirm time.
     pub against: Vec<Tip>,
     /// What a rebase or checkout would set aside first and put back after
     /// (ADR-0045 §4): `op.sets_aside(facts)`, never a second count — but
@@ -390,45 +389,7 @@ pub struct PreviewPlan {
     /// Each resulting commit whose message Graft writes (a reword, or the
     /// kept row of a squash group), keyed by its ghost (m7/05).
     pub messages: Vec<(Target, String)>,
-}
-
-/// Why a preview could not be drawn.
-#[derive(Debug, thiserror::Error)]
-pub enum PreviewError {
-    /// The repository could not be read.
-    #[error("{0}")]
-    Facts(FactsError),
-    /// A `git` read failed.
-    #[error("{0}")]
-    Read(RunError),
-    /// The operation would be refused, and there is no point drawing it: a
-    /// `--ff-only` merge of diverged branches, a re-push of a commit that
-    /// is not on the branch.
-    #[error("{}", .0.explain(&crate::keys::NoKeys))]
-    Refused(Refusal),
-    /// The caller asked to stop.
-    #[error("stopped")]
-    Stopped,
-}
-
-impl PreviewError {
-    /// One line for the box, its keys spelled through `keys` (an unbound
-    /// one's clause left out). The `Display` is these words with
-    /// [`NoKeys`](crate::keys::NoKeys).
-    #[must_use]
-    pub fn explain(&self, keys: &dyn crate::keys::KeyNames) -> String {
-        match self {
-            PreviewError::Refused(refusal) => refusal.explain(keys),
-            other => other.to_string(),
-        }
-    }
-}
-
-impl From<RunError> for PreviewError {
-    fn from(why: RunError) -> Self {
-        match why {
-            RunError::Stopped => PreviewError::Stopped,
-            other => PreviewError::Read(other),
-        }
-    }
+    /// A merge's own reads (ease-pass 10): what comes in, what git
+    /// combines, what clashes. `Some` only on a merge that changes something.
+    pub merge: Option<MergeLook>,
 }
