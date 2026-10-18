@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **Ease pass, 2026-10-17** — build the graph/commit/merge mocks the user accepted (ADR-0063, build to the mocks). planner-fable writing `docs/design-notes/ease-pass.md` + specs. Live log: `docs/log/ease-pass.md`. M8 stop items (captures by eye, trademark search) still with the user.
+**Current step:** **Ease pass, paused 2026-10-19 (user quota: 92% weekly used, access ends 2026-10-20).** Merged and green: 05c, 10, 11, 11b, 12, 12b, 06b/c/g/h/i/s/t/u, 07a, 07 part, 03r, 08s–v, 05s/t; codename rename; licence files. In flight at pause: 07c (rest of 07). **Resume order:** merge 07c → 07b → 13 → 09 → 09b (not side by side with 13) → 14 (acceptance, Fable) → review + usability walk + perf → fix round. Also open: 07a perf re-run on an idle machine (`scripts/ease-ahead-read.sh`, gap ease/07a-perf); 06i fixes (ease/06i-failed-no-cross, ease/06i-graph-query-steps). Then pre-publish cleanup (PROGRESS row below; `docs/release/export-inventory.md`). Live log: `docs/log/ease-pass.md`. Trademark search still with the user.
 
 **Running now:** nothing.
 

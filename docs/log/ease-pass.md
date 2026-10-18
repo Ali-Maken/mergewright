@@ -174,3 +174,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - gates after 06i+07 (17813a00): 6985/6987; 2 reds = 06i captures predating 07's role glyphs; regenerated (glyph-only diff), both green; rest unaffected. Worktrees removed.
 - 2026-10-19 · user: don't update what will be deleted. Rule from here: old milestone contact sheets (m6, m8…) and past-milestone docs are not rebuilt or edited; only test-read captures (redrawn, a gate) and shipping docs. Only the ease-pass sheet is assembled (14). Told to every builder brief.
 - 2026-10-19 · user: cut docs/AUTHORSHIP.md regeneration at checkpoints (private file; saves a helper run); log entries stay one line, no write-ups.
+- 2026-10-19 · user: 92% weekly quota used, access ends 2026-10-20 → stop new builds after 07c; licence files added by conductor (Apache text fetched from apache.org); PROGRESS Current step = resume order.
