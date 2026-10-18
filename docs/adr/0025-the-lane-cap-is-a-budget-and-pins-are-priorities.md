@@ -96,3 +96,6 @@ above class 4, or above class 2 with the rail-node drawing built.
 - The header's `+N lanes` must stay exact after this change (ticket 47 acceptance).
 - After 40 and 47 land: capture git/git `seen` at 120 columns and at 80×24 after `j j`; the user judges both by eye before either ticket closes.
 - 39's bar of at least 10 folded lanes at 80×24 stands; "above 0" was meaningless and "at least 40" came from the wrong model.
+
+## Amended (ease-pass 06b, 06u; 2026-10-18)
+The residual is built: a node column past the budget folds and its node draws on the rail, so the budget holds for every class (`drawn_columns() <= max_lanes`, property-tested). The `╷`/`╵` end marks are not built. Before ranking, a column with no commit in view is dropped unless it connects two commits in view; such connectors rank after every node column and, out of budget, drop rather than fold. `+N lanes` is replaced by `lanes drawn: N of M`. Current rule: DESIGN §3.5.

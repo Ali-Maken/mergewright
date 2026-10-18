@@ -21,6 +21,8 @@ use graft_core::event::KeyCode;
 use crate::app_harness::{App, git, git_as_graft};
 use graft_core::on_disk::CURRENT_DIR;
 
+mod capture;
+
 /// [`forked`]'s first commit, Unix seconds; one minute per commit after it.
 ///
 /// Fixed on purpose. `git` dates at one-second resolution, so five commits
@@ -313,46 +315,6 @@ fn capture_preview_for_docs_shots() {
     }
     app.close();
     assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
-}
-
-/// `m` on `main`'s row: the merge box (ease-pass 10) has keys, not buttons,
-/// and its footer names `y` once, no `m merge` alias. Regenerate on
-/// purpose with `MWR_UPDATE_SHOTS=1`.
-#[test]
-fn capture_fix_preview_verb_for_docs_shots() {
-    let scratch = forked();
-    let (app, state) = App::open_with_clock(
-        scratch.path(),
-        graft::session::Clock::Fixed(graft_fixtures::PINNED_NOW),
-    );
-    let state = preview_opened_by(&app, state, 'm');
-    let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
-    app.close();
-    let text = drawn.join("\n");
-    assert!(text.contains("╰ y merge  esc cancel  ⏎ see the "), "{text}");
-    assert!(!text.contains("[ Cancel ]"), "{text}");
-    let mut out = String::from(
-        "# fix-preview-verb-120x40.txt: 120x40, drawn by `view::view` from a real\n\
-         # AppState over a real repository (`main` three commits, `feature` forked off\n\
-         # the first with two of its own, `feature` checked out); cursor on `main`'s\n\
-         # row, `m` pressed through `update`, the real plan landed\n\
-         # (crates/graft/tests/it/preview.rs, capture_fix_preview_verb_for_docs_shots).\n\
-         # TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).\n\
-         #\n\
-         # What right looks like:\n\
-         #  - The merge box (ease-pass 10); its bottom border reads\n\
-         #    `y merge  esc cancel  ⏎ see the N commits`.\n\
-         #  - No buttons row, no `m merge` on the footer.\n\
-         #\n\n",
-    );
-    for line in &drawn {
-        out.push_str(line.trim_end());
-        out.push('\n');
-    }
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/shots/m6/fix-preview-verb-120x40.txt");
-    let checked = graft_fixtures::check(&path, &out);
-    assert!(checked.is_ok(), "{}", checked.expect_err("it drifted"));
 }
 
 /// `m m` on the real path: the second `m` confirms, the cursor never moved.

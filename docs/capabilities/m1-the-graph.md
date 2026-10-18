@@ -289,10 +289,13 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   every one of its columns and bust the cap): lane 0 first, then reserved
   lanes, then the selected commit's own ancestry column, then the rest by
   how recently a row touched them. Since ease-pass 06b a column draws only
-  while a commit of its own is in view (lane 0 excepted while open): a lane
-  passing through with no commit on screen is dropped, never folded, and
-  only columns holding a commit fold behind the rail — a folded column's
-  commit draws on the rail. Folded lanes never draw as raw digit
+  while a commit of its own is in view (lane 0 excepted while open), and
+  since 06u also while it connects two commits in view (main merged into a
+  feature branch, a criss-cross): such a connector ranks after every column
+  holding a commit and, out of budget, is dropped rather than folded. A lane
+  passing through with no commit on screen and no connection between two is
+  dropped, never folded, and only columns holding a commit fold behind the
+  rail — a folded column's commit draws on the rail. Folded lanes never draw as raw digit
   wallpaper (an earlier bug showed `+54` on every single row regardless of
   content) — they draw as short coloured stubs plus one `⋮` rail column,
   with the count in the header (`lanes drawn: N of M`, M counting every
@@ -314,7 +317,9 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   `graft_graph::fold::tests::the_budget_admits_selected_then_reserved_then_preferred_over_a_more_recently_touched_column`
   `graft_graph::fold::tests::lane_zero_draws_alone_when_the_budget_allows_only_the_rail`
   `graft_graph::fold::tests::a_thread_of_twelve_columns_still_folds_down_to_the_budget`
-  `graft_graph::fold::tests::properties::only_columns_holding_a_node_and_lane_zero_are_drawn_or_folded`
+  `graft_graph::fold::tests::properties::node_columns_draw_or_fold_connectors_draw_or_drop_and_pass_throughs_never_draw`
+  `graft_graph::fold::tests::in_view::a_column_joining_two_commits_in_view_is_drawn`
+  `graft_graph::fold::tests::in_view::a_connector_past_the_budget_drops_and_never_folds`
   `graft_ui::graph_screen::tests::lanes_in_view::a_thread_of_twenty_columns_still_fits_the_configured_cap`
   `graft_ui::graph_column::tests::a_node_whose_column_folded_draws_on_the_rail_in_its_place`
 - **Looks like:** `docs/shots/14-many-lanes.txt`,

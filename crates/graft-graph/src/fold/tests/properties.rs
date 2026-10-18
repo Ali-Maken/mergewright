@@ -1,10 +1,11 @@
 //! A fold's laws over generated histories, windows, caps and keeps.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use proptest::prelude::*;
 
 use super::super::*;
+use crate::fold::scan::touched;
 use crate::layout::layout;
 use crate::layout::tests::properties::{History, history};
 
@@ -80,6 +81,38 @@ impl Case {
         }
         open
     }
+
+    /// Connectors, found by walking each column down the window — not by
+    /// parent id, as the fold does: an edge enters a column from a node in
+    /// another column (`outgoing`), the lane runs unbroken, and it closes
+    /// into a node in another column (`incoming`). Kept: columns with no
+    /// node in the window, lane 0 aside, each with its edges' end columns
+    /// `(upper, lower)`.
+    fn connectors(&self) -> BTreeMap<usize, Vec<(usize, usize)>> {
+        let has_node: BTreeSet<usize> = self.window().iter().map(|row| row.lane).collect();
+        let mut entered: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+        let mut found: BTreeMap<usize, Vec<(usize, usize)>> = BTreeMap::new();
+        for row in self.window() {
+            for &column in &row.incoming {
+                if let Some(uppers) = entered.remove(&column) {
+                    let ends = found.entry(column).or_default();
+                    ends.extend(uppers.into_iter().map(|upper| (upper, row.lane)));
+                }
+            }
+            // A lane that stops without closing into a node ends its edges.
+            entered.retain(|&column, _| {
+                touched(row).any(|c| c == column)
+                    || row.lanes.get(column).copied().flatten().is_some()
+            });
+            for &(column, _) in &row.outgoing {
+                if column != row.lane {
+                    entered.entry(column).or_default().push(row.lane);
+                }
+            }
+        }
+        found.retain(|column, _| *column != 0 && !has_node.contains(column));
+        found
+    }
 }
 
 proptest! {
@@ -95,31 +128,51 @@ proptest! {
         prop_assert_eq!(&fold, &case.plan(), "not deterministic");
     }
 
-    /// Ease-pass 06b: kept ∪ folded is exactly the open columns holding a
-    /// node in the window, and lane 0 while open; the budget holds; M counts
-    /// every open column, dropped ones included.
+    /// Ease-pass 06b, restated by 06u (renamed from
+    /// `only_columns_holding_a_node_and_lane_zero_are_drawn_or_folded`):
+    /// every node column and lane 0 while open is drawn or folded; only node
+    /// columns fold; a connector is drawn only while an edge of it joins two
+    /// drawn nodes, and otherwise dropped; pass-throughs never draw. With no
+    /// budget every connector draws and nothing folds. The budget holds; M
+    /// counts every open column, dropped ones included.
     #[test]
-    fn only_columns_holding_a_node_and_lane_zero_are_drawn_or_folded(case in case()) {
+    fn node_columns_draw_or_fold_connectors_draw_or_drop_and_pass_throughs_never_draw(case in case()) {
         let fold = case.plan();
         let open = case.open();
-        let noded: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
-        let drawable: BTreeSet<usize> = open
+        let has_node: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
+        let node_columns: BTreeSet<usize> = open
             .iter()
             .copied()
-            .filter(|&c| c == 0 || noded.contains(&c))
+            .filter(|&c| c == 0 || has_node.contains(&c))
             .collect();
+        let connectors = case.connectors();
+        let connector_columns: BTreeSet<usize> = connectors.keys().copied().collect();
+        let drawable: BTreeSet<usize> = node_columns.union(&connector_columns).copied().collect();
         let required: BTreeSet<usize> = open.iter().copied().filter(|&c| c == 0).collect();
         let kept: BTreeSet<usize> = fold.kept().iter().copied().collect();
         let folded: BTreeSet<usize> = fold.folded().iter().copied().collect();
 
         prop_assert!(kept.is_disjoint(&folded));
         let both: BTreeSet<usize> = kept.union(&folded).copied().collect();
-        prop_assert_eq!(&both, &drawable);
+        prop_assert!(both.is_subset(&drawable), "a pass-through drawn: {:?}", fold);
+        prop_assert!(node_columns.is_subset(&both), "a node column dropped: {:?}", fold);
+        prop_assert!(folded.is_subset(&node_columns), "a connector folded: {:?}", fold);
         prop_assert!(required.is_subset(&kept), "lane 0 folded or dropped while open");
+        for column in kept.intersection(&connector_columns) {
+            let joins_drawn = connectors[column]
+                .iter()
+                .any(|(upper, lower)| kept.contains(upper) && kept.contains(lower));
+            prop_assert!(joins_drawn, "connector {} drawn with an end not drawn", column);
+        }
         prop_assert!(fold.kept().len() <= case.max_lanes.max(required.len()));
         prop_assert!(fold.drawn_columns() <= case.max_lanes, "the budget holds, rail included");
         prop_assert_eq!(fold.open_columns(), open.len());
         prop_assert!(fold.open_columns() >= fold.kept().len() + fold.folded_count());
+
+        let unbounded = Fold::plan(usize::MAX, &case.keep(), case.window());
+        let unbounded_kept: BTreeSet<usize> = unbounded.kept().iter().copied().collect();
+        prop_assert_eq!(&unbounded_kept, &drawable, "with no budget: every node column and connector");
+        prop_assert!(unbounded.folded().is_empty());
     }
 
     #[test]

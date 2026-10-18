@@ -221,41 +221,30 @@ and resumed.
 
 ### 3.5 Compaction (the fold rail)
 
-**Ease pass (ADR-0063; user approved 2026-10-17)** — lanes are drawn only for branches with a commit in view (columns with no node in view are dropped), and the header's `+N lanes` becomes `lanes drawn: N of M`, shown only while something is not drawn.
+**Ease pass (ADR-0063; user approved 2026-10-17; tickets 06b, 06u)** — a branch gets a lane only while it has a commit in view (main mock :90), and the header's `+N lanes` becomes `lanes drawn: N of M`, shown only while something is not drawn.
 
-**The cap is a budget, admitted by priority, not a set of vetoes**
-(ADR-0025 — supersedes this section's original "never fold lane 0, a
-reserved lane, or the selection's ancestry path"; a set of vetoes has no
-upper bound, and a merge-train selection can pin the whole graph). `Fold::plan`
-draws at most `max_lanes` columns, rail included, admitting columns in
-priority order until the budget is spent:
+**Which columns can be drawn.** Before ranking, `Fold::plan` sorts the columns open in the window into three kinds:
+- a **node column** holds a commit of the window;
+- a **connector** holds none, but carries an edge whose two ends are both commits in the window (merging main into a feature branch, a criss-cross, a merge of an ancestor);
+- a **pass-through** is any other open column: every edge it carries leads out of view.
 
+Pass-throughs are dropped at any cap, whatever their priority: their edges draw as stubs, they never sit behind the rail and never count as folded. Lane 0 is kept while open, whatever its kind, so trunk scrolling out of view does not shift every lane left. A column open in no row of the window, lane 0 included, is dropped.
+
+**The cap is a budget, admitted by priority, not a set of vetoes** (ADR-0025). `Fold::plan` draws at most `max_lanes` columns, rail included, admitting in this order until the budget is spent:
 1. lane 0 (always fits: the cap is ≥ 2);
-2. any column holding a node in the window — the one class that may still
-   exceed the budget, since a row without its node isn't a graph (residual,
-   logged in KNOWN_GAPS, not built for M1);
-3. the selected commit's own column;
-4. reserved integration lanes;
-5. the selection's ancestry thread's columns;
-6. everything else.
+2. node columns — the selected commit's own column, reserved integration lanes, the selection's ancestry thread's columns, then the rest;
+3. connectors, in the same order.
 
-Within a class, least-recently-touched folds first. A column open in no row
-is dropped, not counted, before ranking. `graph.max_lanes` is clamped to
-what the screen can hold at its width (unset: 8/10/12 across the §1
-breakpoints, ADR-0022).
+Within a class the least recently touched goes first. A node column past the budget **folds**: its node draws on the rail on its row in place of `⋮`, its edges as stubs beside it (ADR-0025's residual, built in 06b). A connector past the budget, or one whose end commit sits on the rail, is **dropped** like a pass-through, never folded: the rail marks hidden commits only. `graph.max_lanes` is clamped to what the screen can hold at its width (unset: 8/10/12 across the §1 breakpoints, ADR-0022). Expanded (`+`) plans with no budget: nothing folds, and pass-throughs are still not drawn.
 
-**A folded column is a stub, not a curve to a marker** (ADR-0022): the gap
+**An edge into a folded or dropped column is a stub, not a curve to a marker** (ADR-0022): the gap
 cell right of a kept node draws `▾` (an outgoing edge — the folded branch
 continues below) or `▴` (incoming — it forked here), in the folded branch's
 identity colour; several folded edges on one row share the first edge's
 colour. Nothing crosses a kept lane to reach the fold, and nothing ends in
 open space. A folded thread is still legible by its stub colour, not lost.
 
-**The marker column is a rail (`⋮`), not a counter.** The fold count moves
-to the header (`+N lanes`, after the filter words), shown only while
-something folds; N is exact — every column open somewhere in the window and
-not drawn. `+` expands and collapses every fold at once; a click on the rail
-to expand one row is not built (ADR-0022).
+**The marker column is a rail (`⋮`), not a counter.** It appears only while a node column folds. The header counts at the top line's right end, after every other tail item: `lanes drawn: N of M` while N < M (N = real columns drawn, rail not counted; M = columns open in the window, pass-throughs included), then `K merged branches folded` while K > 0 (K = closed fold marks on rows in view), joined ` · `. They are the first tail items to give way, right phrase first, each whole and never cut with `…`, and they give way before the name of the branch `HEAD` is on. `+` expands and collapses every fold at once; a click on the rail to expand one row is not built (ADR-0022).
 
 This is a rendering-time decision, not a layout-time one: the underlying
 `Row` data keeps every lane's real column, so expanding `+` is instant and

@@ -1354,506 +1354,8 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys
 
 ================================================================================
-docs/shots/ease-pass/../m2-duplicate-commit.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# m2-duplicate-commit.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_duplicate_commit in crates/graft/src/view/tests.rs (asserted;
-# regenerate on purpose). Three synthetic commits; the middle one
-# (0202020) is opened in the detail pane, with a DuplicateCommit finding
-# injected as Evidence::Duplicate { copies: [0303030] } — the finding a
-# real duplicates probe would give after two commits shared a patch-id.
-#
-# Judge by eye:
-# - The middle row (0202020) carries a ⚠ marker; the other two rows carry
-#   none.
-# - Detail pane header: the radar line reads "duplicate commit".
-# - The pane body reads "reading…": no file-list job runs in a capture, so
-#   the diff never arrives. Only the header line is what this shot is about.
-#
-"                                                                     3 commits  lanes drawn: 1 of 2 "
-"  ◉▾   Merge branch 'feature'                                                       TE 57y  0303030 "
-"▸ ●  ⓘ Ship the release notes                                                       TE 57y  0202020 "
-"  ◇▴   Start the feature branch                                                     TE 57y  0101010 "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search  "
-"COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
-"Ship the release notes · duplicate commit                                                           "
-"                              reading…                                                              "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-
-================================================================================
-docs/shots/ease-pass/../m2-evil-merge.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_evil_merge in crates/graft/src/view/tests.rs (asserted;
-# regenerate on purpose). Three synthetic commits: a merge (0303030) over
-# two parents, opened in the detail pane, with the evil-merge probe's
-# verdict injected as Evil { files: ["src/config.rs"] } — the verdict a
-# real `git show --remerge-diff` would give for a resolution the merge
-# invented.
-#
-# Judge by eye:
-# - Merge row's marker: a ⚠ beside the merge glyph, and no marker on the
-#   two ordinary rows.
-# - Detail pane header: the radar line reads "evil merge" — one line, the
-#   finding. No "evil merge: unchecked", "checking" or "clean" beside it.
-# - The pane body reads "reading…": no file-list job runs in a capture, so
-#   the diff never arrives. Only the header line is what this shot is about.
-#
-"                                                                     3 commits  lanes drawn: 1 of 2 "
-"▸ ◉▾ ⚠ Merge branch 'feature'                                                       TE 57y  0303030 "
-"  ●    Ship the release notes                                                       TE 57y  0202020 "
-"  ◇▴   Start the feature branch                                                     TE 57y  0101010 "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search  "
-"COMMIT 0303030 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0202020, 0101…"
-"Merge branch 'feature' · evil merge                                                                 "
-"                              reading…                                                              "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-
-================================================================================
-docs/shots/ease-pass/../m2-force-push.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_force_push in crates/graft/src/view/tests.rs (asserted;
-# regenerate on purpose). Three synthetic commits; `main` stands on the
-# middle one (0202020), which is opened in the detail pane, with the
-# force-push probe's verdict injected as Rewritten { remote_ref:
-# "origin/main", previous: 0909090, current: 0202020 } — the verdict a real
-# `git merge-base --is-ancestor` would give after the remote was rewritten
-# under us. `main` tracks `origin/main`, two commits apart each way — what a
-# rewritten remote leaves behind.
-#
-# Judge by eye:
-# - The `main` row (0202020) carries a ⚠ marker; the other two rows carry
-#   none.
-# - Detail pane header: the radar line reads "force-pushed remote".
-# - No "force-push: not checkable" line beside it: a verdict that became a
-#   finding never also says the check did not run.
-# - The pane body reads "reading…": no file-list job runs in a capture, so
-#   the diff never arrives. Only the header line is what this shot is about.
-#
-"                                                  3 commits  2 commits to push  lanes drawn: 1 of 2 "
-"  ◉▾   Merge branch 'feature'                                                       TE 57y  0303030 "
-"▸ ◆  ⚠ [◆ main ↑2 ↓2] Ship the release notes                                        TE 57y  0202020 "
-"  ◇▴   Start the feature branch                                                     TE 57y  0101010 "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-" . explain · ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search   "
-"COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
-"Ship the release notes · force-pushed remote                                                        "
-"                              reading…                                                              "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-
-================================================================================
-docs/shots/ease-pass/../m2-overview-strip.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs. Unicode and ASCII frames.
-================================================================================
-
-# m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_overview_strip in crates/graft/src/view/tests.rs (asserted;
-# regenerate on purpose). Seven synthetic commits mirroring
-# graft_fixtures::Shape::FeatureBranches: two feature branches each merged
-# into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
-# would set it). First block is the Unicode tier, second is ASCII
-# (`F3`/`renderer_override`). The strip is bucketed over the whole 24-row
-# screen (header and footer included), not just the 7 history rows, so a
-# history this short only lights a handful of cells — the rest read as
-# `█`/`#` (on screen) or blank (past `rows_total`).
-#
-# Judge by eye:
-# - The graph column is one cell narrower than an ordinary capture; the
-#   rightmost screen column carries the strip instead.
-# - Row 0 (the header row): `●`/`*` — HEAD's row (0909090, also a merge;
-#   HEAD outranks merge in the priority order).
-# - Row 10: `◉`/`o` — the other merge (0404040), proportionally mapped
-#   further down since 7 rows spread thin over 24 cells.
-# - Rows 1-9ish: `█`/`#`, the rows currently on screen.
-# - The last couple of rows before the footer: blank — past `rows_total`.
-#
-
-=== unicode ===
-"                                                 7 commits  lanes drawn: 2 of 3●"
-"▸ ◆▾     [HEAD] Merge branch 'topic-b'                             57y  0909090█"
-"  ●      topic-b work                                              57y  0808080█"
-"  ●      topic-b start                                             57y  0707070█"
-"  ◉▴╮    Merge branch 'topic-a'                                    57y  0404040█"
-"  ● │    topic-a work                                              57y  0303030█"
-"  │ ●    topic-a start                                             57y  0202020█"
-"  ◇─╯    root                                                      57y  0101010█"
-"                                                                               █"
-"                                                                               █"
-"                                                                               ◉"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                               █"
-"                                                                                "
-"                                                                                "
-" ⏎ open · b branch · r rebase · t tag · c commit · a amend · u undo · ? keys    "
-
-=== ascii ===
-"                                                 7 commits  lanes drawn: 2 of 3*"
-"> *v     [HEAD] Merge branch 'topic-b'                             57y  0909090#"
-"  *      topic-b work                                              57y  0808080#"
-"  *      topic-b start                                             57y  0707070#"
-"  *^\    Merge branch 'topic-a'                                    57y  0404040#"
-"  * |    topic-a work                                              57y  0303030#"
-"  | *    topic-a start                                             57y  0202020#"
-"  *-/    root                                                      57y  0101010#"
-"                                                                               #"
-"                                                                               #"
-"                                                                               o"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                               #"
-"                                                                                "
-"                                                                                "
-" renderer: ascii (F3 cycles)                                                    "
-
-================================================================================
-docs/shots/ease-pass/../m5-hints-marked-80x24.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# m5-hints-marked-80x24.txt: 80x24, the GraphScreen widget
-# drawn into ratatui's TestBackend from a view model built by hand —
-# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
-# not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
-# unverified), and the context is set here rather than chosen by
-# `view::rows::hint_context`. The contexts a real repository can reach
-# are captured through the whole app instead — m5-hints-branch-*,
-# -plain-*, -uncommitted-*, -changes-*. Fixture:
-# capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (asserted;
-# regenerate on purpose).
-#
-# Judge by eye: the footer's last row reads the marked row's hints for
-# this width — `. explain` leads (the marker's own key), then the row's
-# keys, filled from the most relevant end: each hint takes the best rung
-# that still leaves room for the hints ahead of it — full, short, then
-# bare key — taken per hint, never as a step the whole list takes
-# together, and a hint that will not fit even at its bare key is
-# dropped (ADR-0039's third amendment, 2026-09-21). The three most
-# relevant never fall below their floor rung, which is their short rung
-# where the user's table names one and their full verb where it does
-# not, and the bar is never all hidden — never a key that does nothing.
-
- ◆ api  /code/api · main                         5 commits  lanes drawn: 1 of 2
-  ●    Commit 5                                                    2h   0505050
-▸ ◉▾   Commit 4                                                    2h   0404040
-  ●    Commit 3                                                    2h   0303030
-  ●▴   Commit 2                                                    2h   0202020
-  ◇    Commit 1                                                    2h   0101010
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo
-
-================================================================================
-docs/shots/ease-pass/../m5-hints-marked-120x40.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# m5-hints-marked-120x40.txt: 120x40, the GraphScreen widget
-# drawn into ratatui's TestBackend from a view model built by hand —
-# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
-# not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
-# unverified), and the context is set here rather than chosen by
-# `view::rows::hint_context`. The contexts a real repository can reach
-# are captured through the whole app instead — m5-hints-branch-*,
-# -plain-*, -uncommitted-*, -changes-*. Fixture:
-# capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (asserted;
-# regenerate on purpose).
-#
-# Judge by eye: the footer's last row reads the marked row's hints for
-# this width — `. explain` leads (the marker's own key), then the row's
-# keys, filled from the most relevant end: each hint takes the best rung
-# that still leaves room for the hints ahead of it — full, short, then
-# bare key — taken per hint, never as a step the whole list takes
-# together, and a hint that will not fit even at its bare key is
-# dropped (ADR-0039's third amendment, 2026-09-21). The three most
-# relevant never fall below their floor rung, which is their short rung
-# where the user's table names one and their full verb where it does
-# not, and the bar is never all hidden — never a key that does nothing.
-
- ◆ api  /code/api · main                                                                 5 commits  lanes drawn: 1 of 2
-  ●    Commit 5                                                                                         TE 2h   0505050
-▸ ◉▾   Commit 4                                                                                         TE 2h   0404040
-  ●    Commit 3                                                                                         TE 2h   0303030
-  ●▴   Commit 2                                                                                         TE 2h   0202020
-  ◇    Commit 1                                                                                         TE 2h   0101010
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal
-
-================================================================================
-docs/shots/ease-pass/../m5-hints-marked-160x48.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# m5-hints-marked-160x48.txt: 160x48, the GraphScreen widget
-# drawn into ratatui's TestBackend from a view model built by hand —
-# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
-# not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
-# unverified), and the context is set here rather than chosen by
-# `view::rows::hint_context`. The contexts a real repository can reach
-# are captured through the whole app instead — m5-hints-branch-*,
-# -plain-*, -uncommitted-*, -changes-*. Fixture:
-# capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (asserted;
-# regenerate on purpose).
-#
-# Judge by eye: the footer's last row reads the marked row's hints for
-# this width — `. explain` leads (the marker's own key), then the row's
-# keys, filled from the most relevant end: each hint takes the best rung
-# that still leaves room for the hints ahead of it — full, short, then
-# bare key — taken per hint, never as a step the whole list takes
-# together, and a hint that will not fit even at its bare key is
-# dropped (ADR-0039's third amendment, 2026-09-21). The three most
-# relevant never fall below their floor rung, which is their short rung
-# where the user's table names one and their full verb where it does
-# not, and the bar is never all hidden — never a key that does nothing.
-
- ◆ api  /code/api · main                                                                                                         5 commits  lanes drawn: 1 of 2
-  ●    Commit 5                                                                                                                                 TE 2h   0505050
-▸ ◉▾   Commit 4                                                                                                                                 TE 2h   0404040
-  ●    Commit 3                                                                                                                                 TE 2h   0303030
-  ●▴   Commit 2                                                                                                                                 TE 2h   0202020
-  ◇    Commit 1                                                                                                                                 TE 2h   0101010
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · ? keys
-
-================================================================================
-docs/shots/ease-pass/../m6/fix-preview-verb-120x40.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs.
-================================================================================
-
-# fix-preview-verb-120x40.txt: 120x40, drawn by `view::view` from a real
-# AppState over a real repository (`main` three commits, `feature` forked off
-# the first with two of its own, `feature` checked out); cursor on `main`'s
-# row, `m` pressed through `update`, the real plan landed
-# (crates/graft/tests/it/preview.rs, capture_fix_preview_verb_for_docs_shots).
-# TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).
-#
-# What right looks like:
-#  - The box's bottom border reads
-#    `y confirm  m merge  ←/→ choose  ⏎ act  esc cancel`.
-#  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.
-#
-
- ◆ api  ~/code/api · feature                                                             8 commits  lanes drawn: 2 of 3
-
-         after merge
-    ◎▾   [◆ feature] Merge branch 'main' into feature                                                   GT —    —
-    ●    finish the feature                                                                             GF now  8d6cd28
-    ●    start the feature                                                                              GF 2m   52f3b96
-▸ ●▴│    [main] main moves again                                                                        GF 3m   45fa51d
-  ● │    main moves on                                                                                  GF 4m   37926a7
-  ●─╯    add the base                                                                                   GF 5m   ed332bc
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-╭ Preview: merge main into feature ────────────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit                                                                                                       │
-│ feature 8d6cd28 → 1 new commit                                                                                       │
-│ working tree: 2 files updated                                                                                        │
-│ no conflicts expected                                                                                                │
-│ undo: u takes this back                                                                                              │
-│ git merge --no-edit --ff -m 'Merge branch '\''main'\'' into feature' main                                            │
-│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
-╰ y confirm  m merge  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-
-================================================================================
-docs/shots/ease-pass/../m7/landed-after-merge-120x40.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs. The "merge main into feature" case.
-================================================================================
-
- ◆ api  ~/code/api · feature                                                             9 commits  lanes drawn: 2 of 3
-
-▸   ◆▾ ⓘ [◆ feature] Merge branch 'main' into feature                                                   GF futu…0000000
-    ●    finish the feature                                                                             GF now  8d6cd28
-    ●    start the feature                                                                              GF 2m   52f3b96
-  ●▴│    [main] main moves again                                                                        GF 3m   45fa51d
-  ● │    main moves on                                                                                  GF 4m   37926a7
-  ●─╯    add the base                                                                                   GF 5m   ed332bc
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- merge main into feature ✓
-COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · YYYY-MM-DD hh:mm +zzzz · future · parents 8d6cd28, 45fa51d ·…
-Merge branch 'main' into feature · backward merge · evil merge: clean
-A main-one.txt          +1 −0 ▎
-A main-two.txt          +1 −0       1 + one
-
-
-
-
-
-
-
-
-
-
-
-
-
-================================================================================
 docs/shots/ease-pass/../m7/rewrite-edit-stop-80x24.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs. The "merge main into feature" case.
+what right looks like: 06b re-shot: column 0 holds nothing in view and is not open, so it is no longer drawn; the graph shifts 2 cells left. Nothing else. 06u: (U) unchanged, no connector in view.
 ================================================================================
 
  ◆ api      REBASING  step 3 of 12 · edit 7326de5 a3 · feature-a, branch 1 of 2
@@ -1880,133 +1382,6 @@ what right looks like: 06b re-shot: a column with no commit in view is no longer
   ●    a2                                                          2d   15335d9
   ●    a1                                                          2d   0395451
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys
-
-================================================================================
-docs/shots/ease-pass/../m8-landing-undo-120x36.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: column 0 holds nothing in view and is not open, so it is no longer drawn; the graph shifts 2 cells left. Nothing else.
-================================================================================
-
-=== frame 1: `j` `u` — lands on HEAD ===
- ◆ api  ~/code/api · feature                                                                                  8 commits
-
-▸   ◆    [◆ feature] finish the feature                                                                 GF now  8d6cd28
-    ●    start the feature                                                                              GF 2m   52f3b96
-  ● │    [main] main moves again                                                                        GF 3m   45fa51d
-  ● │    main moves on                                                                                  GF 4m   37926a7
-  ●─╯    add the base                                                                                   GF 5m   ed332bc
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- undo: merge main into feature ✓
-
-=== frame 2: `j` `U` — lands on the redone merge ===
- ◆ api  ~/code/api · feature                                                             9 commits  lanes drawn: 2 of 3
-
-▸   ◆▾ ⓘ [◆ feature] Merge branch 'main' into feature                                                   GF futu…0000000
-    ●    finish the feature                                                                             GF now  8d6cd28
-    ●    start the feature                                                                              GF 2m   52f3b96
-  ●▴│    [main] main moves again                                                                        GF 3m   45fa51d
-  ● │    main moves on                                                                                  GF 4m   37926a7
-  ●─╯    add the base                                                                                   GF 5m   ed332bc
-  ●      Correct the note                                                                               GF 1y   a82960b
-  ●      Add the first note                                                                             GF 1y   fadcfb3
-  ◇      Add a readme                                                                                   GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- redo: merge main into feature ✓
-
-================================================================================
-docs/shots/ease-pass/../m8/settle-following.txt   (an earlier milestone's capture, changed by ease-pass)
-what right looks like: 06b re-shot: a column with no commit in view is no longer drawn. The graph narrows, subjects move left, its edges show as `▾`/`▴` stubs, the header ends `lanes drawn: N of M`. Cursor, rows and badges unchanged. See 06b NOTES question: here both ends of the merge are in view and the line between them is now two stubs. Commit 77 merges Commit 75, both in view.
-================================================================================
-
-                                                                                        81 commits  lanes drawn: 1 of 2
-
-  ●    Commit 81                                                                                        TE 57y  5151515
-  ●    Commit 80                                                                                        TE 57y  5050505
-  ●    Commit 79                                                                                        TE 57y  4f4f4f4
-  ●    Commit 78                                                                                        TE 57y  4e4e4e4
-  ◉▾   Commit 77                                                                                        TE 57y  4d4d4d4
-  ●    Commit 76                                                                                        TE 57y  4c4c4c4
-  ●▴   Commit 75                                                                                        TE 57y  4b4b4b4
-  ●    Commit 74                                                                                        TE 57y  4a4a4a4
-▸ ●    Commit 73                                                                                        TE 57y  4949494
-  ●    Commit 72                                                                                        TE 57y  4848484
-  ●    Commit 71                                                                                        TE 57y  4747474
-  ◉▾   Commit 70                                                                                        TE 57y  4646464
-  ●    Commit 69                                                                                        TE 57y  4545454
-  ●▴   Commit 68                                                                                        TE 57y  4444444
-  ●    Commit 67                                                                                        TE 57y  4343434
-  ●    Commit 66                                                                                        TE 57y  4242424
-  ●    Commit 65                                                                                        TE 57y  4141414
-  ●    Commit 64                                                                                        TE 57y  4040404
-  ◉▾   Commit 63                                                                                        TE 57y  3f3f3f3
-  ●    Commit 62                                                                                        TE 57y  3e3e3e3
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
-COMMIT 5050505 · Test <test@example.invalid> · 1970-01-01 00:01 +0000 · 57y · parents 4f4f4f4 · diff vs first p reading…
-Commit 80
-                              reading…
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ================================================================================
 docs/shots/ease-pass/../m8-help-graph-120x36.txt   (an earlier milestone's capture, changed by ease-pass)
@@ -2219,4 +1594,632 @@ m8-polish-and-ship/19c-c: what right looks like — the eighth task done: back i
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  practice done ✓ · ⌃P tour goes again
+
+================================================================================
+docs/shots/ease-pass/../m2-duplicate-commit.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored: the merge's second parent runs down to `Start the feature branch` as a line again: `◉─╮` on the merge, `● │` beside it, `◇─╯` on the root; no `▾`/`▴`; the header loses `lanes drawn` (2 of 2 drawn). Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m2-duplicate-commit.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_duplicate_commit in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits; the middle one
+# (0202020) is opened in the detail pane, with a DuplicateCommit finding
+# injected as Evidence::Duplicate { copies: [0303030] } — the finding a
+# real duplicates probe would give after two commits shared a patch-id.
+#
+# Judge by eye:
+# - The middle row (0202020) carries a ⚠ marker; the other two rows carry
+#   none.
+# - Detail pane header: the radar line reads "duplicate commit".
+# - The pane body reads "reading…": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+"                                                                                          3 commits "
+"  ◉─╮    Merge branch 'feature'                                                     TE 57y  0303030 "
+"▸ ● │  ⓘ Ship the release notes                                                     TE 57y  0202020 "
+"  ◇─╯    Start the feature branch                                                   TE 57y  0101010 "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search  "
+"COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
+"Ship the release notes · duplicate commit                                                           "
+"                              reading…                                                              "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+
+================================================================================
+docs/shots/ease-pass/../m2-evil-merge.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored: `◉─╮  ⚠` on the merge, `● │`, `◇─╯` on the root; no `▾`/`▴`; the header loses `lanes drawn` (2 of 2 drawn). Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_evil_merge in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits: a merge (0303030) over
+# two parents, opened in the detail pane, with the evil-merge probe's
+# verdict injected as Evil { files: ["src/config.rs"] } — the verdict a
+# real `git show --remerge-diff` would give for a resolution the merge
+# invented.
+#
+# Judge by eye:
+# - Merge row's marker: a ⚠ beside the merge glyph, and no marker on the
+#   two ordinary rows.
+# - Detail pane header: the radar line reads "evil merge" — one line, the
+#   finding. No "evil merge: unchecked", "checking" or "clean" beside it.
+# - The pane body reads "reading…": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+"                                                                                          3 commits "
+"▸ ◉─╮  ⚠ Merge branch 'feature'                                                     TE 57y  0303030 "
+"  ● │    Ship the release notes                                                     TE 57y  0202020 "
+"  ◇─╯    Start the feature branch                                                   TE 57y  0101010 "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+" . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search  "
+"COMMIT 0303030 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0202020, 0101…"
+"Merge branch 'feature' · evil merge                                                                 "
+"                              reading…                                                              "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+
+================================================================================
+docs/shots/ease-pass/../m2-force-push.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored: `◉─╮` on the merge, `◆ │` on main's row, `◇─╯` on the root; no `▾`/`▴`; the header ends `2 commits to push`, no `lanes drawn` (2 of 2 drawn). Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_force_push in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits; `main` stands on the
+# middle one (0202020), which is opened in the detail pane, with the
+# force-push probe's verdict injected as Rewritten { remote_ref:
+# "origin/main", previous: 0909090, current: 0202020 } — the verdict a real
+# `git merge-base --is-ancestor` would give after the remote was rewritten
+# under us. `main` tracks `origin/main`, two commits apart each way — what a
+# rewritten remote leaves behind.
+#
+# Judge by eye:
+# - The `main` row (0202020) carries a ⚠ marker; the other two rows carry
+#   none.
+# - Detail pane header: the radar line reads "force-pushed remote".
+# - No "force-push: not checkable" line beside it: a verdict that became a
+#   finding never also says the check did not run.
+# - The pane body reads "reading…": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+"                                                                       3 commits  2 commits to push "
+"  ◉─╮    Merge branch 'feature'                                                     TE 57y  0303030 "
+"▸ ◆ │  ⚠ [◆ main ↑2 ↓2] Ship the release notes                                      TE 57y  0202020 "
+"  ◇─╯    Start the feature branch                                                   TE 57y  0101010 "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+" . explain · ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search   "
+"COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
+"Ship the release notes · force-pushed remote                                                        "
+"                              reading…                                                              "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+
+================================================================================
+docs/shots/ease-pass/../m2-overview-strip.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored, both tiers: `◆─╮` on HEAD's merge, `◉─┴─╮` on topic-a's merge, `◇───╯` on the root (ASCII `*-\`, `*-+-\`, `*---/`); no `▾`/`▴`/`v`/`^`; no `lanes drawn` (3 of 3 drawn); the strip unchanged. Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
+# capture_m2_overview_strip in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Seven synthetic commits mirroring
+# graft_fixtures::Shape::FeatureBranches: two feature branches each merged
+# into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
+# would set it). First block is the Unicode tier, second is ASCII
+# (`F3`/`renderer_override`). The strip is bucketed over the whole 24-row
+# screen (header and footer included), not just the 7 history rows, so a
+# history this short only lights a handful of cells — the rest read as
+# `█`/`#` (on screen) or blank (past `rows_total`).
+#
+# Judge by eye:
+# - The graph column is one cell narrower than an ordinary capture; the
+#   rightmost screen column carries the strip instead.
+# - Row 0 (the header row): `●`/`*` — HEAD's row (0909090, also a merge;
+#   HEAD outranks merge in the priority order).
+# - Row 10: `◉`/`o` — the other merge (0404040), proportionally mapped
+#   further down since 7 rows spread thin over 24 cells.
+# - Rows 1-9ish: `█`/`#`, the rows currently on screen.
+# - The last couple of rows before the footer: blank — past `rows_total`.
+#
+
+=== unicode ===
+"                                                                      7 commits●"
+"▸ ◆─╮      [HEAD] Merge branch 'topic-b'                           57y  0909090█"
+"  ● │      topic-b work                                            57y  0808080█"
+"  ● │      topic-b start                                           57y  0707070█"
+"  ◉─┴─╮    Merge branch 'topic-a'                                  57y  0404040█"
+"  ●   │    topic-a work                                            57y  0303030█"
+"  │   ●    topic-a start                                           57y  0202020█"
+"  ◇───╯    root                                                    57y  0101010█"
+"                                                                               █"
+"                                                                               █"
+"                                                                               ◉"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                                "
+"                                                                                "
+" ⏎ open · b branch · r rebase · t tag · c commit · a amend · u undo · ? keys    "
+
+=== ascii ===
+"                                                                      7 commits*"
+"> *-\      [HEAD] Merge branch 'topic-b'                           57y  0909090#"
+"  * |      topic-b work                                            57y  0808080#"
+"  * |      topic-b start                                           57y  0707070#"
+"  *-+-\    Merge branch 'topic-a'                                  57y  0404040#"
+"  *   |    topic-a work                                            57y  0303030#"
+"  |   *    topic-a start                                           57y  0202020#"
+"  *---/    root                                                    57y  0101010#"
+"                                                                               #"
+"                                                                               #"
+"                                                                               o"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                                "
+"                                                                                "
+" renderer: ascii (F3 cycles)                                                    "
+
+================================================================================
+docs/shots/ease-pass/../m5-hints-marked-80x24.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored: `◉─╮` on Commit 4, `● │` on Commit 3, `●─╯` on Commit 2; no `▾`/`▴`; no `lanes drawn` (2 of 2 drawn). Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m5-hints-marked-80x24.txt: 80x24, the GraphScreen widget
+# drawn into ratatui's TestBackend from a view model built by hand —
+# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
+# not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
+# unverified), and the context is set here rather than chosen by
+# `view::rows::hint_context`. The contexts a real repository can reach
+# are captured through the whole app instead — m5-hints-branch-*,
+# -plain-*, -uncommitted-*, -changes-*. Fixture:
+# capture_hint_bar_for_docs_shots in
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
+#
+# Judge by eye: the footer's last row reads the marked row's hints for
+# this width — `. explain` leads (the marker's own key), then the row's
+# keys, filled from the most relevant end: each hint takes the best rung
+# that still leaves room for the hints ahead of it — full, short, then
+# bare key — taken per hint, never as a step the whole list takes
+# together, and a hint that will not fit even at its bare key is
+# dropped (ADR-0039's third amendment, 2026-09-21). The three most
+# relevant never fall below their floor rung, which is their short rung
+# where the user's table names one and their full verb where it does
+# not, and the bar is never all hidden — never a key that does nothing.
+
+ ◆ api  /code/api · main                                              5 commits
+  ●      Commit 5                                                  2h   0505050
+▸ ◉─╮    Commit 4                                                  2h   0404040
+  ● │    Commit 3                                                  2h   0303030
+  ●─╯    Commit 2                                                  2h   0202020
+  ◇      Commit 1                                                  2h   0101010
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo
+
+================================================================================
+docs/shots/ease-pass/../m5-hints-marked-120x40.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored (as 80x24): `◉─╮` on Commit 4, `●─╯` on Commit 2; no `▾`/`▴`; no `lanes drawn`. Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m5-hints-marked-120x40.txt: 120x40, the GraphScreen widget
+# drawn into ratatui's TestBackend from a view model built by hand —
+# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
+# not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
+# unverified), and the context is set here rather than chosen by
+# `view::rows::hint_context`. The contexts a real repository can reach
+# are captured through the whole app instead — m5-hints-branch-*,
+# -plain-*, -uncommitted-*, -changes-*. Fixture:
+# capture_hint_bar_for_docs_shots in
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
+#
+# Judge by eye: the footer's last row reads the marked row's hints for
+# this width — `. explain` leads (the marker's own key), then the row's
+# keys, filled from the most relevant end: each hint takes the best rung
+# that still leaves room for the hints ahead of it — full, short, then
+# bare key — taken per hint, never as a step the whole list takes
+# together, and a hint that will not fit even at its bare key is
+# dropped (ADR-0039's third amendment, 2026-09-21). The three most
+# relevant never fall below their floor rung, which is their short rung
+# where the user's table names one and their full verb where it does
+# not, and the bar is never all hidden — never a key that does nothing.
+
+ ◆ api  /code/api · main                                                                                      5 commits
+  ●      Commit 5                                                                                       TE 2h   0505050
+▸ ◉─╮    Commit 4                                                                                       TE 2h   0404040
+  ● │    Commit 3                                                                                       TE 2h   0303030
+  ●─╯    Commit 2                                                                                       TE 2h   0202020
+  ◇      Commit 1                                                                                       TE 2h   0101010
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal
+
+================================================================================
+docs/shots/ease-pass/../m5-hints-marked-160x48.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored (as 80x24): `◉─╮` on Commit 4, `●─╯` on Commit 2; no `▾`/`▴`; no `lanes drawn`. Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# m5-hints-marked-160x48.txt: 160x48, the GraphScreen widget
+# drawn into ratatui's TestBackend from a view model built by hand —
+# HintContext::Marked(PlainRow { verbs: RowVerbs { take: false, amend: false } }) on a five-row corpus. Not a pty capture and
+# not the app: no colour is recorded (CLAUDE.md rule 5, colour ships
+# unverified), and the context is set here rather than chosen by
+# `view::rows::hint_context`. The contexts a real repository can reach
+# are captured through the whole app instead — m5-hints-branch-*,
+# -plain-*, -uncommitted-*, -changes-*. Fixture:
+# capture_hint_bar_for_docs_shots in
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
+#
+# Judge by eye: the footer's last row reads the marked row's hints for
+# this width — `. explain` leads (the marker's own key), then the row's
+# keys, filled from the most relevant end: each hint takes the best rung
+# that still leaves room for the hints ahead of it — full, short, then
+# bare key — taken per hint, never as a step the whole list takes
+# together, and a hint that will not fit even at its bare key is
+# dropped (ADR-0039's third amendment, 2026-09-21). The three most
+# relevant never fall below their floor rung, which is their short rung
+# where the user's table names one and their full verb where it does
+# not, and the bar is never all hidden — never a key that does nothing.
+
+ ◆ api  /code/api · main                                                                                                                              5 commits
+  ●      Commit 5                                                                                                                               TE 2h   0505050
+▸ ◉─╮    Commit 4                                                                                                                               TE 2h   0404040
+  ● │    Commit 3                                                                                                                               TE 2h   0303030
+  ●─╯    Commit 2                                                                                                                               TE 2h   0202020
+  ◇      Commit 1                                                                                                                               TE 2h   0101010
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · ? keys
+
+================================================================================
+docs/shots/ease-pass/../m6/fix-preview-verb-120x40.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored: `◎┈╮` on the merge the box would make, `● │` on feature's two commits, `●─│─╯` on `main moves again`; no `▾`/`▴`; no `lanes drawn` (3 of 3 drawn); the merge box unchanged. Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+# fix-preview-verb-120x40.txt: 120x40, drawn by `view::view` from a real
+# AppState over a real repository (`main` three commits, `feature` forked off
+# the first with two of its own, `feature` checked out); cursor on `main`'s
+# row, `m` pressed through `update`, the real plan landed
+# (crates/graft/tests/it/preview/capture.rs, capture_fix_preview_verb_for_docs_shots).
+# TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).
+#
+# What right looks like:
+#  - The merge box (ease-pass 10); its bottom border reads
+#    `y merge  esc cancel  ⏎ see the N commits`.
+#  - No buttons row, no `m merge` on the footer.
+#  - The merge's second parent runs to main's row as a line (ease-pass
+#    06u): `◎┈╮` on the merge, `●─│─╯` on `main moves again`, no
+#    `▾`/`▴`, and no `lanes drawn` on the top line.
+#
+
+ ◆ api  ~/code/api · feature                                                                                  8 commits
+
+      │    after merge
+    ◎┈╮    [◆ feature] Merge branch 'main' into feature                                                 GT —    —
+    ● │    finish the feature                                                                           GF now  8d6cd28
+    ● │    start the feature                                                                            GF 2m   52f3b96
+▸ ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d
+  ● │      main moves on                                                                                GF 4m   37926a7
+  ●─╯      add the base                                                                                 GF 5m   ed332bc
+  ●        Correct the note                                                                             GF 1y   a82960b
+  ●        Add the first note                                                                           GF 1y   fadcfb3
+  ◇        Add a readme                                                                                 GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Merge main into feature ─────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Nothing has changed yet.                                                                                             │
+│                                                                                                                      │
+│ Comes in      2 commits from main (Graft)                                                                            │
+│ Changes       2 files                                                                                                │
+│ Git combines  2 files on its own                                                                                     │
+│ You decide    nothing: no file clashes                                                                               │
+│                                                                                                                      │
+│ After y the merge is committed.                                                                                      │
+╰ y merge  esc cancel  ⏎ see the 2 commits ────────────────────────────────────────────────────────────────────────────╯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+================================================================================
+docs/shots/ease-pass/../m7/landed-after-merge-120x40.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored: `◆─╮` on the landed merge, `● │` on feature's two commits, `●─│─╯` on `main moves again`; no `▾`/`▴`; no `lanes drawn`. The done line still ends `✓` (08t may re-shoot it). Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+ ◆ api  ~/code/api · feature                                                                                  9 commits
+
+▸   ◆─╮  ⓘ [◆ feature] Merge branch 'main' into feature                                                 GF futu…0000000
+    ● │    finish the feature                                                                           GF now  8d6cd28
+    ● │    start the feature                                                                            GF 2m   52f3b96
+  ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d
+  ● │      main moves on                                                                                GF 4m   37926a7
+  ●─╯      add the base                                                                                 GF 5m   ed332bc
+  ●        Correct the note                                                                             GF 1y   a82960b
+  ●        Add the first note                                                                           GF 1y   fadcfb3
+  ◇        Add a readme                                                                                 GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ merge main into feature ✓
+COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · YYYY-MM-DD hh:mm +zzzz · future · parents 8d6cd28, 45fa51d ·…
+Merge branch 'main' into feature · backward merge · evil merge: clean
+A main-one.txt          +1 −0 ▎
+A main-two.txt          +1 −0       1 + one
+
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+docs/shots/ease-pass/../m8-landing-undo-120x36.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connector restored, frame 2: `◆─╮` on the redone merge, `●─│─╯` on `main moves again`; no `▾`/`▴`; no `lanes drawn`. (06b's caption here named lane 0; the column 06b dropped was this connector, 06u NOTES.) Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+=== frame 1: `j` `u` — lands on HEAD ===
+ ◆ api  ~/code/api · feature                                                                                  8 commits
+
+▸   ◆    [◆ feature] finish the feature                                                                 GF now  8d6cd28
+    ●    start the feature                                                                              GF 2m   52f3b96
+  ● │    [main] main moves again                                                                        GF 3m   45fa51d
+  ● │    main moves on                                                                                  GF 4m   37926a7
+  ●─╯    add the base                                                                                   GF 5m   ed332bc
+  ●      Correct the note                                                                               GF 1y   a82960b
+  ●      Add the first note                                                                             GF 1y   fadcfb3
+  ◇      Add a readme                                                                                   GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ undo: merge main into feature ✓
+
+=== frame 2: `j` `U` — lands on the redone merge ===
+ ◆ api  ~/code/api · feature                                                                                  9 commits
+
+▸   ◆─╮  ⓘ [◆ feature] Merge branch 'main' into feature                                                 GF futu…0000000
+    ● │    finish the feature                                                                           GF now  8d6cd28
+    ● │    start the feature                                                                            GF 2m   52f3b96
+  ●─│─╯    [main] main moves again                                                                      GF 3m   45fa51d
+  ● │      main moves on                                                                                GF 4m   37926a7
+  ●─╯      add the base                                                                                 GF 5m   ed332bc
+  ●        Correct the note                                                                             GF 1y   a82960b
+  ●        Add the first note                                                                           GF 1y   fadcfb3
+  ◇        Add a readme                                                                                 GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ redo: merge main into feature ✓
+
+================================================================================
+docs/shots/ease-pass/../m8/settle-following.txt   (an earlier milestone's capture, changed by ease-pass)
+what right looks like: 06u re-shot, (C) connectors restored: every merge in view draws its line again (`◉─╮` on Commit 77, `● │`, `●─╯` on Commit 75; the same at 70, 63 …); no `▾`/`▴`; no `lanes drawn`. Graph cells equal the text before 06b; cursor, rows, badges and boxes unchanged.
+================================================================================
+
+                                                                                                             81 commits
+
+  ●      Commit 81                                                                                      TE 57y  5151515
+  ●      Commit 80                                                                                      TE 57y  5050505
+  ●      Commit 79                                                                                      TE 57y  4f4f4f4
+  ●      Commit 78                                                                                      TE 57y  4e4e4e4
+  ◉─╮    Commit 77                                                                                      TE 57y  4d4d4d4
+  ● │    Commit 76                                                                                      TE 57y  4c4c4c4
+  ●─╯    Commit 75                                                                                      TE 57y  4b4b4b4
+  ●      Commit 74                                                                                      TE 57y  4a4a4a4
+▸ ●      Commit 73                                                                                      TE 57y  4949494
+  ●      Commit 72                                                                                      TE 57y  4848484
+  ●      Commit 71                                                                                      TE 57y  4747474
+  ◉─╮    Commit 70                                                                                      TE 57y  4646464
+  ● │    Commit 69                                                                                      TE 57y  4545454
+  ●─╯    Commit 68                                                                                      TE 57y  4444444
+  ●      Commit 67                                                                                      TE 57y  4343434
+  ●      Commit 66                                                                                      TE 57y  4242424
+  ●      Commit 65                                                                                      TE 57y  4141414
+  ●      Commit 64                                                                                      TE 57y  4040404
+  ◉─╮    Commit 63                                                                                      TE 57y  3f3f3f3
+  ● │    Commit 62                                                                                      TE 57y  3e3e3e3
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+COMMIT 5050505 · Test <test@example.invalid> · 1970-01-01 00:01 +0000 · 57y · parents 4f4f4f4 · diff vs first p reading…
+Commit 80
+                              reading…
+
+
+
+
+
+
+
+
+
+
+
+
+
 
