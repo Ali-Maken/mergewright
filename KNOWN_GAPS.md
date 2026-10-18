@@ -1408,6 +1408,13 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/12-file-order | Review lists clash files in git's order, not the order the 12 box names (report.md, notes.md) — which order is right? (12 NOTES) | **question** | ease-pass 12b |
 | ease/12-bar-120 | Review bar at 120 vs the List words: narrow bars use short rungs; `the_floor_fits_at_the_narrowest_bar` drew a blank bar at 47 — spec or code? (12 NOTES) | **question** | ease-pass 12b |
 | ease/12-landing-bar | Landing bar after merge reads `a amend · space show`, not `u undo the merge · P push` once Known (12 NOTES) | **question** | ease-pass 12b |
+| ease/11-m5-06-captures | m5-06 clash captures still show the old look: the pty acceptance walk writes them, not cargo (11 box open) | **unverified** | ease-pass 14 |
+| ease/11-title-words | Clash screen title words differ from the mock — 11's or 11b's? (11 NOTES) | **question** | ease-pass 11b |
+| ease/11-bar-drops | Clash bar drops d/B/c/n at width — as the mock? (11 NOTES) | **question** | ease-pass 11b |
+| ease/11-rebase-sides | Rebase sides read `yours · sha7`; ticket says `picked` (11 NOTES) | **question** | ease-pass 11b |
+| ease/11-arrow-key | `←/→ clashes` key on screen is not in the mock (11 NOTES) | **question** | ease-pass 11b |
+| ease/11-gutters | Left/right gutters uneven (11 NOTES) | **question** | ease-pass 11b |
+| ease/11-tdd-order | Some 11 code written before its test; the click test could not fail on old scroll.rs (11 NOTES) | **unverified** | ease-pass review |
 | ease/08u-landed-bar-fit | `commit-landed` shot shortens `c commit again` to `c commit` while `F2 stat` stays — fit order vs the mock's last row. | **question** | ease-pass stop (eye) |
 | ease/08u-partial-env-mark | `commit-partial` shot: `.env` row shows `·`, not `!` (secrets mark). | **question** | ease-pass review |
 | ease/05s-open-finish-dead | `open_finish` has no production caller after 05s (banner and resolver go through `ask_review`). Delete or keep for a named use. | **question** | ease-pass review |
