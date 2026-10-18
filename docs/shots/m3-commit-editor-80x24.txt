@@ -24,7 +24,7 @@
 " 1 file goes in, as a new commit on main. 2 stay out.                           "
 "────────────────────────────────────────────────────────────────────────────────"
 " Going in (1)                                                                   "
-" ›✓ M src/auth/token.rs                                                         "
+" ›✓ M src/auth/token.rs                                                    part "
 " Staying out (2)                                                                "
 "  · A notes.md                                                                  "
 "  · M src/api/routes.rs                                                         "

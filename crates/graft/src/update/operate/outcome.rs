@@ -7,8 +7,10 @@ use super::{
 
 use graft_ui::keymap::ActionId;
 
+mod after_landing;
 pub(crate) mod staging_not_kept;
 
+use after_landing::after_landing;
 pub(crate) use staging_not_kept::staging_not_kept_status;
 
 /// `operated`'s `Incomplete` answer: the write ran, only part of its
@@ -30,15 +32,9 @@ pub(super) fn incomplete_answered(
         "{} \u{2014} could not confirm it fully: {error}",
         applied.entry.description
     ));
-    let mut commands = landed(state, applied, lands, next_id);
-    // A plain commit says what went in and where, and earns its bar (C13).
-    if let Some(words) =
-        crate::update::commit_editor::commit_landed(state, launched_op, &applied.entry)
-    {
-        state.status = words;
-    }
-    crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
-    crate::update::recover::tag_rows(state, launched_op);
+    // A commit's `Committed N files…` gives way to the warning: what could
+    // not be confirmed is what he must read (08s m7).
+    let (commands, _commit_words) = after_landing(state, launched_op, applied, lands, next_id);
     state.status = warning;
     commands
 }
@@ -119,38 +115,6 @@ pub(super) fn done_what(
     remote_op
         .and_then(|op| crate::update::remote::remote_done(state, op))
         .unwrap_or_else(|| applied.entry.description.clone())
-}
-
-/// What a write that ran leaves behind whatever its line says: the editor
-/// closed, the scope re-read, and the cursor where the launch said it lands
-/// ([`landing_of`]).
-pub(super) fn landed(
-    state: &mut AppState,
-    applied: &graft_ops::apply::Applied,
-    lands: Option<Landing>,
-    next_id: &mut impl FnMut() -> JobId,
-) -> Vec<Command> {
-    // The write the editor was open for landed, so the editor and
-    // the draft behind it are about a commit that now exists
-    // (m3-working-tree-undo-and-stash/05). A failure leaves both
-    // alone: the message is what the user has to fix.
-    crate::update::commit_editor::committed(state);
-    // Whatever landed, the commit `c` made is no longer the last thing
-    // that happened (C13); a commit sets it again in `done_answered`.
-    state.last_commit = None;
-    let mut commands = refresh_scope(state, applied.refresh, next_id);
-    // A write that moved `HEAD` lands the cursor on its new row once
-    // this refresh's refs and walk are in, exactly as a `--continue`
-    // does (UX §3.1, m7-power-tools/03); a put-back on what it restored
-    // (m7-power-tools/24).
-    match lands {
-        Some(Landing::Changes(path)) => {
-            crate::update::banner::lands_on_changes(state, &mut commands, path, next_id);
-        }
-        Some(on) => crate::update::banner::finished_lands_on(state, &commands, on),
-        None => {}
-    }
-    commands
 }
 
 /// The fields of [`Operated::Conflicted`], so [`stopped`] can only be
@@ -267,12 +231,10 @@ fn staging_not_kept_answered(
         state.size.columns,
         &state.keymap,
     );
-    let mut commands = landed(state, applied, lands, next_id);
-    crate::update::recover::tag_rows(state, launched_op);
-    // A put-in landed all the same: its commits are tagged and its
-    // words spent (review m7-09-to-21c, Minor 1). Its `Done` line
-    // gives way to the staging failure, which must be seen.
-    crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
+    // A put-in or a commit landed all the same: its commits are tagged and
+    // its words spent (review m7-09-to-21c, Minor 1). Its `Done` line gives
+    // way to the staging failure, which must be seen (08s m7).
+    let (commands, _commit_words) = after_landing(state, launched_op, applied, lands, next_id);
     state.status = status;
     commands
 }
@@ -303,15 +265,11 @@ fn done_answered(
 ) -> Vec<Command> {
     let lands = lands.filter(|_| !pulled_nothing(launched_op, &applied.entry));
     state.status = words;
-    let mut commands = landed(state, applied, lands, next_id);
+    let (commands, commit_words) = after_landing(state, launched_op, applied, lands, next_id);
     // A plain commit says what went in and where, and earns its bar (C13).
-    if let Some(words) =
-        crate::update::commit_editor::commit_landed(state, launched_op, &applied.entry)
-    {
+    if let Some(words) = commit_words {
         state.status = words;
     }
-    crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
-    crate::update::recover::tag_rows(state, launched_op);
     commands
 }
 

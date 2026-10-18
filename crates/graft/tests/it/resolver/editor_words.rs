@@ -238,11 +238,11 @@ fn a_refused_c_keeps_the_draft() {
     let open = editor_open(&app, state);
     let typed = app.key(&open, KeyCode::Char('x'));
     let closed = app.key(&typed, KeyCode::Escape);
-    let draft = closed.commit_draft.clone();
+    let draft = closed.drafts.commit.clone();
     assert!(draft.is_some(), "`Esc` kept the draft");
     let refused = app.key(&closed, KeyCode::Char('c'));
     assert!(refused.commit_editor.is_none());
-    assert_eq!(refused.commit_draft, draft, "the draft is untouched");
+    assert_eq!(refused.drafts.commit, draft, "the draft is untouched");
     app.close();
     drop(scratch);
 }

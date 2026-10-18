@@ -108,6 +108,10 @@ pub struct CommitFileRow {
     /// A new file whose name looks like keys or credentials (C7): left out
     /// on its own, marked `!` while it stays out.
     pub secret: bool,
+    /// Only its staged part goes in, an unstaged rest stays behind (08s
+    /// M3): a dim ` part` after its counts, and a note above its diff. The
+    /// counts and the diff are of that part.
+    pub part_only: bool,
 }
 
 /// Where the commit goes, as the summary line names it.
@@ -215,5 +219,9 @@ pub struct CommitScreen<'a> {
     pub keys: &'a Keymap,
 }
 
+#[cfg(test)]
+mod fixture;
+#[cfg(test)]
+mod part_tests;
 #[cfg(test)]
 mod tests;

@@ -252,11 +252,11 @@ pub struct AppState {
     /// confirm box — while it is open every key is the editor's, bar `Ctrl+C`
     /// (m3-working-tree-undo-and-stash/05).
     pub commit_editor: Option<Box<super::commit_editor::CommitEditor>>,
-    /// What `Esc` kept when it closed a non-empty editor, so the next `c`
-    /// (or, for an amend, the next `a` on the same `HEAD`) this session
-    /// picks the message back up rather than losing it (ease-pass/08 C15).
-    /// Also where `u` puts the message of the commit it took back (Q9 a).
-    pub commit_draft: Option<super::commit_editor::Draft>,
+    /// What `Esc` kept, one slot per way in (`c`, `a`), each taken when its
+    /// way in opens the screen, so a peek with `a` never costs `c`'s words
+    /// (ease-pass/08 C15, 08s M1). The `c` slot is also where `u` gives back
+    /// the message of the commit it took back (Q9 a).
+    pub drafts: super::commit_editor::Drafts,
     /// The merge, rebase, cherry-pick, revert or bisect the repository is
     /// partway through, as the last working-tree read found it, with the step
     /// counts the banner words itself from. Commit and amend refuse while it
@@ -482,7 +482,7 @@ pub struct AppState {
     pub finish: Option<Box<super::finish::FinishState>>,
     /// The summary's message as `Esc` left it, `(subject, body)`, when it
     /// was the user's: the next `c` puts it back. Apart from
-    /// `commit_draft` (ticket 19 S7). Cleared when the operation ends.
+    /// `drafts` (ticket 19 S7). Cleared when the operation ends.
     pub finish_draft: Option<(String, String)>,
     /// The conflicted path the banner's or changes pane's `e` handed to
     /// `$EDITOR`, until the terminal comes back: `Product::HandedOver`

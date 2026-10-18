@@ -140,8 +140,12 @@ const UNTRACKED_COUNTED: usize = 50;
 /// tracked files' counts; an untracked file has none from git, so it is read
 /// as the all-added diff the screen shows for it and its lines counted. A
 /// file too long to read whole, or binary, keeps `None`.
+///
+/// A path in `staged_parts` goes in as staged only, so its counts are the
+/// index against `HEAD` (`git diff --cached`), what goes in (08s M3).
 pub(super) fn read_commit_files(
     repos: &RepoStore,
+    staged_parts: &[std::path::PathBuf],
     stop: &super::Cancel,
 ) -> Result<Arc<graft_git::diff::FileList>, String> {
     use graft_git::diff::{DiffOptions, DiffSpec, FileStatus, LineKind, file_diff, list_files};
@@ -150,6 +154,20 @@ pub(super) fn read_commit_files(
     let options = DiffOptions::default();
     let mut list = list_files(&handle, &DiffSpec::WorkingTreeVsHead, &options, stop)
         .map_err(|error| error.to_string())?;
+    if !staged_parts.is_empty() {
+        let staged = list_files(&handle, &DiffSpec::Staged, &options, stop)
+            .map_err(|error| error.to_string())?;
+        let is_part = |path: &[u8]| {
+            staged_parts
+                .iter()
+                .any(|part| part.as_os_str().as_encoded_bytes() == path)
+        };
+        for entry in list.files.iter_mut().filter(|entry| is_part(&entry.path)) {
+            if let Some(index) = staged.files.iter().find(|index| index.path == entry.path) {
+                entry.clone_from(index);
+            }
+        }
+    }
     for entry in list
         .files
         .iter_mut()

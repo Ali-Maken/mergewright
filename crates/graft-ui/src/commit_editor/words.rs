@@ -193,6 +193,12 @@ pub(super) fn secret_note() -> String {
     format!("! left out: {SECRET_WHY}. {} puts it in.", space())
 }
 
+/// The dim word after a staged part's counts (08s M3).
+pub(super) const PART: &str = " part";
+
+/// The note over a staged part's diff, in the secrets note's place (08s M3).
+pub(super) const PART_NOTE: &str = "only the part you staged goes in; the rest stays uncommitted.";
+
 /// `line`'s `GAP`-separated parts, as many whole ones from the left as fit
 /// in `width` columns: a bar too wide loses its last keys, never half a word.
 pub(super) fn whole_parts(line: &str, width: usize) -> String {

@@ -6,7 +6,7 @@ use ratatui::layout::Rect;
 use ratatui::style::Style;
 use unicode_width::UnicodeWidthStr;
 
-use super::super::words::{SECRET_WHY, counts, mark, secret_note};
+use super::super::words::{PART, PART_NOTE, SECRET_WHY, counts, mark, secret_note};
 use super::super::{CommitFocus, CommitScreen, DIFF_COLUMNS, FILES_WIDTH, FileGroup};
 use super::CURSOR_AWAY;
 use crate::detail::BodyView;
@@ -93,13 +93,18 @@ impl CommitScreen<'_> {
             .unwrap_or(0);
         let height = usize::from(area.height);
         let top = cursor_line.saturating_sub(height.saturating_sub(1));
-        for (row, (text, style, _)) in lines.iter().skip(top).take(height).enumerate() {
-            buf.set_string(
-                area.x,
-                area.y + u16::try_from(row).unwrap_or(0),
-                fit(text, usize::from(area.width)),
-                *style,
-            );
+        for (row, (text, style, at)) in lines.iter().skip(top).take(height).enumerate() {
+            let y = area.y + u16::try_from(row).unwrap_or(0);
+            let text = fit(text, usize::from(area.width));
+            buf.set_string(area.x, y, &text, *style);
+            // A staged part's word is dim whatever the row's colour: it
+            // says how much goes in, not what the file is (08s M3).
+            let part = at.is_some_and(|at| self.view.files[at].part_only);
+            if part && text.trim_end().ends_with(PART) {
+                let from = text.trim_end().width().saturating_sub(PART.width());
+                let x = area.x + u16::try_from(from).unwrap_or(u16::MAX);
+                buf.set_string(x, y, PART, foreground(self.theme, Token::TextMuted));
+            }
         }
     }
 
@@ -127,7 +132,8 @@ impl CommitScreen<'_> {
             .filter(|why| file.path.as_str().width() + why.width() <= room_beside(""))
             .unwrap_or_default();
         // Why it stays out outranks its counts: the diff shows those too.
-        let tail = counts(file);
+        let part = if file.part_only { PART } else { "" };
+        let tail = format!("{}{part}", counts(file));
         let fits = file.path.as_str().width() + why.width() <= room_beside(&tail);
         let tail = if fits || why.is_empty() {
             tail
@@ -153,19 +159,25 @@ impl CommitScreen<'_> {
         foreground(self.theme, token)
     }
 
-    /// C7's note over a secrets file staying out, then a blank row: the
-    /// area left for its changes, `None` when none is.
-    fn draw_secret_note(&self, buf: &mut Buffer, area: Rect) -> Option<Rect> {
+    /// The note over the cursor file's changes, then a blank row: C7's for
+    /// a secrets file staying out, or what a staged part leaves behind (08s
+    /// M3), in the same place and colour. The area left for its changes,
+    /// `None` when none is.
+    fn draw_note(&self, buf: &mut Buffer, area: Rect) -> Option<Rect> {
         let Some(file) = self.view.files.get(self.view.cursor) else {
             return Some(area);
         };
-        if !file.secret || file.group != FileGroup::StayingOut {
+        let note = if file.secret && file.group == FileGroup::StayingOut {
+            secret_note()
+        } else if file.part_only {
+            PART_NOTE.to_owned()
+        } else {
             return Some(area);
-        }
+        };
         buf.set_string(
             area.x,
             area.y,
-            fit(&secret_note(), usize::from(area.width)),
+            fit(&note, usize::from(area.width)),
             foreground(self.theme, Token::Warning),
         );
         (area.height >= 3).then(|| Rect {
@@ -175,13 +187,13 @@ impl CommitScreen<'_> {
         })
     }
 
-    /// The diff of the file under the cursor (C8), under C7's note for a
-    /// secrets file staying out.
+    /// The diff of the file under the cursor (C8), under its note
+    /// ([`Self::draw_note`]).
     fn draw_diff(&self, buf: &mut Buffer, area: Rect) {
         if area.width == 0 || area.height == 0 {
             return;
         }
-        let Some(area) = self.draw_secret_note(buf, area) else {
+        let Some(area) = self.draw_note(buf, area) else {
             return;
         };
         let say = |buf: &mut Buffer, words: &str| {

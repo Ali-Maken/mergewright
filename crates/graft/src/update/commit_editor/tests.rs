@@ -713,7 +713,7 @@ fn esc_keeps_a_draft_and_the_next_c_picks_it_back_up() {
     let open = typed(&open, "half a thought");
     let (closed, _) = update(&open, key(KeyCode::Escape));
     assert!(closed.commit_editor.is_none());
-    assert!(closed.commit_draft.is_some(), "the draft is kept");
+    assert!(closed.drafts.commit.is_some(), "the draft is kept");
 
     let (reopened, _) = update(&closed, key(KeyCode::Char('c')));
     let editor = reopened.commit_editor.as_ref().expect("reopened");
@@ -725,7 +725,7 @@ fn esc_keeps_a_draft_and_the_next_c_picks_it_back_up() {
 fn esc_on_an_empty_editor_keeps_nothing() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let (closed, _) = update(&open, key(KeyCode::Escape));
-    assert!(closed.commit_draft.is_none());
+    assert!(closed.drafts.commit.is_none());
 }
 
 #[test]

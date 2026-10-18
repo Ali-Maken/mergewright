@@ -228,7 +228,7 @@ The operation banner: which operation git is part-way through, and the conflict 
 ## update::clash
 A stash put back that clashed: whether one is live, what landing on it does, and its words. Not a `Stop`: it has no git state.
 ## update::commit_editor
-The commit screen's state and keys (`c`, `a`), all pure: message, files in or out, the cursor file's diff, options, the kept draft, and the landing (`LastCommit`, `u` gives the message back).
+The commit screen's state and keys (`c`, `a`), pure: what goes in (`include_of`, `shown_section`), the cursor file's diff, options, kept words (`Drafts`, one slot per `WayIn`) and the landing (`LastCommit`, `undo_landed`, `redo_landed`).
 ## update::commit_graph
 The commit-graph offer: whether to offer after a slow topological sort, and the `B`/`X` state machine.
 ## update::confirm
@@ -246,7 +246,7 @@ Dragging a branch badge onto a row: the three-event state machine and the menu t
 ## update::edge
 Where a pressed key meets the user's `[keys]` remaps, ahead of every dispatcher.
 ## update::events
-What flows through `update`: events in, commands out, and the job-runner vocabulary between them.
+What flows through `update`: events in, commands out (`Command`), a take (`TakeRequest`, `TakeAt`), the commit-graph offer (`CommitGraphOffer`), and the job-runner vocabulary between them.
 ## update::facts
 Facts beside the graph arriving (system git, refs, working-tree counts), their read failures, and the name prompt's key claim.
 ## update::finish

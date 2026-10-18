@@ -3,7 +3,7 @@
 
 use super::{
     AppState, CO_AUTHOR, Command, CommitEditor, CommitFocus, CommitOption, JobId, KeyCode,
-    KeyPress, Status, files, live_operation,
+    KeyPress, Status, WayIn, files, live_operation,
 };
 
 /// The screen's keys while it is open. `None` means "not the screen's" —
@@ -208,10 +208,12 @@ fn with_editor(state: &mut AppState, f: impl FnOnce(&mut CommitEditor)) {
     }
 }
 
-/// Close, keeping non-empty words for the next `c` this session (C15) — or,
-/// for an amend, the next `a` on the same `HEAD`; for a reword screen, its
-/// own keep: its mode describes `HEAD` as it was when `a` was pressed, and
-/// `c` is never a reword (review m8-14 Major 1).
+/// Close, writing only this screen's own slot (C15, 08s M1): a `c` screen
+/// keeps its words for the next `c`, none when empty; an `a` screen keeps
+/// its words for the next `a` only when they differ from `HEAD`'s message
+/// it prefilled. A reword screen has its own keep: its mode describes
+/// `HEAD` as it was when `a` was pressed, and `c` is never a reword (review
+/// m8-14 Major 1).
 fn close(state: &mut AppState) {
     // Whatever `$EDITOR` is about to hand back belongs to a screen that is
     // no longer up.
@@ -223,14 +225,18 @@ fn close(state: &mut AppState) {
         crate::update::amend_into::keep_reword(state, *editor);
         return;
     }
-    state.commit_draft = (!editor.is_empty()).then(|| editor.draft());
+    let kept = editor.words_typed().then(|| Box::new(editor.draft()));
+    match editor.way_in {
+        WayIn::Commit => state.drafts.commit = kept,
+        WayIn::Amend => state.drafts.amend = kept,
+    }
 }
 
-/// The screen closed because its commit landed: the draft goes too, or the
-/// next `c` would reopen a message that is now a commit.
+/// The screen's own write landed: it closes, and nothing is written back —
+/// the words are in the commit now. Its slot was taken when it opened; the
+/// other way in's words stay where they are (08s M1).
 pub fn committed(state: &mut AppState) {
     state.commit_editor = None;
-    state.commit_draft = None;
     state.external_editor = None;
 }
 
