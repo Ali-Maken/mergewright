@@ -71,6 +71,7 @@ pub(super) fn preview_entries<'a>(
         drawn.push(entry(
             row,
             ghost,
+            preview.merges.contains(&row.commit.id),
             preview.selected_row == Some(index),
             badges.as_ref(),
             mailmap,
@@ -191,10 +192,13 @@ fn label_entry<'a>(ghost: &graft_graph::row::Row, label: &str) -> GraphEntry<'a>
     }
 }
 
-/// One row of the slice, real or ghost.
+/// One row of the slice, real or ghost. `merge`: its source row is a merge
+/// to the app (`PreviewState::merges`), which the slice's drawing commit,
+/// with the drawn parents only, cannot say (ease-pass 06r m1).
 fn entry<'a>(
     row: &'a graft_graph::row::Row,
     ghost: bool,
+    merge: bool,
     highlighted: bool,
     badges: Option<&crate::update::preview::BadgeOverlay<'a>>,
     mailmap: Option<&graft_git::mailmap::Mailmap>,
@@ -216,6 +220,8 @@ fn entry<'a>(
         && badges.head() == Some(row.commit.id)
     {
         line.node = graft_ui::graph_column::NodeKind::Head;
+    } else if merge {
+        line.node = NodeKind::Merge;
     }
     if highlighted {
         line.paint = if ghost {

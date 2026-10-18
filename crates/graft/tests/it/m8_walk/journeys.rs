@@ -249,7 +249,7 @@ fn fold_merge_count() {
     let folded = app.pump(state, "the fold's count", |state| {
         drawn(state)
             .iter()
-            .any(|line| line.contains(&format!("{merge} \u{25b8} 3 commits")))
+            .any(|line| line.contains(&format!("{merge}  \u{25b8} 3 commits")))
     });
     let frame = drawn(&folded);
     assert!(
@@ -277,7 +277,7 @@ fn fold_merge_count() {
             .all(|topic| frame.iter().any(|line| line.contains(topic)))
             && frame
                 .iter()
-                .any(|line| line.contains(&format!("{merge} \u{25be} 3 commits")))
+                .any(|line| line.contains(&format!("{merge}  \u{25be} 3 commits")))
     });
     let opened = settled_frame(&app, opened);
     let refreshed = app.press(&opened, KeyPress::control(KeyCode::Char('r')));
@@ -285,7 +285,7 @@ fn fold_merge_count() {
     assert!(
         drawn(&refreshed)
             .iter()
-            .any(|line| line.contains(&format!("{merge} \u{25be} 3 commits"))),
+            .any(|line| line.contains(&format!("{merge}  \u{25be} 3 commits"))),
         "the count stays over Ctrl+R\n{}",
         drawn(&refreshed).join("\n")
     );

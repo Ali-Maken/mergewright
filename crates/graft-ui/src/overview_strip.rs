@@ -19,7 +19,8 @@ use crate::theme::{Theme, Token};
 /// to a glyph by [`cell_for`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StripMark {
-    /// A merge commit: `row.commit.parents.len() >= 2`.
+    /// A merge commit to the app (`graft::history::parents::is_merge`): a
+    /// folded merge is one, a stash entry is not.
     Merge,
     /// A Mistake Radar finding at this row, at its severity.
     Radar(Severity),

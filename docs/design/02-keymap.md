@@ -273,7 +273,7 @@ whether the write can stop halfway:
 | `M` | Toggle Map view (§5.1, §2.3a) |
 | `F` | Toggle Focus mode on the selected commit (§5.2). With the detail pane focused on a file (its row or a line of its diff, the changes pane included): that file's history (§2.17) (M7, ADR-0048) |
 | `O` | Toggle the Overview strip (§5.3) |
-| `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
+| `Space` (on a folded merge, or a row inside an opened one) | Open the merged branch folded into the merge / close it again, cursor back on the merge (PROMPT.md §1.3; ADR-0063; m1/15) |
 | `1` | Toggle first-parent view (m1/15) |
 | `H` | Hide / show the stash in the graph (m1/15) |
 | `Enter` (on a graph row) | Open the detail pane on that commit (peek (M1) → open details (M2), ADR-0023, m2-details-and-diffs/10) |

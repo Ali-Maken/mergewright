@@ -638,8 +638,8 @@ fn drawn_tag<'e>(
     (width.saturating_sub(tag_width.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)
 }
 
-/// Cells between the subject and a folding merge's tail.
-const FOLD_GAP: u16 = 1;
+/// Cells between the subject and a folding merge's tail: the mock's two.
+const FOLD_GAP: u16 = 2;
 
 /// The cells a fold tail takes, its gap included.
 fn fold_cells(mark: &str) -> u16 {
@@ -649,12 +649,12 @@ fn fold_cells(mark: &str) -> u16 {
 }
 
 /// A folding merge's tail when [`GraphScreen::draw_subject`] draws it in a
-/// subject column of `width` cells: `None` off a folding merge, or when the
-/// tail and one subject cell do not fit — the tail is never cut. `ascii` is
-/// `GraphView::ascii`.
+/// subject column of `width` cells: the longest form that leaves the gap and
+/// one subject cell ([`FoldMark::fitting`](super::FoldMark::fitting)); `None`
+/// off a folding merge or when not even `▸` fits. `ascii`: `GraphView::ascii`.
 fn drawn_fold(entry: &GraphEntry<'_>, ascii: bool, width: u16) -> Option<String> {
-    let mark = entry.fold.as_ref()?.words(ascii);
-    (fold_cells(&mark) < width).then_some(mark)
+    let room = width.saturating_sub(FOLD_GAP + 1);
+    entry.fold.as_ref()?.fitting(ascii, usize::from(room))
 }
 
 /// Whether `entry`'s subject needed a `…` to fit the subject column it is

@@ -58,6 +58,7 @@ mod history;
 mod keys;
 mod plan_lines;
 mod rect;
+mod resident;
 mod take;
 pub use answer::{
     close_preview, confirm_preview, preview_badges, preview_box, preview_click, preview_produced,
@@ -244,8 +245,11 @@ pub struct PreviewState {
     /// The commits themselves, not only their ids (which is what the job
     /// gets): the picture must not change under the user because a refresh
     /// landed while they were reading it, and a snapshot is the cheapest way
-    /// to promise that.
+    /// to promise that. Drawing commits: see `resident::Resident::commits`.
     pub resident: Vec<Commit>,
+    /// Which of `resident` the app calls merges, from their source rows
+    /// (06r m1): a folded merge draws `◉` in the picture too.
+    pub merges: HashSet<Oid>,
     /// The absolute history row number of `resident[0]`.
     pub slice_top: usize,
     /// The planning job. Only this id's answer is wanted.
@@ -406,7 +410,11 @@ pub fn open_preview(
     // snapshotted now. Taken **before** `state.preview` is set, so the box's
     // own rows have not yet shrunk the window it is measured in.
     let height = state.graph_rows();
-    let (slice_top, resident) = resident_slice(state, height);
+    let resident::Resident {
+        top: slice_top,
+        commits: resident,
+        merges,
+    } = resident::slice(state, height);
     let id = next_id();
     let request = PreviewRequest {
         subject: subject.clone(),
@@ -415,6 +423,7 @@ pub fn open_preview(
     state.preview = Some(PreviewState {
         subject,
         resident,
+        merges,
         slice_top,
         job: id,
         plan: Loading::Pending(id),
@@ -430,40 +439,6 @@ pub fn open_preview(
     });
     commands.push(Command::PlanPreview(id, Box::new(request)));
     true
-}
-
-/// The rows the picture is laid out from: everything the window holds in
-/// `[top − height, top + 2·height)`, in drawing order, with the absolute
-/// row number of the first.
-fn resident_slice(state: &AppState, height: usize) -> (usize, Vec<Commit>) {
-    let Some(history) = state.history.as_ref() else {
-        return (0, Vec::new());
-    };
-    let first = history.top.saturating_sub(height);
-    let last = history.top.saturating_add(2 * height);
-    let mut commits = Vec::new();
-    let mut slice_top = first;
-    for row in first..last {
-        match history.row_at(row) {
-            Some(found) => {
-                if commits.is_empty() {
-                    slice_top = row;
-                }
-                // The picture is of what the screen draws: the drawn
-                // parents, not the real ones (ease-pass 06 D1), or a
-                // stash entry's index commit reads as a lane leaving it.
-                commits.push(Commit {
-                    parents: found.drawn_parents.clone(),
-                    ..found.commit.clone()
-                });
-            }
-            // A gap in the window: the rows on hand are contiguous, so this
-            // only happens before the first one or after the last.
-            None if commits.is_empty() => {}
-            None => break,
-        }
-    }
-    (slice_top, commits)
 }
 
 #[cfg(test)]

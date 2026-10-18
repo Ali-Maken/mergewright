@@ -1687,17 +1687,17 @@ what right looks like: (06, 80x24) the first row is ` ◆ <repo>  ~/<path> · <b
 
 m8-polish-and-ship/06 at 80x24: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                            10 commits
-▸   ●        [feature/three] three: in progress                    7y   0683985
-  ◆─│─╮      [◆ main] Merge branch 'feature/two'                   7y   5202e1c
-  │ │ ●      [feature/two] two: finish                             7y   e30e870
-  │ │ ●      two: start                                            7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                            7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                             7y   fdb311f
-  │ │ │ ●    one: start                                            7y   bba225a
-  ●─┴─╯ │    Add b.txt                                             7y   de95041
-  ●─────╯    Add a.txt                                             7y   21b16b9
-  ◇          Add a readme                                          7y   daa5167
+ ◆ api  ~/code/api · main                                             6 commits
+▸   ●    [feature/three] three: in progress                        7y   0683985
+  ◆ │    [◆ main] Merge branch 'fea…  ▸ 2 commits from feature/two 7y   5202e1c
+  ◉ │    Merge branch 'feature/one'  ▸ 2 commits from feature/one  7y   3a97003
+  ●─╯    Add b.txt                                                 7y   de95041
+  ●      Add a.txt                                                 7y   21b16b9
+  ◇      Add a readme                                              7y   daa5167
+
+
+
+
 
 
 
@@ -1719,18 +1719,18 @@ what right looks like: (06, 120x36) the first row is ` ◆ <repo>  ~/<path> · <
 
 m8-polish-and-ship/06 at 120x36: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                                                                    10 commits
+ ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●        [feature/three] three: in progress                                                         GF 7y   0683985
-  ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                        GF 7y   5202e1c
-  │ │ ●      [feature/two] two: finish                                                                  GF 7y   e30e870
-  │ │ ●      two: start                                                                                 GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                 GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                  GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                 GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                  GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                  GF 7y   21b16b9
-  ◇          Add a readme                                                                               GF 7y   daa5167
+▸   ●    [feature/three] three: in progress                                                             GF 7y   0683985
+  ◆ │    [◆ main] Merge branch 'feature/two'  ▸ 2 commits from feature/two                              GF 7y   5202e1c
+  ◉ │    Merge branch 'feature/one'  ▸ 2 commits from feature/one                                       GF 7y   3a97003
+  ●─╯    Add b.txt                                                                                      GF 7y   de95041
+  ●      Add a.txt                                                                                      GF 7y   21b16b9
+  ◇      Add a readme                                                                                   GF 7y   daa5167
+
+
+
+
 
 
 
@@ -1763,18 +1763,18 @@ what right looks like: (06, 187x50) the first row is ` ◆ <repo>  ~/<path> · <
 
 m8-polish-and-ship/06 at 187x50: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
 
- ◆ api  ~/code/api · main                                                                                                                                                       10 commits
+ ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-▸   ●        [feature/three] three: in progress                                                                                                                            GF 7y   0683985
-  ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                                                                                           GF 7y   5202e1c
-  │ │ ●      [feature/two] two: finish                                                                                                                                     GF 7y   e30e870
-  │ │ ●      two: start                                                                                                                                                    GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                                                                                    GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                                                                                     GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                                                                                    GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                                                                                     GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                                                                                     GF 7y   21b16b9
-  ◇          Add a readme                                                                                                                                                  GF 7y   daa5167
+▸   ●    [feature/three] three: in progress                                                                                                                                GF 7y   0683985
+  ◆ │    [◆ main] Merge branch 'feature/two'  ▸ 2 commits from feature/two                                                                                                 GF 7y   5202e1c
+  ◉ │    Merge branch 'feature/one'  ▸ 2 commits from feature/one                                                                                                          GF 7y   3a97003
+  ●─╯    Add b.txt                                                                                                                                                         GF 7y   de95041
+  ●      Add a.txt                                                                                                                                                         GF 7y   21b16b9
+  ◇      Add a readme                                                                                                                                                      GF 7y   daa5167
+
+
+
+
 
 
 
@@ -1821,18 +1821,18 @@ what right looks like: (07, dark) `▸` in the gutter's first cell; the three la
 
 m8-polish-and-ship/07, dark theme, 120x36, cursor on `[feature/two] two: finish`: what right looks like — `▸` in the gutter's first cell; the three lanes `│ │ ●` on the ground like every other row; no `▏` in the marker slot; the fill runs from the marker slot to one cell short of the edge; the badge reads as text in its lane's hue family. Compare beside docs/shots/m8-proto-4a-dark-a-b.txt (gutter `▸`, lanes, columns line up). Measured from the app's buffer: worst character on the fill 4.57:1 (floor 4.5). Colour unverified (rule 5): this grid is the same in both themes; legibility is your eye.
 
- ◆ api  ~/code/api · main                                                                                    10 commits
+ ◆ api  ~/code/api · main                                                                                     9 commits
 
     ●        [feature/three] three: in progress                                                         GF 7y   0683985
   ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                        GF 7y   5202e1c
-▸ │ │ ●      [feature/two] two: finish                                                                  GF 7y   e30e870
+  │ │ │ ●    [feature/two-next] two: follow-up                                                          GT 7y   e53c4a4
+▸ │ │ ●─╯    [feature/two] two: finish                                                                  GF 7y   e30e870
   │ │ ●      two: start                                                                                 GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                 GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                  GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                 GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                  GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                  GF 7y   21b16b9
+  ◉ │ │      Merge branch 'feature/one'  ▸ 2 commits from feature/one                                   GF 7y   3a97003
+  ●─┴─╯      Add b.txt                                                                                  GF 7y   de95041
+  ●          Add a.txt                                                                                  GF 7y   21b16b9
   ◇          Add a readme                                                                               GF 7y   daa5167
+
 
 
 
@@ -1865,18 +1865,18 @@ what right looks like: (07, light) `▸` in the gutter's first cell; the three l
 
 m8-polish-and-ship/07, light theme, 120x36, cursor on `[feature/two] two: finish`: what right looks like — `▸` in the gutter's first cell; the three lanes `│ │ ●` on the ground like every other row; no `▏` in the marker slot; the fill runs from the marker slot to one cell short of the edge; the badge reads as text in its lane's hue family. Compare beside docs/shots/m8-proto-4a-dark-a-b.txt (gutter `▸`, lanes, columns line up). Measured from the app's buffer: worst character on the fill 4.55:1 (floor 4.5). Colour unverified (rule 5): this grid is the same in both themes; legibility is your eye.
 
- ◆ api  ~/code/api · main                                                                                    10 commits
+ ◆ api  ~/code/api · main                                                                                     9 commits
 
     ●        [feature/three] three: in progress                                                         GF 7y   0683985
   ◆─│─╮      [◆ main] Merge branch 'feature/two'                                                        GF 7y   5202e1c
-▸ │ │ ●      [feature/two] two: finish                                                                  GF 7y   e30e870
+  │ │ │ ●    [feature/two-next] two: follow-up                                                          GT 7y   e53c4a4
+▸ │ │ ●─╯    [feature/two] two: finish                                                                  GF 7y   e30e870
   │ │ ●      two: start                                                                                 GF 7y   40034e4
-  ◉─│─│─╮    Merge branch 'feature/one'                                                                 GF 7y   3a97003
-  │ │ │ ●    [feature/one] one: finish                                                                  GF 7y   fdb311f
-  │ │ │ ●    one: start                                                                                 GF 7y   bba225a
-  ●─┴─╯ │    Add b.txt                                                                                  GF 7y   de95041
-  ●─────╯    Add a.txt                                                                                  GF 7y   21b16b9
+  ◉ │ │      Merge branch 'feature/one'  ▸ 2 commits from feature/one                                   GF 7y   3a97003
+  ●─┴─╯      Add b.txt                                                                                  GF 7y   de95041
+  ●          Add a.txt                                                                                  GF 7y   21b16b9
   ◇          Add a readme                                                                               GF 7y   daa5167
+
 
 
 
@@ -2009,4 +2009,46 @@ m8-polish-and-ship/08: what right looks like — `o` opens the boxed `open ›` 
 
 ────────────────────────────────────────────────────────────────────────────────
  ⏎ open · ⇥ complete · esc cancel
+
+================================================================================
+docs/shots/m8-keymap-config-problem-120x36.txt
+what right looks like: (09b) the graph as normal, the bottom row `config: 1 problem · ? shows them` (muted).
+================================================================================
+
+"                                                                                                          2 rows so far "
+"                                                                                                                        "
+"  ◆    [◆ main] a commit                                                                                TE 57y  0101010 "
+"▸ ◉    [feature] a commit  ▸ 1 commit                                                                   TE 57y  0202020 "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+" config: 1 problem · ? shows them                                                                                       "
 

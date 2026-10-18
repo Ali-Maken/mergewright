@@ -298,15 +298,8 @@ fn row_entry<'a>(
     now: i64,
 ) -> GraphEntry<'a> {
     let mut line = GraphLine::plain(row);
-    if let Some(refs) = refs {
-        // HEAD wins over the stash and over the parent-derived shapes: it is
-        // the one node a person looks for first.
-        if refs.head() == Some(row.commit.id) {
-            line.node = NodeKind::Head;
-        } else if refs.stash() == Some(row.commit.id) {
-            line.node = NodeKind::Stash;
-        }
-    }
+    // The app's node, the pixel tier's too (`view::node`, ease-pass 06r).
+    line.node = super::node::Node::of(row, refs).kind();
     if highlighted {
         line.paint = RowPaint::Highlighted;
     }

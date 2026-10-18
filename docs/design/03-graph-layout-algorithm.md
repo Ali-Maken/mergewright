@@ -353,11 +353,17 @@ never re-runs layout.
   behind the next frame, and the rows below the anchor fill in as it
   catches up without moving it. Its source never walks — it only re-reads
   by id — and its checkpoints are the size they were before promotion.
-- **Folding a merged branch** (PROMPT.md §1.3) and **first-parent view** are
-  both expressed as a different *inclusion predicate* over which commits the
-  walker in step 2 emits at all, re-using the same streaming machinery
-  rather than being a separate code path — first-parent view is simply "only
-  follow `parents[0]`," which trivially keeps everything in lane 0.
+- **Merged branches fold by default** (PROMPT.md §1.3, ADR-0063). The walker
+  in step 2 emits the first-parent closure of the keep tips, of every tip
+  nothing points at, and of each opened merge's second and later parents; a
+  merged branch's commits stay behind their merge until `space` opens it (an
+  opened set, laid out again from the first row it changes). A merge emitted
+  before the walk knows its second parent is shown is repaired late: layout
+  resumes from that merge's row. **First-parent view** is the same machinery
+  with another *inclusion predicate*, "only follow `parents[0]`," which keeps
+  everything in lane 0. Under every inclusion `Row.commit` is git's commit
+  with every real parent; `Row.drawn_parents` is the view's trimmed set, and
+  only drawing reads it.
 
 ### 3.7 Invariants → tests
 

@@ -1,7 +1,8 @@
 //! A folding merge's tail (ease-pass 06, mock G4): `▸ 4 commits from
-//! PR 16021`, drawn muted one space after the subject.
+//! PR 16021`, drawn muted two cells after the subject (06r).
 
 use graft_term::SanitizedText;
+use unicode_width::UnicodeWidthStr;
 
 /// Where a folded merge's count stands, as its tail draws it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -16,7 +17,7 @@ pub enum FoldCount {
 
 /// A folding merge's tail: `▸ 4 commits from PR 16021` while its merged
 /// branch is folded, `▾` for `▸` once opened. The subject is cut with `…`
-/// before the tail; the tail is never cut.
+/// before the tail; the tail shortens ([`FoldMark::fitting`]), never cut.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FoldMark {
     /// The merged branch is shown (`space` opened it).
@@ -34,21 +35,44 @@ impl FoldMark {
     /// `ascii` draws `>` / `v` for `▸` / `▾`.
     #[must_use]
     pub fn words(&self, ascii: bool) -> String {
-        let arrow = match (self.open, ascii) {
+        let short = format!("{} {}", self.arrow(ascii), self.count());
+        match &self.from {
+            Some(name) => format!("{short} from {}", name.as_str()),
+            None => short,
+        }
+    }
+
+    /// The longest form of the tail that fits in `cells`: the whole
+    /// [`FoldMark::words`], then `▸ 4 commits`, then `▸` alone; `None` when
+    /// not even the arrow fits. It shortens before it drops and never cuts
+    /// a word (ease-pass 06r, review m2).
+    #[must_use]
+    pub fn fitting(&self, ascii: bool, cells: usize) -> Option<String> {
+        let arrow = self.arrow(ascii);
+        [
+            self.words(ascii),
+            format!("{arrow} {}", self.count()),
+            arrow.to_owned(),
+        ]
+        .into_iter()
+        .find(|form| form.width() <= cells)
+    }
+
+    fn arrow(&self, ascii: bool) -> &'static str {
+        match (self.open, ascii) {
             (false, false) => "\u{25b8}",
             (true, false) => "\u{25be}",
             (false, true) => ">",
             (true, true) => "v",
-        };
-        let count = match self.count {
+        }
+    }
+
+    fn count(&self) -> String {
+        match self.count {
             FoldCount::Pending => "commits".to_owned(),
             FoldCount::Known(1) => "1 commit".to_owned(),
             FoldCount::Known(count) => format!("{count} commits"),
             FoldCount::Failed => "? commits".to_owned(),
-        };
-        match &self.from {
-            Some(name) => format!("{arrow} {count} from {}", name.as_str()),
-            None => format!("{arrow} {count}"),
         }
     }
 }

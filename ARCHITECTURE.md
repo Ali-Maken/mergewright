@@ -488,7 +488,11 @@ it is compaction as a lens over the rows a screen is about to draw, so
 expanding `+N` never re-runs layout; `graph::inclusion` is first-parent
 view, hidden stashes and folded merges as a `CommitSource` wrapper in front
 of the same streaming layout, so a toggle lays out again only from the first
-row it changes. Where a
+row it changes. Folded merged branches are the default view. Under every
+inclusion `Row.commit` keeps git's parents and `Row.drawn_parents` holds the
+view's trimmed ones: edges and lanes read the second; every git write, the
+node's shape, and the app's merge answer (`history::parents::is_merge`, which
+also excludes stash entries), read the first. Where a
 crate needs more than one concrete implementation of something (`term`'s
 per-protocol encoders, or a `git` read that a named `gix` gap forces onto
 `git2` — ADR-0011), that split is an *internal* seam, private to the crate —

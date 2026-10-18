@@ -166,7 +166,7 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
-    /// Counts what a folded merge brought in, for its `+N`
+    /// Counts what a folded merge brought in, for its tail's count
     /// (m8-polish-and-ship/17b).
     pub(super) fn count_folded(&self, id: JobId, merge: Oid) {
         let repos = Arc::clone(&self.repos);

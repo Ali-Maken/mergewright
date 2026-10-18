@@ -39,6 +39,7 @@ mod file_size;
 mod finish;
 mod first_launch;
 mod fold_by_default;
+mod fold_tail_narrow;
 mod frame_trace;
 #[cfg(feature = "heavy-tests")]
 mod frames;
@@ -113,6 +114,7 @@ mod search_hint;
 mod stash_by_key;
 mod stash_clash;
 mod stash_in_history;
+mod stash_nodes;
 mod status_under_a_box;
 mod stop_ladder_readers;
 mod submodule_truth;
