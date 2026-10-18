@@ -1,8 +1,9 @@
-//! The resolver's three-pane frame inside the input-to-frame budget at the
+//! The resolver's widest frames inside the input-to-frame budget at the
 //! user's widths (m6-conflicts/63 Scope 5; PROMPT.md §6.3 "input to frame:
 //! under 16 ms"; ADR-0021). The band (m6-conflicts/55) styles cells one by
 //! one on the resolver's draw path, so the frame most at risk is the widest
-//! one with the most blocks on screen: three panes at 187x50 and 200x50, a
+//! one with the most blocks on screen: inline at 187x50 and 200x50 (three
+//! panes retired, ease-pass/11b), a
 //! long file whose screen is all blocks, some taken (the band drawn) and
 //! some open (the `?` separators), at the true-colour tier with tints on.
 //!
@@ -39,7 +40,7 @@ const TAKEN: usize = 12;
 
 /// A merge of `feature` into `main` stopped on `long.txt`: [`LINES`] lines,
 /// one conflicting line in every [`EVERY`] — 120 one-line blocks, so every
-/// screen of the three panes is mostly blocks.
+/// screen is mostly blocks.
 fn long_merge() -> Scratch {
     use crate::app_harness::{git, git_as_mergewright};
     let scratch = mergewright_fixtures::copy_into_temp(Shape::Trivial);
@@ -72,7 +73,7 @@ fn long_merge() -> Scratch {
 }
 
 #[test]
-fn three_panes_at_187_and_200_columns_keep_input_to_frame_under_16_ms() {
+fn inline_at_187_and_200_columns_keeps_input_to_frame_under_16_ms() {
     let scratch = long_merge();
     let (app, state) = opened_on(&scratch);
     let state = taken_and_open_on_screen(&app, &state);
@@ -129,12 +130,12 @@ fn late_keys_at(app: &App, state: &AppState, columns: u16) -> Vec<String> {
     let sized = app.resize(state, columns, 50);
     let frame = crate::captures::frame(&sized, columns, 50);
     let body = frame.join("\n");
-    // Three panes: a taken block's row shows yours, then theirs twice
-    // (theirs and the result that took it).
+    // Inline: an open clash's row shows yours and theirs side by side.
     assert!(
-        frame.iter().any(|row| row.contains("as main wrote it")
-            && row.matches("as feature wrote it").count() == 2),
-        "not three panes at {columns}x50:\n{body}"
+        frame
+            .iter()
+            .any(|row| row.contains("as main wrote it") && row.contains("as feature wrote it")),
+        "not inline side by side at {columns}x50:\n{body}"
     );
     assert!(
         body.contains("◀"),

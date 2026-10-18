@@ -1,10 +1,10 @@
-MERGING
+merging feature into main
 Clashing files                │▸ gone.txt · done ✓
                               │
 ▏✓ gone.txt   done            │   1 our plan
  ? notes.txt  2 open          │
                               │
-                              │
+Combined by git · reading…    │
                               │
                               │
                               │

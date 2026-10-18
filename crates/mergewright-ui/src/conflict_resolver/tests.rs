@@ -126,8 +126,6 @@ fn block_kind(row: &ScreenRow) -> &'static str {
         ScreenRow::Note { .. } => "Note",
         ScreenRow::Kept { .. } => "Kept",
         ScreenRow::Solved { .. } => "Solved",
-        ScreenRow::PaneTitles => "PaneTitles",
-        ScreenRow::Aligned { .. } => "Aligned",
     }
 }
 
@@ -501,8 +499,6 @@ fn whole_file_doc() -> DocView {
             keys: text("o keeps the file  t deletes it"),
             lines: lines(&["one", "two"]),
             note: Some(text("and 3 more lines unread")),
-            ours_absent: None,
-            theirs_absent: Some(text("(deleted on theirs · feature)")),
         }],
         cursor_block: None,
         base_shown: false,
@@ -529,22 +525,20 @@ fn a_layout_naming_a_block_the_doc_no_longer_has_does_not_panic() {
     let _buf = draw(&stale_doc, &laid, 0, 120, 24, false);
 }
 
-/// ADR-0043 §1: three panes from 180 columns; inline from 100
-/// (ease-pass/11), the stacked card below.
+/// Inline from 100 at every width (ease-pass/11b: three panes retired),
+/// the stacked card below.
 #[test]
-fn arrangement_turns_at_100_and_180() {
+fn arrangement_is_inline_from_100_at_every_width() {
     assert_eq!(arrangement(99), Arrangement::Card);
     assert_eq!(arrangement(INLINE_FROM), Arrangement::Inline);
-    assert_eq!(arrangement(179), Arrangement::Inline);
-    assert_eq!(arrangement(180), Arrangement::ThreePane);
-    assert_eq!(arrangement(THREE_PANE_MIN), Arrangement::ThreePane);
+    for wide in [150, 179, 180, 200, u16::MAX] {
+        assert_eq!(arrangement(wide), Arrangement::Inline, "{wide}");
+    }
 }
 
 mod card_colours;
 mod finish_row;
 mod numbers;
-use numbers::block_of;
-mod three_panes;
 
 /// Spell sweep (c), ticket m8/10c: the too-small line names his
 /// `app.back`, in both tiers.

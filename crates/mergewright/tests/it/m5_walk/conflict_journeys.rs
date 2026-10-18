@@ -34,7 +34,7 @@ use merge_review_journeys::{
     a_whole_one_file, a_whole_two_files, b_whole_two_files, last_block_to_finished,
 };
 
-/// The card layout (strip + card), and the column + three panes.
+/// The card layout (strip + card), and the column + inline file.
 const CARD: (u16, u16) = (120, 40);
 const WIDE: (u16, u16) = (200, 50);
 
@@ -223,17 +223,17 @@ fn in_the_resolver_on(first: &'static str) -> Vec<Step> {
             "the resolver, drawn",
             match first {
                 "shared.txt" => &[
-                    Sees::Has("MERGING"),
+                    Sees::Has("merging "),
                     Sees::Row("▸", "shared.txt"),
                     Sees::BottomStarts("o take yours"),
                 ],
                 "three.txt" => &[
-                    Sees::Has("MERGING"),
+                    Sees::Has("merging "),
                     Sees::Row("▸", "three.txt"),
                     Sees::BottomStarts("o take yours"),
                 ],
                 _ => &[
-                    Sees::Has("MERGING"),
+                    Sees::Has("merging "),
                     Sees::Row("▸", "gone.txt"),
                     Sees::BottomStarts("o yours"),
                 ],
@@ -640,10 +640,10 @@ fn two_files_in_order(size: (u16, u16)) -> Scenario {
         (
             "two-files-in-order@200x50",
             Step::Frame(
-                "the list column and three panes",
+                "the list column, inline at every width (ease-pass/11b)",
                 &[
                     Sees::Has("Clashing files"),
-                    Sees::Has("result"),
+                    Sees::Lacks("│ result"),
                     Sees::Lacks("files · "),
                 ],
             ),

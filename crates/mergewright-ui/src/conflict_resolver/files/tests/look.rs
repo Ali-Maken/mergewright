@@ -23,6 +23,7 @@ fn six_states() -> FileListView {
         cursor: 0,
         unavailable: false,
         tail: ListTail::None,
+        combined: CombinedList::NotMerge,
     }
 }
 

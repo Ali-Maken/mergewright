@@ -288,7 +288,7 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
         &state,
         AppEvent::Produced(
             reread,
-            Product::ConflictSet(Ok(set_of(&["b.rs", "a.rs", "conflicted.rs", "0.rs"]))),
+            Product::ConflictSet(Ok(set_of(&["b.rs", "a.rs", "conflicted.rs", "0.rs"])).into()),
         ),
     );
     // `0.rs` sorts in above it.
@@ -301,7 +301,7 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
         &state,
         AppEvent::Produced(
             JobId::new(6_999),
-            Product::ConflictSet(Ok(set_of(&["zzz.rs"]))),
+            Product::ConflictSet(Ok(set_of(&["zzz.rs"])).into()),
         ),
     );
     assert!(
@@ -448,35 +448,6 @@ fn a_done_file_lands_on_the_next_one_not_done() {
     );
 }
 
-#[test]
-fn an_unreadable_set_says_so() {
-    let mut state = listing(
-        &["conflicted.rs", "later.rs"],
-        &["conflicted.rs", "later.rs"],
-    );
-    let read = JobId::new(7_100);
-    let open = state.resolver.as_mut().expect("open");
-    open.files = Loading::Pending(read);
-    open.set_job = Some(read);
-    let (state, _) = update(
-        &state,
-        AppEvent::Produced(read, Product::ConflictSet(Err("git broke".to_owned()))),
-    );
-    assert_eq!(
-        states(&state),
-        vec![
-            (
-                "conflicted.rs".to_owned(),
-                RowState::Open { open: 2, of: 2 }
-            ),
-            ("later.rs".to_owned(), RowState::Unread),
-        ],
-        "rows from the status"
-    );
-    let drawn = super::frame_text(&state);
-    assert!(drawn.contains("git's list unavailable"), "{drawn}");
-}
-
 /// Review m6-amend-13, Major 1: `d`'s box is up over the resolver, and a
 /// click lands on another file's row. The box owns the input, as it owns
 /// every key: the click does nothing. Before, it closed the resolver
@@ -546,7 +517,7 @@ fn a_file_keeps_its_row_when_it_is_done() {
         &state,
         AppEvent::Produced(
             reread,
-            Product::ConflictSet(Ok(set_of(&["a.rs", "z.rs", "conflicted.rs"]))),
+            Product::ConflictSet(Ok(set_of(&["a.rs", "z.rs", "conflicted.rs"])).into()),
         ),
     );
     let after: Vec<(String, RowState)> = states(&state);
@@ -893,4 +864,5 @@ fn a_done_file_handed_back_stays_open() {
 }
 
 mod last_file;
+mod set_read;
 mod start_over;

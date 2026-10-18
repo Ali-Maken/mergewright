@@ -30,7 +30,7 @@ fn shots() -> Vec<Shot> {
     vec![
         (
             "merge-clash-open-120",
-            "the list a column 30 wide headed `Clashing files`: `? notes.md  1 open`, `▏? report.md  2 open` (the open file); the first clash outlined, `? yours · wallet-release` left, `theirs · sara/fix-toc` right, its lines unnumbered, the plain lines numbered; the bar starts `o take yours (left)`.",
+            "the top row `merging sara/fix-toc into wallet-release`; the list a column 30 wide headed `Clashing files`: `? notes.md  1 open`, `▏? report.md  2 open` (the open file), then a blank row, `Combined by git (2)`, `✓ refund.rs, locale.rs`; the first clash outlined, `? yours · wallet-release` left, `theirs · sara/fix-toc` right, its lines unnumbered, the plain lines numbered; the bar starts `o take yours (left)`.",
             merge(),
             120,
         ),
@@ -48,9 +48,15 @@ fn shots() -> Vec<Shot> {
         ),
         (
             "merge-all-solved-120",
-            "every clash in both files taken: the list `✓ notes.md  done`, `✓ report.md  done`, then `✓ Review the merge  y`; the solved line ends `y review the merge`; no `every file done` words on the notice row; the bar `y review the merge`.",
+            "every clash in both files taken: the list `✓ notes.md  done`, `✓ report.md  done`, then `✓ Review the merge  y`, a blank row, `Combined by git (2)`, `✓ refund.rs, locale.rs`; the solved line ends `y review the merge`; no `every file done` words on the notice row; the bar `y review the merge`.",
             notes_solved(taken(merge(), &both)),
             120,
+        ),
+        (
+            "merge-clash-200",
+            "200 columns (three panes retired): the same screen as at 120 — the 30-column list with `Combined by git (2)`, the clash's two sides side by side across the wider document, no `result` pane.",
+            merge(),
+            200,
         ),
         (
             "merge-clash-100",

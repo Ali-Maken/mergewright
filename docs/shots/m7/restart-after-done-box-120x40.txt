@@ -1,10 +1,10 @@
-MERGING
+merging feature into main
 Clashing files                │▸ shared.rs · done ✓ · d starts it over
                               │
  ? gone.txt   keep or delete  │   1 fn main() { ours() }
 ▏✓ shared.rs  done            │
                               │
-                              │
+Combined by git · reading…    │
                               │
                               │
                               │

@@ -1,4 +1,4 @@
-MERGING
+merging feature into main
 files   ✓ gone.txt   ▸ notes.txt 2/2 open
 ────────────────────────────────────────────────────────────────────────────────
 ▸ notes.txt · 2 conflicts · 2 open

@@ -40,6 +40,11 @@ pub struct BannerView {
     /// it belongs to. `None` for every other operation, and for a rebase
     /// whose progress could not be read — those draw today's words.
     pub rewrite: Option<RewriteBannerView>,
+    /// A merge's `(from, into)` branch names (ease-pass/11b, §1.13 edit):
+    /// the banner reads `merging <from> into <into>` in place of
+    /// `MERGING`. `None` for every other operation, and for a merge whose
+    /// names are not read yet — those keep `kind`.
+    pub names: Option<(SanitizedText, SanitizedText)>,
 }
 
 /// What a rewrite's stop adds to the banner after `REBASING  step i of n`:
@@ -123,7 +128,10 @@ impl BannerChain {
 #[must_use]
 pub fn banner_line(banner: &BannerView, width: u16, keys: &Keymap) -> String {
     let Some(rewrite) = banner.rewrite.as_ref() else {
-        let mut line = String::from(banner.kind.as_str());
+        let mut line = match &banner.names {
+            Some((from, into)) => format!("merging {} into {}", from.as_str(), into.as_str()),
+            None => String::from(banner.kind.as_str()),
+        };
         if let Some((step, total)) = banner.step {
             line.push_str(&format!(" step {step} of {total}"));
         }

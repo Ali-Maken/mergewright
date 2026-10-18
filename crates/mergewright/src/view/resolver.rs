@@ -25,8 +25,6 @@ mod tests;
 mod whole_file;
 
 pub use file_list::file_list_view;
-#[cfg(test)]
-pub(crate) use tests::drawn_for_tests;
 use whole_file::{done_card, whole_file_view};
 
 use crate::update::AppState;
@@ -139,30 +137,17 @@ pub(crate) fn finish_row(state: &AppState) -> Option<mergewright_ui::conflict_re
 /// mouse's: the frame's width is measured once, there (m6-conflicts/14 S5).
 #[must_use]
 pub fn resolver_layout(state: &AppState, placed: Placement, columns: u16) -> Option<Layout> {
-    resolver_view(state, columns).map(|doc| layout(&doc, arrangement(state, placed), columns))
+    resolver_view(state, columns).map(|doc| layout(&doc, arrangement(placed), columns))
 }
 
-/// The arrangement the open file is drawn in (ease-pass/11): a strip list
-/// leaves one card; a column list leaves the inline document, its open
-/// clashes side by side, or three panes from
-/// [`THREE_PANE_MIN`](mergewright_ui::conflict_resolver::THREE_PANE_MIN) columns
-/// of frame. A done file is never three panes (m6-conflicts/25): its sides
-/// are gone, and the panes would draw the file on disk under `yours`,
-/// `result` and `theirs` alike, claiming it for a side that may have
-/// deleted it.
+/// The arrangement the open file is drawn in (ease-pass/11, /11b): a strip
+/// list leaves one card; a column list leaves the inline document, its open
+/// clashes side by side, at every width (three panes retired).
 #[must_use]
-pub fn arrangement(state: &AppState, placed: Placement) -> Arrangement {
-    let done = state
-        .resolver
-        .as_ref()
-        .is_some_and(|open| open.done.is_some());
-    match (
-        placed,
-        mergewright_ui::conflict_resolver::arrangement(state.size.columns),
-    ) {
-        (Placement::Strip { .. }, _) => Arrangement::Card,
-        (Placement::Column { .. }, Arrangement::ThreePane) if !done => Arrangement::ThreePane,
-        (Placement::Column { .. }, _) => Arrangement::Inline,
+pub fn arrangement(placed: Placement) -> Arrangement {
+    match placed {
+        Placement::Strip { .. } => Arrangement::Card,
+        Placement::Column { .. } => Arrangement::Inline,
     }
 }
 

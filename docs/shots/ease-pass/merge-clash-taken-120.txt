@@ -3,14 +3,14 @@
 # crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: `o` on the first clash: it shrinks to `let tax = round_cents(total * rate);`, numbered 3, marked `◀`, ending `kept yours`; the second clash still open below; the list `report.md  1 open`; the bar `n next open clash · u undo pick`.
 === 120x40 ===
-MERGING                                                                                                                 
+merging sara/fix-toc into wallet-release                                                                                
 Clashing files                │▸ report.md · 2 conflicts · 1 open                                                       
                               │                                                                                         
  ? notes.md   1 open          │   1 # Report                                                                            
 ▏? report.md  1 open          │   2 intro                                                                               
                               │┌───────────────────────────────────────────────────────────────────────────────────────┐
-                              ││◀ 3 let tax = round_cents(total * rate);  kept yours                                   │
-                              │└───────────────────────────────────────────────────────────────────────────────────────┘
+Combined by git (2)           ││◀ 3 let tax = round_cents(total * rate);  kept yours                                   │
+✓ refund.rs, locale.rs        │└───────────────────────────────────────────────────────────────────────────────────────┘
                               │   4 middle                                                                              
                               │                                                                                         
                               │ ? yours · wallet-release                    │theirs · sara/fix-toc                      

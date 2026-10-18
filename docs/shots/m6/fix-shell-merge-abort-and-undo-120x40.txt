@@ -16,7 +16,7 @@
 # - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
 #
 === 1. a: the abort box ===
- ◆ api  ~/code/api · main                                                                                       MERGING
+ ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                           GF 2h   ddeed32
@@ -98,7 +98,7 @@ M shared.rs             +1 −1   1     - the plan
 
 
 === 3. u: the merge back ===
- ◆ api  ~/code/api · main                                                                                       MERGING
+ ◆ api  ~/code/api · main                                                                     merging feature into main
 
   ◌      Uncommitted changes (2 unmerged)
 ▸ ◆      [◆ main] main's take                                                                           GF 2h   ddeed32

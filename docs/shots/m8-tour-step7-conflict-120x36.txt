@@ -1,6 +1,6 @@
 m8-polish-and-ship/19c-c: what right looks like — task 7 after `m y` on clash: the resolver over the whole screen, `MERGING` on top, `Clashing files` column with `? menu.txt  1 open`, the clash outlined: `yours · main` `dessert: pie` beside `theirs · clash` `dessert: ice cream`, unnumbered, the lines around it numbered, `o take yours (left) · …` at the foot. No practice header, no card and no stop line here, so nothing on this screen says his staged `notes.txt` waits set aside until the merge ends (19d-c NOTES). No age is drawn. Colour unverified (rule 5).
 
-MERGING
+merging clash into main
 Clashing files                │▸ menu.txt · 1 conflict · 1 open
                               │
 ▏? menu.txt  1 open           │   1 starter: bread

@@ -2,7 +2,7 @@
 # `view::view` from a real AppState over a real repository (conflict_interim::capture_banner_bar_with_q). Not a pty capture: no colour (rule 5).
 # What right looks like: the bottom row ends `⇥ graph  q quit`; it leads `merge stopped · …` where that fits beside the whole bar.
 
- ◆ api  ~/code/api · main                                                                                                                                                          MERGING
+ ◆ api  ~/code/api · main                                                                                                                                        merging feature into main
 
   ◌      Uncommitted changes (2 unmerged)
   ◆      [◆ main] main's take                                                                                                                                              GF 2h   ddeed32

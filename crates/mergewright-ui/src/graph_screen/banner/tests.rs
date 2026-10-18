@@ -23,6 +23,7 @@ fn rewrite(chain: bool, edit: bool) -> BannerView {
             }),
             edit_hint: edit,
         }),
+        names: None,
     }
 }
 
@@ -123,6 +124,7 @@ fn non_rewrite_banners_are_unchanged() {
             focused: false,
             skippable: step.is_some(),
             rewrite: None,
+            names: None,
         };
         for width in [0u16, 10, 80, WIDE] {
             assert_eq!(
@@ -168,4 +170,29 @@ fn the_edit_hint_spells_his_keys() {
         "{line}"
     );
     assert!(!line.contains('\u{2014}'), "{line}");
+}
+
+/// ease-pass/11b, §1.13 edit: a paused merge's banner names both branches,
+/// at any width (the header cuts it, not the line).
+#[test]
+fn a_merge_banner_says_merging_from_into() {
+    let banner = BannerView {
+        kind: sanitize_line("MERGING"),
+        step: None,
+        conflict: Some(sanitize_line("report.md")),
+        focused: false,
+        skippable: false,
+        rewrite: None,
+        names: Some((
+            sanitize_line("sara/fix-toc"),
+            sanitize_line("wallet-release"),
+        )),
+    };
+    for width in [0u16, 80, WIDE] {
+        assert_eq!(
+            banner_line(&banner, width, Keymap::shipped()),
+            "merging sara/fix-toc into wallet-release",
+            "at {width}"
+        );
+    }
 }

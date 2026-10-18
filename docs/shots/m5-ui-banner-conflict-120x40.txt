@@ -68,7 +68,7 @@
 # that is yours to judge (rule 6).
 #
 
- ◆ api  ~/code/api · main                                                                                       MERGING
+ ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌      Uncommitted changes (16 unmerged)
   ◆      [◆ main] main's take                                                                           GF 87m  80393eb

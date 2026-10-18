@@ -1,17 +1,17 @@
 # TestBackend capture (not a pty), no colour recorded (rule 5).
 # Fixture: capture_the_clash_screen in
 # crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
-# Judge by eye: every clash in both files taken: the list `✓ notes.md  done`, `✓ report.md  done`, then `✓ Review the merge  y`; the solved line ends `y review the merge`; no `every file done` words on the notice row; the bar `y review the merge`.
+# Judge by eye: every clash in both files taken: the list `✓ notes.md  done`, `✓ report.md  done`, then `✓ Review the merge  y`, a blank row, `Combined by git (2)`, `✓ refund.rs, locale.rs`; the solved line ends `y review the merge`; no `every file done` words on the notice row; the bar `y review the merge`.
 === 120x40 ===
-MERGING                                                                                                                 
+merging sara/fix-toc into wallet-release                                                                                
 Clashing files                │▸ report.md · 2 conflicts · 0 open                                                       
                               │                                                                                         
  ✓ notes.md   done            │   1 # Report                                                                            
 ▏✓ report.md  done            │   2 intro                                                                               
 ✓ Review the merge  y         │┌───────────────────────────────────────────────────────────────────────────────────────┐
                               ││◀ 3 let tax = round_cents(total * rate);  kept yours                                   │
-                              │└───────────────────────────────────────────────────────────────────────────────────────┘
-                              │   4 middle                                                                              
+Combined by git (2)           │└───────────────────────────────────────────────────────────────────────────────────────┘
+✓ refund.rs, locale.rs        │   4 middle                                                                              
                               │                                                                                         
                               │ ▶ 5 footer.push_str(&format_refund(r, locale));  took theirs                            
                               │                                                                                         

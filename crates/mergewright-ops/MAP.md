@@ -100,6 +100,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `ByGit` (struct) / `Change` (enum) — every other staged change: `Added`, `Modified`, `Deleted`, `Renamed { from }`, `TypeChanged`.
 - `SummaryError` (enum) — `NotMerging`, `StillUnmerged { count }` (`finish_summary` only), `ClashesOpen { files, clashes }` (`merge_review` only), `Facts`, `Run`, `Io`, `Conflicts`, `Diff`, `Scratch`.
 - `finish_summary` (fn) — `(repo)`: merge only, nothing unmerged; reads only.
+- `combined_by_git` (fn, `finish/combined`) — `(repo, stop)`: a stopped merge's staged changes minus every conflicted path; the walk `by_git` uses; `NotMerging` otherwise.
 - `merge_review` (fn) / `MergeReview` (struct) — `(repo, stop)`: every unmerged path sorted by `file_state` on disk; any not solved → `ClashesOpen { files, clashes }`; else `finish_preview` over the solved, with them.
 
 ## in_the_way

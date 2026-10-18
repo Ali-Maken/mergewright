@@ -231,8 +231,7 @@ fn whole_frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
 /// A resolver open on a two-block conflict, as `d` finds it.
 fn an_open_resolver() -> crate::update::resolver::ResolverState {
     const CONFLICTED: &[u8] = b"one\n\
-        <<<<<<< HEAD\nours a\n=======\ntheirs a\n>>>>>>> topic\n\
-        two\n\
+        <<<<<<< HEAD\nours a\n=======\ntheirs a\n>>>>>>> topic\ntwo\n\
         <<<<<<< HEAD\nours b\n=======\ntheirs b\n>>>>>>> topic\n";
     crate::update::resolver::ResolverState {
         path: std::path::PathBuf::from("conflicted.rs"),
@@ -252,6 +251,7 @@ fn an_open_resolver() -> crate::update::resolver::ResolverState {
         restarting: None,
         notice: None,
         files: crate::update::detail::Loading::Idle,
+        combined: crate::update::detail::Loading::Idle,
         set_job: None,
         seen: std::collections::BTreeMap::new(),
         done: None,

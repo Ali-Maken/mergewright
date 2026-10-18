@@ -3,7 +3,7 @@
 # crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: 90 columns: the list a strip over the file; the clash's sides stacked, each under its `?`-marked name.
 === 90x40 ===
-MERGING                                                                                   
+merging sara/fix-toc into wallet-release                                                  
 files   notes.md 1/1 open   ▸ report.md 2/2 open                                          
 ──────────────────────────────────────────────────────────────────────────────────────────
 ▸ report.md · 2 conflicts · 2 open                                                        

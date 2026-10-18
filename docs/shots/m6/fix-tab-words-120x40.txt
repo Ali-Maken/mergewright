@@ -163,7 +163,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 5: a merge stop, the banner focused: `c finish`, not `c continue`
- ◆ api  ~/code/api · main                                                                                       MERGING
+ ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌      Uncommitted changes (13 unmerged)
   ◆      [◆ main] Change every file on main                                                             GF 2h   274c7d4

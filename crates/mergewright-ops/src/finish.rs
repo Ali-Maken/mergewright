@@ -6,13 +6,13 @@
 //! Reads only. The commit itself is `apply::resume` with
 //! [`Resume::ContinueWith`](crate::apply::Resume::ContinueWith).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::HeadRef;
 use mergewright_core::oid::Oid;
-use mergewright_git::diff::{DiffError, DiffOptions, DiffSpec, FileStatus, list_files};
+use mergewright_git::diff::DiffError;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation, RunError, Stop};
 use mergewright_git::state::InProgress;
@@ -21,7 +21,10 @@ use crate::conflict::{ConflictSetError, conflicts_of, merge_msg};
 use crate::facts::{self, FactsError};
 use crate::snapshot::SnapshotError;
 
+mod combined;
 mod review;
+use combined::changed_by_git;
+pub use combined::combined_by_git;
 use review::summary_of;
 pub use review::{MergeReview, merge_review};
 
@@ -192,44 +195,10 @@ fn summary_on(
         into,
         from,
         by_you: results(repo, &set.paths, index)?,
-        by_git: changed_by_git(repo, &set.paths)?,
+        by_git: changed_by_git(repo, &set.paths, &())?,
         message,
         recorded: set.recorded,
     })
-}
-
-/// Every staged change but the conflicted paths, in git's diff order.
-fn changed_by_git(repo: &RepoHandle, conflicted: &[PathBuf]) -> Result<Vec<ByGit>, SummaryError> {
-    let yours: HashSet<&Path> = conflicted.iter().map(PathBuf::as_path).collect();
-    let staged = list_files(repo, &DiffSpec::Staged, &DiffOptions::default(), &())?;
-    let mut by_git = Vec::new();
-    for file in staged.files {
-        let path = path_of(file.path);
-        if yours.contains(path.as_path()) {
-            continue;
-        }
-        let change = match file.status {
-            FileStatus::Added | FileStatus::Copied { .. } => Change::Added,
-            FileStatus::Deleted => Change::Deleted,
-            FileStatus::Renamed { .. } => Change::Renamed {
-                from: path_of(file.old_path.ok_or_else(|| {
-                    RunError::Unparsable(format!("a rename with no old path: {}", path.display()))
-                })?),
-            },
-            FileStatus::TypeChanged => Change::TypeChanged,
-            // `Staged` is `diff-index --cached`: it reports neither an
-            // untracked file nor, with nothing unmerged, an unmerged one.
-            FileStatus::Modified | FileStatus::Unmerged | FileStatus::Untracked => Change::Modified,
-        };
-        by_git.push(ByGit {
-            path,
-            change,
-            // `None` is a binary file: no line counts to show.
-            added: file.added.map_or(0, |n| n as usize),
-            removed: file.removed.map_or(0, |n| n as usize),
-        });
-    }
-    Ok(by_git)
 }
 
 /// Each conflicted path's staged blob against `HEAD`'s and `MERGE_HEAD`'s.
@@ -371,7 +340,7 @@ fn bytes_of(path: &Path) -> Vec<u8> {
     path.as_os_str().as_encoded_bytes().to_vec()
 }
 
-fn path_of(bytes: Vec<u8>) -> PathBuf {
+pub(super) fn path_of(bytes: Vec<u8>) -> PathBuf {
     use std::os::unix::ffi::OsStringExt;
     PathBuf::from(std::ffi::OsString::from_vec(bytes))
 }

@@ -79,6 +79,16 @@ pub(super) fn stopped_with(kind: InProgress, notes: &str) -> AppState {
     }));
     open.seen
         .insert(PathBuf::from(notes), RowState::Open { open: 1, of: 1 });
+    // What git combined on its own, as the conflict set's job reads it
+    // (ease-pass/11b): two files in a merge, nothing for any other kind.
+    open.combined = Loading::Ready(Arc::new(if kind == InProgress::Merge {
+        vec![
+            PathBuf::from("src/refund.rs"),
+            PathBuf::from("src/locale.rs"),
+        ]
+    } else {
+        Vec::new()
+    }));
     state
 }
 

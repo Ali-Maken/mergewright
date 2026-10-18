@@ -1,4 +1,4 @@
-MERGING
+merging feature into main
 Clashing files                │▸ src/handlers/handler_01.rs · 1 conflict · 1 open
                               │
 ▏? …lers/handler_01.rs  1 open│┌───────────────────────────────────────────────────────────────────────────────────────┐

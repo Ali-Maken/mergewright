@@ -169,14 +169,8 @@ fn advance_capture() {
             body.contains("▸ three.txt · 3 conflicts · 2 open"),
             "{body}"
         );
-        // The kept line's mark (ease-pass/11), or the result pane's rule in
-        // the three panes.
-        let header = if columns < 180 {
-            "took theirs"
-        } else {
-            "── 1 of 3 · took theirs · feature"
-        };
-        assert!(body.contains(header), "{body}");
+        // The kept line's mark (ease-pass/11), inline at every width (11b).
+        assert!(body.contains("took theirs"), "{body}");
         crate::captures::check_shot(
             &format!("m6/fix-advance-{columns}x{rows}.txt"),
             &format!("{body}\n"),

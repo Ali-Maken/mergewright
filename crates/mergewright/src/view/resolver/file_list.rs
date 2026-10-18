@@ -3,7 +3,9 @@
 
 use mergewright_ops::conflict::FileState;
 use mergewright_term::sanitize_line;
-use mergewright_ui::conflict_resolver::{FileListView, FileRow, FileRowLook, ListTail};
+use mergewright_ui::conflict_resolver::{
+    CombinedList, FileListView, FileRow, FileRowLook, ListTail,
+};
 use mergewright_ui::keymap::ActionId;
 
 use super::how_words;
@@ -65,6 +67,35 @@ pub fn file_list_view(state: &AppState) -> FileListView {
         cursor: file_cursor(state),
         unavailable: matches!(open.files, Loading::Failed(_)),
         tail,
+        combined: combined_list(merge, &open.combined),
+    }
+}
+
+/// A merge's `Combined by git` section (ease-pass/11b): each file by its
+/// last segment, as the mock lists them; reading and failed say so; any
+/// other operation draws none (Q12 a).
+fn combined_list(
+    merge: bool,
+    read: &Loading<std::sync::Arc<Vec<std::path::PathBuf>>>,
+) -> CombinedList {
+    if !merge {
+        return CombinedList::NotMerge;
+    }
+    match read {
+        Loading::Idle | Loading::Pending(_) => CombinedList::Reading,
+        Loading::Failed(why) => CombinedList::Failed(sanitize_line(why)),
+        Loading::Ready(paths) => CombinedList::Files(
+            paths
+                .iter()
+                .map(|path| {
+                    let name = path.file_name().map_or_else(
+                        || path.display().to_string(),
+                        |name| name.to_string_lossy().into_owned(),
+                    );
+                    sanitize_line(&name)
+                })
+                .collect(),
+        ),
     }
 }
 

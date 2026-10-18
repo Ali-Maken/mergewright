@@ -2,9 +2,8 @@
 //! use (m6-conflicts/05, /25).
 
 use super::finish_row;
-use mergewright_git::status::UnmergedHow;
 use mergewright_term::{SanitizedText, sanitize_line};
-use mergewright_ui::conflict_resolver::{DocView, RegionView, SideNames};
+use mergewright_ui::conflict_resolver::{DocView, RegionView};
 
 use mergewright_ui::keymap::{ActionId, Keymap};
 
@@ -43,8 +42,6 @@ pub(super) fn whole_file_view(
             )),
             lines: whole_file_lines(whole),
             note: whole_file_note(whole, &state.keymap),
-            ours_absent: absent_on(whole.how, Side::Ours, &names),
-            theirs_absent: absent_on(whole.how, Side::Theirs, &names),
         }],
         cursor_block: None,
         base_shown: false,
@@ -90,8 +87,6 @@ pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape
             keys: sanitize_line(restart.as_deref().unwrap_or("")),
             lines: vec![],
             note: None,
-            ours_absent: None,
-            theirs_absent: None,
         }],
         cursor_block: None,
         base_shown: false,
@@ -101,33 +96,6 @@ pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape
             .map(|(text, error)| (sanitize_line(text), *error)),
         finish: finish_row(state),
     }
-}
-
-/// Which side of a whole-file shape a pane shows.
-#[derive(Clone, Copy)]
-enum Side {
-    Ours,
-    Theirs,
-}
-
-/// What `side`'s pane says in place of the file when the file is not on
-/// that side (three panes only): `(deleted on theirs · feature)`, or `(not
-/// on …)` where the other side added it. `None` when the file is there.
-fn absent_on(how: UnmergedHow, side: Side, names: &SideNames) -> Option<SanitizedText> {
-    let name = match side {
-        Side::Ours => names.ours.as_str(),
-        Side::Theirs => names.theirs.as_str(),
-    };
-    let words = match (how, side) {
-        (UnmergedHow::BothDeleted, _)
-        | (UnmergedHow::DeletedByUs, Side::Ours)
-        | (UnmergedHow::DeletedByThem, Side::Theirs) => format!("(deleted on {name})"),
-        (UnmergedHow::AddedByUs, Side::Theirs) | (UnmergedHow::AddedByThem, Side::Ours) => {
-            format!("(not on {name})")
-        }
-        _ => return None,
-    };
-    Some(sanitize_line(&words))
 }
 
 /// A whole-file card's plain-text tail: what is on disk, as far as the

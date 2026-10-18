@@ -1,4 +1,4 @@
-MERGING
+merging feature into main
 Clashing files                │▸ notes.txt · 2 conflicts · 2 open
                               │gone.txt done ✓ · ▸ notes.txt
  ✓ gone.txt   done            │   1 one

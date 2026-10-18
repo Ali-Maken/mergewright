@@ -1,4 +1,4 @@
-MERGING
+merging sara/fix-toc into wallet-release
 ╭────────────────────────────────────────────────────────────────────────────────────────╮
 │ All 3 clashes solved. Nothing committed yet.                                           │
 │                                                                                        │

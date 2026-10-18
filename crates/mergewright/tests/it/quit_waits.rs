@@ -307,7 +307,7 @@ fn capture_relaunch_after_a_stopped_merge() {
     }
     let frame = crate::captures::frame_at(&state, 80, 24, Some(Clock::Fixed(FORK_NOW)));
     let body = frame.join("\n");
-    assert!(body.contains("MERGING"), "{body}");
+    assert!(body.contains("merging "), "{body}");
     assert!(body.contains("c finish  a abort"), "{body}");
     crate::captures::check_shot(
         "m8-quit-stopped-merge-relaunch-80x24.txt",

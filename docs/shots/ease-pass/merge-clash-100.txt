@@ -3,14 +3,14 @@
 # crates/mergewright/src/view/resolver/tests/clash_shots.rs, a hand-built stop.
 # Judge by eye: 100 columns, the narrowest with the list column: the clash still two columns side by side.
 === 100x40 ===
-MERGING                                                                                             
+merging sara/fix-toc into wallet-release                                                            
 Clashing files                │▸ report.md · 2 conflicts · 2 open                                   
                               │                                                                     
  ? notes.md   1 open          │   1 # Report                                                        
 ▏? report.md  2 open          │   2 intro                                                           
                               │┌───────────────────────────────────────────────────────────────────┐
-                              ││? yours · wallet-release          │theirs · sara/fix-toc           │
-                              ││    let tax = round_cents(total *…│  let tax = (total * rate).roun…│
+Combined by git (2)           ││? yours · wallet-release          │theirs · sara/fix-toc           │
+✓ refund.rs, locale.rs        ││    let tax = round_cents(total *…│  let tax = (total * rate).roun…│
                               │└───────────────────────────────────────────────────────────────────┘
                               │   4 middle                                                          
                               │                                                                     

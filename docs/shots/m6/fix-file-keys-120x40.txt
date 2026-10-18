@@ -1,10 +1,10 @@
-MERGING
+merging feature into main
 Clashing files                │▸ gone.txt · modified on yours · main, deleted on theirs · feature
                               │▸ gone.txt
 ▏? gone.txt   keep or delete  │deleted by them · o keeps the file  t deletes it
  ✓ notes.txt  done            │   1 our plan
                               │
-                              │
+Combined by git · reading…    │
                               │
                               │
                               │

@@ -166,9 +166,9 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `CommitGraphLine` (enum) — `Offered { keys }`, …: the commit-graph offer's footer line.
 - `APP_NAME` (const, from `header.rs`) — the product's name where the app names itself: `Generation::CURRENT.title()` (`Mergewright`).
 - `HeaderView` (struct), `header_line`, `tail_room` (fns) — the header row's words; drawn at a width; cells left for the tail.
-- `BannerView` (struct, from `banner.rs`) — `kind`, `step`, `conflict`: the operation banner.
+- `BannerView` (struct, from `banner.rs`) — `kind`, `step`, `conflict`, `names` (a merge's `(from, into)`): the operation banner.
 - `RewriteBannerView` (struct), `BannerChain` (enum) — what a rewrite stop adds to the banner, and its chain words.
-- `banner_line` (fn) — `(banner, width, keys) -> String`: the banner's text in its room.
+- `banner_line` (fn) — `(banner, width, keys) -> String`: the banner's text in its room; a merge with `names` reads `merging <from> into <into>`.
 - `CarveInputs` (struct, from `carve.rs`) — what the row carve reads of a `GraphView`, as plain values; `CarveInputs::of(view)`.
 - `RowCarve` (struct) — `ScreenRows` in `Cells`: same bands, same names.
 - `row_carve` (fn) — `(area: Cells, inputs) -> RowCarve`: the one carve of the screen's rows, shared with `mergewright::update`.
@@ -269,8 +269,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 ## conflict_resolver
 - `INLINE_FROM` (const, `arrange`) — Frame columns from which the list is a column and an open clash draws side by side (ease-pass/11); below, a strip over one card.
 - `LIST_COLUMN` (const, `arrange`) — The list column's width (30).
-- `THREE_PANE_MIN` (const, `arrange`) — Frame columns from which the document is three panes beside the column (ADR-0043 §1).
-- `Arrangement` (enum, `arrange`) — `ThreePane`, `Inline` (open clashes side by side), `Card` (stacked).
+- `Arrangement` (enum, `arrange`) — `Inline` (open clashes side by side, every width from `INLINE_FROM`; three panes retired, ease-pass/11b), `Card` (stacked).
 - `arrangement` (fn, `arrange`) — Which arrangement a frame this wide gets.
 - `Mark` (enum, `mark`) — A clash's mark: `?` open, `◀ kept yours`, `▶ took theirs`, `◆ kept both` (ASCII `? < > *`); `glyph(ascii)`, `words(roles)`.
 - `HEADER_ROWS` (const) — Screen rows the widget reserves above the document itself: the title row and one more for the notice (blank while none is set).
@@ -286,7 +285,8 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `ResolverScreen` (struct) — The resolver, ready to render.
 - `FileRow` (struct) — One file in the list.
 - `FileRowLook` (enum) — Where one listed file stands; `Solved` (a merge's file with every clash picked, not staged) reads `✓ done`, as `Done` does (ease-pass/11); `words`/`glyph` in `files/words.rs`.
-- `FileListView` (struct) — The list, ready to draw; `tail` is what follows the files.
+- `FileListView` (struct) — The list, ready to draw; `tail` is what follows the files; `combined` a merge's files git combined.
+- `CombinedList` (enum, `files/combined`) — `NotMerge`, `Reading`, `Failed(why)`, `Files(names)`: the column's last section, `Combined by git (N)`; not clickable; empty draws nothing.
 - `ListTail` (enum, `files/tail`) — `None`, or a merge's `✓ Review the merge  y`.
 - `review_row_at` (fn, `files/tail`) — Whether `(dx, dy)` from the list's origin is on the drawn review row; a click there does what `y` does.
 - `Placement` (enum) — Where the list sits.
@@ -307,9 +307,6 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `SideNames` (struct) — The one name each side goes by everywhere the resolver names it: role word, then what it is (`yours · main`, `picked · 3f2a1b7 Add OAuth`).
 - `BlockNumbers` (struct) — This region's first line in each projection, 1-based (`mergewright_git::conflict::ConflictFile::first_lines`): a block's, or a plain region's (`RegionView::Plain::numbers`).
 - `number_width` (fn) — Digits in the widest line number any projection reaches in `doc` — the number column's width (at least 1).
-- `LineRef` (enum) — Which line a [`Cell::Line`] draws.
-- `Cell` (enum) — One pane's share of a [`ScreenRow::Aligned`] row.
-- `three_panes` (fn) — `doc`'s area split into its three panes, `[yours, result, theirs]`, with a one-column `│` between each two.
 
 ## context_menu
 - `ContextAction` (enum) — An action a context-menu item dispatches.

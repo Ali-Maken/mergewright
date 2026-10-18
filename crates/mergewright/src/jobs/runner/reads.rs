@@ -10,6 +10,7 @@ use crate::history;
 use crate::jobs::kinds::{decline_commit_graph, open_repository, write_commit_graph};
 use crate::jobs::types::{Cancel, JobEvents, Outcome};
 use crate::jobs::{commit_message, conflict, finish, rewrite, rewrite_open};
+use crate::update::resolver::files::SetRead;
 use crate::update::{Product, Task};
 
 impl<S: JobEvents> JobRunner<S> {
@@ -208,7 +209,8 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 let set = conflict::conflict_set(&repos, cancel).map(Arc::new);
-                Outcome::Produced(Product::ConflictSet(set))
+                let combined = conflict::combined_by_git(&repos, cancel);
+                Outcome::Produced(Product::ConflictSet(SetRead { set, combined }))
             })
         });
     }

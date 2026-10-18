@@ -28,6 +28,7 @@ fn two_files() -> FileListView {
         cursor: 1,
         unavailable: false,
         tail: ListTail::None,
+        combined: CombinedList::NotMerge,
     }
 }
 
@@ -50,6 +51,7 @@ fn twelve_files(cursor: usize) -> FileListView {
         cursor,
         unavailable: false,
         tail: ListTail::None,
+        combined: CombinedList::NotMerge,
     }
 }
 
@@ -251,6 +253,7 @@ fn a_long_name_keeps_its_file_name() {
         cursor: 0,
         unavailable: false,
         tail: ListTail::None,
+        combined: CombinedList::NotMerge,
     };
     let placed = placement(&view, 200);
     let Placement::Column { width } = placed else {
@@ -336,4 +339,5 @@ fn the_column_sits_beside_the_card() {
     assert!(line(&buf, 3).contains("? notes.txt"), "{:?}", line(&buf, 3));
 }
 
+mod combined;
 mod look;

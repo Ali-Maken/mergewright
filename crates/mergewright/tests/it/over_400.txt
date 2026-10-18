@@ -97,7 +97,7 @@
 881 crates/mergewright-term/src/kitty/tests.rs
 677 crates/mergewright-ui/src/blame/tests.rs
 667 crates/mergewright-ui/src/confirm.rs
-562 crates/mergewright-ui/src/conflict_resolver/tests.rs
+556 crates/mergewright-ui/src/conflict_resolver/tests.rs
 441 crates/mergewright-ui/src/context_menu/tests.rs
 413 crates/mergewright-ui/src/detail.rs
 445 crates/mergewright-ui/src/detail_pane/header.rs
@@ -108,7 +108,7 @@
 406 crates/mergewright-ui/src/graph_screen/hints/context.rs
 3114 crates/mergewright-ui/src/graph_screen/hints/tests.rs
 748 crates/mergewright-ui/src/graph_screen/render.rs
-2753 crates/mergewright-ui/src/graph_screen/tests.rs
+2751 crates/mergewright-ui/src/graph_screen/tests.rs
 548 crates/mergewright-ui/src/history/tests.rs
 467 crates/mergewright-ui/src/journal_screen.rs
 731 crates/mergewright-ui/src/journal_screen/tests.rs
@@ -181,8 +181,8 @@
 577 crates/mergewright/src/update/remote.rs
 1553 crates/mergewright/src/update/remote/tests.rs
 539 crates/mergewright/src/update/remote/tests/lease.rs
-965 crates/mergewright/src/update/resolver/tests.rs
-896 crates/mergewright/src/update/resolver/tests/file_list.rs
+964 crates/mergewright/src/update/resolver/tests.rs
+868 crates/mergewright/src/update/resolver/tests/file_list.rs
 1689 crates/mergewright/src/update/rewrite_editor/tests.rs
 639 crates/mergewright/src/update/selection.rs
 536 crates/mergewright/src/update/stash.rs

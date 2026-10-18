@@ -253,7 +253,7 @@ impl Tour {
         });
         self.send(b"y");
         self.wait("the resolver on menu.txt", |s| {
-            s.has("MERGING") && s.has("menu.txt \u{b7} 1 conflict")
+            s.has("merging ") && s.has("menu.txt \u{b7} 1 conflict")
         });
     }
 

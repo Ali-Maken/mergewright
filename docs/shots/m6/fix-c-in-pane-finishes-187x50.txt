@@ -10,7 +10,7 @@
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === 187x50 ===
- ◆ api  ~/code/api · main                                                                           MERGING  UNCOMMITTED · 2 staged
+ ◆ api  ~/code/api · main                                                         merging feature into main  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
 ▸ ◌      Uncommitted changes (2 staged)
   ◆      [◆ main] main's take                                                               GF 2h   ddeed32
@@ -61,7 +61,7 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space stage · d discard · c finish · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 --- after c ---
-MERGING
+merging feature into main
 ╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ All 2 clashes solved. Nothing committed yet.                                                                                                                                            │
 │                                                                                                                                                                                         │

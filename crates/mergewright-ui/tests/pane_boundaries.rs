@@ -337,9 +337,8 @@ fn inked_span(terminal: &Terminal<TestBackend>, y: u16) -> Option<(u16, u16)> {
 /// the conflicted file it carries for the hint bar is never drawn
 /// (m5-history-and-ghost-preview/11, carried item 10).
 ///
-/// **Mutation that breaks it:** in `graph_screen::layout`, hand the banner
-/// the width left *after* the location instead of reserving its own — at
-/// 80 columns the scratch path wins and the state is cut.
+/// **Mutation that breaks it:** in `graph_screen::layout`, hand the banner the width
+/// left *after* the location — at 80 columns the path wins, the state is cut.
 #[test]
 fn the_banner_keeps_its_state_word_at_every_width() {
     let dir = mergewright_fixtures::borrow(Shape::FeatureBranches);
@@ -360,6 +359,7 @@ fn the_banner_keeps_its_state_word_at_every_width() {
                     focused,
                     skippable: true,
                     rewrite: None,
+                    names: None,
                 });
                 let want = banner_line(
                     view.banner_op.as_ref().expect("set above"),

@@ -46,7 +46,7 @@
 mod answers;
 mod base;
 mod done;
-mod files;
+pub(crate) mod files;
 mod gate;
 mod geometry;
 mod handover;
@@ -194,10 +194,10 @@ pub struct ResolverState {
     /// The line under the title: what just happened here, and whether it
     /// was a failure. Drawn on the row under the title while set.
     pub notice: Option<(String, bool)>,
-    /// The files the operation conflicted on, in order
-    /// (`mergewright_ops::conflict::operation_conflicts`). A re-read keeps the
-    /// last answer here until the next one lands; see [`Self::set_job`].
+    /// Files conflicted on, in order; a re-read keeps the last ([`Self::set_job`]).
     pub files: Loading<Arc<mergewright_ops::conflict::ConflictSet>>,
+    /// A merge's files git combined, read with `files` (ease-pass/11b).
+    pub combined: Loading<Arc<Vec<PathBuf>>>,
     /// The conflict-set read whose answer is wanted. Any other id's answer
     /// is dropped: a newer read is on its way.
     pub set_job: Option<JobId>,
@@ -264,6 +264,7 @@ impl ResolverState {
             restarting: None,
             notice: None,
             files: Loading::Idle,
+            combined: Loading::Idle,
             set_job: None,
             seen: BTreeMap::new(),
             done: None,
