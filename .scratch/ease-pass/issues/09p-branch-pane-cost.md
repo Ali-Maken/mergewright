@@ -132,7 +132,7 @@ Each tick names its test inline.
 - [x] `refs_where` git tests (`contained::tests::refs_where_merged_alone`, `refs_where_not_merged_alone`, `refs_where_merged_and_not_merged_together`, `refs_where_contains`, `refs_where_reads_names_and_tips_back_exactly`): each filter alone, `--merged`+`--no-merged` together (system git version in NOTES), `--contains`, names read back exactly.
 - [ ] The script exits 0 with `budget ok`. **Not met: window OVER (spawn run), see NOTES.** NOTES quotes the `candidates`, `focus`, `window`, `scaling` and `breakdown` lines as read from `docs/perf/branch-pane.txt`.
 - [x] `scaling`: `a == b` (example `scaling` line, spawn run: 6 and 6).
-- [ ] Full nextest green. **Not met: 2 `graph_mode_keep` captures fail, question in NOTES.** No existing branch-pane or G12 test changes its expected words (none changed: the edits in `tests/route.rs` and `tests/status.rs` only add `agrees` calls).
+- [x] Full nextest green: `cargo nextest run --workspace`, 7093/7093, after the last change (the `graph_mode_keep` waits now include `pane_read`, per the conductor's grant in NOTES). No existing branch-pane or G12 test changes its expected words (none changed: the edits in `tests/route.rs` and `tests/status.rs` only add `agrees` calls).
 
 ## NOTES (builder, 2026-10-19)
 
@@ -167,6 +167,7 @@ So the cause is as suspected. The tips main holds have no able trunk (measure.rs
 - `focus runs=10 p50_ms=86.1 p95_ms=91.6 spawns=8`
 - `window rows=40 tips=21 total_ms=34526.1 spawns=3337`. **Still OVER**: the budget is 1260 spawns (and 21000 ms). Down from 182681.
 - `scaling others=10 spawns=6 others=500 spawns=6`
+- These spawn lines are in `docs/perf/branch-pane.txt` (the 09p section, marked spawn counts only).
 - Arithmetic, not observed per tip: the 11 light tips cost about 90, so each of the 10 tips main holds still costs about 320 over its 8-step walk, roughly 40 per step. Stopped here, per the spec. The next step is the user question (a/b/c above), or a design decision on the walk.
 
 ### git
@@ -183,7 +184,7 @@ So the cause is as suspected. The tips main holds have no able trunk (measure.rs
   - The tests capture on the first screen that shows `every branch shown` + `kept for next launch` (graph_mode_keep.rs, the `switched` wait_for), or `the folded graph` (`folded_and_rested`). Neither waits for the branch read. As a probe I added `&& s.has("up to date with sara/fix-toc")` to the `switched` wait (temporary, reverted), and the test **passed**.
   - Why my branch is later, inferred and not measured: on a tiny repo the new measure adds 2 to 4 `for-each-ref` (and now a `merge-base`) per step, where the old one needed only a few counts. So the read lands after the capture point.
   - The full nextest after fix 2 (7093 tests) gave 7092 passed, 1 failed. Only `typed_graph_lists_the_group…` failed; `picking_a_graph_mode…` passed that run. That is consistent with a race and not with a fixed result.
-  - Fix (cause): those waits should also wait for the pane read to land. That edit is in `crates/mergewright/tests/it/graph_mode_keep.rs`, which is outside my set, so I am **blocked on that file**. The committed captures stay as they are; no redraw is needed.
+  - Fix (cause): those waits now also wait for the pane read to land. **Conductor grant (2026-10-19):** I may edit `crates/mergewright/tests/it/graph_mode_keep.rs`. No running builder holds it (the conductor checked 09b's list). The new `pane_read(screen)` follows 09c's pattern (`tests/it/branch_pane.rs` `read()`): `built on` is drawn and no line says `reading…`. The view draws `reading…` both while a read is asked and before it is asked (`view/branch_pane.rs:59`). So a screen with `built on` and no `reading…` has the read landed. Both tests require it before `?`, and the `switched` wait requires it too. At 90 columns there is no pane (`pane_width` is `None`, `PANE_FROM`=100), so the check is skipped there; the palette covers every graph row that capture keeps. No sleep, no retry. Captures unchanged: no shot file shows as modified. The two tests ran 3 times and passed 2/2 each time.
 
 ### Touches
 - `route` and `branch_status` callers (the app's `jobs::branch_status`): signatures unchanged.

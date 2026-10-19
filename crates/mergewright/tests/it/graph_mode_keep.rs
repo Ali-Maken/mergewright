@@ -67,6 +67,15 @@ fn folded_and_rested(screen: &Screen) -> bool {
     screen.has("merged branches folded") && screen.has("Add the readme")
 }
 
+/// The branch pane's read has landed (09c's pattern): its words are drawn
+/// and no line says `reading…`. Until then the lanes are drawn before the
+/// route is known (`┄`), so a capture taken earlier races the read. Only
+/// where the pane is drawn: at 90 columns it is not (`PANE_FROM`), and the
+/// palette covers every graph row the capture keeps.
+fn pane_read(screen: &Screen) -> bool {
+    screen.has(" built on") && screen.lines().iter().all(|l| !l.contains("reading…"))
+}
+
 /// The cursor's row is `mark` (`○`/`●`) and `title`.
 fn cursor_on(screen: &Screen, mark: &str, title: &str) -> bool {
     let cursor = format!("▸{mark}");
@@ -96,7 +105,10 @@ fn typed_graph_on_every_branch(columns: u16) -> (Pty, Screen, Isolated) {
     let isolated = Isolated::new();
     let repo = wallet_in(&isolated, scratch.path());
     let mut pty = Pty::spawn(&isolated, &repo, isolated.root.path(), (columns, 36));
-    pty.wait_for("the folded graph", folded_and_rested);
+    let paned = mergewright_ui::branch_pane::pane_width(columns).is_some();
+    pty.wait_for("the folded graph, its pane read", |s| {
+        folded_and_rested(s) && (!paned || pane_read(s))
+    });
     pty.send(b"?");
     pty.send(b"graph");
     let typed = pty.wait_for("the group", |s| s.has("Every branch") && s.has("› graph"));
@@ -149,7 +161,9 @@ fn picking_a_graph_mode_in_help_switches_keeps_and_reopens_in_it() {
     assert!(!file.exists(), "no config file: `Loaded.path` is `None`");
     let repo = wallet_in(&isolated, scratch.path());
     let mut pty = Pty::spawn(&isolated, &repo, isolated.root.path(), (120, 36));
-    pty.wait_for("the folded graph", folded_and_rested);
+    pty.wait_for("the folded graph, its pane read", |s| {
+        folded_and_rested(s) && pane_read(s)
+    });
     let mut steps = Steps {
         pty: &mut pty,
         taken: 0,
@@ -162,7 +176,7 @@ fn picking_a_graph_mode_in_help_switches_keeps_and_reopens_in_it() {
     });
     steps.take(b"\r");
     let switched = steps.pty.wait_for("every branch, kept", |s| {
-        s.has("9 commits  every branch shown") && s.has("kept for next launch")
+        s.has("9 commits  every branch shown") && s.has("kept for next launch") && pane_read(s)
     });
     assert!(steps.taken <= 4, "{} steps", steps.taken);
     shot(
