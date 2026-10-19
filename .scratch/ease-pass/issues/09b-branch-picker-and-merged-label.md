@@ -23,6 +23,30 @@ Needs: from 09: the focus `Candidate` (full ref name), the status cache (`Status
   - Absent while unread; never `reading…` on a row.
   - Consequence: the label shows for branches the cursor has rested on since the last refs read.
   - Reading every tip in view is **not built**. 09's `docs/perf/branch-pane.txt` has the per-window figure; widening is a conductor/user call with that number, listed in NOTES for the usability walk.
+- **Ruling on NOTES Question 1 (planner, 2026-10-19): not decided here — it goes to the user.** Two journeys he approved collide on one row:
+  - m7 "Back to the previous branch: `C ⏎`, 2" (`docs/design-notes/m7-power-tools.md:671`, `:839`; walked it 3 times in the prototype, `docs/field-notes.md:73`). The journey names no starting row.
+  - ease-pass Q1 (a) "on a teammate's row … list opens on that branch, `⏎` switches (2 keys)" (`ease-pass.md:293`, Journeys `:106-107`), with the bar there reading `C switch to <branch>` (accepted mock, G13).
+  - On a teammate's row the same two keys can't do both. Either answer changes one approved journey, so the planner does not pick.
+  - Builder's (b) and (c) are rejected, not offered:
+    - (b) "only after the cursor has moved": a hidden mode. On the launch row the bar would say `C switch to sara` while `C ⏎` goes back, so the bar would lie (ux-principles: visibility of system status; same key, same meaning).
+    - (c) "`↩ before` stays selected": breaks Q1 (a)'s "`⏎` switches" and the bar's words.
+  - `C` keeps one meaning (keymap §2.3 :256, "open the branch picker") under both options. Only the picker's first selected row differs.
+  - **Question for the user** (his words): *"When the cursor is on a teammate's branch and you press `C ⏎`, should it switch to his branch, or take you back to the branch you were on before?"*
+    - **(a) Switch to his.** The bar's `C switch to <branch>` is true on his row. To go back, it's `C ⏎` from your own row or any non-teammate row. From his row you move off it first (one or more navigation keys). **Rec a**: the bar names what `C` does on the row you're looking at, and going back still takes 2 keys from your own work.
+    - **(b) Go back.** `C ⏎` always goes back, from anywhere. Q1 is reverted: on his row `C` opens as today, and the bar there stops saying `C switch to <branch>` (its words change from the accepted mock). Switching to him is `C`, type, `⏎`: 3+ keys.
+  - **Exact changes per answer** (nothing changes until he answers; the gate stays red and this ticket stays `partial`; no assertion is weakened in the meantime, rule 2):
+    - **(a):**
+      - `tests/it/m7_walk/picker.rs` `switch_back`: before `walk.open`, a setup step (not counted, not in `walk.keys`) puts the graph cursor on HEAD's row (`main`'s tip). Every assertion stays as written: `walk.keys == ["C", "⏎"]`, `<= noted_keys("switch-back")`, `head == refs/heads/feature-a`, status `on feature-a`, cursor on `target`, undo back to `main`.
+      - The doc comment reads "from your own row".
+      - `docs/design-notes/m7-power-tools.md:671` row and `:839` comment gain "from your own row". The count stays 2.
+      - `docs/shots/m7/picker-empty-query-187x50.txt` is redrawn only if the box differs. It shouldn't, since `↩ before` is still selected.
+      - A new journey test `back_from_a_teammates_row_is_c_enter_after_moving_off_it` pins the cost. Its count, measured, goes into the m7 note beside the 2.
+      - Builder's `picker_on` tests stand.
+    - **(b):**
+      - Drop the `Elsewhere` branch of the `C` handler: `C` never calls `open_on` from a key. `open_on`/`wanted` stay for `Tab`/palette use, or go, as the conductor rules.
+      - `picker_on::c_on_a_teammates_row_then_enter_switches_to_it_in_two_keys` becomes `c_on_a_teammates_row_opens_on_before`, asserting `selected` is `↩ before`.
+      - `ease-pass.md` Q1 and Journeys `:107` are amended. 07b's bar words on `Elsewhere` change: a 07b reopen, with captures.
+      - `switch_back` is unchanged and goes green.
 
 ## Scope
 In: app `update::picker` (`wanted`, `open_on`, `listed`), the `C` key handler's branch, `view::entries` labels (`not merged` from the cache).
