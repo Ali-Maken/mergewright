@@ -185,14 +185,20 @@ fn push_not_merged(
         return;
     };
     let reads = &state.look.reads;
-    let offset = usize::from(badges.first().is_some_and(|b| b.kind == BadgeKind::CompareBase));
+    let offset = usize::from(
+        badges
+            .first()
+            .is_some_and(|b| b.kind == BadgeKind::CompareBase),
+    );
     let wanted: Vec<usize> = refs
         .on(at)
         .iter()
         .enumerate()
         .filter_map(|(index, label)| {
             let full = match label {
-                RefLabel::Branch { name, .. } => format!("refs/heads/{}", String::from_utf8_lossy(name)),
+                RefLabel::Branch { name, .. } => {
+                    format!("refs/heads/{}", String::from_utf8_lossy(name))
+                }
                 RefLabel::Remote(name) => format!("refs/remotes/{}", String::from_utf8_lossy(name)),
                 RefLabel::DetachedHead | RefLabel::Tag(_) | RefLabel::Stash(_) => return None,
             };

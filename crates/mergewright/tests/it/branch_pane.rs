@@ -17,6 +17,8 @@ use mergewright_core::ref_name::RefName;
 use crate::app_harness::App;
 use crate::captures::frame_at;
 
+mod merged_label;
+mod picker_on;
 mod reads;
 mod shots;
 mod states;

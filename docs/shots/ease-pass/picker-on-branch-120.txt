@@ -1,0 +1,33 @@
+ease-pass 09b, drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/branch_pane/picker_on.rs): `main ← wallet-release (HEAD) ← sara/fix-toc`, `ali/x` beside it. Not a pty capture; colour unverified (rule 5).
+120x30. `C` pressed on sara/fix-toc's row. What right looks like: the picker is up with an empty query and its cursor on `sara/fix-toc`, not on the first row; `⏎` from here switches to it.
+
+ ◆ api  ~/code/api · wallet-release                                                                           5 commits
+
+    ◆        wallet-release (you) Bump the wallet version               Graft  28h│ sara/fix-toc
+    ┊ ●      ali/x                x: try the other layout               Graft  28h│ ! not pushed yet
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ · not merged
+    ┊ ┊ ┃                         Graft · 28 hours ago · made on sara/fix-toc · c…│ ✓ up to date with main
+    ●┄┴━╯    wallet-release (you) Start the wallet release              Graft  28h│ · Graft, last commit 28h ago
+  ◇┄╯        main                 Add the readme  not pushed yet        Graft  28h│
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │    ─◆ sara/fix-toc
+                                                                                  │
+                                                                                  │
+  ┌ SWITCH BRANCH · yours and the remote's · type to find ───────────────────────────────────────────────────────────┐
+  │ > ▏                                                                                                              │
+  │   ↩ before  ali/x           Graft  28h  x: try the other layout                                                  │
+  │ ▸ ● local   sara/fix-toc    Graft  28h  toc: fix the anchors                                                     │
+  │   ● local   main            Graft  28h  Add the readme                                                           │
+  │   · here    wallet-release  Graft  28h  you're on it                                                             │
+  │                                                                                                                  │
+  │                                                                                                                  │
+  │                                                                                                                  │
+  │                                                                                                                  │
+  │                                                                                                                  │
+  │                                                                                                                  │
+  │                                                                                                                  │
+  │ 4 branches                                                                                                       │
+  └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑/↓ row

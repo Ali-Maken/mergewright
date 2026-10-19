@@ -56,7 +56,7 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ◆    feature (you)        finish the feature  not pushed yet                                                Graft  now│ main
+    ◆    feature (you)        finish the feature  not pushed yet  not merged                                    Graft  now│ main
     ●                         start the feature                                                                 Graft   2m│ reading…
 ▸ ● ┊    main                 main moves again  not pushed yet                                                  Graft   3m│ reading…
  Checkout main

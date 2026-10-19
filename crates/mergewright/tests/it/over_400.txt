@@ -163,7 +163,7 @@
 488 crates/mergewright/src/update/name_prompt/tests.rs
 1516 crates/mergewright/src/update/operate/tests.rs
 402 crates/mergewright/src/update/palette/mod.rs
-535 crates/mergewright/src/update/picker/tests.rs
+503 crates/mergewright/src/update/picker/tests.rs
 440 crates/mergewright/src/update/place.rs
 456 crates/mergewright/src/update/place/keys.rs
 1069 crates/mergewright/src/update/place/tests/history.rs

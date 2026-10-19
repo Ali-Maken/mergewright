@@ -1,5 +1,5 @@
  ◆ api  ~/code/api · main                                             4 commits
-▸   ●    feature/sar… two on the branch  not pushed yet              Graft  now
+▸   ●    feature/sar… two on the branch  not pushed yet  not merged  Graft  now
     ┃                 Graft · just now · made on feature/sara-long-running-oau…
   ◆━╯    main (you)   Correct the note  not pushed yet               Graft   1y
   ●                   Add the first note                             Graft   1y

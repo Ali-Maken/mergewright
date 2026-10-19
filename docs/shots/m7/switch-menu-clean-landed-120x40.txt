@@ -8,7 +8,7 @@
 # `✓ on feature-b  u goes back`.
  ◆ api  ~/code/api · feature-b                                                                                6 commits
 
-▸   ◆    feature-b (you)      fix the bug  not pushed yet               Graft   3m│ feature-b  (you're here)
+▸   ◆    feature-b (you)      fix the bug  not pushed yet  not merged   Graft   3m│ feature-b  (you're here)
     ┃                         Graft · 3 minutes ago · made on feature-b · fbb2394 │ ! not pushed yet
   ● ┃    main                 main moves on  not pushed yet             Graft   4m│ · not merged
   ●━╯                         add the base                              Graft   5m│ ! main has 1 new commit since it
