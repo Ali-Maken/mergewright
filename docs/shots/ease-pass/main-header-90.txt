@@ -36,4 +36,4 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
   ◉                 Merge branch 'sara/fix-toc…  ▸ 1 commit from sara/fix-toc  Graft  28h
 ▸ ◉                 Merged PR 16021: Fix the wall…  ▸ 4 commits from PR 16021  Graft  28h
 ──────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · ? keys
+ space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

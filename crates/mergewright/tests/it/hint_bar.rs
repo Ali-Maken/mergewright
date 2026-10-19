@@ -102,10 +102,8 @@ fn opened(app: &App, state: AppState) -> AppState {
     })
 }
 
-/// The cursor starts on the tip, which carries the current branch's badge:
-/// the footer hints that row's own keys, and none of the keys no group has
-/// built (`b branch`, `t tag` are the design note's, not this build's;
-/// `m merge` and `r rebase` were too until group 08 bound them).
+/// The cursor starts on the tip, made on `HEAD`'s branch: the footer hints
+/// his own branch's bar (ease-pass/07b, mock G13).
 #[test]
 fn the_tip_row_hints_the_current_branch_context() {
     let scratch = repo();
@@ -114,16 +112,16 @@ fn the_tip_row_hints_the_current_branch_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open · c commit · P push · ") && bar.ends_with("? keys"),
+        bar.starts_with(" ⏎ open · P push · c commit · ") && bar.ends_with("? keys"),
         "{bar:?}"
     );
     app.close();
 }
 
-/// One row down is an ordinary commit: a different list, from the same
-/// frame path.
+/// One row down is a commit made on the same branch: his own branch's bar
+/// again (ease-pass/07b), with the row's own `o take`.
 #[test]
-fn a_plain_row_hints_the_plain_context() {
+fn the_parent_row_hints_its_own_branch_bar() {
     let scratch = repo();
     let (app, state) = App::open(scratch.path());
     let state = opened(&app, state);
@@ -131,16 +129,13 @@ fn a_plain_row_hints_the_plain_context() {
 
     let bar = footer(&state, 80, 24);
     // HEAD's parent: an ancestor, take-live like the `.` menu, so `o take`
-    // follows `⏎ open` and `r rebase` drops past `? keys` (m7-power-tools/40).
+    // follows `⏎ open` (m7-power-tools/40).
     assert!(
         mergewright::update::can_take(&state),
         "the parent row is not take-live"
     );
     assert!(
-        // `b branch` and `t tag` went live in
-        // m5-history-and-ghost-preview/10, in the hint-bar design note's own
-        // order for a plain row; `c commit` dropped to its bare key.
-        bar.starts_with(" ⏎ open · o take · b branch · ") && bar.ends_with("? keys"),
+        bar.starts_with(" ⏎ open · o take · P push · c commit · ") && bar.ends_with("? keys"),
         "{bar:?}"
     );
     app.close();
@@ -797,7 +792,7 @@ fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
 
     let bar = hint_bar(&diff, 80, 24).expect("the Detail tab draws a bar");
     assert_eq!(
-        bar, " c commit · P push · p pull · f fetch · b branch · t tag · u undo · ? keys",
+        bar, " P push · c commit · u undo · . actions · ? keys",
         "the bar after the filter, quoted so the change is legible in review"
     );
     assert!(
@@ -894,16 +889,14 @@ const MARKED_SHOTS: [(u16, u16, &str); 2] = [
     (
         120,
         36,
-        "Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and\n\
-             # `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,\n\
-             # only once both are (a marked branch tip needs 137 cells of bar, m8/11e F1);\n\
-             # `?` still answers.",
+        "Right (m8/11d R2; ease-pass/07b): `. explain` leads, then the folded\n\
+             # merge's own bar, `u undo` and `? keys` last — the mock bar is short\n\
+             # enough to keep the doorway at 120.",
     ),
     (
         140,
         40,
-        "Right (m8/11e F1): at 140 columns, past the 137 a marked branch tip\n\
-             # needs, the bar ends `? keys`.",
+        "Right (m8/11e F1; ease-pass/07b): at 140 columns the bar ends `? keys`.",
     ),
 ];
 
@@ -943,9 +936,8 @@ fn capture_marked_rows(shots: &[(u16, u16, &str)]) {
         let bar = drawn.last().cloned().unwrap_or_default();
         assert!(bar.starts_with(" . explain"), "a marked row's bar: {bar:?}");
         assert!(bar.contains("u undo"), "{bar:?}");
-        assert_eq!(
-            bar.contains("? keys"),
-            columns >= 137,
+        assert!(
+            bar.ends_with("? keys"),
             "the doorway on a marked branch tip at {columns}: {bar:?}"
         );
         let name = format!("doorway-marked-{columns}x{rows}.txt");

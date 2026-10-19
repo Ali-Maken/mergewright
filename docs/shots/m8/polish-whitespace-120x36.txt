@@ -26,7 +26,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · ? keys
+ ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
 COMMIT 6029ea7 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents c… · whitespace ignored
 reflow notes
 M notes.txt             +2 −2 ▎

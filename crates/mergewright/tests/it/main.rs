@@ -118,6 +118,7 @@ mod rename_status;
 mod repo_truth;
 mod resolver;
 mod rewrite_stop;
+mod row_bars;
 mod row_reads;
 mod seam_rule;
 mod search_folded;

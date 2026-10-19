@@ -46,7 +46,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- n next · N prev · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · ? keys
+ n next · N prev · space show the 3 commits inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys
 
 ## settled with matches
 
@@ -85,7 +85,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- n next · N prev · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · ? keys
+ n next · N prev · space show the 3 commits inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys
 
 ## no match
 
@@ -124,4 +124,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys
+ space show the 3 commits inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys

@@ -35,4 +35,4 @@ m8-polish-and-ship/06 at 120x36: what right looks like — the first row is ` �
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · ? keys
+ m merge three into yours · ⏎ open · o take · C switch to three · x compare · u undo · . actions · ? keys

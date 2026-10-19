@@ -90,9 +90,9 @@ fn over_rewritable(context: &HintContext) -> bool {
 /// The cursor row inside `context` carries `o take` or `a amend`.
 fn has_row_verbs(context: &HintContext) -> bool {
     match context {
-        HintContext::BranchRow { verbs, .. } | HintContext::PlainRow { verbs } => {
-            *verbs != RowVerbs::NONE
-        }
+        HintContext::BranchRow { verbs, .. }
+        | HintContext::PlainRow { verbs }
+        | HintContext::GraphRow { verbs, .. } => *verbs != RowVerbs::NONE,
         HintContext::Marked(row)
         | HintContext::Rewritable(row)
         | HintContext::Searching(row)

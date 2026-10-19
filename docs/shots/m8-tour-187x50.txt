@@ -49,4 +49,4 @@ m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · ? keys
+ . explain · ⏎ open · P push · c commit · a amend · u undo · ? keys

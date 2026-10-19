@@ -3,7 +3,7 @@
 //! operation's `c`, `esc back to …`). Moved out of `view/rows.rs`
 //! (m8/21b-7, move-only).
 
-use super::{AppState, BadgeKind, GraphEntry, HintContext, History, RowVerbs, live_c, search_tail};
+use super::{AppState, GraphEntry, HintContext, History, RowVerbs, live_c, search_tail};
 
 /// `row` led by `n next  N prev` while [`search_tail`] stands (m8/15b,
 /// ticket 15 A2): a graph row's bar only — a row, marked or under `R`.
@@ -26,6 +26,7 @@ pub(super) fn search_wrapped(state: &AppState, row: HintContext) -> HintContext 
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::GraphRow { .. }
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::Marked(_) => HintContext::Searching(Box::new(row)),
@@ -53,6 +54,7 @@ pub(super) fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
         HintContext::WorkingTreeRow
             | HintContext::BranchRow { .. }
             | HintContext::PlainRow { .. }
+            | HintContext::GraphRow { .. }
             | HintContext::StashRow
             | HintContext::Marked(_)
             | HintContext::Searching(_)
@@ -85,6 +87,7 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
+        | HintContext::GraphRow { .. }
         | HintContext::StashRow
         | HintContext::Rewritable(_)
         | HintContext::Marked(_)
@@ -102,8 +105,8 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
     }
 }
 
-/// The drawn cursor row's context: its first local-branch badge or plain,
-/// with its verbs, under `R rewrite` when offered and `Marked` when flagged.
+/// The drawn cursor row's context: its ease-pass row bar
+/// ([`super::row_bar::row_bar`]) or plain, with its verbs, under `R rewrite` when offered and `Marked` when flagged.
 pub(super) fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> HintContext {
     // A stash's row first, before any badge (m8-polish-and-ship/15 A4): the
     // same `is_stash` on the same selected commit that `m`/`r` refuse on
@@ -127,17 +130,21 @@ pub(super) fn cursor_row_context(state: &AppState, cursor: &GraphEntry<'_>) -> H
     let landed = crate::update::commit_editor::landed_bar(state.last_commit.as_deref(), selected)
         .or_else(|| crate::update::finish::just_merged_bar(state, selected))
         .map(|row| HintContext::GraphRow { row, verbs });
+    // Off a landing, the one rule (ease-pass/07b): the row's fold, then
+    // its live branch; no live branch → the plain row's bar.
+    // While an operation is live the row's bar is the plain row's: its `c`
+    // is said as the operation's (`live_wrapped`), and the ease-pass bars
+    // — `C switch to`, `m merge` — offer what a stopped operation refuses.
     let base = landed.unwrap_or_else(|| {
-        cursor
-            .badges
-            .iter()
-            .find_map(|badge| match badge.kind {
-                BadgeKind::Branch { current, .. } => {
-                    Some(HintContext::BranchRow { current, verbs })
-                }
-                _ => None,
+        if live_c(state).is_some() {
+            return HintContext::PlainRow { verbs };
+        }
+        let branch = super::row_bar::cursor_row_branch(state);
+        let fold = super::row_bar::MergeFold::of(cursor.fold.as_ref());
+        super::row_bar::row_bar(branch.as_ref(), fold)
+            .map_or(HintContext::PlainRow { verbs }, |row| {
+                HintContext::GraphRow { row, verbs }
             })
-            .unwrap_or(HintContext::PlainRow { verbs })
     });
     let base = if rewrite_offered(state) {
         HintContext::Rewritable(Box::new(base))

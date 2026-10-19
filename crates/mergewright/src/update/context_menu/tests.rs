@@ -1437,8 +1437,8 @@ fn an_ancestor_of_head_hints_o_like_the_menu() {
 #[test]
 fn heads_row_hints_a_amend() {
     let words = bar_words(&on_row(1));
-    let fetch = words.iter().position(|w| w == "f fetch").expect("f fetch");
-    assert_eq!(words[fetch + 1], "a amend", "{words:?}");
+    let at = words.iter().position(|w| w == "c commit").expect("commit");
+    assert_eq!(words[at + 1], "a amend", "{words:?}");
 }
 
 #[test]

@@ -316,3 +316,71 @@ fn the_look_bar_draws_the_mock_words() {
         " esc back to the review · y commit the merge"
     );
 }
+
+/// Settle test 2 of ease-pass/07b, before the bar switch: today's whole
+/// 120-column bar for the two rows `R rewrite` wraps. `Rewritable` adds
+/// `R rewrite` at its list's end, which this width drops, so each is the
+/// bare row's bar.
+#[test]
+fn todays_rewritable_bars_at_120_columns() {
+    let rewritable = |inner: HintContext| HintContext::Rewritable(Box::new(inner));
+    let cases = [
+        (
+            rewritable(HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            }),
+            " ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys",
+        ),
+        (
+            rewritable(HintContext::BranchRow {
+                current: true,
+                verbs: RowVerbs::NONE,
+            }),
+            " ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys",
+        ),
+        (
+            rewritable(HintContext::BranchRow {
+                current: false,
+                verbs: RowVerbs::NONE,
+            }),
+            " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys",
+        ),
+    ];
+    for (context, want) in cases {
+        assert_eq!(bar(&context, 120), want, "{context:?}");
+    }
+}
+
+/// Settle test 2's finding, fixed (ease-pass/07b; conductor ruling: the
+/// mock bar wins). A `GraphRow` under `Rewritable` draws exactly its mock
+/// bar: the short tail, `. actions`, whole named verbs. `R rewrite` is not
+/// drawn on an ease-pass row bar (the mock has none); `R` still answers
+/// and `?` lists it. Before the fix the wrapper took the screen-wide tail.
+#[test]
+fn a_rewritable_graph_row_draws_the_mock_bar() {
+    for inner in [
+        RowBar::Own,
+        elsewhere("sara/fix-toc"),
+        RowBar::FoldedMerge { inside: 3 },
+        RowBar::OpenedMerge,
+        RowBar::JustCommitted,
+        RowBar::JustMerged { inside: 3 },
+    ] {
+        let bare = row(inner.clone());
+        let wrapped = HintContext::Rewritable(Box::new(row(inner)));
+        assert_eq!(bar(&wrapped, 120), bar(&bare, 120), "{wrapped:?}");
+        let marked = HintContext::Marked(Box::new(wrapped));
+        let marked_bare = HintContext::Marked(Box::new(bare));
+        assert_eq!(bar(&marked, 120), bar(&marked_bare, 120), "{marked:?}");
+    }
+    let own = HintContext::Rewritable(Box::new(row(RowBar::Own)));
+    assert_eq!(
+        bar(&own, 120),
+        " ⏎ open · P push · c commit · u undo · . actions · ? keys"
+    );
+    let teammate = HintContext::Rewritable(Box::new(row(elsewhere("sara/fix-toc"))));
+    assert_eq!(
+        bar(&teammate, 120),
+        " m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys"
+    );
+}

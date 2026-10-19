@@ -36,4 +36,4 @@ What right looks like: the PR's merge ends `▸ 4 commits`, two cells after its 
 
 
 ──────────────────────────────────────────────────────────────
- ⏎ open · c commit · P push · p pull · u undo · ? keys
+ space show the 1 commit inside · ⏎ open · u undo · ? keys

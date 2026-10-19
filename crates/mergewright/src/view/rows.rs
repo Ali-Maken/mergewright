@@ -4,8 +4,8 @@
 use mergewright_term::sanitize_line;
 use mergewright_ui::graph_screen::hints::RowVerbs;
 use mergewright_ui::graph_screen::{
-    BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, Location, ProblemLine,
-    WalkView, spaced,
+    Compaction, Filters, GraphEntry, GraphView, HintContext, Location, ProblemLine, WalkView,
+    spaced,
 };
 
 use crate::history::{History, Phase};
@@ -24,6 +24,7 @@ pub(super) use fold::{fold_tail, inside_merge};
 mod footer;
 mod header;
 mod hint_context;
+mod row_bar;
 mod window;
 use footer::{compare_footer_line, search_line};
 pub(crate) use footer::{order_notice, search_tail};

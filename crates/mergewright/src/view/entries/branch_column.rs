@@ -58,6 +58,19 @@ pub(super) fn fill(
     }
 }
 
+/// The name the branch column gives lane `made` (ease-pass/07b: the bar's
+/// branch is named as the column names it). The same lookup [`fill`]
+/// runs, for one lane.
+pub(crate) fn branch_name(
+    state: &AppState,
+    history: &History,
+    made: BranchIdentity,
+) -> Option<Vec<u8>> {
+    let wanted = HashSet::from([made]);
+    let (mut names, _) = names_of(state, history, &wanted);
+    names.remove(&made)
+}
+
 /// `label`'s last path segment: `sara/fix-toc` → `fix-toc`.
 fn last_segment(label: &[u8]) -> &[u8] {
     label.rsplit(|byte| *byte == b'/').next().unwrap_or(label)

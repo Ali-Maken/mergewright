@@ -1,6 +1,6 @@
 # graph-rows-cursor — the cursor row's second line, scroll and hit-test around it, the bar per row kind
 
-Status: ready (split from 07 at its old (a)/(b) point, planner spec-only pass 2026-10-18, after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12; mismatches 2, 4, 5 and the two *could not confirm* items settled below)
+Status: **partial** (2026-10-19): split (i) built (Rewritable fix per conductor ruling, settle tests 2–3, `live_branch`, `row_bar`, the bar switch); `BranchRow` removal and all of split (ii) remain. See NOTES "Remaining". Was: blocked: Rewritable vs mock bar (settle test 2). Was: ready (split from 07 at its old (a)/(b) point, planner spec-only pass 2026-10-18, after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12; mismatches 2, 4, 5 and the two *could not confirm* items settled below)
 Blocked by: 07-graph-rows. **Anchors are the scout's, pre-split: map each through 06s's and 06t's NOTES tables and 07's NOTES before starting.**
 Build with: Opus — scroll and every screen-line → row hit-test change meaning together, three facts are settled by tests before the code they decide, and the bar choice spans view, update and refs (scout's call).
 Needs: from 07: `AppState.route`, `GraphEntry` (+ `badges` undrawn if kept), `RowLabel`, `lane_roles`, `ref_spans`; from 03b/03r: `HintContext::GraphRow { row: RowBar, verbs: RowVerbs }`, `RowBar::{Own, Elsewhere { branch: SanitizedText }, FoldedMerge { inside: u32 }, OpenedMerge, JustCommitted, JustMerged { inside: u32 }}` (`hints/context/row_bar.rs:12`), `bar_name` (:47); from 06: `OpenedMerges`, `InsideMerge { merge, label }` (`view/rows/fold.rs:27`), `FoldMark { open, count, from }`; app `refs::RefBadges`, `refs::RefLabel`; `ContainedIn` (`update/events.rs:318`) from `read_contained` (`jobs/detail.rs:340`); `cursor_row_context` (`view/rows/context.rs:107`) with 08's `landed_bar` arm (08:115).
@@ -64,8 +64,8 @@ impl RefBadges {
 ## Acceptance
 Each tick names its test inline.
 - [ ] Settle tests 1–3 committed before the code they decide (commit order in NOTES), each outcome in NOTES.
-- [ ] `live_branch`: local hit, remote-only hit, deleted → `None` (unit tests); built from an index, not a per-call scan (NOTES names where `badges` builds it).
-- [ ] `row_bar` table test: every `MergeFold` × {own, elsewhere, none}.
+- [x] `live_branch`: local hit, remote-only hit, deleted → `None` (unit tests); built from an index, not a per-call scan (NOTES names where `badges` builds it). — `refs::live_tests::{a_local_branch_of_exactly_that_name_is_found, a_remote_only_branch_is_found_under_its_remote, a_deleted_branch_is_none, heads_own_branch_is_found_as_current, origin_head_is_not_a_branch}`.
+- [x] `row_bar` table test: every `MergeFold` × {own, elsewhere, none}. — `view::rows::row_bar::tests::row_bar_table`.
 - [ ] Bar per row kind (state tests through the choice site, words from 03b/03r): own row `⏎ open · P push · c commit`; a `sara/fix-toc` row `C switch to fix-toc` and `x compare`; a folded merge with `Known(3)` `space show the 3 commits inside`, with `Pending` its branch's bar; the opened merge row `space hide the commits inside · ⏎ open · x compare`; an inner row of a merge from a live `sara/fix-toc` → `⏎ open · C switch to fix-toc · x compare`, no `space` hint; an inner row of a merge whose branch was deleted → no `C switch to` (`PlainRow`); `space` on that inner row still closes the merge, cursor on the merge row.
 - [ ] `BranchRow` removed with its arms, or NOTES names its picker; `PlainRow`'s pickers named in NOTES.
 - [ ] Second line: only the cursor row has one; starts with the author name, contains `made on ` on a named row, ends with a 7-hex hash; the line below continues every lane glyph straight; `j` moves it; uncommitted row reads `not committed yet`; a `Known` merge row reads `merged 3 from fix-toc`; no `reading…` anywhere.
@@ -78,3 +78,81 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~70k. Split point if it overruns: (i) settle tests 2–3, `live_branch`, `row_bar` and the bar switch; (ii) settle test 1, second line, scroll and hit-tests, captures.
+
+## NOTES (builder, 2026-10-19)
+
+Stopped at settle test 2, as the ticket orders. No compaction. Scout: the ticket's (`scouts/07-graph-rows.md`); anchors re-found by grep at 7305006d (choice site still `view/rows/context.rs:107`; `PlainRow` pickers now `view/rows.rs:183`, `view/rows/hint_context.rs:307`, `update/commit_editor/done_row.rs:58`).
+
+**Settle test 2 — blocked: Rewritable vs mock bar.** Tests in `crates/mergewright-ui/src/graph_screen/hints/tests/bars.rs`:
+- `todays_rewritable_bars_at_120_columns` pins today. `Rewritable` adds only `R rewrite` at the list's end; 120 columns drops it, so each bar equals the bare row's:
+  - `Rewritable(PlainRow)`: ` ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys`
+  - `Rewritable(BranchRow{current})`: ` ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys`
+- `a_rewritable_graph_row_draws_the_wide_tail_not_the_mock_bar` pins the composed bar as found (verified by running it):
+  - mock (03r, `each_row_bar_draws_the_mock_bar_at_120_columns`), Own: ` ⏎ open · P push · c commit · u undo · . actions · ? keys`
+  - composed `Rewritable(GraphRow{Own})`: ` ⏎ open · P push · c commit · R rewrite · q quit · F2 stat · F3 rend · u undo · x compare · + lane · / search · ? keys`
+  - mock, Elsewhere `sara/fix-toc`: ` m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys`
+  - composed: ` m merge fix-toc into yours · ⏎ open · C switch · x compare · R rewrite · q quit · F2 stat · F3 rend · u undo · ? keys`
+- Differs beyond `R rewrite`: `. actions` is gone, `q quit · F2 stat · F3 rend` (and on Own `x compare · + lane · / search`) come in, `C switch to fix-toc` falls to `C switch`.
+- **Cause, with its line:** `crates/mergewright-ui/src/graph_screen/hints/filters.rs:347`. `drawable` picks `ROW_BAR_TAIL` only when `matches!(context, HintContext::GraphRow { .. })`. A `Rewritable(GraphRow)` fails that match and gets the screen-wide `TAIL`.
+- **Why it matters:** `rewrite_offered` (`view/rows/context.rs`) wraps HEAD's own branch rows whenever HEAD is not the default branch. That covers his daily case, feature-branch rows, which are exactly the `Own` bar.
+- **The same composition already ships:** `landed_bar`'s `GraphRow{JustCommitted}` is wrapped by `Rewritable` today (`context.rs:128` → `:141`). Not verified by a test here. It is a question for the fixer.
+- **Possible fix, not mine to make** (hints are out of scope): look through `Rewritable` (and `Marked`?) in `filters.rs:347`. Then decide whether `R rewrite` should draw on the mock bar at all. Owner of the hint words: 03b/03r.
+
+### Unblocked: conductor ruling, 2026-10-19
+The ruling: the mock bar wins, and the cause is fixed inside 07b. This scope addition was the conductor's call.
+- **Fix (cause):** `crates/mergewright-ui/src/graph_screen/hints/filters.rs` `drawable` now asks `HintContext::is_graph_row_bar()` (new, `hints/context/row_bar.rs`). It is true for `GraphRow`, bare or under `Rewritable`, so both take `ROW_BAR_TAIL`.
+- **`R rewrite` under `Rewritable(GraphRow)`:** `hints/lists.rs` `rewritable_list` adds no `R rewrite` there, so the bar is exactly the mock's. `R` still answers and `?` lists it. **Question for the conductor:** the mock has no `R`. It was not drawn at 120 before either, because the width dropped it.
+- **Test:** `hints::tests::bars::a_rewritable_graph_row_draws_the_mock_bar` replaces the found-pin test. Every `RowBar`, bare, wrapped, and marked-and-wrapped, draws the bare mock bar; Own and `sara/fix-toc` are checked literally (`. actions` is back, as is `C switch to fix-toc`).
+- **The landing bar was hit too:** `JustCommitted` under `Rewritable` was already shipping the wide tail; the re-shot captures show `c commit again` back.
+- **Other wrapper misses grepped:**
+  - In `filters.rs`: `:333` already lists `Rewritable`, `:360` is divider-only, and `status_row.rs` `landing_bar` already looks through wrappers.
+  - `catalogue/forms.rs` `has_row_verbs` missed `GraphRow`'s verbs. Fixed.
+  - App `view/rows/context.rs`: `search_wrapped`, `live_wrapped` and `back_to_place` did not list `GraphRow`. They were harmless while it was a landing only, and would be wrong once it is every row. Added.
+
+### Settle test 3 (committed with this change, before nothing it decides changed)
+None of the three pickers stands for a commit row, so all keep `PlainRow`:
+- `view/rows.rs` `opening_view`: no history yet. Test: `view::rows::tests::the_opening_view_bar_is_a_plain_row`.
+- `view/rows/hint_context.rs` (`cursor` is `None`): no cursor row drawn. Test: `view::rows::tests::no_drawn_cursor_row_picks_a_plain_row`.
+- `update/commit_editor/done_row.rs` `bar_row`: stands for "any bar that is not a landing"; only landing-ness matters. Test: `done_row::tests::off_a_landing_the_done_row_asks_with_a_plain_row`.
+
+### What split (i) built
+- **`live_branch`** is in `refs/live.rs`.
+  - The index is `LiveNames`, built in `refs::badges` (local branches) and `push_remotes_tags_and_stash` (every remote-tracking ref except `*/HEAD`, badged or not). It is boxed in `RefBadges` to keep `AppEvent` small (clippy `large_enum_variant`).
+  - Lookup order: local exact, then **remote shorthand exact** (`origin/x`), then `<remote>/<label>`, first remote listed wins. The middle step is beyond the spec: a lane named by a remote shorthand must resolve.
+- **`row_bar`** is in `view/rows/row_bar.rs` (`RowBranch`, `MergeFold::of(FoldMark)`, `cursor_row_branch`).
+  - An inner row's branch is `InsideMerge.label` → `live_branch`.
+  - Any other row's branch is `made_on` → `view::entries::branch_name` (new; the branch column's `names_of` for one lane) → `live_branch`.
+  - The result is `Own` iff the label is a `Branch { current: true }`.
+- **Choice site** is `view/rows/context.rs` `cursor_row_context`: `landed` first, then the new rule.
+  - **Decision (not in the spec):** while an operation is live (`live_c`), the base is `PlainRow`. The ease-pass bars have no `c`, so `c continue` vanished at stops, and they offer `C switch to`/`m merge`, which a stopped operation refuses.
+  - That decision was caught by `m7_walk::rewrite_stops::capture_edit_stop_sizes` and `m5_walk journey_back_after_esc`. Question for the conductor or usability walk: should a stop get its own ease-pass bar?
+- **`GraphEntry.badges` is kept:** `row_text.rs`, `row_cells.rs` and `view/preview.rs` still read it.
+
+### Bar per row kind: state tests (`tests/it/row_bars.rs`, `wallet_release` fixture)
+- Own row and trunk row: `his_own_row_and_the_trunks_row_take_their_branchs_bar`.
+- Folded `Known(4)`: `a_folded_merge_with_its_count_says_what_space_shows`. `Known(3)` words are 03r's `each_row_bar_draws_the_mock_bar_at_120_columns`.
+- Opened merge, an inner row of a deleted branch (no `C switch`, no `space`), and `space` there closes the merge with the cursor on the merge row: `the_opened_merge_and_its_rows_from_a_deleted_branch`.
+- Inner row of the live `sara/fix-toc`: `an_inner_row_of_a_live_branchs_merge_offers_its_switch`.
+- Row verbs (`o take`) sit after `⏎ open` as on any row.
+- **Not covered by a state test:** `Pending` → the branch's bar. Only the unit test `row_bar_table` covers it, because the count races the first paint. So box 4 stays unticked. `space` on a `Pending`/`Failed` closed merge still acts; listed for the usability walk.
+
+### Knock-on (Touches)
+- Every graph row bar changed app-wide. 67 test-read captures under `docs/shots/` were redrawn (`MWR_UPDATE_SHOTS=1`). I spot-read the bar-line diffs and they read as the mock bars. **Not judged by eye** (rule 6); colour unverified (rule 5).
+- **Stale captions (textual, not fixed; old milestones):** these still describe the old bars in their `#` header lines: `docs/shots/m5-hints-{branch,detail,plain}-{80x24,120x40,160x48}.txt` and `docs/shots/m7/bar-amend-row-187x44.txt`.
+- Test expectations rewritten for the new bars:
+  - `context_menu::tests::heads_row_hints_a_amend`.
+  - `hint_bar::{the_tip_row_hints_the_current_branch_context, the_parent_row_hints_its_own_branch_bar (renamed), the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer}`, plus the marked-doorway caption and assert: `? keys` is now drawn at 120.
+  - `m5_walk regressions` (current-branch and parent rows).
+  - `keymap_edge::remaps::capture_merge_remapped_to_shift_m`. The fixture's only non-own row is a folded merge, so the `M merge` chord is now checked on a `GraphRow Elsewhere` bar through `hints_for`.
+- `over_400.txt`: `hint_bar.rs` lowered to 965. MAP.md: `refs::live`, `view::rows::row_bar`, `entries::branch_name`.
+- No `.snap` edited.
+
+### Remaining (for the conductor to split)
+1. **`BranchRow` removal.** It has no picker left (`context.rs` was its only one). It is still matched in ui `hints/{context,lists,lists/rows,doorway,filters,catalogue,catalogue/forms}.rs`, about 40 ui test sites, app `view/rows/context.rs` (3 matches) and the `dead_keys`/`sweep_screens` sweeps. Mechanical, but the tests that assert BranchRow words must be deleted or moved to `GraphRow`.
+2. Settle test 1 (contains read at rest).
+3. Second line, `body_line`/`commit_rows`, scroll, hit-tests.
+4. The seven captures in box 9.
+
+Commit order: `acd748a6` (settle test 2 pin), then this commit (ruling fix, settle 3, live_branch, row_bar, switch).
+
+Acceptance: 2/9 ticked (boxes 2, 3). Box 1 is waiting on settle 1. Box 4 holds except `Pending` through the choice site. Box 5 is waiting on the removal.

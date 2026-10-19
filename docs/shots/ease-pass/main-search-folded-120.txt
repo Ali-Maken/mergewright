@@ -36,4 +36,4 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- n next · N prev · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · ? keys
+ n next · N prev · space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

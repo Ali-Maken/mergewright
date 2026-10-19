@@ -35,4 +35,4 @@ m8-polish-and-ship/07, light theme, 120x36, cursor on `feature/two  two: finish`
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · ? keys
+ m merge two into yours · ⏎ open · o take · C switch to two · x compare · u undo · . actions · ? keys

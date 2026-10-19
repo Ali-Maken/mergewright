@@ -15,6 +15,7 @@ mod branch_column;
 mod cells;
 mod roles;
 
+pub(crate) use branch_column::branch_name;
 use cells::row_entry;
 pub(super) use cells::{badge_view, who};
 #[cfg(test)]

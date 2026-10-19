@@ -21,7 +21,7 @@
 "                                                                                "
 "                                                                                "
 "                                                                                "
-" m merge · r rebase · ⏎ open · b branch · t tag · P push · u undo · ? keys      "
+" space show the 1 commit inside · ⏎ open · x compare · u undo · ? keys          "
 
 "                                          2 rows so far  1 merged branch folded "
 "╭─ keys here ─────────────────────────────────────────────────────── esc close ╮"

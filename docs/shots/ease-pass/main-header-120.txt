@@ -36,4 +36,4 @@ What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branch
   ◉                         Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit from sara/fix-toc    Graft  28h
 ▸ ◉                         Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021                Graft  28h
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+ space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

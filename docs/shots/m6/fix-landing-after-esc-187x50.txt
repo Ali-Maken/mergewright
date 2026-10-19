@@ -47,4 +47,4 @@
 
 
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · ⏎ open · b branch · t tag · P push · p pull · f fetch · S stash · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · ? keys
+ ⇥ banner · c finish · ⏎ open · b branch · t tag · y sha · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · 1 first · ? keys

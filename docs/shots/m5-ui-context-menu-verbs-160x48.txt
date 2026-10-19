@@ -101,4 +101,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · ? keys
+ m merge main into yours · ⏎ open · o take · C switch to main · x compare · u undo · . actions · ? keys

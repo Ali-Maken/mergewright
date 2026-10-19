@@ -3,8 +3,7 @@
 # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).
 #
 # Here the cursor is on an evil merge that is the current branch's tip, marked by the
-# radar, the pane shut. Right (m8/11e F1): at 140 columns, past the 137 a marked branch tip
-# needs, the bar ends `? keys`.
+# radar, the pane shut. Right (m8/11e F1; ease-pass/07b): at 140 columns the bar ends `? keys`.
 
  ◆ api  ~/code/api · main                                                                                 3 commits  1 merged branch folded
 
@@ -45,4 +44,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · ? keys
+ . explain · space show the 1 commit inside · ⏎ open · a amend · x compare · u undo · ? keys

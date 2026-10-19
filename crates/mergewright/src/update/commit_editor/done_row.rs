@@ -60,3 +60,21 @@ fn bar_row(state: &AppState) -> HintContext {
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Settle test 3 of ease-pass/07b: off a landing, this picker stands for
+    /// "any bar that is not a landing" (only landing-ness decides the done
+    /// line's row), so it keeps `PlainRow`, not a commit row's bar.
+    #[test]
+    fn off_a_landing_the_done_row_asks_with_a_plain_row() {
+        assert_eq!(
+            bar_row(&AppState::default()),
+            HintContext::PlainRow {
+                verbs: RowVerbs::NONE
+            }
+        );
+    }
+}

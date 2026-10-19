@@ -200,6 +200,8 @@ Which refs sit on which commit and how far each branch is from its upstream: eve
 - `AheadOfUpstream` (enum) — `NotPushed` or `By(n)`: what a local branch has to push.
 ## refs::ahead
 What a local branch has to push, read off its label: `RefLabel::ahead_of_upstream` (no walk, no new read).
+## refs::live
+Which live branch a name means, from an index `badges` builds once per read: `RefBadges::live_branch(label)` — local of that name, else remote shorthand, else `<remote>/<label>`; `None` for a deleted branch.
 ## rename
 Where the app meets the one-time move to the new on-disk names: every repository is settled the moment it opens.
 - `open_settled` (fn) — opens a path with its names settled first.
@@ -376,6 +378,7 @@ The detail pane's view model, reshaped from what `update` keeps.
 ## view::entries
 One frame's `GraphEntry` rows: the selection's thread, the uncommitted row, each row's cells and badges.
 - `cells` (mod) — one history row's `GraphEntry` (`row_entry`), its stop tag and `badge_view` (re-exported as `entries::badge_view`).
+- `branch_name` (fn, `branch_column`) — the name the branch column gives one lane identity.
 ## view::explain
 A radar `Explanation` turned into the sanitised `ExplainView` the Explain panel draws.
 ## view::finish
@@ -411,6 +414,7 @@ Building `GraphView`: the rows the walk last sent, lane-folded, each folding mer
 - `footer` (mod) — the footer's search, compare and order-notice lines.
 - `window` (mod) — the window cut: `reveal_index`, `divider_shown`, `max_lanes`, `compaction`.
 - `hint_context` (mod) — which hint bar draws: `box_context`, `stopped_line`, `footer_context`, `pane_hint_context`, `place_context`, the graph cursor's `hint_context`, `keep_for`.
+- `row_bar` (mod) — the cursor commit row's ease-pass bar: `row_bar(branch, fold)` (one rule), `RowBranch`, `MergeFold`, `cursor_row_branch`; `None` → `PlainRow`. Live operation → `PlainRow` (`context::cursor_row_context`).
 - `resolver_context` (fn, `clash_bars`) — the resolver's bar: `clash_bar`'s, else `Resolver`; the banner is `BannerPaused` once the resolver was open.
 - `clash_bar` (fn, `clash_bars`) — a marker document's `ClashBar`: `Open`, `Picked`, `FileSolved { next }`, merge `AllSolved`; `None` for a card, a done file, a non-merge with nothing open.
 ## view::stash

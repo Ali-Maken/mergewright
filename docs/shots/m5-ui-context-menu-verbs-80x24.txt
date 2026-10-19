@@ -75,4 +75,4 @@
 
 
 
- m merge · r rebase · ⏎ open · o take · b branch · t tag · u undo · ? keys
+ m merge main into yours · ⏎ open · o take · C switch · u undo · ? keys

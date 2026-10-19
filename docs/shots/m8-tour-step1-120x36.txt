@@ -35,4 +35,4 @@ m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his rep
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal
+ . explain · ⏎ open · P push · c commit · a amend · u undo · ? keys
