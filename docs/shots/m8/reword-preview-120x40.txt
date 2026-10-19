@@ -10,30 +10,30 @@
 
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
-    ●                           Show the login page                                                          Graft   2d
-▸   ●                           Handle expired tokens                                                        Graft   2d
-    │                           the result
-    │ ○                         Show the login page  feature-b is here  not pushed yet                       Graft    —
-    │ ○                         Handle expired tokens on refresh  feature-a is here  not pushed yet          Graft    —
-    ●─╯                         Add OAuth callback                                                           Graft   2d
-  ◇─╯                           m1  main is here  not pushed yet                                             Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●                           Show the login page                     Graft   2d│ feature-b
+▸   ●                           Handle expired tokens                   Graft   2d│ ! not pushed yet
+    │                           the result                                        │ · not merged
+    │ ○                         Show the login page                     Graft    —│ ✓ up to date with feature-a
+    │ ○                         Handle expired tokens on refresh        Graft    —│ · Graft, last commit 2d ago
+    ●─╯                         Add OAuth callback                      Graft   2d│
+  ◇─╯                           m1  main is here  not pushed yet        Graft   2d│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ feature-a
+                                                                                  │    ─◆ feature-b
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: reword 29033ed "Handle expired tokens" ─────────────────────────────────────────────────────────────────────╮
 │ 29033ed  new message  Handle expired tokens on refresh                                                               │
 │ 2 commits replayed                                                                                                   │

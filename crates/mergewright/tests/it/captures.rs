@@ -223,6 +223,7 @@ pub fn check_shot(name: &str, body: &str) {
 pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState {
     app.pump(state, "a frame with nothing loading", |state| {
         mergewright::update::branch_pane::settled(state)
+            && mergewright::update::fold_count::settled(state)
             && frame(state, 120, 40)
                 .iter()
                 .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
@@ -242,15 +243,18 @@ pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState
 ///
 /// The branch pane's read too (ease-pass 09): it answers on its own job, so
 /// a frame read before it draws `reading…` and lanes not yet coloured by
-/// the route, and differs from the next run's.
+/// the route, and differs from the next run's. The fold counts likewise:
+/// where a tail gives way to its subject (ease-pass 09 ruling W) the frame
+/// cannot say whether a count landed, so the state is asked.
 pub fn at_rest(app: &crate::app_harness::App, state: AppState) -> AppState {
     app.pump(
         state,
-        "a complete walk, the radar's answer and the branch pane's read",
+        "a complete walk, the radar's answer, the fold counts and the branch pane's read",
         |state| {
             walk_has_settled(state)
                 && radar_has_answered(state)
                 && mergewright::update::branch_pane::settled(state)
+                && mergewright::update::fold_count::settled(state)
         },
     )
 }

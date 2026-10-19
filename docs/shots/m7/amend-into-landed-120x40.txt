@@ -1,40 +1,40 @@
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
-  ◌                           Uncommitted changes (1 unstaged)
-    ●    feature-b            Show the login page  not pushed yet                                            Graft   2d
-▸   ◆                         Handle expired tokens  feature-a is here  not pushed yet                       Graft   2d
-    ┃                         Graft · 2 days ago · made on feature-b · 7c99d12
-    ●                         Add OAuth callback  ✎ changed                                                  Graft   2d
-  ◇━╯    main                 m1  not pushed yet                                                             Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ◌                           Uncommitted changes (1 unstaged)                    │ feature-b
+    ●    feature-b            Show the login page  not pushed yet       Graft   2d│ reading…
+▸   ◆                         Handle expired tokens                     Graft   2d│ reading…
+    ┃                         Graft · 2 days ago · made on feature-b · 7c99d12    │ reading…
+    ●                         Add OAuth callback  ✎ changed             Graft   2d│ reading…
+  ◇━╯    main                 m1  not pushed yet                        Graft   2d│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ put into "Add OAuth callback" · your unstaged edits are back  u undoes

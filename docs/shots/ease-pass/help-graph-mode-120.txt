@@ -2,37 +2,37 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 
  ◆ wallet  ~/code/wallet · wallet-release                                           4 commits  2 merged branches folded
             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
-▸   ◆    wal│ › graph                                                                                      │ Graft   3y
+▸   ◆    wal│ › graph                                                                                      │here)
     ┃       │ HERE                                                                                         │
-    ◉       │ F3    Cycle the graph renderer                                               graph.renderer  │ Graft   3y
-    ●       │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │ Graft   3y
-  ◇━╯    mai│ X     Decline the commit-graph offer                             graph.decline_commit_graph  │ Graft   3y
+    ◉       │ F3    Cycle the graph renderer                                               graph.renderer  │
+    ●       │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │ix-toc
+  ◇━╯    mai│ X     Decline the commit-graph offer                             graph.decline_commit_graph  │ago
             │ GRAPH MODE                                                                                   │
             │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
             │▸○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
             ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                                                                                  │    ─◆ wallet-release
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ↑↓ move  ⏎ run  esc close

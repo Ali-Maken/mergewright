@@ -5,41 +5,41 @@
 === 120x40 ===
  ◆ api  ~/code/api · main                                                                   2 commits  1 commit to push
 
-  ◌                         Uncommitted changes (1 untracked)
-▸ ◆  ⓘ main (you)           fix toc  ↑1 to push                                                                you  now
-  ┃                         you · just now · made on main · 0000000
-  ◇                         start  origin/main is here                                                         you  now
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ◌                         Uncommitted changes (1 untracked)                     │ main  (you're here)
+▸ ◆  ⓘ main (you)           fix toc  ↑1 to push                           you  now│ ! 1 commit to push
+  ┃                         you · just now · made on main · 0000000               │ · the main line: branches merge into
+  ◇                         start  origin/main is here                    you  now│   it
+                                                                                  │ ✓ up to date with origin/main
+                                                                                  │ · everyone, last commit just now
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Committed 3 files to main.  u undo · P push
  . explain · u undo the commit, your edits come back · P push · c commit again · a amend · ? keys

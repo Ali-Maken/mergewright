@@ -51,49 +51,49 @@
 
  ◆ api  ~/code/api · main                                                                                                       5 commits  date order, sorting…
 
-  ◌                         Uncommitted changes (1 unstaged)
-  ◆    main (you)           add second  not pushed yet                                                                                               Graft   8m
-▸ ●                         add first                                                                                                                Graft   9m
-  ┃                         Graft · 9 minutes ago · made on main · 3d9496e
-  ●                         Correct the note                                                                                                         Graft   1y
-  ●                         Add the first note                                                                                                       Graft   1y
-  ◇                         Add a readme                                                                                                             Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ◌                         Uncommitted changes (1 unstaged)                                                              │ main  (you're here)
+  ◆    main (you)           add second  not pushed yet                                                          Graft   8m│ reading…
+▸ ●                         add first                                                                           Graft   9m│ reading…
+  ┃                         Graft · 9 minutes ago · made on main · 3d9496e                                                │ reading…
+  ●                         Correct the note                                                                    Graft   1y│ reading…
+  ●                         Add the first note                                                                  Graft   1y│
+  ◇                         Add a readme                                                                        Graft   1y│
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

@@ -4,37 +4,37 @@
 
  ◆ api  ~/code/api · main                                                                                      1 commit
 
-  ◌                         Uncommitted changes (1 staged)
-▸ ◆    main (you)           start the api  not pushed yet  b0 is here  not pushed yet  b1 is here  not pus…    you   2d
-                            you · 2 days ago · made on main · fefb7a2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ◌                         Uncommitted changes (1 staged)                        │ main  (you're here)
+▸ ◆    main (you)           start the api  not pushed yet                 you   2d│ ! not pushed yet
+                            you · 2 days ago · made on main · fefb7a2             │ · the main line: branches merge into
+                                                                                  │   it
+                                                                                  │ · no upstream to compare with
+                                                                                  │ · everyone, last commit 2d ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  rename: still using the old names · another Mergewright window is open on this repository · esc dismiss

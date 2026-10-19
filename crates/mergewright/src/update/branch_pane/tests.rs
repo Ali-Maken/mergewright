@@ -114,6 +114,55 @@ fn candidates_are_every_local_branch_with_its_kind_by_name() {
     );
 }
 
+/// ease-pass 09 ruling R: a remote-tracking branch no local branch tracks
+/// is a candidate (full remote name, kind by its name past the remote); a
+/// local branch's upstream, level or apart, never is, nor `origin/HEAD`.
+#[test]
+fn remote_only_branches_are_candidates_and_upstreams_and_origin_head_are_not() {
+    let remote = |short: &str| RefName::new(format!("refs/remotes/{short}")).expect("valid");
+    let upstreams: HashMap<RefName, RefName> = [
+        (full("main"), remote("origin/main")),
+        (full("feature"), remote("origin/feature")),
+    ]
+    .into_iter()
+    .collect();
+    let refs = crate::refs::badges(
+        &[
+            (full("main"), oid(9)),
+            (full("feature"), oid(3)),
+            (remote("origin/main"), oid(9)),
+            (remote("origin/feature"), oid(4)),
+            (remote("origin/HEAD"), oid(9)),
+            (remote("origin/omar/x"), oid(5)),
+            (remote("origin/develop"), oid(8)),
+        ],
+        &HeadState::Branch(full("main")),
+        &upstreams,
+        &[],
+        |local, upstream| {
+            Ok(mergewright_git::history::AheadBehind {
+                ahead: usize::from(local != upstream),
+                behind: 0,
+            })
+        },
+    )
+    .expect("counted");
+    let remote_candidate = |short: &str, tip: u8, kind| Candidate {
+        name: format!("refs/remotes/{short}"),
+        tip: oid(tip),
+        kind,
+    };
+    assert_eq!(
+        candidates(&refs, &BranchNames::of(&walk())),
+        [
+            candidate("feature", 3, CandidateKind::Other),
+            candidate("main", 9, CandidateKind::Trunk),
+            remote_candidate("origin/develop", 8, CandidateKind::Integration),
+            remote_candidate("origin/omar/x", 5, CandidateKind::Other),
+        ]
+    );
+}
+
 #[test]
 fn a_candidates_identity_is_its_short_names() {
     let sara = candidate("sara/fix-toc", 1, CandidateKind::Other);

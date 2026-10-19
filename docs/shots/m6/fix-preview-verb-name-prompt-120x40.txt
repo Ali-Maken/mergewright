@@ -12,33 +12,33 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸   ●                         On main: wip  stash@{0}                                                        Graft   2m
-  ◆─╯                         add sample  main is here  not pushed yet  rescued is here  not pushed yet      Graft   2m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ●                         On main: wip  stash@{0}                   Graft   2m│ 92f36bb · not on a branch
+  ◆─╯                         add sample  main is here  not pushed yet  Graft   2m│
+  ●                           Correct the note                          Graft   1y│
+  ●                           Add the first note                        Graft   1y│
+  ◇                           Add a readme                              Graft   1y│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: branch rescued from stash@{0} ──────────────────────────────────────────────────────────────────────────────╮
 │ rescued (new) → da91a2e                                                                                              │
 │ HEAD → rescued                                                                                                       │

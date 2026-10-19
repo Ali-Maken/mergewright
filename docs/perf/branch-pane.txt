@@ -1,0 +1,10 @@
+SUMMARY machine ac=1 lowpower=0 os=darwin
+# ease-pass 09 branch-pane cost — 2026-10-19T11:41:12Z
+# HEAD ffb014bd +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, team fixture MONOREPO; times without the spawn shim, spawns with it
+# uptime before: 15:37  up 31 days, 20:44, 4 users, load averages: 2.67 3.32 3.71
+# uptime after:  16:41  up 31 days, 21:48, 4 users, load averages: 2.34 2.07 1.98
+branch-pane-cost: candidates=1231 local=331 remote-only=900
+branch-pane-cost: focus runs=10 p50_ms=14394.6 p95_ms=14722.7 spawns=2461
+branch-pane-cost: window rows=40 tips=21 total_ms=1470735.1 spawns=254441

@@ -55,9 +55,11 @@ fn older_names_repo_opens_and_undoes() {
         "the set-aside is offered:\n{}",
         graph.text()
     );
+    // HEAD's row by its subject: `b0 is here` gives way beside the branch
+    // pane, after `main`'s own `not pushed yet` (ease-pass 09 ruling W).
     assert!(
         cursor_row(&graph).contains("\u{25c6}")
-            && crate::row_reads::reads_subject(&cursor_row(&graph), "b0 is here"),
+            && crate::row_reads::reads_subject(&cursor_row(&graph), "start the api"),
         "{}",
         graph.text()
     );

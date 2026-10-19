@@ -26,6 +26,23 @@ pub(crate) fn read_branch_status(
 ) -> Result<BranchStatus, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
+    // A branch that lives only on a remote (ease-pass 09 ruling R) is its
+    // own upstream: what is there is pushed (`✓ pushed`), never `not
+    // pushed yet`.
+    if ask.branch.name.starts_with("refs/remotes/") {
+        let upstream = Tip {
+            name: ask.branch.name.clone(),
+            oid: ask.branch.tip,
+        };
+        return branch_status(
+            &handle,
+            &ask.branch,
+            &ask.candidates,
+            Some(&upstream),
+            cancel,
+        )
+        .map_err(|error| error.to_string());
+    }
     let tracked = upstream_of(&handle, &ask.branch.name).map_err(|error| error.to_string())?;
     // An upstream never fetched has no tip to count against: it reads as
     // no upstream, `not pushed yet`, which is what it is to the remote.

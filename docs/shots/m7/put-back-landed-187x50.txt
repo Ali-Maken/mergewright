@@ -1,50 +1,50 @@
  ◆ api  ~/code/api · main                                                                                                                                      7 commits  1 commit to push
 
-  ◌                             Uncommitted changes (1 unstaged)
-    ■                           On main: tune metrics  stash@{0}                                                                                                                  you   3m
-    ┊ ●    origin/main          Add an ops runbook  origin/main is here                                                                                                           you  14m
-    ┊ ●                         Document the api                                                                                                                                  you  15m
-▸ ◆ ┊ ┊  ⓘ main (you)           Add rate limiter  ↺ put back  ↑1 to push                                                                                                          you  30m
-  ┃ ┊ ┊                         you · 30 minutes ago · made on main · a65d7e4
-  ●┄┴┄╯                         Add metrics endpoint  ○ main was here                                                                                                             you  31m
-  ●                             Add request logging                                                                                                                               you  32m
-  ◇                             Start the api                                                                                                                                     you  33m
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ◌                             Uncommitted changes (1 unstaged)                                                                                     │ main  (you're here)
+    ■                           On main: tune metrics  stash@{0}                                                                             you   3m│ ! 1 to push, 2 to pull
+    ┊ ●    origin/main          Add an ops runbook  origin/main is here                                                                      you  14m│ · the main line: branches merge into
+    ┊ ●                         Document the api                                                                                             you  15m│   it
+▸ ◆ ┊ ┊  ⓘ main (you)           Add rate limiter  ↺ put back  ↑1 to push                                                                     you  30m│ ! origin/main has 2 new commits
+  ┃ ┊ ┊                         you · 30 minutes ago · made on main · a65d7e4                                                                        │   since it left
+  ●┄┴┄╯                         Add metrics endpoint  ○ main was here                                                                        you  31m│ · everyone, last commit 30m ago
+  ●                             Add request logging                                                                                          you  32m│
+  ◇                             Start the api                                                                                                you  33m│ built on
+                                                                                                                                                     │   main
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ put back · main has "Add rate limiter" again  u undoes

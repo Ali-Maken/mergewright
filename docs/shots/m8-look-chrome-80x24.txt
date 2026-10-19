@@ -3,8 +3,8 @@ m8-polish-and-ship/06 at 80x24: what right looks like — the first row is ` ◆
  ◆ api  ~/code/api · main                   6 commits  2 merged branches folded
 ▸   ●    feature/thr… three: in progress  not pushed yet             Graft   7y
     ┃                 Graft · 7 years ago · made on feature/three · 0683985
-  ◆ ┃    main (you)   Merge branch 'f…  ▸ 2 commits  not pushed yet  Graft   7y
-  ◉ ┃                 Merge branch '…  ▸ 2 commits from feature/one  Graft   7y
+  ◆ ┃    main (you)   Merge branch 'feature/two'  ▸ 2 commits        Graft   7y
+  ◉ ┃                 Merge branch 'feature/one'  ▸ 2 commits        Graft   7y
   ●━╯                 Add b.txt                                      Graft   7y
   ●                   Add a.txt                                      Graft   7y
   ◇                   Add a readme                                   Graft   7y

@@ -17,6 +17,9 @@ use crate::view::{badge_index_at, graph_view};
 /// The newest commit of [`history_of`]`(5, _)`, which every ref here sits on.
 const PILED: u8 = 5;
 
+/// A screen wide enough for several of the pile's labels.
+const WIDE: u16 = 200;
+
 fn name(full: &str) -> RefName {
     RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
 }
@@ -91,13 +94,15 @@ fn row_badge_work_is_bounded_by_width() {
 
 /// A click on the last badge a 16 000-ref row draws picks that badge — the
 /// one at the same place in `RefBadges::on` — and a click just past it
-/// picks none.
+/// picks none. At 200 columns: labels give way before the subject
+/// (ease-pass 09 ruling W), and at 120 beside the branch pane not even
+/// `team/0 is here  not pushed yet` fits after `Commit 5`.
 #[test]
 fn many_refs_row_hit_test_matches_draw() {
-    let state = state_with(pile(16_000), 120);
+    let state = state_with(pile(16_000), WIDE);
     let now = state.harness.clock.now_seconds();
     // Read off the drawn cells, not asked of `mergewright_ui`.
-    let (first_x, y) = drawn_at(&session(), &state, 120, 12, "team/0");
+    let (first_x, y) = drawn_at(&session(), &state, WIDE, 12, "team/0");
 
     let view = graph_view(&state, now);
     let pane =
@@ -106,10 +111,13 @@ fn many_refs_row_hit_test_matches_draw() {
     let (entry, columns) = row_at(&view, pane, y).expect("the piled row is drawn there");
     let spans = ref_spans(entry, &columns, view.icons, view.keys, view.ascii);
     let (last, index) = spans.last().cloned().expect("the row draws badges");
-    assert!(spans.len() > 1, "more than one badge fits at 120 columns");
+    assert!(
+        spans.len() > 1,
+        "more than one badge fits at {WIDE} columns"
+    );
 
     // The frame really drew that badge there, read cell by cell.
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(120, 12))
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(WIDE, 12))
         .expect("TestBackend reports its size");
     terminal
         .draw(|frame| crate::view::view(&session(), &state, frame))

@@ -24,49 +24,49 @@
 #
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-▸   ◆    feature (you)        finish the feature  not pushed yet                                                                                     Graft  now
-    ┃                         Graft · just now · made on feature · 8d6cd28
-    ●                         start the feature                                                                                                      Graft   2m
-  ● ┃    main                 main moves again  not pushed yet                                                                                       Graft   3m
+▸   ◆    feature (you)        finish the feature  not pushed yet                                                Graft  now│ feature  (you're here)
+    ┃                         Graft · just now · made on feature · 8d6cd28                                                │ ! not pushed yet
+    ●                         start the feature                                                                 Graft   2m│ · not merged
+  ● ┃    main                 main moves again  not pushed yet                                                  Graft   3m│ ! main has 2 new commits since it
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
  Reset feature to here, mixed
  Reset feature to here, hard
  Cherry-pick 45fa51d onto feature
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

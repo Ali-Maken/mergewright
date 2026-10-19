@@ -2,7 +2,9 @@
 //! builds once per refs read, so the bar's `C switch to <b>` never scans
 //! the refs per frame.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+use mergewright_core::oid::Oid;
 
 use super::{RefBadges, RefLabel};
 
@@ -16,6 +18,8 @@ pub(super) struct LiveNames {
     /// The name after a remote (`fix-toc` of `origin/fix-toc`) → that
     /// remote shorthand.
     by_label: HashMap<Vec<u8>, Vec<u8>>,
+    /// Remote shorthands some local branch has as its upstream.
+    tracked: HashSet<Vec<u8>>,
 }
 
 impl LiveNames {
@@ -24,6 +28,12 @@ impl LiveNames {
         if let RefLabel::Branch { name, .. } = label {
             self.by_name.insert(name.clone(), label.clone());
         }
+    }
+
+    /// Notes that a local branch's upstream is the remote-tracking branch
+    /// of shorthand `short`.
+    pub(super) fn tracks(&mut self, short: &[u8]) {
+        self.tracked.insert(short.to_vec());
     }
 
     /// Notes a remote-tracking branch, `short` its shorthand and `remote`
@@ -56,5 +66,15 @@ impl RefBadges {
         }
         let short = self.live.by_label.get(label)?;
         Some(RefLabel::Remote(short.clone()))
+    }
+
+    /// Every remote-tracking branch with a badge of its own that no local
+    /// branch has as its upstream, as its tip and shorthand (`origin/x`):
+    /// a branch that lives only on a remote, a teammate's he never checked
+    /// out (ease-pass 09 ruling R). Never `<remote>/HEAD`. Order is not
+    /// meaningful.
+    pub fn remote_only(&self) -> impl Iterator<Item = (Oid, &[u8])> {
+        self.remotes()
+            .filter(|(_, short)| !self.live.tracked.contains(*short))
     }
 }

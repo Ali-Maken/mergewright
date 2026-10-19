@@ -2,51 +2,51 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
 
  ◆ api  ~/code/api · main                                                                                                                              6 commits  2 merged branches folded
                                              ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
-▸   ●    feature/three        three: in progr│ ›                                                                                            │                                   Graft   7y
-    ┃                         Graft · 7 years│ HERE                                                                                         │
-  ◆ ┃    main (you)           Merge branch 'f│▸c     Commit                                                                   graph.commit  │                                   Graft   7y
-  ◉ ┃                         Merge branch 'f│ a     Amend                                                                     graph.amend  │                                   Graft   7y
-  ●━╯                         Add b.txt      │ R     Open the rewrite editor                                                 graph.rewrite  │                                   Graft   7y
-  ●                           Add a.txt      │ C     Switch branch (branch picker)                                            graph.switch  │                                   Graft   7y
-  ◇                           Add a readme   │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │                                   Graft   7y
-                                             │ m     Merge selected branch into current                                        graph.merge  │
-                                             │ r     Rebase current onto selection                                            graph.rebase  │
-                                             │ b     New branch from selected commit                                          graph.branch  │
-                                             │ t     New tag at selected commit                                                  graph.tag  │
-                                             │ x     Compare against a marked base                                           graph.compare  │
-                                             │ +     Expand / collapse folded lanes                                            graph.lanes  │
-                                             │ S     Stash…                                                                    graph.stash  │
-                                             │ f     Fetch                                                                     graph.fetch  │
-                                             │ p     Pull                                                                       graph.pull  │
-                                             │ P     Push                                                                       graph.push  │
-                                             │ M     Map view                                                                    graph.map  │
-                                             │ F     Focus mode                                                                graph.focus  │
-                                             │ O     Overview strip                                                         graph.overview  │
-                                             │ space Open or close a merged branch                                              graph.fold  │
-                                             │ 1     First-parent view                                                  graph.first_parent  │
-                                             │ H     Hide / show the stash                                                graph.hide_stash  │
-                                             │ y     Copy the commit's SHA                                                  graph.copy_sha  │
-                                             │ J     Undo journal                                                            graph.journal  │
-                                             │ #     Turn colours off / on (lines keep their shapes)                     graph.colours_off  │
-                                             │ F2    Status screen                                                            graph.status  │
-                                             │ F3    Cycle the graph renderer                                               graph.renderer  │
-                                             │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
-                                             │ X     Decline the commit-graph offer                             graph.decline_commit_graph  │
-                                             │ w     Ignore whitespace                                              diff.ignore_whitespace  │
-                                             │ W     Word-diff granularity                                                  diff.word_diff  │
-                                             │ v     Unified / side-by-side                                              diff.side_by_side  │
-                                             │ [     Fewer context lines                                                 diff.less_context  │
-                                             │ ]     More context lines                                                  diff.more_context  │
-                                             │ <     Shrink the detail pane                                                    diff.shrink  │
-                                             │ >     Grow the detail pane                                                        diff.grow  │
-                                             │ L     Load the full file                                                      diff.load_all  │
-                                             │ GRAPH MODE                                                                                   │
-                                             │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
-                                             │ ○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
-                                             │ EVERYWHERE                                                                                   │
-                                             │ ⌃P    Command palette                                                           app.palette  │
-                                             │ ?     Help for this place                                                          app.help  │
-                                             │ ⇥     Next pane                                                               app.next_pane  │
-                                             │ ⇧⇥    Previous pane                                                           app.prev_pane  │
+▸   ●    feature/three        three: in progr│ ›                                                                                            │aft   7y│ feature/three
+    ┃                         Graft · 7 years│ HERE                                                                                         │        │ ! not pushed yet
+  ◆ ┃    main (you)           Merge branch 'f│▸c     Commit                                                                   graph.commit  │aft   7y│ · not merged
+  ◉ ┃                         Merge branch 'f│ a     Amend                                                                     graph.amend  │aft   7y│ ! main has 6 new commits since it
+  ●━╯                         Add b.txt      │ R     Open the rewrite editor                                                 graph.rewrite  │aft   7y│   left
+  ●                           Add a.txt      │ C     Switch branch (branch picker)                                            graph.switch  │aft   7y│ · Graft, last commit 7y ago
+  ◇                           Add a readme   │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │aft   7y│
+                                             │ m     Merge selected branch into current                                        graph.merge  │        │ built on
+                                             │ r     Rebase current onto selection                                            graph.rebase  │        │   main
+                                             │ b     New branch from selected commit                                          graph.branch  │        │    ─◆ feature/three
+                                             │ t     New tag at selected commit                                                  graph.tag  │        │
+                                             │ x     Compare against a marked base                                           graph.compare  │        │
+                                             │ +     Expand / collapse folded lanes                                            graph.lanes  │        │
+                                             │ S     Stash…                                                                    graph.stash  │        │
+                                             │ f     Fetch                                                                     graph.fetch  │        │
+                                             │ p     Pull                                                                       graph.pull  │        │
+                                             │ P     Push                                                                       graph.push  │        │
+                                             │ M     Map view                                                                    graph.map  │        │
+                                             │ F     Focus mode                                                                graph.focus  │        │
+                                             │ O     Overview strip                                                         graph.overview  │        │
+                                             │ space Open or close a merged branch                                              graph.fold  │        │
+                                             │ 1     First-parent view                                                  graph.first_parent  │        │
+                                             │ H     Hide / show the stash                                                graph.hide_stash  │        │
+                                             │ y     Copy the commit's SHA                                                  graph.copy_sha  │        │
+                                             │ J     Undo journal                                                            graph.journal  │        │
+                                             │ #     Turn colours off / on (lines keep their shapes)                     graph.colours_off  │        │
+                                             │ F2    Status screen                                                            graph.status  │        │
+                                             │ F3    Cycle the graph renderer                                               graph.renderer  │        │
+                                             │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │        │
+                                             │ X     Decline the commit-graph offer                             graph.decline_commit_graph  │        │
+                                             │ w     Ignore whitespace                                              diff.ignore_whitespace  │        │
+                                             │ W     Word-diff granularity                                                  diff.word_diff  │        │
+                                             │ v     Unified / side-by-side                                              diff.side_by_side  │        │
+                                             │ [     Fewer context lines                                                 diff.less_context  │        │
+                                             │ ]     More context lines                                                  diff.more_context  │        │
+                                             │ <     Shrink the detail pane                                                    diff.shrink  │        │
+                                             │ >     Grow the detail pane                                                        diff.grow  │        │
+                                             │ L     Load the full file                                                      diff.load_all  │        │
+                                             │ GRAPH MODE                                                                                   │        │
+                                             │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │        │
+                                             │ ○     Every branch    every branch on its own lane, as before         graph.merged_branches  │        │
+                                             │ EVERYWHERE                                                                                   │        │
+                                             │ ⌃P    Command palette                                                           app.palette  │        │
+                                             │ ?     Help for this place                                                          app.help  │        │
+                                             │ ⇥     Next pane                                                               app.next_pane  │        │
+                                             │ ⇧⇥    Previous pane                                                           app.prev_pane  │        │
 ─────────────────────────────────────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯──────────────────────────────────────────────
  ↑↓ move  ⏎ run  esc close

@@ -1,33 +1,33 @@
 ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/graph_rows_tests.rs): `feature/receipts` (HEAD) 1 ahead of origin, `wallet-release` 2 ahead and not checked out, `main` and `ops/ci` level, `spike/cache` never pushed, `v1.2` on main, Sara and Omar besides you; the merge of `sara/fix-toc` opened with space. Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
-120x30. What right looks like: the cursor on the opened merge row; under it `you · N hours ago · made on feature/receipts · merged 1 from fix-toc · <sha7>` (the lane's branch, as the branch column names it); muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`.
+120x30. What right looks like: the cursor on the opened merge row; under it `you · N hours ago · made on feature/receipts ·…` (the lane's branch, as the branch column names it), cut at the branch pane's rule before `merged 1 from fix-toc` (ease-pass 09; asserted at 200); muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`.
 
  ◆ api  ~/code/api · feature/receipts                                                       7 commits  1 commit to push
 
-    ◆        feature/recei… (you) Draw the receipts list  ↑1 to push                                           you  28h
-▸   ◉┄╮                           Merge …  ▾ 1 commit from sara/fix-toc  wallet-release is here  ↑2 to push    you  28h
-    ┃ ┊                           you · 28 hours ago · made on feature/receipts · merged 1 from fix-toc · a070156
-    ┃ ●      fix-toc              toc: fix the anchors  sara/fix-toc is here  not pushed yet                  Sara  28h
-    ●┄╯                           Start the wallet release  origin/wallet-release is here                      you  28h
-    ┃ ●      spike/cache          Try a read cache  not pushed yet                                             you  28h
-    ┃ ┊ ●    ops/ci               Pin the CI image                                                            Omar  28h
-  ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                                                     you  28h
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ feature/receipts  (you're here)
+▸   ◉─╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
+    ┃ │                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
+    ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with wallet-release
+    ●─╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
+    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
+    ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
+  ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
+                                                                                  │    ─◆ sara/fix-toc
+                                                                                  │    ─◆ wallet-release
+                                                                                  │    ─◆ feature/receipts
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space hide the commits inside · ⏎ open · x compare · u undo · . actions · ? keys

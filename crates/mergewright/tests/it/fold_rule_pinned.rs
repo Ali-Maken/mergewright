@@ -59,12 +59,19 @@ fn a_teammates_merged_branch_folds_and_its_tail_names_it() {
     );
     row_of(first, "report: first draft");
     let tail = "\u{25b8} 2 commits from omar/fix";
-    let state = app.pump(state, "the merge's tail", |state| {
-        drawn(state)
-            .iter()
-            // The tail names the merge; its subject may yield to the labels.
-            .any(|line| line.contains(tail))
-    });
+    let state = app.pump(
+        state,
+        "the merge's count",
+        mergewright::update::fold_count::settled,
+    );
+    // Read at his full-screen 187: at 120 beside the branch pane the tail
+    // gives way to the merge's subject (ease-pass 09 ruling W).
+    let wide = crate::captures::frame(&state, 187, 36);
+    assert!(
+        wide.iter().any(|line| line.contains(tail)),
+        "the tail names the merge\n{}",
+        wide.join("\n")
+    );
     let frame = drawn(&state);
     for hidden in OMAR_COMMITS {
         assert!(

@@ -52,7 +52,8 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `Pushed` (enum) — `NoUpstream`, `InSync`, `ToPush(n)`, `ToPull(n)`, `Both { push, pull }`.
 - `Merged` (enum) — `MainLine` (trunk only), `Into(name)`, `NotYet { into: Option }`, `NothingToMerge`; only a proven merge is `Into`.
 - `Behind` (enum) — `NoBase`, `UpToDate { base }`, `Behind { base, count }`; the trunk against its upstream.
-- `Who` (enum) — `Everyone { last }` (trunk), `Authors { first (≤2), others, last }`, `NoOwnCommits`.
+- `Author` (struct) — `name`, `email` (raw, unmapped): one author of a branch's own commits.
+- `Who` (enum) — `Everyone { last }` (trunk), `Authors { first: Vec<Author> (≤2, grouped by raw email), others, last }`, `NoOwnCommits`.
 - `branch_status` (fn) — `(repo, branch, candidates, upstream, stop) -> Result<BranchStatus, RunError>`; reads only.
 
 ## clash

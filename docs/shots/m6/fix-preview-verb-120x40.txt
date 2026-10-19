@@ -16,32 +16,32 @@
 
  ◆ api  ~/code/api · feature                                                                                  8 commits
 
-      │                         after merge
-    ◎┈╮                         Merge branch 'main' into feature  feature is here  not pushed yet              you    —
-    ● │                         finish the feature                                                           Graft  now
-    ● │                         start the feature                                                            Graft   2m
-▸ ●─│─╯                         main moves again  main is here  not pushed yet                               Graft   3m
-  ● │                           main moves on                                                                Graft   4m
-  ●─╯                           add the base                                                                 Graft   5m
-  ●                             Correct the note                                                             Graft   1y
-  ●                             Add the first note                                                           Graft   1y
-  ◇                             Add a readme                                                                 Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      │                         after merge                                       │ main
+    ◎┈╮                         Merge branch 'main' into feature          you    —│ ! not pushed yet
+    ● │                         finish the feature                      Graft  now│ · the main line: branches merge into
+    ● │                         start the feature                       Graft   2m│   it
+▸ ●─│─╯                         main moves again                        Graft   3m│ · no upstream to compare with
+  ● │                           main moves on                           Graft   4m│ · everyone, last commit 3m ago
+  ●─╯                           add the base                            Graft   5m│
+  ●                             Correct the note                        Graft   1y│ built on
+  ●                             Add the first note                      Graft   1y│   main
+  ◇                             Add a readme                            Graft   1y│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Merge main into feature ─────────────────────────────────────────────────────────────────────────────────────────────╮
 │ Nothing has changed yet.                                                                                             │
 │                                                                                                                      │

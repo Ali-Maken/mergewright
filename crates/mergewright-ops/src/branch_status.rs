@@ -33,7 +33,7 @@ use mergewright_git::run::{RunError, Stop};
 mod footing;
 mod status;
 
-pub use status::{Behind, BranchStatus, Merged, Pushed, Who, branch_status};
+pub use status::{Author, Behind, BranchStatus, Merged, Pushed, Who, branch_status};
 
 /// How far the route walks down before it gives up on reaching the trunk.
 pub const ROUTE_DEPTH: usize = 8;

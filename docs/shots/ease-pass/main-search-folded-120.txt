@@ -3,37 +3,37 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
 
  ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
 
-    ◆    wallet-release (you) Merge branch 'sara/fix-toc' in…  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
-▸   ◉                         Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021              Graft  28h
-    ┃                         Graft · 28 hours ago · made on wallet-release · merged 4 from PR 16021 · 4eb2a56
-    ●                         Start the wallet release                                                       Graft  28h
-  ◇━╯    main                 Add the readme  not pushed yet                                                 Graft  28h
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Graft  28h│ wallet-release  (you're here)
+▸   ◉                         Merged PR 16021: Fix the wallet totals    Graft  28h│ ! not pushed yet
+    ┃                         Graft · 28 hours ago · made on wallet-release · mer…│ · not merged
+    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with sara/fix-toc
+  ◇━╯    main                 Add the readme  not pushed yet            Graft  28h│ · Graft, last commit 28h ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │    ─◆ sara/fix-toc
+                                                                                  │    ─◆ wallet-release
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  n next · N prev · space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

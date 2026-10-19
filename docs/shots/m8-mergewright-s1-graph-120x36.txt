@@ -5,37 +5,37 @@
 
  ◆ api  ~/code/api · b0                                                                                       2 commits
 
-    ■                         On main: graft: your edits, set aside for checkout b0  stash@{0}                 you   2d
-▸ ◆┄╯    main                 start the api  not pushed yet  b0 is here  not pushed yet  b1 is here  not p…    you   2d
-                              you · 2 days ago · made on main · fefb7a2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ■                         On main: graft: your edits, set aside f…    you   2d│ main
+▸ ◆┄╯    main                 start the api  not pushed yet               you   2d│ ! not pushed yet
+                              you · 2 days ago · made on main · fefb7a2           │ · the main line: branches merge into
+                                                                                  │   it
+                                                                                  │ · no upstream to compare with
+                                                                                  │ · everyone, last commit 2d ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  an operation was interrupted: checkout b0 · your edits are in stash@{0} · S p puts them back · J to inspect

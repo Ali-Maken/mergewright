@@ -31,6 +31,7 @@ use crate::refs::RefBadges;
 
 /// Where a local branch's name lives.
 const HEADS: &str = "refs/heads/";
+const REMOTES: &str = "refs/remotes/";
 
 /// The trunk and integration names the walk resolved (ADR-0001): what makes a
 /// candidate [`CandidateKind::Trunk`] or [`CandidateKind::Integration`].
@@ -100,25 +101,41 @@ impl Reads {
     }
 }
 
-/// Every local branch in `refs`, as a candidate base: full name, tip, and
-/// kind by `names`. Sorted by name, so the key and the job see one order.
+/// Every branch in `refs` as a candidate base: each local branch, and each
+/// remote-tracking branch no local branch has as its upstream (ease-pass 09
+/// ruling R: a teammate's branch he never checked out is still a branch).
+/// Full name, tip, and kind by `names`; a remote one's kind is read from
+/// its name with the remote stripped. Sorted by name, so the key and the
+/// job see one order.
 #[must_use]
 pub fn candidates(refs: &RefBadges, names: &BranchNames<'_>) -> Vec<Candidate> {
-    let mut all: Vec<Candidate> = refs
-        .branches()
-        .map(|(tip, short, _, _)| {
-            let name = format!("{HEADS}{}", String::from_utf8_lossy(short));
-            let is = |full: &RefName| full.as_bytes() == name.as_bytes();
-            let kind = if names.trunk.is_some_and(is) {
-                CandidateKind::Trunk
-            } else if names.integration.iter().any(is) {
-                CandidateKind::Integration
-            } else {
-                CandidateKind::Other
-            };
-            Candidate { name, tip, kind }
-        })
-        .collect();
+    let kind = |local: &[u8]| {
+        let is = |full: &RefName| full.as_bytes().strip_prefix(HEADS.as_bytes()) == Some(local);
+        if names.trunk.is_some_and(is) {
+            CandidateKind::Trunk
+        } else if names.integration.iter().any(is) {
+            CandidateKind::Integration
+        } else {
+            CandidateKind::Other
+        }
+    };
+    let locals = refs.branches().map(|(tip, short, _, _)| Candidate {
+        name: format!("{HEADS}{}", String::from_utf8_lossy(short)),
+        tip,
+        kind: kind(short),
+    });
+    let remotes = refs.remote_only().map(|(tip, short)| {
+        let local = short
+            .iter()
+            .position(|&byte| byte == b'/')
+            .map_or(short, |slash| &short[slash + 1..]);
+        Candidate {
+            name: format!("{REMOTES}{}", String::from_utf8_lossy(short)),
+            tip,
+            kind: kind(local),
+        }
+    });
+    let mut all: Vec<Candidate> = locals.chain(remotes).collect();
     all.sort_by(|a, b| a.name.cmp(&b.name));
     all
 }

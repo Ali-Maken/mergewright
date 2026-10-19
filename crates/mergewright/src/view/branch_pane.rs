@@ -2,9 +2,11 @@
 //! answers in the mock's words, and the route it was built on, trunk first.
 //! The read behind it is `update::branch_pane`'s; this only words it.
 
+use mergewright_core::commit::{Identity, Timestamp};
+use mergewright_git::mailmap::Mailmap;
 use mergewright_graph::Route;
 use mergewright_ops::branch_status::{
-    Behind, BranchStatus, CandidateKind, Merged, Pushed, Who, short_name,
+    Author, Behind, BranchStatus, CandidateKind, Merged, Pushed, Who, short_name,
 };
 use mergewright_term::sanitize_line;
 use mergewright_ui::branch_pane::{BranchPaneView, Mark, PaneLine, RouteStop};
@@ -45,7 +47,12 @@ pub(crate) fn pane_view(state: &AppState, history: &History, now: i64) -> Option
     let (stops, lines) = match state.look.reads.get(&focused.key) {
         Some(StatusRead::Read(status)) => (
             Some(stops(status, &focused.branch, &route)),
-            pane_words(status, focused.branch.kind, trunk, now),
+            pane_words(
+                status,
+                (focused.branch.kind, trunk),
+                now,
+                state.repository.as_ref().map(|facts| &facts.mailmap),
+            ),
         ),
         Some(StatusRead::Failed(reason)) => (None, failed(reason)),
         // Asked and not landed, or not asked yet (mid-burst).
@@ -147,12 +154,14 @@ fn failed(reason: &str) -> [PaneLine; 4] {
 
 /// The four answers in the mock's words (G12; 01r's words for the states the
 /// mock never shows): pushed, merged, behind, who. `trunk` is the default
-/// branch's short name; `now` dates the last commit.
+/// branch's short name; `now` dates the last commit; `me` is the
+/// repository's mailmap, which knows the user's `user.email` and says
+/// `you` for his authors exactly as the who column does (ease-pass 09 Y).
 pub(crate) fn pane_words(
     status: &BranchStatus,
-    kind: CandidateKind,
-    trunk: &str,
+    (kind, trunk): (CandidateKind, &str),
     now: i64,
+    me: Option<&Mailmap>,
 ) -> [PaneLine; 4] {
     let line = |mark, words: String| PaneLine::Known {
         mark,
@@ -199,7 +208,7 @@ pub(crate) fn pane_words(
             Mark::Plain,
             format!(
                 "{}, {}",
-                authors(first, *others),
+                authors(first, *others, me),
                 last_commit(last.seconds, now)
             ),
         ),
@@ -232,11 +241,8 @@ fn last_commit(then: i64, now: i64) -> String {
 }
 
 /// `Sara`, `Sara and Omar`, `Sara, Omar and 3 others`: first names only.
-fn authors(first: &[Vec<u8>], others: usize) -> String {
-    let given: Vec<String> = first
-        .iter()
-        .map(|name| first_name(&String::from_utf8_lossy(name)).to_owned())
-        .collect();
+fn authors(first: &[Author], others: usize, me: Option<&Mailmap>) -> String {
+    let given: Vec<String> = first.iter().map(|author| given_name(author, me)).collect();
     match (given.as_slice(), others) {
         ([], _) => format!("{others} {}", if others == 1 { "person" } else { "people" }),
         ([one], 0) => one.clone(),
@@ -244,6 +250,27 @@ fn authors(first: &[Vec<u8>], others: usize) -> String {
         (named, 1) => format!("{} and 1 other", named.join(", ")),
         (named, more) => format!("{} and {more} others", named.join(", ")),
     }
+}
+
+/// `you` for the user's own author, else the first name as the mailmap
+/// resolves it: the who column's rule (`view::entries::cells::who`).
+fn given_name(author: &Author, me: Option<&Mailmap>) -> String {
+    let identity = Identity {
+        name: author.name.clone().into_bytes(),
+        email: author.email.clone().into_bytes(),
+        when: Timestamp {
+            seconds: 0,
+            offset_seconds: 0,
+        },
+    };
+    if me.is_some_and(|mailmap| mailmap.is_me(&identity)) {
+        return "you".to_owned();
+    }
+    let name = me.map_or_else(
+        || identity.name.clone(),
+        |mailmap| mailmap.resolve(&identity).0,
+    );
+    first_name(&String::from_utf8_lossy(&name)).to_owned()
 }
 
 #[cfg(test)]

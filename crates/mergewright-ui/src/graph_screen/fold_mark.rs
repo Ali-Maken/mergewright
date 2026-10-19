@@ -48,14 +48,21 @@ impl FoldMark {
     /// a word (ease-pass 06r, review m2).
     #[must_use]
     pub fn fitting(&self, ascii: bool, cells: usize) -> Option<String> {
+        self.forms(ascii)
+            .into_iter()
+            .find(|form| form.width() <= cells)
+    }
+
+    /// Every form of the tail, longest first: the whole
+    /// [`FoldMark::words`], `▸ 4 commits`, `▸` alone. The second equals
+    /// the first when there is no ` from <branch>`.
+    pub(super) fn forms(&self, ascii: bool) -> [String; 3] {
         let arrow = self.arrow(ascii);
         [
             self.words(ascii),
             format!("{arrow} {}", self.count()),
             arrow.to_owned(),
         ]
-        .into_iter()
-        .find(|form| form.width() <= cells)
     }
 
     fn arrow(&self, ascii: bool) -> &'static str {

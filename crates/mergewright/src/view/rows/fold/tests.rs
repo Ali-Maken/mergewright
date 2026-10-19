@@ -186,14 +186,16 @@ fn a_row_inside_an_opened_merge_knows_the_merge_and_its_name() {
 }
 
 /// Box 5, on screen: the merges' rows end with their tails, as mock G4
-/// draws them, and nothing behind a closed merge is drawn.
+/// draws them, and nothing behind a closed merge is drawn. At his
+/// full-screen 187: at 120 beside the branch pane the tails give way to
+/// the subjects (ease-pass 09 ruling W).
 #[test]
 fn the_graph_draws_each_folding_merge_with_its_tail() {
     let (history, [pr, named, _]) = wallet();
     let mut state = AppState {
         history: Some(history),
         size: crate::update::Size {
-            columns: 120,
+            columns: 187,
             rows: 16,
         },
         refs: Some(std::sync::Arc::new(crate::refs::RefBadges::default())),
@@ -202,7 +204,7 @@ fn the_graph_draws_each_folding_merge_with_its_tail() {
     state.fold_counts.insert(pr, Asked::Counted(4));
     state.fold_counts.insert(named, Asked::Counting);
 
-    let screen = draw(&state, 120, 16);
+    let screen = draw(&state, 187, 16);
     let line = |needle: &str| {
         screen
             .lines()
@@ -216,8 +218,7 @@ fn the_graph_draws_each_folding_merge_with_its_tail() {
         "{screen}"
     );
     assert!(
-        // The subject is cut beside the branch pane (ease-pass 09): the
-        // row is found by its tail, which has no number before `commits`.
+        // Pending: the tail has no number before `commits`.
         line("commits from sara/fix-toc").contains("▸ commits from sara/fix-toc"),
         "pending: no number yet\n{screen}"
     );

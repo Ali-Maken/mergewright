@@ -13,42 +13,42 @@
 
                                                                                 49 commits  gfx ok  lanes drawn: 5 of 6
 
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-▸                                   row                                                                       Test  57y
-                                    Test · 57 years ago · 0105010
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│ reading…
+▸                                   row                                  Test  57y│
+                                    Test · 57 years ago · 0105010                 │
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 
@@ -96,42 +96,42 @@
 
                                                                                 49 commits  gfx ok  lanes drawn: 5 of 6
 
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-▸                                   row                                                                       Test  57y
-                                    Test · 57 years ago · 0106010
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
-                                    row                                                                       Test  57y
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│ reading…
+                                    row                                  Test  57y│
+▸                                   row                                  Test  57y│
+                                    Test · 57 years ago · 0106010                 │
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
+                                    row                                  Test  57y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 

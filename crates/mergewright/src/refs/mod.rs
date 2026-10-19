@@ -315,6 +315,9 @@ pub fn badges<S: BuildHasher>(
             {
                 None => Upstream::None,
                 Some((up, up_id)) => {
+                    if let Some(short) = up.as_bytes().strip_prefix(REMOTES) {
+                        result.live.tracks(short);
+                    }
                     let counts = count(*id, up_id)?;
                     if counts.in_sync() {
                         merged.insert(up);

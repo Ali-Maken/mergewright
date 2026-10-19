@@ -15,51 +15,51 @@
 
  ◆ api  ~/code/api · fix                                                                                                                                   5 commits  date order, sorting…
 
-    ◌                         Uncommitted changes (1 unstaged)
-▸   ◆    fix (you)            fix changes line 7  not pushed yet                                                                                                                Graft   4m
-    ┃                         Graft · 4 minutes ago · made on fix · f2e2ada
-  ●━╯    main                 add f  not pushed yet                                                                                                                             Graft   5m
-  ●                           Correct the note                                                                                                                                  Graft   1y
-  ●                           Add the first note                                                                                                                                Graft   1y
-  ◇                           Add a readme                                                                                                                                      Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◌                         Uncommitted changes (1 unstaged)                                                                                       │ fix  (you're here)
+▸   ◆    fix (you)            fix changes line 7  not pushed yet                                                                           Graft   4m│ reading…
+    ┃                         Graft · 4 minutes ago · made on fix · f2e2ada                                                                          │ reading…
+  ●━╯    main                 add f  not pushed yet                                                                                        Graft   5m│ reading…
+  ●                           Correct the note                                                                                             Graft   1y│ reading…
+  ●                           Add the first note                                                                                           Graft   1y│
+  ◇                           Add a readme                                                                                                 Graft   1y│
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ on fix · your edits are back · staging not kept: f.txt · u undoes it, staging included

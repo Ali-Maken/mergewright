@@ -1,30 +1,30 @@
  ◆ api  ~/code/api · feature-a                                                                                7 commits
 
-    ●                           b1                                                                           Graft   2d
-    │                           after rebase
-    │ ○                         b1  feature-b is here  not pushed yet                                        Graft    —
-▸ ◆─│─╯                         Add OAuth (#42)  main is here  not pushed yet  feature-a is here  not push…  Graft   2d
-  │ ●                           a3                                                                           Graft   2d
-  │ ●                           a2                                                                           Graft   2d
-  │ ●                           a1                                                                           Graft   2d
-  ● │                           m2                                                                           Graft   2d
-  ◇─╯                           m1                                                                           Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●                           b1                                      Graft   2d│ main
+    │                           after rebase                                      │ ! not pushed yet
+    │ ○                         b1  feature-b is here  not pushed yet   Graft    —│ · the main line: branches merge into
+▸ ◆─│─╯                         Add OAuth (#42)                         Graft   2d│   it
+  │ ●                           a3                                      Graft   2d│ · no upstream to compare with
+  │ ●                           a2                                      Graft   2d│ · everyone, last commit 2d ago
+  │ ●                           a1                                      Graft   2d│
+  ● │                           m2                                      Graft   2d│ built on
+  ◇─╯                           m1                                      Graft   2d│   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: rebase feature-a onto main ─────────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
 │ branches: feature-a 1dc69fb → 51f3dc8                                                                                │

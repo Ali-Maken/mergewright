@@ -6,8 +6,8 @@
  ◆ api  ~/code/api · wallet-release                                             8 commits
 
       │                 after merge
-    ◎┈╮                 Merge branch 'sara/fix-toc…  wallet-release is here …    you    —
-▸   │ ●                 Check every link  sara/fix-toc is here  not pushed y…   Sara  55m
+    ◎┈╮                 Merge branch 'sara/fix-toc' into wallet-release          you    —
+▸   │ ●                 Check every link                                        Sara  55m
     │ ●                 Link the contents                                       Omar  56m
     │ ●                 Add a table of contents                                 Sara  57m
     ● │                 Number the report                                      Graft  58m

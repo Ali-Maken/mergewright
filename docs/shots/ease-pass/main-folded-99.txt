@@ -1,0 +1,39 @@
+ease-pass 06r m2, 99x36 (the widest with no branch pane), main screen at first paint, short of room: drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/fold_tail_narrow.rs, `wallet_release`). Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
+What right looks like: the PR's merge reads its whole subject, then `▸ 4 commits` two cells after it, no ` from PR 16021` and no word cut (the subject gives way last, ease-pass 09 ruling W); the named merge's tail shortens the same way or drops whole, never cut.
+
+ ◆ api  ~/code/api · wallet-release                            4 commits  2 merged branches folded
+
+▸   ◆    walle… (you) Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit       Graft  28h
+    ┃                 Graft · 28 hours ago · made on wallet-release · merged 1 from fix-toc · ea2…
+    ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits               Graft  28h
+    ●                 Start the wallet release                                          Graft  28h
+  ◇━╯    main         Add the readme  not pushed yet                                    Graft  28h
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────
+ space show the 1 commit inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys

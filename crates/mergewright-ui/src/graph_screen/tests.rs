@@ -25,6 +25,7 @@ use crate::theme::{Theme, ThemeKind, Token};
 mod coverage;
 mod cursor_row;
 mod fold_tail;
+mod give_way;
 mod header_narrowing;
 mod lanes_in_view;
 mod pane_columns;
@@ -613,7 +614,7 @@ fn tiny_and_empty_terminals_draw_without_panicking() {
     }
 }
 
-fn branch(name: &str, current: bool, tracking: Tracking) -> Badge {
+pub(super) fn branch(name: &str, current: bool, tracking: Tracking) -> Badge {
     Badge {
         name: sanitize_line(name),
         kind: BadgeKind::Branch {
@@ -713,23 +714,6 @@ fn badged(rows: &[Row], icons: Icons) -> GraphView<'_> {
     view.rows[1].badges = vec![branch("topic", false, Tracking::Untracked)];
     view.icons = icons;
     view
-}
-
-#[test]
-fn badges_are_cut_before_the_subject_disappears_at_80_columns() {
-    let rows = linear(2);
-    let screen = text(&draw(&badged(&rows, Icons::Plain), 80, 5));
-
-    // Labels follow the subject (ease-pass G7), cut before it.
-    assert!(screen[1].contains("Commit 2  main is here"), "{screen:#?}");
-    assert!(
-        screen[1].contains('…'),
-        "the pile of labels is cut: {screen:#?}"
-    );
-    assert!(
-        screen[2].contains("Commit 1  topic is here  not pushed yet"),
-        "{screen:#?}"
-    );
 }
 
 #[test]
@@ -2008,7 +1992,11 @@ fn check_one_row(screen: &GraphView<'_>, width: u16, icons: Icons) {
                 crate::keymap::Keymap::shipped(),
                 false,
             );
-            assert!(!spans.is_empty(), "{width} columns, {icons:?}: no badges");
+            // At 40 and 60 the labels give way to the subject (ease-pass 09
+            // ruling W): no span then, and nothing drawn to drag.
+            if width >= 100 {
+                assert!(!spans.is_empty(), "{width} columns, {icons:?}: no badges");
+            }
             for (span, index) in &spans {
                 let drawn_here: String = cells[usize::from(span.start)..usize::from(span.end)]
                     .concat()
@@ -2021,13 +2009,10 @@ fn check_one_row(screen: &GraphView<'_>, width: u16, icons: Icons) {
                     false,
                 )
                 .expect("a badge off the branch column always has a label");
-                // A badge cut off at the pane's edge is drawn elided
-                // (`draw_cell`'s `fit`), so the last one on a narrow row
-                // reads as a prefix plus `…`. The span is still the badge's
-                // cells, which is what this is checking.
-                let drawn_here = drawn_here.trim_end_matches('…');
+                // Labels drop whole, never cut (ease-pass 09 ruling W): a
+                // span reads its badge's words exactly.
                 assert!(
-                    expected.starts_with(drawn_here),
+                    expected == drawn_here,
                     "{width} columns, {icons:?}: cells {span:?} read {drawn_here:?}, \
                      but badge {index} is {expected:?}"
                 );

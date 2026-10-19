@@ -922,9 +922,9 @@ fn the_predicted_block_is_labelled_and_named_in_the_users_words() {
     app.close();
 }
 
-/// The cue the user said already works (m5/20 item 4): `topic`'s badge
-/// leaves its own row and lands on the newest predicted commit. The label
-/// row must not take it, and must not come between the two.
+/// The cue the user said already works (m5/20 item 4): `topic`'s badge lands
+/// on the newest predicted commit, never on or past the label row. Read at
+/// 187: at 80 the label gives way to the subject (ease-pass 09 W).
 #[test]
 fn the_branch_badge_still_lands_on_the_newest_predicted_row() {
     let scratch = left_behind();
@@ -934,7 +934,7 @@ fn the_branch_badge_still_lands_on_the_newest_predicted_row() {
     );
     let state = preview_scrolled_into_history(&app, state);
 
-    let drawn = frame(&state, 80, 24);
+    let drawn = frame(&state, 187, 24);
     let label = drawn
         .iter()
         .position(|line| line.contains("after rebase"))

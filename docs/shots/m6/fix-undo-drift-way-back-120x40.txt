@@ -25,167 +25,167 @@
 === frame 1: `u` over the edit, the drift box ===
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
-    ◌                         Uncommitted changes (1 unstaged)
-▸   ◆    fix (you)            fix the bug  not pushed yet                                                    Graft   3m
-    ┃                         Graft · 3 minutes ago · made on fix · fbb2394
-  ● ┃    main                 main moves on  not pushed yet                                                  Graft   4m
-  ●━╯                         add the base                                                                   Graft   5m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-         ╭ Undo “checkout fix”? ──────────────────────────────────────────────────────────────────────────╮
-         │ Since this checkout fix, the working tree changed.                                             │
-         │ Undo replaces your edit to fix.txt; a backup keeps it, and U                                   │
-         │ brings it back.                                                                                │
-         │                                                                                                │
-         │ undo restores the recorded state                                                               │
-         │                                                                                                │
-         │ ▸[ Stop ]   [ Undo ]                                                                           │
-         ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◌                         Uncommitted changes (1 unstaged)                    │ fix  (you're here)
+▸   ◆    fix (you)            fix the bug  not pushed yet               Graft   3m│ ! not pushed yet
+    ┃                         Graft · 3 minutes ago · made on fix · fbb2394       │ · not merged
+  ● ┃    main                 main moves on  not pushed yet             Graft   4m│ ! main has 1 new commit since it
+  ●━╯                         add the base                              Graft   5m│   left
+  ●                           Correct the note                          Graft   1y│ · Graft, last commit 3m ago
+  ●                           Add the first note                        Graft   1y│
+  ◇                           Add a readme                              Graft   1y│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ fix
+                                                                                  │
+                                                                                  │
+                                                                                  │
+         ╭ Undo “checkout fix”? ───────────────────────────────────────────────────────────────────────────────────────╮
+         │ Since this checkout fix, the working tree changed.                                                          │
+         │ Undo replaces your edit to fix.txt; a backup keeps it, and U                                                │
+         │ brings it back.                                                                                             │
+         │                                                                                                             │
+         │ undo restores the recorded state                                                                            │
+         │                                                                                                             │
+         │ ▸[ Stop ]   [ Undo ]                                                                                        │
+         ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y undo  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y`, the landing ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    fix                  fix the bug  not pushed yet                                                    Graft   3m
-▸ ◆ ┊    main (you)           main moves on  not pushed yet                                                  Graft   4m
-  ┃ ┊                         Graft · 4 minutes ago · made on main · 37926a7
-  ●┄╯                         add the base                                                                   Graft   5m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●    fix                  fix the bug  not pushed yet               Graft   3m│ main  (you're here)
+▸ ◆ ┊    main (you)           main moves on  not pushed yet             Graft   4m│ ! not pushed yet
+  ┃ ┊                         Graft · 4 minutes ago · made on main · 37926a7      │ · the main line: branches merge into
+  ●┄╯                         add the base                              Graft   5m│   it
+  ●                           Correct the note                          Graft   1y│ · no upstream to compare with
+  ●                           Add the first note                        Graft   1y│ · everyone, last commit 4m ago
+  ◇                           Add a readme                              Graft   1y│
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ undo: checkout fix  U brings back your edit to fix.txt
 
 === frame 3: `U`, the edit back ===
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
-    ◌                         Uncommitted changes (1 unstaged)
-▸   ◆    fix (you)            fix the bug  not pushed yet                                                    Graft   3m
-    ┃                         Graft · 3 minutes ago · made on fix · fbb2394
-  ● ┃    main                 main moves on  not pushed yet                                                  Graft   4m
-  ●━╯                         add the base                                                                   Graft   5m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◌                         Uncommitted changes (1 unstaged)                    │ fix  (you're here)
+▸   ◆    fix (you)            fix the bug  not pushed yet               Graft   3m│ ! not pushed yet
+    ┃                         Graft · 3 minutes ago · made on fix · fbb2394       │ · not merged
+  ● ┃    main                 main moves on  not pushed yet             Graft   4m│ ! main has 1 new commit since it
+  ●━╯                         add the base                              Graft   5m│   left
+  ●                           Correct the note                          Graft   1y│ · Graft, last commit 3m ago
+  ●                           Add the first note                        Graft   1y│
+  ◇                           Add a readme                              Graft   1y│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ fix
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ redo: checkout fix
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-▸   ●    fix2                 fix it again  not pushed yet                                                   Graft   2m
-    ┃                         Graft · 2 minutes ago · made on fix2 · 84d95f8
-    ●                         fix the bug  fix is here  not pushed yet                                       Graft   3m
-  ◆ ┃    main (you)           main moves on  not pushed yet                                                  Graft   4m
-  ●━╯                         add the base                                                                   Graft   5m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ●    fix2                 fix it again  not pushed yet              Graft   2m│ fix2
+    ┃                         Graft · 2 minutes ago · made on fix2 · 84d95f8      │ ! not pushed yet
+    ●                         fix the bug  fix is here  not pushed yet  Graft   3m│ · not merged
+  ◆ ┃    main (you)           main moves on  not pushed yet             Graft   4m│ ✓ up to date with fix
+  ●━╯                         add the base                              Graft   5m│ · Graft, last commit 2m ago
+  ●                           Correct the note                          Graft   1y│
+  ●                           Add the first note                        Graft   1y│ built on
+  ◇                           Add a readme                              Graft   1y│   main
+                                                                                  │    ─◆ fix
+                                                                                  │    ─◆ fix2
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ reverted to before “checkout fix” (2 steps)  U (2 times) brings it back

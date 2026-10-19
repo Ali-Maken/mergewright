@@ -10,25 +10,25 @@
 # it  esc close  ⇥ show it on the graph  ↑↓ row`.
  ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-▸   ●    origin/sara/login-p… fix the bug  login-page is here  not pushed yet  origin/sara/login-page is here                                                                   Graft   3m
-    ┃                         Graft · 3 minutes ago · made on origin/sara/login-page · fbb2394
-  ◆ ┃    main (you)           main moves on                                                                                                                                     Graft   4m
-  ●━╯                         add the base  feature-a is here  not pushed yet                                                                                                   Graft   5m
-  ●                           Correct the note                                                                                                                                  Graft   1y
-  ●                           Add the first note                                                                                                                                Graft   1y
-  ◇                           Add a readme                                                                                                                                      Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ●    origin/sara/login-p… fix the bug  login-page is here  not pushed yet  origin/sara/login-page is here                              Graft   3m│ origin/sara/login-page
+    ┃                         Graft · 3 minutes ago · made on origin/sara/login-page · fbb2394                                                       │ ✓ pushed
+  ◆ ┃    main (you)           main moves on                                                                                                Graft   4m│ · not merged
+  ●━╯                         add the base  feature-a is here  not pushed yet                                                              Graft   5m│ ! main has 1 new commit since it
+  ●                           Correct the note                                                                                             Graft   1y│   left
+  ●                           Add the first note                                                                                           Graft   1y│ · Graft, last commit 3m ago
+  ◇                           Add a readme                                                                                                 Graft   1y│
+                                                                                                                                                     │ built on
+                                                                                                                                                     │   main
+                                                                                                                                                     │    ─◆ origin/sara/login-page
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
                   ┌ SWITCH BRANCH · yours and the remote's · type to find ─────────────────────────────────────────────────────────────────────────────────────────────┐
                   │ > ▏                                                                                                                                                │
                   │ ▸ ↩ before  feature-a               Graft  5m  add the base                                                                   built on main        │

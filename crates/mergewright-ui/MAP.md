@@ -178,7 +178,7 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 - `SecondLine` (struct) — the cursor row's second line: `words` and `sha7` (empty on the uncommitted row).
 - `BodyLine`, `body_line` (enum, fn) — which row a body line is, with the cursor row's second line under it: `Row(n)` or `SecondOf(cursor)`.
 - `commit_rows` (fn) — `(body_rows, cursor_in_view) -> u16`: commit rows a body holds when the cursor's second line takes one; never below 1.
-- `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`).
+- `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`). A row cuts its subject last.
 - `FoldCount` (enum) — `Pending`, `Known(n)`, `Failed`: the tail's count, none until it lands, `?` if it failed.
 - `RowTag` (enum) — `Changed`: a row's tag after its subject; `RowTag::words(ascii)` per tier.
 - `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a tag leaves.

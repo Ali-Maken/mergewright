@@ -1,40 +1,40 @@
  ◆ api  ~/code/api · feature-a                                                                                5 commits
 
-    ●      feature-c            c1  not pushed yet                                                           Graft   2d
-  ● ┃      main                 m2  not pushed yet                                                           Graft   2d
-  ║ ┃ ●    feature-b            b1  not pushed yet                                                           Graft   2d
-▸ ║ ◆┄╯    feature-c            a1  feature-a is here  not pushed yet                                        Graft   2d
-  ║ ┃                           Graft · 2 days ago · made on feature-c · 0395451
-  ◇━╯      main                 m1                                                                           Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●      feature-c            c1  not pushed yet                      Graft   2d│ feature-c
+  ● ┃      main                 m2  not pushed yet                      Graft   2d│ ! not pushed yet
+  ║ ┃ ●    feature-b            b1  not pushed yet                      Graft   2d│ · not merged
+▸ ║ ◆┄╯    feature-c            a1  feature-a is here  not pushed yet   Graft   2d│ ✓ up to date with feature-a
+  ║ ┃                           Graft · 2 days ago · made on feature-c · 0395451  │ · Graft, last commit 2d ago
+  ◇━╯      main                 m1                                      Graft   2d│
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │    ─◆ feature-a
+                                                                                  │    ─◆ feature-c
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  feature-b and feature-c are both built on yours · Mergewright moves one line · esc dismiss

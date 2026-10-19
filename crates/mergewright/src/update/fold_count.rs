@@ -50,6 +50,19 @@ pub(crate) fn owed(state: &AppState) -> bool {
     uncounted(state).is_some()
 }
 
+/// Has every folding merge on screen its answer — none owed, none still
+/// counting? What a capture or a walk waits on before it reads a tail: at
+/// a width where the tail gives way to the subject (ease-pass 09 ruling
+/// W), the drawn words cannot say whether the count landed.
+#[must_use]
+pub fn settled(state: &AppState) -> bool {
+    !owed(state)
+        && !state
+            .fold_counts
+            .values()
+            .any(|count| *count == FoldCount::Counting)
+}
+
 /// The first folding merge drawn on screen, top row first, with no count
 /// asked yet.
 fn uncounted(state: &AppState) -> Option<Oid> {

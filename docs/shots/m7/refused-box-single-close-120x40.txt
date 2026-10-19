@@ -14,38 +14,38 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-  ●                         Handle expired tokens                                                            Graft   7y
-▸ ●                         Move session TTL to config                                                       Priya   7y
-  ●                         rustfmt                                                                         Rustf…   7y
-  ●                         Retry refresh once on 401                                                         Lina   7y
-  ●                         Add token refresh                                                                  Tom   8y
-  ◇                         Add session                                                                        Ana   8y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ●                         Handle expired tokens                       Graft   7y│ main  (you're here)
+▸ ●                         Move session TTL to config                  Priya   7y│ ! not pushed yet
+  ●                         rustfmt                                    Rustf…   7y│ · the main line: branches merge into
+  ●                         Retry refresh once on 401                    Lina   7y│   it
+  ●                         Add token refresh                             Tom   8y│ · no upstream to compare with
+  ◇                         Add session                                   Ana   8y│ · everyone, last commit 7y ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: merge old into main ────────────────────────────────────────────────────────────────────────────────────────╮
 │ main has moved                                                                                                       │
 │ ▸[ Close ]                                                                                                           │

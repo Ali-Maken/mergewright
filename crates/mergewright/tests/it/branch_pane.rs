@@ -5,10 +5,6 @@
     clippy::expect_used,
     reason = "a fixture that cannot be built has nothing to test; the panic names why"
 )]
-#![allow(
-    dead_code,
-    reason = "partial seam: helpers and fixtures for the pane tests the 09 handoff lists; remove when they land"
-)]
 
 use std::path::Path;
 
@@ -20,6 +16,8 @@ use mergewright_core::ref_name::RefName;
 
 use crate::app_harness::App;
 use crate::captures::frame_at;
+
+mod reads;
 
 const ROWS: u16 = 30;
 /// After every fixture commit, so ages read the same.

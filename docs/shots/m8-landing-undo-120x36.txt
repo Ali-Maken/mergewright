@@ -1,75 +1,75 @@
 === frame 1: `j` `u` — lands on HEAD ===
  ◆ api  ~/code/api · feature                                                                                  8 commits
 
-▸   ◆    feature (you)        finish the feature  not pushed yet                                               you  now
-    ┃                         you · just now · made on feature · 0000000
-    ●                         start the feature                                                                you   2m
-  ● ┃    main                 main moves again  not pushed yet                                                 you   3m
-  ● ┃                         main moves on                                                                    you   4m
-  ●━╯                         add the base                                                                     you   5m
-  ●                           Correct the note                                                                 you   1y
-  ●                           Add the first note                                                               you   1y
-  ◇                           Add a readme                                                                     you   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ◆    feature (you)        finish the feature  not pushed yet          you  now│ feature  (you're here)
+    ┃                         you · just now · made on feature · 0000000          │ ! not pushed yet
+    ●                         start the feature                           you   2m│ · not merged
+  ● ┃    main                 main moves again  not pushed yet            you   3m│ ! main has 2 new commits since it
+  ● ┃                         main moves on                               you   4m│   left
+  ●━╯                         add the base                                you   5m│ · you, last commit just now
+  ●                           Correct the note                            you   1y│
+  ●                           Add the first note                          you   1y│ built on
+  ◇                           Add a readme                                you   1y│   main
+                                                                                  │    ─◆ feature
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ undo: merge main into feature
 
 === frame 2: `j` `U` — lands on the redone merge ===
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
-▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  not pushed yet                               you fut…
-    ┃ ║                         you · in the future · made on feature · 0000000
-    ● ║                         finish the feature                                                             you  now
-    ● ║                         start the feature                                                              you   2m
-  ●═┃═╯    main                 main moves again  not pushed yet                                               you   3m
-  ● ┃                           main moves on                                                                  you   4m
-  ●━╯                           add the base                                                                   you   5m
-  ●                             Correct the note                                                               you   1y
-  ●                             Add the first note                                                             you   1y
-  ◇                             Add a readme                                                                   you   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature          you fut…│ feature  (you're here)
+    ┃ ║                         you · in the future · made on feature · 0000000   │ ! not pushed yet
+    ● ║                         finish the feature                        you  now│ · not merged
+    ● ║                         start the feature                         you   2m│ ✓ up to date with main
+  ●═┃═╯    main                 main moves again  not pushed yet          you   3m│ · you, last commit in the future
+  ● ┃                           main moves on                             you   4m│
+  ●━╯                           add the base                              you   5m│ built on
+  ●                             Correct the note                          you   1y│   main
+  ●                             Add the first note                        you   1y│    ─◆ feature
+  ◇                             Add a readme                              you   1y│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ redo: merge main into feature

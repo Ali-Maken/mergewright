@@ -2,7 +2,10 @@
 //! G12 words, 01r's words for the states the mock never shows).
 
 use mergewright_core::commit::Timestamp;
-use mergewright_ops::branch_status::{Behind, BranchStatus, CandidateKind, Merged, Pushed, Who};
+use mergewright_git::mailmap::Mailmap;
+use mergewright_ops::branch_status::{
+    Author, Behind, BranchStatus, CandidateKind, Merged, Pushed, Who,
+};
 use mergewright_ui::branch_pane::{Mark, PaneLine};
 
 use super::pane_words;
@@ -36,7 +39,15 @@ fn said(line: &PaneLine) -> (Mark, String) {
 
 /// The line `nth` (0 pushed, 1 merged, 2 behind, 3 who) for `status`.
 fn line(status: &BranchStatus, kind: CandidateKind, nth: usize) -> (Mark, String) {
-    said(&pane_words(status, kind, "main", NOW)[nth])
+    said(&pane_words(status, (kind, "main"), NOW, None)[nth])
+}
+
+/// An author named `name` at an address of their own.
+fn author(name: &str) -> Author {
+    Author {
+        name: name.to_owned(),
+        email: format!("{}@example.com", name.to_lowercase().replace(' ', ".")),
+    }
 }
 
 fn heads(name: &str) -> String {
@@ -173,7 +184,7 @@ fn who_words() {
         ),
         (
             Who::Authors {
-                first: vec![b"Sara Khan".to_vec()],
+                first: vec![author("Sara Khan")],
                 others: 0,
                 last: at(NOW - 14 * DAY),
             },
@@ -181,7 +192,7 @@ fn who_words() {
         ),
         (
             Who::Authors {
-                first: vec![b"Sara Khan".to_vec(), b"Omar".to_vec()],
+                first: vec![author("Sara Khan"), author("Omar")],
                 others: 0,
                 last: at(NOW - 23 * 3600),
             },
@@ -189,7 +200,7 @@ fn who_words() {
         ),
         (
             Who::Authors {
-                first: vec![b"Sara".to_vec(), b"Omar".to_vec()],
+                first: vec![author("Sara"), author("Omar")],
                 others: 3,
                 last: at(NOW),
             },
@@ -204,4 +215,77 @@ fn who_words() {
             (Mark::Plain, words.to_owned())
         );
     }
+}
+
+/// The who line for one author `who`, under `mailmap`.
+fn who_line(who: Author, mailmap: Option<&Mailmap>) -> String {
+    let status = BranchStatus {
+        who: Who::Authors {
+            first: vec![who],
+            others: 0,
+            last: at(NOW - 23 * 3600),
+        },
+        ..base()
+    };
+    said(&pane_words(&status, (CandidateKind::Other, "main"), NOW, mailmap)[3]).1
+}
+
+/// A repository whose `.mailmap` joins `ali@home.example` to
+/// `ali@work.example`, and whose `user.email` is the latter when `email`;
+/// its mailmap as the app reads it (`RepoHandle::mailmap`).
+fn ali_mailmap(email: bool) -> Mailmap {
+    let dir = tempfile::tempdir().expect("a temp dir");
+    let run = |args: &[&str]| {
+        let status = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir.path())
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .status()
+            .expect("the tool runs");
+        assert!(status.success(), "{args:?}");
+    };
+    run(&["init", "-q"]);
+    if email {
+        run(&["config", "user.email", "ali@work.example"]);
+    }
+    std::fs::write(
+        dir.path().join(".mailmap"),
+        "Ali Reza <ali@work.example> <ali@home.example>\n",
+    )
+    .expect(".mailmap written");
+    mergewright_git::repo::RepoHandle::open(dir.path())
+        .expect("opens")
+        .mailmap()
+}
+
+/// ease-pass 09 ruling Y: the user's own author reads `you`, also under a
+/// second address the mailmap joins to his; with no `user.email`, his first
+/// name, and nothing reads as an error.
+#[test]
+fn who_says_you_for_the_users_own_authors() {
+    let work = Author {
+        name: "Ali Reza".to_owned(),
+        email: "ali@work.example".to_owned(),
+    };
+    let home = Author {
+        name: "ali".to_owned(),
+        email: "ali@home.example".to_owned(),
+    };
+    let mailmap = ali_mailmap(true);
+    assert_eq!(
+        who_line(work.clone(), Some(&mailmap)),
+        "you, last commit 23h ago"
+    );
+    assert_eq!(who_line(home, Some(&mailmap)), "you, last commit 23h ago");
+    assert_eq!(
+        who_line(author("Sara Khan"), Some(&mailmap)),
+        "Sara, last commit 23h ago"
+    );
+    let unset = ali_mailmap(false);
+    assert_eq!(
+        who_line(work.clone(), Some(&unset)),
+        "Ali, last commit 23h ago"
+    );
+    assert_eq!(who_line(work, None), "Ali, last commit 23h ago");
 }

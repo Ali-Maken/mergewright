@@ -103,17 +103,17 @@ fn tour_tmp(root: &Path) -> PathBuf {
 /// The screen settled: the working tree read (its row on top) and the
 /// graph's sort done, so two runs draw the same frame.
 fn settled(screen: &Screen) -> bool {
-    // Cut to `1 untrack…` at 80 columns since the branch column (ease-pass 07).
-    screen.has("Uncommitted changes (1 unstaged, 1 untrack")
+    // `1 un…` beside the branch pane (ease-pass 09): after `1 unstaged`.
+    screen.has("Uncommitted changes (1 unstaged, 1 un")
         && !screen.has("sorting\u{2026}")
         && screen.has("\u{24d8}")
 }
 
-/// What the graph draws while its walk, its sort or a folded merge's count
-/// is still running (`mergewright-ui` `graph_screen/layout.rs`: `walk_text_within`,
-/// the order notice; `graph_screen/fold_mark.rs`: a tail with no number yet,
-/// `▸ commits from …`, ease-pass 06f).
-const IN_FLIGHT: [&str; 7] = [
+/// What the graph draws while its walk, its sort, a folded merge's count
+/// (`▸ commits from …`, 06f) or the branch pane's read (`│ reading…`, 09)
+/// is still running (`mergewright-ui` `graph_screen/layout.rs`, `fold_mark.rs`).
+const IN_FLIGHT: [&str; 8] = [
+    "\u{2502} reading\u{2026}",
     "opening\u{2026}",
     "reading history\u{2026}",
     "reading\u{2026} ",
@@ -534,7 +534,7 @@ impl Walk {
         self.wait("the branch box", |s| s.has("New branch at"));
         self.send(b"try-it");
         self.send(b"\r");
-        self.wait("the branch on the graph", crate::row_reads::tour_branched);
+        self.wait("the tick (label gone, 09 W)", |s| s.has("practice 6 of 8"));
     }
 
     /// 6: `m` on feature, `y`. The preview names `notes.txt` set aside and
@@ -588,7 +588,7 @@ impl Walk {
         self.send(b"y");
         self.wait("merged, his edits back staged", |s| {
             s.has("\u{2713} Merged clash into main.")
-                && s.has("Uncommitted changes (1 staged, 1 untracked)")
+                && s.has("Uncommitted changes (1 staged, 1 untrack")
         });
     }
 

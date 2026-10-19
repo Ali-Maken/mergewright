@@ -13,18 +13,28 @@ use mergewright::update::AppState;
 use mergewright_core::event::{KeyCode, MouseButton};
 
 use crate::app_harness::App;
-use crate::fold_by_default::{first_paint, wallet_release, wide};
+use crate::fold_by_default::{first_paint, wallet_release};
 
 const PR_MERGE: &str = "Merged PR 16021: Fix the wallet totals";
 
-/// The rows drawn 187 wide, left of the branch pane: at 120 the pane
-/// (ease-pass 09) cuts the second line short (`· ea2…`), and the pane's own
-/// `reading…` is not the row's. Rows sit on the same lines at any width.
+/// His full-screen width (field notes; `coverage::M6_SIZES`).
+const WIDE: u16 = 187;
+
+/// The rows drawn at [`WIDE`], left of the branch pane, for the second
+/// line's words: at 120 beside the pane (ease-pass 09) the line is cut
+/// before its `merged N from <b>` and its hash (`· m…`), and the pane's
+/// own `reading…` is not the row's. Rows sit on the same lines at any
+/// width; the state stays at 120.
 fn rows(state: &AppState) -> Vec<String> {
-    wide(state)
-        .iter()
-        .map(|line| crate::row_reads::graph_side(line, 187))
-        .collect()
+    crate::captures::frame_at(
+        state,
+        WIDE,
+        36,
+        Some(mergewright::session::Clock::Fixed(1_700_100_000)),
+    )
+    .iter()
+    .map(|line| crate::row_reads::graph_side(line, WIDE))
+    .collect()
 }
 
 fn opened(repo: &std::path::Path) -> (App, AppState) {

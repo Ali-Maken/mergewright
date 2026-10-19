@@ -19,6 +19,8 @@ use mergewright_core::event::{KeyCode, MouseButton};
 use crate::app_harness::App;
 use crate::captures::{at_rest, frame_at};
 
+mod cursor_second_line;
+
 const ROWS: u16 = 30;
 /// After every commit, so ages read the same.
 const NOW: i64 = 1_700_100_000;
@@ -124,26 +126,39 @@ fn drawn(state: &AppState, columns: u16) -> Vec<String> {
     frame_at(state, columns, ROWS, Some(Clock::Fixed(NOW)))
 }
 
-/// The rows' words, read 187 wide and left of the branch pane: at 120 the
-/// pane (ease-pass 09) leaves a row's message room only for a cut, and its
-/// words are what these tests read; the 120 grid is the captures'.
+/// The rows' words at 120, left of the branch pane (ease-pass 09): the
+/// pane's own words are not a row's.
 fn row_words(state: &AppState) -> Vec<String> {
-    drawn(state, 187)
+    drawn(state, 120)
         .iter()
-        .map(|line| crate::row_reads::graph_side(line, 187))
+        .map(|line| crate::row_reads::graph_side(line, 120))
+        .collect()
+}
+
+/// Wide enough for every label here. Wider than his full-screen 187
+/// (field notes): there the folded merge's row needs 113 message cells for
+/// its subject, its tail and `wallet-release is here  ↑2 to push`, and the
+/// label gives way whole (ease-pass 09 ruling W).
+const WIDE: u16 = 200;
+
+/// The rows' words at [`WIDE`], left of the branch pane: what G7's labels
+/// say. At 120 beside the pane the message column is about 40 cells and
+/// the labels give way first, whole (ease-pass 09 ruling W) — so
+/// `wallet-release is here  ↑2 to push` is not drawn there, by design.
+/// Rows sit on the same lines at any width.
+fn label_words(state: &AppState) -> Vec<String> {
+    drawn(state, WIDE)
+        .iter()
+        .map(|line| crate::row_reads::graph_side(line, WIDE))
         .collect()
 }
 
 /// Opened at 120 columns, up to rest: the walk complete, every branch's
-/// push state read.
+/// push state read (they arrive with the refs).
 fn opened(repo: &Path) -> (App, AppState) {
     let (app, state) = App::open(repo);
     let state = app.resize(&state, 120, ROWS);
-    let state = app.pump(state, "every push state", |state| {
-        let frame = row_words(state);
-        frame.iter().any(|line| line.contains("\u{2191}2 to push"))
-            && frame.iter().any(|line| line.contains("not pushed yet"))
-    });
+    let state = app.pump(state, "every push state", |state| state.refs.is_some());
     let state = at_rest(&app, state);
     (app, state)
 }
@@ -176,7 +191,7 @@ fn commit_rows(frame: &[String]) -> Vec<&String> {
 fn every_local_branch_says_where_it_stands_and_who_made_each_row() {
     let scratch = main_screen_repo();
     let (app, state) = opened(scratch.path());
-    let frame = row_words(&state);
+    let frame = label_words(&state);
 
     let head = line_with(&frame, "Draw the receipts list");
     // 22 cells in a 20-cell column: the name is cut, never ` (you)`.
@@ -190,7 +205,9 @@ fn every_local_branch_says_where_it_stands_and_who_made_each_row() {
     let start = line_with(&frame, "Start the wallet release");
     let before = &start[..start.find("Start the").expect("found by it")];
     assert!(!before.chars().any(char::is_alphabetic), "{start:?}");
-    let release = line_with(&frame, "wallet-release is here");
+    // ` wallet-release`, not `origin/wallet-release`: at full width the
+    // remote's label is drawn too, on its own row above.
+    let release = line_with(&frame, " wallet-release is here");
     assert!(
         release.contains("wallet-release is here  \u{2191}2 to push"),
         "{release:?}"
@@ -244,7 +261,7 @@ fn an_opened_merges_row_names_the_merged_branch_by_its_last_segment() {
     let scratch = main_screen_repo();
     let (app, state) = opened(scratch.path());
     let state = open_the_named_merge(&app, &state);
-    let frame = row_words(&state);
+    let frame = label_words(&state);
     let inside = line_with(&frame, "toc: fix the anchors");
     assert!(inside.contains(" fix-toc "), "{inside:?}");
     // `sara/fix-toc is here` follows as a label: the column comes first.
@@ -258,12 +275,11 @@ fn an_opened_merges_row_names_the_merged_branch_by_its_last_segment() {
 }
 
 fn open_the_named_merge(app: &App, state: &AppState) -> AppState {
-    // Rows sit on the same lines at any width: found where the tail reads
-    // whole, clicked at the state's own 120.
-    let frame = row_words(state);
+    let frame = label_words(state);
     let y = frame
         .iter()
-        // The subject yields to the labels; the fold tail names the branch.
+        // The fold tail names the branch; at 120 it gives way to the
+        // subject, so the merge is found where it has room.
         .position(|line| line.contains("from sara/fix-toc"))
         .unwrap_or_else(|| panic!("the merge is drawn\n{}", frame.join("\n")));
     let row = u16::try_from(y).expect("short screen");
@@ -303,13 +319,14 @@ fn capture_the_main_screen_rows_at_120_100_and_90() {
                 "{HEAD_NOTE}\n{columns}x{ROWS}. What right looks like: a {branch}-cell branch \
                  column after the lanes, naming each run's branch once, in its role's colour, \
                  `(you)` after HEAD's; the opened merge's row reads `fix-toc`, dim; the \
-                 message, then its labels muted two cells after it (`↑1 to push` on HEAD's \
-                 row, `wallet-release is here  ↑2 to push`, `not pushed yet` on spike/cache, \
-                 `tag v1.2`); who (`you` bold on your rows, else a first name) and age \
+                 message, then the labels that fit, whole, muted two cells after it — beside \
+                 the branch pane they give way first, right-most first, and only then is the \
+                 subject cut with `…` (ease-pass 09 ruling W; every label is asserted at \
+                 200); who (`you` bold on your rows, else a first name) and age \
                  right-aligned; no SHA, no `[…]`. Under the cursor row (the opened merge) \
-                 its second line (07b, G9): `you · N hours ago · made on feature/receipts · \
-                 merged 1 from fix-toc · <sha7>` (made on: the lane's branch, as the branch \
-                 column names it), muted, the lanes straight through it.\n\n{}\n",
+                 its second line (07b, G9): `you · N hours ago · made on …` (made on: the \
+                 lane's branch, as the branch column names it), cut at the pane's rule, \
+                 muted, the lanes straight through it.\n\n{}\n",
                 frame.join("\n")
             ),
         );
@@ -327,73 +344,6 @@ fn capture_the_main_screen_rows_at_120_100_and_90() {
         ),
     );
     drop(off);
-    app.close();
-    shots.finish();
-}
-
-/// The cursor's second line next to the main mock (07b, G9): on his own
-/// row, on a teammate's row inside the opened merge, and on the opened
-/// merge row.
-#[test]
-fn capture_the_cursor_rows_second_line() {
-    let scratch = main_screen_repo();
-    let (app, state) = opened(scratch.path());
-    let mut shots = mergewright_fixtures::Captures::new();
-    let own = drawn(&state, 120);
-    let merge = open_the_named_merge(&app, &state);
-    let frame = drawn(&merge, 120);
-    let y = frame
-        .iter()
-        .position(|line| line.contains("toc: fix the anchors"))
-        .expect("the inner row is drawn");
-    let teammate = app.mouse_down(
-        &merge,
-        MouseButton::Left,
-        40,
-        u16::try_from(y).expect("short"),
-    );
-    let teammate = at_rest(&app, teammate);
-    // A known merge names what it merged by its last segment (G9).
-    assert!(
-        row_words(&merge)
-            .iter()
-            .any(|line| line.contains(" \u{b7} merged 1 from fix-toc \u{b7} ")),
-        "{}",
-        row_words(&merge).join("\n")
-    );
-    for (name, frame, right) in [
-        (
-            "main-cursor-own-120.txt",
-            own,
-            "the cursor on HEAD's row `Draw the receipts list`; \
-          under it `you · N hours ago · made on feature/receipts · <sha7>`",
-        ),
-        (
-            "main-cursor-teammate-120.txt",
-            drawn(&teammate, 120),
-            "the cursor on Sara's row \
-          inside the opened merge; under it `Sara · N hours ago · made on sara/fix-toc · \
-          <sha7>`",
-        ),
-        (
-            "main-opened-merge-120.txt",
-            frame,
-            "the cursor on the opened merge row; under it \
-          `you · N hours ago · made on feature/receipts · merged 1 from fix-toc · <sha7>` \
-          (the lane's branch, as the branch column names it)",
-        ),
-    ] {
-        shots.check(
-            shot(name),
-            format!(
-                "{HEAD_NOTE}\n120x{ROWS}. What right looks like: {right}; muted, no bold, \
-                 the lanes straight down through it (no node, no connector); only the \
-                 cursor row has one; never `reading…`.\n\n{}\n",
-                frame.join("\n")
-            ),
-        );
-    }
-    drop(teammate);
     app.close();
     shots.finish();
 }

@@ -4186,9 +4186,9 @@ fn drawn_at(
 }
 
 /// Two local branches on the newest commit of a graph with more lanes than
-/// any cap draws: the graph column is twelve lanes wide as a 160-column
-/// frame draws it and eight as `DEFAULT_MAX_LANES` would have it, so every
-/// badge sits eight columns apart between the two answers.
+/// any cap draws, on a 200-column frame (wide enough for both labels beside
+/// the branch pane: they give way before the subject, ease-pass 09 W): its
+/// graph column is wider than `DEFAULT_MAX_LANES` would have it.
 fn two_branches_on_a_wide_graph() -> AppState {
     use mergewright_core::ref_name::RefName;
     use mergewright_git::repo::HeadState;
@@ -4213,7 +4213,7 @@ fn two_branches_on_a_wide_graph() -> AppState {
         history: Some(lane_cap::history_with_lanes(14)),
         refs: Some(std::sync::Arc::new(refs)),
         size: Size {
-            columns: 160,
+            columns: 200,
             rows: 12,
         },
         ..AppState::default()
@@ -4253,7 +4253,7 @@ fn a_drag_lands_on_the_badge_the_frame_drew_under_the_pointer() {
     // every assertion below still holds — which is exactly the half of the
     // bug that shipped. `\u{e725}` is the branch glyph, drawn only for
     // `Icons::Nerd`; `[alpha]` is the plain form of the same badge.
-    let frame = draw(&state, 160, 12);
+    let frame = draw(&state, state.size.columns, 12);
     assert!(
         frame.contains('\u{e725}') && !frame.contains("[alpha]"),
         "the frame draws the Nerd badges `state.icons` asks for:\n{frame}"
@@ -4261,7 +4261,7 @@ fn a_drag_lands_on_the_badge_the_frame_drew_under_the_pointer() {
 
     for name in ["alpha", "bravo"] {
         let expected = badge_index_of(&state, name);
-        let (column, row) = drawn_at(&session, &state, 160, 12, name);
+        let (column, row) = drawn_at(&session, &state, state.size.columns, 12, name);
         for offset in 0..u16::try_from(name.len()).expect("a short name") {
             assert_eq!(
                 super::badge_index_at(

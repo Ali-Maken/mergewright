@@ -47,6 +47,20 @@ fn drawn(state: &AppState) -> Vec<String> {
     )
 }
 
+/// His full-screen width (field notes; `coverage::M6_SIZES`): the frame
+/// where the octopus's tail has room. At [`COLUMNS`] beside the branch pane
+/// the message column is about 40 cells, the octopus's subject alone is
+/// wider, and the tail gives way to it (ease-pass 09 ruling W). Rows sit
+/// on the same lines at any width.
+fn wide(state: &AppState) -> Vec<String> {
+    frame_at(
+        state,
+        187,
+        ROWS,
+        Some(Clock::Fixed(mergewright_fixtures::CORPUS_NOW)),
+    )
+}
+
 /// The corpus octopus opened at 120×36, laid out and settled.
 fn octopus() -> (mergewright_fixtures::Scratch, App, AppState) {
     laid_out(mergewright_fixtures::copy_into_temp(
@@ -251,11 +265,18 @@ fn fold_merge_count() {
     let (_scratch, app, state) = octopus();
     let merge = "Merge branches 'topic-1', 'topic-2' and 'topic-3'";
     let topics = [" topic 1 ", " topic 2 ", " topic 3 "]; // subjects (ease-pass G7)
-    let folded = app.pump(state, "the fold's count", |state| {
-        drawn(state).iter().any(|line| {
+    let folded = app.pump(
+        state,
+        "the fold's count",
+        mergewright::update::fold_count::settled,
+    );
+    assert!(
+        wide(&folded).iter().any(|line| {
             crate::row_reads::reads_subject(line, merge) && line.contains("\u{25b8} 3 commits")
-        })
-    });
+        }),
+        "the fold's count\n{}",
+        wide(&folded).join("\n")
+    );
     let frame = drawn(&folded);
     assert!(
         topics
@@ -264,7 +285,8 @@ fn fold_merge_count() {
         "folded: no topic's row drawn\n{}",
         frame.join("\n")
     );
-    let merge_row = crate::row_reads::row_reading(&frame, merge)
+    // Found where its subject is whole; read on the same line at 120.
+    let merge_row = crate::row_reads::row_reading(&wide(&folded), merge)
         .map(|(y, _)| &frame[y])
         .expect("the merge's row");
     assert!(
@@ -279,7 +301,7 @@ fn fold_merge_count() {
         topics
             .iter()
             .all(|topic| frame.iter().any(|line| line.contains(topic)))
-            && frame.iter().any(|line| opened_tail(line, merge))
+            && wide(state).iter().any(|line| opened_tail(line, merge))
     });
     let opened = settled_frame(&app, opened);
     // An octopus names no one branch: its rows' branch cells stay blank
@@ -294,18 +316,16 @@ fn fold_merge_count() {
     let refreshed = app.press(&opened, KeyPress::control(KeyCode::Char('r')));
     let refreshed = settled_frame(&app, refreshed);
     assert!(
-        drawn(&refreshed)
-            .iter()
-            .any(|line| opened_tail(line, merge)),
+        wide(&refreshed).iter().any(|line| opened_tail(line, merge)),
         "the count stays over Ctrl+R\n{}",
-        drawn(&refreshed).join("\n")
+        wide(&refreshed).join("\n")
     );
     drop(refreshed);
     app.close();
 }
 
-/// The opened octopus's row: its tail reads `▾ 3 commits`. Opened, the
-/// lanes widen and the subject is cut (`…'to…`): its start is enough.
+/// The opened octopus's row, read at [`wide`]: its tail reads `▾ 3
+/// commits` after the whole subject.
 fn opened_tail(line: &str, merge: &str) -> bool {
     crate::row_reads::reads_subject(line, merge) && line.contains("\u{25be} 3 commits")
 }

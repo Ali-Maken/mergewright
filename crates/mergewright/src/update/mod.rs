@@ -38,7 +38,7 @@ pub(crate) mod edge;
 mod events;
 mod facts;
 pub mod finish;
-pub(crate) mod fold_count;
+pub mod fold_count;
 mod geometry;
 mod history;
 mod in_view;

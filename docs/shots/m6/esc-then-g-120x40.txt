@@ -2,41 +2,41 @@
 # What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ●    main (you)           Commit 035                                                                       Graft   2d
-  ●                         Commit 034                                                                       Graft   2d
-  ●                         Commit 033                                                                       Graft   2d
-  ●                         Commit 032                                                                       Graft   2d
-  ●                         Commit 031                                                                       Graft   2d
-  ●                         Commit 030                                                                       Graft   2d
-  ●                         Commit 029                                                                       Graft   2d
-  ●                         Commit 028                                                                       Graft   2d
-  ●                         Commit 027                                                                       Graft   2d
-  ●                         Commit 026                                                                       Graft   2d
-  ●                         Commit 025                                                                       Graft   2d
-  ●                         Commit 024                                                                       Graft   2d
-  ●                         Commit 023                                                                       Graft   2d
-  ●                         Commit 022                                                                       Graft   2d
-  ●                         Commit 021                                                                       Graft   2d
-  ●                         Commit 020                                                                       Graft   2d
-  ●                         Commit 019                                                                       Graft   2d
-  ●                         Commit 018                                                                       Graft   2d
-  ●                         Commit 017                                                                       Graft   2d
-  ●                         Commit 016                                                                       Graft   2d
-  ●                         Commit 015                                                                       Graft   2d
-  ●                         Commit 014                                                                       Graft   2d
-  ●                         Commit 013                                                                       Graft   2d
-  ●                         Commit 012                                                                       Graft   2d
-  ●                         Commit 011                                                                       Graft   2d
-  ●                         Commit 010                                                                       Graft   2d
-  ●                         Commit 009                                                                       Graft   2d
-  ●                         Commit 008                                                                       Graft   2d
-  ●                         Commit 007                                                                       Graft   2d
-  ●                         Commit 006                                                                       Graft   2d
-  ●                         Commit 005                                                                       Graft   2d
-  ●                         Commit 004                                                                       Graft   2d
-  ●                         Commit 003                                                                       Graft   2d
-  ●                         Commit 002                                                                       Graft   2d
-▸ ◇                         Commit 001                                                                       Graft   2d
-                            Graft · 2 days ago · made on main · a9a0c8e
+  ●    main (you)           Commit 035                                  Graft   2d│ main  (you're here)
+  ●                         Commit 034                                  Graft   2d│ ! not pushed yet
+  ●                         Commit 033                                  Graft   2d│ · the main line: branches merge into
+  ●                         Commit 032                                  Graft   2d│   it
+  ●                         Commit 031                                  Graft   2d│ · no upstream to compare with
+  ●                         Commit 030                                  Graft   2d│ · everyone, last commit 2d ago
+  ●                         Commit 029                                  Graft   2d│
+  ●                         Commit 028                                  Graft   2d│ built on
+  ●                         Commit 027                                  Graft   2d│   main
+  ●                         Commit 026                                  Graft   2d│
+  ●                         Commit 025                                  Graft   2d│
+  ●                         Commit 024                                  Graft   2d│
+  ●                         Commit 023                                  Graft   2d│
+  ●                         Commit 022                                  Graft   2d│
+  ●                         Commit 021                                  Graft   2d│
+  ●                         Commit 020                                  Graft   2d│
+  ●                         Commit 019                                  Graft   2d│
+  ●                         Commit 018                                  Graft   2d│
+  ●                         Commit 017                                  Graft   2d│
+  ●                         Commit 016                                  Graft   2d│
+  ●                         Commit 015                                  Graft   2d│
+  ●                         Commit 014                                  Graft   2d│
+  ●                         Commit 013                                  Graft   2d│
+  ●                         Commit 012                                  Graft   2d│
+  ●                         Commit 011                                  Graft   2d│
+  ●                         Commit 010                                  Graft   2d│
+  ●                         Commit 009                                  Graft   2d│
+  ●                         Commit 008                                  Graft   2d│
+  ●                         Commit 007                                  Graft   2d│
+  ●                         Commit 006                                  Graft   2d│
+  ●                         Commit 005                                  Graft   2d│
+  ●                         Commit 004                                  Graft   2d│
+  ●                         Commit 003                                  Graft   2d│
+  ●                         Commit 002                                  Graft   2d│
+▸ ◇                         Commit 001                                  Graft   2d│
+                            Graft · 2 days ago · made on main · a9a0c8e           │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

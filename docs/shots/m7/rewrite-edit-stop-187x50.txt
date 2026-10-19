@@ -5,46 +5,46 @@
 │ pick a00e43d a4                                                                                                                                                                         │
 │ feature-b (Sara): 2 commits follow, on top                                                                                                                                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●    feature-b            b2  not pushed yet                                                                                                                                 Sara   2d
-    ●                         b1                                                                                                                                                 Sara   2d
-    ●                         a5  feature-a is here  not pushed yet                                                                                                             Graft   2d
-    ●                         a4                                                                                                                                                Graft   2d
-▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                                                             Graft   2d
-    ┃                         Graft · 2 days ago · made on feature-b · 7326de5
-    ●                         a2                                                                                                                                                Graft   2d
-    ●                         a1                                                                                                                                                Graft   2d
-  ◇━╯    main                 m1  not pushed yet                                                                                                                                Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●    feature-b            b2  not pushed yet                                                                                            Sara   2d│ feature-b
+    ●                         b1                                                                                                            Sara   2d│ reading…
+    ●                         a5  feature-a is here  not pushed yet                                                                        Graft   2d│ reading…
+    ●                         a4                                                                                                           Graft   2d│ reading…
+▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                        Graft   2d│ reading…
+    ┃                         Graft · 2 days ago · made on feature-b · 7326de5                                                                       │
+    ●                         a2                                                                                                           Graft   2d│
+    ●                         a1                                                                                                           Graft   2d│
+  ◇━╯    main                 m1  not pushed yet                                                                                           Graft   2d│
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · t tag · y sha · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · ? keys

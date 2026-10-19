@@ -386,8 +386,7 @@ const COUNTED_NEXT: &str = "\u{25b8} 2 commits from feature/one";
 fn launch_and_open_land_alike() {
     let tree = Tree::new();
     let (repo, subject) = tree.repo("api");
-    // Forty commits on a side branch, newer than `HEAD`, put `HEAD` below
-    // the first window of a 36-row terminal.
+    // Forty side commits newer than `HEAD` put it below a 36-row window.
     git(&repo, &["switch", "--quiet", "-c", "side"]);
     for n in 0..40 {
         git(
@@ -408,14 +407,15 @@ fn launch_and_open_land_alike() {
     dirty.extend_from_slice(b"\nan edit\n");
     std::fs::write(repo.join(file), dirty).expect("dirty tree");
 
+    // 187: at 120 the tails give way to `▸` beside the pane (09 W), uncounted or not.
     let isolated = Isolated::new();
-    let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
+    let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (187, 36));
     let at_launch = landed(&launched, &subject, &[DIRTY, COUNTED, COUNTED_NEXT]);
     quit_cleanly(launched);
 
     let isolated = Isolated::new();
     isolated.write_recent(&[(1_000_000_200, &repo)]);
-    let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (120, 36));
+    let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (187, 36));
     on_the_empty_state(&opener);
     opener.send(b"\r");
     let at_open = landed(&opener, &subject, &[DIRTY, COUNTED, COUNTED_NEXT]);
