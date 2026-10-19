@@ -1,6 +1,6 @@
 # branch-pane-cost — the pane answers in under a second on his monorepo
 
-Status: draft (planner spec-only pass 2026-10-19, from 09's Perf NOTES at 59b290d1)
+Status: partial: built as specified; window budget missed, stopped per spec (2026-10-19)
 Blocked by: none (09 merged).
 Beside 09b: **yes**. 09b is app-only (`update::picker`, `C`, `view::entries`). This ticket never touches the app. Beside 09c: **yes**, since 09c is the app's test tree only. File list below.
 Order: first, together with 09c (two helpers), then 09b. 09b's NOTES quotes this ticket's new `window` line for its "read every tip in view" question.
@@ -127,12 +127,55 @@ No app files, no captures.
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] Step 1: the `breakdown` line from before the change is quoted in NOTES. The reads that scale are named.
-- [ ] Equivalence: on every 01r topology in ops' `branch_status` tests, plus a fixture with stale and sibling Others, the route and the full `BranchStatus` equal what a test oracle gives by measuring **every** candidate (the oracle is `#[cfg(test)]` and calls today's measure for each candidate).
-- [ ] `refs_where` git tests: each filter alone, `--merged`+`--no-merged` together (system git version in NOTES), `--contains`, names read back exactly.
-- [ ] The script exits 0 with `budget ok`. NOTES quotes the `candidates`, `focus`, `window`, `scaling` and `breakdown` lines as read from `docs/perf/branch-pane.txt`.
-- [ ] `scaling`: `a == b`.
-- [ ] Full nextest green. No existing branch-pane or G12 test changes its expected words.
+- [x] Step 1 (scratch spawn run with the new shim; quoted in NOTES): the `breakdown` line from before the change is quoted in NOTES. The reads that scale are named.
+- [x] Equivalence (`equivalence::stale_and_sibling_others_answer_as_the_oracle`; `equivalence::agrees` called from the `status()`/`route_of()` helpers and every direct `route` test in `tests/route.rs`): on every 01r topology in ops' `branch_status` tests, plus a fixture with stale and sibling Others, the route and the full `BranchStatus` equal what a test oracle gives by measuring **every** candidate (the oracle is `#[cfg(test)]` and calls today's measure for each candidate).
+- [x] `refs_where` git tests (`contained::tests::refs_where_merged_alone`, `refs_where_not_merged_alone`, `refs_where_merged_and_not_merged_together`, `refs_where_contains`, `refs_where_reads_names_and_tips_back_exactly`): each filter alone, `--merged`+`--no-merged` together (system git version in NOTES), `--contains`, names read back exactly.
+- [ ] The script exits 0 with `budget ok`. **Not met: window OVER (spawn run), see NOTES.** NOTES quotes the `candidates`, `focus`, `window`, `scaling` and `breakdown` lines as read from `docs/perf/branch-pane.txt`.
+- [x] `scaling`: `a == b` (example `scaling` line, spawn run: 6 and 6).
+- [ ] Full nextest green. **Not met: 2 `graph_mode_keep` captures fail, question in NOTES.** No existing branch-pane or G12 test changes its expected words (none changed: the edits in `tests/route.rs` and `tests/status.rs` only add `agrees` calls).
+
+## NOTES (builder, 2026-10-19)
+
+Scout: none. Every file was in the spec's list, and I read each one in full myself.
+
+### Step 1: before the change (spawn run, newest local feature as focus)
+`branch-pane-cost: breakdown merge-base=1 rev-list:--count=2459 rev-list:--reverse=1`
+What scales is `rev-list --count`, which is `count_between` in the old `measure`. That one function feeds both R1 (the base) and R2 (the holders), so the premise holds.
+
+### After the change. Spawn run only; the timed run is the conductor's, and docs/perf/branch-pane.txt is not rewritten
+- `candidates=1231 local=331 remote-only=900 trunk=1 integration=0 other=1230`
+- `focus runs=10 p50_ms=78.3 p95_ms=88.0 spawns=8`. Times are from the shimmed run on a loaded machine: indicative only.
+- `breakdown for-each-ref=3 merge-base=1 rev-list:--count=3 rev-list:--reverse=1`
+- `window rows=40 tips=21 total_ms=2522088.3 spawns=182681`. **OVER**: the budget is 60 × 21 = 1260; it was 254441 before.
+- `scaling others=10 spawns=6 others=500 spawns=6`
+
+The focus is in budget, the window is not. I stopped as the spec says: no tuning.
+
+### Why the window is still slow: suspected from the code, not observed per tip
+- `able_trunk` (measure.rs:197) needs `branch_only > 0`. A tip that main holds (merged, or on main's line) has nothing to exclude. So `ordinary_contenders` (measure.rs:237) measures every Other under it: about 1000 of them, 2 counts each.
+- For an on-line walker, R1 is never consulted: branch_status.rs:206 and status.rs:171 step straight to the line. Those counts are waste.
+- For a merged walker, R1 runs, so its Others are real contenders.
+
+Two exact fixes, both outside this spec:
+1. Decide R2 case 1 first. Measure R1 contenders only when the walker is not on a line.
+2. Among Others under the walker, only tips that no other contender's tip reaches can win: one `merge-base --independent`. If c is strictly under c', then branch_only(c) > branch_only(c'), because c''s tip is in the walker and not in c.
+
+### git
+- The system git is 2.54.0 (Apple Git-157). `--merged` and `--no-merged` combine as "from M, not from N" (`refs_where_merged_and_not_merged_together`). Not tested on 2.38 itself.
+
+### Deviations
+- "T able to win" leaves out the spec's shared-history check. It is still exact: if T is unrelated to w, so is every c under T, and R1's skip drops each c anyway. One `compare_span` spawn saved.
+- A candidate whose ref is missing, or not at the candidate's tip, is always measured, at one extra `for-each-ref` per step. Reason: the filters speak about refs, not about the caller's tips.
+
+### Full nextest (7091 tests): 7088 passed, 3 failed
+- `map_coverage::map_lines_are_short…`: my ops MAP line was over 240 characters. Fixed; it passes.
+- `graph_mode_keep::picking_a_graph_mode_in_help_switches_keeps_and_reopens_in_it` and `typed_graph_lists_the_group_after_here_at_120_and_90`: the capture has `◆─╮` committed where `◆┄╮` is drawn (graph-mode-switched-120.txt line 5; help-graph-mode-120.txt line 8). **Question, not a defect claim.** A temporary log inside the app run (reverted) recorded `wallet-release same=true route=[sara/fix-toc, main]` against the every-candidate oracle, so the answers are unchanged there. I could not run these tests on the baseline sources: the permission classifier refused it. App files are outside my set.
+
+### Touches
+- `route` and `branch_status` callers (the app's `jobs::branch_status`): signatures unchanged.
+- `contained_in`: untouched.
+- 14's G12 and 09's reads: green, apart from the 2 captures above.
+- Journal and undo: none (reads only).
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide. Plus `scripts/branch-pane-cost.sh` (a measurement: run from the script, read the summary lines only).
