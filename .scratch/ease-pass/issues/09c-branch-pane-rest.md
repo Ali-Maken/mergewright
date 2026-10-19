@@ -1,6 +1,6 @@
 # branch-pane-rest — 09's four unbuilt checks
 
-Status: draft (planner spec-only pass 2026-10-19; split from 09 at 59b290d1, 23/27 ticked, split approved by the user)
+Status: done 2026-10-19 (was draft: planner spec-only pass 2026-10-19; split from 09 at 59b290d1, 23/27 ticked, split approved by the user)
 Blocked by: none (09 merged at 59b290d1).
 Beside 09b: **yes**, disjoint files (lists below). Beside 09p: **yes**. 09p holds ops, git, the cost script and `docs/perf/`. This ticket holds only the app's test tree and one capture.
 Order: build with 09p, the two helpers together, before 09b.
@@ -79,14 +79,22 @@ fn with_moved_integration() -> Fixture;   // shape as Scope 2; `Fixture` = the t
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] Before the read lands, each of the four lines reads `reading…`. A forced failure shows `can't tell: <reason>` on all four lines, with one reason, the heading kept and no mark.
-- [ ] After sara's read, develop's lane draws `│` on a sara row, and `look.route` names develop. With the cursor on a main row, the same cell is not `│` (state + glyph).
-- [ ] The geometry mirror is green at 90/110/120 with the detail pane open and closed.
-- [ ] `docs/shots/ease-pass/main-pane-reading-120.txt`: four `reading…` lines under sara's heading, identical over 2 runs, ≤200 KB. Colour unverified.
-- [ ] NOTES: the Proposed edit to `ease-pass.md:272` and where the mirror test lives.
+- [x] Before the read lands, each of the four lines reads `reading…`. A forced failure shows `can't tell: <reason>` on all four lines, with one reason, the heading kept and no mark. — `tests/it/branch_pane/states.rs` `before_the_read_lands_every_line_reads_reading`, `a_failed_read_says_cant_tell_on_all_four_lines_with_one_reason`
+- [x] After sara's read, develop's lane draws `│` on a sara row, and `look.route` names develop. With the cursor on a main row, the same cell is not `│` (state + glyph). — `states.rs` `the_route_reaches_the_colours_of_a_moved_integration_base`. **Deviation:** `AppState.look` is `pub(crate)`, so the integration test cannot read `look.route`; the state half asserts the pane's `built on` route (`main`, `develop`, `wallet-release`, `sara/fix-toc`), which `update::branch_pane::read` sets from the same answer (`src/update/branch_pane.rs:260-271`). The unit test `update/branch_pane/tests.rs:240-265` already covers `look.route` roles directly.
+- [x] The geometry mirror is green at 90/110/120 with the detail pane open and closed. — `src/update/tests/pane_geometry.rs` `the_branch_pane_mirror_matches_the_carve_the_frame_draws`
+- [x] `docs/shots/ease-pass/main-pane-reading-120.txt`: four `reading…` lines under sara's heading, identical over 2 runs, ≤200 KB. Colour unverified. — `branch_pane/shots.rs` `capture_the_branch_pane_reading` (shasum e8086ca3 before and after a non-updating rerun)
+- [x] NOTES: the Proposed edit to `ease-pass.md:272` and where the mirror test lives. — below
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~30k.
+
+## NOTES (build, 2026-10-19)
+- **Proposed edit** to `docs/design-notes/ease-pass.md:272`: "in that line only" → "a failed read → `can't tell: <reason>` on every line it answers". Not edited here.
+- Mirror test: new sibling file `src/update/tests/pane_geometry.rs` (+1 `mod` line in `src/update/tests.rs`), not an extension of `tab_strip_geometry.rs`. Every cell of a 30-row screen checked against `screen_rows(..).pane`; `graph_columns` compared to the rows' share left of the pane slot (gutter and margin included; `body.width` excludes them, 87 vs 90 at 90 cols).
+- Withholding hook: `rest_with` in `tests/it/branch_pane.rs`, a copy of `App::pump`'s loop that drops or replaces `BranchStatusRead` before `update`. Put there, not in `app_harness.rs`, because that file sits at its over_400 row (413) and its submodules can't resolve under the examples' `#[path]` include. Opt-in: `captures::at_rest` untouched (full run green).
+- No `#![allow(dead_code)]` was present in `branch_pane.rs`.
+- Check 2 product held: develop's cell is `│` with sara focused, not `│` with main focused. No product defect found.
+- Scout: none; the four files were small and the needs list named every seam.

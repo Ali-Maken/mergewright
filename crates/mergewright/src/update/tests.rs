@@ -122,6 +122,7 @@ mod hint_coverage;
 mod job_ids;
 mod jobs_and_refresh;
 mod opening;
+mod pane_geometry;
 mod pointer;
 mod prelude;
 mod prelude_reads;

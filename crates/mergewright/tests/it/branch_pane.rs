@@ -19,6 +19,7 @@ use crate::captures::frame_at;
 
 mod reads;
 mod shots;
+mod states;
 
 const ROWS: u16 = 30;
 /// After every fixture commit, so ages read the same.
@@ -31,6 +32,9 @@ const START_RELEASE: &str = "Start the wallet release";
 const TOC: &str = "toc: fix the anchors";
 const ALI: &str = "x: try the other layout";
 const MORE_RELEASE: &str = "Bump the wallet version";
+const START_DEVELOP: &str = "Start develop";
+const TOC_TWO: &str = "toc: number the headings";
+const MORE_DEVELOP: &str = "develop: merge the payments work";
 
 /// Runs `steps` as git commands in a fresh repository, a minute apart.
 fn repo_of(steps: &[&[&str]]) -> tempfile::TempDir {
@@ -88,6 +92,81 @@ fn with_sibling() -> tempfile::TempDir {
         &["switch", "--quiet", "wallet-release"],
         &commit(MORE_RELEASE),
     ])
+}
+
+/// `main ← develop ← wallet-release ← sara/fix-toc` (2 commits), then a
+/// commit on `develop` (HEAD) dated after sara's newest: develop is a moved
+/// integration base, on sara's route and drawn as its own lane beside her
+/// rows (09c check 2; an `Other` base cannot be both, 01r R1 and Q15 a).
+fn with_moved_integration() -> tempfile::TempDir {
+    repo_of(&[
+        &commit(README),
+        &["switch", "--quiet", "-c", "develop"],
+        &commit(START_DEVELOP),
+        &["switch", "--quiet", "-c", "wallet-release"],
+        &commit(START_RELEASE),
+        &["switch", "--quiet", "-c", "sara/fix-toc"],
+        &commit(TOC),
+        &commit(TOC_TWO),
+        &["switch", "--quiet", "develop"],
+        &commit(MORE_DEVELOP),
+    ])
+}
+
+/// Pumped to rest with the pane's read altered: `None` withholds every
+/// `BranchStatusRead` (the pane stays `reading…`); `Some(reason)` answers
+/// each with `Err(reason)`. Everything else at rest as `captures::at_rest`.
+/// `App::pump`'s loop with the answer intercepted before `update`; the same
+/// per-event patience and whole-pump deadline, no sleep.
+fn rest_with(app: &App, state: AppState, fail: Option<&str>) -> AppState {
+    use crate::app_harness::{DEADLINE, Deadline, PATIENCE};
+    use mergewright::jobs::Dispatch;
+    use mergewright::update::{AppEvent, Product, update};
+    let what = "rest with the branch pane's read altered";
+    let mut deadline = Deadline::of(DEADLINE);
+    let mut state = state;
+    let mut withheld = false;
+    loop {
+        let rest = crate::captures::walk_has_settled(&state)
+            && crate::captures::radar_has_answered(&state)
+            && mergewright::update::fold_count::settled(&state);
+        let pane = match fail {
+            None => withheld,
+            Some(_) => mergewright::update::branch_pane::settled(&state),
+        };
+        if rest && pane {
+            return state;
+        }
+        let event = app
+            .events
+            .recv_timeout(PATIENCE)
+            .unwrap_or_else(|why| panic!("waiting for {what}: {why}"));
+        deadline
+            .note(what, &event)
+            .unwrap_or_else(|why| panic!("{why}"));
+        let event = match (event, fail) {
+            // Withheld: `done` is asked again before the next wait.
+            (AppEvent::Produced(_, Product::BranchStatusRead { .. }), None) => {
+                withheld = true;
+                continue;
+            }
+            (AppEvent::Produced(id, Product::BranchStatusRead { key, .. }), Some(reason)) => {
+                AppEvent::Produced(
+                    id,
+                    Product::BranchStatusRead {
+                        key,
+                        result: Err(reason.to_owned()),
+                    },
+                )
+            }
+            (event, _) => event,
+        };
+        let (next, commands) = update(&state, event);
+        state = next;
+        for command in commands {
+            app.jobs.dispatch(command);
+        }
+    }
 }
 
 fn drawn(state: &AppState, columns: u16) -> Vec<String> {
