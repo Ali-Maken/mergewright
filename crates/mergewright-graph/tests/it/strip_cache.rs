@@ -98,6 +98,21 @@ fn width_of(rows: &[Row]) -> usize {
         .unwrap_or(0)
 }
 
+/// `rows` alone, `lane_columns` wide, at the test cell and palette.
+fn bare<'a>(rows: &'a [PlainRow<'a>], lane_columns: usize) -> PlainStrip<'a> {
+    PlainStrip {
+        rows,
+        above: None,
+        lane_columns,
+        marker: None,
+        cell_width: CELL.0,
+        cell_height: CELL.1,
+        palette: &PALETTE,
+        muted: MUTED,
+        roles: None,
+    }
+}
+
 /// A renderer's frame: every aligned strip the viewport touches, through the
 /// cache. Returns how many strips it asked for.
 fn frame(
@@ -125,6 +140,7 @@ fn frame(
             cell_height: cell.1,
             palette,
             muted: MUTED,
+            roles: None,
         };
         let frame = cache
             .backdrop(range.start, &strip, Backdrop::Full)
@@ -185,6 +201,7 @@ fn a_cached_strip_is_the_strip_rasterise_draws() {
         cell_height: CELL.1,
         palette: &PALETTE,
         muted: MUTED,
+        roles: None,
     };
     let direct = rasterise_backdrop(&strip, Backdrop::Full).expect("rasterises");
     assert_eq!(
@@ -364,16 +381,7 @@ fn a_misaligned_or_oversized_strip_is_refused() {
     let rows = rows(100);
     let mut cache = roomy(4);
     let raster_rows: Vec<PlainRow<'_>> = rows[0..33].iter().map(PlainRow::of).collect();
-    let strip = |rows| PlainStrip {
-        rows,
-        above: None,
-        lane_columns: 2,
-        marker: None,
-        cell_width: CELL.0,
-        cell_height: CELL.1,
-        palette: &PALETTE,
-        muted: MUTED,
-    };
+    let strip = |rows| bare(rows, 2);
     assert!(matches!(
         cache.backdrop(5, &strip(&raster_rows[..27]), Backdrop::Full),
         Err(CacheError::Misaligned { .. })
@@ -443,6 +451,7 @@ fn strip_height_numbers() {
             cell_height: USER_CELL.1,
             palette: &PALETTE,
             muted: MUTED,
+            roles: None,
         };
         let mut raster: Vec<u128> = (0..15)
             .map(|_| {
@@ -484,16 +493,7 @@ fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
     };
     let mut with_virtual = vec![virtual_row.clone()];
     with_virtual.extend(rows[0..32].iter().map(PlainRow::of));
-    let strip = |rows| PlainStrip {
-        rows,
-        above: None,
-        lane_columns: 3,
-        marker: None,
-        cell_width: CELL.0,
-        cell_height: CELL.1,
-        palette: &PALETTE,
-        muted: MUTED,
-    };
+    let strip = |rows| bare(rows, 3);
     let frame = cache
         .backdrop(0, &strip(&with_virtual), Backdrop::Full)
         .unwrap_or_else(|why| panic!("32 history rows and the virtual row: {why}"));
@@ -527,16 +527,7 @@ fn a_row_gaining_a_stub_changes_the_layout_hash() {
         identity: BranchIdentity::of_name(b"topic"),
         toward: Toward::Below,
     });
-    let strip = |rows| PlainStrip {
-        rows,
-        above: None,
-        lane_columns: 3,
-        marker: None,
-        cell_width: CELL.0,
-        cell_height: CELL.1,
-        palette: &PALETTE,
-        muted: MUTED,
-    };
+    let strip = |rows| bare(rows, 3);
     assert_ne!(layout_hash(&strip(&plain)), layout_hash(&strip(&stubbed)));
     let mut above = stubbed.clone();
     above[5].stubs[0].toward = Toward::Above;

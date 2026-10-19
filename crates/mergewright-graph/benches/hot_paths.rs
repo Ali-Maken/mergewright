@@ -201,6 +201,7 @@ fn strip<'a>(rows: &'a [PlainRow<'a>], above: Option<&'a Row>, lanes: usize) -> 
         cell_height: CELL.1,
         palette: &PALETTE,
         muted: MUTED,
+        roles: None,
     }
 }
 

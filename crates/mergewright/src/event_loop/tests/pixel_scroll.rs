@@ -20,6 +20,7 @@ use emphasis_pieces::{emphasis_placed, placed};
 use mergewright_graph::fold::Keep;
 
 mod emphasis_pieces;
+mod focus;
 
 /// The spec's terminal for these runs (`120×40`).
 const COLUMNS: u16 = 120;
@@ -99,7 +100,7 @@ fn backdrop_of(state: &AppState) -> Backdrop {
 
 fn paints_of(session: &Session, state: &AppState) -> Vec<(usize, u64)> {
     let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
-    let paint = crate::view::strips::StripPaint::of(session);
+    let paint = crate::view::strips::StripPaint::for_frame(session, state);
     pixels
         .strips
         .iter()
@@ -150,35 +151,6 @@ fn press(code: KeyCode) -> AppEvent {
 
 fn js(count: usize) -> Vec<AppEvent> {
     vec![press(KeyCode::Char('j')); count]
-}
-
-#[test]
-fn j_inside_resident_strips_sends_no_strip() {
-    for deflate in [false, true] {
-        let (session, state) = branchy(PixelProtocol::Kitty, deflate);
-        let run = drive(&session, state, js(20));
-
-        let first = transmits(&run.frames[0]);
-        assert!(
-            first.iter().any(|t| !t.is_emphasis()),
-            "deflate {deflate}: the first frame uploads its strips"
-        );
-        let later: Vec<Transmit> = run.frames[1..].iter().flat_map(|f| transmits(f)).collect();
-        let strips = later.iter().filter(|t| !t.is_emphasis()).count();
-        let emphasis = later.iter().filter(|t| t.is_emphasis()).count();
-        eprintln!("deflate {deflate}: 20 j sent {strips} strips, {emphasis} emphasis images");
-        assert_eq!(strips, 0, "deflate {deflate}: a j re-sends no strip");
-        assert!(
-            repainted(&run.paints) >= 1,
-            "premise: the thread moved over 20 j"
-        );
-        assert!(emphasis >= 1, "deflate {deflate}: its emphasis went");
-        assert!(
-            run.backdrops.iter().all(|b| *b == Backdrop::OffThread),
-            "{:?}",
-            run.backdrops
-        );
-    }
 }
 
 /// m8 04: held `j` down a wide graph (12 lanes woven, 241 rows, past seven
@@ -284,6 +256,11 @@ struct Planned {
     lane_columns: usize,
     marker: Option<usize>,
     strips: Vec<usize>,
+    /// The lanes' roles (ease-pass 13): a focus change re-keys strips.
+    roles: Vec<(
+        mergewright_graph::identity::BranchIdentity,
+        mergewright_graph::LaneRole,
+    )>,
 }
 
 /// `state`'s fold plan as drawn, and the `Keep` it weighed.
@@ -296,6 +273,7 @@ fn planned(state: &AppState) -> (Planned, Keep) {
         lane_columns: pixels.lane_columns,
         marker: pixels.marker.map(|marker| marker.column),
         strips: pixels.strips.iter().map(|strip| strip.first_row).collect(),
+        roles: pixels.roles,
     };
     (planned, keep)
 }
@@ -336,7 +314,7 @@ fn capped_at_pixel_tier() -> (Session, AppState) {
 /// `preferred`), so a `j` that moves the selection may change which lanes
 /// draw, and every strip goes again. That is layout, not paint. What
 /// ADR-0053 promises, and this guards: a backdrop is re-sent only on a frame
-/// whose fold plan or strip window changed (a), the fixture really does
+/// whose fold plan, strip window or lanes' roles changed (a), the fixture really does
 /// change the fold (b), and a changed selection paint always changes the
 /// emphasis placed (c). Step 0 (46c) ran the old bound "no backdrop on any
 /// j" red first, on a fixture whose side lanes held no node; those drop

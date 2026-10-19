@@ -8,5 +8,6 @@ mod emphasis_layer;
 mod raster;
 mod raster_pieces;
 mod raster_pixels;
+mod raster_roles;
 mod streaming;
 mod strip_cache;

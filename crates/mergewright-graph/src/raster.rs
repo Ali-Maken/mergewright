@@ -33,6 +33,7 @@ mod geometry;
 mod node;
 mod pen;
 mod pool;
+mod stroke;
 
 use std::cell::RefCell;
 
@@ -42,6 +43,7 @@ use tiny_skia::{IntSize, Pixmap};
 
 use crate::fold::Toward;
 use crate::identity::BranchIdentity;
+use crate::role::LaneRole;
 use crate::row::Row;
 
 pub use emphasis::{
@@ -50,6 +52,7 @@ pub use emphasis::{
 };
 pub use node::Ring;
 pub use pool::RasterPool;
+pub use stroke::LaneStroke;
 
 /// Terminal cells one lane column takes, matching the Unicode tier: the
 /// lane's own cell and the gap right of it.
@@ -152,6 +155,15 @@ struct Look<'a> {
     cell_height: u32,
     palette: &'a [Rgb],
     muted: Rgb,
+    roles: Option<&'a [(BranchIdentity, LaneRole)]>,
+}
+
+impl Look<'_> {
+    /// The colour and stroke `identity`'s lane draws in
+    /// ([`stroke::lane_look`]).
+    fn lane(&self, identity: BranchIdentity) -> (Rgb, LaneStroke) {
+        stroke::lane_look(self.roles, self.palette, self.muted, identity)
+    }
 }
 
 /// One row as the pen draws it: its layout and the paint it draws at.
@@ -309,12 +321,13 @@ struct Band {
     bottom: f32,
 }
 
-/// A colour, its opacity and the stroke width it draws at.
+/// A colour, its opacity, the stroke width it draws at and its shape.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Ink {
     rgb: Rgb,
     alpha: u8,
     width: f32,
+    shape: LaneStroke,
 }
 
 /// The strip's fixed geometry, shared by every row.

@@ -143,6 +143,7 @@ fn line(out: &mut String, case: &Case<'_>, cell: (u32, u32)) {
         cell_height: cell.1,
         palette: &PALETTE,
         muted: MUTED,
+        roles: None,
     };
     let frame = super::raster::layered(&strip, &case.lits)
         .unwrap_or_else(|why| panic!("{}: {why}", case.name));
@@ -262,6 +263,7 @@ fn reports_per_strip_cost() {
             cell_height: CELLS[0].1,
             palette: &PALETTE,
             muted: MUTED,
+            roles: None,
         };
         let mut times: Vec<u128> = (0..31)
             .map(|_| {

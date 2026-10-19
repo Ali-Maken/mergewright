@@ -429,6 +429,7 @@ Building `StripMarks`: the overview strip's marks, read off the rows `History` h
 The tour card's words: one line per tour task, every key spelled from the live keymap.
 ## view::strips
 The pixel tier's rows: the viewport's history cut into whole aligned strips, painted like the Unicode tier.
+Lanes are stroked and coloured by role on the frame's route (`PixelRows.roles`); `StripPaint::for_frame` mutes them under `#`.
 ## working_tree
 The working tree's full status, one entry per changed path, for the uncommitted row and the changes pane. Read by a job.
 - `WorkingTree` (struct) — staged, unstaged and untracked entries as one read gives them.

@@ -134,6 +134,26 @@ impl Theme {
         }
     }
 
+    /// Role hues for a pixel renderer (ease-pass G1), in the order This,
+    /// Under, Trunk, Other: the theme's truecolor `role-*` values at any
+    /// depth, his overrides included. Where colour is off, the one muted
+    /// hue, as [`Theme::raster_lanes`]: shape carries the role.
+    #[must_use]
+    pub fn raster_roles(&self) -> Vec<Rgb> {
+        match self.depth {
+            ColorDepth::None => vec![self.raster_muted()],
+            ColorDepth::TrueColor | ColorDepth::Palette256 | ColorDepth::Palette16 => [
+                Token::RoleThis,
+                Token::RoleUnder,
+                Token::RoleTrunk,
+                Token::RoleOther,
+            ]
+            .iter()
+            .map(|token| self.rgb[token.index()])
+            .collect(),
+        }
+    }
+
     /// The muted hue (`text-muted`) a pixel renderer draws a `+N` marker in
     /// when no lane joins it: the theme's truecolor value (his override if
     /// he gave one), never reduced.

@@ -31,11 +31,10 @@
 1429 crates/mergewright-graph/src/layout/stream/tests.rs
 701 crates/mergewright-graph/src/layout/tests.rs
 618 crates/mergewright-graph/src/layout/tests/properties.rs
-438 crates/mergewright-graph/src/raster/emphasis.rs
 455 crates/mergewright-graph/tests/it/corpus.rs
 588 crates/mergewright-graph/tests/it/emphasis_layer.rs
-1003 crates/mergewright-graph/tests/it/raster.rs
-713 crates/mergewright-graph/tests/it/strip_cache.rs
+992 crates/mergewright-graph/tests/it/raster.rs
+704 crates/mergewright-graph/tests/it/strip_cache.rs
 424 crates/mergewright-ops/src/apply/engine.rs
 570 crates/mergewright-ops/src/apply/error.rs
 512 crates/mergewright-ops/src/apply/record.rs
@@ -128,7 +127,7 @@
 481 crates/mergewright/src/event_loop/running/turn.rs
 1648 crates/mergewright/src/event_loop/tests.rs
 545 crates/mergewright/src/event_loop/tests/pace.rs
-650 crates/mergewright/src/event_loop/tests/pixel_scroll.rs
+628 crates/mergewright/src/event_loop/tests/pixel_scroll.rs
 715 crates/mergewright/src/event_loop/tests/settle.rs
 1446 crates/mergewright/src/history/tests.rs
 560 crates/mergewright/src/jobs/operate.rs
@@ -195,7 +194,7 @@
 443 crates/mergewright/src/view/frame/boxes.rs
 700 crates/mergewright/src/view/frame/tests.rs
 724 crates/mergewright/src/view/journal/tests.rs
-422 crates/mergewright/src/view/strips.rs
+415 crates/mergewright/src/view/strips.rs
 459 crates/mergewright/src/view/strips/tests.rs
 5272 crates/mergewright/src/view/tests.rs
 465 crates/mergewright/src/view/tests/bottom_row.rs

@@ -134,7 +134,32 @@ pub fn plain_layout_hash(strip: &PlainStrip<'_>) -> u64 {
         plain.stubs.hash(&mut hasher);
     }
     hash_above(strip.above, &mut hasher);
+    hash_roles(strip, &mut hasher);
     hasher.finish()
+}
+
+/// The role of every branch the strip draws (rows, stubs and the row
+/// above), in draw order, or that no roles are in play. Only roles of
+/// lanes the strip holds: a focus change re-keys the strips it shows
+/// differently, not every strip.
+fn hash_roles(strip: &PlainStrip<'_>, hasher: &mut DefaultHasher) {
+    let Some(roles) = strip.roles else {
+        false.hash(hasher);
+        return;
+    };
+    true.hash(hasher);
+    let role = |identity| super::super::stroke::role_in(roles, identity);
+    let rows = strip.rows.iter().map(|plain| plain.row).chain(strip.above);
+    for row in rows {
+        for identity in row.lanes.iter().flatten() {
+            role(*identity).hash(hasher);
+        }
+    }
+    for plain in strip.rows {
+        for stub in &plain.stubs {
+            role(stub.identity).hash(hasher);
+        }
+    }
 }
 
 /// Hash of the selection's paint over a strip: its backdrop and, per row,

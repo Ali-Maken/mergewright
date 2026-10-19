@@ -1,6 +1,6 @@
 # pixel-roles-and-tall-row — the Pixel tier draws roles and the cursor row's second line; then the Ghostty lag is measured
 
-Status: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/13-pixel-roles-and-tall-row.md` at c021e6a6: 5 mismatches ruled, `colours_off` settled by a test first)
+Status: partial — commit 1 (roles + `colours_off`) built; tall row, settle 2 and the measurement remain (see NOTES). Was: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/13-pixel-roles-and-tall-row.md` at c021e6a6: 5 mismatches ruled, `colours_off` settled by a test first)
 Blocked by: 07b-graph-rows-cursor (`SecondLine`, `commit_rows`, `body_line`; the tall row's input). Built and merged: 01, 03, 06, 06b, 06s, 06t, 07 part (f2269602: `Look.route`, `Look.colours_off`, `lane_roles` at `view/entries/roles.rs:16`). 07c is not needed (scout). **Not beside 09**: 09 changes `view/frame/layout.rs:169` `graph_columns`, which sets the strips' width. Either order works; the later one re-takes its captures. The measurement runs with no other cargo-running helper active.
 Build with: Opus — raster, cache key, placement and a perf script; the tall row's placement is a judgement the tests then pin (scout's call). Not Fable: correctness is judged by trace and tests, not by eye.
 Needs: graph `LaneRole` (`role.rs:14`), `PlainStrip<'a>` (`raster/emphasis.rs:164-165`, `Clone, Copy`, borrowed fields), `StripKey` / `plain_layout_hash` (`raster/cache/key.rs:~14,123`), `stroke_width` (`raster/pen.rs:30`), tiny-skia dash support (`raster/geometry.rs:154-160`); app `look.route` via `frame_route` (`view/entries/roles.rs:27`, `pub(in crate::view)` — `view::strips` is inside `view`), `look.colours_off` (`update/state/look.rs:10`), `lane_roles`; strips `view/strips.rs` (palette :49, `graph_rows` :215, strip cut :279-318), placement `event_loop/graphics/layers.rs:142-175`; 07b `SecondLine`, `commit_rows`, `body_line`.
@@ -65,9 +65,9 @@ Strip cache keys and hit rates (`CacheStats` in NOTES before/after); `RasterPool
 ## Acceptance
 Each tick names its test inline.
 - [ ] Settle tests 1–2 committed first; outcomes in NOTES.
-- [ ] `LaneStroke::of` table test. The strip key differs when one lane's role changes and is equal across `j` within one branch (cache test, hit counter).
-- [ ] Raster test: Other lane pixels dotted (gaps every N px), Trunk two parallel strokes, This wider than Under (measured in the frame buffer, not by eye). `PlainStrip` still `Copy` (compile).
-- [ ] `colours_off`: every lane pixel in the muted hue, stroke shapes unchanged (`colours_off_mutes_every_strip_lane`).
+- [x] `LaneStroke::of` table test (`raster::stroke::tests::each_role_has_its_own_stroke`). The strip key differs when one lane's role changes and is equal across `j` within one branch (cache test, hit counter) — `view::strips::roles_tests::a_strip_rekeys_on_a_role_change_and_hits_across_j_within_a_branch`.
+- [x] Raster test (`tests/it/raster_roles.rs::other_is_dotted_and_trunk_is_two_strokes_and_this_is_wider_than_under`, `plain_strip_is_still_copy`): Other lane pixels dotted (gaps every N px), Trunk two parallel strokes, This wider than Under (measured in the frame buffer, not by eye). `PlainStrip` still `Copy` (compile).
+- [x] `colours_off`: every lane pixel in the muted hue, stroke shapes unchanged (`colours_off_mutes_every_strip_lane`).
 - [ ] Tall row: strips above the cursor not re-rasterised on `j` (counter); the cursor's strip placed twice with disjoint rows, strips below one row lower (placement command test, both protocols); the continuation frame has a straight segment in every lane column passing the row.
 - [ ] `scripts/ease-pixel-lag.sh` exits 0; `docs/perf/ease-pixel.txt` has `SUMMARY` lines for all three binaries, both sizes, both walks, and the Ghostty command lines. The report quotes only `SUMMARY` lines.
 - [ ] Capture: `docs/shots/ease-pass/main-pixel-120.txt` (placement text capture; the pixels are his to judge in Ghostty).
@@ -77,3 +77,41 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide; plus 
 
 ## Size
 ~70k. Split point: roles + `colours_off` (commit 1) here; tall row + measurement as a follow-on.
+
+## NOTES (builder, 2026-10-19) — partial: commit 1 only
+
+No compaction. Stopped at the ticket's own split point (commit 1), quota tight. Scout: yes — fresh one at 60e07871 (`scratchpad/scout-13b.md`, not committed); the c021e6a6 anchors were re-mapped through 07b's NOTES.
+
+**Settle test 1 — red, as the scout suspected.** `view::strips::roles_tests::colours_off_mutes_every_strip_lane` was run red before the fix: `assertion left != right failed: colours off re-keys the strip` (graphics built `StripPaint::of(session)` and never saw `look.colours_off`). Green after commit 1: `StripPaint::for_frame` (`view/strips/paint.rs`) paints from `session.colours_off()` while `#` is on, so the palette is the one muted hue, `theme_id` re-keys, and the alpha channel is byte-equal (shapes stay).
+**Settle test 2 — not written** (it decides the tall row; left for the follow-on with it).
+
+**Built (commit 1).**
+- graph `raster/stroke.rs`: `LaneStroke {Thick, Thin, Double, Dotted}`, `LaneStroke::of`, `role_in` (absent → `Other`), `lane_look`, `styled` (dotted = tiny-skia dash 1.5w on/off; double = one wide stroke with its middle masked out, so arcs stay parallel). Straight runs: Double = two scanline-copied runs at ±offset; Dotted is stroked whole.
+- Width: `stroke_width(cell_width)` × role (This 1.5, others 1). **Node rings always draw at the base width, plain** (`pen.rs` `ring_ink`): a ring's shape is its ring style alone.
+- Piece keys hash (colour, stroke) where they hashed colour (`emphasis/pieces.rs`), so equal keys stay equal pixels.
+- `plain_layout_hash` hashes the role of every branch the strip draws (rows, stubs, row above) — not the whole frame's roles, so a focus change re-keys only strips whose lanes' roles changed.
+- app: `PixelRows.roles` from `frame_route` (the Unicode tier's route), one pair per branch drawn; `StripPaint` palette is now `Theme::raster_roles()` (new, ui: `role-*` truecolor hues, or the muted hue at depth None).
+
+**Decided here (say if wrong):**
+- **`roles: Option<&[(BranchIdentity, LaneRole)]>`, not a bare slice.** `None` = no roles in play: identity colours, one plain stroke, the old look — keeps the graph crate's corpus snapshots and pixel tests byte-identical. `Some(&[])` = every lane `Other`, as the spec says. The app always passes `Some`.
+- **Colour follows role too, not only stroke** (G1 "colour = role"; the Unicode tier colours by `role_token`). With roles the palette is indexed by role (This, Under, Trunk, Other); a one-colour palette mutes all. `Theme::raster_lanes` is now unused by the app (kept; ui MAP lists both). Question: drop it?
+- Double's gap is `max(0.75w, 1 px)`, so a trunk lane is about 2.75w wide overall, wider than This (1.5w). Judge by eye in Ghostty.
+
+**Knock-on found by the full run (Touches):**
+- `event_loop::tests::pixel_scroll`: ADR-0053's "a j re-sends no strip" no longer holds when the j moves the focus onto another branch: roles re-key the strips. This is the Q4 lag risk, now real; **the follow-on's measurement must quantify it.**
+  - `j_inside_resident_strips_sends_no_strip` moved to `pixel_scroll/focus.rs`, now asserts no strip on every j whose plan (fold, window, roles) is unchanged, and that ≥10 of 20 j keep the focus.
+  - `a_capped_graph_resends_strips_only_when_the_fold_changes`: `Planned` gained `roles`, so (a) reads "fold, window or roles changed".
+  - `emphasis_pieces::{sent_and_new}`: counts emphasis transmits only; no longer asserts that no strip went.
+- Ratchet (lowered, none raised): `raster/emphasis.rs` split (`emphasis/backdrop.rs`), row removed; `view/strips.rs` split (`strips/paint.rs`) 422→415; `pixel_scroll.rs` 650→628; graph tests `raster.rs` 1003→992 and `strip_cache.rs` 713→704 (struct-update over their helpers, `bare`); `emphasis_layer.rs` held at 588 (merged a `use`).
+- MAP.md: graph (`LaneStroke`, `PlainStrip.roles`, key), ui (`raster_roles`), app (`view::strips`).
+- Text captures: none changed (strips are pixels; no capture test failed). Insta raster snapshots unchanged (`roles: None`).
+- `CacheStats` before/after in a real walk: **not measured** (the follow-on's script).
+- Colour and pixels: **unverified** (rule 5); no PNG looked at.
+
+**Remaining (for the conductor to split):**
+1. Settle test 2 (Kitty/iTerm2 two placements of one strip). Scout: Kitty counts p=1..n per upload (`mergewright-term/src/kitty/mod.rs:187`, module doc :9 says one p — stale); iTerm2 has no crops and caches bands by `rows` (`iterm2.rs:138-145`), so a j inside a strip re-encodes both PNG crops; twin bands count against `STRIPS_KEPT=16` (`graphics.rs:32`).
+2. Tall row (commit 2). Today in Pixel: `view/frame.rs:152-158` clears `second`, ui draws no blank line, but `graph_rows` takes one row off in every tier (`update/state/queries.rs:28-38`) and app `cursor_body_line` (`update/geometry/second_line.rs:25-39`) is tier-blind — a Pixel click may map one line off (scout, **unconfirmed by test**). The follow-on must settle that first.
+3. `scripts/ease-pixel-lag.sh` + `docs/perf/ease-pixel.txt` (base = 60e07871, roles = this commit, roles+tall).
+4. Capture `docs/shots/ease-pass/main-pixel-120.txt`.
+
+Acceptance: 3/7 ticked (boxes 2, 3, 4); box 1 half (settle 1 done, settle 2 not).

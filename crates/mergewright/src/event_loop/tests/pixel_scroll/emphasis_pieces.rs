@@ -37,12 +37,11 @@ pub(super) fn emphasis_placed(stream: &str) -> Vec<u32> {
 }
 
 /// The pieces `state`'s frame needs, as (strip first row, piece key). The
-/// strip's backdrop key is stood in by its first row: the callers check no
-/// strip went again, so within one run a strip's real key is fixed and the
-/// stand-in keeps every equality the real key would.
+/// strip's backdrop key is stood in by its first row: a piece's own key
+/// holds everything its pixels are drawn from, roles included.
 fn pieces_of(session: &Session, state: &AppState) -> BTreeSet<(usize, u64)> {
     let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
-    let paint = StripPaint::of(session);
+    let paint = StripPaint::for_frame(session, state);
     let mut needed = BTreeSet::new();
     for strip in &pixels.strips {
         strip.with_layers(&pixels, &paint, |plain, selection| {
@@ -55,23 +54,20 @@ fn pieces_of(session: &Session, state: &AppState) -> BTreeSet<(usize, u64)> {
 }
 
 /// Per frame after the first: (emphasis transmits, pieces needed that no
-/// earlier frame needed). Asserts no strip went after the first frame,
-/// which `pieces_of`'s stand-in key relies on.
+/// earlier frame needed). A strip may go again when the focus moves onto
+/// another branch (ease-pass 13: roles re-key it); its pieces' keys hold
+/// the roles' strokes and colours, so the stand-in still tells them apart.
 fn sent_and_new(session: &Session, state: &AppState, events: Vec<AppEvent>) -> Vec<(usize, usize)> {
     let walk = states(state.clone(), &events);
     let run = drive(session, state.clone(), events);
     let mut held: BTreeSet<(usize, u64)> = pieces_of(session, &walk[0]);
     let mut counts = Vec::new();
     for (k, frame) in run.frames.iter().enumerate().skip(1) {
-        let sent = transmits(frame);
-        assert!(
-            sent.iter().all(|t| t.is_emphasis()),
-            "frame {k}: a strip went again"
-        );
+        let sent = transmits(frame).iter().filter(|t| t.is_emphasis()).count();
         let needed = pieces_of(session, &walk[k]);
         let new = needed.difference(&held).count();
         held.extend(needed);
-        counts.push((sent.len(), new));
+        counts.push((sent, new));
     }
     counts
 }

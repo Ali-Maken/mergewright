@@ -14,14 +14,13 @@ use std::time::Instant;
 use mergewright_core::capabilities::Rgb;
 use mergewright_core::raster::RasterFrame;
 use mergewright_graph::ancestry::{Ancestry, Kin};
-use mergewright_graph::fold::Toward;
-use mergewright_graph::identity::BranchIdentity;
 use mergewright_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache, lit_hash};
 use mergewright_graph::raster::{
     Backdrop, Emphasis, Emphasised, Lit, Marker, PlainRow, PlainStrip, Ring, Selection, Stub,
     composite, rasterise_backdrop, rasterise_emphasis,
 };
 use mergewright_graph::row::Row;
+use mergewright_graph::{fold::Toward, identity::BranchIdentity};
 
 /// The snapshot cell: small, so every cursor row of the window stays fast.
 pub(crate) const CELL: (u32, u32) = (8, 16);
@@ -120,6 +119,7 @@ impl Window {
             cell_height: cell.1,
             palette: &PALETTE,
             muted: MUTED,
+            roles: None,
         }
     }
 

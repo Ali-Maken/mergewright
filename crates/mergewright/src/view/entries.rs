@@ -21,6 +21,7 @@ use cells::row_entry;
 pub(super) use cells::{badge_view, who};
 #[cfg(test)]
 pub(in crate::view) use roles::focus;
+pub(in crate::view) use roles::frame_route;
 pub(crate) use roles::lane_roles;
 
 /// The selection's thread through the window the walk last sent, keyed by

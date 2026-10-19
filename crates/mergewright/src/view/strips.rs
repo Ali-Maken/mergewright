@@ -12,45 +12,19 @@
 use std::collections::BTreeSet;
 use std::ops::Range;
 
-use mergewright_core::capabilities::Rgb;
 use mergewright_graph::fold::DrawnRow;
+use mergewright_graph::identity::BranchIdentity;
 use mergewright_graph::raster::{
     Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, Ring, Selection, Stub,
 };
 use mergewright_graph::row::Row;
-use mergewright_graph::{Fold, Kin};
+use mergewright_graph::{Fold, Kin, LaneRole, Route};
 
-use super::entries::{Thread, thread, uncommitted_row};
+use super::entries::{Thread, frame_route, thread, uncommitted_row};
 use super::node::Node;
 use super::rows::keep_for;
 use crate::history::History;
-use crate::session::Session;
 use crate::update::AppState;
-
-/// What every strip this session draws shares: cell size and colours.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StripPaint {
-    /// Cell width in pixels.
-    pub cell_width: u32,
-    /// Cell height in pixels.
-    pub cell_height: u32,
-    /// Lane hues (`Theme::raster_lanes`).
-    pub palette: Vec<Rgb>,
-    /// The rail's hue.
-    pub muted: Rgb,
-}
-
-impl StripPaint {
-    /// The session's measured cell and its theme's truecolor hues.
-    pub fn of(session: &Session) -> StripPaint {
-        StripPaint {
-            cell_width: session.rendering.cell_size.width,
-            cell_height: session.rendering.cell_size.height,
-            palette: session.theme.raster_lanes(),
-            muted: session.theme.raster_muted(),
-        }
-    }
-}
 
 /// One frame's strips: those covering the viewport whose rows are on hand,
 /// all drawn through one fold so lanes line up across strip boundaries.
@@ -69,17 +43,28 @@ pub struct PixelRows {
     /// ([`Backdrop::lowest`]): every strip this frame is drawn at it, so a
     /// cursor move that keeps it leaves every strip as it was.
     pub backdrop: Backdrop,
+    /// The role of every branch any strip draws, by the frame's route
+    /// (`frame_route`, the Unicode tier's): what each lane's stroke and
+    /// colour are (ease-pass G1). One pair per branch.
+    pub roles: Vec<(BranchIdentity, LaneRole)>,
 }
 
 impl PixelRows {
     /// `strips` with the width and rail `fold` draws them at.
-    fn drawn_through(strips: Vec<StripRows>, fold: &Fold, uncommitted_on_top: bool) -> PixelRows {
+    fn drawn_through(
+        strips: Vec<StripRows>,
+        fold: &Fold,
+        uncommitted_on_top: bool,
+        route: &Route,
+    ) -> PixelRows {
         let backdrop = Backdrop::lowest(
             strips
                 .iter()
                 .flat_map(|strip| strip.rows.iter().map(PaintedRow::lit)),
         );
+        let roles = roles_of(&strips, route);
         PixelRows {
+            roles,
             strips,
             uncommitted_on_top,
             backdrop,
@@ -173,6 +158,7 @@ impl StripRows {
                 cell_height: paint.cell_height,
                 palette: &paint.palette,
                 muted: paint.muted,
+                roles: Some(&frame.roles),
             },
             &Selection {
                 rows: &lit,
@@ -259,7 +245,8 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
         put_uncommitted(&mut strips, on_top, history.top, window_rows.is_empty());
     }
 
-    PixelRows::drawn_through(strips, &fold, uncommitted)
+    let route = frame_route(state, history);
+    PixelRows::drawn_through(strips, &fold, uncommitted, &route)
 }
 
 /// Whether the cursor sits in the viewport and its row has not arrived yet.
@@ -418,5 +405,11 @@ fn stubs_of(drawn: &DrawnRow<'_>) -> Vec<Stub> {
         .collect()
 }
 
+mod paint;
+#[cfg(test)]
+mod roles_tests;
 #[cfg(test)]
 pub(crate) mod tests;
+
+pub use paint::StripPaint;
+use paint::roles_of;

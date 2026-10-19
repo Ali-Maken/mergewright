@@ -18,79 +18,21 @@ use mergewright_core::capabilities::Rgb;
 use mergewright_core::raster::RasterFrame;
 
 use super::{
-    Emphasis, FADED_ALPHA, Inked, Look, Marker, OFF_THREAD_ALPHA, RasterError, RasterPool, Ring,
-    Stub, paint,
+    Emphasis, Inked, Look, Marker, OFF_THREAD_ALPHA, RasterError, RasterPool, Ring, Stub, paint,
 };
+use crate::identity::BranchIdentity;
+use crate::role::LaneRole;
 use crate::row::Row;
 
+mod backdrop;
 mod cells;
 mod pieces;
+
+pub use backdrop::Backdrop;
 
 use cells::{crop, painted_cells, painted_cells_in, painted_rows};
 
 pub use pieces::{Piece, PieceKind, emphasis_pieces, rasterise_piece};
-
-/// The one alpha a strip draws every element at: the lowest in play for the
-/// frame. It changes only when Focus toggles or a thread comes or goes,
-/// never on a cursor move.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-pub enum Backdrop {
-    /// No thread on screen: everything at full alpha, no emphasis layer.
-    #[default]
-    Full,
-    /// A thread on screen: everything at [`OFF_THREAD_ALPHA`].
-    OffThread,
-    /// Focus mode: everything at [`FADED_ALPHA`].
-    Faded,
-}
-
-impl Backdrop {
-    /// The alpha the strip draws at.
-    #[must_use]
-    pub fn alpha(self) -> f32 {
-        match self {
-            Backdrop::Full => 1.0,
-            Backdrop::OffThread => OFF_THREAD_ALPHA,
-            Backdrop::Faded => FADED_ALPHA,
-        }
-    }
-
-    /// The lowest alpha any of these rows draws at (ADR-0053 Decision 2):
-    /// `Faded` if some row has `thread: None` and [`Emphasis::Dimmed`];
-    /// else `OffThread` if some row has `thread: Some(_)` (∅ included);
-    /// else `Full`. Read off the paint, never off the features that made it,
-    /// so a new reason to dim a row cannot be missed here.
-    #[must_use]
-    pub fn lowest<'a>(lits: impl IntoIterator<Item = Lit<'a>>) -> Backdrop {
-        let mut lowest = Backdrop::Full;
-        for lit in lits {
-            match (lit.thread, lit.emphasis) {
-                (None, Emphasis::Dimmed) => return Backdrop::Faded,
-                (Some(_), _) => lowest = Backdrop::OffThread,
-                (None, Emphasis::Normal) => {}
-            }
-        }
-        lowest
-    }
-
-    /// The paint that draws every element at this alpha, through the same
-    /// rules as a row's own paint.
-    fn paint(self) -> Lit<'static> {
-        /// No column on the thread: every column off it.
-        static NONE_LIT: BTreeSet<usize> = BTreeSet::new();
-        match self {
-            Backdrop::Full => Lit::default(),
-            Backdrop::OffThread => Lit {
-                emphasis: Emphasis::Normal,
-                thread: Some(&NONE_LIT),
-            },
-            Backdrop::Faded => Lit {
-                emphasis: Emphasis::Dimmed,
-                thread: None,
-            },
-        }
-    }
-}
 
 /// A row as the layout draws it: no selection in it.
 #[derive(Clone, Debug)]
@@ -176,10 +118,18 @@ pub struct PlainStrip<'a> {
     pub cell_width: u32,
     /// Cell height in pixels.
     pub cell_height: u32,
-    /// Lane colours; an identity draws in `palette[identity.slot(len)]`.
+    /// Lane colours. Without `roles` an identity draws in
+    /// `palette[identity.slot(len)]`; with them a lane draws in its role's,
+    /// in the order This, Under, Trunk, Other (a shorter palette wraps, so a
+    /// one-colour palette mutes every role: colours off, G14).
     pub palette: &'a [Rgb],
     /// The rail's colour.
     pub muted: Rgb,
+    /// What each lane's branch is to the focused one (ease-pass G1), which
+    /// sets its stroke ([`super::LaneStroke`]) and colour; an identity absent
+    /// from it is [`LaneRole::Other`]. `None`: no roles in play, every lane
+    /// one plain stroke in its identity's colour.
+    pub roles: Option<&'a [(BranchIdentity, LaneRole)]>,
 }
 
 impl PlainStrip<'_> {
@@ -192,6 +142,7 @@ impl PlainStrip<'_> {
             cell_height: self.cell_height,
             palette: self.palette,
             muted: self.muted,
+            roles: self.roles,
         }
     }
 }

@@ -670,6 +670,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `branch_muted` (fn) — `lane_muted` by `BranchIdentity`.
 - `fades_by_hue` (fn) — truecolor or 256: off-thread lanes fade by hue, not DIM.
 - `raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.
+- `raster_roles` (fn) — truecolor role hues (This, Under, Trunk, Other) for the pixel tier; one muted hue when colour is off.
 - `raster_muted` (fn) — the unreduced `text-muted` hue (his override if any, from the `rgb` table), for a pixel `+N` marker.
 - `branch` (fn) — the colour a branch identity draws in, independent of column.
 - `syntax` (fn) — The colour for one [`SyntaxRole`], from the same tokens as everything else — a diff's syntax colouring is chrome, not a second palette.

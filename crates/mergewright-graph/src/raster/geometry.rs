@@ -67,7 +67,10 @@ pub(super) fn stroke(
     ink: Ink,
     shift: Transform,
 ) {
-    stroke_with(pixmap, path, &paint(ink), ink.width, shift);
+    // `finish` yields `None` only for a path with no length; there is then
+    // nothing to draw.
+    let Some(path) = path else { return };
+    super::stroke::styled(pixmap, &path, &paint(ink), ink.width, ink.shape, shift);
 }
 
 pub(super) fn stroke_with(
@@ -101,7 +104,7 @@ pub(super) fn snap(value: f32) -> f32 {
 
 /// `path` with every point on the [`GRID`]; `None` only for a path left
 /// with no length, which draws nothing.
-fn snapped(path: &Path) -> Option<Path> {
+pub(super) fn snapped(path: &Path) -> Option<Path> {
     let point = |p: tiny_skia::Point| (snap(p.x), snap(p.y));
     let mut out = PathBuilder::with_capacity(path.len(), path.len());
     for segment in path.segments() {

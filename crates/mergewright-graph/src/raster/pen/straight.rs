@@ -4,7 +4,8 @@
 use tiny_skia::{Pixmap, Transform};
 
 use super::super::geometry::{count, line, pixels, pixels_len, stroke, whole};
-use super::super::{Ink, Pen, Scanline};
+use super::super::stroke::double_offset;
+use super::super::{Ink, LaneStroke, Pen, Scanline};
 
 impl Pen<'_> {
     /// A straight run down `x` from `top` to `bottom`, both whole pixels.
@@ -16,6 +17,26 @@ impl Pen<'_> {
     /// as before, so blending stays tiny-skia's. Byte-identical either way
     /// (`tests/it/raster_pixels.rs`).
     pub(super) fn straight(&self, pixmap: &mut Pixmap, x: f32, top: f32, bottom: f32, ink: Ink) {
+        match ink.shape {
+            LaneStroke::Thick | LaneStroke::Thin => {}
+            // Two plain runs either side of the centre line: each keeps the
+            // copied-scanline path.
+            LaneStroke::Double => {
+                let offset = double_offset(ink.width);
+                let plain = Ink {
+                    shape: LaneStroke::Thin,
+                    ..ink
+                };
+                self.straight(pixmap, x - offset, top, bottom, plain);
+                self.straight(pixmap, x + offset, top, bottom, plain);
+                return;
+            }
+            // Dashes are not one scanline repeated: stroked whole.
+            LaneStroke::Dotted => {
+                stroke(pixmap, line(x, top, x, bottom), ink, self.shift);
+                return;
+            }
+        }
         // The scanline is sampled at the pixmap's x: whole pixels apart
         // from the strip's, so the same fraction and the same bytes.
         let Some(index) = self.scanline(pixmap.width(), x - self.origin, ink) else {

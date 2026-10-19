@@ -11,8 +11,8 @@ use super::geometry::{
     arc_in, arc_out, count, goes_down, line, paint, pixels, stroke, stroke_with,
 };
 use super::{
-    Band, BranchIdentity, CELLS_PER_LANE, Edge, Ink, Inked, Look, Marker, Part, Pen, PieceKind,
-    RefCell, Rgb, Row, Toward, alpha_byte, edge_at, lifted, node, stroke_width,
+    Band, BranchIdentity, CELLS_PER_LANE, Edge, Ink, Inked, LaneStroke, Look, Marker, Part, Pen,
+    PieceKind, RefCell, Rgb, Row, Toward, alpha_byte, edge_at, lifted, node, stroke_width,
 };
 
 impl<'a> Pen<'a> {
@@ -111,14 +111,18 @@ impl<'a> Pen<'a> {
 
     /// `alpha` is 0.0–1.0; the stroke width never varies with emphasis
     /// (ADR-0024) so a line reads as a line whether it is the thread or not.
+    /// A role may scale the width and shape the stroke
+    /// ([`super::LaneStroke`]); the muted hue (`identity` `None`) is one
+    /// plain stroke.
     fn ink(&self, identity: Option<BranchIdentity>, alpha: f32) -> Ink {
-        let rgb = identity.map_or(self.look.muted, |identity| {
-            self.look.palette[identity.slot(self.look.palette.len())]
+        let (rgb, shape) = identity.map_or((self.look.muted, LaneStroke::Thin), |identity| {
+            self.look.lane(identity)
         });
         Ink {
             rgb,
             alpha: alpha_byte(alpha),
-            width: self.stroke,
+            width: shape.width(self.stroke),
+            shape,
         }
     }
 
@@ -266,12 +270,19 @@ impl<'a> Pen<'a> {
         }
         // The disc is punched whether or not this pass draws the node: a
         // lit edge under an unlit node is cleared in the single pass too.
+        // A ring is one plain stroke at the strip's width whatever its
+        // lane's role: the node's shape is its ring style alone.
+        let ring_ink = lane_ink.map(|ink| Ink {
+            width: self.stroke,
+            shape: LaneStroke::Thin,
+            ..ink
+        });
         node::draw(
             pixmap,
             inked.ring,
             (x, local.mid),
             self.node,
-            lane_ink,
+            ring_ink,
             place,
         );
     }

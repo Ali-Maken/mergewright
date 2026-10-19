@@ -39,8 +39,8 @@ use mergewright_core::capabilities::Rgb;
 
 use super::super::geometry::goes_down;
 use super::super::{
-    CELLS_PER_LANE, Edge, Inked, Part, RasterError, RasterPool, alpha_byte, edge_at, lifted,
-    paint_part,
+    CELLS_PER_LANE, Edge, Inked, LaneStroke, Part, RasterError, RasterPool, alpha_byte, edge_at,
+    lifted, paint_part,
 };
 use super::{Backdrop, Emphasised, PlainStrip, Selection, crop, painted_cells_in, painted_rows};
 use crate::identity::BranchIdentity;
@@ -162,15 +162,11 @@ impl<'k, 's> Keys<'k, 's> {
         lifted(alpha, self.backdrop()).map(alpha_byte)
     }
 
-    /// The colour the pen draws a branch in, or the muted hue.
-    fn colour(&self, identity: Option<BranchIdentity>) -> Rgb {
-        let palette = self.strip.palette;
-        identity.map_or(self.strip.muted, |identity| {
-            // An empty palette draws nothing: `rasterise_piece` reports it.
-            palette
-                .get(identity.slot(palette.len()))
-                .copied()
-                .unwrap_or(self.strip.muted)
+    /// The colour and stroke the pen draws a branch in, or the muted hue.
+    /// An empty palette draws nothing: `rasterise_piece` reports it.
+    fn colour(&self, identity: Option<BranchIdentity>) -> (Rgb, LaneStroke) {
+        identity.map_or((self.strip.muted, LaneStroke::Thin), |identity| {
+            self.strip.look().lane(identity)
         })
     }
 

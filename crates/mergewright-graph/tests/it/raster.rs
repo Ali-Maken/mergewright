@@ -79,6 +79,7 @@ fn strip<'a>(rows: &'a [PlainRow<'a>], lane_columns: usize, cell: (u32, u32)) ->
         cell_height: cell.1,
         palette: &PALETTE,
         muted: MUTED,
+        roles: None,
     }
 }
 
@@ -417,14 +418,8 @@ fn the_thread_is_alpha_not_a_wider_stroke() {
         ];
         layered(
             &PlainStrip {
-                rows: &raster_rows,
                 above: Some(&rows[7]),
-                lane_columns,
-                marker: None,
-                cell_width: USER_CELL.0,
-                cell_height: USER_CELL.1,
-                palette: &PALETTE,
-                muted: MUTED,
+                ..strip(&raster_rows, lane_columns, USER_CELL)
             },
             &lits,
         )
@@ -791,14 +786,8 @@ fn write_thread_shot(shots: &std::path::Path, drifted: &mut Drifted) {
     ];
     let thread_frame = layered(
         &PlainStrip {
-            rows: &raster_rows,
             above: Some(&thread_rows[3]),
-            lane_columns: width_of(&thread_rows),
-            marker: None,
-            cell_width: USER_CELL.0,
-            cell_height: USER_CELL.1,
-            palette: &PALETTE,
-            muted: MUTED,
+            ..strip(&raster_rows, width_of(&thread_rows), USER_CELL)
         },
         &lits,
     )

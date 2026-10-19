@@ -121,7 +121,8 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `Backdrop` (enum) — `Full` / `OffThread` / `Faded`: the one alpha a layout-only strip draws at; `alpha`, `lowest`.
 - `PlainRow` (struct) — a row as the layout draws it: `row`, `ring`, `stubs`; `PlainRow::of`.
 - `Lit` (struct) — one row's selection paint: `emphasis`, `thread`.
-- `PlainStrip` (struct) — everything one strip is drawn from: rows, `above`, lane columns, marker, cell size, palette.
+- `PlainStrip` (struct) — everything one strip is drawn from: rows, `above`, lane columns, marker, cell size, palette, `roles` (absent identity → `Other`; with roles the palette is per role). `Copy`.
+- `LaneStroke` (enum) — `Thick`/`Thin`/`Double`/`Dotted`, a lane's shape by role; `LaneStroke::of(LaneRole)`. Width scales `stroke_width` (This ×1.5).
 - `Selection` (struct) — `rows: &[Lit]` and the frame's `backdrop`.
 - `Emphasised` (struct) — an emphasis image `frame` cropped to whole cells, placed at `first_column`, `first_row` (0 for `rasterise_emphasis`).
 - `rasterise_backdrop` (fn) — `PlainStrip` → premultiplied `RasterFrame`, every element at one backdrop alpha.
@@ -151,7 +152,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `StripCache::backdrop_key` / `paint_key` (fn) — the `u64` upload keys the terminal side matches on.
 - `StripCache::flush` (fn) — `flush(Flush)`; drop every layer.
 - `StripCache::len` / `is_empty` / `resident_bytes` / `stats` (fn) — introspection.
-- `plain_layout_hash` (fn) — `plain_layout_hash(&PlainStrip) -> u64`; hash of what the rasteriser draws, colours aside.
+- `plain_layout_hash` (fn) — `plain_layout_hash(&PlainStrip) -> u64`; hash of what the rasteriser draws, colours aside; includes the role of every branch the strip draws.
 - `lit_hash` (fn) — `lit_hash(&Selection) -> u64`; hash of a selection's paint.
 
 ## role

@@ -179,7 +179,7 @@ impl<R: GraphicsReplies> Graphics<R> {
         ));
         let top = state.history.as_ref().map_or(0, |history| history.top);
         let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
-        let paint = StripPaint::of(session);
+        let paint = StripPaint::for_frame(session, state);
         let iterm2 = session.capabilities.pixel_protocol == Some(PixelProtocol::Iterm2);
 
         let mut drawn: Vec<Drawn> = Vec::new();
@@ -241,7 +241,7 @@ impl<R: GraphicsReplies> Graphics<R> {
         waiting: &mut impl FnMut() -> bool,
     ) -> usize {
         let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
-        let paint = StripPaint::of(session);
+        let paint = StripPaint::for_frame(session, state);
         let mut rasterised = 0;
         for strip in &pixels.strips {
             let cache = &mut self.strips;
