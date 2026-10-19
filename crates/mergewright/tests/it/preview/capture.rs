@@ -28,11 +28,9 @@ fn capture_fix_preview_verb_for_docs_shots() {
     // main's commit holds no commit, but both its ends are in view, so it
     // is a connector and draws as lines, not stubs, and nothing is left out.
     let row_of = |subject: &str| -> (&str, &str) {
-        let line = drawn
-            .iter()
-            .find(|line| line.contains(subject))
+        let (y, at) = crate::row_reads::row_reading(&drawn, subject)
             .unwrap_or_else(|| panic!("no row `{subject}`:\n{text}"));
-        let at = line.find(subject).expect("found above");
+        let line = &drawn[y];
         (line.as_str(), &line[..at])
     };
     // By subject: the labels follow it (ease-pass G7).

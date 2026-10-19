@@ -228,7 +228,7 @@ fn keep_unseen_failure(before: &AppState, next: &mut AppState) {
 /// predecessor's answer landing inside the burst, with no follow owed)
 /// would otherwise wait for an unrelated key (ease-pass 06f).
 pub(crate) fn rest_owed(state: &AppState) -> bool {
-    follow_behind(state) || fold_count::owed(state)
+    follow_behind(state) || fold_count::owed(state) || branch_pane::owed(state)
 }
 
 /// What follows every answered event: the selection reconciled with the

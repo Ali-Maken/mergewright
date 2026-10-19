@@ -211,12 +211,14 @@ fn the_graph_draws_each_folding_merge_with_its_tail() {
             .to_owned()
     };
     assert!(
-        line("Merged PR 16021").ends_with("▾ 4 commits from PR 16021")
-            || line("Merged PR 16021").contains("▾ 4 commits from PR 16021"),
+        line("Merged PR 16").ends_with("▾ 4 commits from PR 16021")
+            || line("Merged PR 16").contains("▾ 4 commits from PR 16021"),
         "{screen}"
     );
     assert!(
-        line("sara/fix-toc' into").contains("▸ commits from sara/fix-toc"),
+        // The subject is cut beside the branch pane (ease-pass 09): the
+        // row is found by its tail, which has no number before `commits`.
+        line("commits from sara/fix-toc").contains("▸ commits from sara/fix-toc"),
         "pending: no number yet\n{screen}"
     );
     assert!(

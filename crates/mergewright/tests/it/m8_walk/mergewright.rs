@@ -56,7 +56,8 @@ fn older_names_repo_opens_and_undoes() {
         graph.text()
     );
     assert!(
-        cursor_row(&graph).contains("\u{25c6}") && cursor_row(&graph).contains("b0 is here"),
+        cursor_row(&graph).contains("\u{25c6}")
+            && crate::row_reads::reads_subject(&cursor_row(&graph), "b0 is here"),
         "{}",
         graph.text()
     );

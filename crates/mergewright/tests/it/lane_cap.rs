@@ -199,11 +199,12 @@ fn the_pane_narrows_the_graph_so_the_graph_folds_more() {
     let full_width = frame(&alone, COLUMNS, ROWS);
 
     // Fifteen columns hold a commit in view; eight drawn columns (seven
-    // lanes and the rail) beside the pane, twelve (eleven and the rail)
-    // without it.
+    // lanes and the rail) beside the detail pane, ten (nine and the rail)
+    // beside the narrower branch pane that replaces it once it closes
+    // (ease-pass 09: the graph has 122 of the 160 columns).
     assert_eq!(
         (drawn_lanes(&with_pane), drawn_lanes(&full_width)),
-        ((7, 15), (11, 15)),
+        ((7, 15), (9, 15)),
         "the pane leaves the graph 92 of the 160 columns, so it draws fewer \
          lanes and folds more of them\n{}\n---\n{}",
         with_pane.join("\n"),

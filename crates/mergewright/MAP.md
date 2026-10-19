@@ -128,6 +128,8 @@ The job runner: `update` returns `Command`s, this runs them on workers and sends
 - `Delivery` (enum) — what became of a delivered event: received, or the loop already gone.
 ## jobs::askpass
 A fetch, pull, push or clone's askpass: git's question goes to `update`, the answer comes back through the runner.
+## jobs::branch_status
+The branch pane's read: the branch's upstream and its tip read here, its own upstream dropped from the candidates, then `mergewright_ops::branch_status`.
 ## jobs::clone
 A clone as a pool job for the start screen's `c`, stoppable, with a fetch's progress line and credential prompt.
 ## jobs::commit_message
@@ -245,6 +247,8 @@ The pure `update(state, event) -> (state, [Command])`: the only place `AppState`
 `answer`: one arm per job answer, each handed straight to its module.
 ## update::answers
 What `answer` hands a started job, a mergetool, the journal, a stash, an undo, a rewrite, the commit editor or an operation.
+## update::branch_pane
+The branch pane's read: `focused` (via `view::focus`), `candidates`, `identity_of`, `status_key`; asked at rest after the fold count (unasked, it keeps `rest_owed`); kept in `Reads` until refs land; `settled` once answered.
 ## update::banner
 The operation banner: which operation git is part-way through, and the conflict interim's keys.
 ## update::clash
@@ -369,6 +373,8 @@ What `answer` hands the repository opening, the history walk starting, the worki
 `u`, `Ctrl+Z` and `U`: when a key is a no-op, the drift guard, and the `Command::Undo` it becomes.
 ## view
 The pure `view(state)`: reads and draws, never changes anything; everything from a repository crosses into `ui` as `SanitizedText`.
+## view::branch_pane
+The branch pane's words: `pane_view` (answers; `reading…` until refs and walk names land; `<sha7> · not on a branch`), `pane_words` (the mock's words), `pane_slot` (columns taken off the rows).
 ## view::commit_editor
 The commit screen's view model (`commit_screen_view`) for `mergewright_ui::commit_editor`, every repository string sanitised.
 `mask`: a secrets file's diff lines drawn `MASK`; `KEY=` kept only for a key-name prefix and a value not starting `=`, else the whole line (`mask_secret_line`, `mask_diff`); applied as the diff arrives.

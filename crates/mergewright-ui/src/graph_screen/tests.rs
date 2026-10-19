@@ -15,7 +15,6 @@ use unicode_width::UnicodeWidthStr;
 
 use super::footer::{commit_graph_segments, grouped, segments_width};
 use super::hints::{HintContext, ReviewBar, RowVerbs, TabWord};
-use super::walk_text::walk_text;
 use super::*;
 use crate::graph_column::{GraphLine, RowPaint};
 use crate::keymap::Keymap;
@@ -28,7 +27,9 @@ mod cursor_row;
 mod fold_tail;
 mod header_narrowing;
 mod lanes_in_view;
+mod pane_columns;
 mod row_cells_tests;
+mod walk_words;
 
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
@@ -460,39 +461,6 @@ fn the_stopped_header_keeps_the_widest_wording_that_fits() {
     let narrower = header(65);
     assert!(narrower.trim_end().ends_with("stopped"), "{narrower}");
     assert!(!narrower.contains("stopped at"), "{narrower}");
-}
-
-/// A walk resting between requests reads as rows so far; one working on an
-/// ask reads as reading. The two never share words, so the header can say
-/// when `Esc` has something to stop (m6-conflicts/85 A1).
-#[test]
-fn a_paused_walk_and_a_reading_one_read_apart() {
-    let (paused, _) = walk_text(&WalkView::Paused { laid_out: 500 });
-    let (reading, _) = walk_text(&WalkView::Reading { laid_out: 500 });
-    assert_eq!(paused, "500 rows so far");
-    assert_eq!(reading, "reading\u{2026} 500 rows");
-}
-
-#[test]
-fn a_walk_that_is_fine_never_reads_as_an_error() {
-    for walk in [
-        WalkView::Opening,
-        WalkView::Reading { laid_out: 0 },
-        WalkView::Reading { laid_out: 1000 },
-        WalkView::Paused { laid_out: 1000 },
-        WalkView::Complete { rows: 0 },
-        WalkView::Cancelled { laid_out: 500 },
-    ] {
-        let (words, token) = walk_text(&walk);
-        assert!(
-            !words.contains("fail") && !words.contains("error"),
-            "{words}"
-        );
-        assert_ne!(token, Token::Warning, "{walk:?}");
-    }
-    let (words, token) = walk_text(&WalkView::Failed(sanitize_line("bad object")));
-    assert!(words.contains("bad object"));
-    assert_eq!(token, Token::Warning);
 }
 
 #[test]

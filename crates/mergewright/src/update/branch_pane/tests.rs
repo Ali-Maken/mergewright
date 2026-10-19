@@ -242,3 +242,34 @@ fn a_read_for_a_branch_out_of_focus_is_kept_but_colours_nothing() {
         Some(&StatusRead::Failed("stopped".to_owned()))
     );
 }
+
+/// A burst defers the ask, and the loop wakes for rest only while
+/// `rest_owed` holds: an unasked focus must keep it true, or the pane reads
+/// `reading…` until the next key. Asked, it is owed no more; `settled`
+/// holds once the answer lands.
+#[test]
+fn an_unasked_focus_is_owed_to_rest_and_settles_when_its_read_lands() {
+    let state = on_screen();
+    assert!(owed(&state) && crate::update::rest_owed(&state));
+    assert!(!settled(&state));
+    let (state, commands) = rest(&state);
+    assert!(!owed(&state), "asked at rest");
+    assert!(!settled(&state), "asked, not landed");
+    let Some(Command::AtRest(_, RestRead::BranchStatus(ask))) = commands
+        .iter()
+        .find(|c| matches!(c, Command::AtRest(_, RestRead::BranchStatus(_))))
+    else {
+        panic!("asked: {commands:?}");
+    };
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(1),
+            Product::BranchStatusRead {
+                key: ask.key.clone(),
+                result: Ok(status(Vec::new())),
+            },
+        ),
+    );
+    assert!(settled(&state) && !owed(&state));
+}

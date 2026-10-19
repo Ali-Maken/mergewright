@@ -87,7 +87,7 @@ fn on_the_graph_at_head(pty: &Pty, path: &Path, subject: &str) -> Screen {
             s.lines()[0].contains(&name)
                 && s.lines()
                     .iter()
-                    .any(|line| line.starts_with('\u{25b8}') && line.contains(subject))
+                    .any(|line| crate::row_reads::cursor_on_head(line, subject))
         },
     )
 }
@@ -292,7 +292,7 @@ fn starting_inside_a_repository_remembers_it() {
     let isolated = Isolated::new();
     let pty = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
     let screen = pty.wait_for("the repository's graph", |s| {
-        s.lines()[0].contains("api") && s.has(&subject)
+        s.lines()[0].contains("api") && crate::row_reads::reads_subject(&s.text(), &subject)
     });
     assert!(!screen.has("no repository here"), "{}", screen.text());
     quit_cleanly(pty);
@@ -350,7 +350,7 @@ fn landed(pty: &Pty, subject: &str, settled: &[&str]) -> (usize, Vec<String>) {
     let screen = pty.wait_for("the cursor on HEAD", |s| {
         s.lines()
             .iter()
-            .any(|line| line.starts_with('\u{25b8}') && line.contains(subject))
+            .any(|line| crate::row_reads::cursor_on_head(line, subject))
             && settled.iter().all(|line| s.has(line))
     });
     let lines = screen.lines();

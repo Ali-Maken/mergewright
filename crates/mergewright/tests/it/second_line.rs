@@ -13,9 +13,19 @@ use mergewright::update::AppState;
 use mergewright_core::event::{KeyCode, MouseButton};
 
 use crate::app_harness::App;
-use crate::fold_by_default::{drawn, first_paint, wallet_release};
+use crate::fold_by_default::{first_paint, wallet_release, wide};
 
 const PR_MERGE: &str = "Merged PR 16021: Fix the wallet totals";
+
+/// The rows drawn 187 wide, left of the branch pane: at 120 the pane
+/// (ease-pass 09) cuts the second line short (`· ea2…`), and the pane's own
+/// `reading…` is not the row's. Rows sit on the same lines at any width.
+fn rows(state: &AppState) -> Vec<String> {
+    wide(state)
+        .iter()
+        .map(|line| crate::row_reads::graph_side(line, 187))
+        .collect()
+}
 
 fn opened(repo: &std::path::Path) -> (App, AppState) {
     let (app, state) = first_paint(repo);
@@ -66,7 +76,7 @@ fn lanes(line: &str) -> String {
 fn only_the_cursor_row_has_a_second_line_and_it_reads_the_mock_words() {
     let scratch = wallet_release();
     let (app, state) = opened(scratch.path());
-    let frame = drawn(&state);
+    let frame = rows(&state);
     let seconds = second_lines(&frame);
     assert_eq!(seconds.len(), 1, "one second line\n{}", frame.join("\n"));
     let at = seconds[0];
@@ -101,7 +111,7 @@ fn only_the_cursor_row_has_a_second_line_and_it_reads_the_mock_words() {
     }
     // `j` moves it to the next row's line.
     let moved = app.key(&state, KeyCode::Char('j'));
-    let after = drawn(&moved);
+    let after = rows(&moved);
     assert_eq!(second_lines(&after), vec![at + 1], "{}", after.join("\n"));
     app.close();
 }
@@ -110,14 +120,14 @@ fn only_the_cursor_row_has_a_second_line_and_it_reads_the_mock_words() {
 fn a_known_merge_row_says_how_many_it_merged_and_from_where() {
     let scratch = wallet_release();
     let (app, state) = opened(scratch.path());
-    let frame = drawn(&state);
+    let frame = rows(&state);
     let state = click_line(&app, &state, line_of(&frame, PR_MERGE));
     let state = app.pump(state, "the fold's count", |state| {
-        drawn(state)
+        rows(state)
             .iter()
             .any(|line| line.contains(" ago \u{b7} ") && line.contains("merged 4"))
     });
-    let frame = drawn(&state);
+    let frame = rows(&state);
     let text = &frame[second_lines(&frame)[0]];
     assert!(text.contains("merged 4 from "), "{text:?}");
     app.close();
@@ -127,7 +137,7 @@ fn a_known_merge_row_says_how_many_it_merged_and_from_where() {
 fn a_click_on_the_second_line_selects_the_cursor_row_and_below_it_the_row_drawn_there() {
     let scratch = wallet_release();
     let (app, state) = opened(scratch.path());
-    let frame = drawn(&state);
+    let frame = rows(&state);
     let at = second_lines(&frame)[0];
     let cursor = selected(&state);
     let on_second = click_line(&app, &state, at);
@@ -151,7 +161,7 @@ fn forty_held_j_never_leave_the_cursor_or_its_second_line_off_the_body() {
     let (app, mut state) = opened(scratch.path());
     for press in 0..40 {
         state = app.key(&state, KeyCode::Char('j'));
-        let frame = drawn(&state);
+        let frame = rows(&state);
         let seconds = second_lines(&frame);
         assert_eq!(seconds.len(), 1, "press {press}\n{}", frame.join("\n"));
         // The body ends above the footer (last line) and its rule, if any:
@@ -174,11 +184,11 @@ fn the_uncommitted_rows_second_line_says_not_committed_yet() {
     std::fs::write(scratch.path().join("note.txt"), "draft\n").expect("a file written");
     let (app, state) = opened(scratch.path());
     let state = app.pump(state, "the uncommitted row", |state| {
-        drawn(state).iter().any(|line| line.contains("Uncommitted"))
+        rows(state).iter().any(|line| line.contains("Uncommitted"))
     });
     // `k` from the top commit row, or staying on the uncommitted row.
     let state = app.key(&state, KeyCode::Char('k'));
-    let frame = drawn(&state);
+    let frame = rows(&state);
     let seconds = second_lines(&frame);
     assert_eq!(seconds.len(), 1, "{}", frame.join("\n"));
     let text = &frame[seconds[0]];

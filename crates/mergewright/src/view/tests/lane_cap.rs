@@ -79,11 +79,18 @@ fn the_lane_cap_comes_from_the_graphs_room_not_the_screens_width() {
          fourteen lanes folded away:\n{with_pane}"
     );
 
-    // The same screen with no pane really is wide, and keeps its twelve.
+    // Closed, the detail pane gives way to the branch pane (ease-pass 09):
+    // 38 columns (36, its rule and a space), so the graph has 122 and
+    // keeps more lanes than beside the detail pane, fewer than at 160.
     state.detail.shown = false;
-    let full_width = draw(&state, 160, 16);
+    assert_eq!(
+        super::frame::graph_columns(&state, ratatui::layout::Rect::new(0, 0, 160, 16)),
+        122,
+        "the branch pane leaves the graph 122 of the 160 columns"
+    );
+    let beside_branch_pane = draw(&state, 160, 16);
     assert!(
-        full_width.contains("lanes drawn: 11 of 14"),
-        "160 columns to itself folds at twelve lanes:\n{full_width}"
+        beside_branch_pane.contains("lanes drawn: 9 of 14"),
+        "122 columns folds at ten drawn columns:\n{beside_branch_pane}"
     );
 }

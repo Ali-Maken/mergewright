@@ -14,9 +14,6 @@ use crate::pty::{Isolated, Pty, Screen};
 
 /// `⌃P`.
 const CTRL_P: &[u8] = b"\x10";
-/// The cursor glyph on the graph's row.
-const CURSOR: char = '\u{25b8}';
-
 /// A journey's inputs, counted as the fence counts them: each entry one
 /// step (a typed name is one step, as the fence's `<name>`).
 fn assert_within_the_note(id: &str, keys: &[&[u8]]) {
@@ -64,7 +61,7 @@ fn spawn(repo: &Repo, isolated: &Isolated) -> Pty {
     pty.wait_for("the graph, cursor on HEAD", |s| {
         s.lines()
             .iter()
-            .any(|l| l.starts_with(CURSOR) && l.contains(&head_subject))
+            .any(|l| crate::row_reads::cursor_on_head(l, &head_subject))
     });
     pty
 }
@@ -76,7 +73,7 @@ fn seeked_to(pty: &Pty, subject: &str) -> Screen {
         !s.has("find anything")
             && s.lines()
                 .iter()
-                .any(|l| l.starts_with(CURSOR) && l.contains(subject))
+                .any(|l| crate::row_reads::cursor_on(l, subject))
     })
 }
 
@@ -305,7 +302,7 @@ fn walk_file_history() {
         !s.has("HISTORY \u{b7}")
             && s.lines()
                 .iter()
-                .any(|l| l.starts_with(CURSOR) && l.contains("Polish"))
+                .any(|l| crate::row_reads::cursor_on_head(l, "Polish"))
     });
     quit(pty);
 }

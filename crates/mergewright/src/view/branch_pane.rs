@@ -24,17 +24,18 @@ pub(crate) fn pane_view(state: &AppState, history: &History, now: i64) -> Option
     }
     let row = history.selected()?;
     let Some(focused) = focused(state) else {
+        // Before the refs and the walk's names land, which branch holds the
+        // row is not known yet: saying `not on a branch` then would be false.
+        if state.refs.is_none() || history.walk.is_none() {
+            return Some(unread(state, history));
+        }
         let hex = row.commit.id.to_string();
         return Some(BranchPaneView::NotOnBranch {
             sha7: sanitize_line(hex.get(..7).unwrap_or(&hex)),
         });
     };
     let short = short_name(&focused.branch.name);
-    let here = state.refs.as_deref().is_some_and(|refs| {
-        refs.on(focused.branch.tip).iter().any(|label| {
-            matches!(label, RefLabel::Branch { name, current: true, .. } if name == short.as_bytes())
-        })
-    });
+    let here = is_here(state, &focused.branch.name, focused.branch.tip);
     let route = super::entries::frame_route(state, history);
     let trunk = focused
         .candidates
@@ -56,6 +57,46 @@ pub(crate) fn pane_view(state: &AppState, history: &History, now: i64) -> Option
         here,
         route: stops,
         lines,
+    })
+}
+
+/// The pane before the refs or the walk's trunk and integration names have
+/// landed: every line `reading…`, headed by the row's branch when the refs
+/// already name it (its kind waits for the walk), else by nothing yet.
+fn unread(state: &AppState, history: &History) -> BranchPaneView {
+    let route = super::entries::frame_route(state, history);
+    let no_names = crate::update::branch_pane::BranchNames {
+        trunk: None,
+        integration: &[],
+    };
+    let branch = super::entries::focus(history).and_then(|focus| {
+        let refs = state.refs.as_deref()?;
+        crate::update::branch_pane::candidates(refs, &no_names)
+            .into_iter()
+            .find(|candidate| identity_of(candidate) == focus)
+    });
+    BranchPaneView::Branch {
+        heading: sanitize_line(branch.as_ref().map_or("", |b| short_name(&b.name))),
+        role: branch
+            .as_ref()
+            .map_or(mergewright_graph::LaneRole::Other, |b| {
+                route.role(identity_of(b))
+            }),
+        here: branch
+            .as_ref()
+            .is_some_and(|b| is_here(state, &b.name, b.tip)),
+        route: None,
+        lines: std::array::from_fn(|_| PaneLine::Reading),
+    }
+}
+
+/// `name` (full) is the branch `HEAD` is on: its label at `tip` says so.
+fn is_here(state: &AppState, name: &str, tip: mergewright_core::oid::Oid) -> bool {
+    let short = short_name(name);
+    state.refs.as_deref().is_some_and(|refs| {
+        refs.on(tip).iter().any(|label| {
+            matches!(label, RefLabel::Branch { name, current: true, .. } if name == short.as_bytes())
+        })
     })
 }
 

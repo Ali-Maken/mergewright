@@ -51,9 +51,10 @@ impl GraphScreen<'_> {
         chrome: &ScreenRows,
         drawn: (Rect, &[GraphEntry<'_>], &Fold),
         width: usize,
-        x: u16,
+        screen: Rect,
         buf: &mut Buffer,
     ) {
+        let x = screen.x;
         let (body, rows, fold) = drawn;
         let above = chrome.status.height > 0;
         if let Some(notice) = self.view.notice.as_ref().filter(|_| above) {
@@ -64,7 +65,7 @@ impl GraphScreen<'_> {
             buf.set_line(x, chrome.status.y, &line, chrome.status.width);
         }
         if chrome.footer.height > 0 {
-            let (text, token) = self.footer_line(body, rows, fold, width, above);
+            let (text, token) = self.footer_line((body, screen.width), rows, fold, width, above);
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(x, chrome.footer.y, &footer, chrome.footer.width);
         }
@@ -77,7 +78,7 @@ impl GraphScreen<'_> {
     /// (`hints::hints_for`, `hint-bar-redesign`).
     fn footer_line(
         &self,
-        body: Rect,
+        (body, screen): (Rect, u16),
         rows: &[GraphEntry<'_>],
         fold: &Fold,
         width: usize,
@@ -85,7 +86,7 @@ impl GraphScreen<'_> {
     ) -> (String, Token) {
         // Same columns the body just drew through: the reveal must agree
         // with the body on which subjects the `…` actually landed on.
-        let columns = Columns::compute(body, graph_width(body, fold));
+        let columns = Columns::compute(body, graph_width(body, fold), screen);
         let reveal_subject = self
             .view
             .reveal

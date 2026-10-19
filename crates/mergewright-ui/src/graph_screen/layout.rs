@@ -118,7 +118,7 @@ impl<'a> GraphScreen<'a> {
             return Vec::new();
         }
         let (body, _, fold) = self.body_layout(area);
-        let mut xs = Columns::compute(body, graph_width(body, &fold)).boundaries(body);
+        let mut xs = Columns::compute(body, graph_width(body, &fold), area.width).boundaries(body);
         // The gutter and the margin are blank cells beside the rows, so the
         // frame's own edges are boundaries (ADR-0058 §4). The body's right
         // edge is not: [`snap_to_columns`] rests a right edge one cell
@@ -264,7 +264,7 @@ impl<'a> GraphScreen<'a> {
 #[must_use]
 pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
     let carve = row_carve(cells_of(area), CarveInputs::of(view));
-    let (body, pane) = beside_pane(view, area, rect_of(carve.body));
+    let (body, pane) = super::pane_slot::beside_pane(view, area, rect_of(carve.body));
     ScreenRows {
         header: rect_of(carve.header),
         gap: rect_of(carve.gap),
@@ -278,40 +278,6 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         footer: rect_of(carve.footer),
         pane,
     }
-}
-
-/// The body less the branch pane's slot, and that slot: the pane's width plus
-/// its `│` rule and a space, at the screen's right edge, on the body's rows.
-/// The rule stands where the body's right margin was.
-fn beside_pane(view: &GraphView<'_>, area: Rect, body: Rect) -> (Rect, Rect) {
-    let none = Rect { width: 0, ..body };
-    let Some(width) = view
-        .pane
-        .as_ref()
-        .and_then(|_| crate::branch_pane::pane_width(area.width))
-    else {
-        return (
-            body,
-            Rect {
-                x: body.right(),
-                ..none
-            },
-        );
-    };
-    let slot = width + 2;
-    let x = area.right().saturating_sub(slot).max(body.x);
-    let pane = Rect {
-        x,
-        width: area.right() - x,
-        ..body
-    };
-    (
-        Rect {
-            width: x - body.x,
-            ..body
-        },
-        pane,
-    )
 }
 
 /// The cells a row of `columns` keeps left and right of its content: the
@@ -377,7 +343,7 @@ pub fn row_layout(view: &GraphView<'_>, area: Rect) -> RowLayout {
     let (body, _, fold) = body_layout(view, area);
     RowLayout {
         body,
-        columns: Columns::compute(body, graph_width(body, &fold)),
+        columns: Columns::compute(body, graph_width(body, &fold), area.width),
     }
 }
 
@@ -406,5 +372,8 @@ pub fn row_at<'a>(
     let cursor = rows.iter().position(|entry| entry.second.is_some());
     let cursor = cursor.and_then(|at| u16::try_from(at).ok());
     let entry = rows.get(usize::from(body_line(line, cursor).row()))?;
-    Some((entry, Columns::compute(body, graph_width(body, &fold))))
+    Some((
+        entry,
+        Columns::compute(body, graph_width(body, &fold), area.width),
+    ))
 }

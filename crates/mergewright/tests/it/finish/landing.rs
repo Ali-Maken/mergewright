@@ -208,9 +208,12 @@ fn the_landed_frame(state: &AppState) -> String {
         "{body}"
     );
     assert_eq!(body.matches('✓').count(), 1, "one tick:\n{body}");
+    // At 120 the branch pane leaves the merge's tail room for `▸ 2 commits`
+    // only (ease-pass 09); at 200 it reads whole.
+    let wide = crate::captures::frame(state, 200, 40).join("\n");
     assert!(
-        body.contains("2 commits from sara/fix-toc"),
-        "the fold:\n{body}"
+        wide.contains("2 commits from sara/fix-toc"),
+        "the fold:\n{wide}"
     );
     body
 }

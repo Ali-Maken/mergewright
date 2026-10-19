@@ -215,6 +215,28 @@ pub(super) fn at_rest(
     }
 }
 
+/// Is the focused branch's read owed to rest — its key not asked this refs
+/// generation? A burst defers the ask ([`at_rest`] runs only at rest), so
+/// the loop must wake for rest while this holds, as it does for a fold
+/// count (`update::rest_owed`); otherwise the pane reads `reading…` until
+/// the next key.
+pub(crate) fn owed(state: &AppState) -> bool {
+    focused(state).is_some_and(|focused| state.look.reads.get(&focused.key).is_none())
+}
+
+/// The focused branch's read has landed, or there is none to ask: what a
+/// test drains before it reads a frame, so the pane never races its own
+/// `reading…` (the answer comes from the job pool on its own time).
+#[must_use]
+pub fn settled(state: &AppState) -> bool {
+    focused(state).is_none_or(|focused| {
+        matches!(
+            state.look.reads.get(&focused.key),
+            Some(StatusRead::Read(_) | StatusRead::Failed(_))
+        )
+    })
+}
+
 /// `Product::BranchStatusRead`: kept under its key; when it is the focused
 /// branch's, the lanes take its route. A failure stays on the pane's lines
 /// (`can't tell:`), not the status line: nothing else went wrong.

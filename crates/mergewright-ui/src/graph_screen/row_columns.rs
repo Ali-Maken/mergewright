@@ -6,8 +6,7 @@
 use ratatui::layout::Rect;
 
 use super::{
-    AGE_WIDTH, BRANCH_MIDDLE, BRANCH_NARROW, BRANCH_WIDE, COLUMN_GAP, GUTTER, MARKER_WIDTH,
-    RIGHT_MARGIN, WHO_WIDTH,
+    AGE_WIDTH, BRANCH_MIDDLE, BRANCH_NARROW, BRANCH_WIDE, COLUMN_GAP, MARKER_WIDTH, WHO_WIDTH,
 };
 
 /// Where each column sits and how wide it is, once the graph has taken its
@@ -25,8 +24,8 @@ pub struct Columns {
     pub marker_width: u16,
     /// Where the branch column starts.
     pub branch_x: u16,
-    /// Its width: [`branch_width_for`] the row's whole width, never more
-    /// than half of what the graph and the trailing columns left.
+    /// Its width: [`branch_width_for`] the screen's width, never more than
+    /// half of what the graph and the trailing columns left.
     pub branch_width: u16,
     /// Where the message column starts; the fold tail, the row tag and the
     /// labels follow the message inside it.
@@ -64,7 +63,11 @@ impl Columns {
     // ("never shifts on scroll", m2-details-and-diffs.md) is met either way
     // — the width never changes at all; `marker_column` instead gates which
     // *glyph* the slot may draw (`GraphScreen::draw_row`).
-    pub(crate) fn compute(area: Rect, graph_width: u16) -> Self {
+    ///
+    /// `screen` is the whole screen's width, which picks the branch column's
+    /// (ease-pass New UI: 20 from 120 *with* the branch pane beside the rows,
+    /// though the rows themselves are then 82 wide).
+    pub(crate) fn compute(area: Rect, graph_width: u16, screen: u16) -> Self {
         let marker_x = area.x + graph_width.min(area.width);
         let marker_width = MARKER_WIDTH.min(area.width.saturating_sub(graph_width));
         let content_x = marker_x + marker_width;
@@ -83,7 +86,7 @@ impl Columns {
         // The branch column takes its width from the left, never more than
         // half of what is left: the message says what the row is.
         let left = right.saturating_sub(content_x);
-        let branch_width = branch_width_for(area.width + GUTTER + RIGHT_MARGIN).min(left / 2);
+        let branch_width = branch_width_for(screen).min(left / 2);
         let branch_gap = if branch_width > 0 { COLUMN_GAP } else { 0 };
         let subject_x = content_x + branch_width + branch_gap;
 

@@ -220,10 +220,13 @@ fn wheel_flick() {
     // A row the last notch drew blank may fill in: the harness pumps no
     // job between notches, so the window's read lands only after the
     // burst (the real loop takes it between notches). A drawn row that
-    // changes is movement.
+    // changes is movement. Rows only: the branch pane beside them
+    // (ease-pass 09) answers on its own job after the burst too.
+    let rows = |line: &String| crate::row_reads::graph_side(line, COLUMNS);
     let moved: Vec<String> = settled
         .iter()
-        .zip(&last_notch)
+        .map(rows)
+        .zip(last_notch.iter().map(rows))
         .filter(|(after, at)| !at.trim().is_empty() && after != at)
         .map(|(after, at)| format!("{at:?}\n  → {after:?}"))
         .collect();
@@ -249,9 +252,9 @@ fn fold_merge_count() {
     let merge = "Merge branches 'topic-1', 'topic-2' and 'topic-3'";
     let topics = [" topic 1 ", " topic 2 ", " topic 3 "]; // subjects (ease-pass G7)
     let folded = app.pump(state, "the fold's count", |state| {
-        drawn(state)
-            .iter()
-            .any(|line| line.contains(&format!("{merge}  \u{25b8} 3 commits")))
+        drawn(state).iter().any(|line| {
+            crate::row_reads::reads_subject(line, merge) && line.contains("\u{25b8} 3 commits")
+        })
     });
     let frame = drawn(&folded);
     assert!(
@@ -261,9 +264,8 @@ fn fold_merge_count() {
         "folded: no topic's row drawn\n{}",
         frame.join("\n")
     );
-    let merge_row = frame
-        .iter()
-        .find(|line| line.contains(merge))
+    let merge_row = crate::row_reads::row_reading(&frame, merge)
+        .map(|(y, _)| &frame[y])
         .expect("the merge's row");
     assert!(
         merge_row.starts_with(CURSOR),
@@ -305,7 +307,7 @@ fn fold_merge_count() {
 /// The opened octopus's row: its tail reads `▾ 3 commits`. Opened, the
 /// lanes widen and the subject is cut (`…'to…`): its start is enough.
 fn opened_tail(line: &str, merge: &str) -> bool {
-    line.contains(&merge[..24]) && line.contains("\u{25be} 3 commits")
+    crate::row_reads::reads_subject(line, merge) && line.contains("\u{25be} 3 commits")
 }
 
 /// The detail pane's title row: the first drawn row holding `title`.

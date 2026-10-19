@@ -72,7 +72,8 @@ fn capture_search_folded_count_at_120() {
     assert!(
         drawn
             .iter()
-            .any(|line| line.contains(&format!("{PR_MERGE}  \u{25b8} 4 commits from PR 16021"))),
+            .any(|line| crate::row_reads::reads_subject(line, PR_MERGE)
+                && line.contains("\u{25b8} 4 commits from PR 16021")),
         "nothing opened before `n`:\n{}",
         drawn.join("\n")
     );

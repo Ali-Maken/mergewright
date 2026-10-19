@@ -162,6 +162,7 @@ fn shot(app: &App, state: &AppState, columns: u16, rows: u16, scratch: &Path) ->
 fn rows_with_content_beside_the_box(drawn: &[String]) -> usize {
     drawn
         .iter()
+        .map(|line| without_pane_rule(line))
         .filter(|line| {
             let Some(edge) = line.find(['\u{256d}', '\u{2502}', '\u{2570}']) else {
                 return false;
@@ -184,7 +185,7 @@ fn what_survives(drawn: &[String]) -> (String, String) {
     const RIGHT_EDGES: [char; 3] = ['\u{256e}', '\u{2502}', '\u{256f}'];
     let mut widest = (String::new(), String::new());
     for line in drawn {
-        let cells: Vec<char> = line.chars().collect();
+        let cells: Vec<char> = without_pane_rule(line).chars().collect();
         let (Some(first), Some(last)) = (
             cells.iter().position(|cell| LEFT_EDGES.contains(cell)),
             cells.iter().rposition(|cell| RIGHT_EDGES.contains(cell)),
@@ -198,6 +199,21 @@ fn what_survives(drawn: &[String]) -> (String, String) {
         }
     }
     widest
+}
+
+/// `line` (a full-width frame row) with the branch pane's rule blanked
+/// (ease-pass 09): it stands on every body row, and read as a box's edge
+/// it would make every row a box row.
+fn without_pane_rule(line: &str) -> String {
+    let mut cells: Vec<char> = line.chars().collect();
+    let columns = u16::try_from(cells.len()).unwrap_or(u16::MAX);
+    if let Some(width) = mergewright_ui::branch_pane::pane_width(columns) {
+        let rule = usize::from(columns - width - 2);
+        if cells.get(rule) == Some(&'\u{2502}') {
+            cells[rule] = ' ';
+        }
+    }
+    cells.into_iter().collect()
 }
 
 /// Draws one labelled section into `out`.

@@ -42,7 +42,7 @@ fn geometry(view: &GraphView<'_>, theme: &Theme) -> (Rect, Columns) {
     let screen = GraphScreen::new(view, theme);
     let (body, _, fold) = screen.body_layout(Rect::new(0, 0, WIDTH, HEIGHT));
     let width = graph_width(body, &fold);
-    (body, Columns::compute(body, width))
+    (body, Columns::compute(body, width, WIDTH))
 }
 
 fn cursor_y(body: Rect) -> u16 {

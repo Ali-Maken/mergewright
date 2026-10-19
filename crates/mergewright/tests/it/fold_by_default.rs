@@ -23,6 +23,8 @@ use crate::app_harness::App;
 use crate::captures::frame_at;
 
 const COLUMNS: u16 = 120;
+/// The widest designed size, where a row's words are read whole.
+const WIDE: u16 = 187;
 const ROWS: u16 = 36;
 /// After every commit of [`wallet_release`], so ages read the same.
 const NOW: i64 = 1_700_100_000;
@@ -96,6 +98,13 @@ pub fn wallet_release() -> tempfile::TempDir {
 
 pub(crate) fn drawn(state: &AppState) -> Vec<String> {
     frame_at(state, COLUMNS, ROWS, Some(Clock::Fixed(NOW)))
+}
+
+/// The same state drawn 187 wide, for the words of a row: at 120 the branch
+/// pane (ease-pass 09) leaves a merge's subject and tail room only for a cut
+/// (`Merge branc…  ▸ 1 commit`), at 187 both read whole.
+pub(crate) fn wide(state: &AppState) -> Vec<String> {
+    frame_at(state, WIDE, ROWS, Some(Clock::Fixed(NOW)))
 }
 
 pub(crate) fn window(state: &AppState) -> Option<&mergewright::history::Window> {
@@ -220,7 +229,7 @@ fn first_paint_folds_merged_branches_and_the_tails_name_them() {
     // The named merge's subject is cut with `…` beside `HEAD`'s badge; the
     // tail never is.
     let counted = app.pump(state, "both counts", |state| {
-        let frame = drawn(state);
+        let frame = wide(state);
         [
             ("Merged PR 16021", "\u{25b8} 4 commits from PR 16021"),
             (
@@ -259,10 +268,10 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
     let scratch = wallet_release();
     let (app, state) = first_paint(scratch.path());
     let frame = drawn(&state);
-    let y = frame
-        .iter()
-        .position(|line| line.contains(PR_MERGE))
-        .unwrap_or_else(|| panic!("the PR merge is drawn\n{}", frame.join("\n")));
+    let y = crate::row_reads::row_reading(&frame, PR_MERGE).map_or_else(
+        || panic!("the PR merge is drawn\n{}", frame.join("\n")),
+        |(y, _)| y,
+    );
     let state = app.mouse_down(
         &state,
         MouseButton::Left,
@@ -271,7 +280,7 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
     );
     let state = app.key(&state, KeyCode::Char(' '));
     let state = app.pump(state, "the PR's commits drawn", |state| {
-        let frame = drawn(state);
+        let frame = wide(state);
         PR_COMMITS
             .iter()
             .all(|subject| frame.iter().any(|line| line.contains(subject)))
@@ -281,7 +290,7 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
     });
     the_side_joins_its_merge(window(&state).expect("a window"));
     let state = app.pump(state, "the opened merge's count", |state| {
-        drawn(state)
+        wide(state)
             .iter()
             .any(|line| line.contains(&format!("{PR_MERGE}  \u{25be} 4 commits from PR 16021")))
     });
@@ -311,10 +320,10 @@ fn capture_main_folded_and_opened_at_120() {
         .iter()
         .all(|tail| frame.iter().any(|line| line.contains(tail)))
     };
-    let state = app.pump(state, "both counts", |state| tails(&drawn(state)));
+    let state = app.pump(state, "both counts", |state| tails(&wide(state)));
     let state = crate::captures::at_rest(&app, state);
     let folded = drawn(&state);
-    assert!(tails(&folded), "{}", folded.join("\n"));
+    assert!(tails(&wide(&state)), "{}", wide(&state).join("\n"));
     crate::captures::check_shot(
         "ease-pass/main-folded-120.txt",
         &format!(
@@ -327,9 +336,8 @@ fn capture_main_folded_and_opened_at_120() {
         ),
     );
 
-    let y = folded
-        .iter()
-        .position(|line| line.contains(PR_MERGE))
+    let y = crate::row_reads::row_reading(&folded, PR_MERGE)
+        .map(|(y, _)| y)
         .expect("the PR merge is drawn");
     let state = app.mouse_down(
         &state,
@@ -339,7 +347,7 @@ fn capture_main_folded_and_opened_at_120() {
     );
     let state = app.key(&state, KeyCode::Char(' '));
     let state = app.pump(state, "the opened merge, counted", |state| {
-        let frame = drawn(state);
+        let frame = wide(state);
         PR_COMMITS
             .iter()
             .all(|subject| frame.iter().any(|line| line.contains(subject)))

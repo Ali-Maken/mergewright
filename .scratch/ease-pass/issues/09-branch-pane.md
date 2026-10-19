@@ -167,3 +167,60 @@ Touches, as known so far:
 - `GraphView` literals (ui tests, `tests/support/screen.rs`);
 - the `Look` literal (`update/tests/opening.rs`);
 - the facts exhaustive list and the event label.
+
+## NOTES (continuation 1, 2026-10-19) — PARTIAL, compacted once
+
+**I compacted once in this continuation.** What remains is listed below; the conductor splits it. No scout was used: the handoff above and the earlier scout file covered it.
+
+### Causes found (all fixed by cause, not symptom)
+- **Why the cursor was "not on HEAD" (the 24 pty waits).** The pane takes 38 columns at 120. The message column gives way first, so a merge subject reads `M…` while the fold tail and the push label stay. The waits matched the whole subject. The cursor *was* on HEAD.
+  - Fix: shared readers in `tests/it/row_reads.rs`: `reads_subject`, `cursor_on`, `cursor_on_head` (adds `(you)`), `subject_on`, `row_reading` and `graph_side`. The waits use them.
+  - Some walks that assert on full words now read a 187-wide frame (`fold_by_default::wide`, `graph_rows_tests::row_words`, `second_line::rows`). Captures stay at 120/100/90.
+- **The async race against `reading…`.** `rest_owed` did not count an unasked pane read, so the rest wake could be skipped. This was a real bug.
+  - Fix: `update::branch_pane::owed` was added to `rest_owed` (`update/mod.rs`).
+  - New `pub fn branch_pane::settled`. `captures.rs` `at_rest` and `settled_frame` wait for it. That is the deterministic drain: no sleeps, no retries, no raised timeouts.
+  - Test: `update/branch_pane/tests.rs` `an_unasked_focus_is_owed_to_rest_and_settles_when_its_read_lands`.
+- **The branch column changed width beside the pane.** `Columns::compute` keyed the branch column to the rows' width, not the screen's. This was a real bug against the note's New UI.
+  - Fix: `Columns::compute(area, graph_width, screen)`.
+  - Test: ui `graph_screen/tests/pane_columns.rs` `the_branch_column_keeps_the_screens_width_beside_the_pane`.
+- **A false `not on a branch` before refs and the walk land.**
+  - Fix: `view/branch_pane.rs` `unread`: the heading comes from the candidates and every line reads `reading…`.
+- **Tests that read the pane's `│` as a box edge, or as a click target:**
+  - `two_boxes_over_content` (`without_pane_rule`);
+  - `look_chrome` (`graph_side`; fill helper moved to `look_chrome/fill.rs`);
+  - `view/tests/confirm_box_columns.rs` (rows end at the pane slot).
+
+### Questions (not settled by the ticket or spec)
+- `who` cannot say "you": ops `Who::Authors` holds no emails (01r).
+- A remote-only teammate branch is not a candidate, so his row reads `not on a branch`. Is that right for his team flow?
+- **Mismatch with the mock:** at 120 with the pane, merge subjects are cut to `M…` and tails lose `from …`. The main mock keeps `◉ Merged PR 16021 · +4 from …` whole. Which part gives way first belongs to 07b/07c's squeeze order, outside this ticket.
+- ops: main shows "✓ up to date with origin/main", and wallet-release says "up to date with sara/fix-toc" (01r).
+
+### State at this commit
+- Full nextest: 6967 passed, 103 failed, 16 skipped (7070 run). Down from 125 failures.
+- Most remaining failures are capture mismatches (`capture.rs:147`). These are graph captures that now show the pane, pending an `MWR_UPDATE_SHOTS=1` redraw. Read a sample of the diffs before accepting any.
+- Non-capture failures still to check:
+  - the tour `unwritable` case (`subject_on` is ambiguous on `Merge branc…`; disambiguate with `(you)`);
+  - the `tour_walk` waits;
+  - outside_repo `launch_and_open_land_alike`;
+  - the stash_nodes NEWEST wait;
+  - the row_bars "merged side drawn" wait;
+  - `main_header.rs:84`;
+  - finish landing `captures.rs:175` (normalised sha; the second line is cut at 120);
+  - the m7 pinned-clock subprocess walks, which fail through their captures.
+- fmt and clippy are clean. `cargo test --doc` was not run at this commit.
+
+### Next steps
+1. Go through the non-capture failures above (`full2.fail` list: rerun `cargo nextest run --workspace --no-fail-fast`).
+2. Redraw the captures with a reason for each. Fix ease-pass captions that claim words no longer shown at 120 (e.g. the fold_by_default main-folded-120 caption). Leave old milestone sheets alone.
+3. Run the redraws twice to check determinism.
+4. Then the open acceptance items 84–100: tests in `tests/it/branch_pane.rs` (remove its `#![allow(dead_code)]`), the cost script and the four `main-pane-*` captures.
+
+Touches, this continuation:
+- `rest_owed` and every caller of the rest wake (fold_count tests green);
+- `Columns::compute`, which has 4 callers: layout ×3 and footer. Grepped.
+- footer/bottom rows: they take the screen rect;
+- `captures.rs` `at_rest`, used by every capture;
+- the readers in about 20 test files (listed in git diff);
+- the ratchet: render row removed, events 531, command 453, view/tests 5194, graph_screen/tests 2344;
+- the MAP.md sections for the new modules.

@@ -104,8 +104,7 @@
 558 crates/mergewright-ui/src/empty_state/tests.rs
 670 crates/mergewright-ui/src/graph_column/tests.rs
 3061 crates/mergewright-ui/src/graph_screen/hints/tests.rs
-408 crates/mergewright-ui/src/graph_screen/render.rs
-2375 crates/mergewright-ui/src/graph_screen/tests.rs
+2344 crates/mergewright-ui/src/graph_screen/tests.rs
 548 crates/mergewright-ui/src/history/tests.rs
 467 crates/mergewright-ui/src/journal_screen.rs
 731 crates/mergewright-ui/src/journal_screen/tests.rs
@@ -155,8 +154,8 @@
 412 crates/mergewright/src/update/detail/state.rs
 1025 crates/mergewright/src/update/detail/tests.rs
 575 crates/mergewright/src/update/drag/tests.rs
-551 crates/mergewright/src/update/events.rs
-459 crates/mergewright/src/update/events/command.rs
+531 crates/mergewright/src/update/events.rs
+453 crates/mergewright/src/update/events/command.rs
 511 crates/mergewright/src/update/geometry.rs
 1234 crates/mergewright/src/update/journal/tests.rs
 579 crates/mergewright/src/update/keys/live_c_tests.rs
@@ -196,7 +195,7 @@
 724 crates/mergewright/src/view/journal/tests.rs
 404 crates/mergewright/src/view/strips.rs
 459 crates/mergewright/src/view/strips/tests.rs
-5272 crates/mergewright/src/view/tests.rs
+5194 crates/mergewright/src/view/tests.rs
 465 crates/mergewright/src/view/tests/bottom_row.rs
 413 crates/mergewright/tests/it/app_harness.rs
 425 crates/mergewright/tests/it/blame_place.rs

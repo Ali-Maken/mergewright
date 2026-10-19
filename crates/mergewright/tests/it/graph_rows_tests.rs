@@ -124,13 +124,23 @@ fn drawn(state: &AppState, columns: u16) -> Vec<String> {
     frame_at(state, columns, ROWS, Some(Clock::Fixed(NOW)))
 }
 
+/// The rows' words, read 187 wide and left of the branch pane: at 120 the
+/// pane (ease-pass 09) leaves a row's message room only for a cut, and its
+/// words are what these tests read; the 120 grid is the captures'.
+fn row_words(state: &AppState) -> Vec<String> {
+    drawn(state, 187)
+        .iter()
+        .map(|line| crate::row_reads::graph_side(line, 187))
+        .collect()
+}
+
 /// Opened at 120 columns, up to rest: the walk complete, every branch's
 /// push state read.
 fn opened(repo: &Path) -> (App, AppState) {
     let (app, state) = App::open(repo);
     let state = app.resize(&state, 120, ROWS);
     let state = app.pump(state, "every push state", |state| {
-        let frame = drawn(state, 120);
+        let frame = row_words(state);
         frame.iter().any(|line| line.contains("\u{2191}2 to push"))
             && frame.iter().any(|line| line.contains("not pushed yet"))
     });
@@ -166,7 +176,7 @@ fn commit_rows(frame: &[String]) -> Vec<&String> {
 fn every_local_branch_says_where_it_stands_and_who_made_each_row() {
     let scratch = main_screen_repo();
     let (app, state) = opened(scratch.path());
-    let frame = drawn(&state, 120);
+    let frame = row_words(&state);
 
     let head = line_with(&frame, "Draw the receipts list");
     // 22 cells in a 20-cell column: the name is cut, never ` (you)`.
@@ -234,7 +244,7 @@ fn an_opened_merges_row_names_the_merged_branch_by_its_last_segment() {
     let scratch = main_screen_repo();
     let (app, state) = opened(scratch.path());
     let state = open_the_named_merge(&app, &state);
-    let frame = drawn(&state, 120);
+    let frame = row_words(&state);
     let inside = line_with(&frame, "toc: fix the anchors");
     assert!(inside.contains(" fix-toc "), "{inside:?}");
     // `sara/fix-toc is here` follows as a label: the column comes first.
@@ -248,7 +258,9 @@ fn an_opened_merges_row_names_the_merged_branch_by_its_last_segment() {
 }
 
 fn open_the_named_merge(app: &App, state: &AppState) -> AppState {
-    let frame = drawn(state, 120);
+    // Rows sit on the same lines at any width: found where the tail reads
+    // whole, clicked at the state's own 120.
+    let frame = row_words(state);
     let y = frame
         .iter()
         // The subject yields to the labels; the fold tail names the branch.
@@ -258,7 +270,7 @@ fn open_the_named_merge(app: &App, state: &AppState) -> AppState {
     let state = app.mouse_down(state, MouseButton::Left, 40, row);
     let state = app.key(&state, KeyCode::Char(' '));
     let state = app.pump(state, "the merged commit drawn", |state| {
-        drawn(state, 120)
+        row_words(state)
             .iter()
             .any(|line| line.contains("toc: fix the anchors"))
     });
@@ -343,11 +355,11 @@ fn capture_the_cursor_rows_second_line() {
     let teammate = at_rest(&app, teammate);
     // A known merge names what it merged by its last segment (G9).
     assert!(
-        frame
+        row_words(&merge)
             .iter()
             .any(|line| line.contains(" \u{b7} merged 1 from fix-toc \u{b7} ")),
         "{}",
-        frame.join("\n")
+        row_words(&merge).join("\n")
     );
     for (name, frame, right) in [
         (
