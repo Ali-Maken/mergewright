@@ -3,6 +3,10 @@
 //! cell, the rows after it one cell row lower. What each protocol sends for
 //! that, byte for byte. A pty accepts anything, so this proves only what
 //! Mergewright emits (ADR-0012), not what a terminal draws.
+#![allow(
+    clippy::unwrap_used,
+    reason = "test helpers: a panic is the intended failure (PROMPT.md 6.3)"
+)]
 
 use std::ops::Range;
 use std::sync::Arc;

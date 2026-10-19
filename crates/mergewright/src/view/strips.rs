@@ -12,7 +12,6 @@
 use std::collections::BTreeSet;
 use std::ops::Range;
 
-use mergewright_graph::fold::DrawnRow;
 use mergewright_graph::identity::BranchIdentity;
 use mergewright_graph::raster::{
     Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, Ring, Selection, Stub,
@@ -393,23 +392,13 @@ impl Painter<'_> {
     }
 }
 
-/// The rasteriser's stubs for a drawn row: one per folded edge, in order.
-fn stubs_of(drawn: &DrawnRow<'_>) -> Vec<Stub> {
-    drawn
-        .folded
-        .iter()
-        .map(|edge| Stub {
-            identity: edge.identity,
-            toward: edge.toward,
-        })
-        .collect()
-}
-
 mod paint;
 #[cfg(test)]
 mod roles_tests;
+mod tall;
 #[cfg(test)]
 pub(crate) mod tests;
 
 pub use paint::StripPaint;
-use paint::roles_of;
+use paint::{roles_of, stubs_of};
+pub(crate) use tall::TallRow;

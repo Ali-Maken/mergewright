@@ -120,6 +120,7 @@ pub(super) type Layers = ((Arc<RasterFrame>, UploadKey), Vec<Piece>);
 /// One emphasis piece this frame places: its pixels when the terminal
 /// lacks them, the strip cell column it starts on, its width in cells, the
 /// strip rows it covers, its key, and its rank in the strip's stack.
+#[derive(Clone)]
 pub(super) struct Piece {
     frame: Option<Arc<RasterFrame>>,
     column: u16,

@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use mergewright_core::capabilities::PixelProtocol;
 use mergewright_graph::raster::cache::STRIP_ROWS;
-use mergewright_graph::raster::emphasis_pieces;
+use mergewright_graph::raster::{continuation_key, emphasis_pieces};
 use mergewright_term::kitty::EMPHASIS_ID_BIT;
 
 use super::super::*;
@@ -38,15 +38,24 @@ pub(super) fn emphasis_placed(stream: &str) -> Vec<u32> {
 
 /// The pieces `state`'s frame needs, as (strip first row, piece key). The
 /// strip's backdrop key is stood in by its first row: a piece's own key
-/// holds everything its pixels are drawn from, roles included.
+/// holds everything its pixels are drawn from, roles included. The cursor
+/// row's continuation band (ease-pass 13) is uploaded the same way, known
+/// by its key alone: it is in the set under `usize::MAX`.
 fn pieces_of(session: &Session, state: &AppState) -> BTreeSet<(usize, u64)> {
     let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
     let paint = StripPaint::for_frame(session, state);
+    let cursor = state.history.as_ref().map(|history| history.cursor);
     let mut needed = BTreeSet::new();
     for strip in &pixels.strips {
         strip.with_layers(&pixels, &paint, |plain, selection| {
             for piece in emphasis_pieces(plain, selection) {
                 needed.insert((strip.first_row, piece.key));
+            }
+            // No uncommitted row in these runs: strip row = history row.
+            let row = cursor.and_then(|cursor| cursor.checked_sub(strip.first_row));
+            if let Some(row) = row.filter(|&row| row < plain.rows.len()) {
+                let band = continuation_key(plain, selection, row).expect("one lit per row");
+                needed.extend(band.map(|key| (usize::MAX, key)));
             }
         });
     }

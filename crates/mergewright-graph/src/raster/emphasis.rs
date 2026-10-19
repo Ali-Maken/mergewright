@@ -133,7 +133,7 @@ pub struct PlainStrip<'a> {
 }
 
 impl PlainStrip<'_> {
-    fn look(&self) -> Look<'_> {
+    pub(super) fn look(&self) -> Look<'_> {
         Look {
             above: self.above,
             lane_columns: self.lane_columns,

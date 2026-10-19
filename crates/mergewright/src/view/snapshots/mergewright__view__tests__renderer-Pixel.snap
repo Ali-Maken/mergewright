@@ -1,9 +1,10 @@
 ---
 source: crates/mergewright/src/view/tests.rs
+assertion_line: 300
 expression: screen
 ---
 "                                          5 commits  gfx ok "
 "                    Commit 5␛[31m                 Test  63y "
 "▸                   Commit 4␛[31m                 Test  63y "
-"                                                            "
+"                    Test · 63 years ago · 0404040           "
 " ⏎ open · b branch · r rebase · t tag · u undo · ? keys     "

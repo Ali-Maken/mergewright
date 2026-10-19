@@ -135,6 +135,8 @@ One line per public item. History lives in `docs/log/` and the ADRs.
   The rail is drawn in the row pass (`Pen::row` → `rail`, `raster/pen.rs:265`), so it is the marker column's Node.
   Key = hash(kind, cell size, backdrop alpha, each element's anchor-relative geometry, resolved RGBA and alpha). No strip key, no absolute row or column: equal keys draw equal pixels anywhere.
 - `rasterise_piece` (fn) — one piece's pixels at `(a − b)/(1 − b)`, cropped to whole cells in both axes; `None` when it draws nothing.
+- `rasterise_continuation` (fn) — `(&PlainStrip, &Selection, row)`: the cursor row's second line, one cell row; each lane leaving `row` straight through at its paint, and the rail.
+- `continuation_key` (fn) — the same band's content key: equal keys draw equal pixels, so a terminal holding it is asked by key.
 - `RasterPool` (struct) — strip-sized pixel buffers lent to the rasteriser; `new`, `take`, `give`, `flush`, `allocated`.
 
 ## raster::cache

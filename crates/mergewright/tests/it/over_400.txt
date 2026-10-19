@@ -127,7 +127,7 @@
 481 crates/mergewright/src/event_loop/running/turn.rs
 1648 crates/mergewright/src/event_loop/tests.rs
 545 crates/mergewright/src/event_loop/tests/pace.rs
-628 crates/mergewright/src/event_loop/tests/pixel_scroll.rs
+604 crates/mergewright/src/event_loop/tests/pixel_scroll.rs
 715 crates/mergewright/src/event_loop/tests/settle.rs
 1446 crates/mergewright/src/history/tests.rs
 560 crates/mergewright/src/jobs/operate.rs
@@ -194,7 +194,7 @@
 443 crates/mergewright/src/view/frame/boxes.rs
 700 crates/mergewright/src/view/frame/tests.rs
 724 crates/mergewright/src/view/journal/tests.rs
-415 crates/mergewright/src/view/strips.rs
+404 crates/mergewright/src/view/strips.rs
 459 crates/mergewright/src/view/strips/tests.rs
 5272 crates/mergewright/src/view/tests.rs
 465 crates/mergewright/src/view/tests/bottom_row.rs

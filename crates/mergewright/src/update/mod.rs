@@ -77,8 +77,8 @@ pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
     TakeRequest, Task, WholeFileAnswer,
 };
-pub(crate) use geometry::context_menu_area;
 pub use geometry::history_row_line;
+pub(crate) use geometry::{context_menu_area, cursor_body_line};
 pub(crate) use history::walk_is_reading;
 pub use relaunch::LiveOrigin;
 pub(crate) use selection::{FollowKey, follow_behind, follow_key, pane_follows};

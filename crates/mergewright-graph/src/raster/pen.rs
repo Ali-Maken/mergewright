@@ -1,6 +1,7 @@
 //! Drawing methods for [`super::Pen`]: bands, strokes and node discs
 //! into the strip's pixmap.
 
+pub(super) mod continuation;
 mod straight;
 
 use tiny_skia::{

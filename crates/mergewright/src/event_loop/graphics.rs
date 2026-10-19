@@ -9,10 +9,11 @@
 
 use std::collections::HashMap;
 use std::io;
+use std::sync::Arc;
 use std::time::Instant;
 
 use mergewright_core::capabilities::{Capabilities, PixelProtocol, RenderingTier};
-use mergewright_graph::raster::cache::{ByteBudget, Flush, STRIP_ROWS, StripCache};
+use mergewright_graph::raster::cache::{ByteBudget, CacheError, Flush, STRIP_ROWS, StripCache};
 use mergewright_term::input::ReplyWaiter;
 use mergewright_term::iterm2::ItermImages;
 use mergewright_term::kitty::{self, KittyImages, UploadKey};
@@ -22,11 +23,13 @@ use ratatui::layout::Rect;
 
 use crate::session::Session;
 use crate::update::AppState;
-use crate::view::strips::{StripPaint, pixel_rows};
+use crate::view::strips::{PixelRows, StripPaint, TallRow, pixel_rows};
 
 mod layers;
+mod tall;
 
 use layers::{Drawn, Held, layers, on_screen, places};
+use tall::{Band, make_room};
 
 /// iTerm2 bands kept: a tall viewport plus a strip either side
 /// (`StripCache::capacity_for(32, 256, 64)` is 11).
@@ -177,46 +180,13 @@ impl<R: GraphicsReplies> Graphics<R> {
             usize::from(graph.height),
             BUFFER_ROWS,
         ));
-        let top = state.history.as_ref().map_or(0, |history| history.top);
         let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
         let paint = StripPaint::for_frame(session, state);
         let iterm2 = session.capabilities.pixel_protocol == Some(PixelProtocol::Iterm2);
+        let (drawn, band) = self.drawn(state, (&pixels, &paint), graph.height, iterm2);
 
-        let mut drawn: Vec<Drawn> = Vec::new();
-        for strip in &pixels.strips {
-            let lowered = pixels.uncommitted_on_top && strip.uncommitted_at().is_none();
-            let Some((rows, at)) = on_screen(
-                strip.first_row,
-                strip.row_count(),
-                lowered,
-                top,
-                graph.height,
-            ) else {
-                continue;
-            };
-            let mut held = Held {
-                images: &self.images,
-                pieces: &mut self.pieces,
-            };
-            let cache = &mut self.strips;
-            let layers = strip.with_layers(&pixels, &paint, |plain, selection| {
-                layers(cache, &mut held, strip.first_row, plain, selection, iterm2)
-            });
-            match layers {
-                Ok(((frame, key), emphasis)) => drawn.push(Drawn {
-                    first_row: strip.first_row,
-                    frame,
-                    key,
-                    emphasis,
-                    rows,
-                    at,
-                }),
-                // Shown, and the strip left out: the rest still draw.
-                Err(why) => self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string())),
-            }
-        }
-
-        let places = places(&drawn, graph);
+        let mut places = places(&drawn, graph);
+        places.extend(band.as_ref().map(|band| band.place(graph)));
         if iterm2 {
             if let Err(why) = self.bands.frame(&places, out) {
                 self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string()));
@@ -226,6 +196,66 @@ impl<R: GraphicsReplies> Graphics<R> {
             let images = &self.images;
             self.pieces.retain(|key, _| images.holds(*key));
         }
+    }
+
+    /// Every strip on screen this frame, from the cache or rasterised, each
+    /// placed in the part or parts the cursor row's second line leaves it
+    /// (ease-pass/13), and that line's continuation band. A strip that
+    /// fails is left out and the status says why; the rest still draw.
+    fn drawn(
+        &mut self,
+        state: &AppState,
+        (pixels, paint): (&PixelRows, &StripPaint),
+        graph_height: u16,
+        iterm2: bool,
+    ) -> (Vec<Drawn>, Option<Band>) {
+        let top = state.history.as_ref().map_or(0, |history| history.top);
+        // The second line takes a line of the column (07b): strips show one
+        // row fewer, and make room for it.
+        let tall = TallRow::of(state);
+        let height = graph_height.saturating_sub(u16::from(tall.is_some()));
+        let mut drawn: Vec<Drawn> = Vec::new();
+        let mut band: Option<Band> = None;
+        for strip in &pixels.strips {
+            let lowered = pixels.uncommitted_on_top && strip.uncommitted_at().is_none();
+            let Some((rows, at)) =
+                on_screen(strip.first_row, strip.row_count(), lowered, top, height)
+            else {
+                continue;
+            };
+            let room = make_room(rows, at, tall);
+            let mut held = Held {
+                images: &self.images,
+                pieces: &mut self.pieces,
+            };
+            let cache = &mut self.strips;
+            let kitty = (!iterm2).then_some(held.images);
+            let layers = strip.with_layers(pixels, paint, |plain, selection| {
+                let layers = layers(cache, &mut held, strip.first_row, plain, selection, iterm2)?;
+                let band = room
+                    .band
+                    .map(|(row, at)| Band::of(plain, selection, (strip.first_row, row, at), kitty))
+                    .transpose()
+                    .map_err(CacheError::Raster)?
+                    .flatten();
+                Ok::<_, CacheError>((layers, band))
+            });
+            match layers {
+                Ok((((frame, key), emphasis), this_band)) => {
+                    band = band.or(this_band);
+                    drawn.extend(room.parts.into_iter().map(|(rows, at)| Drawn {
+                        first_row: strip.first_row,
+                        frame: Arc::clone(&frame),
+                        key,
+                        emphasis: emphasis.clone(),
+                        rows,
+                        at,
+                    }));
+                }
+                Err(why) => self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string())),
+            }
+        }
+        (drawn, band)
     }
 
     /// Rasterise, without drawing or uploading, the first strip `state`

@@ -1,0 +1,174 @@
+# ease-pass/13: the Pixel tier (Kitty, as Ghostty is probed) at 120x40, drawn by
+# `view::view_with_graphics` and `event_loop::graphics` from an AppState: six
+# chains of 8 under an octopus merge (crates/mergewright/src/event_loop/tests/
+# pixel_scroll/tall/capture.rs). The TEXT LAYER and a MAP of the placements the
+# Kitty commands make in the graph column (10x36 cells from column 2, row 2).
+# No pixels, no colour (rule 5): how the lanes look is yours to judge in Ghostty.
+#
+# Frame 1, the cursor on the 6th row. What right looks like: under the cursor
+# row its second line (`Test · N years ago · <sha7>`), every row below one line
+# lower; in the map, strip A shows rows 0..=5, the band takes the second line's
+# line, strip A's rows 6.. continue one line lower (the same image placed twice),
+# and strip B follows, one line lower than its rows say. No line is blank.
+
+                                                                                49 commits  gfx ok  lanes drawn: 5 of 6
+
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+▸                                   row                                                                       Test  57y
+                                    Test · 57 years ago · 0105010
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+
+  0  strip A row 0
+  1  strip A row 1
+  2  strip A row 2
+  3  strip A row 3
+  4  strip A row 4
+  5  strip A row 5
+  6  band: the lanes straight through
+  7  strip A row 6
+  8  strip A row 7
+  9  strip A row 8
+ 10  strip A row 9
+ 11  strip A row 10
+ 12  strip A row 11
+ 13  strip A row 12
+ 14  strip A row 13
+ 15  strip A row 14
+ 16  strip A row 15
+ 17  strip A row 16
+ 18  strip A row 17
+ 19  strip A row 18
+ 20  strip A row 19
+ 21  strip A row 20
+ 22  strip A row 21
+ 23  strip A row 22
+ 24  strip A row 23
+ 25  strip A row 24
+ 26  strip A row 25
+ 27  strip A row 26
+ 28  strip A row 27
+ 29  strip A row 28
+ 30  strip A row 29
+ 31  strip A row 30
+ 32  strip A row 31
+ 33  strip B row 0
+ 34  strip B row 1
+ 35  strip B row 2
+(2 emphasis placements over the strips: the thread)
+
+# Frame 2, after `j`. What right looks like: the second line now under the 7th
+# row; strip A split one row later; strips sent this frame: 0 (a `j`
+# inside one strip moves placements only).
+
+                                                                                49 commits  gfx ok  lanes drawn: 5 of 6
+
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+▸                                   row                                                                       Test  57y
+                                    Test · 57 years ago · 0106010
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+                                    row                                                                       Test  57y
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+
+  0  strip A row 0
+  1  strip A row 1
+  2  strip A row 2
+  3  strip A row 3
+  4  strip A row 4
+  5  strip A row 5
+  6  strip A row 6
+  7  band: the lanes straight through
+  8  strip A row 7
+  9  strip A row 8
+ 10  strip A row 9
+ 11  strip A row 10
+ 12  strip A row 11
+ 13  strip A row 12
+ 14  strip A row 13
+ 15  strip A row 14
+ 16  strip A row 15
+ 17  strip A row 16
+ 18  strip A row 17
+ 19  strip A row 18
+ 20  strip A row 19
+ 21  strip A row 20
+ 22  strip A row 21
+ 23  strip A row 22
+ 24  strip A row 23
+ 25  strip A row 24
+ 26  strip A row 25
+ 27  strip A row 26
+ 28  strip A row 27
+ 29  strip A row 28
+ 30  strip A row 29
+ 31  strip A row 30
+ 32  strip A row 31
+ 33  strip B row 0
+ 34  strip B row 1
+ 35  strip B row 2
+(2 emphasis placements over the strips: the thread)

@@ -51,6 +51,7 @@ pub use emphasis::{
     emphasis_pieces, rasterise_backdrop, rasterise_emphasis, rasterise_piece,
 };
 pub use node::Ring;
+pub use pen::continuation::{continuation_key, rasterise_continuation};
 pub use pool::RasterPool;
 pub use stroke::LaneStroke;
 

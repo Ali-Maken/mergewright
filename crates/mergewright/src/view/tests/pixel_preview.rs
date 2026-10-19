@@ -205,6 +205,33 @@ fn capture_a_pixel_preview_for_docs_shots() {
     );
 }
 
+/// ease-pass/13: at the pixel tier the cursor row's second line is drawn as
+/// at every tier, so every history row sits on the line the click hit-test
+/// inverts to (`history_row_line`). Before, the pixel tier cleared it while
+/// `graph_rows` still left it a line: rows below the cursor were drawn one
+/// line above where a click mapped them, and the pane's last line was blank.
+#[test]
+fn at_the_pixel_tier_every_row_sits_where_the_hit_test_says() {
+    let pixel = pixel_session();
+    let state = closed(&previewing());
+    let (cells, pixels) = draw_at(&pixel, &state);
+    assert!(pixels.is_some(), "premise: strips draw");
+    let lines: Vec<&str> = cells.lines().collect();
+    let history = state.history.as_ref().expect("history");
+    let line_of = |row| usize::from(crate::update::history_row_line(&state, row).expect("shown"));
+    let mut checked = 0;
+    for row in history.top..history.top + state.graph_rows() {
+        let subject = format!("Commit {} ", 120 - row);
+        // The fixture's subjects end in a (sanitised) escape, drawn `␛`.
+        let drawn = lines[line_of(row)].replace('\u{241b}', " ");
+        assert!(drawn.contains(&subject), "row {row}:\n{cells}");
+        checked += 1;
+    }
+    assert!(checked > 10, "premise: a screenful of rows");
+    let second = lines[line_of(history.cursor) + 1];
+    assert!(second.contains(" ago "), "the second line:\n{cells}");
+}
+
 #[test]
 fn gfx_field_holds_during_a_preview() {
     let pixel = pixel_session();

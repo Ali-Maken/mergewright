@@ -149,15 +149,6 @@ fn status_row_notice(
     })
 }
 
-/// Puts the graph on the pixel tier or off it. Pixel lanes are one image
-/// row per entry, so no row draws a second line there (ease-pass/13's).
-fn set_pixel(screen: &mut GraphView<'_>, pixels: bool) {
-    screen.pixel = pixels;
-    if pixels {
-        screen.rows.iter_mut().for_each(|entry| entry.second = None);
-    }
-}
-
 /// [`view`], saying `graphics` in the header when the graph is drawn in
 /// pixels; returns the rectangle those pixels go in, or `None` when this
 /// frame draws no pixels.
@@ -253,7 +244,9 @@ pub fn view_with_graphics(
                     primary_pane_area(state, area).map_or(area.width, |graph| graph.width);
                 screen.notice = status_row_notice(state, &screen, tier, footer_width);
                 check_status_row(state, &screen);
-                set_pixel(&mut screen, pixels);
+                // The cursor row's second line draws at every tier; at the
+                // pixel tier the strips make room for it (ease-pass/13).
+                screen.pixel = pixels;
                 // By the tier in force: a preview drawing the column in text
                 // does not change what the terminal said (ADR-0060 2).
                 screen.graphics = pixel_tier_on_graph(session, state).then(|| graphics.clone());

@@ -1,8 +1,10 @@
-//! What strips are painted with: the session's cell and colours, and each
-//! branch's role on the frame's route.
+//! What strips are painted with: the session's cell and colours, each
+//! branch's role on the frame's route, and a drawn row's folded stubs.
 
 use mergewright_core::capabilities::Rgb;
+use mergewright_graph::fold::DrawnRow;
 use mergewright_graph::identity::BranchIdentity;
+use mergewright_graph::raster::Stub;
 use mergewright_graph::{LaneRole, Route};
 
 use super::StripRows;
@@ -66,5 +68,17 @@ pub(super) fn roles_of(strips: &[StripRows], route: &Route) -> Vec<(BranchIdenti
     });
     rows.filter(|&identity| seen.insert(identity))
         .map(|identity| (identity, route.role(identity)))
+        .collect()
+}
+
+/// The rasteriser's stubs for a drawn row: one per folded edge, in order.
+pub(super) fn stubs_of(drawn: &DrawnRow<'_>) -> Vec<Stub> {
+    drawn
+        .folded
+        .iter()
+        .map(|edge| Stub {
+            identity: edge.identity,
+            toward: edge.toward,
+        })
         .collect()
 }

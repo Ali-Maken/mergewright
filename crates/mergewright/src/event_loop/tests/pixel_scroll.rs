@@ -21,6 +21,7 @@ use mergewright_graph::fold::Keep;
 
 mod emphasis_pieces;
 mod focus;
+mod tall;
 
 /// The spec's terminal for these runs (`120×40`).
 const COLUMNS: u16 = 120;
@@ -39,8 +40,7 @@ impl Transmit {
     }
 }
 
-/// Every Kitty transmit in `stream`: `a=t` headers (continuation chunks
-/// carry no `a=`).
+/// Every Kitty transmit in `stream`: `a=t` headers (later chunks carry no `a=`).
 fn transmits(stream: &str) -> Vec<Transmit> {
     stream
         .split("\x1b_G")
@@ -466,30 +466,6 @@ fn cursor_off_screen_draws_full() {
             .iter()
             .any(|id| id & EMPHASIS_ID_BIT != 0)
     );
-}
-
-#[test]
-fn iterm2_bands_are_composites() {
-    let (session, state) = branchy(PixelProtocol::Iterm2, false);
-    let run = drive(&session, state, js(20));
-
-    let bands = run.frames[0].matches("\x1b]1337;File=").count();
-    assert!(bands > 0);
-    for frame in &run.frames {
-        assert_eq!(
-            frame.matches("\x1b]1337;File=").count(),
-            bands,
-            "one band per strip"
-        );
-        assert!(transmits(frame).is_empty(), "no Kitty bytes on iTerm2");
-    }
-    // A band is encoded again only where the selection's paint over its
-    // strip changed; a j inside a chain changes none.
-    let repainted = repainted(&run.paints);
-    assert!(repainted >= 1, "premise: the thread moved over 20 j");
-    let encoded = run.graphics.bands_encoded();
-    eprintln!("iterm2: {bands} bands, {encoded} encodes, {repainted} strips repainted over 20 j");
-    assert_eq!(encoded, u64::try_from(bands + repainted).expect("few"));
 }
 
 #[test]
