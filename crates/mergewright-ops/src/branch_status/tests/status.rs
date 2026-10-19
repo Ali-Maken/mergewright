@@ -14,6 +14,7 @@ pub(super) fn status(
     upstream: Option<&Tip>,
 ) -> BranchStatus {
     let me = find(candidates, branch).clone();
+    super::equivalence::agrees(repo, candidates, &[&me]);
     branch_status(&repo.handle(), &me, candidates, upstream, &()).expect("the status")
 }
 

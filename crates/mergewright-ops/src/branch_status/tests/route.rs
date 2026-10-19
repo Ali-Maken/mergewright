@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use mergewright_git::run::{RunError, Stop};
 
+use super::equivalence::agrees;
 use super::{Repo, find, names, stack, stack_candidates};
 use crate::branch_status::{Candidate, CandidateKind, branch_status, route};
 
@@ -44,6 +45,7 @@ fn siblings(wallet: CandidateKind, moved: bool, sibling: bool) -> (Repo, Vec<Can
 
 fn route_of(repo: &Repo, candidates: &[Candidate], branch: &str) -> Vec<String> {
     let me = find(candidates, branch).clone();
+    agrees(repo, candidates, &[&me]);
     let route = route(&repo.handle(), &me, candidates, &()).expect("the route");
     names(&route).into_iter().map(str::to_owned).collect()
 }
@@ -167,6 +169,7 @@ fn route_of_a_stacked_branch_ends_at_the_trunk() {
     let repo = stack();
     let candidates = stack_candidates(&repo);
     let sara = find(&candidates, "sara/fix-toc");
+    agrees(&repo, &candidates, &[sara]);
     let route = route(&repo.handle(), sara, &candidates, &()).expect("the route");
     assert_eq!(
         names(&route),
@@ -179,6 +182,7 @@ fn route_of_the_trunk_is_empty() {
     let repo = stack();
     let candidates = stack_candidates(&repo);
     let main = find(&candidates, "main");
+    agrees(&repo, &candidates, &[main]);
     let route = route(&repo.handle(), main, &candidates, &()).expect("the route");
     assert!(route.is_empty(), "{route:?}");
 }
@@ -192,6 +196,7 @@ fn route_skips_a_candidate_at_the_same_tip() {
     let mut candidates = stack_candidates(&repo);
     candidates.push(repo.cand("sara/twin", CandidateKind::Other));
     let sara = find(&candidates, "sara/fix-toc").clone();
+    agrees(&repo, &candidates, &[&sara]);
     let route = route(&repo.handle(), &sara, &candidates, &()).expect("the route");
     assert_eq!(
         names(&route),
@@ -220,6 +225,7 @@ fn route_does_not_cycle() {
         repo.cand("b", CandidateKind::Integration),
     ];
     let a = candidates[0].clone();
+    agrees(&repo, &candidates, &[&a]);
     let route = route(&repo.handle(), &a, &candidates, &()).expect("the route");
     assert_eq!(names(&route), ["refs/heads/a-twin", "refs/heads/b"]);
 }
@@ -235,6 +241,7 @@ fn route_does_not_walk_back_through_the_branch() {
     repo.commit("w3");
     let candidates = stack_candidates(&repo);
     let sara = find(&candidates, "sara/fix-toc");
+    agrees(&repo, &candidates, &[sara]);
     let route = route(&repo.handle(), sara, &candidates, &()).expect("the route");
     assert_eq!(
         names(&route),
@@ -256,6 +263,7 @@ fn route_stops_at_depth_eight() {
         on = branch;
     }
     let tip = find(&candidates, "b10").clone();
+    agrees(&repo, &candidates, &[&tip]);
     let route = route(&repo.handle(), &tip, &candidates, &()).expect("the route");
     assert_eq!(
         names(&route),
