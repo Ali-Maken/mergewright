@@ -1446,3 +1446,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/06g-trunk-development | 06g pins the fold rule with trunk = fixture `main`; a team repo whose trunk is `development` is not pinned (trunk detection for it unverified). | **unverified** | ease-pass (14) |
 | ease/06c-suffix-stale | Search's folded-hits suffix isn't re-asked after `space` / `1` (fold opened/closed, view switch), so it can read stale until the next request (06c NOTES). | **broken** | ease-pass (06h) |
 | ease/06c-search-hint-shot | 06c's last box: re-shooting `m8/search-hint` also drops `1 merged branch folded` from the 120-col header (lane words give way first, 06b's accepted rule). Re-shoot owed by 14. | **unverified** | ease-pass (14) |
+| ease/07b-pending-bar | Box 4: `Pending` fold bar has a unit test only, no state test through the choice site | **unverified** | ease-pass review |
+| ease/07b-also-in-at-rest | Settle 1: `also in` drawn only after the detail read; at rest with the pane closed it is not asked | **unverified** | ease-pass review |
+| ease/07b-made-on-lane | `made on` names the lane's branch (feature/receipts on the opened merge, not wallet-release) | **question** | ease-pass review |
+| ease/07b-click-below-cursor | Click below the cursor's second line: rows shift up one line | **question** | ease-pass review |
+| ease/07b-second-line-labels | Second line draws no labels; wrapped GraphRow forms not catalogued; mockups doc not updated | **broken** | ease-pass fix round |
+| ease/07b-ratchet-raised | 11 test-file ratchet rows raised 1–5 lines (user: split, don't raise) | **broken** | ease-pass fix round |
+| ease/07b-zeroed-hash | 6 tests zero the run-made hash (`without_cursor_sha`); reviewer checks it hides nothing | **question** | ease-pass review |
+| ease/07b-r-rewrite | `R rewrite` not drawn on mock bars; built to the mock | **question** (user) | ease-pass stop |

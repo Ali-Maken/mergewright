@@ -6,7 +6,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **Current step:** **Ease pass, paused 2026-10-19 (user quota: 92% weekly used, access ends 2026-10-20).** Merged and green: 05c, 10, 11, 11b, 12, 12b, 06b/c/g/h/i/s/t/u, 07a, 07 part, 03r, 08s–v, 05s/t; codename rename; licence files. In flight at pause: 07c (rest of 07). **Resume order:** merge 07c → 07b → 13 → 09 → 09b (not side by side with 13) → 14 (acceptance, Fable) → review + usability walk + perf → fix round. Also open: 07a perf re-run on an idle machine (`scripts/ease-ahead-read.sh`, gap ease/07a-perf); 06i fixes (ease/06i-failed-no-cross, ease/06i-graph-query-steps). Then pre-publish cleanup (PROGRESS row below; `docs/release/export-inventory.md`). Live log: `docs/log/ease-pass.md`. Trademark search still with the user.
 
-**Running now:** builder-opus 07b (graph-rows cursor).
+**Running now:** builder-opus 13 (pixel roles, tall row).
 
 **Batched for the user at the M6 stop:** the 11 items in `.scratch/m6-conflicts/user-batch.md` (supersedes the earlier (1)–(8) list; checked against the build 2026-09-24).
 
