@@ -1,19 +1,13 @@
 SUMMARY machine ac=1 lowpower=0 os=darwin
-# ease-pass 09 branch-pane cost — 2026-10-19T11:41:12Z
-# HEAD ffb014bd +uncommitted
+# ease-pass 09 branch-pane cost — 2026-10-19T18:35:58Z
+# HEAD c137936d
 # Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
 # release, team fixture MONOREPO; times without the spawn shim, spawns with it
-# uptime before: 15:37  up 31 days, 20:44, 4 users, load averages: 2.67 3.32 3.71
-# uptime after:  16:41  up 31 days, 21:48, 4 users, load averages: 2.34 2.07 1.98
-branch-pane-cost: candidates=1231 local=331 remote-only=900
-branch-pane-cost: focus runs=10 p50_ms=14394.6 p95_ms=14722.7 spawns=2461
-branch-pane-cost: window rows=40 tips=21 total_ms=1470735.1 spawns=254441
-
-# ease-pass 09p, spawn counts only: 2026-10-19, HEAD ff75b93d, git version 2.54.0 (Apple Git-157)
-# No timing run. These come from the example under the spawn shim, so the times are not budget figures. The timing run is still owed (scripts/branch-pane-cost.sh).
+# uptime before: 23:34  up 32 days,  4:42, 4 users, load averages: 5.19 7.13 7.72
+# uptime after:  23:35  up 32 days,  4:43, 4 users, load averages: 3.47 6.25 7.34
 branch-pane-cost: candidates=1231 local=331 remote-only=900 trunk=1 integration=0 other=1230
-branch-pane-cost: focus spawns=8
+branch-pane-cost: focus runs=10 p50_ms=70.5 p95_ms=88.0 spawns=8
+branch-pane-cost: window rows=40 tips=21 total_ms=22225.7 spawns=3337
 branch-pane-cost: breakdown for-each-ref=3 merge-base=1 rev-list:--count=3 rev-list:--reverse=1
-branch-pane-cost: window rows=40 tips=21 spawns=3337
 branch-pane-cost: scaling others=10 spawns=6 others=500 spawns=6
-branch-pane-cost: budget OVER window (spawns 3337 > 60 x 21 = 1260)
+branch-pane-cost: budget OVER window-ms window-spawns

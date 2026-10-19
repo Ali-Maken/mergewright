@@ -1457,3 +1457,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/13-heavy-foldedhits | Heavy tier: no FoldedHits arm at crates/mergewright/tests/it/heavy.rs:347 (builder's claim, not run) | **unverified** | ease-pass review |
 | ease/09-origin-prefix | Teammate branches: mock shows bare names (sara/…), row label says origin/x is here; builder keeps origin/ meanwhile | **question** (user) | ease-pass stop |
 | ease/09c-route-tick | 09c check 2's tick says look.route names develop; the test reads the pane's built-on route instead (look is pub(crate)); glyph half held. Reviewer: tick wording vs test | **question** | ease-pass review |
+| ease/09p-window-over | Whole-screen branch status (40 rows, 21 tips): 22.2 s, 3337 spawns vs budget 21 s / 1260 (was 254,441); nothing reads it today (focus only). Spec Q a/b/c with the user | **question** (user) | ease-pass stop |
