@@ -18,6 +18,7 @@ use crate::history::History;
 use crate::update::detail::{DetailSpec, Loading};
 use crate::update::{Product, follow_behind};
 
+mod contains;
 mod fold;
 
 /// What the script does next.
