@@ -1456,3 +1456,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/13-pixel-lag | Tall row + roles: p95 input age 23.5→39.3 ms (120x40 open), 22.1→41.7 ms (200x50 settled); bytes +25–30 KB; focus walk 2.3→37 KB; single runs (docs/perf/ease-pixel.txt). iTerm2 re-encodes both crops per j. Q4 (b)/(c) open | **question** (user) | ease-pass stop |
 | ease/13-heavy-foldedhits | Heavy tier: no FoldedHits arm at crates/mergewright/tests/it/heavy.rs:347 (builder's claim, not run) | **unverified** | ease-pass review |
 | ease/09-origin-prefix | Teammate branches: mock shows bare names (sara/…), row label says origin/x is here; builder keeps origin/ meanwhile | **question** (user) | ease-pass stop |
+| ease/09c-route-tick | 09c check 2's tick says look.route names develop; the test reads the pane's built-on route instead (look is pub(crate)); glyph half held. Reviewer: tick wording vs test | **question** | ease-pass review |
