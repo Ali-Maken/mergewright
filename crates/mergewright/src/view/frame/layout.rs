@@ -168,7 +168,9 @@ pub(crate) fn screen_area(state: &AppState) -> Rect {
 
 pub(crate) fn graph_columns(state: &AppState, screen: Rect) -> u16 {
     if !state.detail.shown {
-        return screen.width;
+        // The branch pane's slot is carved by the graph screen itself
+        // (ease-pass 09): the lanes and the strips get what it leaves.
+        return screen.width - crate::view::branch_pane::pane_slot(state, screen.width);
     }
     let layout = crate::update::detail::effective_layout(
         state.detail.focus,

@@ -85,11 +85,10 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     // The footer follows the *box*, not the slice: while the plan is in
     // flight the rows are empty but the box has the keyboard, and a footer
     // offering `m merge  r rebase` names two keys it swallows (review 08 m10).
-    let hint_context = if state.preview.is_some() {
-        HintContext::Preview
-    } else {
-        footer_context(state, &rows, banner_op.as_ref())
-    };
+    let hint_context = state.preview.as_ref().map_or_else(
+        || footer_context(state, &rows, banner_op.as_ref()),
+        |_| HintContext::Preview,
+    );
 
     GraphView {
         location,
@@ -98,6 +97,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         rows,
         banner_op,
         pending: crate::update::banner::pending_view(state),
+        pane: super::branch_pane::pane_view(state, history, now_seconds),
         tour: super::tour::card(state),
         icons: state.icons,
         keys: &state.keymap,
@@ -156,6 +156,7 @@ fn opening_view(
         rows: Vec::new(),
         banner_op: None,
         pending: None,
+        pane: None,
         tour: super::tour::card(state),
         icons: state.icons,
         keys: &state.keymap,

@@ -1,6 +1,6 @@
 # branch-pane — the right pane's four answers, the route behind the colours
 
-Status: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/09-branch-pane.md` at c021e6a6: its 7 mismatches ruled in Decided; **split** — `C` opening the picker on a branch and the `not merged` row label are now **09b-branch-picker-and-merged-label**). History: Needs and words revised for 01r, opened-row focus added after 06's scout (2026-10-17).
+Status: partial (builder 2026-10-19, compacted once; handoff in NOTES). Was: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/09-branch-pane.md` at c021e6a6: its 7 mismatches ruled in Decided; **split** — `C` opening the picker on a branch and the `not merged` row label are now **09b-branch-picker-and-merged-label**). History: Needs and words revised for 01r, opened-row focus added after 06's scout (2026-10-17).
 Blocked by: 07b-graph-rows-cursor (second line, `commit_rows`, `body_line`; shares `update/geometry.rs`, `update/mouse.rs`), 07c-graph-rows-rest (row columns and captures re-taken here). Built and merged: 01, 01r, 03, 06s, 06t, 07 part (f2269602: `Look.route`, `Look.colours_off`, `view/entries/roles.rs`). **Anchors are the scout's (c021e6a6, after the 06s/06t splits).** Not beside 13: this ticket changes `view/frame/layout.rs:169` `graph_columns`, which sets the strips' width. Either order works; the later one re-takes its captures.
 Build with: Opus — cross-crate (ui widget, app job, frame split, every hit-test), a cache keyed by repo state, and two settle tests before the code they decide (scout's call).
 Needs: ops `branch_status(repo, branch, candidates, upstream, stop)` (`mergewright-ops/src/branch_status/status.rs:118`), `BranchStatus`, `Pushed`, `Merged` (:55: `MainLine`, `Into`, `NotYet { into: Option<String> }`, `NothingToMerge`), `Behind`, `Who`, `Candidate { name /* full ref */ }` (`branch_status.rs:56`), `CandidateKind` (:44), `short_name` (:76); git `upstream_of(repo, branch) -> Result<Option<TrackedUpstream>, RemoteError>`; core `ref_name::shorthand` (`mergewright-core/src/ref_name.rs:61-69`); graph `Route::new`, `LaneRole`, `made_on`, `BranchIdentity::of_name`; app `AppState.look.route: Option<Route>` (`update/state/look.rs:15`), `frame_route` (`view/entries/roles.rs:27`), `focus` (`roles.rs:39`), `AppState.refs: Option<Arc<RefBadges>>` (`state.rs:97`), `RefLabel::Branch { name /* short */, current, upstream }` (`refs/mod.rs:146-152`), `seeds_for` (`history/seeds.rs:27`); 07b `SecondLine`, `commit_rows`, `body_line`; role tokens.
@@ -79,19 +79,19 @@ Variant names may follow the scout's convention; payloads as given.
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] Settle tests 1–2 committed first; outcomes in NOTES.
-- [ ] `pane_width`: 36 at 120 and 200, 30 at 100 and 119, `None` at 99.
+- [x] Settle tests 1–2 committed first; outcomes in NOTES. (`tests/it/branch_pane.rs` `the_trunk_and_integration_names_are_held_after_open`, `the_identity_of_every_candidate_is_its_lanes`; committed with the code, not before it: see NOTES.)
+- [x] `pane_width`: 36 at 120 and 200, 30 at 100 and 119, `None` at 99. (ui `branch_pane/tests.rs` `the_pane_is_36_wide_from_120_30_from_100_and_gone_below`)
 - [ ] Fixture `main ← wallet-release ← sara/fix-toc`. `wallet-release` is either an integration branch in the seeds **or** has no commit after sara is cut (01r R1); NOTES says which. Cursor on a sara row at 120 cols:
   - heading `sara/fix-toc` (no `refs/heads/`);
   - four lines, each starting `!`, `✓` or `·`;
   - route line names `main`, `wallet-release`, `sara/fix-toc` in that order, joined by `─◆`.
 - [ ] Sibling: add `ali/x` cut from wallet-release at sara's fork, then a commit on wallet-release. Cursor on sara: the route line never names `ali/x`; `ali/x`'s lane draws `┊` (Other), never `│`.
-- [ ] `pane_words` table test: one row per `Merged`, `Behind`, `Who` variant, words exactly as Scope, marks as listed.
+- [x] `pane_words` table test: one row per `Merged`, `Behind`, `Who` variant, words exactly as Scope, marks as listed. (`view/branch_pane/tests.rs` `pushed_words`, `merged_words`, `behind_words`, `who_words`)
 - [ ] HEAD's row: `(you're here)`. A commit no branch holds: `<sha7> · not on a branch`.
 - [ ] Inside an opened merge: the heading names the merge row's branch (state test through the shared `focus`).
 - [ ] Before the read lands each line reads `reading…`; a forced failure shows `can't tell:` on that line only.
-- [ ] Moving within one branch asks no second job; another branch and back asks one each (job count test). A new `RefBadges` landing clears the cache: the next rest asks again (state test).
-- [ ] The ask comes from `settle`, after the fold-count ask (state test on the command order).
+- [x] Moving within one branch asks no second job; another branch and back asks one each (job count test). A new `RefBadges` landing clears the cache: the next rest asks again (state test). (`update/branch_pane/tests.rs` `one_job_per_branch_another_branch_and_back_asks_one_each`, `a_new_refs_read_clears_the_reads_and_the_next_rest_asks_again`)
+- [x] The ask comes from `settle`, after the fold-count ask (state test on the command order). (`update/branch_pane/tests.rs` `the_branch_ask_comes_from_settle_after_the_fold_count_ask`)
 - [ ] After the read, wallet-release's lane draws `│` (Under): the route reached the colours (state + glyph test).
 - [ ] `⏎` replaces the pane with the detail pane; `esc` brings it back.
 - [ ] Teammate's status: 0 keys beyond moving to his row (journey test).
@@ -104,3 +104,66 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~70k. Split point: (i) settle tests, `candidates`, job, cache, route; (ii) pane widget, frame split and hit-tests, captures, cost script.
+
+## NOTES (builder, 2026-10-19) — PARTIAL, compacted once mid-ticket
+
+**I compacted once.** The conductor should split what remains (list at the end).
+
+### Settle outcomes
+- 1, **Held**: the trunk and integration names are on `History.walk: Option<WalkFacts>` (`default_branch`, `integration`). No `AppState.branch_names` was added. Test: `tests/it/branch_pane.rs` `the_trunk_and_integration_names_are_held_after_open`.
+- 2, **Held**: `identity_of` gives `of_name(RefName::shorthand)`, the same identity the layout gives a lane. It is checked against `made_on` for main and for sara. wallet-release has no row made on it, because it sits wholly under sara's lane (01r R1). Test: `the_identity_of_every_candidate_is_its_lanes`.
+- Both tests are committed in the same commit as the code they decide, not before it. One session built it all before the first commit.
+- Fixture: wallet-release **has no commit after sara is cut** (01r R1). Only `develop` and `release/*` are integration branches (git `branches.rs:260`).
+
+### Decisions taken (the reviewer should check them)
+- The cache lives in `Look.reads` (`update/state/look.rs`), not `AppState`. This keeps `state.rs` under its ratchet row.
+- `primary_pane_area` is unchanged. The ui `graph_screen::layout::beside_pane` carves the pane slot (`ScreenRows.pane`, `pane_width + 2` columns: `│`, a space, then content) out of the body rows. `view/frame/layout.rs` `graph_columns` subtracts `view::branch_pane::pane_slot`. The mouse guard is `update::branch_pane::pane_holds`. Overlays may float over the pane.
+- Job results arrive as `Product::BranchStatusRead { key, result }`. The ask is `Command::AtRest(JobId, RestRead::BranchStatus)`, which replaces `Command::CountFolded`; `RestRead::CountFolded { merge }` is the same thing under the new name. The job (`jobs/branch_status.rs`) reads the upstream itself and drops the branch's own upstream from the candidates.
+- A failure shows `can't tell: <reason>` on all four lines, because one ops call answers all four.
+- Long answers wrap under their words with a 2-space indent.
+- Pushed words: `not pushed yet` / `pushed` / `N commit(s) to push` / `N new commit(s) to pull` / `p to push, q to pull`.
+
+### Gaps / questions
+- `who` cannot say "you". ops `Who::Authors` holds names but no emails. The pane shows first names. Needs ops to carry the email.
+- A teammate branch that exists only on a remote is not a candidate (the spec says local branches only), so his row reads `not on a branch`. Question: is that right for his team flow?
+- Untested so far: the route reaching the `│` (Under) glyph. A base that sits wholly under sara never has its own lane passing her rows. A fixture for this is still open; the fallback is a state + role test.
+
+### State at this commit
+- Unit tests green: ui 6 (`branch_pane/tests.rs`), app 12 (`update/branch_pane/tests.rs`, `view/branch_pane/tests.rs`). The 2 settle integration tests are green.
+- **The full nextest is RED.** The last full run had 125 failures out of 7066:
+  - ~128 hits are capture mismatches (`capture.rs:147`). Every graph capture at ≥100 columns now shows the pane. These need `MWR_UPDATE_SHOTS=1` redraws, but only after the determinism issue below is fixed.
+  - 24 are `pty.rs:311` "waited 20s for the cursor on HEAD". The screen shows the pane drawn and the HEAD row present, so the detection in `pty.rs` probably assumes full-width rows. Not investigated.
+  - 14 are app_harness pump timeouts.
+  - Also failing: `look_chrome.rs:183/274` (click-to-row at designed sizes), `row_bars.rs:39`, `journeys`, `second_line`, `preview`, `name_and_drag`, `lane_cap` (expected after the `graph_columns` change), `file_size` (ratchet), `map_coverage` (MAP.md entries and module headings for the new modules).
+- **Determinism risk:** the pane's read is asynchronous, so a capture over the real job pool races `reading…` against the answers, and the lane glyphs change once the route lands. Idea: when `done` holds, the harness pump also drains outstanding `BranchStatusRead` answers before it returns. Not built.
+- `tests/it/branch_pane.rs` has a temporary `#![allow(dead_code)]` because its fixtures `with_sibling`, `drawn`, `cursor_on`, `read` and `pane` are not used yet. Remove it once the tests below use them.
+
+### Exact next steps
+1. Fix capture determinism (the harness drain), then investigate the pty "cursor on HEAD" failures and the `look_chrome` click mapping.
+2. Integration tests, in `tests/it/branch_pane.rs`:
+   - sara at 120 (heading, four marks, route order);
+   - sibling `ali/x` never in the route;
+   - `(you're here)`;
+   - not on a branch;
+   - inside an opened merge;
+   - `⏎`/`esc` swap with the detail pane;
+   - teammate journey with 0 keys;
+   - forced failure shows `can't tell:`;
+   - geometry mirror test at 90/110/120 with the pane open and closed. Compare `pane_holds` against ui `screen_rows(..).pane`, next to `update/tests/tab_strip_geometry.rs:221`.
+3. Redraw the test-read captures. Add the new captures `docs/shots/ease-pass/main-pane-{own-120,teammate-120,100,reading-120}.txt`. Colour is unverified.
+4. Write `scripts/branch-pane-cost.sh` on the team fixture (`scripts/41-scroll-team-fixture.sh`), writing `docs/perf/branch-pane.txt`.
+5. Ratchet (`tests/it/over_400.txt`):
+   - lower `update/events.rs` to 531 and `update/events/command.rs` to 453;
+   - remove the ui `graph_screen/render.rs` row (now 394);
+   - `graph_screen/tests.rs` is +1 over its 2375 row, so split something out of it;
+   - re-check every other raised file.
+6. MAP.md: the ui `branch_pane`, `ScreenRows.pane` and `GraphView.pane`; the app `update::branch_pane`, `view::branch_pane`, `jobs::branch_status`, `RestRead` and `events::answers`.
+7. Gates workspace-wide, then the full nextest again after the last fix.
+
+Touches, as known so far:
+- every `Command::CountFolded` site (grep: fold_count, dispatch, place/write, 3 test files);
+- `graph_columns`, which changes the strip widths (13's captures);
+- the mouse guard;
+- `GraphView` literals (ui tests, `tests/support/screen.rs`);
+- the `Look` literal (`update/tests/opening.rs`);
+- the facts exhaustive list and the event label.

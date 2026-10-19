@@ -12,7 +12,7 @@ use super::Cancel;
 use crate::repos::RepoStore;
 
 /// The work behind
-/// [`Command::CountFolded`](crate::update::Command::CountFolded): the commits
+/// [`RestRead::CountFolded`](crate::update::RestRead::CountFolded): the commits
 /// `merge` reaches that its first parent does not, less `merge` itself —
 /// `rev-list --count M ^M^1`, minus one. One count covers every later parent
 /// of an octopus, so a commit two sides share is counted once.

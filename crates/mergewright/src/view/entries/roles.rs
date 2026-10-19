@@ -35,8 +35,10 @@ pub(in crate::view) fn frame_route(state: &AppState, history: &History) -> Route
 
 /// The branch the cursor row was made on; on a row inside an opened merge,
 /// the branch that merge's row was made on (G4), while that row is in the
-/// window the walk last sent.
-pub(in crate::view) fn focus(history: &History) -> Option<BranchIdentity> {
+/// window the walk last sent. Shared by the branch pane's read
+/// (`update::branch_pane`) and the lane colours (G4), so the two never
+/// disagree on which branch is in focus.
+pub(crate) fn focus(history: &History) -> Option<BranchIdentity> {
     let at = history.cursor;
     if let Some(inside) = crate::view::rows::inside_merge(history, at) {
         let merge_row = history

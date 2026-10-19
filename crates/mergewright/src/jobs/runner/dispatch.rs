@@ -3,7 +3,7 @@
 use super::JobRunner;
 use crate::jobs::kinds::check_system_git;
 use crate::jobs::types::{Dispatch, JobEvents};
-use crate::update::{Command, Task};
+use crate::update::{Command, RestRead, Task};
 
 /// The detail pane's reads, which `dispatch` hands to `dispatch_detail`: a
 /// pattern, so `dispatch` stays one exhaustive match (review m7-16b..21b,
@@ -86,7 +86,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadFinishLook(id, ask) => self.read_finish_look(id, ask),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
-            Command::CountFolded { id, merge } => self.count_folded(id, merge),
+            Command::AtRest(id, RestRead::CountFolded { merge }) => self.count_folded(id, merge),
+            Command::AtRest(id, RestRead::BranchStatus(ask)) => self.read_branch_status(id, *ask),
             Command::CancelJob(id) => self.cancel(id),
             Command::Unstoppable(id, what) => self.unstoppable(id, what),
             Command::ForceStop(id) => self.force_stop(id),

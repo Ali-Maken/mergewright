@@ -230,6 +230,9 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
         AppEvent::Produced(_, Product::FoldedCounted { merge, count }) => {
             fold_count::counted(next, merge, count);
         }
+        AppEvent::Produced(_, Product::BranchStatusRead { key, result }) => {
+            super::branch_pane::read(next, key, result);
+        }
         AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
             remote::remote_progress(next, id, &brief);
         }

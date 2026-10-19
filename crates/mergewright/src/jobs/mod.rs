@@ -70,6 +70,7 @@ use crate::update::{AppEvent, Command, GitCheck, Product, Progress, Task};
 mod tests;
 
 mod askpass;
+pub(crate) mod branch_status;
 pub(crate) mod clone;
 pub(crate) mod commit_message;
 pub(crate) mod conflict;

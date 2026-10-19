@@ -132,4 +132,9 @@ pub struct GraphView<'a> {
     /// banner and the rows (m7-power-tools/07c). `None`, or empty, draws
     /// nothing and costs no row.
     pub pending: Option<crate::still_to_apply::PendingView>,
+    /// The branch pane right of the rows (ease-pass 09, G12): drawn at
+    /// [`crate::branch_pane::PANE_FROM`] columns and wider, where it takes
+    /// its width off the body ([`ScreenRows::pane`](super::ScreenRows::pane)).
+    /// `None` draws none and the body keeps the whole width.
+    pub pane: Option<crate::branch_pane::BranchPaneView>,
 }

@@ -139,6 +139,7 @@ fn every_field_spelled_out() -> AppState {
                 mergewright_graph::identity::BranchIdentity::of_name(b"main"),
                 None,
             )),
+            reads: Box::default(),
         },
     }
 }

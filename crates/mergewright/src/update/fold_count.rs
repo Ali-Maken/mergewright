@@ -11,7 +11,7 @@
 use mergewright_core::job::JobId;
 use mergewright_core::oid::Oid;
 
-use super::events::Command;
+use super::events::{Command, RestRead};
 use super::state::{AppState, Status};
 
 /// Where one folded merge's count stands.
@@ -39,10 +39,7 @@ pub(super) fn at_rest(
         return;
     };
     next.fold_counts.insert(merge, FoldCount::Counting);
-    commands.push(Command::CountFolded {
-        id: next_id(),
-        merge,
-    });
+    commands.push(Command::AtRest(next_id(), RestRead::CountFolded { merge }));
 }
 
 /// Is a count owed to rest — a folding merge on screen not yet asked? A

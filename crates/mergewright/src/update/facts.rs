@@ -25,6 +25,8 @@ pub(super) fn took_fact(
         }
         Product::Refs(Ok(refs)) => {
             next.refs = Some(std::sync::Arc::new(refs));
+            // Every branch read may name an old tip or upstream (09 M3).
+            super::branch_pane::refs_landed(next);
             next.refs_read.answered(id, true);
             // A finished `--continue` waits on this read for the new
             // `HEAD` (m6-conflicts/12); any other read passes it by.
@@ -79,6 +81,7 @@ pub(super) fn took_fact(
         | Product::Remotes(_)
         | Product::Leaves { .. }
         | Product::FoldedCounted { .. }
+        | Product::BranchStatusRead { .. }
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::CommitFiles(_)

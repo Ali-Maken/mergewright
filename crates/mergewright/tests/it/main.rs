@@ -16,6 +16,7 @@ mod askpass_mode;
 mod blame_partly_staged;
 mod blame_place;
 mod box_owns_the_bar;
+mod branch_pane;
 #[cfg(feature = "heavy-tests")]
 mod budget_run;
 mod captures;

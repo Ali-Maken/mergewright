@@ -72,7 +72,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ReadIndexState { .. }
         | Command::ReadRemotes(..)
         | Command::ReadLeaves { .. }
-        | Command::CountFolded { .. }
+        | Command::AtRest(..)
         | Command::ReadCommitTemplate(..)
         | Command::ReadHeadMessage(..)
         | Command::ReadCommitFiles(..)

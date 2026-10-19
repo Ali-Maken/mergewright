@@ -24,6 +24,7 @@ pub mod amend_into;
 mod answer;
 mod answers;
 pub mod banner;
+pub mod branch_pane;
 pub(crate) mod clash;
 pub mod commit_editor;
 mod commit_graph;
@@ -74,8 +75,8 @@ pub mod undo;
 
 pub use context_menu::verbs::can_take;
 pub use events::{
-    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
-    TakeRequest, Task, WholeFileAnswer,
+    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, RestRead, SortedOrder,
+    TakeAt, TakeRequest, Task, WholeFileAnswer,
 };
 pub use geometry::history_row_line;
 pub(crate) use geometry::{context_menu_area, cursor_body_line};
@@ -260,6 +261,8 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
         // merges on screen get their counts: a held `j` reads none.
         if !next.defer_follow {
             fold_count::at_rest(next, commands, &mut || local_jobs.next_id());
+            // Then the focused branch's four answers (ease-pass 09 M1).
+            branch_pane::at_rest(next, commands, &mut || local_jobs.next_id());
         }
     }
     // The other asks below do not read the cursor (G-settle grep): the

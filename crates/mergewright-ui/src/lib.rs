@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod blame;
+pub mod branch_pane;
 pub mod commit_editor;
 pub mod confirm;
 pub mod conflict_resolver;

@@ -4,7 +4,7 @@
 use mergewright_core::job::JobId;
 use mergewright_git::history::Order;
 
-use super::TakeRequest;
+use super::{RestRead, TakeRequest};
 use crate::history::RowRequest;
 use crate::update::detail::PaneSize;
 
@@ -283,15 +283,9 @@ pub enum Command {
         /// The tracking tip the lease names.
         expected: mergewright_core::oid::Oid,
     },
-    /// Count the commits a folded merge brought in, for its `+N`
-    /// (m8-polish-and-ship/17b, `jobs::fold_count`). A read; asked once per
-    /// merge per session, when it is first folded.
-    CountFolded {
-        /// The id the answer comes back under.
-        id: JobId,
-        /// The folded merge.
-        merge: mergewright_core::oid::Oid,
-    },
+    /// A read `update::settle` asks at rest, under the id its answer comes
+    /// back with ([`RestRead`]: a folded merge's count, a branch's status).
+    AtRest(JobId, RestRead),
     /// Read `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate(JobId),

@@ -14,6 +14,7 @@
 //! builds the graph view model, [`entries`] builds its rows, and [`status`]
 //! builds the status screen's view model.
 
+pub(crate) mod branch_pane;
 mod commit_editor;
 pub(crate) mod credential;
 mod detail;
@@ -46,7 +47,7 @@ pub use commit_editor::commit_screen_view;
 pub(crate) use commit_editor::mask::mask_diff;
 pub use credential::credential_view;
 pub use detail::detail_view;
-pub(crate) use entries::uncommitted_shown;
+pub(crate) use entries::{focus, uncommitted_shown};
 pub(crate) use explain::build_explain_view;
 pub use frame::{draws_pixels, tier_in_force, view, view_with_graphics};
 pub(crate) use hit::badge_index_at;

@@ -279,7 +279,7 @@ fn every_branch_asks_no_fold_count_at_rest_and_offers_no_space_after_a_merge() {
     assert!(
         commands
             .iter()
-            .any(|command| matches!(command, Command::CountFolded { merge: m, .. } if *m == merge)),
+            .any(|command| matches!(command, Command::AtRest(_, RestRead::CountFolded { merge: m }) if *m == merge)),
         "{commands:?}"
     );
 }
