@@ -6,14 +6,14 @@ m8-polish-and-ship/19c-c: what right looks like — `t` from the empty state at 
 │ ⏎ on the top row opens your changes · space stages the change under the cursor                                                       stage commit undo stash branch merge conflict push │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
   ◌                             Uncommitted changes (1 unstaged, 1 untracked)                                                                        │ main  (you're here)
-▸ ◆      ⓘ main (you)           Add today's specials  ↑1 to push                                                                             you   6y│ reading…
-  ┃                             you · 6 years ago · made on main · ecad443                                                                           │ reading…
-  ●                             Name the chef  origin/main is here                                                                           you   6y│ reading…
-  ●                             Pie for dessert                                                                                              you   6y│ reading…
-  ┃ ●      clash                Ice cream for dessert  not pushed yet                                                                        you   6y│
+▸ ◆      ⓘ main (you)           Add today's specials  ↑1 to push                                                                             you   6y│ ! 1 commit to push
+  ┃                             you · 6 years ago · made on main · ecad443                                                                           │ · the main line: branches merge into
+  ●                             Name the chef  origin/main is here                                                                           you   6y│   it
+  ●                             Pie for dessert                                                                                              you   6y│ ✓ up to date with origin/main
+  ┃ ●      clash                Ice cream for dessert  not pushed yet                                                                        you   6y│ · everyone, last commit 6y ago
   ┃ ┊ ●    feature              Add opening hours  not pushed yet                                                                            you   6y│
-  ●┄┴┄╯    main (you)           Add a side dish                                                                                              you   6y│
-  ◇                             Start the menu                                                                                               you   6y│
+  ●┄┴┄╯    main (you)           Add a side dish                                                                                              you   6y│ built on
+  ◇                             Start the menu                                                                                               you   6y│   main
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

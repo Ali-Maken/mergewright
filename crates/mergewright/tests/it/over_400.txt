@@ -256,5 +256,4 @@
 514 crates/mergewright/tests/it/submodule_truth.rs
 545 crates/mergewright/tests/it/tour_tasks.rs
 940 crates/mergewright/tests/it/tour_walk.rs
-438 crates/mergewright/tests/it/two_boxes_over_content.rs
 640 crates/mergewright/tests/it/undo_over_drift.rs

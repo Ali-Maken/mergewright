@@ -18,6 +18,7 @@ use crate::app_harness::App;
 use crate::captures::frame_at;
 
 mod reads;
+mod shots;
 
 const ROWS: u16 = 30;
 /// After every fixture commit, so ages read the same.
@@ -138,14 +139,16 @@ fn read(app: &App, state: AppState, columns: u16) -> AppState {
     })
 }
 
-/// The pane's text: every line's part right of the pane's `│` rule.
+/// The pane's text: every line's part right of the pane's `│` rule. The
+/// rule's column is the frame's width less the slot, not the line's: a
+/// line is trimmed at its last drawn cell.
 fn pane(frame: &[String], columns: u16) -> Vec<String> {
     let slot = usize::from(mergewright_ui::branch_pane::pane_width(columns).expect("a pane") + 2);
+    let at = usize::from(columns) - slot;
     frame
         .iter()
         .filter_map(|line| {
             let cells: Vec<char> = line.chars().collect();
-            let at = cells.len().checked_sub(slot)?;
             (cells.get(at) == Some(&'│'))
                 .then(|| cells[at + 1..].iter().collect::<String>().trim().to_owned())
         })

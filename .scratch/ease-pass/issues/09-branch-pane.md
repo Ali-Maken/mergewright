@@ -97,26 +97,26 @@ Needs: ops `branch_status(repo, branch, candidates, upstream, stop)` (`mergewrig
 - Build (a)'s consistency now. Either answer changes all three together, never the pane alone.
 
 **Acceptance added by these rulings** (each tick names its test inline, as below):
-- [ ] W: ui `the_subject_gives_way_last_in_the_message_column`. At 120 with the pane:
+- [x] W: ui `the_subject_gives_way_last_in_the_message_column`. At 120 with the pane: (ui `graph_screen/tests/give_way.rs` `the_subject_gives_way_last_in_the_message_column`)
   - a folded merge whose subject fits shows the whole subject; `from <b>` drops first, then the tail;
   - labels drop before the tail, whole, with no `…` inside one;
   - a subject wider than the column by itself is cut with `…`, and nothing is drawn after it.
-- [ ] W: grep `main-pane-own-120.txt` and `main-pane-teammate-120.txt`. No row ends its subject in `…` when the subject is shorter than its message column.
-- [ ] W: no test asserts a `…`-cut subject that would fit its column. NOTES lists each exact-cut literal kept, with its width.
-- [ ] R: settle 2 extended. For a remote-only `origin/omar/x`, `identity_of == made_on(row on it)`.
-- [ ] R: cursor on a row of a remote-only branch:
+- [x] W: grep `main-pane-own-120.txt` and `main-pane-teammate-120.txt`. No row ends its subject in `…` when the subject is shorter than its message column. (grep for `…` in both: only the cursor's second line is cut, at the pane rule; no subject. Captures written by `branch_pane/shots.rs` `capture_the_branch_pane_own_teammate_and_narrow`.)
+- [x] W: no test asserts a `…`-cut subject that would fit its column. NOTES lists each exact-cut literal kept, with its width. (grep of every added `…`/`\u{2026}` literal in `git diff ffb014bd -- crates`: one subject literal, `fold_by_default.rs` `NAMED_MERGE_SHOWN`, see NOTES; the give_way test's cut subject is `width - 1` + `…` of a subject wider than its column.)
+- [x] R: settle 2 extended. For a remote-only `origin/omar/x`, `identity_of == made_on(row on it)`. (`tests/it/branch_pane/reads.rs` `a_remote_only_branch_reads_as_pushed_under_its_own_name`, line asserting `identity_of(omar)`)
+- [x] R: cursor on a row of a remote-only branch: (`tests/it/branch_pane/reads.rs` `a_remote_only_branch_reads_as_pushed_under_its_own_name`)
   - the heading is the branch column's name for it;
   - line 1 reads `✓ pushed`;
   - it never reads `not on a branch` or `not pushed yet`.
-- [ ] R: `candidates` unit test. A local branch's upstream and `origin/HEAD` are never candidates.
-- [ ] R: sara is cut from remote-only `origin/omar/x`, and omar has no commit after (R1). Sara's route names `origin/omar/x`.
-- [ ] R: the cost line names the candidate count, remote-only branches included.
-- [ ] Y: ops unit test. `Who::Authors.first` carries name and email.
-- [ ] Y: `pane_words` table:
+- [x] R: `candidates` unit test. A local branch's upstream and `origin/HEAD` are never candidates. (`update/branch_pane/tests.rs` `remote_only_branches_are_candidates_and_upstreams_and_origin_head_are_not`)
+- [x] R: sara is cut from remote-only `origin/omar/x`, and omar has no commit after (R1). Sara's route names `origin/omar/x`. (`tests/it/branch_pane/reads.rs` `a_remote_only_base_is_on_the_route`)
+- [x] R: the cost line names the candidate count, remote-only branches included. (`docs/perf/branch-pane.txt`: `candidates=1231 local=331 remote-only=900`, from `scripts/branch-pane-cost.sh`)
+- [x] Y: ops unit test. `Who::Authors.first` carries name and email. (ops `branch_status/tests/status.rs` `who_authors_carry_name_and_email`)
+- [x] Y: `pane_words` table: (`view/branch_pane/tests.rs` `who_says_you_for_the_users_own_authors`)
   - own branch → `you, last commit …`;
   - a commit under a second address the mailmap joins to the user's → `you`;
   - no `user.email` → his first name.
-- [ ] Y: integration test. Cursor on HEAD's branch, on the two-author fixture: the who line starts `· you,`.
+- [x] Y: integration test. Cursor on HEAD's branch, on the two-author fixture: the who line starts `· you,`. (`tests/it/branch_pane/reads.rs` `the_who_line_says_you_for_his_own_branch`)
 
 ## Scope
 In: mergewright-ui new module `branch_pane`; app new `jobs::branch_status`, `update::branch_pane`, `view::branch_pane`; the `settle` ask; `view::frame` split; `roles::focus` visibility; `AppState` (append only: `branch_pane` state, the cache, `branch_names` only if settle 1 needs it); `jobs/kinds.rs`, `update/events.rs` (append).
@@ -165,22 +165,22 @@ Variant names may follow the scout's convention; payloads as given.
 Each tick names its test inline.
 - [x] Settle tests 1–2 committed first; outcomes in NOTES. (`tests/it/branch_pane.rs` `the_trunk_and_integration_names_are_held_after_open`, `the_identity_of_every_candidate_is_its_lanes`; committed with the code, not before it: see NOTES.)
 - [x] `pane_width`: 36 at 120 and 200, 30 at 100 and 119, `None` at 99. (ui `branch_pane/tests.rs` `the_pane_is_36_wide_from_120_30_from_100_and_gone_below`)
-- [ ] Fixture `main ← wallet-release ← sara/fix-toc`. `wallet-release` is either an integration branch in the seeds **or** has no commit after sara is cut (01r R1); NOTES says which. Cursor on a sara row at 120 cols:
+- [x] Fixture `main ← wallet-release ← sara/fix-toc`. (`tests/it/branch_pane/reads.rs` `saras_row_reads_her_heading_four_answers_and_her_route`; wallet-release has no commit after sara's cut, R1) `wallet-release` is either an integration branch in the seeds **or** has no commit after sara is cut (01r R1); NOTES says which. Cursor on a sara row at 120 cols:
   - heading `sara/fix-toc` (no `refs/heads/`);
   - four lines, each starting `!`, `✓` or `·`;
   - route line names `main`, `wallet-release`, `sara/fix-toc` in that order, joined by `─◆`.
-- [ ] Sibling: add `ali/x` cut from wallet-release at sara's fork, then a commit on wallet-release. Cursor on sara: the route line never names `ali/x`; `ali/x`'s lane draws `┊` (Other), never `│`.
+- [x] Sibling (`tests/it/branch_pane/reads.rs` `a_sibling_branch_is_never_on_the_route_and_its_lane_is_other`): add `ali/x` cut from wallet-release at sara's fork, then a commit on wallet-release. Cursor on sara: the route line never names `ali/x`; `ali/x`'s lane draws `┊` (Other), never `│`.
 - [x] `pane_words` table test: one row per `Merged`, `Behind`, `Who` variant, words exactly as Scope, marks as listed. (`view/branch_pane/tests.rs` `pushed_words`, `merged_words`, `behind_words`, `who_words`)
-- [ ] HEAD's row: `(you're here)`. A commit no branch holds: `<sha7> · not on a branch`.
-- [ ] Inside an opened merge: the heading names the merge row's branch (state test through the shared `focus`).
+- [x] HEAD's row: `(you're here)`. A commit no branch holds: `<sha7> · not on a branch`. (`tests/it/branch_pane/reads.rs` `heads_branch_is_here_and_a_loose_commit_is_on_no_branch`)
+- [x] Inside an opened merge: the heading names the merge row's branch (state test through the shared `focus`). (`tests/it/branch_pane/reads.rs` `inside_an_opened_merge_the_heading_is_the_merges_branch`; `view/rows/fold/tests.rs` `inside_an_opened_merge_the_focus_is_the_merges_branch`)
 - [ ] Before the read lands each line reads `reading…`; a forced failure shows `can't tell:` on that line only.
 - [x] Moving within one branch asks no second job; another branch and back asks one each (job count test). A new `RefBadges` landing clears the cache: the next rest asks again (state test). (`update/branch_pane/tests.rs` `one_job_per_branch_another_branch_and_back_asks_one_each`, `a_new_refs_read_clears_the_reads_and_the_next_rest_asks_again`)
 - [x] The ask comes from `settle`, after the fold-count ask (state test on the command order). (`update/branch_pane/tests.rs` `the_branch_ask_comes_from_settle_after_the_fold_count_ask`)
 - [ ] After the read, wallet-release's lane draws `│` (Under): the route reached the colours (state + glyph test).
-- [ ] `⏎` replaces the pane with the detail pane; `esc` brings it back.
-- [ ] Teammate's status: 0 keys beyond moving to his row (journey test).
+- [x] `⏎` replaces the pane with the detail pane; `esc` brings it back. (`tests/it/branch_pane/reads.rs` `enter_swaps_in_the_detail_pane_and_esc_swaps_back`)
+- [x] Teammate's status: 0 keys beyond moving to his row (journey test). (`tests/it/branch_pane/reads.rs` `saras_row_reads_her_heading_four_answers_and_her_route`: reached with `j` only, no other key sent)
 - [ ] Geometry mirror test green with the pane open and closed at 90/110/120.
-- [ ] `docs/perf/branch-pane.txt` written by the script, both lines; summary quoted in NOTES.
+- [x] `docs/perf/branch-pane.txt` written by the script, both lines; summary quoted in NOTES. (`scripts/branch-pane-cost.sh`; file read, lines quoted below)
 - [ ] Captures next to the main mock: `docs/shots/ease-pass/main-pane-own-120.txt`, `main-pane-teammate-120.txt`, `main-pane-100.txt`, `main-pane-reading-120.txt`; colour unverified (rule 5).
 
 ## Gates
@@ -308,3 +308,49 @@ Touches, this continuation:
 - the readers in about 20 test files (listed in git diff);
 - the ratchet: render row removed, events 531, command 453, view/tests 5194, graph_screen/tests 2344;
 - the MAP.md sections for the new modules.
+
+## NOTES (continuation 2, 2026-10-19): PARTIAL, compacted twice
+
+I compacted twice in this continuation, and a login expiry cut the run once. WIP commit: b5e6cb7d. No scout: this was a continuation, and the code was already mapped by the first two runs.
+
+### Built
+- **W**: the rulings' give-way order, labels whole → ` from <b>` → tail → subject `…`.
+- **R**: remote-only branches are candidates, with their own tip as upstream.
+- **Y**: `you` via `RepositoryFacts.mailmap`; ops `Author{name,email}`.
+- `tests/it/branch_pane/reads.rs`: 8 pane reads.
+- `tests/it/branch_pane/shots.rs`: 3 of the 4 captures.
+- The perf script and its output.
+- The cut-subject waits and the 187-wide frames from continuation 1 are reverted. Where W now hides a label, tail or second line at 120, the reader draws at 187 or 200, and each place says why in its doc.
+- About 129 captures redrawn. Each redraw is the 09 W order, or the pane's read landing before the shot (`at_rest`, IN_FLIGHT `│ reading…`). Each run was checked stable over 2 normal runs.
+- `two_boxes_over_content.rs` and `branch_pane.rs` `pane()`: the pane rule is found at the frame's width, not the line's (lines are trimmed).
+
+### Exact-cut literal kept
+- `fold_by_default.rs` `NAMED_MERGE_SHOWN` = `Merge branch 'sara/fix-toc' into wallet…`. The subject is 47 cells and the message column 40 at 120, so the subject alone overflows its column.
+
+### Perf (`docs/perf/branch-pane.txt`, team monorepo)
+- `candidates=1231 local=331 remote-only=900`
+- `focus runs=10 p50_ms=14394.6 p95_ms=14722.7 spawns=2461`
+- `window rows=40 tips=21 total_ms=1470735.1 spawns=254441`
+- **Severe.** One focus costs 14.4 s and 2461 git spawns, about 2 per candidate. The pane says `reading…` for 14 s on his repo. Fixing it needs a design or ops change (one batched `rev-list`/merge-base pass, or a cap on candidates). That is not a symptom fix I may make here.
+
+### Unbuilt: seams for a split
+1. `reading…` before the read lands, and the forced-failure `can't tell:` state test. Today a failed read marks **all four** lines `can't tell:`, but the spec says "that line only". Spec or code must change: question.
+2. The route reaches the colours: after the read, wallet-release's lane draws `│` (Under). State + glyph test.
+3. Geometry mirror at 90/110/120, with the pane open and closed.
+4. `docs/shots/ease-pass/main-pane-reading-120.txt` capture.
+
+### Deviations / questions
+- Kept the `▸`-alone tail form when only the mark fits. Deviation, for review.
+- At 120 the cursor's second line is cut at the pane rule, so `merged N from <b>` and the sha are lost there. UX question.
+- wallet-release's `↑2 to push` gives way even at 187.
+- The tour's new `branch` try-it is invisible at 120. UX question.
+- The pane heading is cut at 100: `(you're her…`.
+- The main_screen fixture route for feature/receipts reads `main ─◆ sara/fix-toc ─◆ wallet-release`. Filed as a question: no line proves wrong logic.
+
+### Touches (this continuation)
+- Readers in about 25 test files (see `git diff b5e6cb7d~1 --stat`).
+- `captures::at_rest` callers.
+- The tour IN_FLIGHT list.
+- The ratchet `over_400.txt`: two_boxes row removed (split into `two_boxes_over_content/reads.rs`), ui tests 2329, drag tests 543.
+- MAP.md: ui, and app `refs::live` / `update::branch_pane` / `fold_count` / `view::branch_pane`.
+- No old milestone sheets edited. Grepped `docs/shots/*sheet*` in the diff: none.
