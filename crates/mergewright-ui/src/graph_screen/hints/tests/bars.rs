@@ -316,3 +316,62 @@ fn the_look_bar_draws_the_mock_words() {
         " esc back to the review · y commit the merge"
     );
 }
+
+/// Settle test 2 of ease-pass/07b, before the bar switch: today's whole
+/// 120-column bar for the two rows `R rewrite` wraps. `Rewritable` adds
+/// `R rewrite` at its list's end, which this width drops, so each is the
+/// bare row's bar.
+#[test]
+fn todays_rewritable_bars_at_120_columns() {
+    let rewritable = |inner: HintContext| HintContext::Rewritable(Box::new(inner));
+    let cases = [
+        (
+            rewritable(HintContext::PlainRow {
+                verbs: RowVerbs::NONE,
+            }),
+            " ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys",
+        ),
+        (
+            rewritable(HintContext::BranchRow {
+                current: true,
+                verbs: RowVerbs::NONE,
+            }),
+            " ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys",
+        ),
+        (
+            rewritable(HintContext::BranchRow {
+                current: false,
+                verbs: RowVerbs::NONE,
+            }),
+            " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys",
+        ),
+    ];
+    for (context, want) in cases {
+        assert_eq!(bar(&context, 120), want, "{context:?}");
+    }
+}
+
+/// Settle test 2's finding (ease-pass/07b, `blocked: Rewritable vs mock
+/// bar`): a `GraphRow` under `Rewritable` does not draw its mock bar plus
+/// `R rewrite`. `drawable` gives the mock's short tail (`u undo`) only
+/// when the context itself is `GraphRow` (`hints/filters.rs` `tail`), so
+/// under the wrapper the screen-wide `TAIL` follows instead: `. actions`
+/// goes, `q quit · F2 stat · F3 rend` come in, and `C switch to fix-toc`
+/// falls to `C switch`. Pinned as found; the fix flips it.
+#[test]
+fn a_rewritable_graph_row_draws_the_wide_tail_not_the_mock_bar() {
+    let rewritable = |inner: RowBar| HintContext::Rewritable(Box::new(row(inner)));
+    let cases = [
+        (
+            rewritable(RowBar::Own),
+            " ⏎ open · P push · c commit · R rewrite · q quit · F2 stat · F3 rend · u undo · x compare · + lane · / search · ? keys",
+        ),
+        (
+            rewritable(elsewhere("sara/fix-toc")),
+            " m merge fix-toc into yours · ⏎ open · C switch · x compare · R rewrite · q quit · F2 stat · F3 rend · u undo · ? keys",
+        ),
+    ];
+    for (context, want) in cases {
+        assert_eq!(bar(&context, 120), want, "{context:?}");
+    }
+}

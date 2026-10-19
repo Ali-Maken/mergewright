@@ -1,6 +1,6 @@
 # graph-rows-cursor — the cursor row's second line, scroll and hit-test around it, the bar per row kind
 
-Status: ready (split from 07 at its old (a)/(b) point, planner spec-only pass 2026-10-18, after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12; mismatches 2, 4, 5 and the two *could not confirm* items settled below)
+Status: **blocked: Rewritable vs mock bar** (2026-10-19, settle test 2 — see NOTES; nothing past it built). Was: ready (split from 07 at its old (a)/(b) point, planner spec-only pass 2026-10-18, after scout `.scratch/ease-pass/scouts/07-graph-rows.md` at e9b08d12; mismatches 2, 4, 5 and the two *could not confirm* items settled below)
 Blocked by: 07-graph-rows. **Anchors are the scout's, pre-split: map each through 06s's and 06t's NOTES tables and 07's NOTES before starting.**
 Build with: Opus — scroll and every screen-line → row hit-test change meaning together, three facts are settled by tests before the code they decide, and the bar choice spans view, update and refs (scout's call).
 Needs: from 07: `AppState.route`, `GraphEntry` (+ `badges` undrawn if kept), `RowLabel`, `lane_roles`, `ref_spans`; from 03b/03r: `HintContext::GraphRow { row: RowBar, verbs: RowVerbs }`, `RowBar::{Own, Elsewhere { branch: SanitizedText }, FoldedMerge { inside: u32 }, OpenedMerge, JustCommitted, JustMerged { inside: u32 }}` (`hints/context/row_bar.rs:12`), `bar_name` (:47); from 06: `OpenedMerges`, `InsideMerge { merge, label }` (`view/rows/fold.rs:27`), `FoldMark { open, count, from }`; app `refs::RefBadges`, `refs::RefLabel`; `ContainedIn` (`update/events.rs:318`) from `read_contained` (`jobs/detail.rs:340`); `cursor_row_context` (`view/rows/context.rs:107`) with 08's `landed_bar` arm (08:115).
@@ -78,3 +78,26 @@ fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide.
 
 ## Size
 ~70k. Split point if it overruns: (i) settle tests 2–3, `live_branch`, `row_bar` and the bar switch; (ii) settle test 1, second line, scroll and hit-tests, captures.
+
+## NOTES (builder, 2026-10-19)
+
+Stopped at settle test 2, as the ticket orders. No compaction. Scout: the ticket's (`scouts/07-graph-rows.md`); anchors re-found by grep at 7305006d (choice site still `view/rows/context.rs:107`; `PlainRow` pickers now `view/rows.rs:183`, `view/rows/hint_context.rs:307`, `update/commit_editor/done_row.rs:58`).
+
+**Settle test 2 — blocked: Rewritable vs mock bar.** Tests in `crates/mergewright-ui/src/graph_screen/hints/tests/bars.rs`:
+- `todays_rewritable_bars_at_120_columns` pins today. `Rewritable` adds only `R rewrite` at the list's end; 120 columns drops it, so each bar equals the bare row's:
+  - `Rewritable(PlainRow)`: ` ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys`
+  - `Rewritable(BranchRow{current})`: ` ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys`
+- `a_rewritable_graph_row_draws_the_wide_tail_not_the_mock_bar` pins the composed bar as found (verified by running it):
+  - mock (03r, `each_row_bar_draws_the_mock_bar_at_120_columns`), Own: ` ⏎ open · P push · c commit · u undo · . actions · ? keys`
+  - composed `Rewritable(GraphRow{Own})`: ` ⏎ open · P push · c commit · R rewrite · q quit · F2 stat · F3 rend · u undo · x compare · + lane · / search · ? keys`
+  - mock, Elsewhere `sara/fix-toc`: ` m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys`
+  - composed: ` m merge fix-toc into yours · ⏎ open · C switch · x compare · R rewrite · q quit · F2 stat · F3 rend · u undo · ? keys`
+- Differs beyond `R rewrite`: `. actions` is gone, `q quit · F2 stat · F3 rend` (and on Own `x compare · + lane · / search`) come in, `C switch to fix-toc` falls to `C switch`.
+- **Cause, with its line:** `crates/mergewright-ui/src/graph_screen/hints/filters.rs:347`. `drawable` picks `ROW_BAR_TAIL` only when `matches!(context, HintContext::GraphRow { .. })`. A `Rewritable(GraphRow)` fails that match and gets the screen-wide `TAIL`.
+- **Why it matters:** `rewrite_offered` (`view/rows/context.rs`) wraps HEAD's own branch rows whenever HEAD is not the default branch. That covers his daily case, feature-branch rows, which are exactly the `Own` bar.
+- **The same composition already ships:** `landed_bar`'s `GraphRow{JustCommitted}` is wrapped by `Rewritable` today (`context.rs:128` → `:141`). Not verified by a test here. It is a question for the fixer.
+- **Possible fix, not mine to make** (hints are out of scope): look through `Rewritable` (and `Marked`?) in `filters.rs:347`. Then decide whether `R rewrite` should draw on the mock bar at all. Owner of the hint words: 03b/03r.
+
+**Not done (nothing built past settle test 2):** settle tests 1 and 3, `live_branch`, `row_bar`, the bar switch, `BranchRow` removal, the second line, `body_line`/`commit_rows`, scroll, hit-tests, captures. Next step once unblocked: settle test 3 (pin the three `PlainRow` pickers above), then `live_branch` unit tests.
+
+Acceptance: 0/9 ticked. Box 1 is partly met (settle test 2 committed); it stays unticked until tests 1 and 3 are in.
