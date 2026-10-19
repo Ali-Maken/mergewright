@@ -99,6 +99,20 @@ impl Reads {
     pub fn get(&self, key: &StatusKey) -> Option<&StatusRead> {
         self.by_key.get(key)
     }
+
+    /// A landed read says `branch` (full ref name) is merged nowhere
+    /// (`Merged::NotYet`): the row label `not merged` (09b). Only landed
+    /// reads count — unread, reading or failed draw nothing. Every key
+    /// held is this refs generation's ([`refs_landed`] clears them), so
+    /// matching on the branch alone is exact.
+    #[must_use]
+    pub fn not_merged(&self, branch: &str) -> bool {
+        self.by_key.iter().any(|(key, read)| {
+            key.branch == branch
+                && matches!(read, StatusRead::Read(status)
+                    if matches!(status.merged, mergewright_ops::branch_status::Merged::NotYet { .. }))
+        })
+    }
 }
 
 /// Every branch in `refs` as a candidate base: each local branch, and each

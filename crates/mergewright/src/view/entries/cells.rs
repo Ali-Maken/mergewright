@@ -43,7 +43,7 @@ pub(super) fn row_entry<'a>(
     // packed again each frame. Cut in drawing order, so the row draws and
     // hit-tests exactly as before — `mergewright_ui::graph_screen::badges_that_fit`
     // says why the cells cannot change.
-    let badges = base
+    let mut badges: Vec<Badge> = base
         .into_iter()
         .chain(
             refs.into_iter()
@@ -51,6 +51,7 @@ pub(super) fn row_entry<'a>(
         )
         .take(badges_that_fit(state.size.columns))
         .collect();
+    push_not_merged(state, refs, row.commit.id, &mut badges);
     let subject = String::from_utf8_lossy(row.commit.subject());
     let marker = super::super::radar::marker_for(
         state,
@@ -166,5 +167,45 @@ pub(in crate::view) fn badge_view(label: &RefLabel) -> Badge {
             name: sanitize_line(&format!("stash@{{{index}}}")),
             kind: BadgeKind::Stash,
         },
+    }
+}
+
+/// `not merged` after a branch's label on its tip row (ease-pass 09b), from
+/// a landed read in the branch pane's cache only — never `reading…`.
+/// Pushed last, so every ref keeps the index `update::geometry::badge_at`
+/// maps it by; skipped when the row is at its badge cap, where an index
+/// past the drawn refs could name a ref not drawn.
+fn push_not_merged(
+    state: &AppState,
+    refs: Option<&RefBadges>,
+    at: mergewright_core::oid::Oid,
+    badges: &mut Vec<Badge>,
+) {
+    let Some(refs) = refs else {
+        return;
+    };
+    let reads = &state.look.reads;
+    let offset = usize::from(badges.first().is_some_and(|b| b.kind == BadgeKind::CompareBase));
+    let wanted: Vec<usize> = refs
+        .on(at)
+        .iter()
+        .enumerate()
+        .filter_map(|(index, label)| {
+            let full = match label {
+                RefLabel::Branch { name, .. } => format!("refs/heads/{}", String::from_utf8_lossy(name)),
+                RefLabel::Remote(name) => format!("refs/remotes/{}", String::from_utf8_lossy(name)),
+                RefLabel::DetachedHead | RefLabel::Tag(_) | RefLabel::Stash(_) => return None,
+            };
+            reads.not_merged(&full).then_some(index + offset)
+        })
+        .collect();
+    for of in wanted {
+        if of >= badges.len() || badges.len() >= badges_that_fit(state.size.columns) {
+            return;
+        }
+        badges.push(Badge {
+            name: sanitize_line(""),
+            kind: BadgeKind::NotMerged { of },
+        });
     }
 }

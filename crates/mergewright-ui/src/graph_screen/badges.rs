@@ -62,6 +62,13 @@ pub enum BadgeKind {
     /// ref, and last on its row. Reads `only in stash@{n}` whatever its
     /// `name`.
     OnlyInStash(usize),
+    /// `not merged` (ease-pass 09b): not a ref, a word about the branch
+    /// badge at index `of` on the same row, read right after that branch's
+    /// label. The app pushes it last, so every ref keeps its index.
+    NotMerged {
+        /// The index of the branch badge it speaks for.
+        of: usize,
+    },
 }
 
 /// Where a local branch stands against its upstream.
@@ -86,6 +93,9 @@ pub enum Tracking {
 /// Marks the branch `HEAD` is on, in both icon sets: the same shape the
 /// graph draws `HEAD`'s node with.
 const CURRENT: &str = "◆ ";
+
+/// [`BadgeKind::NotMerged`]'s words.
+pub(super) const NOT_MERGED: &str = "not merged";
 
 impl Badge {
     /// The badge as it reads on screen. `keys` spells the compare base's
@@ -123,6 +133,7 @@ impl Badge {
                 .key_verb(&[ActionId("graph.compare")], "base")
                 .unwrap_or_else(|| "base".to_owned()),
             BadgeKind::OnlyInStash(n) => format!("only in stash@{{{n}}}"),
+            BadgeKind::NotMerged { .. } => NOT_MERGED.to_owned(),
         };
         match icons {
             Icons::Plain => format!("[{body}]"),
@@ -146,6 +157,8 @@ impl Badge {
             BadgeKind::Stash | BadgeKind::OnlyInStash(_) => '\u{f01c}',
             // nf-oct-git_compare
             BadgeKind::CompareBase => '\u{f47f}',
+            // nf-oct-git_merge (never drawn: `label_words` leaves it bare)
+            BadgeKind::NotMerged { .. } => '\u{f419}',
         }
     }
 }

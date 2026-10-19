@@ -204,22 +204,33 @@ fn labels(entry: &GraphEntry<'_>, icons: Icons, keys: &Keymap) -> Vec<(usize, St
         .as_ref()
         .filter(|cell| !cell.dim)
         .map(|cell| cell.name.as_str());
-    let mut words: Vec<(u8, usize, String)> = entry
+    let mut words: Vec<((u8, usize, u8), usize, String)> = entry
         .badges
         .iter()
         .enumerate()
         .filter_map(|(index, badge)| {
             let in_column = named == Some(badge.name.as_str())
                 && matches!(badge.kind, BadgeKind::Branch { .. });
-            let rank = match badge.kind {
+            let rank = |badge: &Badge, in_column: bool| match badge.kind {
                 BadgeKind::CompareBase => 0,
                 _ if in_column => 1,
                 _ => 2,
             };
-            label_words(badge, icons, keys, in_column).map(|text| (rank, index, text))
+            // `not merged` reads right after its branch's label (09b): it
+            // sorts as that branch, one step behind it.
+            let key = match badge.kind {
+                BadgeKind::NotMerged { of } => {
+                    let owner = entry.badges.get(of)?;
+                    let owner_in_column = named == Some(owner.name.as_str())
+                        && matches!(owner.kind, BadgeKind::Branch { .. });
+                    (rank(owner, owner_in_column), of, 1)
+                }
+                _ => (rank(badge, in_column), index, 0),
+            };
+            label_words(badge, icons, keys, in_column).map(|text| (key, index, text))
         })
         .collect();
-    words.sort_by_key(|(rank, index, _)| (*rank, *index));
+    words.sort_by_key(|(key, _, _)| *key);
     words
         .into_iter()
         .map(|(_, index, text)| (index, text))
@@ -235,7 +246,9 @@ fn labels(entry: &GraphEntry<'_>, icons: Icons, keys: &Keymap) -> Vec<(usize, St
 pub fn label_words(badge: &Badge, icons: Icons, keys: &Keymap, in_column: bool) -> Option<String> {
     let words = plain_words(badge, keys, in_column)?;
     Some(match icons {
-        Icons::Nerd if !in_column => format!("{} {words}", badge.nerd_icon()),
+        Icons::Nerd if !in_column && !matches!(badge.kind, BadgeKind::NotMerged { .. }) => {
+            format!("{} {words}", badge.nerd_icon())
+        }
         _ => words,
     })
 }
@@ -265,6 +278,7 @@ fn plain_words(badge: &Badge, keys: &Keymap, in_column: bool) -> Option<String> 
             .key_verb(&[ActionId("graph.compare")], "base")
             .unwrap_or_else(|| "base".to_owned()),
         BadgeKind::OnlyInStash(n) => format!("only in stash@{{{n}}}"),
+        BadgeKind::NotMerged { .. } => super::badges::NOT_MERGED.to_owned(),
     })
 }
 
