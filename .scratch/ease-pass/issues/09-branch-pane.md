@@ -24,7 +24,7 @@ Needs: ops `branch_status(repo, branch, candidates, upstream, stop)` (`mergewrig
   - `StatusKey` = branch + a hash of every candidate tip. The whole cache is **cleared when a new `RefBadges` lands** (any refs read: after a fetch, push, pull, commit or branch operation).
   - Cost: one re-read for the focus per refs read.
   - Why: an upstream that moves always arrives with a refs read, so clearing there is exact. A key by upstream tip would need a held tip the app doesn't have.
-- **M4 — `candidates` from `RefBadges` + `Branches`.**
+- **M4 — `candidates` from `RefBadges` + `Branches`.** (Amended 2026-10-19, ruling R below: remote-only branches are candidates too.)
   - Local branches: every `RefLabel::Branch` (short name → `refs/heads/<name>`), tip = the commit it labels.
   - Kind: `Trunk` when the name is the default branch, `Integration` when it is in the integration list (settle 1), else `Other`.
   - The branch's own upstream is never a candidate (01 handoff "For B").
@@ -33,6 +33,90 @@ Needs: ops `branch_status(repo, branch, candidates, upstream, stop)` (`mergewrig
 - **M7 — `identity_of(c) = BranchIdentity::of_name(shorthand(c.name))`** with core's `shorthand`, the layout's own function. Not ops' `short_name`, which is for display only.
 - **M2 (`open_on`) → 09b.** **`not merged` row label → 09b** (it reads this ticket's cache).
 - `⏎` opens the detail pane as today; while open it **replaces** the branch pane at every width; closing brings the branch pane back.
+
+### Rulings 2026-10-19 (planner spec-only pass, on continuation 1's three questions)
+
+**W — width: the subject gives way last, as in the mock. Pane widths unchanged.**
+- What the mock does: fixed `graph 13ch | branch 20ch | message 1fr | who 6ch | age 4ch` (`prototypes/ease-mocks/mergewright-main-screen.html:33`), pane 290px (`:30`). Subject, fold tail and labels are **one** cell (`:190`), cut at its right end with `…` (`:35`). So in the mock the labels go first, then the tail, and the subject goes last.
+- The mock's width: `.term` is min 1040px (`:24`) and max 1148px (`:18`, 1180 − 2×16). At 13px JetBrains Mono (≈7.8px a column) that is **133–147 columns**, with a message column of about 45–55. So the mock is not 120 columns wide. Its pane, ≈37 columns, matches ours (36 + `│` + space = 38). At 120 with the pane, the message column is about 10–20 narrower than the mock's. This is arithmetic from the CSS and was not measured. The mock's own rows lose their tails too: `Merge PAY-571: bounced check charge on the PDF  ▸ 1 commit from pay-571/bounce-charge` is 86 characters in ≈45.
+- The cause of `M…` is 07c's squeeze order, which gives up the subject first (07c's own question 1, `07-graph-rows.md:109`). The defect is in ui `graph_screen` row text (07c's `row_text.rs` / `row_cells.rs`), not in the pane. This fixes the cause.
+- **Priority, first to give way → last:**
+  1. labels (`↑N to push`, `not pushed yet`, `<b> is here`, `tag <t>`, `not merged`), right-most first. Each drops whole and is never cut with `…` (06b's header precedent);
+  2. the fold tail loses ` from <branch>` → `▸ N commit(s)`;
+  3. the fold tail drops whole;
+  4. the subject, cut with `…` at its right end.
+  - Never squeezed: graph, branch 20/14/12, who 6, age 4, pane 36/30. Breakpoints unchanged: ≥120 pane 36; 100–119 pane 30; <100 no pane.
+- Why nothing is lost: on the cursor row, the second line repeats `made on <b> · <label> · merged N from <b>` (G9), and the pane repeats push state. The subject is said nowhere else on the row.
+- This applies at every width, pane or not, so the 100, 90 and 80 captures change too.
+- One departure from the mock: items drop whole instead of the browser's mid-word `…`. That is a CSS default in the mock, not a choice the mock makes.
+- **Test waits — revert** any wait that accepts a cut subject (prefix + `…` matching). Walks moved to a 187-wide frame (`fold_by_default::wide`, `graph_rows_tests::row_words`, `second_line::rows`) go back to their original width. Under this order those subjects are whole.
+  - A wait may match a cut subject only when the subject alone is wider than its message column at that width. It then matches the exact cut literal, with the width in a comment.
+  - **These stand:** `graph_side` / `without_pane_rule` (the pane's `│` is not a box edge or a click target), and the `row_reads.rs` helpers that match whole words (`cursor_on_head` with `(you)` included).
+- Touches:
+  - 07c's ui row text;
+  - `ref_spans_match_the_drawn_cells` (a dropped label has no span and cannot be dragged);
+  - `fold_tail_narrow` (07c's NARROW 62, `main-folded-62.txt`);
+  - search highlight (on the subject);
+  - preview columns;
+  - every graph capture, re-taken once, after this change;
+  - 07c's question 1, which this answers.
+
+**R — a remote-only branch is a branch: it is a candidate, gets a heading and gets answers. Amends M4.**
+- **Candidates** = every local branch (M4) **plus** every remote-tracking branch that is no local branch's upstream. Never `refs/remotes/<r>/HEAD`.
+  - Name = the full ref `refs/remotes/<r>/<name>`; tip = its commit.
+  - Kind = taken from `<name>` with the remote stripped, by the same Trunk/Integration test as locals.
+- **Upstream** passed to `branch_status` for a remote-only branch = its own tip. That gives `Pushed::InSync` → `✓ pushed`, the mock's word for teammates (`:198-199`). Something that exists only on the remote never reads `not pushed yet`.
+- **Heading** = the name the branch column draws for that lane. `identity_of` gives `of_name(shorthand(full))`, so the heading and the column give the branch one name on screen. NOTES records what the column draws for a remote-only lane at 120. `C` is 09b's.
+- Why:
+  - His team works on dependent branches (memory "works in a team on dependent branches"). A teammate's branch he never checked out exists only as a remote-tracking ref, and teammate rows are part of his daily task (`docs/field-notes.md:112`: `C`/`x` on a teammate row). A teammate's row reading `not on a branch` is false.
+  - R1 needs a teammate's remote branch as a possible base (sara cut from omar's).
+- `<sha7> · not on a branch` stays only for commits no local or remote branch holds (detached commits, commits of a deleted branch).
+- Cost: the candidates grow by the remote branch count.
+  - `scripts/branch-pane-cost.sh` runs with remote-only branches in its fixture, and its line states the candidate count.
+  - No budget is set here; the conductor judges the number.
+- Touches: `candidates`; `StatusKey` (remote tips are hashed; still cleared when refs land); the job's upstream read; 09b's `not merged` label (it reads this cache); 14's fixture; settle 2.
+
+**Y — `you` in the who line: the one `Mailmap` 07c reads, asked in the app.**
+- Source: `RepositoryFacts.mailmap` (app MAP `:216`). Its `Mailmap::with_me` holds `user.email`, read once (07c ruling; git MAP `:200`).
+  - The pane asks `Mailmap::is_me` exactly as the who column does (the builder greps the column's call and copies it).
+  - No second config read, no read in the job, no user identity in ops.
+- ops carries the identity, not only the name: `Who::Authors { first: Vec<Author>, .. }` with `pub struct Author { pub name: String, pub email: String }`. `others` and `last` are unchanged.
+  - If ops already groups authors through the mailmap, carry the resolved pair. If it groups by raw identity, carry the raw pair and leave grouping alone. NOTES says which; MAP doesn't say.
+- `pub(crate) fn pane_words(status: &BranchStatus, kind: CandidateKind, me: &Mailmap) -> [PaneLine; 4];` replaces the Signatures line.
+  - The user's author reads `you` in place of his first name (mock `you, last commit 23h ago`, `:195-196`). It is not bold: the mock pane bolds nothing there (`:202`).
+  - `Everyone` is unchanged.
+  - No `user.email` → first names, and nothing reads as an error.
+- Crate set: adds **mergewright-ops** for this one field (01r's rules untouched).
+  - If another builder holds ops, this part splits out as its own ticket. The pane shows first names until it lands; KNOWN_GAPS marks that row unverified, not broken.
+- Touches: every `Who::Authors` site (grep: ops tests, app `pane_words`, 09b if it reads `who`); ops MAP `:55`.
+
+**Mock check.** W restores the mock's priority. Y uses mock words. R's heading form is the one open question below. Not ruled here: continuation 1's fourth note (ops' `up to date with origin/main`, wallet-release `up to date with sara/fix-toc`), because it was not asked. It stays a question for 01r's owner.
+
+**Question for the user (not decided):** a teammate's branch you haven't checked out. The mock names these bare (`sara/dexcom-report`, `:111`). 07 ruled the row label `origin/x is here` (`07-graph-rows.md:35`). The pane heading follows the branch column (R).
+- Options: (a) keep `origin/` on the column, label and heading; (b) bare names on all three.
+- Build (a)'s consistency now. Either answer changes all three together, never the pane alone.
+
+**Acceptance added by these rulings** (each tick names its test inline, as below):
+- [ ] W: ui `the_subject_gives_way_last_in_the_message_column`. At 120 with the pane:
+  - a folded merge whose subject fits shows the whole subject; `from <b>` drops first, then the tail;
+  - labels drop before the tail, whole, with no `…` inside one;
+  - a subject wider than the column by itself is cut with `…`, and nothing is drawn after it.
+- [ ] W: grep `main-pane-own-120.txt` and `main-pane-teammate-120.txt`. No row ends its subject in `…` when the subject is shorter than its message column.
+- [ ] W: no test asserts a `…`-cut subject that would fit its column. NOTES lists each exact-cut literal kept, with its width.
+- [ ] R: settle 2 extended. For a remote-only `origin/omar/x`, `identity_of == made_on(row on it)`.
+- [ ] R: cursor on a row of a remote-only branch:
+  - the heading is the branch column's name for it;
+  - line 1 reads `✓ pushed`;
+  - it never reads `not on a branch` or `not pushed yet`.
+- [ ] R: `candidates` unit test. A local branch's upstream and `origin/HEAD` are never candidates.
+- [ ] R: sara is cut from remote-only `origin/omar/x`, and omar has no commit after (R1). Sara's route names `origin/omar/x`.
+- [ ] R: the cost line names the candidate count, remote-only branches included.
+- [ ] Y: ops unit test. `Who::Authors.first` carries name and email.
+- [ ] Y: `pane_words` table:
+  - own branch → `you, last commit …`;
+  - a commit under a second address the mailmap joins to the user's → `you`;
+  - no `user.email` → his first name.
+- [ ] Y: integration test. Cursor on HEAD's branch, on the two-author fixture: the who line starts `· you,`.
 
 ## Scope
 In: mergewright-ui new module `branch_pane`; app new `jobs::branch_status`, `update::branch_pane`, `view::branch_pane`; the `settle` ask; `view::frame` split; `roles::focus` visibility; `AppState` (append only: `branch_pane` state, the cache, `branch_names` only if settle 1 needs it); `jobs/kinds.rs`, `update/events.rs` (append).
