@@ -1,11 +1,11 @@
 SUMMARY machine ac=1 lowpower=0 os=darwin
-# ahead counts in one refs read — 2026-10-18T15:03:09Z
+# ahead counts in one refs read — 2026-10-19T15:27:04Z
 # git version 2.54.0 (Apple Git-157), Darwin arm64, Mac17,2, release build
-# load before: { 15.36 15.09 12.69 }   after: { 21.16 18.49 14.68 }
+# load before: { 3.08 1.45 1.65 }   after: { 4.24 2.38 1.99 }
 # fixture: 60 linear commits; 2000 local branches, 500 with upstreams, each <=50 commits apart
 # measured: refs::read, cold ahead/behind cache (5 runs), then a warm re-read
 # budget: 100 ms per cold refs read, off the UI thread
 
-ease-07a warm runs ms: [1.4505, 2.916792, 3.2087499999999998, 6.009666, 18.443125000000002]
+ease-07a warm runs ms: [1.396458, 1.397542, 1.4233749999999998, 1.43925, 1.536625]
 
-ease-07a summary: cold refs read median 121.4 ms (max 179.1), warm 3.2 ms; 2000 local, 500 tracked; budget 100 ms; load { 15.36 15.09 12.69 }/{ 21.16 18.49 14.68 }
+ease-07a summary: cold refs read median 32.7 ms (max 112.8), warm 1.4 ms; 2000 local, 500 tracked; budget 100 ms; load { 3.08 1.45 1.65 }/{ 4.24 2.38 1.99 }
