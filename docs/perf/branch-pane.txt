@@ -8,3 +8,12 @@ SUMMARY machine ac=1 lowpower=0 os=darwin
 branch-pane-cost: candidates=1231 local=331 remote-only=900
 branch-pane-cost: focus runs=10 p50_ms=14394.6 p95_ms=14722.7 spawns=2461
 branch-pane-cost: window rows=40 tips=21 total_ms=1470735.1 spawns=254441
+
+# ease-pass 09p, spawn counts only: 2026-10-19, HEAD ff75b93d, git version 2.54.0 (Apple Git-157)
+# No timing run. These come from the example under the spawn shim, so the times are not budget figures. The timing run is still owed (scripts/branch-pane-cost.sh).
+branch-pane-cost: candidates=1231 local=331 remote-only=900 trunk=1 integration=0 other=1230
+branch-pane-cost: focus spawns=8
+branch-pane-cost: breakdown for-each-ref=3 merge-base=1 rev-list:--count=3 rev-list:--reverse=1
+branch-pane-cost: window rows=40 tips=21 spawns=3337
+branch-pane-cost: scaling others=10 spawns=6 others=500 spawns=6
+branch-pane-cost: budget OVER window (spawns 3337 > 60 x 21 = 1260)

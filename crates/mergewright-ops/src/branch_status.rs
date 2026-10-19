@@ -19,19 +19,24 @@
 //! - The **route** repeats the step from each base, to the trunk: an
 //!   on-line branch steps to its line, any other by R1.
 //!
+//! Only candidates the rules can consult are measured (`measure`, 09p).
+//!
 //! Reads only, every one through `count_between` / `commits_between` /
-//! `commits_from` / `compare_span` / `entry_into`, so each honours a
+//! `commits_from` / `compare_span` / `entry_into` / `refs_where`, so each honours a
 //! [`Stop`] and fails with [`RunError`]. Branches are named by full ref
 //! name (`refs/heads/main`); `mergewright-graph` turns names into lane
 //! identities, not this crate.
 
 use mergewright_core::oid::Oid;
-use mergewright_git::history_reads::{CompareSpan, compare_span, count_between};
+use mergewright_git::history_reads::{CompareSpan, compare_span};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{RunError, Stop};
 
 mod footing;
+mod measure;
 mod status;
+
+use measure::{Ask, How, measure};
 
 pub use status::{Author, Behind, BranchStatus, Merged, Pushed, Who, branch_status};
 
@@ -166,15 +171,26 @@ pub fn route(
     candidates: &[Candidate],
     stop: &dyn Stop,
 ) -> Result<Vec<Candidate>, RunError> {
+    route_by(repo, branch, candidates, How::Contenders, stop)
+}
+
+/// [`route`], measuring `how`.
+fn route_by(
+    repo: &RepoHandle,
+    branch: &Candidate,
+    candidates: &[Candidate],
+    how: How,
+    stop: &dyn Stop,
+) -> Result<Vec<Candidate>, RunError> {
     if stop.should_stop() {
         return Err(RunError::Stopped);
     }
     if branch.kind == CandidateKind::Trunk {
         return Ok(Vec::new());
     }
-    let measured = measure(repo, branch, candidates, &[], stop)?;
+    let measured = measure(repo, branch, candidates, &[], Ask::Step, how, stop)?;
     let first = step(repo, branch, &measured, stop)?;
-    let route = walk(repo, branch, candidates, first, stop)?;
+    let route = walk(repo, branch, candidates, first, how, stop)?;
     Ok(route.into_iter().map(|(base, _)| base).collect())
 }
 
@@ -199,6 +215,7 @@ fn walk(
     branch: &Candidate,
     candidates: &[Candidate],
     first: Option<(Candidate, Apart)>,
+    how: How,
     stop: &dyn Stop,
 ) -> Result<Vec<(Candidate, Apart)>, RunError> {
     let mut route: Vec<(Candidate, Apart)> = Vec::new();
@@ -212,40 +229,10 @@ fn walk(
         let skip: Vec<Oid> = std::iter::once(branch.tip)
             .chain(route.iter().map(|(c, _)| c.tip))
             .collect();
-        let measured = measure(repo, &walker, candidates, &skip, stop)?;
+        let measured = measure(repo, &walker, candidates, &skip, Ask::Step, how, stop)?;
         next = step(repo, &walker, &measured, stop)?;
     }
     Ok(route)
-}
-
-/// `branch` against every candidate but itself and those at a tip in
-/// `skip`: two counts each.
-fn measure(
-    repo: &RepoHandle,
-    branch: &Candidate,
-    candidates: &[Candidate],
-    skip: &[Oid],
-    stop: &dyn Stop,
-) -> Result<Vec<(Candidate, Apart)>, RunError> {
-    candidates
-        .iter()
-        .filter(|c| c.name != branch.name && !skip.contains(&c.tip))
-        .map(|c| {
-            let apart = if c.tip == branch.tip {
-                // The same commit: nothing apart, no read needed.
-                Apart {
-                    branch_only: 0,
-                    base_only: 0,
-                }
-            } else {
-                Apart {
-                    branch_only: count_between(repo, c.tip, branch.tip, stop)?,
-                    base_only: count_between(repo, branch.tip, c.tip, stop)?,
-                }
-            };
-            Ok((c.clone(), apart))
-        })
-        .collect()
 }
 
 #[cfg(test)]

@@ -8,7 +8,8 @@ use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{RunError, Stop};
 
 use super::footing::{Footing, footing};
-use super::{Candidate, CandidateKind, measure, pick_base, walk};
+use super::measure::{Ask, How, measure};
+use super::{Candidate, CandidateKind, pick_base, walk};
 use crate::operation::Tip;
 
 /// The most branch-only commits `Who` reads; past it, the newest are kept.
@@ -133,6 +134,18 @@ pub fn branch_status(
     upstream: Option<&Tip>,
     stop: &dyn Stop,
 ) -> Result<BranchStatus, RunError> {
+    branch_status_by(repo, branch, candidates, upstream, How::Contenders, stop)
+}
+
+/// [`branch_status`], measuring `how`.
+pub(super) fn branch_status_by(
+    repo: &RepoHandle,
+    branch: &Candidate,
+    candidates: &[Candidate],
+    upstream: Option<&Tip>,
+    how: How,
+    stop: &dyn Stop,
+) -> Result<BranchStatus, RunError> {
     if stop.should_stop() {
         return Err(RunError::Stopped);
     }
@@ -152,7 +165,7 @@ pub fn branch_status(
         return trunk_status(repo, branch, pushed, counts.as_ref(), stop);
     }
 
-    let measured = measure(repo, branch, candidates, &[], stop)?;
+    let measured = measure(repo, branch, candidates, &[], Ask::Footing, how, stop)?;
     let footing = footing(repo, branch, &measured, stop)?;
     let first = match footing {
         Footing::OnLine(line) => Some(line.clone()),
@@ -162,7 +175,7 @@ pub fn branch_status(
     };
     // Each base carries how far it is from the walker that chose it, so
     // `route[0]`'s is the branch's own: no second lookup.
-    let route = walk(repo, branch, candidates, first, stop)?;
+    let route = walk(repo, branch, candidates, first, how, stop)?;
     let base = route.first();
     let behind = base.map_or(Behind::NoBase, |(base, apart)| {
         behind_by(&base.name, apart.base_only)
