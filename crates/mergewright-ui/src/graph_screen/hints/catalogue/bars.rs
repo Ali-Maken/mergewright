@@ -12,11 +12,9 @@ use crate::conflict_resolver::SideRoles;
 
 /// Every bar form.
 pub(super) fn bar_forms() -> Vec<HintContext> {
+    // `Own` and `Elsewhere` are in `every_context`'s row loop, once per
+    // `RowVerbs`, bare and under `R`.
     let rows = [
-        RowBar::Own,
-        RowBar::Elsewhere {
-            branch: sanitize("sara/fix-toc"),
-        },
         RowBar::FoldedMerge { inside: 3 },
         RowBar::OpenedMerge,
         RowBar::JustCommitted,

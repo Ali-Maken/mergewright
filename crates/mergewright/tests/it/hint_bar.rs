@@ -270,7 +270,7 @@ fn the_tab_layout_draws_the_panes_own_keys() {
 /// user reaches with one key each, below 100 columns:
 ///
 /// - the Detail tab on the tip, whose row carries the current branch's
-///   badge (`HintContext::BranchRow { current: true }`);
+///   badge (`HintContext::GraphRow { row: RowBar::Own }` since ease-pass/07b);
 /// - the Detail tab on an ordinary commit one row down
 ///   (`HintContext::PlainRow`);
 /// - the changes pane (`HintContext::ChangesPane`), which

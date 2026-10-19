@@ -156,7 +156,7 @@ fn dead_keys_in(
 /// state and stay green, which is the same fault it exists to catch.
 ///
 /// With no drawn rows to read badges or a marker off, `view::rows`
-/// answers `PlainRow` where the bar's context says `BranchRow` or `Marked`:
+/// answers `PlainRow` where the bar's context says `GraphRow` or `Marked`:
 /// the difference is decoration on the row, and the keys are the same. That
 /// is the only gap left: since m5/42 the three overlays are classified like
 /// everything else, so a fixture with the journal, the stash or the Map
@@ -195,7 +195,9 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // So are `o`/`a` (m7-power-tools/40): `row_verbs` reads a drawn cursor row.
         // So is a stash's row (m8/15 A4): `cursor_row_context` reads it off
         // the drawn cursor row, as it reads a badge.
-        HintContext::BranchRow { .. }
+        // So is the row's kind (ease-pass/07b): `row_bar` reads its fold and
+        // branch off the drawn cursor row.
+        HintContext::GraphRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::StashRow
         | HintContext::Marked(_)
@@ -301,15 +303,10 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
         // never reach the app.
-        // The ease pass's row bars (03b) are not yet what the app's footer
-        // answers: G picks `GraphRow` at the row-context choice site. Until
-        // then no state classifies as one; their keys are still pressed
-        // (`screen_for`).
         // ease-pass/12: the m6 `Finish` form the review replaced has no
         // picker left (retiring, 03b's).
         HintContext::Preview
         | HintContext::Resolver { .. }
-        | HintContext::GraphRow { .. }
         | HintContext::Finish { .. } => None,
         // A standing search (m8/15b): the row's form, led by `n N`.
         HintContext::Searching(row) => {

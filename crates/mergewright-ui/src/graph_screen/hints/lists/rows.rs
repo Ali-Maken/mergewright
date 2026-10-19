@@ -22,39 +22,6 @@ pub(super) fn working_tree_row_list() -> Vec<Hint> {
     ]
 }
 
-pub(super) fn branch_row_list() -> Vec<Hint> {
-    vec![
-        hint(MERGE, "merge"),
-        hint(REBASE, "rebase"),
-        hint(OPEN, "open"),
-        hint(BRANCH, "branch"),
-        hint(TAG, "tag"),
-        hint(PUSH, "push"),
-        hint(COMMIT, "commit"),
-        hint(PULL, "pull"),
-        hint(FETCH, "fetch"),
-        hint(UNDO, "undo"),
-        hint(STASH, "stash"),
-        hint(FIND, "search"),
-    ]
-}
-
-pub(super) fn current_branch_row_list() -> Vec<Hint> {
-    vec![
-        hint(OPEN, "open"),
-        hint(COMMIT, "commit"),
-        hint(PUSH, "push"),
-        hint(PULL, "pull"),
-        hint(FETCH, "fetch"),
-        hint(BRANCH, "branch"),
-        hint(TAG, "tag"),
-        hint(UNDO, "undo"),
-        hint(STASH, "stash"),
-        hint(JOURNAL, "journal"),
-        hint(FIND, "search"),
-    ]
-}
-
 pub(super) fn plain_row_list() -> Vec<Hint> {
     vec![
         hint(OPEN, "open"),

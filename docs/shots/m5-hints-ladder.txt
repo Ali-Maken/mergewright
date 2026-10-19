@@ -50,11 +50,11 @@
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · u undo · ? keys
+ ⏎ open · P push · c commit · u undo · . actions · ? keys
 
 --- the cursor is on another branch's tip
 [······························ 80 cells of bar ·······························]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · u undo · ? keys
+ m merge fix-toc into yours · ⏎ open · C switch · x compare · u undo · ? keys
 
 --- the cursor is on an ordinary commit row
 [······························ 80 cells of bar ·······························]
@@ -72,11 +72,11 @@
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys
+ ⏎ open · P push · c commit · u undo · . actions · ? keys
 
 --- the cursor is on another branch's tip
 [·················································· 120 cells of bar ··················································]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys
+ m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys
 
 --- the cursor is on an ordinary commit row
 [·················································· 120 cells of bar ··················································]
@@ -94,11 +94,11 @@
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · ? keys
+ ⏎ open · P push · c commit · u undo · . actions · ? keys
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · / search · q quit · F2 stat · F3 rend · ? keys
+ m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys
 
 --- the cursor is on an ordinary commit row
 [······································································ 160 cells of bar ······································································]

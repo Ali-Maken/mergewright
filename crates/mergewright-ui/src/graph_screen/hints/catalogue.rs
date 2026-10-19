@@ -5,8 +5,8 @@
 use super::lists::{TAIL, context_list};
 use super::{
     ACTIONS, BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, DOORWAY, DOORWAY_BY_PALETTE,
-    EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowVerbs, SEARCH_NEXT, SEARCH_PREV,
-    TabWord, WAY_TO_BANNER_BACK, WAY_TO_BANNER_FORWARD,
+    EXPLAIN, F_HISTORY, FOLD, Hint, HintContext, LiveC, RESIZE, RowBar, RowVerbs, SEARCH_NEXT,
+    SEARCH_PREV, TabWord, WAY_TO_BANNER_BACK, WAY_TO_BANNER_FORWARD,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -60,24 +60,22 @@ pub fn every_context() -> Vec<HintContext> {
         // live and pane wraps reach it like any row.
         HintContext::StashRow,
     ];
-    // Each commit-row shape once per `RowVerbs` (m7-power-tools/40), bare
-    // and under `R rewrite`.
+    // Each commit-row shape once per `RowVerbs` (m7-power-tools/40): the
+    // plain row bare and under `R`; the ease-pass row bars (07b) bare only,
+    // their wrapped forms are a gap (ease-pass/07b NOTES).
+    let teammate = mergewright_term::sanitize("sara/fix-toc");
     for verbs in RowVerbs::ALL {
-        let rows = [
-            HintContext::BranchRow {
-                current: false,
-                verbs,
+        for row in [
+            RowBar::Own,
+            RowBar::Elsewhere {
+                branch: teammate.clone(),
             },
-            HintContext::BranchRow {
-                current: true,
-                verbs,
-            },
-            HintContext::PlainRow { verbs },
-        ];
-        for row in rows {
-            plain.push(HintContext::Rewritable(Box::new(row.clone())));
-            plain.push(row);
+        ] {
+            plain.push(HintContext::GraphRow { row, verbs });
         }
+        let row = HintContext::PlainRow { verbs };
+        plain.push(HintContext::Rewritable(Box::new(row.clone())));
+        plain.push(row);
     }
     let mut all: Vec<HintContext> = plain.clone();
     all.extend(rewrite_editor_forms());
@@ -170,8 +168,8 @@ fn blame_forms() -> Vec<HintContext> {
         HintContext::PlainRow {
             verbs: RowVerbs::NONE,
         },
-        HintContext::BranchRow {
-            current: false,
+        HintContext::GraphRow {
+            row: RowBar::Own,
             verbs: RowVerbs::NONE,
         },
         HintContext::PaneFocused {

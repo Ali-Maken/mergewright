@@ -56,7 +56,7 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
             vec![state]
         }
         // One row of history under the cursor. The badge and the Mistake
-        // Radar marker that tell `BranchRow`, `Marked` and `PlainRow` apart
+        // Radar marker that tell `GraphRow`, `Marked` and `PlainRow` apart
         // are painted on the row, not held in the state, and no key turns
         // on them.
         // A stash's row is the same screen; `states_for` puts the stash
@@ -67,9 +67,8 @@ pub(super) fn screen_for(context: &HintContext) -> Vec<AppState> {
         // An ease-pass row bar (03b) is the same screen: the merge row
         // under the cursor answers `m`, `⏎`, `C`, `x`, `P`, `c`, `space`
         // and `u` whatever kind the bar says it is.
-        HintContext::BranchRow { .. }
+        HintContext::GraphRow { .. }
         | HintContext::PlainRow { .. }
-        | HintContext::GraphRow { .. }
         | HintContext::StashRow
         | HintContext::Marked(_)
         | HintContext::Rewritable(_)

@@ -70,19 +70,13 @@ fn all_contexts() -> Vec<HintContext> {
         .collect()
 }
 
-/// The four cursor-row contexts, which are the ones the design note's
-/// mock-ups are drawn for.
+/// The cursor-row contexts whose lists these properties were written for.
+/// The ease-pass row bars (`GraphRow`, 07b retired `BranchRow` for them) are
+/// short by design — the mock's words, no screen-wide tail — and are pinned
+/// whole in `tests/bars.rs` (03r) instead.
 fn row_contexts() -> Vec<HintContext> {
     vec![
         HintContext::WorkingTreeRow,
-        HintContext::BranchRow {
-            current: false,
-            verbs: RowVerbs::NONE,
-        },
-        HintContext::BranchRow {
-            current: true,
-            verbs: RowVerbs::NONE,
-        },
         HintContext::PlainRow {
             verbs: RowVerbs::NONE,
         },
@@ -131,19 +125,13 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
             HintContext::WorkingTreeRow,
             [("⏎", "changes"), ("c", "commit"), ("S", "stash")],
         ),
+        // His own row's ease-pass bar (07b): the mock's first three.
         (
-            HintContext::BranchRow {
-                current: false,
+            HintContext::GraphRow {
+                row: RowBar::Own,
                 verbs: RowVerbs::NONE,
             },
-            [("m", "merge"), ("r", "rebase"), ("⏎", "open")],
-        ),
-        (
-            HintContext::BranchRow {
-                current: true,
-                verbs: RowVerbs::NONE,
-            },
-            [("⏎", "open"), ("c", "commit"), ("P", "push")],
+            [("⏎", "open"), ("P", "push"), ("c", "commit")],
         ),
         (
             HintContext::PlainRow {
@@ -368,8 +356,8 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
         HintContext::PlainRow {
             verbs: RowVerbs::NONE,
         },
-        HintContext::BranchRow {
-            current: true,
+        HintContext::GraphRow {
+            row: RowBar::Own,
             verbs: RowVerbs::NONE,
         },
         HintContext::WorkingTreeRow,
@@ -462,8 +450,7 @@ fn the_hints_resize_once_pushed_off_are_drawn_again() {
         (true, false, true),
     ] {
         let focused = HintContext::PaneFocused {
-            row: Box::new(HintContext::BranchRow {
-                current: true,
+            row: Box::new(HintContext::PlainRow {
                 verbs: RowVerbs::NONE,
             }),
             opens,
@@ -1191,7 +1178,6 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::OperationLive { row, .. }
         | HintContext::Searching(row) => doorway_of(row),
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::GraphRow { .. }
         | HintContext::StashRow
@@ -1216,8 +1202,8 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
 #[test]
 fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     let with_a_tail = hints_for(
-        &HintContext::BranchRow {
-            current: true,
+        &HintContext::GraphRow {
+            row: RowBar::Own,
             verbs: RowVerbs::NONE,
         },
         Divider::Hidden,
@@ -1226,7 +1212,8 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     let text = hints_text(&with_a_tail);
     assert_eq!(
         text,
-        " ⏎ open \u{b7} c commit \u{b7} P push \u{b7} p pull \u{b7} f fetch \u{b7} b branch \u{b7} u undo \u{b7} ? keys",
+        // His own row's mock bar since ease-pass/07b.
+        " ⏎ open \u{b7} P push \u{b7} c commit \u{b7} u undo \u{b7} . actions \u{b7} ? keys",
         "a row context draws words only, its doorway is last, and `u undo` outranks the tail (m8/15 A5)"
     );
 
@@ -1863,8 +1850,8 @@ fn operation_live_leads_with_the_way_back() {
             verbs: RowVerbs::NONE,
         },
         HintContext::WorkingTreeRow,
-        HintContext::BranchRow {
-            current: true,
+        HintContext::GraphRow {
+            row: RowBar::Own,
             verbs: RowVerbs::NONE,
         },
         HintContext::ChangesPane {
@@ -2363,8 +2350,8 @@ mod pane_space {
         rows.push(HintContext::Marked(Box::new(HintContext::PlainRow {
             verbs: RowVerbs::NONE,
         })));
-        rows.push(HintContext::Marked(Box::new(HintContext::BranchRow {
-            current: true,
+        rows.push(HintContext::Marked(Box::new(HintContext::GraphRow {
+            row: RowBar::Own,
             verbs: RowVerbs::NONE,
         })));
         rows
@@ -2448,23 +2435,6 @@ mod pane_space {
     }
 }
 
-// m7-power-tools/40, planner ruling 1: `a amend` after the daily verbs.
-#[test]
-fn a_amend_ranks_after_push_pull_fetch() {
-    let context = HintContext::BranchRow {
-        current: true,
-        verbs: RowVerbs {
-            take: false,
-            amend: true,
-        },
-    };
-    let wide = hints_for(&context, Divider::Hidden, 1000);
-    let at = |key: &str| wide.iter().position(|h| h.key() == key).expect(key);
-    assert_eq!(at("a"), at("f") + 1, "{wide:?}");
-    let narrow = hints_for(&context, Divider::Hidden, 80);
-    assert!(narrow.iter().take(3).any(|h| h.key() == "P"), "{narrow:?}");
-}
-
 #[test]
 fn a_amend_follows_open_where_no_commit_or_remote_verb() {
     let base = vec![
@@ -2519,8 +2489,8 @@ fn every_bar_ends_with_the_keys_doorway_and_never_more() {
 /// before the doorway, and is the first hint the width drops.
 #[test]
 fn actions_is_drawn_wide_and_dropped_first() {
-    let row = HintContext::BranchRow {
-        current: true,
+    let row = HintContext::GraphRow {
+        row: RowBar::Own,
         verbs: RowVerbs::NONE,
     };
     // The narrowest width that draws `. actions`: it sits last before the
@@ -2799,27 +2769,6 @@ fn a_marked_row_keeps_undo_and_search_before_the_doorway() {
             drawn_before |= has;
         }
     }
-    // A branch tip's marked row: the doorway never displaces `u undo` or
-    // `/ search` — wherever it is drawn, both are too. First drawn at 137,
-    // both dividers (m8/11e F1: the measured width is the spec).
-    let tip = HintContext::Marked(Box::new(HintContext::BranchRow {
-        current: false,
-        verbs: RowVerbs::NONE,
-    }));
-    for divider in [Divider::Hidden, Divider::Shown] {
-        let mut first = None;
-        for columns in 40..=240u16 {
-            let text = hints_text(&hints_for(&tip, divider, columns));
-            if text.contains("? keys") {
-                first.get_or_insert(columns);
-                assert!(
-                    text.contains("u undo") && text.contains("/ search"),
-                    "branch tip {divider:?} at {columns}: {text:?}"
-                );
-            }
-        }
-        assert_eq!(first, Some(137), "branch tip {divider:?}");
-    }
 }
 
 /// m8/11e F2: the doorway's words come from one function, which follows his
@@ -2927,12 +2876,14 @@ fn undo_is_drawn_at_100_and_80_on_every_row_form_that_holds_it() {
     let mut checked = 0;
     for verbs in RowVerbs::ALL {
         let rows = [
-            HintContext::BranchRow {
-                current: false,
+            HintContext::GraphRow {
+                row: RowBar::Elsewhere {
+                    branch: mergewright_term::sanitize("sara/fix-toc"),
+                },
                 verbs,
             },
-            HintContext::BranchRow {
-                current: true,
+            HintContext::GraphRow {
+                row: RowBar::Own,
                 verbs,
             },
             HintContext::PlainRow { verbs },
@@ -3007,10 +2958,6 @@ fn a_search_after_enter_leads_the_row_bar_with_next_and_prev() {
     let rows = [
         HintContext::WorkingTreeRow,
         HintContext::PlainRow {
-            verbs: RowVerbs::NONE,
-        },
-        HintContext::BranchRow {
-            current: true,
             verbs: RowVerbs::NONE,
         },
         HintContext::StashRow,

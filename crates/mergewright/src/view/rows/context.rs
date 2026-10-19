@@ -24,7 +24,6 @@ pub(super) fn search_wrapped(state: &AppState, row: HintContext) -> HintContext 
     }
     match row {
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::GraphRow { .. }
         | HintContext::StashRow
@@ -52,7 +51,6 @@ pub(super) fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
     if !matches!(
         row,
         HintContext::WorkingTreeRow
-            | HintContext::BranchRow { .. }
             | HintContext::PlainRow { .. }
             | HintContext::GraphRow { .. }
             | HintContext::StashRow
@@ -85,7 +83,6 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
     }
     match context {
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::GraphRow { .. }
         | HintContext::StashRow

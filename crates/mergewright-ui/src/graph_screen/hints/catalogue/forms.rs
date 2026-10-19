@@ -22,7 +22,6 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         // `R` is never live, so neither is a search over it.
         HintContext::Searching(row) if over_rewritable(row) => Vec::new(),
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::StashRow
         | HintContext::PlainRow { .. }
         | HintContext::Marked(_)
@@ -90,9 +89,9 @@ fn over_rewritable(context: &HintContext) -> bool {
 /// The cursor row inside `context` carries `o take` or `a amend`.
 fn has_row_verbs(context: &HintContext) -> bool {
     match context {
-        HintContext::BranchRow { verbs, .. }
-        | HintContext::PlainRow { verbs }
-        | HintContext::GraphRow { verbs, .. } => *verbs != RowVerbs::NONE,
+        HintContext::PlainRow { verbs } | HintContext::GraphRow { verbs, .. } => {
+            *verbs != RowVerbs::NONE
+        }
         HintContext::Marked(row)
         | HintContext::Rewritable(row)
         | HintContext::Searching(row)
@@ -110,10 +109,9 @@ fn has_row_verbs(context: &HintContext) -> bool {
 /// Exhaustive on purpose: see [`every_context`].
 pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
     match context {
-        HintContext::BranchRow { .. }
-        | HintContext::PlainRow { .. }
-        | HintContext::StashRow
-        | HintContext::Rewritable(_) => Some(HintContext::Marked(Box::new(context.clone()))),
+        HintContext::PlainRow { .. } | HintContext::StashRow | HintContext::Rewritable(_) => {
+            Some(HintContext::Marked(Box::new(context.clone())))
+        }
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }
         | HintContext::BannerPaused { .. }
@@ -153,7 +151,6 @@ pub(super) fn marked_form(context: &HintContext) -> Option<HintContext> {
 pub(super) fn searching_form(context: &HintContext) -> Option<HintContext> {
     match context {
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::StashRow
         | HintContext::Rewritable(_)
@@ -206,10 +203,7 @@ pub(super) fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         // `R` needs the graph's keyboard (08, ruling 10): never under a pane.
         HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
-        HintContext::BranchRow { .. }
-        | HintContext::PlainRow { .. }
-        | HintContext::StashRow
-        | HintContext::Marked(_) => {
+        HintContext::PlainRow { .. } | HintContext::StashRow | HintContext::Marked(_) => {
             // `(opens, blamable, folds)`: the files list on a file, on a
             // directory, on neither (the `✉ message` row); the diff on a
             // line or not. Never `folds` without `opens` (only the files

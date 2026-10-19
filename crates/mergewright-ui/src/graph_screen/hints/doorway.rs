@@ -89,7 +89,6 @@ pub(super) fn spelled(list: Vec<Hint>, keys: &Keymap) -> Vec<Hint> {
 pub(super) fn words_for(context: &HintContext) -> Words {
     match context {
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::GraphRow { .. }
         // The clash screen is modal but words-only: the mocks draw every

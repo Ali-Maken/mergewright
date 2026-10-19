@@ -320,32 +320,17 @@ fn the_look_bar_draws_the_mock_words() {
 /// Settle test 2 of ease-pass/07b, before the bar switch: today's whole
 /// 120-column bar for the two rows `R rewrite` wraps. `Rewritable` adds
 /// `R rewrite` at its list's end, which this width drops, so each is the
-/// bare row's bar.
+/// bare row's bar. Its `BranchRow` cases went with `BranchRow` (07b's
+/// removal); the plain row still takes this bar.
 #[test]
 fn todays_rewritable_bars_at_120_columns() {
     let rewritable = |inner: HintContext| HintContext::Rewritable(Box::new(inner));
-    let cases = [
-        (
-            rewritable(HintContext::PlainRow {
-                verbs: RowVerbs::NONE,
-            }),
-            " ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys",
-        ),
-        (
-            rewritable(HintContext::BranchRow {
-                current: true,
-                verbs: RowVerbs::NONE,
-            }),
-            " ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · S stash · J journal · / search · ? keys",
-        ),
-        (
-            rewritable(HintContext::BranchRow {
-                current: false,
-                verbs: RowVerbs::NONE,
-            }),
-            " m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys",
-        ),
-    ];
+    let cases = [(
+        rewritable(HintContext::PlainRow {
+            verbs: RowVerbs::NONE,
+        }),
+        " ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys",
+    )];
     for (context, want) in cases {
         assert_eq!(bar(&context, 120), want, "{context:?}");
     }

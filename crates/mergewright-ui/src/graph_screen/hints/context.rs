@@ -61,15 +61,9 @@ impl RowVerbs {
 pub enum HintContext {
     /// The cursor is on the collapsed Uncommitted-changes row.
     WorkingTreeRow,
-    /// The cursor is on a row with a local branch badge; `current` is the
-    /// branch `HEAD` points at.
-    BranchRow {
-        /// The badge is the current branch (`HEAD`).
-        current: bool,
-        /// The row verbs that act on this row (`o take`, `a amend`).
-        verbs: RowVerbs,
-    },
-    /// The cursor is on a row with no branch badge.
+    /// The cursor is on a commit row with no live branch (ease-pass/07b:
+    /// `row_bar` answered `None`), or one the ease-pass bars do not cover —
+    /// no history yet, no drawn cursor row, an operation live.
     PlainRow {
         /// The row verbs that act on this row (`o take`, `a amend`).
         verbs: RowVerbs,
@@ -92,9 +86,9 @@ pub enum HintContext {
     Searching(Box<HintContext>),
     /// The cursor is on a graph row, in the ease pass's words (ticket
     /// ease-pass/03b): which kind of row picks the bar ([`RowBar`]), and the
-    /// row verbs that act on it are placed as on any row. `graft` picks it
-    /// at the row-context choice site (ticket G); until then `BranchRow` and
-    /// `PlainRow` stay.
+    /// row verbs that act on it are placed as on any row. `mergewright` picks it
+    /// at the row-context choice site (ease-pass/07b); a row with no live
+    /// branch takes [`HintContext::PlainRow`].
     GraphRow {
         /// Which row the cursor is on, with the name or count its bar says.
         row: RowBar,
@@ -385,8 +379,8 @@ pub enum HintContext {
         space_stages: bool,
     },
     /// A commit row `R` rewrites (m7-power-tools/08, ruling 10): the row's
-    /// own list with `R rewrite` added. `graft` wraps a `BranchRow` or
-    /// `PlainRow` in this while the graph has the keyboard, `HEAD` is on a
+    /// own list with `R rewrite` added. `mergewright` wraps a `GraphRow`
+    /// or `PlainRow` in this while the graph has the keyboard, `HEAD` is on a
     /// branch, nothing is live, and the row is his branch's (not on the
     /// default branch's chain, unless `HEAD` is the default branch or that
     /// chain is unread). A `Marked` row wraps this, never the other way.

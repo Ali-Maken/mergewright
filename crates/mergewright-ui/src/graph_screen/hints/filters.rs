@@ -70,7 +70,6 @@ pub(super) fn whole_bar(
         HintContext::BackToBlame(inner) => led_by(BACK_TO_BLAME, inner, divider, keys),
         HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider, keys),
         HintContext::WorkingTreeRow
-        | HintContext::BranchRow { .. }
         | HintContext::PlainRow { .. }
         | HintContext::GraphRow { .. }
         | HintContext::StashRow
@@ -334,7 +333,6 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     let rows = matches!(
         context,
         HintContext::WorkingTreeRow
-            | HintContext::BranchRow { .. }
             | HintContext::PlainRow { .. }
             | HintContext::GraphRow { .. }
             | HintContext::StashRow
