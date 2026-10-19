@@ -202,7 +202,7 @@
 656 crates/mergewright/tests/it/budget_run.rs
 456 crates/mergewright/tests/it/clock_pin.rs
 552 crates/mergewright/tests/it/commit_editor_writes.rs
-1931 crates/mergewright/tests/it/conflict_interim.rs
+1838 crates/mergewright/tests/it/conflict_interim.rs
 879 crates/mergewright/tests/it/context_menu.rs
 421 crates/mergewright/tests/it/credential_by_key.rs
 405 crates/mergewright/tests/it/drain_sink.rs

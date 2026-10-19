@@ -58,7 +58,7 @@ Scout: none. The spec named the anchors, so I read `update/picker.rs`, `update/b
 - `update/picker/open_on.rs`: `open_on` and `opens_on`. `PickerState.wanted` is placed and cleared by `listed`. `↑`, `↓`, Backspace or a typed character clears it.
 - Ratchet: the mouse code moved out of `picker.rs` into `picker/mouse.rs`. The C-gate tests moved to `picker/tests/open_on.rs`. The `over_400` row went from 535 to 503.
 
-**Deviation**: `C`'s rule is "the focused branch (`branch_pane::focused`) is not HEAD's", not "the bar is `Elsewhere`". It agrees with the spec on `Own`, `Elsewhere` and `PlainRow` rows. On a teammate's folded or opened merge row it opens on the focus too, where the spec says "as today". Reason: the bar needs the drawn entry's fold mark. Revert if wrong.
+**Deviation (goes to review)**: `C`'s rule is "the focused branch (`branch_pane::focused`) is not HEAD's", not "the bar is `Elsewhere`". It agrees with the spec on `Own`, `Elsewhere` and `PlainRow` rows. On a teammate's folded or opened merge row it opens on the focus too, where the spec says "as today". Reason: the bar needs the drawn entry's fold mark. Revert if wrong.
 
 **Question 1: spec conflict, gate red: `m7_walk::picker::switch_back`.**
 - m7's `switch-back: C ⏎` (2 keys, `docs/design-notes/m7-power-tools.md:839`) relies on `↩ before` being selected at open.
@@ -73,12 +73,28 @@ Scout: none. The spec named the anchors, so I read `update/picker.rs`, `update/b
 
   This is the planner's or conductor's call.
 
-**Question 2: the label depends on timing in captures.**
-- Three captures drew no label in the loaded full-suite update run: `m5-ui-banner-conflict-120x40`, `m6/fix-landing-after-continue-rebase-120x40` and `m6/fix-undo-drift-way-back-120x40`. Run alone, they draw it every time (4 of 4).
-- I committed the solo output (read landed, so the label is right). In a loaded full run they may go red. My last full run had them red; the solo reruns pass.
-- A non-cursor row's label depends on whether a rest fell between the `j`s. That is the spec's own consequence ("branches the cursor has rested on").
-- I found no line for the drift capture's `▸` row, although `settled_frame` waits for `branch_pane::settled`. So this is a question, not a defect.
-- Lead for a debugger: `settled` is true whenever `focused()` is `None` (`update/branch_pane.rs` `settled`, `is_none_or`), for example before walk facts land.
+**Q2: the label was lost under load. Fixed (continuation, 2026-10-19, conductor's order).**
+
+Three captures drew no label in a loaded run: `m5-ui-banner-conflict-120x40`, `m6/fix-landing-after-continue-rebase-120x40` and `m6/fix-undo-drift-way-back-120x40`.
+
+**Ruled out by observation.** A slow read is not the cause. I held every `BranchStatusRead` back 1.5 s with a temporary sleep in `jobs/runner/lists.rs`, and the three captures still passed. The waits do cover a slow read.
+
+**Cause 1, app side: a stale read counted as settled.**
+- `branch_pane::settled` held a read landed under the old refs as settled while a refs read was in flight.
+- When that refs read lands, `refs_landed` clears the cache. So a frame taken in between, then pumped on (`radar_answered` after `settled_frame`), lost the label.
+- Made deterministic in `update::branch_pane::tests::labels::a_read_is_not_settled_while_a_refs_read_is_in_flight`. It was red before the fix and green after.
+- Fix: `settled` is false while `refs_read` is `Pending` (`update/branch_pane.rs` `settled`).
+
+**Cause 2, test side: two capture paths never waited for the read.**
+- `conflict_interim/landing_shots.rs` `settled` waited only for no `reading…`/`sorting…` text. The pane is hidden there (the detail pane is open), so the read was never awaited.
+- The banner capture (`conflict_interim/banner_shot.rs`) did not wait either.
+- Both now wait on `branch_pane::settled`. This one is inferred from the code, not reproduced. Before 09b the race was invisible: with the pane hidden, the read changed nothing on screen.
+
+**Ratchet**: the banner capture moved to `conflict_interim/banner_shot.rs` (row 1931 → 1838). The label tests moved to `branch_pane/tests/labels.rs`.
+
+**Unproven**: the original under-load failure has not been seen again since the fix, but it was never reliable under load either. It is fixed at the two mechanisms above. Not proven by a loaded rerun.
+
+**Seen, not mine (question)**: `graph_mode_keep::typed_graph_lists_the_group_after_here_at_120_and_90` failed once under load. It is a pty capture of the real binary, `docs/shots/ease-pass/help-graph-mode-120.txt` line 13. That line holds the pane's route (`─◆ wallet-release`) under the help box, not a label. It passed alone, 2 of 2. It looks like 09's pane race in the pty path (`folded_and_rested` does not wait for the pane), but I have no line for it.
 
 **120 with the pane**: sara's label does not fit in `with_sibling`. W drops labels first, so the landed test runs at 160. For the usability walk: reading every tip in view is not built (spec; the cost is in `docs/perf/branch-pane.txt`).
 

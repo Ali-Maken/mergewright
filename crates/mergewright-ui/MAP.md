@@ -215,7 +215,7 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 ## graph_screen::badges
 - `Icons` (enum) — `Plain` (bracketed) or `Nerd` (icon-prefixed).
 - `Badge` (struct) — one ref on a commit: `name`, `kind`; `Badge::text(icons, keys)` is how it reads.
-- `BadgeKind` (enum) — branch, remote, tag, detached HEAD, stash, `CompareBase`, `OnlyInStash`, `NotMerged { of }` (a word read right after branch badge `of`'s label, 09b).
+- `BadgeKind` (enum) — branch, remote, tag, detached HEAD, stash, `CompareBase`, `OnlyInStash`, `NotMerged { of }` (a word read right after branch badge `of`'s label).
 - `Tracking` (enum) — untracked, in sync, or apart by ahead/behind counts.
 - `separator` (fn) — what goes between two badges in an icon set.
 

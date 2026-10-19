@@ -257,15 +257,19 @@ pub(crate) fn owed(state: &AppState) -> bool {
 
 /// The focused branch's read has landed, or there is none to ask: what a
 /// test drains before it reads a frame, so the pane never races its own
-/// `reading…` (the answer comes from the job pool on its own time).
+/// `reading…` (the answer comes from the job pool on its own time). Not
+/// while a refs read is in flight: its landing clears every read
+/// ([`refs_landed`]), so what is held now may be gone by the frame.
 #[must_use]
 pub fn settled(state: &AppState) -> bool {
-    focused(state).is_none_or(|focused| {
-        matches!(
-            state.look.reads.get(&focused.key),
-            Some(StatusRead::Read(_) | StatusRead::Failed(_))
-        )
-    })
+    let refs_in_flight = matches!(state.refs_read, super::state::RefsRead::Pending(_));
+    !refs_in_flight
+        && focused(state).is_none_or(|focused| {
+            matches!(
+                state.look.reads.get(&focused.key),
+                Some(StatusRead::Read(_) | StatusRead::Failed(_))
+            )
+        })
 }
 
 /// `Product::BranchStatusRead`: kept under its key; when it is the focused

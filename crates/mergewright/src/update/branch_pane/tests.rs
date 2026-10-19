@@ -100,56 +100,6 @@ fn status(route: Vec<Candidate>) -> Arc<BranchStatus> {
     })
 }
 
-/// `not merged` (09b): only a landed `Merged::NotYet`; every other `Merged`,
-/// an unread, reading or failed key, and a key after a refs read say none.
-#[test]
-fn not_merged_only_from_a_landed_not_yet_read() {
-    let key = |branch: &str| StatusKey {
-        branch: format!("refs/heads/{branch}"),
-        tips: 7,
-    };
-    let with = |merged: Merged| {
-        Arc::new(BranchStatus {
-            route: Vec::new(),
-            pushed: Pushed::NoUpstream,
-            merged,
-            behind: Behind::NoBase,
-            who: Who::NoOwnCommits,
-        })
-    };
-    let mut state = AppState::default();
-    let sara = "refs/heads/sara/fix-toc";
-    assert!(!state.look.reads.not_merged(sara), "unread");
-    state
-        .look
-        .reads
-        .by_key
-        .insert(key("sara/fix-toc"), StatusRead::Reading);
-    assert!(!state.look.reads.not_merged(sara), "reading");
-    read(&mut state, key("sara/fix-toc"), Err("gone".to_owned()));
-    assert!(!state.look.reads.not_merged(sara), "failed");
-    for merged in [
-        Merged::MainLine,
-        Merged::Into("refs/heads/main".to_owned()),
-        Merged::NothingToMerge,
-    ] {
-        read(&mut state, key("sara/fix-toc"), Ok(with(merged.clone())));
-        assert!(!state.look.reads.not_merged(sara), "{merged:?}");
-    }
-    read(
-        &mut state,
-        key("sara/fix-toc"),
-        Ok(with(Merged::NotYet { into: None })),
-    );
-    assert!(state.look.reads.not_merged(sara), "landed NotYet");
-    assert!(
-        !state.look.reads.not_merged("refs/heads/ali/x"),
-        "only the branch read"
-    );
-    refs_landed(&mut state);
-    assert!(!state.look.reads.not_merged(sara), "cleared by a refs read");
-}
-
 #[test]
 fn candidates_are_every_local_branch_with_its_kind_by_name() {
     let candidates = candidates(&badges(), &BranchNames::of(&walk()));
@@ -372,3 +322,5 @@ fn an_unasked_focus_is_owed_to_rest_and_settles_when_its_read_lands() {
     );
     assert!(settled(&state) && !owed(&state));
 }
+
+mod labels;
