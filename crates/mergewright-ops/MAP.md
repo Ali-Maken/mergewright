@@ -46,6 +46,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - Rule R2, footing: a trunk/integration holder (by kind, `base_only`, name) has the branch on its line (equal tip, or entry's first parent is the tip) or merged it.
 - Rule R2, case 2: else an `Other` holder whose entry is a merge with its first parent strictly under the tip merged it; else the branch is its own.
 - Rule R3: on a line → `NothingToMerge`, `NoOwnCommits`, behind that line; merged → `Into`, own authors since the nearest holder's entry; own → `NotYet`, vs `route[0]`.
+- Measured (09p): per step only the trunk, holders (`--contains`; ordinary ones only for the footing, when no long-lived one holds), integration branches off an able trunk, and (ordinary walker) ordinary tips under the walker and off that trunk; a candidate not at its ref's tip, always. Answers equal measuring all.
 - `ROUTE_DEPTH` (const) — 8: the most bases `route` walks.
 - `route` (fn) — `(repo, branch, candidates, stop) -> Result<Vec<Candidate>, RunError>`: nearest first, to the trunk; on-line → its line, else R1; no step back through a walked tip.
 - `BranchStatus` (struct) — `route`, `pushed`, `merged`, `behind`, `who`: the right pane's answers.

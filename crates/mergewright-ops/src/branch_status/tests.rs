@@ -284,6 +284,7 @@ fn find<'a>(candidates: &'a [Candidate], name: &str) -> &'a Candidate {
         .expect("a candidate by that name")
 }
 
+mod equivalence;
 mod footing;
 mod route;
 mod status;
