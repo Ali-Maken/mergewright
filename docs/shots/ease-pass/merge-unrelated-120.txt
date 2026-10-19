@@ -5,36 +5,36 @@
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           9 commits
 
-      │                         after merge
-    ◎┈╮                         Merge branch 'stray' into wallet-rele…  wallet-release is here  not pushed…    you    —
-▸   │ ◇                         Start over  stray is here  not pushed yet                                    Graft  54m
-    │ ●                         Check every link  sara/fix-toc is here  not pushed yet                        Sara  55m
-    │ ●                         Link the contents                                                             Omar  56m
-    │ ●                         Add a table of contents                                                       Sara  57m
-    ● │                         Number the report                                                            Graft  58m
-    ●─╯                         Add the report                                                               Graft  59m
-  ●─╯                           Correct the note  main is here  not pushed yet                               Graft   1y
-  ●                             Add the first note                                                           Graft   1y
-  ◇                             Add a readme                                                                 Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      │                         after merge                                       │ stray
+    ◎┈╮                         Merge branch 'stray' into wallet-rele…    you    —│ ! not pushed yet
+▸   │ ◇                         Start over                              Graft  54m│ · not merged
+    │ ●                         Check every link                         Sara  55m│ · shares no history with main
+    │ ●                         Link the contents                        Omar  56m│ · Graft, last commit 54m ago
+    │ ●                         Add a table of contents                  Sara  57m│
+    ● │                         Number the report                       Graft  58m│ built on
+    ●─╯                         Add the report                          Graft  59m│   stray
+  ●─╯                           Correct the note                        Graft   1y│
+  ●                             Add the first note                      Graft   1y│
+  ◇                             Add a readme                            Graft   1y│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Merge stray into wallet-release ─────────────────────────────────────────────────────────────────────────────────────╮
 │ Nothing has changed yet.                                                                                             │
 │                                                                                                                      │

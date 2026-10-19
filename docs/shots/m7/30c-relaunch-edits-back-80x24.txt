@@ -18,7 +18,7 @@
 
  ◆ api  ~/code/api · fix                                              6 commits
   ◌                     Uncommitted changes (1 unstaged)
-▸   ■                   On main: mergewright: your edit…  stash@{0}    you   3m
+▸   ■                   On main: mergewright: your edits, set asid…    you   3m
     ┃                   you · 3 minutes ago · 1f9ea99
     ┃ ◆    fix (you)    fix changes line 7  not pushed yet           Graft   4m
   ●━┴┄╯    main         add f  not pushed yet                        Graft   5m

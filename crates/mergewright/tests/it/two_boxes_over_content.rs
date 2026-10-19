@@ -33,6 +33,9 @@ use mergewright_fixtures::remote::LocalRemote;
 use crate::app_harness::App;
 use crate::captures::{check_shot, frame_at};
 
+mod reads;
+use reads::{rows_with_content_beside_the_box, what_survives};
+
 /// The instant every frame's relative dates are drawn against. The corpus's
 /// own "now", so a capture taken today and one taken next year are the same
 /// bytes (ticket 23).
@@ -155,51 +158,6 @@ fn shot(app: &App, state: &AppState, columns: u16, rows: u16, scratch: &Path) ->
         .collect()
 }
 
-/// How much of the frame is not the box: the rows that still carry graph
-/// text outside the box's own columns. Both boxes are judged by this one
-/// number, in opposite directions (ADR-0040) — the confirm box must leave
-/// rows standing beside it, the credential prompt must leave none.
-fn rows_with_content_beside_the_box(drawn: &[String]) -> usize {
-    drawn
-        .iter()
-        .filter(|line| {
-            let Some(edge) = line.find(['\u{256d}', '\u{2502}', '\u{2570}']) else {
-                return false;
-            };
-            !line[..edge].trim().is_empty() && line.contains('\u{2502}')
-        })
-        .count()
-}
-
-/// The widest strip of graph the box left showing, and the row's tail on
-/// the other side of it, **read back out of the frame** rather than written
-/// by hand. The tail is trimmed: a run of blank cells is not content that
-/// survived.
-///
-/// This is the whole of what the user is judging, so the caption states it —
-/// and three captions in this milestone went stale because a caption stated
-/// something the code no longer did. A line derived from the picture cannot.
-fn what_survives(drawn: &[String]) -> (String, String) {
-    const LEFT_EDGES: [char; 3] = ['\u{256d}', '\u{2502}', '\u{2570}'];
-    const RIGHT_EDGES: [char; 3] = ['\u{256e}', '\u{2502}', '\u{256f}'];
-    let mut widest = (String::new(), String::new());
-    for line in drawn {
-        let cells: Vec<char> = line.chars().collect();
-        let (Some(first), Some(last)) = (
-            cells.iter().position(|cell| LEFT_EDGES.contains(cell)),
-            cells.iter().rposition(|cell| RIGHT_EDGES.contains(cell)),
-        ) else {
-            continue;
-        };
-        let left: String = cells[..first].iter().collect();
-        if left.trim_end().chars().count() > widest.0.chars().count() {
-            let right: String = cells[last + 1..].iter().collect();
-            widest = (left.trim_end().to_owned(), right.trim().to_owned());
-        }
-    }
-    widest
-}
-
 /// Draws one labelled section into `out`.
 fn section(out: &mut String, label: &str, drawn: &[String]) {
     out.push_str(&format!("== {label} ==\n\n"));
@@ -219,7 +177,7 @@ fn section(out: &mut String, label: &str, drawn: &[String]) {
 fn capture_two_boxes_over_real_content_for_docs_shots() {
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
         let (push_box, credential_box) = boxes_at(label, columns, rows);
-        let mut out = confirm_header(label, columns, rows, &what_survives(&push_box));
+        let mut out = confirm_header(label, columns, rows, &what_survives(&push_box, columns));
         section(&mut out, "`P`: the push confirm, on the graph", &push_box);
         check_shot(&format!("m5-ui-confirm-over-graph-{label}.txt"), &out);
 
@@ -277,7 +235,7 @@ fn boxes_at(label: &str, columns: u16, rows: u16) -> (Vec<String>, Vec<String>) 
     let state = app.settle_write(pushing, "the push");
     let state = journal_has_the_push(&app, state);
 
-    check(label, &push_box, &credential_box);
+    check(label, columns, &push_box, &credential_box);
 
     drop(state);
     drop(asking);
@@ -288,7 +246,7 @@ fn boxes_at(label: &str, columns: u16, rows: u16) -> (Vec<String>, Vec<String>) 
 /// What the capture is for, asserted before it is written: real history
 /// behind each box, ADR-0040's opposite outcomes beside them, no plaintext
 /// anywhere, and the masked field at its fixed width (ADR-0038 §2).
-fn check(label: &str, push_box: &[String], credential_box: &[String]) {
+fn check(label: &str, columns: u16, push_box: &[String], credential_box: &[String]) {
     for (what, drawn) in [
         ("the push confirm", push_box),
         ("the credential prompt", credential_box),
@@ -306,7 +264,7 @@ fn check(label: &str, push_box: &[String], credential_box: &[String]) {
     // ADR-0040, the confirm box: it does not clear, because the rows beside
     // it are the graph the user is about to act on.
     assert!(
-        rows_with_content_beside_the_box(push_box) >= 3,
+        rows_with_content_beside_the_box(push_box, columns) >= 3,
         "the push confirm at {label} has nothing surviving beside it, and \
          ADR-0040 says it keeps the graph:\n{}",
         push_box.join("\n")
@@ -314,7 +272,7 @@ fn check(label: &str, push_box: &[String], credential_box: &[String]) {
     // ADR-0040, the credential prompt: it clears its band, full width, at
     // every width — and the band only, so the footer below it stands.
     assert_eq!(
-        rows_with_content_beside_the_box(credential_box),
+        rows_with_content_beside_the_box(credential_box, columns),
         0,
         "the credential prompt at {label} left content in the band it \
          clears (ADR-0040):\n{}",

@@ -69,12 +69,15 @@ fn capture_search_folded_count_at_120() {
         "{:?}",
         drawn[0]
     );
+    // The closed tail read at his full-screen 187: at 120 beside the branch
+    // pane it gives way to the subject (ease-pass 09 ruling W).
+    let wide = frame_at(&state, 187, 36, Some(Clock::Fixed(NOW)));
     assert!(
-        drawn
-            .iter()
-            .any(|line| line.contains(&format!("{PR_MERGE}  \u{25b8} 4 commits from PR 16021"))),
+        wide.iter()
+            .any(|line| crate::row_reads::reads_subject(line, PR_MERGE)
+                && line.contains("\u{25b8} 4 commits from PR 16021")),
         "nothing opened before `n`:\n{}",
-        drawn.join("\n")
+        wide.join("\n")
     );
     app.close();
     crate::captures::check_shot(

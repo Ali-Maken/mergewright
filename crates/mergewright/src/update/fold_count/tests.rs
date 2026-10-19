@@ -7,7 +7,7 @@ use mergewright_core::oid::Oid;
 
 use super::FoldCount;
 use crate::history::{HistoryUpdate, RowFold, Window};
-use crate::update::events::Command;
+use crate::update::events::{Command, RestRead};
 use crate::update::state::{AppState, Status};
 use crate::update::tests::{core, merge_on_screen, sized};
 use crate::update::{AppEvent, JobId, Product, update};
@@ -21,7 +21,7 @@ fn counts_asked(commands: &[Command]) -> Vec<Oid> {
     commands
         .iter()
         .filter_map(|command| match command {
-            Command::CountFolded { merge, .. } => Some(*merge),
+            Command::AtRest(_, RestRead::CountFolded { merge }) => Some(*merge),
             _ => None,
         })
         .collect()

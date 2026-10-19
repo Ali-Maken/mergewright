@@ -82,13 +82,14 @@ fn scrolled_between(repo: &Path) -> (App, AppState) {
     }
     let frame = drawn(&state, 120);
     assert!(between(&frame), "{}", frame.join("\n"));
-    // The merges' counts are read once they come into view.
-    let state = app.pump(state, "both counts", |state| {
-        let frame = drawn(state, 120);
-        ["4 commits from PR 16021", "1 commit from sara/fix-toc"]
-            .iter()
-            .all(|tail| frame.iter().any(|line| line.contains(tail)))
-    });
+    // The merges' counts are read once they come into view. Their tails
+    // give way to the subjects beside the branch pane (ease-pass 09 ruling
+    // W), so the wait reads the state, not the frame.
+    let state = app.pump(
+        state,
+        "both counts",
+        mergewright::update::fold_count::settled,
+    );
     (app, state)
 }
 

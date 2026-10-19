@@ -1,39 +1,39 @@
 ease-pass 06 box 9, 120x36, `space` on the PR 16021 merge: drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/fold_by_default.rs, `wallet_release`: `main <- wallet-release <- sara/fix-toc`, PR 16021 merged with its branch deleted). Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
-What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its four commits appear under it on one lane of their own that joins the merge row; the cursor stays on the merge; `sara/fix-toc`'s merge stays folded.
+What right looks like: the merge's four commits appear under it on one lane of their own that joins the merge row; the cursor stays on the merge (its tail gives way to the subject beside the branch pane, ease-pass 09 ruling W); `sara/fix-toc`'s merge stays folded.
 
  ◆ api  ~/code/api · wallet-release                                                   8 commits  1 merged branch folded
 
-    ◆      wallet-release (you) Merge branch 'sara/fix-toc' …  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
-▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  ▾ 4 commits from PR 16021            Graft  28h
-    ┃ ┊                         Graft · 28 hours ago · made on wallet-release · merged 4 from PR 16021 · 4eb2a56
-    ┃ ●    PR 16021             totals: test the sum                                                         Graft  28h
-    ┃ ●    PR 16021             totals: drop the cache                                                       Graft  28h
-    ┃ ●    PR 16021             totals: round once                                                           Graft  28h
-    ┃ ●    PR 16021             totals: read the ledger                                                      Graft  28h
-    ●┄╯                         Start the wallet release                                                     Graft  28h
-  ◇━╯      main                 Add the readme  not pushed yet                                               Graft  28h
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Graft  28h│ wallet-release  (you're here)
+▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Graft  28h│ ! not pushed yet
+    ┃ ┊                         Graft · 28 hours ago · made on wallet-release · m…│ · not merged
+    ┃ ●    PR 16021             totals: test the sum                    Graft  28h│ ✓ up to date with sara/fix-toc
+    ┃ ●    PR 16021             totals: drop the cache                  Graft  28h│ · Graft, last commit 28h ago
+    ┃ ●    PR 16021             totals: round once                      Graft  28h│
+    ┃ ●    PR 16021             totals: read the ledger                 Graft  28h│ built on
+    ●┄╯                         Start the wallet release                Graft  28h│   main
+  ◇━╯      main                 Add the readme  not pushed yet          Graft  28h│    ─◆ sara/fix-toc
+                                                                                  │    ─◆ wallet-release
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space hide the commits inside · ⏎ open · x compare · u undo · . actions · ? keys

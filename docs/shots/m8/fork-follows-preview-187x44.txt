@@ -1,32 +1,32 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
-    ●                             c1  feature-c is here  not pushed yet                                                                                                         Graft   2d
-    │ ●                           b1                                                                                                                                            Graft   2d
-    │ │ ●                         feature a: part 3                                                                                                                             Graft   2d
-    ●─│─╯                         feature a: part 2                                                                                                                             Graft   2d
-▸   ●─╯                           feature a: part 1                                                                                                                             Graft   2d
-    │                             the result
-    │ ○                           b1  feature-b is here  not pushed yet                                                                                                         Graft    —
-    │ │ ○                         feature a: part 3  feature-a is here  not pushed yet                                                                                          Graft    —
-    │ │ ○                         feature a: part 2                                                                                                                             Graft    —
-    │ ○┈╯                         feature a: part 1                                                                                                                             Graft    —
-  ◇─┴─╯                           m1  main is here  not pushed yet                                                                                                              Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●                             c1  feature-c is here  not pushed yet                                                                    Graft   2d│ feature-c
+    │ ●                           b1                                                                                                       Graft   2d│ ! not pushed yet
+    │ │ ●                         feature a: part 3                                                                                        Graft   2d│ · not merged
+    ●─│─╯                         feature a: part 2                                                                                        Graft   2d│ ✓ up to date with main
+▸   ●─╯                           feature a: part 1                                                                                        Graft   2d│ · Graft, last commit 2d ago
+    │                             the result                                                                                                         │
+    │ ○                           b1  feature-b is here  not pushed yet                                                                    Graft    —│ built on
+    │ │ ○                         feature a: part 3  feature-a is here  not pushed yet                                                     Graft    —│   main
+    │ │ ○                         feature a: part 2                                                                                        Graft    —│    ─◆ feature-c
+    │ ○┈╯                         feature a: part 1                                                                                        Graft    —│
+  ◇─┴─╯                           m1  main is here  not pushed yet                                                                         Graft   2d│
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ╭ Preview: put your staged changes into 1875dfa "feature a: part 1" ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 1875dfa  feature a: part 1  gains  one.txt +1 −1                                                                                                                                        │
 │ 4 commits replayed                                                                                                                                                                      │

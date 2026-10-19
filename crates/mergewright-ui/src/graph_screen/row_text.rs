@@ -47,9 +47,14 @@ pub(super) struct MessageLayout {
 }
 
 impl MessageLayout {
-    /// Packs `entry`'s message column: the labels take at most half of it,
-    /// the subject yields to the fold tail and the tag, and everything after
-    /// the subject follows its last character rather than a fixed column.
+    /// Packs `entry`'s message column. **The subject gives way last**
+    /// (ease-pass 09 ruling W, the main mock's one-cell order): first the
+    /// labels drop, right-most first and always whole; then the fold tail
+    /// sheds ` from <branch>`, then its count, then drops; only then is the
+    /// subject cut with `…`. The row tag keeps its own rule (m7/09): the
+    /// subject is cut for it, and it is left off below [`TAG_MIN_SUBJECT`]
+    /// subject cells. Everything after the subject follows its last
+    /// character rather than a fixed column.
     pub(super) fn of(
         entry: &GraphEntry<'_>,
         (icons, keys): (Icons, &Keymap),
@@ -58,21 +63,16 @@ impl MessageLayout {
     ) -> Self {
         let x = columns.subject_x;
         let width = columns.subject_width;
-        let end = x + width;
+        let subject_width =
+            u16::try_from(super::walk_text::text_width(entry.subject.as_str())).unwrap_or(u16::MAX);
         let words = labels(entry, icons, keys);
-        let wanted = words
-            .iter()
-            .map(|(_, text)| cells(text).saturating_add(LABEL_GAP))
-            .fold(0u16, u16::saturating_add);
-        let rest = width - wanted.min(width / 2);
-
-        let fold = drawn_fold(entry, ascii, rest);
-        let fold_width = fold.as_deref().map_or(0, |mark| cells(mark) + FOLD_GAP);
-        let tag = drawn_tag(entry, ascii, rest - fold_width);
+        let tag = drawn_tag(entry, ascii, width);
         let tag_width = tag.as_deref().map_or(0, |tag| cells(tag) + TAG_GAP);
-        let room = rest - fold_width - tag_width;
-        let subject_width = super::walk_text::text_width(entry.subject.as_str());
-        let used = u16::try_from(subject_width).unwrap_or(u16::MAX).min(room);
+        let whole = subject_width.saturating_add(tag_width);
+        let (count, fold) = keep(whole, width, &words, fold_forms(entry, ascii));
+        let fold_width = fold.as_deref().map_or(0, |mark| cells(mark) + FOLD_GAP);
+        let room = width.saturating_sub(fold_width + tag_width);
+        let used = subject_width.min(room);
 
         let mut at = x + used;
         let fold = fold.map(|mark| {
@@ -85,28 +85,56 @@ impl MessageLayout {
             at += tag_width;
             (start, tag.into_owned())
         });
-        let mut placed = Vec::with_capacity(words.len());
-        for (badge, text) in words {
-            let start = at.saturating_add(LABEL_GAP).min(end);
-            let label_width = cells(&text).min(end - start);
-            if label_width == 0 {
-                break;
-            }
-            placed.push(PlacedLabel {
-                cells: start..start + label_width,
-                badge,
-                words: text,
-            });
-            at = start + label_width;
-        }
+        let labels = words
+            .into_iter()
+            .take(count)
+            .map(|(badge, text)| {
+                let start = at + LABEL_GAP;
+                at = start + cells(&text);
+                PlacedLabel {
+                    cells: start..at,
+                    badge,
+                    words: text,
+                }
+            })
+            .collect();
         MessageLayout {
             subject: x..x + used,
-            truncated: subject_width > usize::from(room),
+            truncated: subject_width > room,
             fold,
             tag,
-            labels: placed,
+            labels,
         }
     }
+}
+
+/// How many labels (a prefix, in drawing order) and which fold-tail form
+/// fit beside `whole` cells of subject and tag in `width`: labels drop
+/// first with the whole tail kept, then the tail shortens form by form.
+/// `(0, None)` when even the subject alone does not fit — it is cut then.
+fn keep(
+    whole: u16,
+    width: u16,
+    words: &[(usize, String)],
+    forms: Vec<String>,
+) -> (usize, Option<String>) {
+    let tail = |form: Option<&String>| form.map_or(0, |mark| cells(mark) + FOLD_GAP);
+    let full = whole.saturating_add(tail(forms.first()));
+    let mut wanted = full;
+    let mut fit = (full <= width).then_some(0);
+    for (n, (_, text)) in words.iter().enumerate() {
+        wanted = wanted.saturating_add(cells(text).saturating_add(LABEL_GAP));
+        if wanted <= width {
+            fit = Some(n + 1);
+        }
+    }
+    let mut forms = forms.into_iter();
+    let first = forms.next();
+    if let Some(n) = fit {
+        return (n, first);
+    }
+    let fold = forms.find(|form| whole.saturating_add(tail(Some(form))) <= width);
+    (0, fold)
 }
 
 /// The screen columns each ref drawn on `entry`'s row occupies: one
@@ -245,11 +273,9 @@ fn plain_words(badge: &Badge, keys: &Keymap, in_column: bool) -> Option<String> 
 /// so the same cells are drawn, whatever the commit carries (m8/12c:
 /// 16 000 refs on one commit cost 16 000 badges a row a frame).
 ///
-/// Why this many is enough: the labels get at most half the message column
-/// once the message is long, and the column is narrower than the screen,
-/// so they have fewer than `columns / 2` cells; each label takes at least
-/// its two-cell gap and one cell, so label `columns / 2` starts past the
-/// edge. Pinned by `tests::many_refs_row_draws_like_its_first_badges`.
+/// Why this many is enough: labels are drawn whole or not at all, inside a
+/// message column narrower than the screen, and each takes at least its
+/// two-cell gap and one cell, so fewer than `columns / 2` ever fit. Pinned by `tests::many_refs_row_draws_like_its_first_badges`.
 #[must_use]
 pub fn badges_that_fit(columns: u16) -> usize {
     usize::from(columns / 2) + 1
@@ -275,13 +301,17 @@ fn drawn_tag<'e>(entry: &'e GraphEntry<'_>, ascii: bool, width: u16) -> Option<C
     (width.saturating_sub(cells(&tag).saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)
 }
 
-/// A folding merge's tail in a column of `width` cells: the longest form
-/// that leaves the gap and one subject cell
-/// ([`FoldMark::fitting`](super::FoldMark::fitting)); `None` off a folding
-/// merge or when not even `▸` fits.
-fn drawn_fold(entry: &GraphEntry<'_>, ascii: bool, width: u16) -> Option<String> {
-    let room = width.saturating_sub(FOLD_GAP + 1);
-    entry.fold.as_ref()?.fitting(ascii, usize::from(room))
+/// A folding merge's tail forms, longest first, each said once: the whole
+/// words, `▸ 4 commits`, `▸` alone (06r: it shortens before it drops and
+/// never cuts a word). Empty off a folding merge.
+fn fold_forms(entry: &GraphEntry<'_>, ascii: bool) -> Vec<String> {
+    let mut forms = Vec::with_capacity(3);
+    for form in entry.fold.iter().flat_map(|mark| mark.forms(ascii)) {
+        if !forms.contains(&form) {
+            forms.push(form);
+        }
+    }
+    forms
 }
 
 fn cells(text: &str) -> u16 {

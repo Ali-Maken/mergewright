@@ -1,6 +1,7 @@
 //! Drawing: the [`Widget`] entry point and the rows; the row's text columns
 //! are `row_cells`'.
 
+mod blocks;
 mod emphasis;
 mod second_line;
 
@@ -102,19 +103,20 @@ impl Widget for GraphScreen<'_> {
         }
 
         self.pending_block(chrome.pending, buf);
+        self.branch_pane(chrome.pane, buf);
 
         if body.height > 0 {
             // Gutter cell 0, where the cursor's `▸` goes — absent on a screen
             // too narrow to spare the gutter (`layout::inset`).
             let gutter = (body.x >= area.x + super::GUTTER).then(|| body.x - super::GUTTER);
-            self.body(body, gutter, rows, &fold, buf);
+            self.body(body, gutter, (rows, &fold), area.width, buf);
         }
 
         // One cell of right margin on the bottom rows, as on every other.
         let bar_width = width
             .saturating_sub(usize::from(super::RIGHT_MARGIN))
             .max(1);
-        self.bottom_rows(&chrome, (body, rows, &fold), bar_width, area.x, buf);
+        self.bottom_rows(&chrome, (body, rows, &fold), bar_width, area, buf);
         if let Some(line) = self.view.commit_graph
             && chrome.offer.height > 0
         {
@@ -129,30 +131,14 @@ impl Widget for GraphScreen<'_> {
 }
 
 impl GraphScreen<'_> {
-    /// The still-to-apply block (07c), boxed in its own rows under the
-    /// banner; nothing when there is none or no room for it.
-    fn pending_block(&self, area: Rect, buf: &mut Buffer) {
-        let Some(pending) = &self.view.pending else {
-            return;
-        };
-        let lines = crate::still_to_apply::still_to_apply_lines(pending, area.width, area.height);
-        for (offset, line) in lines.into_iter().enumerate() {
-            let y = area
-                .y
-                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
-            let styled = Line::styled(line, foreground(self.theme, Token::TextMuted));
-            buf.set_line(area.x, y, &styled, area.width);
-        }
-    }
-
     /// The rows: graph, the reserved marker slot, the subject, and — when
     /// there is room — the author chip, the relative date and the short SHA.
     fn body(
         &self,
         area: Rect,
         gutter: Option<u16>,
-        rows: &[GraphEntry<'_>],
-        fold: &Fold,
+        (rows, fold): (&[GraphEntry<'_>], &Fold),
+        screen: u16,
         buf: &mut Buffer,
     ) {
         let graph_width = graph_width(area, fold);
@@ -173,7 +159,7 @@ impl GraphScreen<'_> {
             );
         }
 
-        let columns = Columns::compute(area, graph_width);
+        let columns = Columns::compute(area, graph_width, screen);
         // The cursor row's second line takes the line under it (07b).
         let mut ys = area.top()..area.bottom();
         for entry in rows {

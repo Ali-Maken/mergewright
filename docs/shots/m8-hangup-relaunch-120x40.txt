@@ -4,7 +4,7 @@
 
 ▸ ◌                           Uncommitted changes (2 staged)
                               not committed yet · 2 files · on feature
-    ■                         On feature: mergewright: your edits, set aside for merge main int…  stash@{0}    you  now
+    ■                         On feature: mergewright: your edits, set aside for merge main into feature       you  now
     ◆                         finish the feature  feature is here  not pushed yet                            Graft  now
     ●                         start the feature                                                              Graft   2m
   ● ┃    main                 main moves again  not pushed yet                                               Graft   3m

@@ -19,8 +19,7 @@ mod second;
 pub(crate) use branch_column::branch_name;
 use cells::row_entry;
 pub(super) use cells::{badge_view, who};
-#[cfg(test)]
-pub(in crate::view) use roles::focus;
+pub(crate) use roles::focus;
 pub(in crate::view) use roles::frame_route;
 pub(crate) use roles::lane_roles;
 

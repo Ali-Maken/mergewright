@@ -12,38 +12,38 @@
 
  ◆ api  ~/code/api · main          /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits  1 merged branch folded
 
-▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
-  ┃                         Graft · 2 days ago · made on main · e385b54
-  ◇                         Add the base                                                                     Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Graft   2d│ main  (you're here)
+  ┃                         Graft · 2 days ago · made on main · e385b54           │ ! not pushed yet
+  ◇                         Add the base                                Graft   2d│ · the main line: branches merge into
+                                                                                  │   it
+                                                                                  │ · no upstream to compare with
+                                                                                  │ · everyone, last commit 2d ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  n next · N prev · space show the 3 commits inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys
 
@@ -51,37 +51,37 @@
 
  ◆ api  ~/code/api · main                                                             2 commits  1 merged branch folded
 
-▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
-  ┃                         Graft · 2 days ago · made on main · e385b54
-  ◇                         Add the base                                                                     Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Graft   2d│ main  (you're here)
+  ┃                         Graft · 2 days ago · made on main · e385b54           │ ! not pushed yet
+  ◇                         Add the base                                Graft   2d│ · the main line: branches merge into
+                                                                                  │   it
+                                                                                  │ · no upstream to compare with
+                                                                                  │ · everyone, last commit 2d ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space show the 3 commits inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys

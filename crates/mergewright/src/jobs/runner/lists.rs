@@ -11,7 +11,7 @@ use super::JobRunner;
 use crate::history::RowRequest;
 use crate::jobs::kinds::search;
 use crate::jobs::types::{Cancel, JobEvents, Outcome};
-use crate::jobs::{fold_count, map, palette, remote, stash, switch_list};
+use crate::jobs::{branch_status, fold_count, map, palette, remote, stash, switch_list};
 use crate::update::{AppEvent, Product, Progress, Task};
 
 impl<S: JobEvents> JobRunner<S> {
@@ -177,6 +177,23 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::FoldedCounted { merge, count })
+            })
+        });
+    }
+
+    /// Reads one branch's four answers for the branch pane (ease-pass 09).
+    pub(super) fn read_branch_status(&self, id: JobId, ask: crate::update::branch_pane::StatusAsk) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, None, move |_| {
+            Box::new(move |cancel: &Cancel| {
+                let result = branch_status::read_branch_status(&repos, &ask, cancel).map(Arc::new);
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::BranchStatusRead {
+                    key: ask.key,
+                    result,
+                })
             })
         });
     }

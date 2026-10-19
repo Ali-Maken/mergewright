@@ -4,37 +4,37 @@
 
  ◆ api  ~/code/api · main                                                                                     3 commits
 
-▸ ◆      main (you)           M  not pushed yet                                                                you   2d
-  ┃                           you · 2 days ago · made on main · c4d8d2f
-  ┃ ●    feature              work on feature  not pushed yet                                                  you   2d
-  ◇┄╯    main (you)           A  spare is here  not pushed yet                                                 you   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸ ◆      main (you)           M  not pushed yet                           you   2d│ main  (you're here)
+  ┃                           you · 2 days ago · made on main · c4d8d2f           │ ! not pushed yet
+  ┃ ●    feature              work on feature  not pushed yet             you   2d│ · the main line: branches merge into
+  ◇┄╯    main (you)           A  spare is here  not pushed yet            you   2d│   it
+                                                                                  │ · no upstream to compare with
+                                                                                  │ · everyone, last commit 2d ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

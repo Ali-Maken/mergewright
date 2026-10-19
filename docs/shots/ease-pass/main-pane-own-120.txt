@@ -1,0 +1,33 @@
+ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/branch_pane/shots.rs): `main ← wallet-release (HEAD) ← sara/fix-toc`, `ali/x` cut where sara cut hers, then a commit on wallet-release. Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture; colour unverified (rule 5).
+120x30. What right looks like: the cursor on HEAD's row; right of a `│` rule the pane heads `wallet-release  (you're here)`, four answers each led by `!`, `✓` or `·`, the who line naming the author (`· Graft, …`: this fixture sets no `user.email`, so not `you`), then `built on` and its route `main ─◆ wallet-release`; no subject cut that would fit its column.
+
+ ◆ api  ~/code/api · wallet-release                                                                           5 commits
+
+▸   ◆        wallet-release (you) Bump the wallet version               Graft  28h│ wallet-release  (you're here)
+    ┃                             Graft · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
+    ┃ ●      ali/x                x: try the other layout               Graft  28h│ · not merged
+    ┃ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ ✓ up to date with main
+    ●┄┴┄╯    wallet-release (you) Start the wallet release              Graft  28h│ · Graft, last commit 28h ago
+  ◇━╯        main                 Add the readme  not pushed yet        Graft  28h│
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │    ─◆ wallet-release
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

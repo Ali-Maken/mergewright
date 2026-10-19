@@ -2,37 +2,37 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 
  ◆ wallet  ~/code/wallet · wallet-release                                                 9 commits  every branch shown
 
-▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wallet-release  not pushed yet            Graft   3y
-    ┃ ┊                           Graft · 3 years ago · made on wallet-release · ea2b27e
-    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet                                       Graft   3y
-    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet totals                                     Graft   3y
-    ┃   ●    PR 16021             totals: test the sum                                                       Graft   3y
-    ┃   ●                         totals: drop the cache                                                     Graft   3y
-    ┃   ●                         totals: round once                                                         Graft   3y
-    ┃   ●                         totals: read the ledger                                                    Graft   3y
-    ●┄┄┄╯    wallet-release (you) Start the wallet release                                                   Graft   3y
-  ◇━╯        main                 Add the readme  not pushed yet                                             Graft   3y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ◆─╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft   3y│ wallet-release  (you're here)
+    ┃ │                           Graft · 3 years ago · made on wallet-release · …│ ! not pushed yet
+    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Graft   3y│ · not merged
+    ◉─┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft   3y│ ✓ up to date with sara/fix-toc
+    ┃   ●    PR 16021             totals: test the sum                  Graft   3y│ · Graft, last commit 3y ago
+    ┃   ●                         totals: drop the cache                Graft   3y│
+    ┃   ●                         totals: round once                    Graft   3y│ built on
+    ┃   ●                         totals: read the ledger               Graft   3y│   main
+    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft   3y│    ─◆ sara/fix-toc
+  ◇━╯        main                 Add the readme  not pushed yet        Graft   3y│    ─◆ wallet-release
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Graph: every branch · kept for next launch

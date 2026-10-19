@@ -25,44 +25,44 @@
 
  ◆ api  ~/code/api · main                                                                                                                             4 commits
 
-▸ ◆                         add the base  main is here  not pushed yet                                                                               Graft  now
-  ●                         Correct the note                                                                                                         Graft   7y
-  ●                         Add the first note                                                                                                       Graft   7y
-  ◇                         Add a readme                                                                                                             Graft   7y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸ ◆                         add the base  main is here  not pushed yet                                          Graft  now│ main  (you're here)
+  ●                         Correct the note                                                                    Graft   7y│ ! not pushed yet
+  ●                         Add the first note                                                                  Graft   7y│ · the main line: branches merge into
+  ◇                         Add a readme                                                                        Graft   7y│   it
+                                                                                                                          │ · no upstream to compare with
+                                                                                                                          │ · everyone, last commit just now
+                                                                                                                          │
+                                                                                                                          │ built on
+                                                                                                                          │   main
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
 ╭ Preview: revert to before "stage one.txt" (3 steps) ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ index and working tree restored from backup                                                                                                                  │
 │ no conflicts expected                                                                                                                                        │

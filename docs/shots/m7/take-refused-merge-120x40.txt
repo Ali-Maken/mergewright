@@ -7,41 +7,41 @@
 # taking a merge isn't in Mergewright yet`; no preview box.
  ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
-▸   ◉    merged               merge login-page  ▸ 1 commit  not pushed yet                                   Graft  now
-    ┃                         Graft · just now · made on merged · 5c42e39
-  ◆ ┃    main (you)           main moves on                                                                  Graft   4m
-  ●━╯                         add the base  feature-a is here  not pushed yet                                Graft   5m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ◉    merged               merge login-page  ▸ 1 commit              Graft  now│ merged
+    ┃                         Graft · just now · made on merged · 5c42e39         │ ! not pushed yet
+  ◆ ┃    main (you)           main moves on                             Graft   4m│ · not merged
+  ●━╯                         add the base                              Graft   5m│ ✓ up to date with login-page
+  ●                           Correct the note                          Graft   1y│ · Graft, last commit just now
+  ●                           Add the first note                        Graft   1y│
+  ◇                           Add a readme                              Graft   1y│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ login-page
+                                                                                  │    ─◆ merged
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  5c42e39 is a merge · taking a merge isn't in Mergewright yet · esc dismiss

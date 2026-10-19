@@ -10,41 +10,41 @@
 
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-▸ ◆    main (you)           Commit 200                                                                       Graft   7y
-  ┃                         Graft · 7 years ago · made on main · d5ae5fd
-  ●                         Commit 199                                                                       Graft   7y
-  ●                         Commit 198                                                                       Graft   7y
-  ●                         Commit 197                                                                       Graft   7y
-  ●                         Commit 196                                                                       Graft   7y
-  ●                         Commit 195                                                                       Graft   7y
-  ●                         Commit 194                                                                       Graft   7y
-  ●                         Commit 193                                                                       Graft   7y
-  ●                         Commit 192                                                                       Graft   7y
-  ●                         Commit 191                                                                       Graft   7y
-  ●                         Commit 190                                                                       Graft   7y
-  ●                         Commit 189                                                                       Graft   7y
-  ●                         Commit 188                                                                       Graft   7y
-  ●                         Commit 187                                                                       Graft   7y
-  ●                         Commit 186                                                                       Graft   7y
-  ●                         Commit 185                                                                       Graft   7y
-  ●                         Commit 184                                                                       Graft   7y
-  ●                         Commit 183                                                                       Graft   7y
-  ●                         Commit 182                                                                       Graft   7y
-  ●                         Commit 181                                                                       Graft   7y
-  ●                         Commit 180                                                                       Graft   7y
-  ●                         Commit 179                                                                       Graft   7y
-  ●                         Commit 178                                                                       Graft   7y
-  ●                         Commit 177                                                                       Graft   7y
-  ●                         Commit 176                                                                       Graft   7y
-  ●                         Commit 175                                                                       Graft   7y
-  ●                         Commit 174                                                                       Graft   7y
-  ●                         Commit 173                                                                       Graft   7y
-  ●                         Commit 172                                                                       Graft   7y
-  ●                         Commit 171                                                                       Graft   7y
-  ●                         Commit 170                                                                       Graft   7y
-  ●                         Commit 169                                                                       Graft   7y
-  ●                         Commit 168                                                                       Graft   7y
-  ●                         Commit 167                                                                       Graft   7y
-  ●                         Commit 166                                                                       Graft   7y
+▸ ◆    main (you)           Commit 200                                  Graft   7y│ main  (you're here)
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd          │ ✓ pushed
+  ●                         Commit 199                                  Graft   7y│ · the main line: branches merge into
+  ●                         Commit 198                                  Graft   7y│   it
+  ●                         Commit 197                                  Graft   7y│ ✓ up to date with origin/main
+  ●                         Commit 196                                  Graft   7y│ · everyone, last commit 7y ago
+  ●                         Commit 195                                  Graft   7y│
+  ●                         Commit 194                                  Graft   7y│ built on
+  ●                         Commit 193                                  Graft   7y│   main
+  ●                         Commit 192                                  Graft   7y│
+  ●                         Commit 191                                  Graft   7y│
+  ●                         Commit 190                                  Graft   7y│
+  ●                         Commit 189                                  Graft   7y│
+  ●                         Commit 188                                  Graft   7y│
+  ●                         Commit 187                                  Graft   7y│
+  ●                         Commit 186                                  Graft   7y│
+  ●                         Commit 185                                  Graft   7y│
+  ●                         Commit 184                                  Graft   7y│
+  ●                         Commit 183                                  Graft   7y│
+  ●                         Commit 182                                  Graft   7y│
+  ●                         Commit 181                                  Graft   7y│
+  ●                         Commit 180                                  Graft   7y│
+  ●                         Commit 179                                  Graft   7y│
+  ●                         Commit 178                                  Graft   7y│
+  ●                         Commit 177                                  Graft   7y│
+  ●                         Commit 176                                  Graft   7y│
+  ●                         Commit 175                                  Graft   7y│
+  ●                         Commit 174                                  Graft   7y│
+  ●                         Commit 173                                  Graft   7y│
+  ●                         Commit 172                                  Graft   7y│
+  ●                         Commit 171                                  Graft   7y│
+  ●                         Commit 170                                  Graft   7y│
+  ●                         Commit 169                                  Graft   7y│
+  ●                         Commit 168                                  Graft   7y│
+  ●                         Commit 167                                  Graft   7y│
+  ●                         Commit 166                                  Graft   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no … · origin/main moved before it stopped

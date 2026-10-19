@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::jobs::{JobRunner, Shutdown};
 use crate::repos::RepoStore;
+use crate::update::RestRead;
 use crate::update::fold_count::FoldCount;
 
 /// Merges on `main`'s first-parent chain, each bringing in one commit from
@@ -117,7 +118,7 @@ fn opened(repo: &Path) -> AppState {
 fn counts_asked(commands: &[Command]) -> usize {
     commands
         .iter()
-        .filter(|command| matches!(command, Command::CountFolded { .. }))
+        .filter(|command| matches!(command, Command::AtRest(_, RestRead::CountFolded { .. })))
         .count()
 }
 
@@ -222,7 +223,7 @@ fn counted_merges(commands: &[Command]) -> Vec<Oid> {
     commands
         .iter()
         .filter_map(|command| match command {
-            Command::CountFolded { merge, .. } => Some(*merge),
+            Command::AtRest(_, RestRead::CountFolded { merge }) => Some(*merge),
             _ => None,
         })
         .collect()

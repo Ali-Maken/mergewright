@@ -88,6 +88,16 @@ pub enum Behind {
     },
 }
 
+/// One author of a branch's own commits, as the newest of their commits
+/// names them; lossy UTF-8 of what the repository stores.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Author {
+    /// The author name.
+    pub name: String,
+    /// The author email, raw (not mapped).
+    pub email: String,
+}
+
 /// Who made the branch's own commits.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Who {
@@ -98,9 +108,10 @@ pub enum Who {
     },
     /// The authors of the branch's own commits.
     Authors {
-        /// Up to two author names, most commits first (ties: most recent
-        /// first); raw bytes, as the repository stores them.
-        first: Vec<Vec<u8>>,
+        /// Up to two authors, most commits first (ties: most recent
+        /// first), grouped by raw email (no mailmap here: the app joins
+        /// addresses when it asks who is the user).
+        first: Vec<Author>,
         /// How many more authors there are.
         others: usize,
         /// When the newest of its own commits was authored.
@@ -260,14 +271,14 @@ fn trunk_status(
 /// newer last commit, then by email so the order never depends on input
 /// order alone. `None` for no commits.
 fn who_of(commits: &[CommitSummary]) -> Option<Who> {
-    struct Author<'a> {
+    struct Tally<'a> {
         email: &'a [u8],
         name: &'a [u8],
         count: usize,
         newest: Timestamp,
     }
     let last = newest(commits)?;
-    let mut authors: Vec<Author<'_>> = Vec::new();
+    let mut authors: Vec<Tally<'_>> = Vec::new();
     for commit in commits {
         let who = &commit.author;
         match authors.iter_mut().find(|a| a.email == who.email.as_slice()) {
@@ -278,7 +289,7 @@ fn who_of(commits: &[CommitSummary]) -> Option<Who> {
                     author.name = &who.name;
                 }
             }
-            None => authors.push(Author {
+            None => authors.push(Tally {
                 email: &who.email,
                 name: &who.name,
                 count: 1,
@@ -292,7 +303,14 @@ fn who_of(commits: &[CommitSummary]) -> Option<Who> {
             .then(b.newest.seconds.cmp(&a.newest.seconds))
             .then(a.email.cmp(b.email))
     });
-    let first: Vec<Vec<u8>> = authors.iter().take(2).map(|a| a.name.to_vec()).collect();
+    let first: Vec<Author> = authors
+        .iter()
+        .take(2)
+        .map(|a| Author {
+            name: String::from_utf8_lossy(a.name).into_owned(),
+            email: String::from_utf8_lossy(a.email).into_owned(),
+        })
+        .collect();
     Some(Who::Authors {
         others: authors.len() - first.len(),
         first,

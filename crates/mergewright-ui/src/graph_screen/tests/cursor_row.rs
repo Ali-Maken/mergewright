@@ -42,7 +42,7 @@ fn geometry(view: &GraphView<'_>, theme: &Theme) -> (Rect, Columns) {
     let screen = GraphScreen::new(view, theme);
     let (body, _, fold) = screen.body_layout(Rect::new(0, 0, WIDTH, HEIGHT));
     let width = graph_width(body, &fold);
-    (body, Columns::compute(body, width))
+    (body, Columns::compute(body, width, WIDTH))
 }
 
 fn cursor_y(body: Rect) -> u16 {
@@ -59,8 +59,10 @@ fn rgb(color: Color) -> Rgb {
 fn badged(rows: &[mergewright_graph::row::Row], ascii: bool) -> GraphView<'_> {
     let mut view = view(rows, WalkView::Complete { rows: 3 }, CURSOR);
     view.ascii = ascii;
+    // A short name: at 60 columns a label is drawn whole or not at all
+    // (ease-pass 09 ruling W), and this one has to be drawn to be checked.
     view.rows[CURSOR].badges = vec![branch(
-        "feature/csv",
+        "csv",
         false,
         Tracking::InSync {
             remote: sanitize_line("origin"),

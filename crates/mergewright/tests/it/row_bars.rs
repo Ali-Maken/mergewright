@@ -33,10 +33,10 @@ fn bar(state: &AppState) -> String {
 /// Clicks the drawn row whose line holds `subject`.
 fn click(app: &App, state: &AppState, subject: &str) -> AppState {
     let frame = drawn(state);
-    let y = frame
-        .iter()
-        .position(|line| line.contains(subject))
-        .unwrap_or_else(|| panic!("{subject:?} is drawn\n{}", frame.join("\n")));
+    let y = crate::row_reads::row_reading(&frame, subject).map_or_else(
+        || panic!("{subject:?} is drawn\n{}", frame.join("\n")),
+        |(y, _)| y,
+    );
     app.mouse_down(
         state,
         MouseButton::Left,

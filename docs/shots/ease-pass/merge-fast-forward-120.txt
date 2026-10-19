@@ -5,32 +5,32 @@
 === 120x40 ===
  ◆ api  ~/code/api · wallet-release                                                                           7 commits
 
-▸   ◆                         Check every link  sara/fix-toc is here  not pushed yet  wallet-release is he…   Sara  55m
-    ●                         Add notes                                                                       Omar  56m
-    ●                         Add a table of contents                                                         Sara  57m
-    ●                         Add the report                                                                 Graft  59m
-  ●─╯                         Correct the note  main is here  not pushed yet                                 Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ◆                         Check every link                           Sara  55m│ sara/fix-toc
+    ●                         Add notes                                  Omar  56m│ ! not pushed yet
+    ●                         Add a table of contents                    Sara  57m│ · not merged
+    ●                         Add the report                            Graft  59m│ ✓ up to date with wallet-release
+  ●─╯                         Correct the note                          Graft   1y│ · Sara and Omar, last commit 55m ago
+  ●                           Add the first note                        Graft   1y│
+  ◇                           Add a readme                              Graft   1y│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ wallet-release
+                                                                                  │    ─◆ sara/fix-toc
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Merge sara/fix-toc into wallet-release ──────────────────────────────────────────────────────────────────────────────╮
 │ Nothing has changed yet.                                                                                             │
 │                                                                                                                      │

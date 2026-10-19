@@ -18,41 +18,41 @@
 
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
-  ◌                             Uncommitted changes (1 unstaged)
-▸   ■                           On main: mergewright: your edits, set aside for checkout fix  stash@{0}        you   3m
-    ┃                           you · 3 minutes ago · 1f9ea99
-    ┃ ◆    fix (you)            fix changes line 7  not pushed yet                                           Graft   4m
-  ●━┴┄╯    main                 add f  not pushed yet                                                        Graft   5m
-  ●                             Correct the note                                                             Graft   1y
-  ●                             Add the first note                                                           Graft   1y
-  ◇                             Add a readme                                                                 Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  ◌                             Uncommitted changes (1 unstaged)                  │ 1f9ea99 · not on a branch
+▸   ■                           On main: mergewright: your edits, set…    you   3m│
+    ┃                           you · 3 minutes ago · 1f9ea99                     │
+    ┃ ◆    fix (you)            fix changes line 7  not pushed yet      Graft   4m│
+  ●━┴┄╯    main                 add f  not pushed yet                   Graft   5m│
+  ●                             Correct the note                        Graft   1y│
+  ●                             Add the first note                      Graft   1y│
+  ◇                             Add a readme                            Graft   1y│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  an operation was interrupted: checkout fix · your edits are back · a copy stays in stash@{0} · J to inspect

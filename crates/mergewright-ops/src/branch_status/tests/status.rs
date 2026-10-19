@@ -151,10 +151,7 @@ pub(super) fn authors(status: &BranchStatus) -> (Vec<String>, usize, i64) {
             others,
             last,
         } => (
-            first
-                .iter()
-                .map(|n| String::from_utf8_lossy(n).into_owned())
-                .collect(),
+            first.iter().map(|author| author.name.clone()).collect(),
             *others,
             last.seconds,
         ),
@@ -185,6 +182,22 @@ fn who_two_authors() {
     // Two each; Alice has the newest commit.
     assert_eq!(first_names(&feature), ["Alice Ames", "Bea Brandt"]);
     assert_eq!(authors(&feature).1, 0);
+}
+
+/// ease-pass 09 ruling Y: each author carries the email too, so the app
+/// can ask its mailmap whether that author is the user.
+#[test]
+fn who_authors_carry_name_and_email() {
+    let (repo, candidates) = feature_by(&[BEA, ALICE, BEA]);
+    let feature = status(&repo, "feature", &candidates, None);
+    let Who::Authors { first, .. } = &feature.who else {
+        panic!("expected authors, got {:?}", feature.who);
+    };
+    let pairs: Vec<(&str, &str)> = first
+        .iter()
+        .map(|author| (author.name.as_str(), author.email.as_str()))
+        .collect();
+    assert_eq!(pairs, [BEA, ALICE]);
 }
 
 #[test]

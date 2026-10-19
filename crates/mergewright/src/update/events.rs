@@ -5,16 +5,19 @@ use mergewright_core::event::Event;
 use mergewright_core::job::JobId;
 
 use crate::repository::RepositoryFacts;
-use mergewright_git::version::SystemGit;
 
+mod answers;
 mod command;
 mod commit_graph_offer;
 mod progress;
+mod rest_read;
 mod take;
 
+pub use answers::{GitCheck, SortedOrder, WholeFileAnswer};
 pub use command::Command;
 pub use commit_graph_offer::CommitGraphOffer;
 pub use progress::Progress;
+pub use rest_read::RestRead;
 pub use take::{TakeAt, TakeRequest};
 
 /// Everything the loop can be told.
@@ -507,45 +510,22 @@ pub enum Product {
         result: Result<crate::update::remote::Leaves, String>,
     },
     /// How many commits a folded merge brought in
-    /// (`Command::CountFolded`), or git's reason it could not be counted.
+    /// (`RestRead::CountFolded`), or git's reason it could not be counted.
     FoldedCounted {
         /// The folded merge.
         merge: mergewright_core::oid::Oid,
         /// The answer.
         count: Result<usize, String>,
     },
+    /// A branch's four answers and route (`RestRead::BranchStatus`), for
+    /// the key it was asked under, or why they could not be read.
+    BranchStatusRead {
+        /// The branch and candidate tips it was asked for.
+        key: crate::update::branch_pane::StatusKey,
+        /// The answer.
+        result: Result<std::sync::Arc<mergewright_ops::branch_status::BranchStatus>, String>,
+    },
     /// Every change against `HEAD` with its line counts
     /// (`Command::ReadCommitFiles`), or why it could not be read.
     CommitFiles(Result<std::sync::Arc<mergewright_git::diff::FileList>, String>),
-}
-
-/// A history place's whole file at one commit (m7-power-tools/21c).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WholeFileAnswer {
-    /// The file, assembled as the detail pane assembles a diff.
-    pub view: std::sync::Arc<mergewright_ui::detail::DiffView>,
-    /// `Some` only when the diff is binary. `Err`: the size read's `Display`.
-    pub sizes: Option<Result<mergewright_git::trace::BlobSizes, String>>,
-}
-
-/// What running `git --version` found.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum GitCheck {
-    /// `git` ran and said which version it is.
-    Ran(SystemGit),
-    /// `git` could not be run at all, and this is why. Not fatal at M0 —
-    /// nothing has shelled out to it yet — but the user needs to know now
-    /// rather than at the first operation that needs it.
-    Unavailable(String),
-}
-
-/// A finished topological sort: the order, and how long it took to make.
-/// The time decides the commit-graph offer (m7-power-tools/15, :778): only a
-/// sort the user had to wait for is worth a file to speed up.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SortedOrder {
-    /// Every commit in strict topological order.
-    pub order: std::sync::Arc<[mergewright_core::commit_handle::CommitHandle]>,
-    /// Wall time of `history::topological_order`, measured in the job.
-    pub took: core::time::Duration,
 }

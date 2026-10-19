@@ -105,19 +105,21 @@ fn a_folding_merge_row_ends_with_its_tail_muted() {
     );
 }
 
-/// At 80 columns a long subject is cut with `…` before the tail, which is
-/// never cut; the ASCII tier's tail is ASCII.
+/// At 80 columns a subject wider than its column gives way last (ease-pass
+/// 09 ruling W): the tail drops first, then the subject is cut with `…` and
+/// nothing follows it. The ASCII tier's tail is ASCII.
 #[test]
-fn the_tail_survives_a_cut_subject() {
+fn a_subject_wider_than_its_column_is_cut_and_the_tail_drops_first() {
     let mut long = linear(2);
     long[0].commit.message =
         b"A very long subject line that is much wider than the row and needs the ellipsis".to_vec();
     let mut folded = view(&long, WalkView::Complete { rows: 2 }, 1);
     folded.rows[0].fold = Some(mark(false, FoldCount::Known(12), Some("PR 7")));
     let lines = text(&draw(&folded, 80, 5));
+    assert!(lines[1].contains('\u{2026}'), "{lines:#?}");
     assert!(
-        lines[1].contains("\u{2026}  \u{25b8} 12 commits from PR 7 "),
-        "{lines:#?}"
+        !lines[1].contains('\u{25b8}'),
+        "the tail dropped: {lines:#?}"
     );
 
     let rows = linear(2);
@@ -201,12 +203,12 @@ fn form_of(rest: &str, columns: u16) -> (Form, &'static str) {
 }
 
 /// ease-pass 06r m2 on screen: narrowing the terminal, every form shows,
-/// each two cells after a subject of at least one cell (the subject yields
-/// first), none cut, and none while a longer one had room.
+/// each two cells after the whole subject (the subject gives way last,
+/// ease-pass 09 ruling W), none cut, and none while a longer one had room.
 #[test]
 fn narrowing_the_terminal_sheds_the_tail_before_dropping_it() {
     let mut long = linear(2);
-    long[0].commit.message = b"Qa subject far wider than any row the sweep below draws".to_vec();
+    long[0].commit.message = b"Qa short".to_vec();
     let mut seen = Vec::new();
     for columns in (24..=120).rev() {
         let mut folded = view(&long, WalkView::Complete { rows: 2 }, 1);
@@ -217,16 +219,16 @@ fn narrowing_the_terminal_sheds_the_tail_before_dropping_it() {
             continue;
         };
         // The message starts after the branch column, whose width moves
-        // with the terminal's (ease-pass G5); a one-cell subject is its `…`.
+        // with the terminal's (ease-pass G5).
         let start = line
             .iter()
-            .position(|&cell| cell == 'Q' || cell == '\u{2026}')
+            .position(|&cell| cell == 'Q')
             .unwrap_or_else(|| panic!("a tail with no subject at {columns}: {line:?}"));
         let (form, drawn) = form_of(&line[arrow..].iter().collect::<String>(), columns);
         assert_eq!(line[arrow - 2..arrow], [' ', ' '], "the gap at {columns}");
         assert_ne!(line[arrow - 3], ' ', "one gap, two cells, at {columns}");
         let subject = arrow - 2 - start;
-        assert!(subject >= 1, "a subject cell at {columns}");
+        assert_eq!(subject, width("Qa short"), "the subject whole at {columns}");
         let room = subject + 2 + width(drawn);
         let longer = match form {
             Form::Full | Form::Gone => None,

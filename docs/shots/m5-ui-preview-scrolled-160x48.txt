@@ -41,40 +41,40 @@
 
  ◆ api  ~/code/api · topic                                                                                                                           70 commits
 
-    ●                           redesign step 21                                                                                                     Graft  41m
-    ●                           redesign step 20                                                                                                     Graft  42m
-    ●                           redesign step 19                                                                                                     Graft  43m
-    ●                           redesign step 18                                                                                                     Graft  44m
-    ●                           redesign step 17                                                                                                     Graft  45m
-    ●                           redesign step 16                                                                                                     Graft  46m
-    ●                           redesign step 15                                                                                                     Graft  47m
-    ●                           redesign step 14                                                                                                     Graft  48m
-    ●                           redesign step 13                                                                                                     Graft  49m
-    ●                           redesign step 12                                                                                                     Graft  50m
-    ●                           redesign step 11                                                                                                     Graft  51m
-    ●                           redesign step 10                                                                                                     Graft  52m
-    ●                           redesign step 09                                                                                                     Graft  53m
-    ●                           redesign step 08                                                                                                     Graft  54m
-    ●                           redesign step 07                                                                                                     Graft  55m
-    ●                           redesign step 06                                                                                                     Graft  56m
-    ●                           redesign step 05                                                                                                     Graft  57m
-    ●                           redesign step 04                                                                                                     Graft  58m
-    ●                           redesign step 03                                                                                                     Graft  59m
-    ●                           redesign step 02                                                                                                     Graft  60m
-    ●                           redesign step 01                                                                                                     Graft  61m
-    ●                           redesign step 00                                                                                                     Graft  62m
-    │ ●                         finish the topic                                                                                                     Graft  63m
-    │ ●                         start the topic                                                                                                      Graft  64m
-  ●─┴─╯                         main moves on (2)  main is here  not pushed yet                                                                      Graft  65m
-  ●                             main moves on (1)                                                                                                    Graft  66m
-  ●                             main moves on (0)                                                                                                    Graft  67m
-  │                             after rebase
-  │ ○                           finish the topic  topic is here  not pushed yet                                                                      Graft    —
-  │ ○                           start the topic                                                                                                      Graft    —
-  │ ○                           main moves on (2)                                                                                                    Graft    —
-  │ ○                           main moves on (1)                                                                                                    Graft    —
-  │ ○                           main moves on (0)                                                                                                    Graft    —
-▸ │ ●                           cut release 1.0  old-release is here  not pushed yet                                                                 Graft  68m
+    ●                           redesign step 21                                                                Graft  41m│ old-release
+    ●                           redesign step 20                                                                Graft  42m│ ! not pushed yet
+    ●                           redesign step 19                                                                Graft  43m│ · not merged
+    ●                           redesign step 18                                                                Graft  44m│ ! main has 3 new commits since it
+    ●                           redesign step 17                                                                Graft  45m│   left
+    ●                           redesign step 16                                                                Graft  46m│ · Graft, last commit 68m ago
+    ●                           redesign step 15                                                                Graft  47m│
+    ●                           redesign step 14                                                                Graft  48m│ built on
+    ●                           redesign step 13                                                                Graft  49m│   main
+    ●                           redesign step 12                                                                Graft  50m│    ─◆ old-release
+    ●                           redesign step 11                                                                Graft  51m│
+    ●                           redesign step 10                                                                Graft  52m│
+    ●                           redesign step 09                                                                Graft  53m│
+    ●                           redesign step 08                                                                Graft  54m│
+    ●                           redesign step 07                                                                Graft  55m│
+    ●                           redesign step 06                                                                Graft  56m│
+    ●                           redesign step 05                                                                Graft  57m│
+    ●                           redesign step 04                                                                Graft  58m│
+    ●                           redesign step 03                                                                Graft  59m│
+    ●                           redesign step 02                                                                Graft  60m│
+    ●                           redesign step 01                                                                Graft  61m│
+    ●                           redesign step 00                                                                Graft  62m│
+    │ ●                         finish the topic                                                                Graft  63m│
+    │ ●                         start the topic                                                                 Graft  64m│
+  ●─┴─╯                         main moves on (2)  main is here  not pushed yet                                 Graft  65m│
+  ●                             main moves on (1)                                                               Graft  66m│
+  ●                             main moves on (0)                                                               Graft  67m│
+  │                             after rebase                                                                              │
+  │ ○                           finish the topic  topic is here  not pushed yet                                 Graft    —│
+  │ ○                           start the topic                                                                 Graft    —│
+  │ ○                           main moves on (2)                                                               Graft    —│
+  │ ○                           main moves on (1)                                                               Graft    —│
+  │ ○                           main moves on (0)                                                               Graft    —│
+▸ │ ●                           cut release 1.0  old-release is here  not pushed yet                            Graft  68m│
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │

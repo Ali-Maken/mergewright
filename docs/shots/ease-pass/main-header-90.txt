@@ -32,8 +32,8 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
   ●                 release: note 03                                           Graft  27h
   ●                 release: note 02                                           Graft  27h
   ●                 release: note 01                                           Graft  27h
-  ◉                 Merge branch 'sara/fix-toc…  ▸ 1 commit from sara/fix-toc  Graft  28h
-▸ ◉                 Merged PR 16021: Fix the wall…  ▸ 4 commits from PR 16021  Graft  28h
+  ◉                 Merge branch 'sara/fix-toc' into wallet-release  ▸         Graft  28h
+▸ ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits        Graft  28h
   ┃                 Graft · 28 hours ago · made on wallet-release · merged 4 from PR 160…
 ──────────────────────────────────────────────────────────────────────────────────────────
  space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

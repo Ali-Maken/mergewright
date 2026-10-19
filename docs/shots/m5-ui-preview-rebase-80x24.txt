@@ -29,9 +29,9 @@
     ●                   finish the feature                           Graft  now
     ●                   start the feature                            Graft   2m
     │                   after rebase
-    │ ○                 finish the feature  feature is here  not p…  Graft    —
+    │ ○                 finish the feature                           Graft    —
     │ ○                 start the feature                            Graft    —
-▸ ●─│─╯                 main moves again  main is here  not pushed…  Graft   3m
+▸ ●─│─╯                 main moves again                             Graft   3m
   ● │                   main moves on                                Graft   4m
   ●─╯                   add the base                                 Graft   5m
   ●                     Correct the note                             Graft   1y

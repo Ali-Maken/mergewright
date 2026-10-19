@@ -32,6 +32,7 @@ mod header_tail;
 pub mod hints;
 mod lanes;
 mod layout;
+mod pane_slot;
 mod render;
 mod row_cells;
 mod row_columns;

@@ -222,9 +222,11 @@ pub fn check_shot(name: &str, body: &str) {
 /// `resolver::shell_begun` for the undo-over-drift capture (m6-conflicts/79).
 pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState {
     app.pump(state, "a frame with nothing loading", |state| {
-        frame(state, 120, 40)
-            .iter()
-            .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
+        mergewright::update::branch_pane::settled(state)
+            && mergewright::update::fold_count::settled(state)
+            && frame(state, 120, 40)
+                .iter()
+                .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
     })
 }
 
@@ -238,10 +240,23 @@ pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState
 /// first; the radar's `ⓘ` on an unpushed `main` is there or not the same
 /// way (m8-polish-and-ship/30, both seen in one capture across two runs).
 /// [`settled_frame`] waits out only the `sorting…`.
+///
+/// The branch pane's read too (ease-pass 09): it answers on its own job, so
+/// a frame read before it draws `reading…` and lanes not yet coloured by
+/// the route, and differs from the next run's. The fold counts likewise:
+/// where a tail gives way to its subject (ease-pass 09 ruling W) the frame
+/// cannot say whether a count landed, so the state is asked.
 pub fn at_rest(app: &crate::app_harness::App, state: AppState) -> AppState {
-    app.pump(state, "a complete walk and the radar's answer", |state| {
-        walk_has_settled(state) && radar_has_answered(state)
-    })
+    app.pump(
+        state,
+        "a complete walk, the radar's answer, the fold counts and the branch pane's read",
+        |state| {
+            walk_has_settled(state)
+                && radar_has_answered(state)
+                && mergewright::update::branch_pane::settled(state)
+                && mergewright::update::fold_count::settled(state)
+        },
+    )
 }
 
 /// One resolver row split at its list column's rule (ease-pass/11): the

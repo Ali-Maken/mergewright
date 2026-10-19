@@ -24,49 +24,49 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ◆    feature (you)        finish the feature  not pushed yet                                                                                     Graft  now
-    ┃                         Graft · just now · made on feature · 8d6cd28
-    ●                         start the feature                                                                                                      Graft   2m
-  ● ┃ →  main                 main moves again  not pushed yet                                                                                       Graft   3m
-  ● ┃                         main moves on                                                                                                          Graft   4m
-  ●━╯                         add the base                                                                                                           Graft   5m
-  ●                           Correct the note                                                                                                       Graft   1y
-  ●                           Add the first note                                                                                                     Graft   1y
-  ◇                           Add a readme                                                                                                           Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ◆    feature (you)        finish the feature  not pushed yet                                                Graft  now│ feature  (you're here)
+    ┃                         Graft · just now · made on feature · 8d6cd28                                                │ ! not pushed yet
+    ●                         start the feature                                                                 Graft   2m│ · not merged
+  ● ┃ →  main                 main moves again  not pushed yet                                                  Graft   3m│ ! main has 2 new commits since it
+  ● ┃                         main moves on                                                                     Graft   4m│   left
+  ●━╯                         add the base                                                                      Graft   5m│ · Graft, last commit just now
+  ●                           Correct the note                                                                  Graft   1y│
+  ●                           Add the first note                                                                Graft   1y│ built on
+  ◇                           Add a readme                                                                      Graft   1y│   main
+                                                                                                                          │    ─◆ feature
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
+                                                                                                                          │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  release drop on a row  esc cancel

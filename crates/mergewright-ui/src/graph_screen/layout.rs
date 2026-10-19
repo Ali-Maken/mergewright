@@ -66,6 +66,10 @@ pub struct ScreenRows {
     pub status: Rect,
     /// The hint bar's row: the screen's last.
     pub footer: Rect,
+    /// The branch pane's slot right of the body, its `│` rule first, on the
+    /// body's rows ([`GraphView::pane`](super::GraphView::pane)); zero-width
+    /// with no pane or below [`crate::branch_pane::PANE_FROM`] columns.
+    pub pane: Rect,
 }
 
 impl<'a> GraphScreen<'a> {
@@ -114,7 +118,7 @@ impl<'a> GraphScreen<'a> {
             return Vec::new();
         }
         let (body, _, fold) = self.body_layout(area);
-        let mut xs = Columns::compute(body, graph_width(body, &fold)).boundaries(body);
+        let mut xs = Columns::compute(body, graph_width(body, &fold), area.width).boundaries(body);
         // The gutter and the margin are blank cells beside the rows, so the
         // frame's own edges are boundaries (ADR-0058 §4). The body's right
         // edge is not: [`snap_to_columns`] rests a right edge one cell
@@ -260,17 +264,19 @@ impl<'a> GraphScreen<'a> {
 #[must_use]
 pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
     let carve = row_carve(cells_of(area), CarveInputs::of(view));
+    let (body, pane) = super::pane_slot::beside_pane(view, area, rect_of(carve.body));
     ScreenRows {
         header: rect_of(carve.header),
         gap: rect_of(carve.gap),
         banner: rect_of(carve.banner),
         tour: rect_of(carve.tour),
         pending: rect_of(carve.pending),
-        body: rect_of(carve.body),
+        body,
         rule: rect_of(carve.rule),
         offer: rect_of(carve.offer),
         status: rect_of(carve.status),
         footer: rect_of(carve.footer),
+        pane,
     }
 }
 
@@ -337,7 +343,7 @@ pub fn row_layout(view: &GraphView<'_>, area: Rect) -> RowLayout {
     let (body, _, fold) = body_layout(view, area);
     RowLayout {
         body,
-        columns: Columns::compute(body, graph_width(body, &fold)),
+        columns: Columns::compute(body, graph_width(body, &fold), area.width),
     }
 }
 
@@ -366,5 +372,8 @@ pub fn row_at<'a>(
     let cursor = rows.iter().position(|entry| entry.second.is_some());
     let cursor = cursor.and_then(|at| u16::try_from(at).ok());
     let entry = rows.get(usize::from(body_line(line, cursor).row()))?;
-    Some((entry, Columns::compute(body, graph_width(body, &fold))))
+    Some((
+        entry,
+        Columns::compute(body, graph_width(body, &fold), area.width),
+    ))
 }

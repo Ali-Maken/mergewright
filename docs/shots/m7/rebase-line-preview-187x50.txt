@@ -1,40 +1,40 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
-    ●                           c1                                                                                                                                              Graft   2d
-    │                           after rebase
-    │ ○                         c1  feature-c is here  not pushed yet                                                                                                           Graft    —
-    │ ○                         b1  feature-b is here  not pushed yet                                                                                                           Graft    —
-    │ ○                         a2  feature-a is here  not pushed yet                                                                                                           Graft    —
-    │ ○                         a1                                                                                                                                              Graft    —
-▸ ●─│─╯                         m2  main is here  not pushed yet                                                                                                                Graft   2d
-  │ ●                           b1                                                                                                                                              Graft   2d
-  │ ●                           a2                                                                                                                                              Graft   2d
-  │ ●                           a1                                                                                                                                              Graft   2d
-  ◇─╯                           m1                                                                                                                                              Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●                           c1                                                                                                         Graft   2d│ main
+    │                           after rebase                                                                                                         │ ! not pushed yet
+    │ ○                         c1  feature-c is here  not pushed yet                                                                      Graft    —│ · the main line: branches merge into
+    │ ○                         b1  feature-b is here  not pushed yet                                                                      Graft    —│   it
+    │ ○                         a2  feature-a is here  not pushed yet                                                                      Graft    —│ · no upstream to compare with
+    │ ○                         a1                                                                                                         Graft    —│ · everyone, last commit 2d ago
+▸ ●─│─╯                         m2  main is here  not pushed yet                                                                           Graft   2d│
+  │ ●                           b1                                                                                                         Graft   2d│ built on
+  │ ●                           a2                                                                                                         Graft   2d│   main
+  │ ●                           a1                                                                                                         Graft   2d│
+  ◇─╯                           m1                                                                                                         Graft   2d│
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ╭ Preview: rebase feature-a onto main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 4 commits replayed                                                                                                                                                                      │
 │ branches: feature-a 15335d9 → 2 new commits                                                                                                                                             │

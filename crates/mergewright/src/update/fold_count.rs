@@ -11,7 +11,7 @@
 use mergewright_core::job::JobId;
 use mergewright_core::oid::Oid;
 
-use super::events::Command;
+use super::events::{Command, RestRead};
 use super::state::{AppState, Status};
 
 /// Where one folded merge's count stands.
@@ -39,10 +39,7 @@ pub(super) fn at_rest(
         return;
     };
     next.fold_counts.insert(merge, FoldCount::Counting);
-    commands.push(Command::CountFolded {
-        id: next_id(),
-        merge,
-    });
+    commands.push(Command::AtRest(next_id(), RestRead::CountFolded { merge }));
 }
 
 /// Is a count owed to rest — a folding merge on screen not yet asked? A
@@ -51,6 +48,19 @@ pub(super) fn at_rest(
 /// (`update::rest_owed`).
 pub(crate) fn owed(state: &AppState) -> bool {
     uncounted(state).is_some()
+}
+
+/// Has every folding merge on screen its answer — none owed, none still
+/// counting? What a capture or a walk waits on before it reads a tail: at
+/// a width where the tail gives way to the subject (ease-pass 09 ruling
+/// W), the drawn words cannot say whether the count landed.
+#[must_use]
+pub fn settled(state: &AppState) -> bool {
+    !owed(state)
+        && !state
+            .fold_counts
+            .values()
+            .any(|count| *count == FoldCount::Counting)
 }
 
 /// The first folding merge drawn on screen, top row first, with no count

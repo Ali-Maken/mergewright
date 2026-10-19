@@ -192,7 +192,9 @@ fn the_review_reads_the_mock_lines_and_stages_nothing() {
 
 /// The landed frame at 120, checked: the bar at 120 and 200 leads
 /// `u undo the merge · P push` and has `space show`; one `✓`, the done
-/// line's; the merge's fold reads `2 commits from sara/fix-toc`.
+/// line's; the merge's fold reads `2 commits from sara/fix-toc` at 200 (at
+/// 120 beside the branch pane the tail gives way to the subject, ease-pass
+/// 09 ruling W).
 fn the_landed_frame(state: &AppState) -> String {
     for columns in [120, 200] {
         let frame = crate::captures::frame(state, columns, 40);
@@ -207,10 +209,17 @@ fn the_landed_frame(state: &AppState) -> String {
         body.contains("✓ Merged sara/fix-toc into wallet-release."),
         "{body}"
     );
-    assert_eq!(body.matches('✓').count(), 1, "one tick:\n{body}");
+    // On the rows' side: the branch pane beside them marks its fine
+    // answers `✓` too (ease-pass 09).
+    let rows: String = body
+        .lines()
+        .map(|line| crate::row_reads::graph_side(line, 120))
+        .collect();
+    assert_eq!(rows.matches('✓').count(), 1, "one tick:\n{body}");
+    let wide = crate::captures::frame(state, 200, 40).join("\n");
     assert!(
-        body.contains("2 commits from sara/fix-toc"),
-        "the fold:\n{body}"
+        wide.contains("2 commits from sara/fix-toc"),
+        "the fold:\n{wide}"
     );
     body
 }
@@ -255,10 +264,13 @@ fn y_lands_on_the_merge_and_u_takes_it_back() {
         "ease-pass/12: JustMerged after {:?} on the fixture",
         landed_at.elapsed()
     );
+    // At rest before the capture: the branch pane's read of the merge's
+    // row lands on its own job (ease-pass 09).
+    let state = crate::captures::at_rest(&app, state);
+    // The merge is made at run time, and only the cursor's second line would
+    // draw its id (07b): at 120 beside the branch pane that line is cut
+    // before it (`merged 2 …`, ease-pass 09), so there is nothing to zero.
     let body = the_landed_frame(&state);
-    // The merge is made at run time; only the cursor's second line draws its
-    // id (07b), zeroed.
-    let body = crate::captures::without_cursor_sha(&state, &body);
     crate::captures::check_shot("ease-pass/merge-landed-120.txt", &format!("{body}\n"));
 
     let state = app.key(&state, KeyCode::Char('u'));

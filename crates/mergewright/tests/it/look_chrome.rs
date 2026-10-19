@@ -19,6 +19,8 @@ use mergewright_core::event::MouseButton;
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame_at, radar_has_answered, settled_frame};
 
+mod fill;
+
 /// The sizes the ticket names: the everyday editor terminal, the mock-up's
 /// own, and a wide one.
 const SIZES: [(u16, u16); 3] = [(80, 24), (120, 36), (187, 50)];
@@ -132,7 +134,8 @@ fn selected_subject(state: &AppState) -> Option<String> {
 fn clicks_select_what_is_drawn(app: &App, state: &AppState, columns: u16, rows: u16) -> usize {
     let drawn = frame_at(state, columns, rows, Some(Clock::Fixed(NOW)));
     let mut checked = 0;
-    for (y, line) in drawn.iter().enumerate().skip(1) {
+    for (y, whole) in drawn.iter().enumerate().skip(1) {
+        let line = &crate::row_reads::graph_side(whole, columns);
         if !crate::row_reads::is_commit_row(line) {
             continue;
         }
@@ -248,44 +251,6 @@ fn buffer_with(
     terminal.backend().buffer().clone()
 }
 
-/// The cursor row `row` of `buffer`: asserts the fill starts right of the
-/// gutter and three lanes and stops one short of the edge, and returns the
-/// worst contrast of any character on it against `selection`.
-fn worst_on_the_fill(
-    buffer: &ratatui::buffer::Buffer,
-    row: u16,
-    selection: mergewright_core::capabilities::Rgb,
-    name: &str,
-) -> f32 {
-    use mergewright_core::capabilities::Rgb;
-    use ratatui::style::Color;
-
-    let columns = buffer.area.width;
-    let fill = Color::Rgb(selection.red, selection.green, selection.blue);
-    let slot = (0..columns)
-        .find(|x| buffer[(*x, row)].bg == fill)
-        .expect("the cursor row is filled");
-    // The gutter and the three lanes sit left of the fill.
-    assert!(slot >= 8, "{name}: the fill starts at {slot}");
-    assert_ne!(buffer[(columns - 1, row)].bg, fill, "{name}: the margin");
-    let mut worst = f32::INFINITY;
-    for x in slot..columns - 1 {
-        let cell = &buffer[(x, row)];
-        assert_eq!(cell.bg, fill, "{name}: x {x} is on the fill");
-        if cell.symbol().trim().is_empty() {
-            continue;
-        }
-        let Color::Rgb(red, green, blue) = cell.fg else {
-            panic!("{name}: x {x} fg {:?}", cell.fg);
-        };
-        worst = worst.min(mergewright_ui::theme::contrast(
-            Rgb { red, green, blue },
-            selection,
-        ));
-    }
-    worst
-}
-
 /// m8-polish-and-ship/07, J23 (0 steps) and the ticket's two captures: the
 /// cursor on `feature/two  two: finish` — a branch badge and three lanes.
 /// The cursor row carries `▸` in the gutter, its lanes keep the ground, the
@@ -341,7 +306,7 @@ fn capture_the_cursor_row_in_dark_and_light() {
         let TokenColor::Rgb(selection) = theme.token(Token::Selection) else {
             panic!("the capture terminal is truecolor");
         };
-        let worst = worst_on_the_fill(&buffer, row, selection, name);
+        let worst = fill::worst_on_the_fill(&buffer, row, selection, name);
         assert!(worst >= 4.5, "{name}: worst text on the fill {worst:.2}:1");
         let caption = format!(
             "m8-polish-and-ship/07, {name} theme, 120x36, cursor on `feature/two  two: finish`: \

@@ -10,32 +10,32 @@
 # box edge.
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●                         fix the bug  feature-b is here  not pushed yet                                 Graft   3m
-▸ ◆ │                         main moves on  main is here  not pushed yet  feature-c is here  not pushed y…  Graft   4m
-  ●─╯                         add the base                                                                   Graft   5m
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●                         fix the bug                               Graft   3m│ main  (you're here)
+▸ ◆ │                         main moves on                             Graft   4m│ ! not pushed yet
+  ●─╯                         add the base                              Graft   5m│ · the main line: branches merge into
+  ●                           Correct the note                          Graft   1y│   it
+  ●                           Add the first note                        Graft   1y│ · no upstream to compare with
+  ◇                           Add a readme                              Graft   1y│ · everyone, last commit 4m ago
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: branch feature-c at 37926a7 ────────────────────────────────────────────────────────────────────────────────╮
 │ feature-c (new) → 37926a7                                                                                            │
 │ HEAD → feature-c                                                                                                     │

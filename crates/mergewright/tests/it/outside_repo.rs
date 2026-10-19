@@ -87,7 +87,7 @@ fn on_the_graph_at_head(pty: &Pty, path: &Path, subject: &str) -> Screen {
             s.lines()[0].contains(&name)
                 && s.lines()
                     .iter()
-                    .any(|line| line.starts_with('\u{25b8}') && line.contains(subject))
+                    .any(|line| crate::row_reads::cursor_on_head(line, subject))
         },
     )
 }
@@ -292,7 +292,7 @@ fn starting_inside_a_repository_remembers_it() {
     let isolated = Isolated::new();
     let pty = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
     let screen = pty.wait_for("the repository's graph", |s| {
-        s.lines()[0].contains("api") && s.has(&subject)
+        s.lines()[0].contains("api") && crate::row_reads::reads_subject(&s.text(), &subject)
     });
     assert!(!screen.has("no repository here"), "{}", screen.text());
     quit_cleanly(pty);
@@ -350,7 +350,7 @@ fn landed(pty: &Pty, subject: &str, settled: &[&str]) -> (usize, Vec<String>) {
     let screen = pty.wait_for("the cursor on HEAD", |s| {
         s.lines()
             .iter()
-            .any(|line| line.starts_with('\u{25b8}') && line.contains(subject))
+            .any(|line| crate::row_reads::cursor_on_head(line, subject))
             && settled.iter().all(|line| s.has(line))
     });
     let lines = screen.lines();
@@ -386,8 +386,7 @@ const COUNTED_NEXT: &str = "\u{25b8} 2 commits from feature/one";
 fn launch_and_open_land_alike() {
     let tree = Tree::new();
     let (repo, subject) = tree.repo("api");
-    // Forty commits on a side branch, newer than `HEAD`, put `HEAD` below
-    // the first window of a 36-row terminal.
+    // Forty side commits newer than `HEAD` put it below a 36-row window.
     git(&repo, &["switch", "--quiet", "-c", "side"]);
     for n in 0..40 {
         git(
@@ -408,14 +407,15 @@ fn launch_and_open_land_alike() {
     dirty.extend_from_slice(b"\nan edit\n");
     std::fs::write(repo.join(file), dirty).expect("dirty tree");
 
+    // 187: at 120 the tails give way to `▸` beside the pane (09 W), uncounted or not.
     let isolated = Isolated::new();
-    let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (120, 36));
+    let launched = Pty::spawn(&isolated, &repo, tree.root.path(), (187, 36));
     let at_launch = landed(&launched, &subject, &[DIRTY, COUNTED, COUNTED_NEXT]);
     quit_cleanly(launched);
 
     let isolated = Isolated::new();
     isolated.write_recent(&[(1_000_000_200, &repo)]);
-    let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (120, 36));
+    let mut opener = Pty::spawn(&isolated, &tree.plain(), tree.root.path(), (187, 36));
     on_the_empty_state(&opener);
     opener.send(b"\r");
     let at_open = landed(&opener, &subject, &[DIRTY, COUNTED, COUNTED_NEXT]);

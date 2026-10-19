@@ -5,36 +5,36 @@
 │ feature-b (Graft Fixture): 1 commit follow, on top                                                                   │
 │ feature-c (Graft Fixture): 1 commit follow, on top                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●    feature-c            c1  not pushed yet                                                             Graft   2d
-  ● ┃    main                 m2  not pushed yet                                                             Graft   2d
-  ║ ●    feature-c            b1  feature-b is here  not pushed yet                                          Graft   2d
-  ║ ●                         a2  feature-a is here  not pushed yet                                          Graft   2d
-▸ ║ ◆                         a1  HEAD · stopped here  HEAD is here                                          Graft   2d
-  ║ ┃                         Graft · 2 days ago · made on feature-c · 0395451
-  ◇━╯    main                 m1                                                                             Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●    feature-c            c1  not pushed yet                        Graft   2d│ feature-c
+  ● ┃    main                 m2  not pushed yet                        Graft   2d│ reading…
+  ║ ●    feature-c            b1  feature-b is here  not pushed yet     Graft   2d│ reading…
+  ║ ●                         a2  feature-a is here  not pushed yet     Graft   2d│ reading…
+▸ ║ ◆                         a1  HEAD · stopped here  HEAD is here     Graft   2d│ reading…
+  ║ ┃                         Graft · 2 days ago · made on feature-c · 0395451    │
+  ◇━╯    main                 m1                                        Graft   2d│
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · t tag · y sha · S stash · J journal · ? keys

@@ -1,33 +1,33 @@
 ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/graph_rows_tests.rs): `feature/receipts` (HEAD) 1 ahead of origin, `wallet-release` 2 ahead and not checked out, `main` and `ops/ci` level, `spike/cache` never pushed, `v1.2` on main, Sara and Omar besides you; the merge of `sara/fix-toc` opened with space. Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
-120x30. What right looks like: the cursor on HEAD's row `Draw the receipts list`; under it `you · N hours ago · made on feature/receipts · <sha7>`; muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`.
+120x30. What right looks like: the cursor on HEAD's row `Draw the receipts list`; under it `you · N hours ago · made on feature/receipts ·…`, cut at the branch pane's rule (ease-pass 09); muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`.
 
  ◆ api  ~/code/api · feature/receipts                               6 commits  1 commit to push  1 merged branch folded
 
-▸   ◆        feature/recei… (you) Draw the receipts list  ↑1 to push                                           you  28h
-    ┃                             you · 28 hours ago · made on feature/receipts · 53bd1c3
-    ◉                             Merge …  ▸ 1 commit from sara/fix-toc  wallet-release is here  ↑2 to push    you  28h
-    ●                             Start the wallet release  origin/wallet-release is here                      you  28h
-    ┃ ●      spike/cache          Try a read cache  not pushed yet                                             you  28h
-    ┃ ┊ ●    ops/ci               Pin the CI image                                                            Omar  28h
-  ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                                                     you  28h
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ feature/receipts  (you're here)
+    ┃                             you · 28 hours ago · made on feature/receipts ·…│ ! 1 commit to push
+    ◉                             Merge branch 'sara/fix-toc' into wa…    you  28h│ · not merged
+    ●                             Start the wallet release                you  28h│ ✓ up to date with wallet-release
+    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│ · you, last commit 28h ago
+    ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│
+  ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ sara/fix-toc
+                                                                                  │    ─◆ wallet-release
+                                                                                  │    ─◆ feature/receipts
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

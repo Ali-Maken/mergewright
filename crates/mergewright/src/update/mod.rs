@@ -24,6 +24,7 @@ pub mod amend_into;
 mod answer;
 mod answers;
 pub mod banner;
+pub mod branch_pane;
 pub(crate) mod clash;
 pub mod commit_editor;
 mod commit_graph;
@@ -37,7 +38,7 @@ pub(crate) mod edge;
 mod events;
 mod facts;
 pub mod finish;
-pub(crate) mod fold_count;
+pub mod fold_count;
 mod geometry;
 mod history;
 mod in_view;
@@ -74,8 +75,8 @@ pub mod undo;
 
 pub use context_menu::verbs::can_take;
 pub use events::{
-    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, SortedOrder, TakeAt,
-    TakeRequest, Task, WholeFileAnswer,
+    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, RestRead, SortedOrder,
+    TakeAt, TakeRequest, Task, WholeFileAnswer,
 };
 pub use geometry::history_row_line;
 pub(crate) use geometry::{context_menu_area, cursor_body_line};
@@ -227,7 +228,7 @@ fn keep_unseen_failure(before: &AppState, next: &mut AppState) {
 /// predecessor's answer landing inside the burst, with no follow owed)
 /// would otherwise wait for an unrelated key (ease-pass 06f).
 pub(crate) fn rest_owed(state: &AppState) -> bool {
-    follow_behind(state) || fold_count::owed(state)
+    follow_behind(state) || fold_count::owed(state) || branch_pane::owed(state)
 }
 
 /// What follows every answered event: the selection reconciled with the
@@ -260,6 +261,8 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
         // merges on screen get their counts: a held `j` reads none.
         if !next.defer_follow {
             fold_count::at_rest(next, commands, &mut || local_jobs.next_id());
+            // Then the focused branch's four answers (ease-pass 09 M1).
+            branch_pane::at_rest(next, commands, &mut || local_jobs.next_id());
         }
     }
     // The other asks below do not read the cursor (G-settle grep): the

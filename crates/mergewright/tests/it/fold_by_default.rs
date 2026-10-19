@@ -126,6 +126,11 @@ pub(crate) fn row_of<'w>(
         .unwrap_or_else(|| panic!("no row {subject:?} in the window"))
 }
 
+/// The named merge's subject as drawn at 120 beside the branch pane: wider
+/// than the 40-cell message column by itself, so it is the one row here
+/// whose subject is cut (ease-pass 09 ruling W).
+const NAMED_MERGE_SHOWN: &str = "Merge branch 'sara/fix-toc' into wallet\u{2026}";
+
 /// Neither the frame nor the window holds a commit of a merged branch, and
 /// the window carries a fold fact per row.
 fn no_merged_commit_drawn_or_held(state: &AppState) {
@@ -200,8 +205,11 @@ fn the_side_joins_its_merge(window: &mergewright::history::Window) {
 
 /// Box 5: the first paint draws none of the merged branches' commits, the
 /// window carries the fold's facts for both merges, and once the counts
-/// land the tails read `▸ 4 commits from PR 16021` and
-/// `▸ 1 commit from sara/fix-toc`.
+/// land, at 120 beside the branch pane, the rows' tails give way to the
+/// subjects (ease-pass 09 ruling W): the message column is 40 cells,
+/// `Merged PR 16021: Fix the wallet totals` takes 38 of them (the tail,
+/// even `▸` alone, needs 3 more) and the named merge's subject alone is
+/// wider. The tails' words are `mergewright-ui`'s `fold_tail` tests'.
 #[test]
 fn first_paint_folds_merged_branches_and_the_tails_name_them() {
     let scratch = wallet_release();
@@ -217,25 +225,21 @@ fn first_paint_folds_merged_branches_and_the_tails_name_them() {
         })
     });
 
-    // The named merge's subject is cut with `…` beside `HEAD`'s badge; the
-    // tail never is.
-    let counted = app.pump(state, "both counts", |state| {
-        let frame = drawn(state);
-        [
-            ("Merged PR 16021", "\u{25b8} 4 commits from PR 16021"),
-            (
-                "Merge branch 'sara/fix-toc'",
-                "\u{25b8} 1 commit from sara/fix-toc",
-            ),
-        ]
-        .iter()
-        .all(|(merge, tail)| {
-            frame
-                .iter()
-                .any(|line| line.contains(merge) && line.contains(tail))
-        })
-    });
+    let counted = app.pump(
+        state,
+        "both counts",
+        mergewright::update::fold_count::settled,
+    );
     let frame = drawn(&counted);
+    for merge in [PR_MERGE, NAMED_MERGE_SHOWN] {
+        let (y, _) = crate::row_reads::row_reading(&frame, merge)
+            .unwrap_or_else(|| panic!("{merge:?} drawn\n{}", frame.join("\n")));
+        let row = crate::row_reads::graph_side(&frame[y], COLUMNS);
+        assert!(
+            !row.chars().skip(1).any(|cell| cell == '\u{25b8}'),
+            "the tail gave way to the subject: {row:?}"
+        );
+    }
     assert_eq!(
         frame
             .iter()
@@ -259,10 +263,10 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
     let scratch = wallet_release();
     let (app, state) = first_paint(scratch.path());
     let frame = drawn(&state);
-    let y = frame
-        .iter()
-        .position(|line| line.contains(PR_MERGE))
-        .unwrap_or_else(|| panic!("the PR merge is drawn\n{}", frame.join("\n")));
+    let y = crate::row_reads::row_reading(&frame, PR_MERGE).map_or_else(
+        || panic!("the PR merge is drawn\n{}", frame.join("\n")),
+        |(y, _)| y,
+    );
     let state = app.mouse_down(
         &state,
         MouseButton::Left,
@@ -275,16 +279,13 @@ fn space_opens_the_merged_side_on_its_own_lane_joining_the_merge() {
         PR_COMMITS
             .iter()
             .all(|subject| frame.iter().any(|line| line.contains(subject)))
-            && frame
-                .iter()
-                .any(|line| line.contains(&format!("{PR_MERGE}  \u{25be}")))
     });
     the_side_joins_its_merge(window(&state).expect("a window"));
-    let state = app.pump(state, "the opened merge's count", |state| {
-        drawn(state)
-            .iter()
-            .any(|line| line.contains(&format!("{PR_MERGE}  \u{25be} 4 commits from PR 16021")))
-    });
+    let state = app.pump(
+        state,
+        "the opened merge's count",
+        mergewright::update::fold_count::settled,
+    );
     drop(state);
     app.close();
 }
@@ -303,33 +304,23 @@ const BOX_9_HEAD: &str = "drawn by `view::view` from a real AppState over the jo
 fn capture_main_folded_and_opened_at_120() {
     let scratch = wallet_release();
     let (app, state) = first_paint(scratch.path());
-    let tails = |frame: &[String]| {
-        [
-            "\u{25b8} 4 commits from PR 16021",
-            "1 commit from sara/fix-toc",
-        ]
-        .iter()
-        .all(|tail| frame.iter().any(|line| line.contains(tail)))
-    };
-    let state = app.pump(state, "both counts", |state| tails(&drawn(state)));
     let state = crate::captures::at_rest(&app, state);
     let folded = drawn(&state);
-    assert!(tails(&folded), "{}", folded.join("\n"));
     crate::captures::check_shot(
         "ease-pass/main-folded-120.txt",
         &format!(
             "ease-pass 06 box 9, 120x36, main screen at first paint: {BOX_9_HEAD}\n\
-             What right looks like: no row of a merged branch; the PR's merge ends \
-             `▸ 4 commits from PR 16021`, the named merge `▸ 1 commit from sara/fix-toc`; \
-             the PR's merge draws `◉` (the named merge is `HEAD`, `◆`); the header counts \
-             the shown commits.\n\n{}\n",
+             What right looks like: no row of a merged branch; beside the branch pane the \
+             message column is 40 cells, so the merges' tails give way to their subjects \
+             (ease-pass 09 ruling W): `Merged PR 16021: Fix the wallet totals` whole, the \
+             named merge's subject cut with `…`; the PR's merge draws `◉` (the named merge \
+             is `HEAD`, `◆`); the header counts the shown commits.\n\n{}\n",
             folded.join("\n")
         ),
     );
 
-    let y = folded
-        .iter()
-        .position(|line| line.contains(PR_MERGE))
+    let y = crate::row_reads::row_reading(&folded, PR_MERGE)
+        .map(|(y, _)| y)
         .expect("the PR merge is drawn");
     let state = app.mouse_down(
         &state,
@@ -338,14 +329,11 @@ fn capture_main_folded_and_opened_at_120() {
         u16::try_from(y).expect("short"),
     );
     let state = app.key(&state, KeyCode::Char(' '));
-    let state = app.pump(state, "the opened merge, counted", |state| {
+    let state = app.pump(state, "the opened merge's commits", |state| {
         let frame = drawn(state);
         PR_COMMITS
             .iter()
             .all(|subject| frame.iter().any(|line| line.contains(subject)))
-            && frame
-                .iter()
-                .any(|line| line.contains("\u{25be} 4 commits from PR 16021"))
     });
     let state = crate::captures::at_rest(&app, state);
     let opened = drawn(&state);
@@ -353,9 +341,10 @@ fn capture_main_folded_and_opened_at_120() {
         "ease-pass/main-opened-120.txt",
         &format!(
             "ease-pass 06 box 9, 120x36, `space` on the PR 16021 merge: {BOX_9_HEAD}\n\
-             What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its \
-             four commits appear under it on one lane of their own that joins the merge row; \
-             the cursor stays on the merge; `sara/fix-toc`'s merge stays folded.\n\n{}\n",
+             What right looks like: the merge's four commits appear under it on one lane of \
+             their own that joins the merge row; the cursor stays on the merge (its tail \
+             gives way to the subject beside the branch pane, ease-pass 09 ruling W); \
+             `sara/fix-toc`'s merge stays folded.\n\n{}\n",
             opened.join("\n")
         ),
     );

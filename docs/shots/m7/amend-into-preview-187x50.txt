@@ -1,38 +1,38 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   4 commits
 
-    ●                           Show the login page                                                                                                                             Graft   2d
-    ●                           Handle expired tokens                                                                                                                           Graft   2d
-▸   ●                           Add OAuth callback                                                                                                                              Graft   2d
-    │                           the result
-    │ ○                         Show the login page  feature-b is here  not pushed yet                                                                                          Graft    —
-    │ ○                         Handle expired tokens  feature-a is here  not pushed yet                                                                                        Graft    —
-    │ ○                         Add OAuth callback                                                                                                                              Graft    —
-  ◇─┴─╯                         m1  main is here  not pushed yet                                                                                                                Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ●                           Show the login page                                                                                        Graft   2d│ feature-b
+    ●                           Handle expired tokens                                                                                      Graft   2d│ ! not pushed yet
+▸   ●                           Add OAuth callback                                                                                         Graft   2d│ · not merged
+    │                           the result                                                                                                           │ ✓ up to date with feature-a
+    │ ○                         Show the login page  feature-b is here  not pushed yet                                                     Graft    —│ · Graft, last commit 2d ago
+    │ ○                         Handle expired tokens  feature-a is here  not pushed yet                                                   Graft    —│
+    │ ○                         Add OAuth callback                                                                                         Graft    —│ built on
+  ◇─┴─╯                         m1  main is here  not pushed yet                                                                           Graft   2d│   main
+                                                                                                                                                     │    ─◆ feature-a
+                                                                                                                                                     │    ─◆ feature-b
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ╭ Preview: put your staged changes into 67fda4a "Add OAuth callback" ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 67fda4a  Add OAuth callback  gains  src/auth.rs +1 −1                                                                                                                                   │
 │ 3 commits replayed                                                                                                                                                                      │

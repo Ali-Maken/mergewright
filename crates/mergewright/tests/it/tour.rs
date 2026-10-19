@@ -117,12 +117,7 @@ fn cursor_subject(screen: &Screen, subjects: &[String]) -> String {
         .into_iter()
         .find(|line| line.starts_with('\u{25b8}'))
         .unwrap_or_else(|| panic!("no cursor row:\n{}", screen.text()));
-    subjects
-        .iter()
-        .filter(|subject| row.contains(subject.as_str()))
-        .max_by_key(|subject| subject.len())
-        .unwrap_or_else(|| panic!("no subject on the cursor row {row:?}"))
-        .clone()
+    crate::row_reads::subject_on(&row, subjects)
 }
 
 /// His graph with the cursor landed on `HEAD`'s row; that row. The rows can
@@ -138,7 +133,7 @@ fn on_head(pty: &Pty, repo: &Path, name: &str) -> usize {
             s.lines()[0].contains(name)
                 && s.lines()
                     .iter()
-                    .any(|line| line.starts_with('\u{25b8}') && line.contains(head.as_str()))
+                    .any(|line| crate::row_reads::cursor_on_head(line, &head))
         }),
     )
 }
@@ -224,7 +219,7 @@ fn the_palette_starts_the_tour_and_esc_returns_to_his_commit() {
     let back = pty.wait_for(&format!("the cursor back on {was_on:?}"), |s| {
         s.lines()
             .iter()
-            .any(|line| line.starts_with('\u{25b8}') && line.contains(was_on.as_str()))
+            .any(|line| crate::row_reads::cursor_on(line, &was_on))
             || s.has("the commit you were on is gone")
     });
     assert_eq!(
@@ -295,7 +290,7 @@ fn an_unwritable_temp_folder_stays_in_his_repo_and_says_why() {
     let back = pty.wait_for(&format!("the cursor back on {was_on:?}"), |s| {
         s.lines()
             .iter()
-            .any(|line| line.starts_with('\u{25b8}') && line.contains(was_on.as_str()))
+            .any(|line| crate::row_reads::cursor_on(line, &was_on))
     });
     assert_eq!(cursor_subject(&back, &subjects), was_on);
     std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755)).expect("writable");

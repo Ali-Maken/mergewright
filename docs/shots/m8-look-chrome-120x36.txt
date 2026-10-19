@@ -2,37 +2,37 @@ m8-polish-and-ship/06 at 120x36: what right looks like — the first row is ` �
 
  ◆ api  ~/code/api · main                                                           6 commits  2 merged branches folded
 
-▸   ●    feature/three        three: in progress  not pushed yet                                             Graft   7y
-    ┃                         Graft · 7 years ago · made on feature/three · 0683985
-  ◆ ┃    main (you)           Merge branch 'feature/two'  ▸ 2 commits from feature/two  not pushed yet       Graft   7y
-  ◉ ┃                         Merge branch 'feature/one'  ▸ 2 commits from feature/one                       Graft   7y
-  ●━╯                         Add b.txt                                                                      Graft   7y
-  ●                           Add a.txt                                                                      Graft   7y
-  ◇                           Add a readme                                                                   Graft   7y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ●    feature/three        three: in progress  not pushed yet        Graft   7y│ feature/three
+    ┃                         Graft · 7 years ago · made on feature/three · 06839…│ ! not pushed yet
+  ◆ ┃    main (you)           Merge branch 'feature/two'  ▸ 2 commits   Graft   7y│ · not merged
+  ◉ ┃                         Merge branch 'feature/one'  ▸ 2 commits   Graft   7y│ ! main has 6 new commits since it
+  ●━╯                         Add b.txt                                 Graft   7y│   left
+  ●                           Add a.txt                                 Graft   7y│ · Graft, last commit 7y ago
+  ◇                           Add a readme                              Graft   7y│
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │    ─◆ feature/three
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  m merge three into yours · ⏎ open · o take · C switch to three · x compare · u undo · . actions · ? keys

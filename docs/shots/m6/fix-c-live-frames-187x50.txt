@@ -15,52 +15,52 @@
 === 187x50 ===
  ◆ api  ~/code/api · main                                                                                                                                                        6 commits
 
-▸ ◆      main (you)           main's take  not pushed yet                                                                                                                       Graft   2h
-  ┃                           Graft · 2 hours ago · made on main · ddeed32
-  ┃ ●    feature              the feature's take  not pushed yet                                                                                                                Graft   2h
-  ●┄╯    main (you)           the shared files                                                                                                                                  Graft   2h
-  ●                           Correct the note                                                                                                                                  Graft   1y
-  ●                           Add the first note                                                                                                                                Graft   1y
-  ◇                           Add a readme                                                                                                                                      Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸ ◆      main (you)           main's take  not pushed yet                                                                                  Graft   2h│ main  (you're here)
+  ┃                           Graft · 2 hours ago · made on main · ddeed32                                                                           │ ! not pushed yet
+  ┃ ●    feature              the feature's take  not pushed yet                                                                           Graft   2h│ · the main line: branches merge into
+  ●┄╯    main (you)           the shared files                                                                                             Graft   2h│   it
+  ●                           Correct the note                                                                                             Graft   1y│ · no upstream to compare with
+  ●                           Add the first note                                                                                           Graft   1y│ · everyone, last commit 2h ago
+  ◇                           Add a readme                                                                                                 Graft   1y│
+                                                                                                                                                     │ built on
+                                                                                                                                                     │   main
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
+                                                                                                                                                     │
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · t tag · y sha · S stash · J journal · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · space fold · 1 first · F focus · H hide · ? keys
 --- frame 2 ---

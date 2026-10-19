@@ -128,6 +128,8 @@ The job runner: `update` returns `Command`s, this runs them on workers and sends
 - `Delivery` (enum) — what became of a delivered event: received, or the loop already gone.
 ## jobs::askpass
 A fetch, pull, push or clone's askpass: git's question goes to `update`, the answer comes back through the runner.
+## jobs::branch_status
+The branch pane's read: the branch's upstream and its tip read here, its own upstream dropped from the candidates, then `mergewright_ops::branch_status`. A remote-only branch (ease-pass 09 R) is its own upstream: `✓ pushed`.
 ## jobs::clone
 A clone as a pool job for the start screen's `c`, stoppable, with a fetch's progress line and credential prompt.
 ## jobs::commit_message
@@ -201,7 +203,7 @@ Which refs sit on which commit and how far each branch is from its upstream: eve
 ## refs::ahead
 What a local branch has to push, read off its label: `RefLabel::ahead_of_upstream` (no walk, no new read).
 ## refs::live
-Which live branch a name means, from an index `badges` builds once per read: `RefBadges::live_branch(label)` — local of that name, else remote shorthand, else `<remote>/<label>`; `None` for a deleted branch.
+Which live branch a name means (index built once per read): `RefBadges::live_branch(label)` — local, else remote shorthand, else `<remote>/<label>`; `None` if deleted. `RefBadges::remote_only()` — remotes no local tracks.
 ## rename
 Where the app meets the one-time move to the new on-disk names: every repository is settled the moment it opens.
 - `open_settled` (fn) — opens a path with its names settled first.
@@ -245,6 +247,8 @@ The pure `update(state, event) -> (state, [Command])`: the only place `AppState`
 `answer`: one arm per job answer, each handed straight to its module.
 ## update::answers
 What `answer` hands a started job, a mergetool, the journal, a stash, an undo, a rewrite, the commit editor or an operation.
+## update::branch_pane
+The branch pane's read: `focused` (via `view::focus`), `candidates` (locals and remote-only), `identity_of`, `status_key`; asked at rest after the fold count (unasked, keeps `rest_owed`); `settled` once answered.
 ## update::banner
 The operation banner: which operation git is part-way through, and the conflict interim's keys.
 ## update::clash
@@ -274,7 +278,7 @@ Facts beside the graph arriving (system git, refs, working-tree counts), their r
 ## update::finish
 The merge's review, drawn once its read lands; keys by id; git's message,: `y` commits it as `--no-edit` would, `u` undoes a pick, `⏎` a read-only `Look`. Lands `✓ Merged <from> into <into>.`; `just_merged_bar` once the count is known.
 ## update::fold_count
-A folding merge's count: asked at rest for the merges on screen (an uncounted one keeps the loop's rest wake owed, `update::rest_owed`), counted once by a job, kept for the session.
+A folding merge's count: asked at rest for the merges on screen (an uncounted one keeps `update::rest_owed`), counted once by a job, kept for the session. `settled(state)` — every one on screen answered.
 ## update::geometry
 Pure screen geometry a mouse event needs: where the detail pane, its regions, the context menu and a ref badge land.
 ## update::history
@@ -369,6 +373,8 @@ What `answer` hands the repository opening, the history walk starting, the worki
 `u`, `Ctrl+Z` and `U`: when a key is a no-op, the drift guard, and the `Command::Undo` it becomes.
 ## view
 The pure `view(state)`: reads and draws, never changes anything; everything from a repository crosses into `ui` as `SanitizedText`.
+## view::branch_pane
+The branch pane's words: `pane_view` (answers; `reading…` until refs and walk names land; `<sha7> · not on a branch`), `pane_words` (the mock's words; `you` via the mailmap), `pane_slot` (columns taken off the rows).
 ## view::commit_editor
 The commit screen's view model (`commit_screen_view`) for `mergewright_ui::commit_editor`, every repository string sanitised.
 `mask`: a secrets file's diff lines drawn `MASK`; `KEY=` kept only for a key-name prefix and a value not starting `=`, else the whole line (`mask_secret_line`, `mask_diff`); applied as the diff arrives.

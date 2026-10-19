@@ -12,6 +12,7 @@ One line per public item. Update when a public item changes.
 - `credential_prompt` (mod) — the modal askpass answers a username, password or host-key question in.
 - `detail` (mod) — the detail pane's view-model types; no drawing.
 - `detail_pane` (mod) — the detail pane's layout and widget.
+- `branch_pane` (mod) — the branch pane right of the graph's rows (ease-pass 09, G12).
 - `diff_words` (mod) — word-level highlighting inside a paired diff line.
 - `empty_state` (mod) — the screen outside a repository: recent repositories, open and clone prompts.
 - `finish_summary` (mod) — the merge's review: what lands before `y` commits it.
@@ -119,6 +120,21 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `diff_body_side_by_side` (fn) — `(hunks, top, area, buf, theme, focused)`: the two-column diff over the same hunks.
 - `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`, `keys: &Keymap`: draws the whole pane.
 
+## branch_pane
+The focused branch's heading, four marked answers and route, right of the rows. No I/O; the app words it.
+- `PANE_FROM` (const) — 100: the narrowest screen with a pane.
+- `PANE_WIDE` (const) — 36: the pane's width from 120 columns.
+- `PANE_MIDDLE` (const) — 30: its width from 100 to 119.
+- `pane_width` (fn) — `(columns) -> Option<u16>`: 36, 30, or `None` below 100.
+- `Mark` (enum) — `Attention` `!`, `Fine` `✓`, `Plain` `·`: what one answer asks of him.
+- `PaneLine` (enum) — `Reading` (muted `reading…`), `Known { mark, words }`, `Failed(reason)` (`can't tell: …`).
+- `RouteStop` (struct) — `name`, `role`: one branch on the `built on` line, drawn in its role colour.
+- `BranchPaneView` (enum) — `Branch { heading, role, here, route, lines: [PaneLine; 4] }` or `NotOnBranch { sha7 }`.
+- `BranchPane` (struct, `Widget`) — `view`, `theme`: draws the pane, long answers wrapped under their words.
+- `ROUTE_JOIN` (const) — ` ─◆ `: between route stops.
+- `BUILT_ON` (const) — `built on`: the route's heading.
+- `READING` (const) — `reading…`: a line whose answer has not landed.
+
 ## diff_words
 - `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line.
 - `word_spans` (fn) — word diff of `removed[i]` against `added[i]`; unpaired lines get empty spans.
@@ -151,7 +167,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `spaced`, `chrome_rows` (fns) — `(rows)`: whether the blank row and rule show; non-graph rows (2, or 4 spaced).
 - `GUTTER`, `RIGHT_MARGIN` (consts) — 2 cells left of every list row (cursor slot + gap), 1 right.
 - `Location` (struct) — `repo`, `path`, `branch`, `practice`: where the header says the screen is.
-- `GraphView` (struct) — everything the graph screen draws: rows, header state, banner, tour, pending, footer state, hint context.
+- `GraphView` (struct) — everything the graph screen draws: rows, header state, banner, tour, pending, footer state, hint context, and `pane`, the branch pane's view.
 - `ProblemLine` (struct) — `reason`, `keys`: a failure the footer shows in place of the hints.
 - `MarkerView` (struct) — a Mistake Radar marker's `severity`, painted in the row's marker slot.
 - `GraphicsStatus` (enum) — `Ok` / `Failed(text)`: drawn `gfx ok` / `gfx: <error>`.
@@ -162,7 +178,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `SecondLine` (struct) — the cursor row's second line: `words` and `sha7` (empty on the uncommitted row).
 - `BodyLine`, `body_line` (enum, fn) — which row a body line is, with the cursor row's second line under it: `Row(n)` or `SecondOf(cursor)`.
 - `commit_rows` (fn) — `(body_rows, cursor_in_view) -> u16`: commit rows a body holds when the cursor's second line takes one; never below 1.
-- `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`).
+- `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`). A row cuts its subject last.
 - `FoldCount` (enum) — `Pending`, `Known(n)`, `Failed`: the tail's count, none until it lands, `?` if it failed.
 - `RowTag` (enum) — `Changed`: a row's tag after its subject; `RowTag::words(ascii)` per tier.
 - `TAG_MIN_SUBJECT` (const) — 8: the fewest subject cells a tag leaves.
@@ -182,7 +198,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `CarveInputs` (struct, from `carve.rs`) — what the row carve reads of a `GraphView`, as plain values; `CarveInputs::of(view)`.
 - `RowCarve` (struct) — `ScreenRows` in `Cells`: same bands, same names.
 - `row_carve` (fn) — `(area: Cells, inputs) -> RowCarve`: the one carve of the screen's rows, shared with `mergewright::update`.
-- `ScreenRows` (struct, from `layout.rs`) — header, gap, banner, tour, pending, body, offer, rule, status (a done line above a landing bar), footer rects.
+- `ScreenRows` (struct, from `layout.rs`) — header, gap, banner, tour, pending, body, offer, rule, status (a done line above a landing bar), footer rects; `pane`, the branch pane's slot right of the body (zero wide with no pane).
 - `screen_rows` (fn) — `(view, area) -> ScreenRows`; also `GraphScreen::screen_rows(area)`.
 - `GraphScreen::graph_area`, `GraphScreen::column_boundaries` (fns) — where the graph column lands; every x where a row column ends.
 - `RowLayout` (struct), `row_layout` (fn) — `body` rect and resolved `Columns` for a frame.

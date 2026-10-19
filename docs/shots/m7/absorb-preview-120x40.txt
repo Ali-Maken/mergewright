@@ -1,28 +1,28 @@
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-▸   ●                           Handle expired tokens                                                        Graft   2d
-    ●                           Add OAuth callback                                                           Graft   2d
-    │                           the result
-    │ ○                         Handle expired tokens  feature-a is here  not pushed yet                     Graft    —
-    │ ○                         Add OAuth callback                                                           Graft    —
-  ◇─┴─╯                         m1  main is here  not pushed yet                                             Graft   2d
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ●                           Handle expired tokens                   Graft   2d│ feature-a  (you're here)
+    ●                           Add OAuth callback                      Graft   2d│ ! not pushed yet
+    │                           the result                                        │ · not merged
+    │ ○                         Handle expired tokens                   Graft    —│ ✓ up to date with main
+    │ ○                         Add OAuth callback                      Graft    —│ · Graft, last commit 2d ago
+  ◇─┴─╯                         m1  main is here  not pushed yet        Graft   2d│
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │    ─◆ feature-a
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: put staged changes into the commits they belong to ─────────────────────────────────────────────────────────╮
 │ src/auth.rs    line 5  → 67fda4a  Add OAuth callback                                                                 │
 │ src/tokens.rs  line 5  → 29033ed  Handle expired tokens                                                              │

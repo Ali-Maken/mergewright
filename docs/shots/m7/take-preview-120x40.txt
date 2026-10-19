@@ -9,32 +9,32 @@
 # put aside and back).
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●                           fix the bug  login-page is here  not pushed yet  origin/sara/login-page is…  Graft   3m
-    │                           after cherry-pick
-    │ ○                         fix the bug  main is here                                                    Graft    —
-  ●─│─╯                         main moves on                                                                Graft   4m
-  ●─╯                           add the base  feature-a is here  not pushed yet                              Graft   5m
-  ●                             Correct the note                                                             Graft   1y
-  ●                             Add the first note                                                           Graft   1y
-  ◇                             Add a readme                                                                 Graft   1y
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸   ●                           fix the bug                             Graft   3m│ origin/sara/login-page
+    │                           after cherry-pick                                 │ ✓ pushed
+    │ ○                         fix the bug  main is here               Graft    —│ · not merged
+  ●─│─╯                         main moves on                           Graft   4m│ ! main has 1 new commit since it
+  ●─╯                           add the base                            Graft   5m│   left
+  ●                             Correct the note                        Graft   1y│ · Graft, last commit 3m ago
+  ●                             Add the first note                      Graft   1y│
+  ◇                             Add a readme                            Graft   1y│ built on
+                                                                                  │   main
+                                                                                  │    ─◆ origin/sara/login-page
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ╭ Preview: take fbb2394 "fix the bug" onto main ───────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
 │ main 37926a7 → 1 new commit                                                                                          │

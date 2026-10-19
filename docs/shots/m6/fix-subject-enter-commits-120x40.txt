@@ -60,41 +60,41 @@
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                                                                     2 commits
 
-▸ ◆    main (you)           fix: x  not pushed yet                                                             you  now
-  ┃                         you · just now · made on main · 0000000
-  ◇                         add sample                                                                         you  now
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+▸ ◆    main (you)           fix: x  not pushed yet                        you  now│ main  (you're here)
+  ┃                         you · just now · made on main · 0000000               │ ! not pushed yet
+  ◇                         add sample                                    you  now│ · the main line: branches merge into
+                                                                                  │   it
+                                                                                  │ · no upstream to compare with
+                                                                                  │ · everyone, last commit just now
+                                                                                  │
+                                                                                  │ built on
+                                                                                  │   main
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Committed 1 file to main.  u undo · P push
  u undo the commit, your edits come back · P push · c commit again · a amend · . actions · ? keys
