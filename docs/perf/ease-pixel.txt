@@ -1,0 +1,41 @@
+SUMMARY machine ac=1 lowpower=0 os=darwin
+# ease-pass/13 pixel lag — 2026-10-19T07:17:44Z
+# Apple M5, 10 cpus; load averages: 1.90 2.81 3.03
+# revs: base=60e07871 roles=bcc58b40 tall=9450a77a
+# pty: PROFILE=kitty DEFLATE=yes (Ghostty's answers, cell 17x37), j every 33 ms for 3 s
+SUMMARY bin=base size=120x40 walk=open input_age_us_p50=10256 input_age_us_p95=23521 input_age_us_p99=37051 draw_us_p95=14329 bytes_p95=105750 tail_ms=185.0 pty_tail_ms=197 keys=91 keyed_frames=83 transmits=311 broken=no
+SUMMARY bin=base size=120x40 walk=settled input_age_us_p50=12758 input_age_us_p95=19289 input_age_us_p99=43818 draw_us_p95=16435 bytes_p95=105750 tail_ms=207.1 pty_tail_ms=220 keys=91 keyed_frames=90 transmits=324 broken=no
+SUMMARY bin=base size=120x40 walk=focus input_age_us_p50=2115 input_age_us_p95=5422 input_age_us_p99=12927 draw_us_p95=2005 bytes_p95=2326 tail_ms=0.0 pty_tail_ms=7 keys=91 keyed_frames=91 transmits=17 broken=no
+SUMMARY bin=base size=200x50 walk=open input_age_us_p50=10703 input_age_us_p95=17248 input_age_us_p99=25120 draw_us_p95=14211 bytes_p95=121636 tail_ms=184.1 pty_tail_ms=187 keys=91 keyed_frames=91 transmits=280 broken=no
+SUMMARY bin=base size=200x50 walk=settled input_age_us_p50=12220 input_age_us_p95=22094 input_age_us_p99=48841 draw_us_p95=15078 bytes_p95=119474 tail_ms=212.5 pty_tail_ms=228 keys=91 keyed_frames=90 transmits=279 broken=no
+SUMMARY bin=base size=200x50 walk=focus input_age_us_p50=3082 input_age_us_p95=3477 input_age_us_p99=10175 draw_us_p95=2903 bytes_p95=2798 tail_ms=0.0 pty_tail_ms=8 keys=91 keyed_frames=91 transmits=17 broken=no
+SUMMARY bin=roles size=120x40 walk=open input_age_us_p50=12680 input_age_us_p95=35978 input_age_us_p99=45013 draw_us_p95=18848 bytes_p95=134267 tail_ms=173.9 pty_tail_ms=187 keys=91 keyed_frames=70 transmits=297 broken=no
+SUMMARY bin=roles size=120x40 walk=settled input_age_us_p50=14125 input_age_us_p95=37472 input_age_us_p99=45029 draw_us_p95=17602 bytes_p95=134285 tail_ms=175.8 pty_tail_ms=190 keys=91 keyed_frames=91 transmits=349 broken=no
+SUMMARY bin=roles size=120x40 walk=focus input_age_us_p50=2125 input_age_us_p95=6247 input_age_us_p99=11653 draw_us_p95=4167 bytes_p95=36771 tail_ms=0.0 pty_tail_ms=6 keys=91 keyed_frames=91 transmits=54 broken=no
+SUMMARY bin=roles size=200x50 walk=open input_age_us_p50=12409 input_age_us_p95=36201 input_age_us_p99=43489 draw_us_p95=21800 bytes_p95=146634 tail_ms=210.1 pty_tail_ms=224 keys=91 keyed_frames=90 transmits=322 broken=no
+SUMMARY bin=roles size=200x50 walk=settled input_age_us_p50=14096 input_age_us_p95=33625 input_age_us_p99=41845 draw_us_p95=20910 bytes_p95=147323 tail_ms=203.2 pty_tail_ms=217 keys=91 keyed_frames=90 transmits=321 broken=no
+SUMMARY bin=roles size=200x50 walk=focus input_age_us_p50=3105 input_age_us_p95=7380 input_age_us_p99=11768 draw_us_p95=5775 bytes_p95=37197 tail_ms=0.0 pty_tail_ms=8 keys=91 keyed_frames=91 transmits=56 broken=no
+SUMMARY bin=tall size=120x40 walk=open input_age_us_p50=19061 input_age_us_p95=39263 input_age_us_p99=41654 draw_us_p95=18269 bytes_p95=135866 tail_ms=192.6 pty_tail_ms=205 keys=91 keyed_frames=69 transmits=320 broken=no
+SUMMARY bin=tall size=120x40 walk=settled input_age_us_p50=11934 input_age_us_p95=28262 input_age_us_p99=53514 draw_us_p95=17395 bytes_p95=134395 tail_ms=203.9 pty_tail_ms=217 keys=91 keyed_frames=89 transmits=374 broken=no
+SUMMARY bin=tall size=120x40 walk=focus input_age_us_p50=2337 input_age_us_p95=7609 input_age_us_p99=15271 draw_us_p95=5829 bytes_p95=37236 tail_ms=0.0 pty_tail_ms=7 keys=91 keyed_frames=91 transmits=56 broken=no
+SUMMARY bin=tall size=200x50 walk=open input_age_us_p50=14184 input_age_us_p95=42150 input_age_us_p99=50664 draw_us_p95=18593 bytes_p95=146840 tail_ms=195.0 pty_tail_ms=209 keys=91 keyed_frames=89 transmits=348 broken=no
+SUMMARY bin=tall size=200x50 walk=settled input_age_us_p50=15018 input_age_us_p95=41695 input_age_us_p99=56787 draw_us_p95=21189 bytes_p95=146840 tail_ms=224.5 pty_tail_ms=238 keys=91 keyed_frames=88 transmits=348 broken=no
+SUMMARY bin=tall size=200x50 walk=focus input_age_us_p50=3162 input_age_us_p95=7820 input_age_us_p99=11610 draw_us_p95=6339 bytes_p95=37816 tail_ms=0.0 pty_tail_ms=8 keys=91 keyed_frames=91 transmits=58 broken=no
+SUMMARY delta bin=roles-base size=120x40 walk=open input_age_us_p50=+2424 input_age_us_p95=+12457 input_age_us_p99=+7962 draw_us_p95=+4519 bytes_p95=+28517 tail_ms=-11
+SUMMARY delta bin=roles-base size=120x40 walk=settled input_age_us_p50=+1367 input_age_us_p95=+18183 input_age_us_p99=+1211 draw_us_p95=+1167 bytes_p95=+28535 tail_ms=-31
+SUMMARY delta bin=roles-base size=120x40 walk=focus input_age_us_p50=+10 input_age_us_p95=+825 input_age_us_p99=-1274 draw_us_p95=+2162 bytes_p95=+34445 tail_ms=+0
+SUMMARY delta bin=roles-base size=200x50 walk=open input_age_us_p50=+1706 input_age_us_p95=+18953 input_age_us_p99=+18369 draw_us_p95=+7589 bytes_p95=+24998 tail_ms=+26
+SUMMARY delta bin=roles-base size=200x50 walk=settled input_age_us_p50=+1876 input_age_us_p95=+11531 input_age_us_p99=-6996 draw_us_p95=+5832 bytes_p95=+27849 tail_ms=-9
+SUMMARY delta bin=roles-base size=200x50 walk=focus input_age_us_p50=+23 input_age_us_p95=+3903 input_age_us_p99=+1593 draw_us_p95=+2872 bytes_p95=+34399 tail_ms=+0
+SUMMARY delta bin=tall-base size=120x40 walk=open input_age_us_p50=+8805 input_age_us_p95=+15742 input_age_us_p99=+4603 draw_us_p95=+3940 bytes_p95=+30116 tail_ms=+7
+SUMMARY delta bin=tall-base size=120x40 walk=settled input_age_us_p50=-824 input_age_us_p95=+8973 input_age_us_p99=+9696 draw_us_p95=+960 bytes_p95=+28645 tail_ms=-3
+SUMMARY delta bin=tall-base size=120x40 walk=focus input_age_us_p50=+222 input_age_us_p95=+2187 input_age_us_p99=+2344 draw_us_p95=+3824 bytes_p95=+34910 tail_ms=+0
+SUMMARY delta bin=tall-base size=200x50 walk=open input_age_us_p50=+3481 input_age_us_p95=+24902 input_age_us_p99=+25544 draw_us_p95=+4382 bytes_p95=+25204 tail_ms=+10
+SUMMARY delta bin=tall-base size=200x50 walk=settled input_age_us_p50=+2798 input_age_us_p95=+19601 input_age_us_p99=+7946 draw_us_p95=+6111 bytes_p95=+27366 tail_ms=+12
+SUMMARY delta bin=tall-base size=200x50 walk=focus input_age_us_p50=+80 input_age_us_p95=+4343 input_age_us_p99=+1435 draw_us_p95=+3436 bytes_p95=+35018 tail_ms=+0
+# In Ghostty, by you (what no pty answers: the terminal's own parse and paint).
+# Copy your work repo first (Mergewright writes .git/mergewright/ in what it opens):
+#   cp -R <your work repo> /tmp/mwr-ease-copy
+#   MWR_PERF_TRACE=/tmp/ease-pixel.trace mwr /tmp/mwr-ease-copy    then hold j 3 s, then q
+#   scripts/m8-trace-summary.sh /tmp/ease-pixel.trace docs/perf/ease-pixel-ghostty.txt
+# done 07:20:28Z

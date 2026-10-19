@@ -1,6 +1,6 @@
 # pixel-roles-and-tall-row — the Pixel tier draws roles and the cursor row's second line; then the Ghostty lag is measured
 
-Status: partial — commit 1 (roles + `colours_off`) built; tall row, settle 2 and the measurement remain (see NOTES). Was: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/13-pixel-roles-and-tall-row.md` at c021e6a6: 5 mismatches ruled, `colours_off` settled by a test first)
+Status: done — commit 1 (roles + `colours_off`, bcc58b40), settle 2 (4e357112), tall row + capture (9450a77a), measurement (see NOTES 2). Was: ready (planner spec-only pass 2026-10-18, fitted to scout `.scratch/ease-pass/scouts/13-pixel-roles-and-tall-row.md` at c021e6a6: 5 mismatches ruled, `colours_off` settled by a test first)
 Blocked by: 07b-graph-rows-cursor (`SecondLine`, `commit_rows`, `body_line`; the tall row's input). Built and merged: 01, 03, 06, 06b, 06s, 06t, 07 part (f2269602: `Look.route`, `Look.colours_off`, `lane_roles` at `view/entries/roles.rs:16`). 07c is not needed (scout). **Not beside 09**: 09 changes `view/frame/layout.rs:169` `graph_columns`, which sets the strips' width. Either order works; the later one re-takes its captures. The measurement runs with no other cargo-running helper active.
 Build with: Opus — raster, cache key, placement and a perf script; the tall row's placement is a judgement the tests then pin (scout's call). Not Fable: correctness is judged by trace and tests, not by eye.
 Needs: graph `LaneRole` (`role.rs:14`), `PlainStrip<'a>` (`raster/emphasis.rs:164-165`, `Clone, Copy`, borrowed fields), `StripKey` / `plain_layout_hash` (`raster/cache/key.rs:~14,123`), `stroke_width` (`raster/pen.rs:30`), tiny-skia dash support (`raster/geometry.rs:154-160`); app `look.route` via `frame_route` (`view/entries/roles.rs:27`, `pub(in crate::view)` — `view::strips` is inside `view`), `look.colours_off` (`update/state/look.rs:10`), `lane_roles`; strips `view/strips.rs` (palette :49, `graph_rows` :215, strip cut :279-318), placement `event_loop/graphics/layers.rs:142-175`; 07b `SecondLine`, `commit_rows`, `body_line`.
@@ -64,13 +64,13 @@ Strip cache keys and hit rates (`CacheStats` in NOTES before/after); `RasterPool
 
 ## Acceptance
 Each tick names its test inline.
-- [ ] Settle tests 1–2 committed first; outcomes in NOTES.
+- [x] Settle tests 1–2 committed first; outcomes in NOTES. Settle 1: `view::strips::roles_tests::colours_off_mutes_every_strip_lane` (red first, NOTES 1). Settle 2: `mergewright-term tests/it/two_placements.rs::{kitty_places_one_upload_twice_with_disjoint_crops_and_one_transmit, iterm2_sends_two_bands_and_a_j_inside_the_strip_re_encodes_both}`, committed alone in 4e357112 before the tall row (NOTES 2).
 - [x] `LaneStroke::of` table test (`raster::stroke::tests::each_role_has_its_own_stroke`). The strip key differs when one lane's role changes and is equal across `j` within one branch (cache test, hit counter) — `view::strips::roles_tests::a_strip_rekeys_on_a_role_change_and_hits_across_j_within_a_branch`.
 - [x] Raster test (`tests/it/raster_roles.rs::other_is_dotted_and_trunk_is_two_strokes_and_this_is_wider_than_under`, `plain_strip_is_still_copy`): Other lane pixels dotted (gaps every N px), Trunk two parallel strokes, This wider than Under (measured in the frame buffer, not by eye). `PlainStrip` still `Copy` (compile).
 - [x] `colours_off`: every lane pixel in the muted hue, stroke shapes unchanged (`colours_off_mutes_every_strip_lane`).
-- [ ] Tall row: strips above the cursor not re-rasterised on `j` (counter); the cursor's strip placed twice with disjoint rows, strips below one row lower (placement command test, both protocols); the continuation frame has a straight segment in every lane column passing the row.
-- [ ] `scripts/ease-pixel-lag.sh` exits 0; `docs/perf/ease-pixel.txt` has `SUMMARY` lines for all three binaries, both sizes, both walks, and the Ghostty command lines. The report quotes only `SUMMARY` lines.
-- [ ] Capture: `docs/shots/ease-pass/main-pixel-120.txt` (placement text capture; the pixels are his to judge in Ghostty).
+- [x] Tall row: strips above the cursor not re-rasterised on `j` (counter); the cursor's strip placed twice with disjoint rows, strips below one row lower (placement command test, both protocols); the continuation frame has a straight segment in every lane column passing the row. — `event_loop::tests::pixel_scroll::tall::{a_j_that_keeps_the_plan_rasterises_no_strip_above_or_below, kitty_places_the_cursor_strip_twice_the_band_between_and_the_next_strip_lower, iterm2_writes_two_bands_of_the_cursor_strip_the_band_and_the_lower_strip}`; graph `tests/it/raster_continuation.rs::every_lane_leaving_the_row_runs_straight_through_its_second_line`.
+- [x] `scripts/ease-pixel-lag.sh` exits 0 (run once, alone, 2026-10-19 07:20Z; machine ac=1 lowpower=0); `docs/perf/ease-pixel.txt` has `SUMMARY` lines for all three binaries, both sizes, both walks, and the Ghostty command lines. The report quotes only `SUMMARY` lines. — verified by reading `docs/perf/ease-pixel.txt`: 18 per-run + 12 delta SUMMARY lines, Ghostty lines last (a script, no test).
+- [x] Capture: `docs/shots/ease-pass/main-pixel-120.txt` (placement text capture; the pixels are his to judge in Ghostty) — `event_loop::tests::pixel_scroll::tall::capture::capture_the_pixel_main_screen_with_the_cursor_row_s_second_line`.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc` — workspace-wide; plus `scripts/ease-pixel-lag.sh` run once, alone.
@@ -115,3 +115,37 @@ No compaction. Stopped at the ticket's own split point (commit 1), quota tight. 
 4. Capture `docs/shots/ease-pass/main-pixel-120.txt`.
 
 Acceptance: 3/7 ticked (boxes 2, 3, 4); box 1 half (settle 1 done, settle 2 not).
+
+## NOTES 2 (builder, 2026-10-19) — follow-on: settle 2, tall row, capture, measurement
+
+**Compacted once, mid-ticket** (after the tall row's code and tests, before the capture's gates). Nothing was left half-done across it; everything after was re-checked by the full gates. Scout: none this session — the earlier scout file (`scratchpad/scout-13b.md`) and NOTES 1's anchors were enough, files read directly.
+
+**Settle test 2 — passed at once, both protocols** (committed alone, 4e357112, before any tall-row code). Kitty: one transmit, placements `p=1` (`y=0`, rows 0..=cursor) and `p=2` (source `y` past the cursor, one row lower) of the same id; a `j` inside the strip sends placements only. iTerm2: no ids, no crops — two composited bands; a `j` inside the strip **re-encodes both crops** (encoded 2 → 4; bytes 720 B for the first frame, 870 B after one `j`, in the test's small strip). In the tall row: `iterm2_held_j_writes_four_bands_and_re_encodes_the_cursor_strip_s_crops` measures 48 encodes over 20 `j` on the branchy fixture (≥ 2 per `j`). No fallback chosen.
+
+**Found and fixed at base (cause):** the Pixel tier cleared the cursor row's second line (`view/frame.rs`, old `set_pixel`) while `graph_rows`/`cursor_body_line` still reserved it, so every row below the cursor was drawn one line above where a click mapped it, and the pane's last line was blank. The scout's *unconfirmed* off-by-one is now confirmed by `view::tests::pixel_preview::at_the_pixel_tier_every_row_sits_where_the_hit_test_says` — red at row 52 (first row below the cursor) under the old clearing, green now. The second line now draws at every tier; the strips make room.
+
+**Built (commit 9450a77a).**
+- graph `raster/pen/continuation.rs`: `continuation_key`, `rasterise_continuation` — one cell row; every lane leaving the row straight through (arcs leaving it included), the thread lit as in the row, the rail drawn when lanes fold.
+- app `view/strips/tall.rs` `TallRow`; `event_loop/graphics/tall.rs` `make_room` (splits the cursor's strip at the cursor, shifts strips below +1, `on_screen` over height − 1) and `Band` (raster skipped when Kitty holds the key).
+
+**Deviations from the Signatures (say if wrong):**
+- `rasterise_continuation(strip, sel: &Selection, row) -> Result<Option<RasterFrame>, RasterError>` — takes the selection so the thread stays lit through the band, returns `Result` so a selection/strip length mismatch is an error, not a silent `None`.
+- `TallRow { line: u16 }` (the graph line of the cursor row, from `cursor_body_line`) rather than `row: usize`: the placement needs the line, and the line already accounts for the uncommitted row and scroll.
+- The band uploads as `Layer::Emphasis` keyed by its content key (one upload per distinct band, reused while held), not as a strip slot — strips stay one upload per slot.
+
+**Touches (each checked by the full nextest run, 7048/7048):**
+- Snapshot `view/snapshots/mergewright__view__tests__renderer-Pixel.snap`: now shows the second line.
+- Capture `docs/shots/m8/polish-ghost-pixel-120x36.txt` (per-scenario capture, not a sheet; 07b re-shot it too): the closed frame gains the second line and loses the blank last line. The m8 contact sheet was **not** edited (past milestone).
+- `pixel_scroll::emphasis_pieces` counts the band's key among the emphasis uploads; `iterm2_bands_are_composites` moved to `pixel_scroll/tall.rs` and rewritten for four bands a frame.
+- Ratchet lowered, none raised: `view/strips.rs` 415→404 (`stubs_of` → `strips/paint.rs`), `pixel_scroll.rs` 628→604.
+- MAP.md: graph (`continuation_key`, `rasterise_continuation`), app (`view::strips::TallRow`, placement around it).
+- Hit-test/scroll: unchanged code; `at_the_pixel_tier_every_row_sits_where_the_hit_test_says` pins it.
+- Unicode/ASCII tiers: unchanged (their captures and snapshots did not move).
+- Colour and pixels: **unverified** (rule 5). Capture is placement text only.
+- `CacheStats` before/after: **not measured** per strip cache; the script measures bytes and transmits instead.
+
+**Measurement (`docs/perf/ease-pixel.txt`, SUMMARY only; no cut/fallback/switch).** p95 input_age_us, base → roles → tall, team fixture: 120x40 open 23521→35978→39263, settled 19289→37472→28262; 200x50 open 17248→36201→42150, settled 22094→33625→41695. bytes p95 ~106–122 KB → ~134–147 KB (+25–30 KB). draw_us p95 +1–8 ms. tail_ms flat (174–225 ms in all three; the backlog was already there at base). Focus walk (2-branch fixture, branch every 5 rows): bytes p95 2.3 KB → 37 KB, transmits 17 → 54–58, input_age p95 +0.8–4.3 ms. Single runs, noisy (p99 moves both ways). Ghostty numbers still need his run (command in the file).
+- The focus walk uses a generated two-branch history (script builds it), not the team fixture: the team fixture gives no way to make the cursor change branch on a fixed period.
+- `crates/mergewright-fixtures/examples/team_path.rs` (new, prints the MONOREPO cache path): the first route, building the fixture through a heavy `held_key::` test, **does not compile**: `crates/mergewright/tests/it/heavy.rs:347` matches `HistoryUpdate` without the `FoldedHits` variant (`history/state.rs:244`). Pre-existing heavy-tier break, not this ticket's; not fixed. Conductor: KNOWN_GAPS row (broken).
+
+**Remaining:** none in scope. His Ghostty run (`docs/perf/ease-pixel-ghostty.txt`) is his to do.
