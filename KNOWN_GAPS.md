@@ -1454,3 +1454,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/07b-ratchet-raised | 11 test-file ratchet rows raised 1–5 lines (user: split, don't raise) | **broken** | ease-pass fix round |
 | ease/07b-zeroed-hash | 6 tests zero the run-made hash (`without_cursor_sha`); reviewer checks it hides nothing | **question** | ease-pass review |
 | ease/07b-r-rewrite | `R rewrite` not drawn on mock bars; built to the mock | **question** (user) | ease-pass stop |
+| ease/13-pixel-lag | Tall row + roles: p95 input age 23.5→39.3 ms (120x40 open), 22.1→41.7 ms (200x50 settled); bytes +25–30 KB; focus walk 2.3→37 KB; single runs (docs/perf/ease-pixel.txt). iTerm2 re-encodes both crops per j. Q4 (b)/(c) open | **question** (user) | ease-pass stop |
+| ease/13-heavy-foldedhits | Heavy tier: no FoldedHits arm at crates/mergewright/tests/it/heavy.rs:347 (builder's claim, not run) | **unverified** | ease-pass review |
