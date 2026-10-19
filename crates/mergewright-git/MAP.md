@@ -99,6 +99,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RefFilter` (struct) — `patterns`, `merged_into`, `not_merged_into`, `contains` (`Option<Oid>`): `for-each-ref`'s filters.
 - `RefTip` (struct) — `name` (full `RefName`), `tip`.
 - `refs_where` (fn) — `(repo, &RefFilter, stop) -> Result<Vec<RefTip>, RunError>`: one `for-each-ref` spawn, uncapped; symrefs as git lists them.
+- `independent_tips` (fn) — `(repo, &[Oid], stop) -> Result<Vec<Oid>, RunError>`: one `merge-base --independent`; the tips no other of them reaches.
 
 ## diff
 - `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed`, `Copied`, `TypeChanged`, `Unmerged`, `Untracked`, ….

@@ -144,6 +144,35 @@ fn parse_ref_tips(stdout: &[u8]) -> Result<Vec<RefTip>, RunError> {
         .collect()
 }
 
+/// Of `tips`, those no other of them reaches: one `merge-base
+/// --independent` spawn. Duplicates come back once; order is git's. Empty
+/// in, empty out, with no spawn.
+///
+/// # Errors
+/// [`RunError`] from the runner (an id naming no commit is git's
+/// `Exited`); [`RunError::Unparsable`] for a line that is not an id.
+pub fn independent_tips(
+    repo: &RepoHandle,
+    tips: &[Oid],
+    stop: &dyn Stop,
+) -> Result<Vec<Oid>, RunError> {
+    if tips.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut args = vec![GitArg::Flag("merge-base"), GitArg::Flag("--independent")];
+    args.extend(tips.iter().map(|&tip| GitArg::Oid(tip)));
+    let output = GitInvocation::new(repo).args(args).run(stop)?;
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            Oid::from_hex(line).map_err(|why| {
+                RunError::Unparsable(format!("merge-base printed {line:?}, not an id: {why}"))
+            })
+        })
+        .collect()
+}
+
 /// Sorts `for-each-ref` records (`name NUL symref NUL LF`) into classes.
 fn classify(stdout: &[u8]) -> Contained {
     let mut contained = Contained::default();
@@ -293,6 +322,17 @@ mod tests {
             tip,
         });
         assert_eq!(listed, expected);
+    }
+
+    #[test]
+    fn independent_tips_drop_what_another_reaches() {
+        let (_f, repo, [m1, m2, s1]) = forked();
+        let mut kept = independent_tips(&repo, &[m1, m2, s1, m2], &()).expect("merge-base runs");
+        kept.sort_unstable();
+        let mut expected = vec![m2, s1];
+        expected.sort_unstable();
+        assert_eq!(kept, expected, "m1 is under both; m2 named twice");
+        assert_eq!(independent_tips(&repo, &[], &()).expect("no spawn"), []);
     }
 
     #[test]

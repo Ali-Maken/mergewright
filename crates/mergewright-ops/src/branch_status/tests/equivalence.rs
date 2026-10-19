@@ -122,9 +122,9 @@ fn stale_and_sibling_others_answer_as_the_oracle() {
 
 /// Stale and sibling branches cost no count from `sara/fix-toc`: neither
 /// can be its base. What can win or hold it is measured: the trunk, the
-/// integration branch off the trunk, the one under her that main lacks
-/// (`stale/s1`, `origin/sara`, `stale/w1`), and the candidate whose ref
-/// moved (the filters cannot speak for it).
+/// integration branches off the trunk, the top of what lies under her that
+/// main lacks (`stale/s1` and `origin/sara`, one commit; `stale/w1` is under
+/// it), and the candidate whose ref moved (the filters cannot speak for it).
 #[test]
 fn only_what_can_win_is_measured() {
     let (repo, candidates) = pruned();
@@ -148,9 +148,67 @@ fn only_what_can_win_is_measured() {
             "refs/heads/moved",
             "refs/heads/release/next",
             "refs/heads/stale/s1",
-            "refs/heads/stale/w1",
             "refs/heads/wallet-release",
             "refs/remotes/origin/sara",
         ]
     );
+}
+
+/// The team repository's shape (ease-pass 09p window): features merged
+/// into main one after another, each cut after the last was merged, so
+/// every older feature lies under the newer ones and main holds them all.
+/// No trunk is able to win, so only `merge-base --independent` keeps the
+/// count down; the answers must not move.
+///
+/// ```text
+/// m1 ─ M(f1) ─ M(f2) ─ M(f3) ─ m2   main
+///  └ f1 ┘  └ f2 ┘  └ f3 ┘           each feature merged --no-ff
+///  stale/f1 at f1, side off m1
+/// ```
+#[test]
+fn features_merged_one_after_another_answer_as_the_oracle() {
+    let repo = Repo::new();
+    repo.commit("m1");
+    repo.git(&["branch", "side"]);
+    for name in ["f1", "f2", "f3"] {
+        repo.git(&["switch", "-q", "-c", name, "main"]);
+        repo.commit(name);
+        repo.git(&["switch", "-q", "main"]);
+        repo.git(&[
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            &format!("merge {name}"),
+            name,
+        ]);
+    }
+    repo.commit("m2");
+    repo.git(&["branch", "stale/f1", "f1"]);
+    repo.git(&["switch", "-q", "side"]);
+    repo.commit("side");
+    let mut candidates = vec![repo.cand("main", CandidateKind::Trunk)];
+    for name in ["f1", "f2", "f3", "stale/f1", "side"] {
+        candidates.push(repo.cand(name, CandidateKind::Other));
+    }
+    let foci: Vec<&Candidate> = ["f3", "f2", "side"]
+        .iter()
+        .map(|name| find(&candidates, name))
+        .collect();
+    agrees(&repo, &candidates, &foci);
+    // From f3, f1 and stale/f1 lie under f2: only f2 is measured of them.
+    let f3 = find(&candidates, "f3");
+    let measured = measure(
+        &repo.handle(),
+        f3,
+        &candidates,
+        &[],
+        Ask::Footing,
+        How::Contenders,
+        &(),
+    )
+    .expect("measured");
+    let mut names: Vec<&str> = measured.iter().map(|(c, _)| c.name.as_str()).collect();
+    names.sort_unstable();
+    assert_eq!(names, ["refs/heads/f2", "refs/heads/main"]);
 }

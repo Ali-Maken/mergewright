@@ -12,7 +12,15 @@
 //! - **Integration contenders**: integration candidates not reachable from
 //!   an able `T` (`--no-merged T`); every one when `T` is not able.
 //! - **Ordinary contenders**, when the walker is ordinary: tips reachable
-//!   from `w` (`--merged w`; R1's `base_only == 0`), and not from an able `T`.
+//!   from `w` (`--merged w`; R1's `base_only == 0`), and not from an able
+//!   `T`; of those, only the tips no other of them reaches (`merge-base
+//!   --independent`).
+//!
+//! Why the tops are enough: if contender `c`'s tip is under contender
+//! `c'`'s (a different commit), `c'`'s tip is in `w` and not in `c`, so
+//! `branch_only(c) > branch_only(c')`; `c'` is eligible (ordinary, wholly
+//! under `w`, not at `w`'s tip) and shares history with `w`, so R1 never
+//! passes it over. `c` cannot be chosen; the top above it is measured.
 //!
 //! Why the exclusion is exact: a candidate `c` reachable from `T` has
 //! `reach(c) ⊆ reach(T)`, so `branch_only(c) ≥ branch_only(T)`, and on a
@@ -27,7 +35,7 @@
 use std::collections::HashMap;
 
 use mergewright_core::oid::Oid;
-use mergewright_git::contained::{RefFilter, refs_where};
+use mergewright_git::contained::{RefFilter, independent_tips, refs_where};
 use mergewright_git::history_reads::count_between;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{RunError, Stop};
@@ -247,7 +255,25 @@ impl Sheet<'_, '_> {
             },
             self.stop,
         )?;
-        self.take(|s, c| c.kind == CandidateKind::Other && !s.holds(c) && Self::at(&under, c))
+        let pending = |s: &Self, c: &Candidate| {
+            c.kind == CandidateKind::Other && !s.holds(c) && Self::at(&under, c)
+        };
+        let mut tips: Vec<Oid> = self
+            .pool
+            .iter()
+            .zip(&self.measured)
+            .filter(|(c, a)| a.is_none() && pending(self, c))
+            .map(|(c, _)| c.tip)
+            .collect();
+        tips.sort_unstable();
+        tips.dedup();
+        // Only a tip no other contender's tip reaches can win (module doc).
+        let unreached = if tips.len() > 1 {
+            independent_tips(self.repo, &tips, self.stop)?
+        } else {
+            tips
+        };
+        self.take(|s, c| pending(s, c) && unreached.contains(&c.tip))
     }
 }
 
