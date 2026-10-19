@@ -4,9 +4,9 @@ What right looks like: `stash@{0}` (newest, with an untracked file) draws `■`,
  ◆ api  ~/code/api · main                                                                                     3 commits
 
 ▸   ■                         On main: newest, with an untracked file  stash@{0}                             Graft  28h
+    ┃                         Graft · 28 hours ago · c7e3010
   ◆━╯    main (you)           Write the second note  not pushed yet                                          Graft  28h
   ◇                           Add the notes                                                                  Graft  28h
-
 
 
 

@@ -2,10 +2,10 @@
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
+  ┃                           not committed yet · 13 files
   ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
   ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
   ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
-
 
 
 
@@ -43,10 +43,10 @@ CONFLICTS (13)                ▎
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
+  ┃                           not committed yet · 13 files
   ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
   ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
   ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
-
 
 
 
@@ -84,10 +84,10 @@ CONFLICTS (13)                ▎
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
+  ┃                           not committed yet · 13 files
   ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
   ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
   ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
-
 
 
 
@@ -125,10 +125,10 @@ CONFLICTS (13)                ▎
  ◆ api  ~/code/api · detached 274c7d4                 REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
+  ┃                           not committed yet · 13 files
   ◆    ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Graft   2h
   ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
   ◇┄╯    main                 Add the files both sides will change                                           Graft   1y
-
 
 
 
@@ -166,10 +166,10 @@ CONFLICTS (13)                ▎
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
+  ┃                           not committed yet · 13 files · on main
   ◆      main (you)           Change every file on main  not pushed yet                                      Graft   2h
   ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
   ◇┄╯    main (you)           Add the files both sides will change                                           Graft   1y
-
 
 
 
@@ -207,10 +207,10 @@ CONFLICTS (13)                ▎
  ◆ api  ~/code/api · main                                                                                     3 commits
 
 ▸ ◌                         Uncommitted changes (1 untracked)
+  ┃                         not committed yet · 1 file · on main
   ◆    main (you)           Correct the note  not pushed yet                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 

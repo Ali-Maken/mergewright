@@ -179,6 +179,26 @@ pub fn without_invented_id(body: &str, id: &str) -> String {
     out
 }
 
+/// `body` with the cursor row's hash zeroed (by [`without_invented_id`])
+/// where its second line draws it (ease-pass/07b): for a capture whose
+/// cursor commit the run itself made — a commit, a merge, a rebase — so
+/// its hash is the run's own. The caller's caption says so.
+///
+/// # Panics
+///
+/// If the cursor is on no commit row, or its hash is not drawn.
+pub fn without_cursor_sha(state: &AppState, body: &str) -> String {
+    let id = state
+        .history
+        .as_ref()
+        .and_then(mergewright::history::History::selected)
+        .map_or_else(
+            || panic!("the cursor is on no commit row"),
+            |row| row.commit.id.to_string(),
+        );
+    without_invented_id(body, &id)
+}
+
 /// Asserts one capture under `docs/shots/` against what the code just drew —
 /// or, under `MWR_UPDATE_SHOTS=1`, rewrites it and fails anyway.
 ///

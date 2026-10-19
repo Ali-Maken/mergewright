@@ -3,12 +3,12 @@
     ◆    featu… (you) finish the feature  not pushed yet             Graft  now
     ●                 start the feature                              Graft   2m
 ▸ ● ┊    main         main moves again  not pushed yet               Graft   3m
+  ┃ ┊                 Graft · 3 minutes ago · made on main · 45fa51d
   ● ┊                 main moves on                                  Graft   4m
   ●┄╯                 add the base                                   Graft   5m
   ●                   Correct the note                               Graft   1y
   ●                   Add the first note                             Graft   1y
   ◇                   Add a readme                                   Graft   1y
-
 
 
 
@@ -28,12 +28,12 @@
     ◆    featu… (you) finish the feature  not pushed yet             Graft  now
     ●                 start the feature                              Graft   2m
 ▸ ● ┊    main         main moves again  not pushed yet               Graft   3m
+  ┃ ┊                 Graft · 3 minutes ago · made on main · 45fa51d
   ● ┊                 main moves on                                  Graft   4m
-  ●┄╯                 add the base                                   Graft   5m
-  ●   ╭ Quit now? ───────────────────────────────────────────────────────╮   1y
+  ●┄╯ ╭ Quit now? ───────────────────────────────────────────────────────╮   5m
   ●   │ merge main into feature is still running · a git hook may be     │   1y
-  ◇   │ stuck                                                            │   1y
-      │ quit now stops it half-way · the next launch shows where it      │
+  ●   │ stuck                                                            │   1y
+  ◇   │ quit now stops it half-way · the next launch shows where it      │   1y
       │ stopped                                                          │
       │                                                                  │
       │                                                                  │

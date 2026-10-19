@@ -53,11 +53,11 @@
                                                                                              Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
   ◌                 Uncommitted changes (1 unstaged)                                         parents 3d9496e · diff vs first parent
 ▸ ◆    main (you)   add second  not pushed yet                                   Graft   8m  Contained in: checking…
-  ●                 add first                                                    Graft   9m
-  ●                 Correct the note                                             Graft   1y  reading…
+  ┃                 Graft · 8 minutes ago · made on main · 29a1432
+  ●                 add first                                                    Graft   9m  reading…
+  ●                 Correct the note                                             Graft   1y
   ●                 Add the first note                                           Graft   1y
   ◇                 Add a readme                                                 Graft   1y
-
 
 
 

@@ -343,7 +343,7 @@ fn dropped_onto_main(app: &App, state: AppState, columns: u16, rows: u16) -> App
     let state = app.resize(&opened(app, state), columns, rows);
     let state = settled(app, state);
 
-    let (state, column, from_screen_row) = grab_a_badge(app, &state, columns);
+    let (state, column, _from) = grab_a_badge(app, &state, columns);
     let from_row = state
         .drag
         .as_ref()
@@ -351,9 +351,10 @@ fn dropped_onto_main(app: &App, state: AppState, columns: u16, rows: u16) -> App
         .expect("a badge is in the air");
     let onto = mains_row(&state);
     assert_ne!(onto, from_row, "the badge came off a different row");
-    // The drawn rows are consecutive, so the target's screen row is the
-    // press's, moved by the distance between the two row indices.
-    let onto_screen_row = from_screen_row + u16::try_from(onto - from_row).expect("a small window");
+    // Where the target is drawn is the app's to say: the cursor row's
+    // second line moves every row below it down one (ease-pass/07b).
+    let onto_screen_row =
+        mergewright::update::history_row_line(&state, onto).expect("main is drawn");
 
     let state = app.mouse(
         &state,
@@ -392,14 +393,16 @@ fn holding_over_main(app: &App, state: AppState, columns: u16, rows: u16) -> App
     let state = app.resize(&opened(app, state), columns, rows);
     let state = settled(app, state);
 
-    let (state, column, from_screen_row) = grab_a_badge(app, &state, columns);
+    let (state, column, _from) = grab_a_badge(app, &state, columns);
     let from_row = state
         .drag
         .as_ref()
         .map(|drag| drag.from_row)
         .expect("a badge is in the air");
     let onto = mains_row(&state);
-    let onto_screen_row = from_screen_row + u16::try_from(onto - from_row).expect("a small window");
+    assert_ne!(onto, from_row, "the badge came off a different row");
+    let onto_screen_row =
+        mergewright::update::history_row_line(&state, onto).expect("main is drawn");
     let state = app.mouse(
         &state,
         MouseKind::Drag(MouseButton::Left),

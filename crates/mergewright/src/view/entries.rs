@@ -14,6 +14,7 @@ use crate::update::AppState;
 mod branch_column;
 mod cells;
 mod roles;
+mod second;
 
 pub(crate) use branch_column::branch_name;
 use cells::row_entry;
@@ -160,6 +161,14 @@ pub(super) fn visible_rows<'a>(
         (rows, history.top),
         &mut entries[first..],
     );
+    second::attach(
+        state,
+        history,
+        uncommitted,
+        (rows, first),
+        &mut entries,
+        now,
+    );
     entries
 }
 
@@ -234,6 +243,7 @@ fn uncommitted_entry<'a>(
         marker: None,
         tag: None,
         fold: None,
+        second: None,
     }
 }
 

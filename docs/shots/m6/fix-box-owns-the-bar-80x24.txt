@@ -19,10 +19,10 @@
 === frame 1: the lease box over a rejected push ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
 ▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ┃                 Graft · 6 years ago · made on main · 739071c
   ●                 Commit 200  origin/main is here                  Graft   7y
   ●                 Commit 199                                       Graft   7y
   ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
   ●    ╭ Force-push main → origin/main? ─────────────────────────────────╮   7y
   ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │   7y
   ●    │ your fetch (lease)                                              │   7y
@@ -33,18 +33,19 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Force push ]                                    │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
+  ●                 Commit 187                                       Graft   7y
   ●                 Commit 186                                       Graft   7y
   ●                 Commit 185                                       Graft   7y
   ●                 Commit 184                                       Graft   7y
   ●                 Commit 183                                       Graft   7y
   ●                 Commit 182                                       Graft   7y
   ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
 ▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ┃                 Graft · 6 years ago · made on main · 739071c
   ●                 Commit 200  origin/main is here                  Graft   7y
   ●                 Commit 199                                       Graft   7y
   ●                 Commit 198                                       Graft   7y
@@ -65,19 +66,18 @@
   ●                 Commit 183                                       Graft   7y
   ●                 Commit 182                                       Graft   7y
   ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
  push rejected: origin/main has com… · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
  ◆ api  ~/code/api · fix                        6 commits  date order, sorting…
     ◌                 Uncommitted changes (1 unstaged)
 ▸   ◆    fix (you)    fix the bug  not pushed yet                    Graft   3m
+    ┃                 Graft · 3 minutes ago · made on fix · fbb2394
   ● ┃    main         main moves on  not pushed yet                  Graft   4m
   ●━╯                 add the base                                   Graft   5m
   ●                   Correct the note                               Graft   1y
-  ●                   Add the first note                             Graft   1y
-  ◇   ╭ Undo “checkout fix”? ────────────────────────────────────────────╮   1y
-      │ Since this checkout fix, the working tree changed.               │
+  ●   ╭ Undo “checkout fix”? ────────────────────────────────────────────╮   1y
+  ◇   │ Since this checkout fix, the working tree changed.               │   1y
       │ Undo replaces your edit to fix.txt; a backup keeps it, and U     │
       │ brings it back.                                                  │
       │                                                                  │
@@ -97,19 +97,20 @@
 === frame 4: `b`, `⏎` on an empty name ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
 ▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
+  ┃                 Graft · 6 years ago · made on main · 739071c
   ●                 Commit 200  origin/main is here                  Graft   7y
   ●                 Commit 199                                       Graft   7y
   ●                 Commit 198                                       Graft   7y
   ●                 Commit 197                                       Graft   7y
   ●                 Commit 196                                       Graft   7y
   ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
           ╭ New branch at 739071c ───────────────────────────────────╮
           │ ▏                                                        │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
+  ●                 Commit 188                                       Graft   7y
   ●                 Commit 187                                       Graft   7y
   ●                 Commit 186                                       Graft   7y
   ●                 Commit 185                                       Graft   7y
@@ -117,5 +118,4 @@
   ●                 Commit 183                                       Graft   7y
   ●                 Commit 182                                       Graft   7y
   ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
  a branch needs a name

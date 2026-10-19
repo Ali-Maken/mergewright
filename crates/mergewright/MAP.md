@@ -238,6 +238,7 @@ The frame trace the binary writes when `MWR_PERF_TRACE` is set: one line per dra
 - `TerminalOut` (enum) — the terminal's writer: plain `Stdout`, or metered when tracing.
 ## update
 The pure `update(state, event) -> (state, [Command])`: the only place `AppState` changes; no clock, file, thread or drawing. Re-exports the state and event types.
+- `history_row_line` (fn) — `(state, row) -> Option<u16>`: the screen row a history row is drawn on, one lower below the cursor row's second line (ease-pass/07b); the inverse of the click hit-test.
 ## update::amend_into
 `a` on an older commit and absorb from the `.` menu: put the staged changes into the commit they belong to, through the Ghost Preview and `y`.
 ## update::answer
@@ -377,6 +378,7 @@ The credential prompt's view model; `secret` decides how the text is drawn, no c
 The detail pane's view model, reshaped from what `update` keeps.
 ## view::entries
 One frame's `GraphEntry` rows: the selection's thread, the uncommitted row, each row's cells and badges.
+- `second` (mod) — the cursor row's second line in words (`commit_second_line`, `uncommitted_second_line`).
 - `cells` (mod) — one history row's `GraphEntry` (`row_entry`), its stop tag and `badge_view` (re-exported as `entries::badge_view`).
 - `branch_name` (fn, `branch_column`) — the name the branch column gives one lane identity.
 ## view::explain

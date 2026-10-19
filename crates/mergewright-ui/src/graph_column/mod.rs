@@ -46,7 +46,7 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 
 use mergewright_graph::LaneRole;
-use mergewright_graph::fold::{DrawnRow, Fold, Toward};
+use mergewright_graph::fold::Fold;
 use mergewright_graph::row::Row;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -60,16 +60,16 @@ use crate::theme::{Theme, Token};
 
 mod geometry;
 mod kinds;
+mod overlay;
 mod roles;
 mod style;
 
 pub use kinds::{NodeKind, RowPaint};
 pub use roles::{join_glyph, lane_glyph, role_token};
 
-use geometry::{BLANK, row_cells};
+use geometry::{BLANK, continuation_cells, row_cells};
 use style::{
-    dashed, dashes_odd_columns, ghost_edge_glyph, ghost_node_glyph, lane_x, off_thread, on_thread,
-    to_ascii,
+    dashed, dashes_odd_columns, ghost_edge_glyph, ghost_node_glyph, lane_x, on_thread, to_ascii,
 };
 
 /// A folded outgoing edge: the branch continues below, behind the fold.
@@ -180,6 +180,10 @@ pub struct GraphColumn<'a> {
     /// Unicode box-drawing. The same widget, the same geometry — only the
     /// glyph each cell resolves to changes.
     ascii: bool,
+    /// The index of the line that grows a second line under it (the cursor
+    /// row, ease-pass/07b): its lanes continue straight through, and every
+    /// line after it draws one row lower.
+    second_after: Option<usize>,
 }
 
 impl<'a> GraphColumn<'a> {
@@ -191,7 +195,16 @@ impl<'a> GraphColumn<'a> {
             theme,
             fold: None,
             ascii: false,
+            second_after: None,
         }
+    }
+
+    /// Draw a second line under line `index` (the cursor row's, ease-pass
+    /// G9): its downward lanes continue straight through it.
+    #[must_use]
+    pub fn second_line_after(mut self, index: Option<usize>) -> Self {
+        self.second_after = index;
+        self
     }
 
     /// Draw with the ASCII tier's glyph table (`* | / \ - +`) rather than
@@ -245,10 +258,18 @@ impl Widget for GraphColumn<'_> {
             Some(fold) => fold.real(drawn),
             None => Some(drawn),
         };
-        for (line, y) in self.lines.iter().zip(area.top()..area.bottom()) {
+        for ((line, second), y) in self
+            .drawn_lines()
+            .into_iter()
+            .zip(area.top()..area.bottom())
+        {
             let drawn = self.fold.map(|fold| fold.view(&line.row));
             let row = drawn.as_ref().map_or(&*line.row, |drawn| &*drawn.row);
-            let cells = row_cells(row, line.node);
+            let cells = if second {
+                continuation_cells(row)
+            } else {
+                row_cells(row, line.node)
+            };
             let ghost = line.paint == RowPaint::Ghost;
             let node_x = lane_x(row.lane);
             for x in 0..area.width {
@@ -296,58 +317,25 @@ impl Widget for GraphColumn<'_> {
                 self.put(buf, area, x, y, glyph, style);
             }
             if let (Some(fold), Some(drawn)) = (self.fold, &drawn) {
-                self.fold_overlay(buf, area, y, line, fold, drawn);
+                // The second line takes the rail but no stub.
+                self.fold_overlay(buf, area, y, line, fold, (!second).then_some(drawn));
             }
         }
     }
 }
 
 impl GraphColumn<'_> {
-    /// What a fold adds to row `y`: the rail, and one stub for the row's
-    /// folded edges.
-    fn fold_overlay(
-        &self,
-        buf: &mut Buffer,
-        area: Rect,
-        y: u16,
-        line: &GraphLine<'_>,
-        fold: &Fold,
-        drawn: &DrawnRow<'_>,
-    ) {
-        // A node whose column folded sits on the rail (ease-pass 06b): the
-        // node shows there, not the rail, so no row loses its commit.
-        let node_on_rail = fold.drawn(line.row.lane).is_none();
-        if let Some(rail) = fold.marker().filter(|_| !node_on_rail) {
-            let style = off_thread(foreground(self.theme, Token::TextMuted), line, None);
-            self.put(buf, area, lane_x(rail), y, RAIL, style);
+    /// Each line to draw, top first, and whether it is the second line
+    /// drawn under the row before it ([`GraphColumn::second_line_after`]).
+    fn drawn_lines(&self) -> Vec<(&GraphLine<'_>, bool)> {
+        let mut lines = Vec::with_capacity(self.lines.len() + 1);
+        for (index, line) in self.lines.iter().enumerate() {
+            lines.push((line, false));
+            if self.second_after == Some(index) {
+                lines.push((line, true));
+            }
         }
-        // Several folded edges on one row draw one stub, in the first edge's
-        // colour (ADR-0022). It takes the gap cell even when a kept edge runs
-        // through it: the edge reads on either side.
-        if let Some(first) = drawn.folded.first() {
-            let glyph = match first.toward {
-                Toward::Below => STUB_BELOW,
-                Toward::Above => STUB_ABOVE,
-            };
-            // By role, a folded lane has no drawn column to take one
-            // from: it reads as the quiet `Other`, like the rail it sits
-            // behind.
-            let style = if line.roles.is_some() {
-                off_thread(
-                    Style::new().fg(color(self.theme.token(Token::RoleOther))),
-                    line,
-                    None,
-                )
-            } else {
-                off_thread(
-                    Style::new().fg(color(self.theme.branch(first.identity))),
-                    line,
-                    self.faded(first.identity),
-                )
-            };
-            let gap = lane_x(drawn.row.lane).saturating_add(1);
-            self.put(buf, area, gap, y, glyph, style);
-        }
+        lines
     }
 
     /// A lane cell in its branch's colour, under the selection's thread

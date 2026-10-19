@@ -150,9 +150,13 @@ fn clicks_select_what_is_drawn(app: &App, state: &AppState, columns: u16, rows: 
                         && line.contains(&format!("{}\u{2026}", &subject[..cut]))
                 })
         };
+        // A row under the old cursor's second line (07b) is redrawn a line up.
         let redrawn = frame_at(&clicked, columns, rows, Some(Clock::Fixed(NOW)));
+        let cursor = [y, y - 1]
+            .into_iter()
+            .any(|at| redrawn[at].starts_with('\u{25b8}'));
         assert!(
-            selected.as_deref().is_some_and(reads) && redrawn[y].starts_with('\u{25b8}'),
+            selected.as_deref().is_some_and(reads) && cursor,
             "{columns}x{rows}: a click on row {row} ({line:?}) selected {selected:?}\n{}",
             drawn.join("\n")
         );
@@ -304,7 +308,11 @@ fn capture_the_cursor_row_in_dark_and_light() {
     let state = app.mouse_down(&state, MouseButton::Left, 30, row);
     assert_eq!(selected_subject(&state).as_deref(), Some("two: finish"));
     let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
-    let line = &drawn[y];
+    // Looked for again: the old cursor's second line went with it (07b).
+    let line = drawn
+        .iter()
+        .find(|l| l.contains("two: finish"))
+        .expect("the row is drawn");
     assert!(
         // The lanes by role (ease-pass 07): main the trunk `║`, feature/three
         // another branch `┊`, then the cursor row's own node.

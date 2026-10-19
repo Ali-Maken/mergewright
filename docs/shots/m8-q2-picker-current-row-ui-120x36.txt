@@ -3,7 +3,7 @@
 "  ●                         Commit 3␛[31m  feature is here  not pushed yet                                    Test  57y "
 "  ◆                         Commit 2␛[31m  main is here  not pushed yet                                       Test  57y "
 "▸ ◇                         Commit 1␛[31m                                                                     Test  57y "
-"                                                                                                                        "
+"                            Test · 57 years ago · 0101010                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "

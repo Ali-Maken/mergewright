@@ -16,9 +16,9 @@
 #
 "                                                                                          3 commits "
 "▸ ◉┄╮  ⚠                Merge branch 'feature'                                            Test  57y "
+"  ┃ ┊                   Test · 57 years ago · 0303030                                               "
 "  ● ┊                   Ship the release notes                                            Test  57y "
 "  ◇┄╯                   Start the feature branch                                          Test  57y "
-"                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
 " . explain · ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · / search  "

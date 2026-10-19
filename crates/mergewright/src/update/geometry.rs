@@ -5,10 +5,15 @@
 //! for that library's name — this file must stay just as clean).
 
 use mergewright_ui::detail_pane::DetailLayout;
+use mergewright_ui::graph_screen::body_line;
 
 use super::context_menu;
 use super::detail;
 use super::state::AppState;
+
+mod second_line;
+pub(crate) use second_line::cursor_body_line;
+pub use second_line::history_row_line;
 
 /// Screen rows above the graph body: the header line `graph_screen` draws at
 /// the top (`CHROME_ROWS` also counts the footer, which a mouse row never
@@ -323,12 +328,15 @@ pub(super) fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
         .0?;
     }
     let history = state.history.as_ref()?;
-    let offset = usize::from(screen_row.checked_sub(rows_above_graph(state))?);
+    let line = screen_row.checked_sub(rows_above_graph(state))?;
     // The pane, not its history rows: the uncommitted row is one of the
     // pane's rows, and is taken off just below (48).
-    if offset >= state.graph_pane_rows() {
+    if usize::from(line) >= state.graph_pane_rows() {
         return None;
     }
+    // The cursor row's second line is the cursor row's; every line below it
+    // is the row one up (ease-pass/07b).
+    let offset = usize::from(body_line(line, cursor_body_line(state)).row());
     let offset = if crate::view::uncommitted_shown(state) {
         offset.checked_sub(1)?
     } else {
@@ -434,15 +442,7 @@ pub(super) fn context_menu_bounds(
     let anchor = if row == context_menu::WORKING_TREE_ROW {
         rows_above_graph(state)
     } else {
-        let history = state.history.as_ref()?;
-        if row < history.top {
-            return None;
-        }
-        let mut offset = row - history.top;
-        if crate::view::uncommitted_shown(state) {
-            offset += 1;
-        }
-        rows_above_graph(state).saturating_add(u16::try_from(offset).unwrap_or(u16::MAX))
+        history_row_line(state, row)?
     };
     let below = anchor.saturating_add(1);
     let y = if below.saturating_add(height) <= graph.y + graph.height {

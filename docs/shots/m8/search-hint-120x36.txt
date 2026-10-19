@@ -14,8 +14,8 @@
  ◆ api  ~/code/api · main  /topic  4 matches so far (1/4)  n/N next/prev  esc cancel  2 commits  1 merged branch folded
 
 ▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
+  ┃                         Graft · 2 days ago · made on main · e385b54
   ◇                         Add the base                                                                     Graft   2d
-
 
 
 
@@ -53,8 +53,8 @@
  ◆ api  ~/code/api · main          /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits  1 merged branch folded
 
 ▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
+  ┃                         Graft · 2 days ago · made on main · e385b54
   ◇                         Add the base                                                                     Graft   2d
-
 
 
 
@@ -92,8 +92,8 @@
  ◆ api  ~/code/api · main                               /zzqx  no matches  esc close  2 commits  1 merged branch folded
 
 ▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and 'topic-3'  ▸ 3 commits  not pushed yet   Graft   2d
+  ┃                         Graft · 2 days ago · made on main · e385b54
   ◇                         Add the base                                                                     Graft   2d
-
 
 
 

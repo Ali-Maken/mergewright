@@ -22,12 +22,12 @@
                                                                                                              Graft Fixture <fixture@example.invalid> · 2020-01-02 23:00 +0000 · 60m
   ◌                   Uncommitted changes (1 untracked)                                                      parents 0a27627 · diff vs first parent
 ▸ ◆    main (you)     Handle expired tokens  not pushed yet                                      Graft  60m  Contained in: main
-  ●                   Move session TTL to config                                                 Priya  4mo
-  ●                   rustfmt                                                                   Rustf…  5mo  A .git-blame-ignore-revs                                                 +2 −0
-  ●                   Retry refresh once on 401                                                   Lina  7mo  ▾ src/
-  ●                   Add token refresh                                                            Tom 10mo    ▾ auth/
-  ◇                   Add session                                                                  Ana   1y      M session.rs                                                         +2 −1
-
+  ┃                   Graft · 60 minutes ago · made on main · 74f9a9e
+  ●                   Move session TTL to config                                                 Priya  4mo  A .git-blame-ignore-revs                                                 +2 −0
+  ●                   rustfmt                                                                   Rustf…  5mo  ▾ src/
+  ●                   Retry refresh once on 401                                                   Lina  7mo    ▾ auth/
+  ●                   Add token refresh                                                            Tom 10mo      M session.rs                                                         +2 −1
+  ◇                   Add session                                                                  Ana   1y
                                                                                                                3   4   use crate::http::{Client, Result};
                                                                                                                4   5
                                                                                                                5   6   pub struct Session {

@@ -137,6 +137,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `GraphLine::plain`, `GraphLine::owned`, `GraphLine::ghost` (fns) — a borrowed row, a synthesised row, a Ghost Preview row.
 - `GraphColumn` (struct, `Widget`) — draws consecutive rows, filling its area exactly.
 - `GraphColumn::new`, `GraphColumn::ascii`, `GraphColumn::through` (fns) — lines in a theme; the ASCII glyph table; drawn through a `Fold`.
+- `GraphColumn::second_line_after` (fn) — draws a continuation line (lanes straight down, no nodes) after the row at an index.
 - `GraphColumn::width_for`, `GraphColumn::width_through` (fns) — cells for N lanes; cells for a window through a `Fold`.
 - `GraphLine` roles field — `Option<Vec<LaneRole>>` by real column: when set, an owned lane draws by role (shape + `Role*` token) instead of by lane hue (ease-pass 07).
 - `lane_glyph`, `join_glyph` (fns, `graph_column/roles.rs`) — `(role, ascii)`: a role's vertical and horizontal line (`┃ │ ║ ┊`, `━ ─ ═ ┄`; ASCII `| | | :`, `- - - .`).
@@ -157,7 +158,10 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`, `every_branch` (graph mode, said by the lane phrases, not `text`); `Filters::text(keys)` is the header's words.
 - `Compaction` (struct, from `compaction.rs`) — `max_lanes`, `expanded`, `keep`; `Compaction::at(max_lanes)` is collapsed with nothing kept; planned with no cap while expanded, so node-less columns drop either way.
 - `LaneTally` (struct, from `header_tail.rs`) — `drawn` N, `open` M, `folded_in_view` K; `LaneTally::of(fold, window)`: the top line's `lanes drawn: N of M · K merged branches folded`, counted at render.
-- `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `branch`, `who`, `dim_message`, `when`, `compare_marked`, `marker`, `tag`, `fold`.
+- `GraphEntry` (struct) — one row: `line`, `badges`, `subject`, `branch`, `who`, `dim_message`, `when`, `compare_marked`, `marker`, `tag`, `fold`, `second` (the cursor row's second line, ease-pass/07b).
+- `SecondLine` (struct) — the cursor row's second line: `words` and `sha7` (empty on the uncommitted row).
+- `BodyLine`, `body_line` (enum, fn) — which row a body line is, with the cursor row's second line under it: `Row(n)` or `SecondOf(cursor)`.
+- `commit_rows` (fn) — `(body_rows, cursor_in_view) -> u16`: commit rows a body holds when the cursor's second line takes one; never below 1.
 - `FoldMark` (struct) — `open`, `count`, `from`: a folding merge's tail; `words(ascii)` is `▸ 4 commits from PR 16021`; `fitting(ascii, cells)` its longest form that fits (`▸ 4 commits`, then `▸`).
 - `FoldCount` (enum) — `Pending`, `Known(n)`, `Failed`: the tail's count, none until it lands, `?` if it failed.
 - `RowTag` (enum) — `Changed`: a row's tag after its subject; `RowTag::words(ascii)` per tier.
@@ -184,7 +188,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph. No I/O.
 - `RowLayout` (struct), `row_layout` (fn) — `body` rect and resolved `Columns` for a frame.
 - `Columns` (struct, from `row_columns.rs`) — marker, branch, message (`subject_*`), who and age: where each sits and how wide.
 - `branch_width_for` (fn) — `(full width) -> u16`: 20 / 14 / 12.
-- `row_at` (fn) — `(view, area, screen_row) -> Option<(&GraphEntry, Columns)>`: the entry drawn at a screen row.
+- `row_at` (fn) — `(view, area, screen_row) -> Option<(&GraphEntry, Columns)>`: the entry drawn at a screen row; the cursor's second line is the cursor's entry.
 - `lanes_that_fit`, `max_lanes_for` (fns) — the most lane columns a width holds; the frame's lane cap (configured, else by width).
 - `snap_to_columns` (fn) — `(rect, boundaries, bounds) -> Option<Rect>`: grows `rect` so both edges sit on column boundaries.
 - `ref_spans` (fn, from `row_text.rs`) — `(entry, columns, icons, keys, ascii)`: the cells of each label and of the branch column's name, with the badge each names; what a drag picks up.

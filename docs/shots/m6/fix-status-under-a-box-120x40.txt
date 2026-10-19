@@ -26,6 +26,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200                                                                       Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -39,13 +40,13 @@
   ●                         Commit 189                                                                       Graft   7y
   ●                         Commit 188                                                                       Graft   7y
   ●                         Commit 187                                                                       Graft   7y
-  ●                         Commit 186                                                                       Graft   7y
                               ╭ New branch at d5ae5fd ───────────────────────────────────╮
                               │ ▏                                                        │
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
                               ╰──────────────────────────────────────────────────────────╯
+  ●                         Commit 180                                                                       Graft   7y
   ●                         Commit 179                                                                       Graft   7y
   ●                         Commit 178                                                                       Graft   7y
   ●                         Commit 177                                                                       Graft   7y
@@ -60,7 +61,6 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ create  ⇥ toggle  esc cancel
 
@@ -68,6 +68,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200                                                                       Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -102,7 +103,6 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  fetch all remotes failed: no repository at '/graft-no-such-remote', or no access to it · esc dismiss
 
@@ -110,6 +110,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200                                                                       Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -144,7 +145,6 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  branch topic at d5ae5fd…
 
@@ -152,6 +152,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200  topic is here  not pushed yet                                        Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -165,13 +166,13 @@
   ●                         Commit 189                                                                       Graft   7y
   ●                         Commit 188                                                                       Graft   7y
   ●                         Commit 187                                                                       Graft   7y
-  ●                         Commit 186                                                                       Graft   7y
                               ╭ New branch at d5ae5fd ───────────────────────────────────╮
                               │ ▏other                                                   │
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
                               ╰──────────────────────────────────────────────────────────╯
+  ●                         Commit 180                                                                       Graft   7y
   ●                         Commit 179                                                                       Graft   7y
   ●                         Commit 178                                                                       Graft   7y
   ●                         Commit 177                                                                       Graft   7y
@@ -186,7 +187,6 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  wait for fetch all remotes to finish
 
@@ -194,6 +194,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200  topic is here  not pushed yet                                        Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -207,13 +208,13 @@
   ●                         Commit 189                                                                       Graft   7y
   ●                         Commit 188                                                                       Graft   7y
   ●                         Commit 187                                                                       Graft   7y
-  ●                         Commit 186                                                                       Graft   7y
                               ╭ New branch at d5ae5fd ───────────────────────────────────╮
                               │ ▏other                                                   │
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
                               ╰──────────────────────────────────────────────────────────╯
+  ●                         Commit 180                                                                       Graft   7y
   ●                         Commit 179                                                                       Graft   7y
   ●                         Commit 178                                                                       Graft   7y
   ●                         Commit 177                                                                       Graft   7y
@@ -228,7 +229,6 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ create  ⇥ toggle  esc cancel
 
@@ -236,6 +236,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200  topic is here  not pushed yet                                        Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -270,6 +271,5 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ fetched

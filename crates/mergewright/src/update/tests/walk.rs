@@ -45,20 +45,21 @@ fn rows_land_as_they_arrive_and_the_walk_completes() {
 fn moving_past_the_window_asks_for_the_rows_there() {
     let id = JobId::new(4);
     let (state, _) = update(&awaiting(id), sized(80, 12));
-    // Ten graph rows: the resize asked for them, and they arrive.
+    // Nine graph rows (ten lines, the cursor's second line takes one,
+    // ease-pass/07b): the resize asked for them, and they arrive.
     let (state, _) = update(&state, rows_for(id, 2, 0..30, 500));
 
     let (state, commands) = update(&state, key(KeyCode::Char('j')));
     assert!(commands.is_empty(), "row 1 is held: {commands:?}");
     assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(1));
 
-    // Page 1 (10..20) is drawn from the rows held, but the second page
+    // Page 1 (9..18) is drawn from the rows held, but the second page
     // after it is not held: ask now, three screens either side, so
     // neither waits.
     let (_, commands) = update(&state, key(KeyCode::PageDown));
     assert_eq!(
         commands,
-        vec![Command::ShowRows(id, request(3, Wanted::Rows(0..50)))]
+        vec![Command::ShowRows(id, request(3, Wanted::Rows(0..45)))]
     );
 }
 
@@ -73,7 +74,7 @@ fn esc_withdraws_a_jump_before_it_cancels_the_walk() {
     let (jumping, commands) = update(&state, key(KeyCode::Char('G')));
     assert_eq!(
         commands,
-        vec![Command::ShowRows(id, request(3, Wanted::Last(20)))]
+        vec![Command::ShowRows(id, request(3, Wanted::Last(18)))]
     );
     let history = jumping.history.as_ref().expect("a walk");
     assert_eq!((history.top, history.cursor, history.jump), (0, 0, Some(3)));
@@ -81,7 +82,7 @@ fn esc_withdraws_a_jump_before_it_cancels_the_walk() {
     let (withdrawn, commands) = update(&jumping, key(KeyCode::Escape));
     assert_eq!(
         commands,
-        vec![Command::ShowRows(id, request(4, Wanted::Rows(0..40)))]
+        vec![Command::ShowRows(id, request(4, Wanted::Rows(0..36)))]
     );
     assert_eq!(withdrawn.awaiting, Some(id), "the walk goes on");
     assert_eq!(withdrawn.history.as_ref().and_then(|h| h.jump), None);

@@ -4,10 +4,10 @@ What right looks like: the PR's merge ends `▸ 4 commits`, two cells after its 
  ◆ api · wallet-release   4 commits  2 merged branches folded
 
 ▸   ◆    walle… (you) M…  ▸ 1 commit  not pushed…  Graft  28h
+    ┃                 Graft · 28 hours ago · made on wallet-…
     ◉                 Merged PR 160…  ▸ 4 commits  Graft  28h
     ●                 Start the wallet release     Graft  28h
   ◇━╯    main         Add the readme  not pushed…  Graft  28h
-
 
 
 

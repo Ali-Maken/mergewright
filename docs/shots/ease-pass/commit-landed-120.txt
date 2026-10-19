@@ -7,8 +7,8 @@
 
   ◌                         Uncommitted changes (1 untracked)
 ▸ ◆  ⓘ main (you)           fix toc  ↑1 to push                                                                you  now
+  ┃                         you · just now · made on main · 0000000
   ◇                         start  origin/main is here                                                         you  now
-
 
 
 

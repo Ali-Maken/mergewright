@@ -5,13 +5,13 @@ What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its
 
     ◆      wallet-release (you) Merge branch 'sara/fix-toc' …  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
 ▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  ▾ 4 commits from PR 16021            Graft  28h
+    ┃ ┊                         Graft · 28 hours ago · made on wallet-release · merged 4 from PR 16021 · 4eb2a56
     ┃ ●    PR 16021             totals: test the sum                                                         Graft  28h
     ┃ ●    PR 16021             totals: drop the cache                                                       Graft  28h
     ┃ ●    PR 16021             totals: round once                                                           Graft  28h
     ┃ ●    PR 16021             totals: read the ledger                                                      Graft  28h
     ●┄╯                         Start the wallet release                                                     Graft  28h
   ◇━╯      main                 Add the readme  not pushed yet                                               Graft  28h
-
 
 
 

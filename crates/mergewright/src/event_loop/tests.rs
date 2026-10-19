@@ -1196,7 +1196,8 @@ fn mergewright_starts_at_the_terminals_size_not_zero_by_zero() {
     let state = opening_repository(&Recorded::default(), Path::new("/code/api"), size);
 
     assert_eq!(state.size, size);
-    assert_eq!(state.graph_rows(), 22);
+    // 22 pane rows, one of them the cursor row's second line (ease-pass/07b).
+    assert_eq!(state.graph_rows(), 21);
 }
 
 #[test]

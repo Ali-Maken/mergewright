@@ -27,12 +27,12 @@
 
     ◌                         Uncommitted changes (1 unstaged)
 ▸   ◆    fix (you)            fix the bug  not pushed yet                                                    Graft   3m
+    ┃                         Graft · 3 minutes ago · made on fix · fbb2394
   ● ┃    main                 main moves on  not pushed yet                                                  Graft   4m
   ●━╯                         add the base                                                                   Graft   5m
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 
@@ -69,11 +69,11 @@
 
     ●    fix                  fix the bug  not pushed yet                                                    Graft   3m
 ▸ ◆ ┊    main (you)           main moves on  not pushed yet                                                  Graft   4m
+  ┃ ┊                         Graft · 4 minutes ago · made on main · 37926a7
   ●┄╯                         add the base                                                                   Graft   5m
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 
@@ -111,12 +111,12 @@
 
     ◌                         Uncommitted changes (1 unstaged)
 ▸   ◆    fix (you)            fix the bug  not pushed yet                                                    Graft   3m
+    ┃                         Graft · 3 minutes ago · made on fix · fbb2394
   ● ┃    main                 main moves on  not pushed yet                                                  Graft   4m
   ●━╯                         add the base                                                                   Graft   5m
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 
@@ -152,13 +152,13 @@
  ◆ api  ~/code/api · main                                                                                     7 commits
 
 ▸   ●    fix2                 fix it again  not pushed yet                                                   Graft   2m
+    ┃                         Graft · 2 minutes ago · made on fix2 · 84d95f8
     ●                         fix the bug  fix is here  not pushed yet                                       Graft   3m
   ◆ ┃    main (you)           main moves on  not pushed yet                                                  Graft   4m
   ●━╯                         add the base                                                                   Graft   5m
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 

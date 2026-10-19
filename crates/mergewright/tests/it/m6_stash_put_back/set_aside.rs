@@ -851,9 +851,11 @@ fn done_shot(state: &AppState) {
         "{}",
         drawn.join("\n")
     );
+    // The pull's rebase made the cursor commit: its hash is zeroed (07b).
+    let body = crate::captures::without_cursor_sha(state, &drawn.join("\n"));
     check_shot(
         "m6/set-aside-done-120x40.txt",
-        &format!("{DONE_HEADER}\n{}\n", drawn.join("\n")),
+        &format!("{DONE_HEADER}\n{body}\n"),
     );
 }
 

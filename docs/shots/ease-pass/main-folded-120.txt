@@ -4,10 +4,10 @@ What right looks like: no row of a merged branch; the PR's merge ends `▸ 4 com
  ◆ api  ~/code/api · wallet-release                                                 4 commits  2 merged branches folded
 
 ▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' in…  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
+    ┃                         Graft · 28 hours ago · made on wallet-release · merged 1 from fix-toc · ea2b27e
     ◉                         Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021              Graft  28h
     ●                         Start the wallet release                                                       Graft  28h
   ◇━╯    main                 Add the readme  not pushed yet                                                 Graft  28h
-
 
 
 

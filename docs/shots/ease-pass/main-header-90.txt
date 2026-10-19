@@ -3,8 +3,7 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
 
  ◆ api  …api · wallet-release  47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
-  ●    walle… (you) release: note 30                                           Graft  27h
-  ●                 release: note 29                                           Graft  27h
+  ●    walle… (you) release: note 29                                           Graft  27h
   ●                 release: note 28                                           Graft  27h
   ●                 release: note 27                                           Graft  27h
   ●                 release: note 26                                           Graft  27h
@@ -35,5 +34,6 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
   ●                 release: note 01                                           Graft  27h
   ◉                 Merge branch 'sara/fix-toc…  ▸ 1 commit from sara/fix-toc  Graft  28h
 ▸ ◉                 Merged PR 16021: Fix the wall…  ▸ 4 commits from PR 16021  Graft  28h
+  ┃                 Graft · 28 hours ago · made on wallet-release · merged 4 from PR 160…
 ──────────────────────────────────────────────────────────────────────────────────────────
  space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

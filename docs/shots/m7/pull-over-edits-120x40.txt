@@ -2,11 +2,11 @@
 
   ◌                         Uncommitted changes (1 unstaged)
 ▸ ◆    main (you)           their change                                                                     Graft  60m
+  ┃                         Graft · 60 minutes ago · made on main · 5a2be2d
   ●                         add shared                                                                       Graft  60m
   ●                         Correct the note                                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 

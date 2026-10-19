@@ -68,13 +68,13 @@ fn the_merge_box_is_the_same_from_a_drag_and_drop() {
             }
         }
     }
-    let (state, x, y) = grabbed.expect("sara/fix-toc's badge can be picked up");
+    let (state, x, _) = grabbed.expect("sara/fix-toc's badge can be picked up");
     let from = state.drag.as_ref().expect("in the air").from_row;
     let onto = into_row(&state);
-    let onto_y = u16::try_from(
-        i64::from(y) + i64::try_from(onto).expect("small") - i64::try_from(from).expect("small"),
-    )
-    .expect("on screen");
+    assert_ne!(onto, from, "the badge came off another row");
+    // Where the target is drawn is the app's to say (ease-pass/07b: the
+    // cursor row's second line moves the rows below it down one).
+    let onto_y = mergewright::update::history_row_line(&state, onto).expect("on screen");
     let state = app.mouse(&state, MouseKind::Drag(MouseButton::Left), x, onto_y);
     let state = app.mouse(&state, MouseKind::Up(MouseButton::Left), x, onto_y);
     let by_drag = planned(&app, pick_merge(&app, state));

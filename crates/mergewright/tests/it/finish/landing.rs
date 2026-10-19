@@ -256,7 +256,9 @@ fn y_lands_on_the_merge_and_u_takes_it_back() {
         landed_at.elapsed()
     );
     let body = the_landed_frame(&state);
-    // The merge is made at run time; the rows draw no id (ease-pass 07).
+    // The merge is made at run time; only the cursor's second line draws its
+    // id (07b), zeroed.
+    let body = crate::captures::without_cursor_sha(&state, &body);
     crate::captures::check_shot("ease-pass/merge-landed-120.txt", &format!("{body}\n"));
 
     let state = app.key(&state, KeyCode::Char('u'));

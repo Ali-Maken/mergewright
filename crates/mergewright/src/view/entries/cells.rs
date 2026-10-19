@@ -82,6 +82,7 @@ pub(super) fn row_entry<'a>(
             .or_else(|| state.row_tags.on(row.commit.id).cloned()),
         // The fold's tail needs the row's number: `visible_rows` sets it.
         fold: None,
+        second: None,
     }
 }
 

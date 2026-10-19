@@ -85,8 +85,7 @@ fn badge_cell(state: &AppState, row: usize) -> (u16, u16) {
 
 /// The screen row an absolute history row is drawn at.
 fn screen_row_of(state: &AppState, row: usize) -> u16 {
-    crate::update::geometry::rows_above_graph(state)
-        + u16::try_from(row - state.history.as_ref().expect("a history").top).expect("a small row")
+    crate::update::geometry::history_row_line(state, row).expect("a row in view")
 }
 
 fn mouse(kind: MouseKind, column: u16, row: u16) -> Event {

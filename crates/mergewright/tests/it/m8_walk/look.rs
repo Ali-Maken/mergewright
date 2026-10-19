@@ -30,6 +30,11 @@ fn capture_the_cursor_row_at_80x24_and_187x50() {
         let row = u16::try_from(y).expect("short screen");
         let state = app.mouse_down(&state, MouseButton::Left, 30, row);
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(NOW)));
+        // Looked for again: the old cursor's second line went with it (07b).
+        let y = drawn
+            .iter()
+            .position(|line| line.contains("two: finish"))
+            .expect("the row is drawn");
         assert!(drawn[y].starts_with('\u{25b8}'), "{:?}", drawn[y]);
         assert!(drawn[y].contains("feature/two"), "{:?}", drawn[y]);
         let caption = format!(

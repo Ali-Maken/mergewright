@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                                         4 commits  UNCOMMITTED · 1 unstaged
                                                                                                              diff vs HEAD f48cdbe
 ▸ ◌                   Uncommitted changes (1 unstaged)
+  ┃                   not committed yet · 1 file · on main
   ◆    main (you)     add parser  not pushed yet                                                 Graft  24h
-  ●                   Correct the note                                                           Graft   2d
-  ●                   Add the first note                                                         Graft   2d  UNSTAGED (1)
-  ◇                   Add a readme                                                               Graft   2d    ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
-                                                                                                             libs/parser · submodule · ca07ea9 → efdd295
+  ●                   Correct the note                                                           Graft   2d  UNSTAGED (1)
+  ●                   Add the first note                                                         Graft   2d    ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
+  ◇                   Add a readme                                                               Graft   2d  libs/parser · submodule · ca07ea9 → efdd295
                                                                                                              changed inside
                                                                                                              + efdd295 parser 3
                                                                                                              + 8512312 parser 2

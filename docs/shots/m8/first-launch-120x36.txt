@@ -3,6 +3,7 @@ m8-polish-and-ship/18d, from the real binary on a pty: what right looks like —
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200  not pushed yet                                                       Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -33,6 +34,5 @@ m8-polish-and-ship/18d, from the real binary on a pty: what right looks like —
   ●                         Commit 172                                                                       Graft   7y
   ●                         Commit 171                                                                       Graft   7y
   ●                         Commit 170                                                                       Graft   7y
-  ●                         Commit 169                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  first time? ? keys here · ⌃P anything

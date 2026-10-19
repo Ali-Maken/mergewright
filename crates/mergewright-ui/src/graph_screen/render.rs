@@ -1,7 +1,9 @@
 //! Drawing: the [`Widget`] entry point and the rows; the row's text columns
 //! are `row_cells`'.
 
-use mergewright_core::capabilities::ColorDepth;
+mod emphasis;
+mod second_line;
+
 use mergewright_core::mistake_radar::Severity;
 use mergewright_graph::fold::Fold;
 use ratatui::buffer::Buffer;
@@ -159,7 +161,9 @@ impl GraphScreen<'_> {
         if !self.view.pixel {
             let graph_lines: Vec<GraphLine<'_>> =
                 rows.iter().map(|entry| entry.line.clone()).collect();
-            let column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
+            let column = GraphColumn::new(&graph_lines, self.theme)
+                .ascii(self.view.ascii)
+                .second_line_after(rows.iter().position(|entry| entry.second.is_some()));
             column.through(fold).render(
                 Rect {
                     width: graph_width,
@@ -170,11 +174,17 @@ impl GraphScreen<'_> {
         }
 
         let columns = Columns::compute(area, graph_width);
-        for (entry, y) in rows.iter().zip(area.top()..) {
+        // The cursor row's second line takes the line under it (07b).
+        let mut ys = area.top()..area.bottom();
+        for entry in rows {
+            let Some(y) = ys.next() else { break };
             if let Some(x) = gutter {
                 self.draw_gutter(entry, x, y, buf);
             }
             self.draw_row(entry, y, area, &columns, buf);
+            if let Some(y) = entry.second.as_ref().and_then(|_| ys.next()) {
+                self.draw_second_line(entry, y, area, &columns, buf);
+            }
         }
     }
 
@@ -322,63 +332,6 @@ impl GraphScreen<'_> {
             (Severity::Info, false) => ("ⓘ", Token::TextMuted),
             (Severity::Info, true) => ("i", Token::TextMuted),
         })
-    }
-
-    /// The text style, the trailing-column style, and whether the row falls
-    /// back to the Palette16 rule instead of a background fill: `Highlighted`
-    /// paints bold and, where the terminal can show it, a raised background;
-    /// `Dimmed` paints faint; anything else is plain.
-    ///
-    /// At [`ColorDepth::Palette16`], `bg`/`surface`/`surface-raised` collapse
-    /// to the same index (KNOWN_GAPS.md M0), so the raised background step
-    /// would paint nothing a viewer can see — the marker slot's rule
-    /// (DESIGN.md §4.6) carries the highlight there instead, so the
-    /// background step is skipped rather than drawn for nothing. `NO_COLOR`
-    /// ([`ColorDepth::None`]) has no background step either, so it takes the
-    /// same rule — uncoloured, its shape alone marks the row.
-    ///
-    /// The fill starts at the marker slot (ADR-0058 §2): the gutter and the
-    /// graph column keep the ground at every tier, so no lane on the cursor
-    /// row sinks into the fill, and a Pixel strip's transparent pixels show
-    /// the ground as on every other row. It runs to `area`'s right edge —
-    /// the body's — so the one-cell margin stays ground too.
-    fn row_emphasis(
-        &self,
-        entry: &GraphEntry<'_>,
-        y: u16,
-        area: Rect,
-        columns: &Columns,
-        buf: &mut Buffer,
-    ) -> (Style, Style) {
-        let mut style = self.ink(entry, self.theme.token(Token::Text));
-        let mut trailing_style = self.ink(entry, self.theme.token(Token::TextMuted));
-        let no_background = matches!(
-            self.theme.color_depth(),
-            ColorDepth::Palette16 | ColorDepth::None
-        );
-
-        if raised(entry) {
-            style = style.add_modifier(Modifier::BOLD);
-            trailing_style = trailing_style.add_modifier(Modifier::BOLD);
-            if !no_background {
-                let fill = color(self.theme.token(Token::Selection));
-                let x = columns.marker_x.min(area.right());
-                buf.set_style(
-                    Rect {
-                        x,
-                        y,
-                        width: area.right() - x,
-                        height: 1,
-                    },
-                    Style::new().bg(fill),
-                );
-            }
-        } else if entry.line.paint == RowPaint::Dimmed {
-            style = style.add_modifier(Modifier::DIM);
-            trailing_style = trailing_style.add_modifier(Modifier::DIM);
-        }
-
-        (style, trailing_style)
     }
 }
 

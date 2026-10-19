@@ -5,9 +5,9 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
 
     ◆    wallet-release (you) Merge branch 'sara/fix-toc' in…  ▸ 1 commit from sara/fix-toc  not pushed yet  Graft  28h
 ▸   ◉                         Merged PR 16021: Fix the wallet totals  ▸ 4 commits from PR 16021              Graft  28h
+    ┃                         Graft · 28 hours ago · made on wallet-release · merged 4 from PR 16021 · 4eb2a56
     ●                         Start the wallet release                                                       Graft  28h
   ◇━╯    main                 Add the readme  not pushed yet                                                 Graft  28h
-
 
 
 

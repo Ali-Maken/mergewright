@@ -50,6 +50,7 @@
  ◆ api  ~/code/api · main                                                                                                         200 commits  1 commit to push
 
 ▸ ◆  ⓘ main (you)           Commit 200  ↑1 to push                                                                                                   Graft   2d
+  ┃                         Graft · 2 days ago · made on main · d5ae5fd
   ●                         Commit 199  origin/main is here                                                                                          Graft   2d
   ●                         Commit 198                                                                                                               Graft   2d
   ●                         Commit 197                                                                                                               Graft   2d
@@ -66,7 +67,6 @@
   ●                         Commit 186                                                                                                               Graft   2d
   ●                         Commit 185                                                                                                               Graft   2d
   ●                         Commit 184                                                                                                               Graft   2d
-  ●                         Commit 183                                                                                                               Graft   2d
   ●                         ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────╮  Graft   2d
   ●                         │ 1 commit · can't be undone from here — origin keeps what you send                                                   │  Graft   2d
   ●                         │                                                                                                                     │  Graft   2d
@@ -74,6 +74,7 @@
   ●                         │                                                                                                                     │  Graft   2d
   ●                         │ ▸[ Cancel ]   [ Push ]                                                                                              │  Graft   2d
   ●                         ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  Graft   2d
+  ●                         Commit 176                                                                                                               Graft   2d
   ●                         Commit 175                                                                                                               Graft   2d
   ●                         Commit 174                                                                                                               Graft   2d
   ●                         Commit 173                                                                                                               Graft   2d
@@ -92,7 +93,6 @@
   ●                         Commit 160                                                                                                               Graft   2d
   ●                         Commit 159                                                                                                               Graft   2d
   ●                         Commit 158                                                                                                               Graft   2d
-  ●                         Commit 157                                                                                                               Graft   2d
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 

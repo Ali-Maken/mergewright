@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
 ▸ ◆    main (you)           edit notes  not pushed yet                                                       Graft   4m
+  ┃                         Graft · 4 minutes ago · made on main · 6944d27
   ●                         add notes                                                                        Graft   5m
   ●                         Correct the note                                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 

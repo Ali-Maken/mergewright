@@ -20,6 +20,7 @@
 
 pub mod badges;
 mod banner;
+mod body_line;
 mod carve;
 pub mod columns;
 mod compaction;
@@ -45,13 +46,14 @@ use mergewright_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use banner::{BannerChain, BannerView, RewriteBannerView, banner_line};
+pub use body_line::{BodyLine, body_line, commit_rows};
 pub use carve::{CarveInputs, RowCarve, row_carve};
 pub use columns::{
     absolute_date, first_name, initials, relative_date, relative_date_long, short_sha,
 };
 pub use compaction::Compaction;
 pub(crate) use entry::TAG_GAP;
-pub use entry::{BranchCell, GraphEntry, RowTag, TAG_MIN_SUBJECT, WhoCell};
+pub use entry::{BranchCell, GraphEntry, RowTag, SecondLine, TAG_MIN_SUBJECT, WhoCell};
 pub use fold_mark::{FoldCount, FoldMark};
 pub use header::{APP_NAME, HeaderView, header_line, tail_room};
 pub use header_tail::LaneTally;

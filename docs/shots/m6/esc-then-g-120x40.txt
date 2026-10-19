@@ -2,8 +2,7 @@
 # What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ●    main (you)           Commit 036                                                                       Graft   2d
-  ●                         Commit 035                                                                       Graft   2d
+  ●    main (you)           Commit 035                                                                       Graft   2d
   ●                         Commit 034                                                                       Graft   2d
   ●                         Commit 033                                                                       Graft   2d
   ●                         Commit 032                                                                       Graft   2d
@@ -38,5 +37,6 @@
   ●                         Commit 003                                                                       Graft   2d
   ●                         Commit 002                                                                       Graft   2d
 ▸ ◇                         Commit 001                                                                       Graft   2d
+                            Graft · 2 days ago · made on main · a9a0c8e
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

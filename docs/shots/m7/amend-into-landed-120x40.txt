@@ -3,9 +3,9 @@
   ◌                           Uncommitted changes (1 unstaged)
     ●    feature-b            Show the login page  not pushed yet                                            Graft   2d
 ▸   ◆                         Handle expired tokens  feature-a is here  not pushed yet                       Graft   2d
+    ┃                         Graft · 2 days ago · made on feature-b · 7c99d12
     ●                         Add OAuth callback  ✎ changed                                                  Graft   2d
   ◇━╯    main                 m1  not pushed yet                                                             Graft   2d
-
 
 
 

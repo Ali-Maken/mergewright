@@ -1,13 +1,13 @@
  ◆ api  ~/code/api · detached 36c271e                         REBASING  step 1 of 1 · pick ea19160 feature edits shared
             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
 ▸ ◌         │ ›                                                                                            │
-    ●    fea│ IN PROGRESS                                                                                  │ Graft   6y
-  ◆ ┃  ⓘ mai│▸c     Continue                                                           operation.continue  │ Graft   6y
-  ●━╯       │ s     Skip this commit                                                       operation.skip  │ Graft   6y
-  ●         │ a     Abort                                                                 operation.abort  │ Graft   7y
+            │ IN PROGRESS                                                                                  │
+    ●    fea│▸c     Continue                                                           operation.continue  │ Graft   6y
+  ◆ ┃  ⓘ mai│ s     Skip this commit                                                       operation.skip  │ Graft   6y
+  ●━╯       │ a     Abort                                                                 operation.abort  │ Graft   6y
   ●         │ M     Launch the mergetool on the first conflicted file                 operation.mergetool  │ Graft   7y
-  ◇         │ e     Open the first conflicted file in $EDITOR                              operation.edit  │ Graft   7y
-            │ EVERYWHERE                                                                                   │
+  ●         │ e     Open the first conflicted file in $EDITOR                              operation.edit  │ Graft   7y
+  ◇         │ EVERYWHERE                                                                                   │ Graft   7y
             │ ⌃P    Command palette                                                           app.palette  │
             │ ?     Help for this place                                                          app.help  │
             │ ⇥     Next pane                                                               app.next_pane  │

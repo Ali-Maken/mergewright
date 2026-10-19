@@ -100,6 +100,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
                     marker: None,
                     tag: None,
                     fold: None,
+                    second: None,
                 }
             })
             .collect(),

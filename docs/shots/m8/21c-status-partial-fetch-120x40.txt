@@ -11,6 +11,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
 ▸ ◆    main (you)           Commit 200                                                                       Graft   7y
+  ┃                         Graft · 7 years ago · made on main · d5ae5fd
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
   ●                         Commit 197                                                                       Graft   7y
@@ -45,6 +46,5 @@
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
   ●                         Commit 166                                                                       Graft   7y
-  ●                         Commit 165                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no … · origin/main moved before it stopped

@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
 ▸   ◆    feature (you)        Change every file on feature  not pushed yet                                     you fut…
+    ┃                         you · 2 hours ago · made on feature · 0000000
   ●━╯    main                 Change every file on main  not pushed yet                                        you   2h
   ◇                           Add the files both sides will change                                             you   1y
-
 
 
 

@@ -186,7 +186,8 @@ fn click_under_the_block(columns: u16, rows: u16) {
     // above the rule, from 30 rows (ADR-0058 §4).
     let rule = usize::from(mergewright_ui::graph_screen::spaced(rows));
     let body = usize::from(rows) - 1 - rule - (bottom + 1);
-    assert_eq!(state.graph_rows(), body, "{columns}x{rows}: {shot}");
+    // Less the cursor row's second line (ease-pass/07b).
+    assert_eq!(state.graph_rows(), body - 1, "{columns}x{rows}: {shot}");
     drop(clicked);
     app.close();
 }

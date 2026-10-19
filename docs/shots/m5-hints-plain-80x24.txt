@@ -53,10 +53,10 @@
   ◌                 Uncommitted changes (1 unstaged)
   ◆    main (you)   add second  not pushed yet                       Graft   8m
 ▸ ●                 add first                                        Graft   9m
+  ┃                 Graft · 9 minutes ago · made on main · 3d9496e
   ●                 Correct the note                                 Graft   1y
   ●                 Add the first note                               Graft   1y
   ◇                 Add a readme                                     Graft   1y
-
 
 
 

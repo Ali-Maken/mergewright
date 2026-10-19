@@ -444,13 +444,15 @@ fn capture_fix_subject_enter_commits() {
                 .any(|row| row.contains("⏎ commit 1 file  ⇥ more detail")),
             "the bar at {columns}x{rows}: {first:#?}"
         );
-        let second = crate::captures::frame_at(&landed, columns, rows, None);
+        // The commit is the run's: its hash on the second line is zeroed.
+        let second = crate::captures::frame_at(&landed, columns, rows, None).join("\n");
+        let second = crate::captures::without_cursor_sha(&landed, &second);
         let body = format!(
             "{}== frame 1: `fix: x` typed, subject focused ==\n{}\n\n\
              == frame 2: after `⏎` ==\n{}\n",
             subject_enter_header(columns, rows),
             first.join("\n"),
-            second.join("\n"),
+            second,
         );
         captures.check(
             format!(

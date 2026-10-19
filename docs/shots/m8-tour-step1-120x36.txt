@@ -7,13 +7,13 @@ m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his rep
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
   ◌                             Uncommitted changes (1 unstaged, 1 untracked)
 ▸ ◆      ⓘ main (you)           Add today's specials  ↑1 to push                                               you   6y
+  ┃                             you · 6 years ago · made on main · ecad443
   ●                             Name the chef  origin/main is here                                             you   6y
   ●                             Pie for dessert                                                                you   6y
   ┃ ●      clash                Ice cream for dessert  not pushed yet                                          you   6y
   ┃ ┊ ●    feature              Add opening hours  not pushed yet                                              you   6y
   ●┄┴┄╯    main (you)           Add a side dish                                                                you   6y
   ◇                             Start the menu                                                                 you   6y
-
 
 
 

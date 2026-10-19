@@ -2,6 +2,7 @@
  ◆ api  ~/code/api · feature                                                                                  8 commits
 
 ▸   ◆    feature (you)        finish the feature  not pushed yet                                               you  now
+    ┃                         you · just now · made on feature · 0000000
     ●                         start the feature                                                                you   2m
   ● ┃    main                 main moves again  not pushed yet                                                 you   3m
   ● ┃                         main moves on                                                                    you   4m
@@ -32,7 +33,6 @@
 
 
 
-
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ undo: merge main into feature
 
@@ -40,6 +40,7 @@
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
 ▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  not pushed yet                               you fut…
+    ┃ ║                         you · in the future · made on feature · 0000000
     ● ║                         finish the feature                                                             you  now
     ● ║                         start the feature                                                              you   2m
   ●═┃═╯    main                 main moves again  not pushed yet                                               you   3m
@@ -48,7 +49,6 @@
   ●                             Correct the note                                                               you   1y
   ●                             Add the first note                                                             you   1y
   ◇                             Add a readme                                                                   you   1y
-
 
 
 

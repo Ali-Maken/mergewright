@@ -212,7 +212,7 @@ fn a_click_one_row_lower_selects_the_top_history_row_and_clears_the_flag() {
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,
-        row: HEADER_ROWS + 1,
+        row: HEADER_ROWS + 2, // under the cursor row and its second line (ease-pass/07b)
         modifiers: Modifiers::NONE,
     }));
     let (next, _) = update(&state, click);

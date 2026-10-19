@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
+  ┃                           not committed yet · 13 files · on main
   ◆      main (you)           Change every file on main  not pushed yet                                      Graft   2h
   ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
   ◇┄╯    main (you)           Add the files both sides will change                                           Graft   1y
-
 
 
 

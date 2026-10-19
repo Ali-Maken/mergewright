@@ -2,11 +2,11 @@
 
   ◆   ▏  main (you)     Readme  x base  not pushed yet                                           Graft   2d
 ▸ ║ ●    feature-a      Use token  not pushed yet                                                Graft   2d
-  ● ┃    main (you)     Changelog                                                                Graft   2d
-  ║ ●    feature-a      Add token                                                                Graft   2d  ▾ src/
-  ║ ●                   Add login                                                                Graft   2d    A login.rs                                                             +1 −0
-  ◇━╯    main (you)     root                                                                     Graft   2d    A token.rs                                                             +1 −0
-                                                                                                             select a file
+  ║ ┃                   Graft · 2 days ago · made on feature-a · a84a58c
+  ● ┃    main (you)     Changelog                                                                Graft   2d  ▾ src/
+  ║ ●    feature-a      Add token                                                                Graft   2d    A login.rs                                                             +1 −0
+  ║ ●                   Add login                                                                Graft   2d    A token.rs                                                             +1 −0
+  ◇━╯    main (you)     root                                                                     Graft   2d  select a file
 
 
 

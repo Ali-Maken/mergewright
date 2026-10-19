@@ -184,6 +184,7 @@ fn label_entry<'a>(ghost: &mergewright_graph::row::Row, label: &str) -> GraphEnt
         marker: None,
         tag: None,
         fold: None,
+        second: None,
     }
 }
 
@@ -251,6 +252,7 @@ fn entry<'a>(
         marker: None,
         tag: None,
         fold: None,
+        second: None,
     }
 }
 

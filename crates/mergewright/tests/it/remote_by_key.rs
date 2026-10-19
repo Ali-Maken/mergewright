@@ -1240,7 +1240,8 @@ fn capture_fix_plain_box_after_rebase() {
         Some("Push")
     );
 
-    let drawn = frame(&state, 187, 50).join("\n");
+    // The rebase made the cursor commit: its hash is zeroed (07b).
+    let drawn = crate::captures::without_cursor_sha(&state, &frame(&state, 187, 50).join("\n"));
     check_shot(
         "m6/fix-plain-box-after-rebase-187x50.txt",
         &format!("{PLAIN_BOX_AFTER_REBASE_HEADER}{drawn}\n"),

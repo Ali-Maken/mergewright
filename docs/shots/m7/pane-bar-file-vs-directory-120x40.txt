@@ -2,10 +2,10 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
 ▸ ◆    main (you)           add src  not pushed yet                                                          Graft  4mo
+  ┃                         Graft · 4 months ago · made on main · 9d4f6c9
   ●                         Correct the note                                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 
@@ -44,10 +44,10 @@ M notes.txt             +1 −1 ▎
  ◆ api  ~/code/api · main                                                                                     4 commits
 
 ▸ ◆    main (you)           add src  not pushed yet                                                          Graft  4mo
+  ┃                         Graft · 4 months ago · made on main · 9d4f6c9
   ●                         Correct the note                                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 

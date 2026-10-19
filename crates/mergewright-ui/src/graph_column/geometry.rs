@@ -46,6 +46,34 @@ pub(super) fn row_cells(row: &Row, node: NodeKind) -> Vec<Cell> {
     cells
 }
 
+/// The cells of the line drawn under `row` when it is the cursor row
+/// (ease-pass/07b, mock G9): every lane leaving the row downward continues
+/// straight, `│` in its lane's cell, and nothing else — no node, no
+/// connector. A lane leaves downward where [`Geometry::lane_cell`] gives it
+/// a `down` side: present and not closing here; the node's own column where
+/// an edge leaves it in that column.
+pub(super) fn continuation_cells(row: &Row) -> Vec<Cell> {
+    let columns = row.lanes.len().max(row.lane + 1);
+    let mut cells = Vec::with_capacity(columns * usize::from(CELLS_PER_LANE));
+    for column in 0..columns {
+        let down = if column == row.lane {
+            row.outgoing.iter().any(|&(to, _)| to == column)
+        } else {
+            !row.incoming.contains(&column)
+        };
+        let owner = row.lanes.get(column).copied().flatten();
+        cells.push(match owner.filter(|_| down) {
+            Some(identity) => Cell {
+                glyph: '│',
+                owner: Some(Owner { identity, column }),
+            },
+            None => BLANK,
+        });
+        cells.push(BLANK);
+    }
+    cells
+}
+
 /// Where one row's edges run, read once from the row.
 pub(super) struct Geometry<'a> {
     row: &'a Row,

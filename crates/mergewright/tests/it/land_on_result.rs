@@ -468,7 +468,8 @@ fn capture_landing_after_undo_and_redo() {
     let state = written_and_landed(&app, state, "the undo");
     assert_on_head(&state, repo, "after u");
     let state = crate::captures::settled_frame(&app, state);
-    let undone = drawn(&state);
+    // HEAD's and the merge's ids are the run's: the second line's is zeroed.
+    let undone = crate::captures::without_cursor_sha(&state, &drawn(&state).join("\n"));
 
     let state = app.key(&state, KeyCode::Char('j'));
     let state = app.key(&state, KeyCode::Char('U'));
@@ -477,6 +478,7 @@ fn capture_landing_after_undo_and_redo() {
     assert_on_head(&state, repo, "after U");
     let state = crate::captures::settled_frame(&app, state);
     let redone = drawn(&state);
+    let redone_body = crate::captures::without_cursor_sha(&state, &redone.join("\n"));
     let cursor_row = redone
         .iter()
         .find(|row| row.starts_with('\u{25b8}'))
@@ -484,10 +486,8 @@ fn capture_landing_after_undo_and_redo() {
     assert!(cursor_row.contains("Merge"), "{cursor_row}");
 
     let mut body = format!(
-        "=== frame 1: `j` `u` — lands on HEAD ===\n{}\n\n\
-         === frame 2: `j` `U` — lands on the redone merge ===\n{}\n",
-        undone.join("\n"),
-        redone.join("\n"),
+        "=== frame 1: `j` `u` — lands on HEAD ===\n{undone}\n\n\
+         === frame 2: `j` `U` — lands on the redone merge ===\n{redone_body}\n",
     );
     // The merge's id is the run's own; no row draws it (ease-pass 07).
     let made = git(

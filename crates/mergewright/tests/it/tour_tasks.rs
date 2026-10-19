@@ -119,7 +119,9 @@ impl Tour {
             unreachable!("waited for both rows");
         };
         let key: &[u8] = if to > from { b"j" } else { b"k" };
-        for _ in 0..from.abs_diff(to) {
+        // A row below the cursor is a line further down than its distance:
+        // the cursor row's second line sits between (ease-pass/07b).
+        for _ in 0..from.abs_diff(to) - usize::from(to > from) {
             self.send(key);
         }
         self.wait(&format!("the cursor on {label:?}"), |s| {

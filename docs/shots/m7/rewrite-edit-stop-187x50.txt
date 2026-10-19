@@ -10,10 +10,10 @@
     ●                         a5  feature-a is here  not pushed yet                                                                                                             Graft   2d
     ●                         a4                                                                                                                                                Graft   2d
 ▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                                                             Graft   2d
+    ┃                         Graft · 2 days ago · made on feature-b · 7326de5
     ●                         a2                                                                                                                                                Graft   2d
     ●                         a1                                                                                                                                                Graft   2d
   ◇━╯    main                 m1  not pushed yet                                                                                                                                Graft   2d
-
 
 
 

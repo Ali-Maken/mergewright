@@ -9,6 +9,7 @@
   ●┄╯                         Commit 75                                                                       Test  57y
   ●                           Commit 74                                                                       Test  57y
 ▸ ●                           Commit 73                                                                       Test  57y
+  ┃                           Test · 57 years ago · 4949494
   ●                           Commit 72                                                                       Test  57y
   ●                           Commit 71                                                                       Test  57y
   ◉┄╮                         Commit 70                                                                       Test  57y
@@ -19,7 +20,6 @@
   ●                           Commit 65                                                                       Test  57y
   ●                           Commit 64                                                                       Test  57y
   ◉┄╮                         Commit 63                                                                       Test  57y
-  ● ┊                         Commit 62                                                                       Test  57y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 COMMIT 5050505 · Test <test@example.invalid> · 1970-01-01 00:01 +0000 · 57y · parents 4f4f4f4 · diff vs first p reading…

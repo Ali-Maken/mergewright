@@ -19,13 +19,13 @@
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌                           Uncommitted changes (2 unmerged)
+  ┃                           not committed yet · 2 files · on main
   ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
   ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
   ●┄╯    main (you)           the shared files                                                               Graft   2h
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 
@@ -60,12 +60,12 @@ CONFLICTS (2)                 ▎
  ◆ api  ~/code/api · main                                                                                     6 commits
 
 ▸ ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
+  ┃                           Graft · 2 hours ago · made on main · ddeed32
   ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
   ●┄╯    main (you)           the shared files                                                               Graft   2h
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 
@@ -102,12 +102,12 @@ M shared.rs             +1 −1   1     - the plan
 
   ◌                           Uncommitted changes (2 unmerged)
 ▸ ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
+  ┃                           Graft · 2 hours ago · made on main · ddeed32
   ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
   ●┄╯    main (you)           the shared files                                                               Graft   2h
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 

@@ -4,8 +4,8 @@
   ● ┃      main                 m2  not pushed yet                                                           Graft   2d
   ║ ┃ ●    feature-b            b1  not pushed yet                                                           Graft   2d
 ▸ ║ ◆┄╯    feature-c            a1  feature-a is here  not pushed yet                                        Graft   2d
+  ║ ┃                           Graft · 2 days ago · made on feature-c · 0395451
   ◇━╯      main                 m1                                                                           Graft   2d
-
 
 
 

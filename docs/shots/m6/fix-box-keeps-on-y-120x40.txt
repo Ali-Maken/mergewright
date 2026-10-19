@@ -13,6 +13,7 @@
  ◆ api  ~/code/api · main                                                                 201 commits  1 commit to push
 
 ▸ ◆  ⓘ main (you)           ours  ↑1 to push                                                                 Graft   6y
+  ┃                         Graft · 6 years ago · made on main · 739071c
   ●                         Commit 200  origin/main is here                                                  Graft   7y
   ●                         Commit 199                                                                       Graft   7y
   ●                         Commit 198                                                                       Graft   7y
@@ -23,7 +24,6 @@
   ●                         Commit 193                                                                       Graft   7y
   ●                         Commit 192                                                                       Graft   7y
   ●                         Commit 191                                                                       Graft   7y
-  ●                         Commit 190                                                                       Graft   7y
   ●                         ╭ Force-push main → origin/main? ─────────────────────────────────────────────╮  Graft   7y
   ●                         │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch    │  Graft   7y
   ●                         │ (lease)                                                                     │  Graft   7y
@@ -34,6 +34,7 @@
   ●                         │                                                                             │  Graft   7y
   ●                         │ ▸[ Cancel ]   [ Force push ]                                                │  Graft   7y
   ●                         ╰─────────────────────────────────────────────────────────────────────────────╯  Graft   7y
+  ●                         Commit 180                                                                       Graft   7y
   ●                         Commit 179                                                                       Graft   7y
   ●                         Commit 178                                                                       Graft   7y
   ●                         Commit 177                                                                       Graft   7y
@@ -47,6 +48,5 @@
   ●                         Commit 169                                                                       Graft   7y
   ●                         Commit 168                                                                       Graft   7y
   ●                         Commit 167                                                                       Graft   7y
-  ●                         Commit 166                                                                       Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ←/→ move  ⏎ choose  esc cancel

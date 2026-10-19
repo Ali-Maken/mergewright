@@ -74,7 +74,7 @@ impl Walk<'_> {
         state: &AppState,
         badge: &str,
     ) -> Result<AppState, String> {
-        let (state, column, from_screen_row) = self.grab_a_badge(state)?;
+        let (state, column, _from) = self.grab_a_badge(state)?;
         let from_row = state
             .drag
             .as_ref()
@@ -85,12 +85,10 @@ impl Walk<'_> {
         check(onto != from_row, || {
             format!("{badge} is on the row the badge came from")
         })?;
-        // The drawn rows are consecutive, so the target's screen row is the
-        // press's, moved by the distance between the two row indices.
-        let distance = i32::try_from(onto).map_err(|why| why.to_string())?
-            - i32::try_from(from_row).map_err(|why| why.to_string())?;
-        let onto_screen_row = u16::try_from(i32::from(from_screen_row) + distance)
-            .map_err(|_| format!("{badge}'s row is above the screen"))?;
+        // Where the target is drawn is the app's to say: the cursor row's
+        // second line moves every row below it down one (ease-pass/07b).
+        let onto_screen_row = mergewright::update::history_row_line(&state, onto)
+            .ok_or_else(|| format!("{badge}'s row is above the screen"))?;
         let state = self.app.mouse(
             &state,
             MouseKind::Drag(MouseButton::Left),

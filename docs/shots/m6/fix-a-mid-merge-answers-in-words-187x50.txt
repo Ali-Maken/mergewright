@@ -15,13 +15,13 @@
  ◆ api  ~/code/api · main                                                         merging feature into main  UNCOMMITTED · 2 staged
                                                                                                              diff vs HEAD ddeed32
 ▸ ◌                     Uncommitted changes (2 staged)
+  ┃                     not committed yet · 2 files · on main
   ◆      main (you)     main's take  not pushed yet                                                you   2h
-  ┃ ●    feature        the feature's take  not pushed yet                                         you   2h
-  ●┄╯    main (you)     the shared files                                                           you   2h  STAGED (2)
-  ●                     Correct the note                                                           you   1y    M notes.md                                                             +1 −1
-  ●                     Add the first note                                                         you   1y    M shared.rs                                                            +1 −1
-  ◇                     Add a readme                                                               you   1y  ▎
-                                                                                                               1     - our plan
+  ┃ ●    feature        the feature's take  not pushed yet                                         you   2h  STAGED (2)
+  ●┄╯    main (you)     the shared files                                                           you   2h    M notes.md                                                             +1 −1
+  ●                     Correct the note                                                           you   1y    M shared.rs                                                            +1 −1
+  ●                     Add the first note                                                         you   1y  ▎
+  ◇                     Add a readme                                                               you   1y    1     - our plan
                                                                                                                    1 + the agreed plan
 
 

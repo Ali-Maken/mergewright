@@ -9,8 +9,10 @@
 
                                                                                                     120 commits  gfx ok
 
+                            Commit 70␛[31m                                                                    Test  57y
+▸                           Commit 69␛[31m                                                                    Test  57y
                             Commit 68␛[31m                                                                    Test  57y
-▸                           Commit 67␛[31m                                                                    Test  57y
+                            Commit 67␛[31m                                                                    Test  57y
                             Commit 66␛[31m                                                                    Test  57y
                             Commit 65␛[31m                                                                    Test  57y
                             Commit 64␛[31m                                                                    Test  57y
@@ -38,9 +40,7 @@
                             Commit 42␛[31m                                                                    Test  57y
                             Commit 41␛[31m                                                                    Test  57y
                             Commit 40␛[31m                                                                    Test  57y
-                            Commit 39␛[31m                                                                    Test  57y
-                            Commit 38␛[31m                                                                    Test  57y
-                            Commit 37␛[31m                                                                    Test  57y
+
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
 
@@ -51,12 +51,14 @@
 
                                                                                                     120 commits  gfx ok
 
+  ●                           Commit 70␛[31m                                                                  Test  57y
+▸ ●                           Commit 69␛[31m                                                                  Test  57y
   ●                           Commit 68␛[31m                                                                  Test  57y
-▸ ●                           Commit 67␛[31m                                                                  Test  57y
-  ●                           Commit 66␛[31m                                                                  Test  57y
   │                           after rebase
   │ ○                         replayed work                                                                    Ada    —
-  ●─╯                         Commit 65␛[31m                                                                  Test  57y
+  ●─╯                         Commit 67␛[31m                                                                  Test  57y
+  ●                           Commit 66␛[31m                                                                  Test  57y
+  ●                           Commit 65␛[31m                                                                  Test  57y
   ●                           Commit 64␛[31m                                                                  Test  57y
   ●                           Commit 63␛[31m                                                                  Test  57y
   ●                           Commit 62␛[31m                                                                  Test  57y
@@ -70,11 +72,9 @@
   ●                           Commit 54␛[31m                                                                  Test  57y
   ●                           Commit 53␛[31m                                                                  Test  57y
   ●                           Commit 52␛[31m                                                                  Test  57y
-  ●                           Commit 51␛[31m                                                                  Test  57y
-  ●                           Commit 50␛[31m                                                                  Test  57y
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
-│ feature 4343434 → 1 new commit                                                                                       │
+│ feature 4545454 → 1 new commit                                                                                       │
 │ HEAD → feature                                                                                                       │
 │ working tree: untouched                                                                                              │
 │ no conflicts expected                                                                                                │

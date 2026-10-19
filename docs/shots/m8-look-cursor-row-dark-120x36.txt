@@ -1,4 +1,4 @@
-m8-polish-and-ship/07, dark theme, 120x36, cursor on `feature/two  two: finish`: what right looks like — `▸` in the gutter's first cell; the three lanes `│ │ ●` on the ground like every other row; no `▏` in the marker slot; the fill runs from the marker slot to one cell short of the edge; the badge reads as text in its lane's hue family. Compare beside docs/shots/m8-proto-4a-dark-a-b.txt (gutter `▸`, lanes, columns line up). Measured from the app's buffer: worst character on the fill 4.60:1 (floor 4.5). Colour unverified (rule 5): this grid is the same in both themes; legibility is your eye.
+m8-polish-and-ship/07, dark theme, 120x36, cursor on `feature/two  two: finish`: what right looks like — `▸` in the gutter's first cell; the three lanes `│ │ ●` on the ground like every other row; no `▏` in the marker slot; the fill runs from the marker slot to one cell short of the edge; the badge reads as text in its lane's hue family. Compare beside docs/shots/m8-proto-4a-dark-a-b.txt (gutter `▸`, lanes, columns line up). Measured from the app's buffer: worst character on the fill 4.69:1 (floor 4.5). Colour unverified (rule 5): this grid is the same in both themes; legibility is your eye.
 
  ◆ api  ~/code/api · main                                                             9 commits  1 merged branch folded
 
@@ -6,12 +6,12 @@ m8-polish-and-ship/07, dark theme, 120x36, cursor on `feature/two  two: finish`:
   ◆━┊━╮      main (you)           Merge branch 'feature/two'  not pushed yet                                 Graft   7y
   ║ ┊ ┃ ●    feature/two-next     two: follow-up  not pushed yet                                             Graft   7y
 ▸ ║ ┊ ●┄╯    feature/two          two: finish  not pushed yet                                                Graft   7y
+  ║ ┊ ┃                           Graft · 7 years ago · made on feature/two · e30e870
   ║ ┊ ●                           two: start                                                                 Graft   7y
   ◉ ┊ ┃      main (you)           Merge branch 'feature/one'  ▸ 2 commits from feature/one                   Graft   7y
   ●┄┴━╯                           Add b.txt                                                                  Graft   7y
   ●                               Add a.txt                                                                  Graft   7y
   ◇                               Add a readme                                                               Graft   7y
-
 
 
 

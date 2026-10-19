@@ -123,6 +123,7 @@ mod row_reads;
 mod seam_rule;
 mod search_folded;
 mod search_hint;
+mod second_line;
 mod stash_by_key;
 mod stash_clash;
 mod stash_in_history;

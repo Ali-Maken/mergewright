@@ -74,6 +74,7 @@
   ◌                   Uncommitted changes (16 unmerged)
   ◆      main (you)   main's take  not pushed yet                    Graft  87m
 ▸ ║ ●    feature      the feature's take  not pushed yet             Graft  88m
+  ║ ┃                 Graft · 88 minutes ago · made on feature · 38c48dd
   ●━╯    main (you)   the shared files                               Graft  89m
   ●                   Ship release 29                                Graft   2h
   ●                   Ship release 28                                Graft   2h
@@ -92,5 +93,4 @@
   ●                   Ship release 15                                Graft   2h
   ●                   Ship release 14                                Graft   2h
   ●                   Ship release 13                                Graft   2h
-  ●                   Ship release 12                                Graft   2h
  ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit

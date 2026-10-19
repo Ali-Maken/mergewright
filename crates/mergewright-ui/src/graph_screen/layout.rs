@@ -7,6 +7,7 @@ use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
+use super::body_line::{body_line, commit_rows};
 use super::carve::{CarveInputs, row_carve};
 use super::header::branch_floor;
 use super::header_tail::{Drop, LaneTally, TAIL_SEPARATOR, TailItem, fitted_tail, lane_phrases};
@@ -296,11 +297,21 @@ pub(super) fn body_layout<'a>(
     area: Rect,
 ) -> (Rect, &'a [GraphEntry<'a>], Fold) {
     let body = screen_rows(view, area).body;
-    let rows = &view.rows[..view.rows.len().min(usize::from(body.height))];
+    let rows = &view.rows[..drawn_rows(view, body.height)];
     let fold = view
         .compaction
         .plan(rows.iter().map(|entry| &*entry.line.row));
     (body, rows, fold)
+}
+
+/// How many of `view.rows` the body draws: one fewer while the cursor row
+/// (the entry with a [`GraphEntry::second`] line) is among them (07b).
+fn drawn_rows(view: &GraphView<'_>, body_rows: u16) -> usize {
+    let cursor = view.rows.iter().position(|entry| entry.second.is_some());
+    let in_view = cursor.is_some_and(|at| at < usize::from(commit_rows(body_rows, true)));
+    view.rows
+        .len()
+        .min(usize::from(commit_rows(body_rows, in_view)))
 }
 
 /// Where the commit rows land in `area`, and the columns each of them is
@@ -347,10 +358,13 @@ pub fn row_at<'a>(
     if body.height == 0 {
         return None;
     }
-    let offset = usize::from(screen_row.checked_sub(body.y)?);
+    let line = screen_row.checked_sub(body.y)?;
     if screen_row >= body.bottom() {
         return None;
     }
-    let entry = rows.get(offset)?;
+    // The cursor row's second line is the cursor row's (07b).
+    let cursor = rows.iter().position(|entry| entry.second.is_some());
+    let cursor = cursor.and_then(|at| u16::try_from(at).ok());
+    let entry = rows.get(usize::from(body_line(line, cursor).row()))?;
     Some((entry, Columns::compute(body, graph_width(body, &fold))))
 }

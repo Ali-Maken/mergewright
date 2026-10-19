@@ -122,7 +122,7 @@ fn explain_open_fades_rows_outside_its_highlight() {
         history: Some(history_of(3, 0)),
         size: Size {
             columns: 60,
-            rows: 5,
+            rows: 6, // a line more for the cursor's second line (ease-pass/07b)
         },
         ..AppState::default()
     };
@@ -164,7 +164,8 @@ fn mergewright_opens_on_the_graph_with_the_cursor_row_highlighted() {
     let view = graph_view(&state, state.harness.clock.now_seconds());
     let screen = draw(&state, 60, 5);
 
-    assert_eq!(view.rows.len(), 3, "rows minus the chrome");
+    // Three pane rows, one the cursor row's second line (ease-pass/07b).
+    assert_eq!(view.rows.len(), 2, "rows minus the chrome");
     assert_eq!(view.walk, WalkView::Complete { rows: 5 });
     assert_eq!(view.rows[1].line.paint, RowPaint::Highlighted);
     assert_eq!(view.rows[0].line.paint, RowPaint::Normal);
@@ -194,7 +195,8 @@ fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
         },
         ..AppState::default()
     };
-    assert_eq!(state.graph_rows(), 2, "header, two banner rows, footer");
+    // Two lines; the cursor's second line takes one (ease-pass/07b).
+    assert_eq!(state.graph_rows(), 1, "header, two banner rows, footer");
     let screen = draw(&state, 80, 6);
     let lines: Vec<&str> = screen.lines().collect();
     // The header names the repository, never the product (ADR-0058 §4);
@@ -458,7 +460,7 @@ fn hover_names_the_reveal_row() {
         history: Some(history),
         size: Size {
             columns: 60,
-            rows: 5,
+            rows: 6, // a line more for the cursor's second line (ease-pass/07b)
         },
         ..AppState::default()
     };
@@ -603,7 +605,7 @@ fn a_clean_tree_draws_no_uncommitted_row() {
 
     let view = graph_view(&state, state.harness.clock.now_seconds());
 
-    assert_eq!(view.rows.len(), 3, "no virtual row taken from the budget");
+    assert_eq!(view.rows.len(), 2, "no virtual row taken from the budget");
     assert_eq!(view.rows[0].line.row.commit.id, oid(3));
 }
 
@@ -621,8 +623,9 @@ fn staged_only_names_only_staged() {
     assert!(view.rows[0].who.is_none() && view.rows[0].branch.is_none());
     assert_eq!(view.rows[0].when, "");
     // The virtual row plus history rows, one fewer than a full viewport
-    // (graph_rows() is 3 here; the row it draws takes one of them).
-    assert_eq!(view.rows.len(), 3, "1 virtual row + 2 history rows");
+    // (graph_rows() is 2 here, the cursor's second line taking a line,
+    // ease-pass/07b; the row it draws takes one of them).
+    assert_eq!(view.rows.len(), 2, "1 virtual row + 1 history row");
     assert_eq!(view.rows[1].line.row.commit.id, oid(3));
 }
 
@@ -796,7 +799,7 @@ fn a_dirty_tree_before_refs_have_loaded_draws_no_row() {
         working_tree: Some(counts(1, 0, 0)),
         size: Size {
             columns: 60,
-            rows: 5,
+            rows: 6, // a line more for the cursor's second line (ease-pass/07b)
         },
         ..AppState::default()
     };
@@ -4974,15 +4977,12 @@ fn a_drag_in_progress_is_visible_in_the_buffer_before_the_button_comes_up() {
     let painted = drawn_cells(&state, COLUMNS, ROWS);
     let cells = |y: usize| &painted[y];
 
-    // Screen row of an absolute history row, read off the picture rather
-    // than assumed: the header takes row 0 and the working-tree row takes
-    // the next, so history row 0 is two down, not one.
-    let first = grid
-        .iter()
-        .position(|row| row.concat().contains("Uncommitted changes"))
-        .expect("the working-tree row is drawn")
-        + 1;
-    let row_of = |history_row: usize| first + history_row;
+    // Screen row of an absolute history row: under the working-tree row,
+    // and the cursor row's second line moves rows down (07b) — the app's
+    // own inverse of the hit-test says where.
+    let row_of = |history_row: usize| {
+        usize::from(crate::update::history_row_line(&state, history_row).expect("drawn"))
+    };
 
     // 1. The target row: `→` in the marker slot, in the accent colour
     //    (m8-polish-and-ship/07).

@@ -124,7 +124,7 @@ fn a_click_below_one_hundred_columns_still_lands_on_the_row_it_named() {
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,
-        row: HEADER_ROWS + strip + 1,
+        row: HEADER_ROWS + strip + 2, // under the cursor row and its second line (ease-pass/07b)
         modifiers: Modifiers::NONE,
     }));
     let (next, _) = update(&state, click);

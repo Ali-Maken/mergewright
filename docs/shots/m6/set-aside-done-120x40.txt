@@ -17,6 +17,7 @@
 
   ◌                         Uncommitted changes (1 staged, 2 unstaged)
 ▸ ◆  ⓘ main (you)           ours  ↑1 to push                                                                 Graft fut…
+  ┃                         Graft · 6 minutes ago · made on main · 0000000
   ●                         theirs  origin/main is here                                                      Graft   6m
   ●                         Commit 200                                                                       Graft   1y
   ●                         Commit 199                                                                       Graft   1y
@@ -50,6 +51,5 @@
   ●                         Commit 171                                                                       Graft   1y
   ●                         Commit 170                                                                       Graft   1y
   ●                         Commit 169                                                                       Graft   1y
-  ●                         Commit 168                                                                       Graft   1y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ rebase main onto origin/main · your edits are back

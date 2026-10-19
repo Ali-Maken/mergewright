@@ -21,6 +21,7 @@
  ◆ api  ~/code/api · main                                                                                   204 commits
 
 ▸ ◆      main (you)           ours                                                                           Graft  now
+  ┃                           Graft · 6 years ago · made on main · 0000000
   ●                           theirs                                                                         Graft   6y
   ┃ ■                         On main: wip  stash@{0}                                                        Graft   6y
   ┃ □                         ours  only in stash@{0}                                                        Graft   6y
@@ -55,7 +56,6 @@
   ●                           Commit 172                                                                     Graft   7y
   ●                           Commit 171                                                                     Graft   7y
   ●                           Commit 170                                                                     Graft   7y
-  ●                           Commit 169                                                                     Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ pushed main → origin/main
 
@@ -66,6 +66,7 @@
   ◆      main (you)           ours                                                                           Graft  now
   ●                           theirs                                                                         Graft   6y
 ▸ ║ ■                         On main: wip  stash@{0}                                                        Graft   6y
+  ║ ┃                         Graft · 6 years ago · e79bc4b
   ║ □                         ours  only in stash@{0}                                                        Graft   6y
   ●━╯    main (you)           Commit 200                                                                     Graft   7y
   ●                           Commit 199                                                                     Graft   7y
@@ -98,7 +99,6 @@
   ●                           Commit 172                                                                     Graft   7y
   ●                           Commit 171                                                                     Graft   7y
   ●                           Commit 170                                                                     Graft   7y
-  ●                           Commit 169                                                                     Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · S stash · b branch · t tag · c commit · y sha · u undo · J journal · / search · q quit · F2 stat · ? keys
 
@@ -119,6 +119,7 @@
  Pull (p)
  Push (P)
  Undo (u)
+  ●                           Commit 192                                                                     Graft   7y
   ●                           Commit 191                                                                     Graft   7y
   ●                           Commit 190                                                                     Graft   7y
   ●                           Commit 189                                                                     Graft   7y
@@ -141,6 +142,5 @@
   ●                           Commit 172                                                                     Graft   7y
   ●                           Commit 171                                                                     Graft   7y
   ●                           Commit 170                                                                     Graft   7y
-  ●                           Commit 169                                                                     Graft   7y
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

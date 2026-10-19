@@ -3,6 +3,7 @@
  ◆ api  ~/code/api · feature                                                                  merging main into feature
 
 ▸ ◌                           Uncommitted changes (2 staged)
+                              not committed yet · 2 files · on feature
     ■                         On feature: mergewright: your edits, set aside for merge main int…  stash@{0}    you  now
     ◆                         finish the feature  feature is here  not pushed yet                            Graft  now
     ●                         start the feature                                                              Graft   2m
@@ -12,7 +13,6 @@
   ●                           Correct the note                                                               Graft   1y
   ●                           Add the first note                                                             Graft   1y
   ◇                           Add a readme                                                                   Graft   1y
-
 
 
 

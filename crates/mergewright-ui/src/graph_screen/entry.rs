@@ -46,6 +46,22 @@ pub struct GraphEntry<'a> {
     /// space after the subject. `None` on every row that is not a merge with
     /// a merged branch folded behind it, or opened.
     pub fold: Option<FoldMark>,
+    /// The cursor row's second line (ease-pass/07b, mock G9): `Some` on the
+    /// cursor row only, drawn dim from the message column on the body line
+    /// below it, the lanes leaving the row continuing straight through.
+    pub second: Option<SecondLine>,
+}
+
+/// The words of the cursor row's second line (ease-pass G9).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SecondLine {
+    /// `<who> · <N hours> ago · made on <branch>[ · <labels>][ · merged N
+    /// from <b>][ · also in A, B]`, or `not committed yet · N files · on
+    /// <branch>` on the uncommitted row; sanitised by the caller.
+    pub words: SanitizedText,
+    /// The commit's short hash, drawn last after ` · `; empty on the
+    /// uncommitted row.
+    pub sha7: SanitizedText,
 }
 
 /// A tag a row carries after its subject until the next write starts

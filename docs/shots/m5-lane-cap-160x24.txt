@@ -56,13 +56,13 @@
     ┊ ┊ ┊ ┊ ●   ⋮    topic-02     Work on topic-02  not pushed yet               Graft  28m
     ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01     Work on topic-01  not pushed yet               Graft  29m
 ▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)   main: step 30  not pushed yet                  Graft  30m
+  ┃ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 Graft · 30 minutes ago · made on main · 576e590
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 29                                  Graft  31m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 28                                  Graft  32m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 27                                  Graft  33m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 26                                  Graft  34m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 25                                  Graft  35m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 24                                  Graft  36m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 23                                  Graft  37m
  ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · ? keys
 
 == the same terminal, pane closed: the graph has all 160 ==
@@ -83,11 +83,11 @@
     ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ●   ⋮    topic-02             Work on topic-02  not pushed yet                                                                   Graft  28m
     ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01             Work on topic-01  not pushed yet                                                                   Graft  29m
 ▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)           main: step 30  not pushed yet                                                                      Graft  30m
+  ┃ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         Graft · 30 minutes ago · made on main · 576e590
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 29                                                                                      Graft  31m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 28                                                                                      Graft  32m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 27                                                                                      Graft  33m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 26                                                                                      Graft  34m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 25                                                                                      Graft  35m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 24                                                                                      Graft  36m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 23                                                                                      Graft  37m
  ⏎ open · P push · c commit · u undo · . actions · ? keys

@@ -338,7 +338,8 @@ mod tests {
         };
         assert!(state.uncommitted_row_pinned());
         let (pane, history_rows) = (state.graph_pane_rows(), state.graph_rows());
-        assert_eq!(history_rows + 1, pane, "the pinned row takes one pane row");
+        // The cursor row's second line takes one too (ease-pass/07b).
+        assert_eq!(history_rows + 2, pane, "the pinned row takes one pane row");
         let first = HEADER_ROWS;
         let last = first + u16::try_from(pane - 1).expect("small");
 

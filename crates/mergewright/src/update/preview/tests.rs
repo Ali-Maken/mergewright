@@ -689,7 +689,12 @@ fn an_open_preview_takes_its_rows_out_of_the_graph_viewport() {
     let (open, _) = opened_with(a_plan());
     let taken = preview_rows_taken(&open);
     assert!(taken >= 7, "the box is at least a box: {taken}");
-    assert_eq!(open.graph_rows() + usize::from(taken), plain.graph_rows());
+    // Under a preview no row draws a second line, so the line the cursor's
+    // second line took comes back (ease-pass/07b).
+    assert_eq!(
+        open.graph_rows() + usize::from(taken),
+        plain.graph_rows() + 1
+    );
 }
 
 // ── the mouse ───────────────────────────────────────────────────────────

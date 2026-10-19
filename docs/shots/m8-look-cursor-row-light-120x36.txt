@@ -6,12 +6,12 @@ m8-polish-and-ship/07, light theme, 120x36, cursor on `feature/two  two: finish`
   ◆━┊━╮      main (you)           Merge branch 'feature/two'  not pushed yet                                 Graft   7y
   ║ ┊ ┃ ●    feature/two-next     two: follow-up  not pushed yet                                             Graft   7y
 ▸ ║ ┊ ●┄╯    feature/two          two: finish  not pushed yet                                                Graft   7y
+  ║ ┊ ┃                           Graft · 7 years ago · made on feature/two · e30e870
   ║ ┊ ●                           two: start                                                                 Graft   7y
   ◉ ┊ ┃      main (you)           Merge branch 'feature/one'  ▸ 2 commits from feature/one                   Graft   7y
   ●┄┴━╯                           Add b.txt                                                                  Graft   7y
   ●                               Add a.txt                                                                  Graft   7y
   ◇                               Add a readme                                                               Graft   7y
-
 
 
 

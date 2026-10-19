@@ -5,5 +5,5 @@ expression: screen
 "                                          5 commits  gfx ok "
 "                    Commit 5␛[31m                 Test  63y "
 "▸                   Commit 4␛[31m                 Test  63y "
-"                    Commit 3␛[31m                 Test  63y "
+"                                                            "
 " ⏎ open · b branch · r rebase · t tag · u undo · ? keys     "

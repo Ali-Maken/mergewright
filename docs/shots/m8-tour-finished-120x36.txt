@@ -6,9 +6,9 @@ m8-polish-and-ship/19c-c: what right looks like — the eighth task done: back i
   ◆ ┊    main (you)           Merge branch 'feature/two'  ▸ 2 commits from feature/two  not pushed yet       Graft   7y
   ◉ ┊                         Merge branch 'feature/one'  ▸ 2 commits from feature/one                       Graft   7y
 ▸ ●┄╯                         Add b.txt                                                                      Graft   7y
+  ┃                           Graft · 7 years ago · made on main · de95041
   ●                           Add a.txt                                                                      Graft   7y
   ◇                           Add a readme                                                                   Graft   7y
-
 
 
 

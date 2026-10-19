@@ -6,11 +6,11 @@
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
     ●        feature-c            c1  not pushed yet                                                                                                                            Graft   2d
 ▸   ┊ ◆      feature-b            b1  HEAD · stopped here  not pushed yet  HEAD is here                                                                                         Graft   2d
+    ┊ ┃                           Graft · 2 days ago · made on feature-b · c9b786e
     ┊ ┃ ●    feature-a            feature a: part 3  not pushed yet                                                                                                             Graft   2d
     ●┄┃┄╯    feature-c            feature a: part 2                                                                                                                             Graft   2d
     ●━╯                           feature a: part 1                                                                                                                             Graft   2d
   ◇┄╯        main                 m1  not pushed yet                                                                                                                            Graft   2d
-
 
 
 

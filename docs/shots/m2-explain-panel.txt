@@ -20,9 +20,9 @@
 #
 "                                                                                  3 commits  COMMIT 0303030                                                     "
 "▸ ◉┄╮  ⚠              Merge branch 'feature'                                      Test  57y  Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y         "
-"  ┃ ●    feature      Ship the release notes                                      Test  57y  parents 0101010, 0202020 · diff vs first parent                    "
-"  ◇┄╯                 Start the feature branch                                    Test  57y  Contained in: checking…                                            "
-"                                                                                             foxtrot merge · evil merge: unchecked                              "
+"  ┃ ┊                 Test · 57 years ago · 0303030                                          parents 0101010, 0202020 · diff vs first parent                    "
+"  ┃ ●    feature      Ship the release notes                                      Test  57y  Contained in: checking…                                            "
+"  ◇┄╯                 Start the feature branch                                    Test  57y  foxtrot merge · evil merge: unchecked                              "
 "                                                                                             ⚠ FOXTROT MERGE                                                    "
 "                                                                                             This merge's first parent (0101010) is not main's previous tip     "
 "                                                                                             (0202020). main's first-parent line was rewritten — usually by     "

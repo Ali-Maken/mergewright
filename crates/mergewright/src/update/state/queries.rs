@@ -26,7 +26,15 @@ impl AppState {
     /// so the two can no longer disagree (m7-power-tools/48).
     #[must_use]
     pub fn graph_rows(&self) -> usize {
-        self.graph_pane_rows() - usize::from(self.uncommitted_row_pinned())
+        let rows = self.graph_pane_rows() - usize::from(self.uncommitted_row_pinned());
+        if self.preview.is_some() {
+            return rows;
+        }
+        // The cursor row's second line takes one line (ease-pass/07b, G9):
+        // so the cursor never sits on the pane's last line. Under a Ghost
+        // Preview no row draws one.
+        let lines = u16::try_from(rows).unwrap_or(u16::MAX);
+        usize::from(mergewright_ui::graph_screen::commit_rows(lines, true))
     }
 
     /// Does the uncommitted row take the graph pane's top row? It is shown

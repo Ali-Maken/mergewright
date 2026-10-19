@@ -223,6 +223,13 @@ fn capture_the_commit_screen() {
         let body = made_by_the_run.iter().fold(body, |body, id| {
             crate::captures::without_invented_id(&body, id)
         });
+        // The landed commit is the run's: its hash on the cursor's second
+        // line (07b) is zeroed.
+        let body = if name == "commit-landed" {
+            crate::captures::without_cursor_sha(state, &body)
+        } else {
+            body
+        };
         captures.check(
             format!(
                 "{}/../../docs/shots/ease-pass/{name}-{columns}.txt",

@@ -8,11 +8,11 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
 ▸ ◆    main (you)           reflow notes  not pushed yet                                                     Graft   8m
+  ┃                         Graft · 8 minutes ago · made on main · 6029ea7
   ●                         add notes                                                                        Graft   9m
   ●                         Correct the note                                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 

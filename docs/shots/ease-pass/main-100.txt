@@ -1,16 +1,16 @@
 ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/graph_rows_tests.rs): `feature/receipts` (HEAD) 1 ahead of origin, `wallet-release` 2 ahead and not checked out, `main` and `ops/ci` level, `spike/cache` never pushed, `v1.2` on main, Sara and Omar besides you; the merge of `sara/fix-toc` opened with space. Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture: a character grid, colour unverified (CLAUDE.md rule 5); the look is yours to judge (rule 6).
-100x30. What right looks like: a 14-cell branch column after the lanes, naming each run's branch once, in its role's colour, `(you)` after HEAD's; the opened merge's row reads `fix-toc`, dim; the message, then its labels muted two cells after it (`↑1 to push` on HEAD's row, `wallet-release is here  ↑2 to push`, `not pushed yet` on spike/cache, `tag v1.2`); who (`you` bold on your rows, else a first name) and age right-aligned; no SHA, no `[…]`.
+100x30. What right looks like: a 14-cell branch column after the lanes, naming each run's branch once, in its role's colour, `(you)` after HEAD's; the opened merge's row reads `fix-toc`, dim; the message, then its labels muted two cells after it (`↑1 to push` on HEAD's row, `wallet-release is here  ↑2 to push`, `not pushed yet` on spike/cache, `tag v1.2`); who (`you` bold on your rows, else a first name) and age right-aligned; no SHA, no `[…]`. Under the cursor row (the opened merge) its second line (07b, G9): `you · N hours ago · made on feature/receipts · merged 1 from fix-toc · <sha7>` (made on: the lane's branch, as the branch column names it), muted, the lanes straight through it.
 
  ◆ api  ~/code/api · feature/receipts                                   7 commits  1 commit to push
 
     ◆        feature… (you) Draw the receipts list  ↑1 to push                             you  28h
 ▸   ◉┄╮                     Merge branch 'sar…  ▾ 1 commit  wallet-release is here  ↑2…    you  28h
+    ┃ ┊                     you · 28 hours ago · made on feature/receipts · merged 1 from fix-toc …
     ┃ ●      fix-toc        toc: fix the anchors  sara/fix-toc is here  not pushed yet    Sara  28h
     ●┄╯                     Start the wallet release  origin/wallet-release is here        you  28h
     ┃ ●      spike/cache    Try a read cache  not pushed yet                               you  28h
     ┃ ┊ ●    ops/ci         Pin the CI image                                              Omar  28h
   ◇━┴┄┴┄╯    main           Add the readme  tag v1.2                                       you  28h
-
 
 
 

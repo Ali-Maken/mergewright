@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
 ▸ ◌                         Uncommitted changes (1 unstaged)
+  ┃                         not committed yet · 1 file · on main
   ◆    main (you)           add parser  not pushed yet                                                       Graft  24h
   ●                         Correct the note                                                                 Graft   2d
   ●                         Add the first note                                                               Graft   2d
   ◇                         Add a readme                                                                     Graft   2d
-
 
 
 

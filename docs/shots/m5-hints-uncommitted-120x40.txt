@@ -52,12 +52,12 @@
  ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
 
 ▸ ◌                         Uncommitted changes (1 unstaged)
+  ┃                         not committed yet · 1 file · on main
   ◆    main (you)           add second  not pushed yet                                                       Graft   8m
   ●                         add first                                                                        Graft   9m
   ●                         Correct the note                                                                 Graft   1y
   ●                         Add the first note                                                               Graft   1y
   ◇                         Add a readme                                                                     Graft   1y
-
 
 
 

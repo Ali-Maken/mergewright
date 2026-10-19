@@ -2,10 +2,10 @@
 
     ●      feature-c            c1  not pushed yet                                                           Graft   2d
 ▸ ● ┊      main                 m2  not pushed yet                                                           Graft   2d
+  ┃ ┊                           Graft · 2 days ago · made on main · fa34bcc
   ┃ ┊ ●    feature-b            b1  not pushed yet                                                           Graft   2d
   ┃ ◆┄╯    feature-c            a1  feature-a is here  not pushed yet                                        Graft   2d
   ◇┄╯      main                 m1                                                                           Graft   2d
-
 
 
 

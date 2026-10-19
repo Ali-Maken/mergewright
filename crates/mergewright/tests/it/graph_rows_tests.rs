@@ -294,7 +294,10 @@ fn capture_the_main_screen_rows_at_120_100_and_90() {
                  message, then its labels muted two cells after it (`↑1 to push` on HEAD's \
                  row, `wallet-release is here  ↑2 to push`, `not pushed yet` on spike/cache, \
                  `tag v1.2`); who (`you` bold on your rows, else a first name) and age \
-                 right-aligned; no SHA, no `[…]`.\n\n{}\n",
+                 right-aligned; no SHA, no `[…]`. Under the cursor row (the opened merge) \
+                 its second line (07b, G9): `you · N hours ago · made on feature/receipts · \
+                 merged 1 from fix-toc · <sha7>` (made on: the lane's branch, as the branch \
+                 column names it), muted, the lanes straight through it.\n\n{}\n",
                 frame.join("\n")
             ),
         );
@@ -312,6 +315,73 @@ fn capture_the_main_screen_rows_at_120_100_and_90() {
         ),
     );
     drop(off);
+    app.close();
+    shots.finish();
+}
+
+/// The cursor's second line next to the main mock (07b, G9): on his own
+/// row, on a teammate's row inside the opened merge, and on the opened
+/// merge row.
+#[test]
+fn capture_the_cursor_rows_second_line() {
+    let scratch = main_screen_repo();
+    let (app, state) = opened(scratch.path());
+    let mut shots = mergewright_fixtures::Captures::new();
+    let own = drawn(&state, 120);
+    let merge = open_the_named_merge(&app, &state);
+    let frame = drawn(&merge, 120);
+    let y = frame
+        .iter()
+        .position(|line| line.contains("toc: fix the anchors"))
+        .expect("the inner row is drawn");
+    let teammate = app.mouse_down(
+        &merge,
+        MouseButton::Left,
+        40,
+        u16::try_from(y).expect("short"),
+    );
+    let teammate = at_rest(&app, teammate);
+    // A known merge names what it merged by its last segment (G9).
+    assert!(
+        frame
+            .iter()
+            .any(|line| line.contains(" \u{b7} merged 1 from fix-toc \u{b7} ")),
+        "{}",
+        frame.join("\n")
+    );
+    for (name, frame, right) in [
+        (
+            "main-cursor-own-120.txt",
+            own,
+            "the cursor on HEAD's row `Draw the receipts list`; \
+          under it `you · N hours ago · made on feature/receipts · <sha7>`",
+        ),
+        (
+            "main-cursor-teammate-120.txt",
+            drawn(&teammate, 120),
+            "the cursor on Sara's row \
+          inside the opened merge; under it `Sara · N hours ago · made on sara/fix-toc · \
+          <sha7>`",
+        ),
+        (
+            "main-opened-merge-120.txt",
+            frame,
+            "the cursor on the opened merge row; under it \
+          `you · N hours ago · made on feature/receipts · merged 1 from fix-toc · <sha7>` \
+          (the lane's branch, as the branch column names it)",
+        ),
+    ] {
+        shots.check(
+            shot(name),
+            format!(
+                "{HEAD_NOTE}\n120x{ROWS}. What right looks like: {right}; muted, no bold, \
+                 the lanes straight down through it (no node, no connector); only the \
+                 cursor row has one; never `reading…`.\n\n{}\n",
+                frame.join("\n")
+            ),
+        );
+    }
+    drop(teammate);
     app.close();
     shots.finish();
 }

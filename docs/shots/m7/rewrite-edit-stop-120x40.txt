@@ -10,8 +10,8 @@
   ║ ●    feature-c            b1  feature-b is here  not pushed yet                                          Graft   2d
   ║ ●                         a2  feature-a is here  not pushed yet                                          Graft   2d
 ▸ ║ ◆                         a1  HEAD · stopped here  HEAD is here                                          Graft   2d
+  ║ ┃                         Graft · 2 days ago · made on feature-c · 0395451
   ◇━╯    main                 m1                                                                             Graft   2d
-
 
 
 

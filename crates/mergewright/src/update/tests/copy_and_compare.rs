@@ -164,7 +164,7 @@ fn shift_click_on_a_second_row_opens_the_compare() {
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,
-        row: HEADER_ROWS + 1,
+        row: HEADER_ROWS + 2, // under the cursor row and its second line (ease-pass/07b)
         modifiers: Modifiers {
             shift: true,
             ..Modifiers::NONE
@@ -195,7 +195,7 @@ fn ctrl_click_on_a_second_row_opens_the_compare() {
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,
-        row: HEADER_ROWS + 1,
+        row: HEADER_ROWS + 2, // under the cursor row and its second line (ease-pass/07b)
         modifiers: Modifiers {
             control: true,
             ..Modifiers::NONE

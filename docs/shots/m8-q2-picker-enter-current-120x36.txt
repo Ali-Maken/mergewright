@@ -5,9 +5,9 @@
  ◆ api  ~/code/api · main                                                                                     3 commits
 
 ▸ ◆      main (you)           M  not pushed yet                                                                you   2d
+  ┃                           you · 2 days ago · made on main · c4d8d2f
   ┃ ●    feature              work on feature  not pushed yet                                                  you   2d
   ◇┄╯    main (you)           A  spare is here  not pushed yet                                                 you   2d
-
 
 
 

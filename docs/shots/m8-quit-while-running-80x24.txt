@@ -1,12 +1,12 @@
 === `f` then `q` while the fetch runs ===
  ◆ api  ~/code/api · main                                           200 commits
 ▸ ◆    main (you)   Commit 200                                       Graft   7y
+  ┃                 Graft · 7 years ago · made on main · d5ae5fd
   ●                 Commit 199                                       Graft   7y
   ●                 Commit 198                                       Graft   7y
   ●                 Commit 197                                       Graft   7y
   ●                 Commit 196                                       Graft   7y
   ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
   ●    ╭ Quit? ──────────────────────────────────────────────────────────╮   7y
   ●    │ fetch all remotes is still running · quit stops it              │   7y
   ●    │                                                                 │   7y
@@ -14,6 +14,7 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Quit ]                                          │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
+  ●                 Commit 187                                       Graft   7y
   ●                 Commit 186                                       Graft   7y
   ●                 Commit 185                                       Graft   7y
   ●                 Commit 184                                       Graft   7y
@@ -21,5 +22,4 @@
   ●                 Commit 182                                       Graft   7y
   ●                 Commit 181                                       Graft   7y
   ●                 Commit 180                                       Graft   7y
-  ●                 Commit 179                                       Graft   7y
  y quit  ←/→ move  ⏎ choose  esc cancel

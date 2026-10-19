@@ -14,7 +14,7 @@ fn a_click_selects_the_row_under_the_pointer() {
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,
-        row: HEADER_ROWS + 1,
+        row: HEADER_ROWS + 2, // under the cursor row and its second line (ease-pass/07b)
         modifiers: Modifiers::NONE,
     }));
     let (next, _) = update(&state, click);
@@ -41,7 +41,8 @@ fn a_click_under_a_harness_banner_lands_on_the_row_the_banner_pushed_down() {
         title: String::from("gallery 3/23"),
         lines: vec![String::from("shows: a merge")],
     });
-    assert_eq!(state.graph_rows(), 3, "header, two banner rows, footer");
+    // Three lines; the cursor's second line takes one (ease-pass/07b).
+    assert_eq!(state.graph_rows(), 2, "header, two banner rows, footer");
 
     // The screen row a click on the header would have hit without the
     // banner is now the banner's title: nothing selected.
@@ -57,7 +58,7 @@ fn a_click_under_a_harness_banner_lands_on_the_row_the_banner_pushed_down() {
     let click = core(Event::Mouse(MouseInput {
         kind: MouseKind::Down(MouseButton::Left),
         column: 10,
-        row: HEADER_ROWS + 2 + 1,
+        row: HEADER_ROWS + 2 + 2, // under the cursor row and its second line (ease-pass/07b)
         modifiers: Modifiers::NONE,
     }));
     let (next, _) = update(&state, click);

@@ -15,6 +15,7 @@
  ◆ api  ~/code/api · main                                                                                                                                    202 commits  1 commit to push
 
 ▸ ◆  ⓘ main (you)           ours  ↑1 to push                                                                                                                                    Graft  now
+  ┃                         Graft · 6 years ago · made on main · 0000000
   ●                         theirs  origin/main is here                                                                                                                         Graft   6y
   ●                         Commit 200                                                                                                                                          Graft   7y
   ●                         Commit 199                                                                                                                                          Graft   7y
@@ -32,7 +33,6 @@
   ●                         Commit 187                                                                                                                                          Graft   7y
   ●                         Commit 186                                                                                                                                          Graft   7y
   ●                         Commit 185                                                                                                                                          Graft   7y
-  ●                         Commit 184                                                                                                                                          Graft   7y
   ●                         ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  Graft   7y
   ●                         │ 1 commit · can't be undone from here — origin keeps what you send                                                                              │  Graft   7y
   ●                         │                                                                                                                                                │  Graft   7y
@@ -40,6 +40,7 @@
   ●                         │                                                                                                                                                │  Graft   7y
   ●                         │ ▸[ Cancel ]   [ Push ]                                                                                                                         │  Graft   7y
   ●                         ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  Graft   7y
+  ●                         Commit 177                                                                                                                                          Graft   7y
   ●                         Commit 176                                                                                                                                          Graft   7y
   ●                         Commit 175                                                                                                                                          Graft   7y
   ●                         Commit 174                                                                                                                                          Graft   7y
@@ -59,6 +60,5 @@
   ●                         Commit 160                                                                                                                                          Graft   7y
   ●                         Commit 159                                                                                                                                          Graft   7y
   ●                         Commit 158                                                                                                                                          Graft   7y
-  ●                         Commit 157                                                                                                                                          Graft   7y
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
