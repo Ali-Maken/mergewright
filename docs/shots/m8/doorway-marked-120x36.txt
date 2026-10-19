@@ -3,10 +3,9 @@
 # Not a pty capture: a character grid, no colour (CLAUDE.md rule 5 — colour unverified).
 #
 # Here the cursor is on an evil merge that is the current branch's tip, marked by the
-# radar, the pane shut. Right (m8/11d R2): `. explain` leads, `u undo` is drawn, and
-# `? keys` is not — it ranks right after `u undo` and `/ search` and is drawn, last,
-# only once both are (a marked branch tip needs 137 cells of bar, m8/11e F1);
-# `?` still answers.
+# radar, the pane shut. Right (m8/11d R2; ease-pass/07b): `. explain` leads, then the folded
+# merge's own bar, `u undo` and `? keys` last — the mock bar is short
+# enough to keep the doorway at 120.
 
  ◆ api  ~/code/api · main                                                             3 commits  1 merged branch folded
 
@@ -43,4 +42,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- . explain · ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal
+ . explain · space show the 1 commit inside · ⏎ open · a amend · x compare · u undo · ? keys

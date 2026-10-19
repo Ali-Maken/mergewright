@@ -39,4 +39,4 @@
   ●                         Commit 002                                                                       Graft   2d
 ▸ ◇                         Commit 001                                                                       Graft   2d
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · ? keys
+ ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

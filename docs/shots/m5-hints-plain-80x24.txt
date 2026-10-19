@@ -72,4 +72,4 @@
 
 
 
- ⏎ open · o take · b branch · r rebase · t tag · c commit · u undo · ? keys
+ ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

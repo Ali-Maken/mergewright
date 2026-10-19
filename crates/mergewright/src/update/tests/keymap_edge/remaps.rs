@@ -161,8 +161,8 @@ fn merge_on_shift_m_is_one_collision_that_loses_the_map() {
 
 /// `[keys.graph] merge = "M"` from a config file, through the startup path
 /// (`config::keymap_from`, which `event_loop::startup::Arrival::first`
-/// calls, then `seed_keys` as `run_repo` does): the bar on a branch row
-/// reads `M merge`, the status row says the collision, and the `.` menu's
+/// calls, then `seed_keys` as `run_repo` does): a teammate's row's bar
+/// reads `M merge feature into yours`, the status row says the collision, and the `.` menu's
 /// row reads `Merge feature into main (M)`. `M` was `graph.map`'s, so the
 /// map loses it and its `M map` hint is not drawn anywhere (R5: a colliding
 /// remap shows him its cost).
@@ -205,9 +205,21 @@ fn capture_merge_remapped_to_shift_m() {
     // The notice went at that first key; closing the menu shows the bar.
     let closed = update(&menu, key(KeyCode::Escape)).0;
     let bar = draw(&closed);
+    // The cursor's row is a folded merge, whose bar has no merge
+    // (ease-pass/07b); a teammate's row's bar spells the chord.
+    let teammate = HintContext::GraphRow {
+        row: mergewright_ui::graph_screen::hints::RowBar::Elsewhere {
+            branch: mergewright_term::sanitize("feature"),
+        },
+        verbs: mergewright_ui::graph_screen::hints::RowVerbs::NONE,
+    };
+    let words = mergewright_ui::graph_screen::hints_text(
+        &hints_for(&teammate, Divider::Hidden, 120, &closed.keymap),
+        &closed.keymap,
+    );
     assert!(
-        bar.contains("M merge"),
-        "the bar spells merge's chord:\n{bar}"
+        words.starts_with(" M merge feature into yours · "),
+        "a teammate's row spells merge's chord: {words:?}"
     );
     assert!(!bar.contains("M map"), "the map lost M:\n{bar}");
     assert!(
@@ -218,8 +230,8 @@ fn capture_merge_remapped_to_shift_m() {
     // three whole frames. First, at startup: the status row
     // `config: 1 problem · ? shows them` (it holds the bar's row until the
     // first key). Second, the `.` menu on the branch row with
-    // `Merge feature into main (M)`. Third, the menu closed: the bar reads
-    // `M merge`, and no `M map` anywhere.
+    // `Merge feature into main (M)`. Third, the menu closed: the folded
+    // merge's bar, no `m merge` and no `M map` anywhere.
     // Colour unverified (rule 5).
     mergewright_fixtures::capture(
         format!(

@@ -36,4 +36,4 @@ What right looks like: no row of a merged branch; the PR's merge ends `▸ 4 com
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys
+ space show the 1 commit inside · ⏎ open · a amend · x compare · u undo · . actions · ? keys

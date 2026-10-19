@@ -307,7 +307,8 @@ pub(super) const GRAPH_ONLY: [&[HintKey]; 5] = [
 pub(super) const NEEDS_A_COMMIT: [&[HintKey]; 3] =
     [hint_keys::COPY_SHA, hint_keys::COMPARE, hint_keys::FOLD];
 
-/// What an ease-pass row bar ([`HintContext::GraphRow`]) draws of [`TAIL`]:
+/// What an ease-pass row bar ([`HintContext::GraphRow`], bare or under
+/// [`HintContext::Rewritable`]) draws of [`TAIL`]:
 /// `u undo`, the mock's bar end (03's Handoff).
 const ROW_BAR_TAIL: [Hint; 1] = [hint(hint_keys::UNDO, "undo")];
 
@@ -344,7 +345,9 @@ pub(super) fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         // An ease-pass row bar is the mock's (G13): its own words, then
         // `u undo`, then the doorway — the screen's other keys are `?`'s,
         // so a named verb is not crowded to its short rung by them.
-        let tail: &[Hint] = if matches!(context, HintContext::GraphRow { .. }) {
+        // Under `R rewrite`'s wrapper too (ease-pass/07b): the row is the
+        // same row, so its bar is the same mock bar.
+        let tail: &[Hint] = if context.is_graph_row_bar() {
             &ROW_BAR_TAIL
         } else {
             &TAIL

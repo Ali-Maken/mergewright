@@ -167,3 +167,29 @@ fn a_banner_with_no_conflict_says_so_in_its_context() {
         }
     );
 }
+
+/// Settle test 3 of ease-pass/07b: before the first rows land there is no
+/// commit row, so the opening view's bar is `PlainRow`.
+#[test]
+fn the_opening_view_bar_is_a_plain_row() {
+    let state = AppState::default();
+    assert!(state.history.is_none());
+    assert_eq!(
+        graph_view(&state, 0).hint_context,
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE
+        }
+    );
+}
+
+/// Settle test 3 of ease-pass/07b: with no cursor row drawn there is no
+/// commit row, so the row context is `PlainRow`.
+#[test]
+fn no_drawn_cursor_row_picks_a_plain_row() {
+    assert_eq!(
+        hint_context(&AppState::default(), &[]),
+        HintContext::PlainRow {
+            verbs: RowVerbs::NONE
+        }
+    );
+}

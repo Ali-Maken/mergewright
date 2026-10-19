@@ -37,4 +37,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⇥ banner · c finish · ⏎ open · b branch · t tag · P push · p pull · f fetch · S stash · / search · q quit · ? keys
+ ⇥ banner · c finish · ⏎ open · b branch · t tag · y sha · S stash · J journal · / search · q quit · F2 stat · ? keys

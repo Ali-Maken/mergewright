@@ -21,7 +21,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- B blame · F history · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · ? keys
+ B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1

@@ -11,6 +11,9 @@
 mod ahead;
 #[cfg(test)]
 mod ahead_perf_tests;
+mod live;
+#[cfg(test)]
+mod live_tests;
 #[cfg(test)]
 mod tests;
 
@@ -39,6 +42,9 @@ pub struct RefBadges {
     by_commit: HashMap<Oid, Vec<RefLabel>>,
     head: Option<Oid>,
     stashes: Vec<(Oid, usize)>,
+    /// Every live branch by name, built once per read ([`Self::live_branch`]).
+    /// Boxed: the badges ride in events, which stay small.
+    live: Box<live::LiveNames>,
 }
 
 impl RefBadges {
@@ -320,14 +326,13 @@ pub fn badges<S: BuildHasher>(
                     }
                 }
             };
-            result.push(
-                *id,
-                RefLabel::Branch {
-                    name: full[HEADS.len()..].to_vec(),
-                    current,
-                    upstream,
-                },
-            );
+            let label = RefLabel::Branch {
+                name: full[HEADS.len()..].to_vec(),
+                current,
+                upstream,
+            };
+            result.live.local(&label);
+            result.push(*id, label);
         }
     }
     result.push_remotes_tags_and_stash(refs, &merged, stashes);
@@ -356,7 +361,13 @@ impl RefBadges {
             if full.starts_with(REMOTES) {
                 // `origin/HEAD` is a pointer to the remote's default branch, which
                 // already has its own badge.
-                if full.ends_with(b"/HEAD") || merged.contains(name) {
+                if full.ends_with(b"/HEAD") {
+                    continue;
+                }
+                // Live whether badged or not: a merged branch's name finds
+                // its remote even when a local level with it carries the chip.
+                result.live.remote(&full[REMOTES.len()..], remote_of(name));
+                if merged.contains(name) {
                     continue;
                 }
                 result.push(*id, RefLabel::Remote(full[REMOTES.len()..].to_vec()));

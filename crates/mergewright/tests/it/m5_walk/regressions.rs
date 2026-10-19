@@ -382,7 +382,7 @@ fn take_live_plain_row(state: &AppState) -> Result<(), String> {
     check(mergewright::update::can_take(state), || {
         "the parent row is not take-live".to_owned()
     })?;
-    bar_is(state, "⏎ open · o take · b branch")
+    bar_is(state, "⏎ open · o take · P push")
 }
 
 fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
@@ -436,10 +436,10 @@ fn hints_at_80_show_three_and_more() -> Scenario {
         steps: vec![
             Step::WaitFor(Wait::Ready),
             Step::See("the current branch's row", |state| {
-                bar_is(state, "⏎ open · c commit · P push")
+                bar_is(state, "⏎ open · P push · c commit")
             }),
             key(ch('j')),
-            Step::See("a plain commit row", take_live_plain_row),
+            Step::See("the parent row, made on his branch", take_live_plain_row),
             // A rebase that stops: the banner takes the keyboard, and a
             // rebase is the kind that can be skipped.
             Step::CursorTo("main"),

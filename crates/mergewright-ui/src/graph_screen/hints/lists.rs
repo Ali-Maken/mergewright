@@ -112,7 +112,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         HintContext::ConfirmBox { yes } => confirm_box_list(*yes),
         HintContext::NamePrompt { toggle } => name_prompt_list(*toggle),
         HintContext::Credential => vec![hint(CREDENTIAL_SEND, "send"), hint(FIELD_ESC, "cancel")],
-        HintContext::Rewritable(row) => with_rewrite(context_list(row)),
+        HintContext::Rewritable(row) => rewritable_list(row),
         HintContext::RewriteEditor { narrow, can_start } => {
             rewrite_editor_list(*narrow, *can_start)
         }
@@ -168,6 +168,18 @@ const REWRITE: Hint = hint(REWRITE_KEY, "rewrite");
 /// ahead of the whole screen's ([`TAIL`]): a new key takes no rung from the
 /// verbs the row already leads with, so the bar's floor (ADR-0037 §4) and
 /// every narrower bar stay as they were, and wider ones gain `R rewrite`.
+/// `row`'s list under `R rewrite`'s wrapper: `R rewrite` added, except on
+/// an ease-pass row bar, which is the mock's and draws none (ease-pass/07b,
+/// conductor ruling: the mock wins); `R` still answers and `?` lists it.
+fn rewritable_list(row: &HintContext) -> Vec<Hint> {
+    let list = context_list(row);
+    if matches!(row, HintContext::GraphRow { .. }) {
+        list
+    } else {
+        with_rewrite(list)
+    }
+}
+
 fn with_rewrite(mut list: Vec<Hint>) -> Vec<Hint> {
     list.push(REWRITE);
     list

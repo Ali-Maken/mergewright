@@ -21,7 +21,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Merged feature into main.
- u undo the merge · P push · a amend · space show · R rewrite · q quit · F2 stat · F3 rend · x compare · ? keys
+ u undo the merge · P push · a amend · space show the 1 commit inside · </> resize · . actions · ? keys
 COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 0000-00-00 00:00 +0000 · future · parents ddeed32, f43f326 ·…
 Merge branch 'feature' · evil merge: none found · 2 hand-resolved files not checked
 M notes.md              +1 −1 ▎

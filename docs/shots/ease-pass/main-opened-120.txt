@@ -36,4 +36,4 @@ What right looks like: the merge's tail turns `▾ 4 commits from PR 16021`; its
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · ? keys
+ space hide the commits inside · ⏎ open · x compare · u undo · . actions · ? keys

@@ -70,7 +70,7 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-" M merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys      "
+" space show the 1 commit inside · ⏎ open · x compare · u undo · . actions · ? keys                                      "
 
 "                                                                                  2 rows so far  1 merged branch folded "
 "                                                                                                                        "
@@ -107,4 +107,4 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-" M merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · f fetch · u undo · S stash · ? keys      "
+" space show the 1 commit inside · ⏎ open · x compare · u undo · . actions · ? keys                                      "

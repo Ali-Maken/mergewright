@@ -72,4 +72,4 @@ reading…
 
 
 
- c commit · P push · p pull · f fetch · b branch · t tag · u undo · ? keys
+ P push · c commit · u undo · . actions · ? keys

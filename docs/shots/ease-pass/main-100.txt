@@ -30,4 +30,4 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · b branch · t tag · P push · c commit · p pull · u undo · ? keys
+ space hide the commits inside · ⏎ open · x compare · u undo · . actions · ? keys

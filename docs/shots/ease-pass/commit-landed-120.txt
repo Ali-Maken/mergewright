@@ -42,4 +42,4 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Committed 3 files to main.  u undo · P push
- . explain · u undo the commit, your edits come back · P push · c commit · a amend · R rewrite · q quit · F2 stat
+ . explain · u undo the commit, your edits come back · P push · c commit again · a amend · ? keys

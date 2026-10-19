@@ -52,7 +52,7 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge · r rebase · ⏎ open · o take · b branch · t tag · P push · c commit · p pull · f fetch · u undo · ? keys
+ m merge fix into yours · ⏎ open · o take · C switch to fix · x compare · u undo · . actions · ? keys
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
@@ -95,4 +95,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · ? keys
+ ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

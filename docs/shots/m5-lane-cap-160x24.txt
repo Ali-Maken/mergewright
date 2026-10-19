@@ -63,7 +63,7 @@
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 25                                  Graft  35m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 24                                  Graft  36m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 23                                  Graft  37m
- ⏎ open · B blame · F history · c commit · P push · p pull · f fetch · u undo · ? keys
+ ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · ? keys
 
 == the same terminal, pane closed: the graph has all 160 ==
 
@@ -90,4 +90,4 @@
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 25                                                                                      Graft  35m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 24                                                                                      Graft  36m
   ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 23                                                                                      Graft  37m
- ⏎ open · c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · q quit · F2 stat · F3 rend · x compare · + lane · j/k move · ? keys
+ ⏎ open · P push · c commit · u undo · . actions · ? keys

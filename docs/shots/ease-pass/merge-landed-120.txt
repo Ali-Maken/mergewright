@@ -37,4 +37,4 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Merged sara/fix-toc into wallet-release.
- u undo the merge · P push · a amend · space show · R rewrite · q quit · F2 stat · F3 rend · x compare · ? keys
+ u undo the merge · P push · a amend · space show the 2 commits inside · . actions · ? keys

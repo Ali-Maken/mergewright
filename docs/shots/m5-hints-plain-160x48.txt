@@ -96,4 +96,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⏎ open · o take · b branch · r rebase · t tag · c commit · y sha · m merge · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · ? keys
+ ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

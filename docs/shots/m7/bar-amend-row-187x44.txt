@@ -2,5 +2,5 @@
 # crates/mergewright/src/update/context_menu/tests.rs (m7-power-tools/40). Colour unverified.
 # Right: cursor on HEAD's row; bar reads `⏎ open  c commit  P push  p pull  f fetch  a amend …`; no `o`.
 #
-Rewritable(BranchRow { current: true, verbs: RowVerbs { take: false, amend: true } })
-" ⏎ open · c commit · P push · p pull · f fetch · a amend · b branch · t tag · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · x compare · ? keys"
+Rewritable(PlainRow { verbs: RowVerbs { take: false, amend: true } })
+" ⏎ open · b branch · r rebase · t tag · c commit · a amend · y sha · m merge · u undo · S stash · J journal · / search · R rewrite · q quit · F2 stat · F3 rend · x compare · ? keys"

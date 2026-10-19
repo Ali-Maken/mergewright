@@ -97,4 +97,4 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ Committed 1 file to main.  u undo · P push
- u undo the commit, your edits come back · P push · c commit again · a amend · R rewrite · q quit · F2 stat · ? keys
+ u undo the commit, your edits come back · P push · c commit again · a amend · . actions · ? keys

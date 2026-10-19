@@ -351,27 +351,36 @@ fn todays_rewritable_bars_at_120_columns() {
     }
 }
 
-/// Settle test 2's finding (ease-pass/07b, `blocked: Rewritable vs mock
-/// bar`): a `GraphRow` under `Rewritable` does not draw its mock bar plus
-/// `R rewrite`. `drawable` gives the mock's short tail (`u undo`) only
-/// when the context itself is `GraphRow` (`hints/filters.rs` `tail`), so
-/// under the wrapper the screen-wide `TAIL` follows instead: `. actions`
-/// goes, `q quit · F2 stat · F3 rend` come in, and `C switch to fix-toc`
-/// falls to `C switch`. Pinned as found; the fix flips it.
+/// Settle test 2's finding, fixed (ease-pass/07b; conductor ruling: the
+/// mock bar wins). A `GraphRow` under `Rewritable` draws exactly its mock
+/// bar: the short tail, `. actions`, whole named verbs. `R rewrite` is not
+/// drawn on an ease-pass row bar (the mock has none); `R` still answers
+/// and `?` lists it. Before the fix the wrapper took the screen-wide tail.
 #[test]
-fn a_rewritable_graph_row_draws_the_wide_tail_not_the_mock_bar() {
-    let rewritable = |inner: RowBar| HintContext::Rewritable(Box::new(row(inner)));
-    let cases = [
-        (
-            rewritable(RowBar::Own),
-            " ⏎ open · P push · c commit · R rewrite · q quit · F2 stat · F3 rend · u undo · x compare · + lane · / search · ? keys",
-        ),
-        (
-            rewritable(elsewhere("sara/fix-toc")),
-            " m merge fix-toc into yours · ⏎ open · C switch · x compare · R rewrite · q quit · F2 stat · F3 rend · u undo · ? keys",
-        ),
-    ];
-    for (context, want) in cases {
-        assert_eq!(bar(&context, 120), want, "{context:?}");
+fn a_rewritable_graph_row_draws_the_mock_bar() {
+    for inner in [
+        RowBar::Own,
+        elsewhere("sara/fix-toc"),
+        RowBar::FoldedMerge { inside: 3 },
+        RowBar::OpenedMerge,
+        RowBar::JustCommitted,
+        RowBar::JustMerged { inside: 3 },
+    ] {
+        let bare = row(inner.clone());
+        let wrapped = HintContext::Rewritable(Box::new(row(inner)));
+        assert_eq!(bar(&wrapped, 120), bar(&bare, 120), "{wrapped:?}");
+        let marked = HintContext::Marked(Box::new(wrapped));
+        let marked_bare = HintContext::Marked(Box::new(bare));
+        assert_eq!(bar(&marked, 120), bar(&marked_bare, 120), "{marked:?}");
     }
+    let own = HintContext::Rewritable(Box::new(row(RowBar::Own)));
+    assert_eq!(
+        bar(&own, 120),
+        " ⏎ open · P push · c commit · u undo · . actions · ? keys"
+    );
+    let teammate = HintContext::Rewritable(Box::new(row(elsewhere("sara/fix-toc"))));
+    assert_eq!(
+        bar(&teammate, 120),
+        " m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys"
+    );
 }

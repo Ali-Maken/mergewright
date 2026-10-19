@@ -96,4 +96,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────
- c commit · P push · p pull · f fetch · b branch · t tag · u undo · / search · ? keys
+ P push · c commit · u undo · </> resize · . actions · ? keys

@@ -3,7 +3,6 @@
 
 use mergewright_term::SanitizedText;
 
-#[cfg(doc)]
 use super::HintContext;
 
 /// Which graph row the cursor is on, for [`HintContext::GraphRow`]: each
@@ -47,4 +46,18 @@ pub enum RowBar {
 pub fn bar_name(full: &SanitizedText) -> &str {
     let name = full.as_str();
     name.rsplit('/').next().unwrap_or(name)
+}
+
+impl HintContext {
+    /// An ease-pass row bar: [`HintContext::GraphRow`], bare or under
+    /// [`HintContext::Rewritable`] (ease-pass/07b). Both draw the mock's
+    /// bar — its own words, `u undo`, the doorway — and no `R rewrite`.
+    #[must_use]
+    pub(crate) fn is_graph_row_bar(&self) -> bool {
+        match self {
+            HintContext::GraphRow { .. } => true,
+            HintContext::Rewritable(inner) => matches!(**inner, HintContext::GraphRow { .. }),
+            _ => false,
+        }
+    }
 }
