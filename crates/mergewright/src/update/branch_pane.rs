@@ -27,11 +27,10 @@ use mergewright_ops::branch_status::{BranchStatus, Candidate, CandidateKind};
 use super::events::{Command, RestRead};
 use super::state::AppState;
 use crate::history::WalkFacts;
-use crate::refs::RefBadges;
+use crate::refs::{BranchEntry, RefBadges};
 
 /// Where a local branch's name lives.
 const HEADS: &str = "refs/heads/";
-const REMOTES: &str = "refs/remotes/";
 
 /// The trunk and integration names the walk resolved (ADR-0001): what makes a
 /// candidate [`CandidateKind::Trunk`] or [`CandidateKind::Integration`].
@@ -120,51 +119,44 @@ impl Reads {
 /// ruling R: a teammate's branch he never checked out is still a branch).
 /// Full name, tip, and kind by `names`; a remote one's kind is read from
 /// its name with the remote stripped. Sorted by name, so the key and the
-/// job see one order.
+/// job see one order. The list is the refs read's own
+/// ([`RefBadges::branch_list`], built once per read, ease-pass/18); only the
+/// kinds are given here.
 #[must_use]
 pub fn candidates(refs: &RefBadges, names: &BranchNames<'_>) -> Vec<Candidate> {
-    let kind = |local: &[u8]| {
-        let is = |full: &RefName| full.as_bytes().strip_prefix(HEADS.as_bytes()) == Some(local);
-        if names.trunk.is_some_and(is) {
-            CandidateKind::Trunk
-        } else if names.integration.iter().any(is) {
-            CandidateKind::Integration
-        } else {
-            CandidateKind::Other
-        }
-    };
-    let locals = refs.branches().map(|(tip, short, _, _)| Candidate {
-        name: format!("{HEADS}{}", String::from_utf8_lossy(short)),
-        tip,
-        kind: kind(short),
-    });
-    let remotes = refs.remote_only().map(|(tip, short)| {
-        let local = short
-            .iter()
-            .position(|&byte| byte == b'/')
-            .map_or(short, |slash| &short[slash + 1..]);
-        Candidate {
-            name: format!("{REMOTES}{}", String::from_utf8_lossy(short)),
-            tip,
-            kind: kind(local),
-        }
-    });
-    let mut all: Vec<Candidate> = locals.chain(remotes).collect();
-    all.sort_by(|a, b| a.name.cmp(&b.name));
-    all
+    refs.branch_list()
+        .entries()
+        .iter()
+        .map(|entry| candidate(entry, names))
+        .collect()
+}
+
+/// `entry` as a candidate, its kind by `names`.
+fn candidate(entry: &BranchEntry, names: &BranchNames<'_>) -> Candidate {
+    Candidate {
+        name: entry.name.clone(),
+        tip: entry.tip,
+        kind: kind_of(entry.local(), names),
+    }
+}
+
+/// The kind of a branch standing for local name `local`.
+fn kind_of(local: &[u8], names: &BranchNames<'_>) -> CandidateKind {
+    let is = |full: &RefName| full.as_bytes().strip_prefix(HEADS.as_bytes()) == Some(local);
+    if names.trunk.is_some_and(is) {
+        CandidateKind::Trunk
+    } else if names.integration.iter().any(is) {
+        CandidateKind::Integration
+    } else {
+        CandidateKind::Other
+    }
 }
 
 /// The lane identity a candidate's commits are drawn under: the layout's
 /// own short form (`RefName::shorthand`), not ops' display `short_name`.
 #[must_use]
 pub fn identity_of(candidate: &Candidate) -> BranchIdentity {
-    match RefName::new(candidate.name.as_bytes()) {
-        Ok(name) => BranchIdentity::of_name(name.shorthand()),
-        // Safe to fall back: candidates are built from names git listed,
-        // which always parse; and `shorthand` of a name with no known
-        // prefix is the whole name, which is what this draws.
-        Err(_) => BranchIdentity::of_name(candidate.name.as_bytes()),
-    }
+    crate::refs::identity_of_name(&candidate.name)
 }
 
 /// `branch`'s key against `candidates` (each name and tip, in order).
@@ -181,36 +173,48 @@ pub fn status_key(branch: &Candidate, candidates: &[Candidate]) -> StatusKey {
     }
 }
 
-/// The branch in focus as a candidate, with its key and every candidate.
+/// The branch in focus as a candidate, with its key and the trunk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Focused {
     /// The focused branch.
     pub branch: Candidate,
     /// Its key.
     pub key: StatusKey,
-    /// Every candidate, the branch included (the rules skip it).
-    pub candidates: Vec<Candidate>,
+    /// The first candidate, in name order, of kind
+    /// [`CandidateKind::Trunk`]; `None` when no branch stands for the
+    /// default branch.
+    pub trunk: Option<Candidate>,
 }
 
 /// The focused branch, when the cursor row's branch (G4's focus) is a local
-/// branch and the refs and walk facts have landed.
+/// branch and the refs and walk facts have landed. Lookups in the refs
+/// read's [`BranchList`](crate::refs::BranchList): asked every update and
+/// every frame, it never walks the refs (ease-pass/18).
 #[must_use]
 pub fn focused(state: &AppState) -> Option<Focused> {
+    let (refs, names, focus) = sources(state)?;
+    let list = refs.branch_list();
+    let branch = candidate(list.drawn_under(focus)?, &names);
+    let key = StatusKey {
+        branch: branch.name.clone(),
+        tips: list.tips(),
+    };
+    let trunk = names
+        .trunk
+        .and_then(|trunk| trunk.as_bytes().strip_prefix(HEADS.as_bytes()))
+        .and_then(|local| list.standing_for(local))
+        .map(|entry| candidate(entry, &names));
+    Some(Focused { branch, key, trunk })
+}
+
+/// What the focus is read from: the refs, the walk's names, and the lane
+/// identity of the cursor row's branch (G4's focus).
+fn sources(state: &AppState) -> Option<(&RefBadges, BranchNames<'_>, BranchIdentity)> {
     let history = state.history.as_ref()?;
     let focus = crate::view::focus(history)?;
     let walk = history.walk.as_ref()?;
     let refs = state.refs.as_deref()?;
-    let candidates = candidates(refs, &BranchNames::of(walk));
-    let branch = candidates
-        .iter()
-        .find(|candidate| identity_of(candidate) == focus)?
-        .clone();
-    let key = status_key(&branch, &candidates);
-    Some(Focused {
-        branch,
-        key,
-        candidates,
-    })
+    Some((refs, BranchNames::of(walk), focus))
 }
 
 /// At rest, after the fold count: ask the focused branch's read unless its
@@ -230,6 +234,13 @@ pub(super) fn at_rest(
         }
         Some(StatusRead::Reading | StatusRead::Failed(_)) => {}
         None => {
+            // Every candidate, once per ask: the job reads them all.
+            // `focused` just read the same sources, so this always finds
+            // them; without them there is nothing to ask, as there.
+            let Some((refs, names, _)) = sources(next) else {
+                return;
+            };
+            let every = candidates(refs, &names);
             next.look
                 .reads
                 .by_key
@@ -239,7 +250,7 @@ pub(super) fn at_rest(
                 RestRead::BranchStatus(Box::new(StatusAsk {
                     key: focused.key,
                     branch: focused.branch,
-                    candidates: focused.candidates,
+                    candidates: every,
                 })),
             ));
         }
@@ -331,9 +342,8 @@ pub(super) fn pane_swallows(
 /// The route the lanes draw by, from `status` for the focused branch.
 fn set_route(next: &mut AppState, focused: &Focused, status: &BranchStatus) {
     let trunk = focused
-        .candidates
-        .iter()
-        .find(|candidate| candidate.kind == CandidateKind::Trunk)
+        .trunk
+        .as_ref()
         .map_or_else(|| BranchIdentity::of_name(b""), identity_of);
     let built_on: Vec<BranchIdentity> = status.route.iter().map(identity_of).collect();
     next.look.route = Some(Route::new(

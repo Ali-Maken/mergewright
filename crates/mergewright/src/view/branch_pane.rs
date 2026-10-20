@@ -40,9 +40,8 @@ pub(crate) fn pane_view(state: &AppState, history: &History, now: i64) -> Option
     let here = is_here(state, &focused.branch.name, focused.branch.tip);
     let route = super::entries::frame_route(state, history);
     let trunk = focused
-        .candidates
-        .iter()
-        .find(|candidate| candidate.kind == CandidateKind::Trunk)
+        .trunk
+        .as_ref()
         .map_or("", |trunk| short_name(&trunk.name));
     let (stops, lines) = match state.look.reads.get(&focused.key) {
         Some(StatusRead::Read(status)) => (

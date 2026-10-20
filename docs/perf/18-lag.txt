@@ -1,0 +1,165 @@
+# SUMMARY ease-pass/18 (debugger, 2026-10-20). Release, --test-threads=1, laptop on mains, other builders running (load in each block).
+# Scripts: scripts/18-lag.sh (runs, appends blocks below), scripts/18-trace-stats.sh (per-test p50/p99 from MWR_FRAME_TRACE),
+#          scripts/18-sample.sh (macOS `sample` of one test). The Closed-pane tests panic at frames.rs:393 before their p99
+#          line prints, so their p99 here is from the trace (same Gate::of nearest rank over the 420 scroll keys).
+#
+# SUMMARY cause 1, the queue wait (review Major 6): update::branch_pane::focused (HEAD:update/branch_pane.rs:198-213) rebuilt
+#   every candidate per call — candidates() formats ~25k names and sorts them (HEAD:branch_pane.rs:125-155), then parses each
+#   for its identity — and it is called from update::settle -> branch_pane::at_rest on every update at rest (update/mod.rs:265),
+#   from the loop's rest_deadline -> rest_owed -> branch_pane::owed on every turn mid-burst (event_loop/running/turn.rs:344-346),
+#   and from view::branch_pane::pane_view in every frame (HEAD:view/branch_pane.rs:28).
+#   Shown by: (a) `sample` of the map-view test: of the loop's non-idle samples, ~2550 of ~2670 under
+#   settle -> branch_pane::at_rest -> focused -> candidates/sort/identity_of; unicode closed: 2137 of 3377 draw samples under
+#   view::branch_pane::pane_view -> focused. (b) a tagged probe ([DEBUG-18], removed) listing every wake handed: the scroll's
+#   first keys queue behind a startup burst of 64 job events (32 Started + 32 Produced ForcePushProbe), each costing the loop
+#   5–10 ms (update_us 5–15 ms for job events vs 35 µs for a key) ≈ 0.7 s; keys then drain at ~6 ms each. (c) the fix below.
+#   The review's `idle_prefetch_us` max (~0.55 s) is not work: the harness counts from the first look to the next wake handed
+#   (tests/it/frames/paced.rs:189 stamps the look, :249 pushes at the next wake, :283 blocks in recv between), which includes blocking in `recv` through the 600 ms idle pause.
+#
+# SUMMARY fix: refs::branch_list (new): the sorted list, lane identity -> first entry, local name -> first entry, and the tips
+#   hash, built once per refs read in refs::badges; focused() is two hash lookups. Kinds still from the walk's names.
+#   Before -> after p99 (trace, same harness, release):
+#     50k unicode closed   901.1 ms ->  8.8 ms     50k pixel closed  814.4 ms -> 14.3 ms
+#     50k scrolling diff   523.2 ms ->  5.2 ms     50k detail pane   485.2 ms ->  6.1 ms     50k map view 1436.3 ms -> 0.6 ms
+#     100k unicode (no 50k refs) 1.06 ms -> 1.03 ms   100k pixel 6.6 ms -> 6.9 ms (not this cause: unchanged)
+#   Left at 50k refs: draw p50 3.1 ms unicode vs 0.4 ms without the refs; `sample` puts most of it in
+#   view::entries::branch_column::names_of (ticket 17's file, not touched here). Pixel closed p99 14.3 ms is under 16 but close.
+#
+# SUMMARY cause 2, the at-rest FoldedCounted wakes (frames.rs:393): not cause 1 — they fail the same way with and without
+#   50k refs, before and after the fix (5 x Produced::FoldedCounted in each closed test, blocks below). Probe [DEBUG-18] on the
+#   100k unicode test, idle phase: pause 419->420: Rested, then 3 FoldedCounted 10/18/26 ms after it; pause 421->422: one
+#   FoldedCounted 9 ms after key 421 (asked by that key's own settle, not mid-burst), Rested, one more. Each is the answer to
+#   a CountFolded read the app asked at rest for a folding merge the key brought on screen, one per answer by design
+#   (update/fold_count.rs:27-43, update/mod.rs:263). The harness counts every job event but a key's first Window as unasked
+#   (tests/it/frames/readings.rs:243-258). DECISION, not fixed: may a fold count asked by a key wake the loop in the pause
+#   after it (harness counts it as asked, like a Window), or must counts be done before rest (e.g. counted with the window)?
+#
+# SUMMARY review-vs-16 on fifty_thousand_refs_{pixel,unicode}: 16's run was a debug build (scripts/ease-16-heavy.sh:10 has no
+#   --release); the review's was release. In debug, cause 1 puts the loop 20–28 s behind the script (idle_wake_us 19.9–28.6 s,
+#   block "baseline DEBUG" below), so the five idle keys reach the loop queued back to back and the "pauses" between them hold
+#   whatever lands by chance: pixel 0 wakes (passes), unicode 5 (EvilProbe x2 + FoldedCounted x3, fails) in this run; both 0 in
+#   16's. Release keeps up, the pauses are real, and every one holds cause 2's wake.
+#
+## baseline diff, traced — 75f0ae77 build=release exit=101 17s load: { 9.29 9.24 9.48 }
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff ... refs: 50000 refs, badges() 21.905041ms, 25000 lookups 1.075208ms (43 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=506 p50=6616 p99=17570 max=594769 total=5939445 over_1ms=364 over_2ms=351
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=14490 PageDown=10437 Char('k')=8737 PageUp=9412 Char('j')=9412
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=9083 p99_us=532357 max_us=616842 over_budget=48 kitty_commands=0 bytes=36326
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff' (1903695516) panicked at crates/mergewright/tests/it/frames/verdict.rs:75:5:
+p99 532.35775ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (48 of 422 keys over): key 0: 67.809667ms (queued 57.972208ms behind other event frame 27.553334ms; own frame 9.837459ms, bytes=5182 transmits=0 placements=0), key 1: 503.542083ms (queued 45.966666ms behind key 0 frame 9.837459ms; own frame 457.575417ms, bytes=507 transmits=0 placements=0), key 2: 487.651667m
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys over 16ms (recorded; the gate is the p99): 48 of 422: key 0: 67.809667ms (queued 57.972208ms behind other event frame 27.553334ms; own frame 9.837459ms, bytes=5182 transmits=0 placements=0), key 1: 503.542083ms (queued 45.966666ms behind key 0 frame 9.837459ms; own frame 457.575417ms, bytes=507 transmits=0 placements=0), key 2: 487.65166
+
+## baseline, five tests, traced — 75f0ae77 build=release exit=101 90s load: { 7.47 8.43 9.11 }
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 18.916417ms, 25000 lookups 1.194291ms (47 ns each), 25180 labels found
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=653 p50=0 p99=11982 max=576133 total=3632538 over_1ms=172 over_2ms=152
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=31908 PageDown=16356 Char('k')=26450 PageUp=26207 Char('j')=22381
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier' (1903857075) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier ... refs: 50000 refs, badges() 22.33725ms, 25000 lookups 993.625µs (39 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=655 p50=2 p99=14857 max=577539 total=4834428 over_1ms=304 over_2ms=278
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=25469 PageDown=14686 Char('k')=22979 PageUp=22750 Char('j')=24670
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier' (1903915485) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff ... refs: 50000 refs, badges() 17.436542ms, 25000 lookups 1.152416ms (46 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=505 p50=7752 p99=13881 max=592412 total=6205817 over_1ms=380 over_2ms=375
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=9685 PageDown=9613 Char('k')=10418 PageUp=9829 Char('j')=8849
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=8082 p99_us=523211 max_us=607746 over_budget=47 kitty_commands=0 bytes=36461
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff' (1903961199) panicked at crates/mergewright/tests/it/frames/verdict.rs:75:5:
+p99 523.211333ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (47 of 422 keys over): key 0: 49.550833ms (queued 38.061583ms behind other event frame 25.606292ms; own frame 11.48925ms, bytes=5182 transmits=0 placements=0), key 1: 470.540875ms (queued 428.220709ms behind other event frame 50.261333ms; own frame 42.320166ms, bytes=507 transmits=0 placements=0), key 2: 455
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open ... refs: 50000 refs, badges() 20.269792ms, 25000 lookups 1.134083ms (45 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=504 p50=3631 p99=13035 max=588955 total=4816224 over_1ms=295 over_2ms=281
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=16158 PageDown=16933 Char('k')=13452 PageUp=15675 Char('j')=15006
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=12081 p99_us=485198 max_us=567708 over_budget=117 kitty_commands=0 bytes=33406
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open' (1903992128) panicked at crates/mergewright/tests/it/frames/verdict.rs:75:5:
+p99 485.198791ms is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (117 of 421 keys over): key 0: 60.101ms (queued 45.149ms behind other event frame 24.506ms; own frame 14.952ms, bytes=5182 transmits=0 placements=0), key 1: 463.691834ms (queued 43.407ms behind key 0 frame 14.952ms; own frame 420.284834ms, bytes=163 transmits=0 placements=0), key 2: 443.869834ms (queued 412.
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open ... refs: 50000 refs, badges() 19.761458ms, 25000 lookups 1.07925ms (43 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=700 p50=0 p99=13169 max=597587 total=5669708 over_1ms=302 over_2ms=302
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=7071 PageDown=7225 Char('k')=7379 PageUp=8361 Char('j')=7483
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=7675 p99_us=1436258 max_us=1520526 over_budget=123 kitty_commands=0 bytes=35274
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open' (1904001974) panicked at crates/mergewright/tests/it/frames/verdict.rs:75:5:
+p99 1.436258875s is over the 16ms input-to-frame budget at Unicode with FiftyThousand refs (123 of 421 keys over): key 0: 46.357417ms (queued 38.699875ms behind other event frame 13.957083ms; own frame 7.657542ms, bytes=4450 transmits=0 placements=0), key 1: 461.104ms (queued 28.016ms behind key 0 frame 7.657542ms; own frame 433.088ms, bytes=45 transmits=0 placements=0), key 2: 445.092ms (queued 4
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=1 max=56
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=590 p50=11940 p99=44706 max=598451 total=8459168 over_1ms=444 over_2ms=440
+frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=3431 PageDown=3569 Char('k')=797 PageUp=1659 Char('j')=1200
+frames: tier=Pixel refs=Fixture pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier' (1904059804) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=12
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=590 p50=15141 p99=41921 max=601662 total=9643505 over_1ms=449 over_2ms=448
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=1086 PageDown=784 Char('k')=976 PageUp=994 Char('j')=674
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier' (1904113941) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys over 16ms (recorded; the gate is the p99): 47 of 422: key 0: 49.550833ms (queued 38.061583ms behind other event frame 25.606292ms; own frame 11.48925ms, bytes=5182 transmits=0 placements=0), key 1: 470.540875ms (queued 428.220709ms behind other event frame 50.261333ms; own frame 42.320166ms, bytes=507 transmits=0 placements=0), key 2: 45
+frames: tier=Unicode refs=FiftyThousand pane=Open keys over 16ms (recorded; the gate is the p99): 117 of 421: key 0: 60.101ms (queued 45.149ms behind other event frame 24.506ms; own frame 14.952ms, bytes=5182 transmits=0 placements=0), key 1: 463.691834ms (queued 43.407ms behind key 0 frame 14.952ms; own frame 420.284834ms, bytes=163 transmits=0 placements=0), key 2: 443.869834ms (queued 412.03291
+frames: tier=Unicode refs=FiftyThousand pane=Map keys over 16ms (recorded; the gate is the p99): 123 of 421: key 0: 46.357417ms (queued 38.699875ms behind other event frame 13.957083ms; own frame 7.657542ms, bytes=4450 transmits=0 placements=0), key 1: 461.104ms (queued 28.016ms behind key 0 frame 7.657542ms; own frame 433.088ms, bytes=45 transmits=0 placements=0), key 2: 445.092ms (queued 431.633
+
+## baseline DEBUG build (16's heavy run was debug: scripts/ease-16-heavy.sh:10), 50k pixel+unicode, 100k unicode — 75f0ae77+dirty build=debug exit=101 144s load: { 3.39 5.75 7.35 }
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 121.691917ms, 25000 lookups 5.200542ms (208 ns each), 25180 labels found
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=511 p50=1 p99=12 max=25658 total=74080 over_1ms=3 over_2ms=3
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=28601711 PageDown=28112177 Char('k')=27602709 PageUp=27100507 Char('j')=26586244
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain keys=420 p50_us=15465883 p99_us=28615106 max_us=29096311 over_budget=420 kitty_commands=6836 bytes=18202495
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier ... refs: 50000 refs, badges() 93.111542ms, 25000 lookups 5.118209ms (204 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=509 p50=1 p99=4 max=25181 total=25783 over_1ms=1 over_2ms=1
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=22118675 PageDown=21611569 Char('k')=21011572 PageUp=20411569 Char('j')=19900844
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Started::EvilProbe", "Produced::EvilProbe", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier' (1904841742) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Started::EvilProbe", "Produced::EvilProbe", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=2 max=9
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=592 p50=10131 p99=28013 max=592214 total=7565154 over_1ms=440 over_2ms=438
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=8046 PageDown=7728 Char('k')=8126 PageUp=8199 Char('j')=5342
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier' (1904843305) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+
+## after: branch list built once per refs read, five tests, traced — 75f0ae77+dirty build=release exit=101 121s load: { 7.44 5.82 6.59 }
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 26.527ms, 25000 lookups 932.375µs (37 ns each), 25180 labels found
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=655 p50=6203 p99=21343 max=601775 total=6876690 over_1ms=423 over_2ms=415
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=5910 PageDown=5283 Char('k')=4387 PageUp=3940 Char('j')=4260
+frames: tier=Pixel refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier' (1905157282) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier ... refs: 50000 refs, badges() 26.206667ms, 25000 lookups 1.31425ms (52 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=656 p50=9587 p99=22051 max=602793 total=8080451 over_1ms=439 over_2ms=433
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=3526 PageDown=3824 Char('k')=3377 PageUp=4259 Char('j')=3296
+frames: tier=Unicode refs=FiftyThousand pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier' (1905205499) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff ... refs: 50000 refs, badges() 25.014917ms, 25000 lookups 1.068584ms (42 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=505 p50=12031 p99=21326 max=606801 total=8554072 over_1ms=426 over_2ms=426
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=3043 PageDown=9010 Char('k')=3117 PageUp=3581 Char('j')=3378
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll control=Plain keys=422 p50_us=3224 p99_us=5181 max_us=12265 over_budget=0 kitty_commands=0 bytes=39230
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open ... refs: 50000 refs, badges() 29.622125ms, 25000 lookups 1.034958ms (41 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=506 p50=12187 p99=20818 max=605579 total=8489567 over_1ms=424 over_2ms=424
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=3439 PageDown=3130 Char('k')=3442 PageUp=3123 Char('j')=3797
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Open control=Plain keys=421 p50_us=3245 p99_us=6084 max_us=19530 over_budget=1 kitty_commands=0 bytes=37322
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open ... refs: 50000 refs, badges() 26.6965ms, 25000 lookups 1.117084ms (44 ns each), 25220 labels found
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=700 p50=12550 p99=24438 max=601502 total=9800233 over_1ms=537 over_2ms=423
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=306 PageDown=507 Char('k')=320 PageUp=285 Char('j')=318
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain idle_gap_wakes=0 pauses_after_laid_out=5 of 5 pause_ms=600 woke=[]
+frames: tier=Unicode refs=FiftyThousand pane=Map control=Plain keys=421 p50_us=350 p99_us=637 max_us=11069 over_budget=0 kitty_commands=0 bytes=71922
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=1 max=13
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=590 p50=11167 p99=52115 max=602640 total=8523219 over_1ms=444 over_2ms=440
+frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=3392 PageDown=3629 Char('k')=1578 PageUp=1411 Char('j')=567
+frames: tier=Pixel refs=Fixture pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier' (1905411044) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=1 max=14
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=590 p50=13865 p99=48556 max=602464 total=9657086 over_1ms=450 over_2ms=449
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=701 PageDown=531 Char('k')=824 PageUp=666 Char('j')=452
+frames: tier=Unicode refs=Fixture pane=Closed control=Plain idle_gap_wakes=5 pauses_after_laid_out=5 of 5 pause_ms=600 woke=["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+thread 'frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier' (1905461580) panicked at crates/mergewright/tests/it/frames.rs:393:9:
+5 wakes with no input in the idle pauses after `LaidOut`: ["Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted", "Produced::FoldedCounted"]
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys over 16ms (recorded; the gate is the p99): 0 of 422: 
+frames: tier=Unicode refs=FiftyThousand pane=Open keys over 16ms (recorded; the gate is the p99): 1 of 421: key 1: 19.530916ms (queued 5.409666ms behind other event frame 7.537792ms; own frame 14.12125ms, bytes=45 transmits=0 placements=0)
+frames: tier=Unicode refs=FiftyThousand pane=Map keys over 16ms (recorded; the gate is the p99): 0 of 421: 
+

@@ -201,7 +201,9 @@ Which refs sit on which commit and how far each branch is from its upstream: eve
 - `Upstream` (enum) — where a local branch stands against its upstream.
 - `AheadOfUpstream` (enum) — `NotPushed` or `By(n)`: what a local branch has to push.
 ## refs::ahead
-What a local branch has to push, read off its label: `RefLabel::ahead_of_upstream` (no walk, no new read).
+What a local branch has to push, read off its label: `RefLabel::ahead_of_upstream` (no walk, no new read); `AheadBehindCache`, the counts kept across reads.
+## refs::branch_list
+Every branch the branch pane may name, sorted, built once per read (ease-pass/18): `RefBadges::branch_list()` — first entry per lane identity or local name, the tips hash; `identity_of_name`.
 ## refs::live
 Which live branch a name means (index built once per read): `RefBadges::live_branch(label)` — local, else remote shorthand, else `<remote>/<label>`; `None` if deleted. `RefBadges::remote_only()` — remotes no local tracks.
 ## rename

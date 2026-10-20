@@ -11,19 +11,20 @@
 mod ahead;
 #[cfg(test)]
 mod ahead_perf_tests;
+mod branch_list;
 mod live;
 #[cfg(test)]
 mod live_tests;
 #[cfg(test)]
 mod tests;
 
-pub use ahead::AheadOfUpstream;
+pub use ahead::{AheadBehindCache, AheadOfUpstream};
+pub use branch_list::{BranchEntry, BranchList, identity_of_name};
 #[cfg(test)]
 mod ahead_tests;
 
 use std::collections::{HashMap, HashSet};
 use std::hash::BuildHasher;
-use std::sync::{Mutex, PoisonError};
 
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
@@ -45,6 +46,9 @@ pub struct RefBadges {
     /// Every live branch by name, built once per read ([`Self::live_branch`]).
     /// Boxed: the badges ride in events, which stay small.
     live: Box<live::LiveNames>,
+    /// Every branch the branch pane may name, sorted, built once per read
+    /// ([`Self::branch_list`]). Boxed, as `live` is.
+    branch_list: Box<BranchList>,
 }
 
 impl RefBadges {
@@ -180,63 +184,6 @@ pub enum Upstream {
     Apart(AheadBehind),
 }
 
-/// Ahead/behind counts already worked out, keyed by (branch tip, upstream
-/// tip): a pair that has not moved is never walked twice.
-///
-/// Held by the job runner for the life of the run and shared by every refs
-/// job, so a refresh after a fetch that moved one remote walks only that
-/// branch.
-#[derive(Debug, Default)]
-pub struct AheadBehindCache {
-    counts: Mutex<HashMap<(Oid, Oid), AheadBehind>>,
-    #[cfg(test)]
-    walked_on: Mutex<Vec<std::thread::ThreadId>>,
-}
-
-impl AheadBehindCache {
-    /// The counts for `(local, upstream)`, walking only when this pair has
-    /// not been counted before.
-    ///
-    /// # Errors
-    /// The walk's failure, when it had to walk and could not.
-    pub fn get_or_count(
-        &self,
-        local: Oid,
-        upstream: Oid,
-        walk: impl FnOnce() -> Result<AheadBehind, String>,
-    ) -> Result<AheadBehind, String> {
-        if let Some(&known) = self.lock().get(&(local, upstream)) {
-            return Ok(known);
-        }
-        #[cfg(test)]
-        self.walked_on
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .push(std::thread::current().id());
-        // Not held across the walk: two jobs counting the same pair at once
-        // both walk and agree, which beats one blocking the other.
-        let counted = walk()?;
-        self.lock().insert((local, upstream), counted);
-        Ok(counted)
-    }
-
-    /// Every thread a walk ran on, in order (tests: proving it was never the
-    /// loop's).
-    #[cfg(test)]
-    pub(crate) fn walked_on(&self) -> Vec<std::thread::ThreadId> {
-        self.walked_on
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .clone()
-    }
-
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<(Oid, Oid), AheadBehind>> {
-        // A poisoned lock means a walk panicked mid-insert; the map itself is
-        // still a valid set of finished counts, so it is safe to keep using.
-        self.counts.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-}
-
 /// Reads the repository's refs into [`RefBadges`], counting ahead/behind
 /// through `cache`.
 ///
@@ -339,6 +286,7 @@ pub fn badges<S: BuildHasher>(
         }
     }
     result.push_remotes_tags_and_stash(refs, &merged, stashes);
+    result.branch_list = Box::new(BranchList::of(&result));
     Ok(result)
 }
 
