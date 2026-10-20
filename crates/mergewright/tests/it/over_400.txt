@@ -207,12 +207,10 @@
 421 crates/mergewright/tests/it/credential_by_key.rs
 405 crates/mergewright/tests/it/drain_sink.rs
 419 crates/mergewright/tests/it/frame_trace.rs
-472 crates/mergewright/tests/it/frames/journal_find.rs
 426 crates/mergewright/tests/it/frames/paced.rs
 439 crates/mergewright/tests/it/frames/readings.rs
-424 crates/mergewright/tests/it/frames/run.rs
 1304 crates/mergewright/tests/it/gallery.rs
-640 crates/mergewright/tests/it/heavy.rs
+507 crates/mergewright/tests/it/heavy.rs
 757 crates/mergewright/tests/it/held_key.rs
 965 crates/mergewright/tests/it/hint_bar.rs
 512 crates/mergewright/tests/it/journal_put_back.rs
