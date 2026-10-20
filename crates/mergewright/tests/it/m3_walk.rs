@@ -1017,7 +1017,7 @@ fn commit_refused_nothing_staged() -> Scenario {
             stem: "m3-05-commit-refused",
             headless: Vec::new(),
             keys: plain(&[ch('c')]),
-            on_screen: "nothing staged",
+            on_screen: "Nothing goes in. Put a file in with space.",
         }),
     }
 }

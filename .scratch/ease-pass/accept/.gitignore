@@ -1,0 +1,5 @@
+# Raw output of scripts/ease-accept.sh (nextest log, sheet log).
+# Never committed: it carries machine paths, and CLAUDE.md keeps raw streams
+# out of the repo. The summary is docs/perf/ease-accept.txt.
+*
+!.gitignore

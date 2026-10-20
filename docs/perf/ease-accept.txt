@@ -1,0 +1,46 @@
+# ease-pass acceptance — 2026-10-20T14:55:32Z
+# HEAD 919cbfe7
+# Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+1 walks (in-process, real git): Summary [  31.657s] 90 tests run: 90 passed, 959 skipped · rc=0 · .scratch/ease-pass/accept/walks.txt
+2 journeys (keys walked/allowed, the note's fence):
+    commit-all-subject 3/3
+    commit-leave-first 6/6
+    commit-with-body 6/6
+    merge-clean 2/2
+    merge-one-clash 5/5
+    merge-three-clashes 8/8
+    open-folded-merge 1/1
+    pause-and-resume 2/2
+    undo-a-pick 1/1
+    9 journeys, none over; commit-all-subject 3/3, merge-one-clash 5/5
+3 behaviours (a passing test named by each id):
+    G1-G14 graph: 14 of 14
+    C1-C15 commit: 15 of 15
+    M1-M19 merge: 19 of 19
+    Q1-Q17 questions: 17 of 17
+    g12_ x3, fold_ x3, picks_shell_merge: 7 of 7
+4 contact sheet: wrote 55 captures, 0 without a recorded caption, in 2 part(s):
+  docs/shots/ease-pass/ease-pass-contact-sheet-1.txt (177767 bytes)
+  docs/shots/ease-pass/ease-pass-contact-sheet-2.txt (103489 bytes)
+    over 200 KB: none · NOT RECORDED: 0 · colour unverified (rule 5)
+5 pixel lag (quoted from docs/perf/ease-pixel.txt, not judged; the Ghostty run is the user's):
+    # ease-pass/13 pixel lag — 2026-10-19T07:17:44Z
+    bin=base size=120x40 walk=open input_age_us_p95=23521 tail_ms=185.0 keys=91
+    bin=base size=120x40 walk=settled input_age_us_p95=19289 tail_ms=207.1 keys=91
+    bin=base size=120x40 walk=focus input_age_us_p95=5422 tail_ms=0.0 keys=91
+    bin=base size=200x50 walk=open input_age_us_p95=17248 tail_ms=184.1 keys=91
+    bin=base size=200x50 walk=settled input_age_us_p95=22094 tail_ms=212.5 keys=91
+    bin=base size=200x50 walk=focus input_age_us_p95=3477 tail_ms=0.0 keys=91
+    bin=roles size=120x40 walk=open input_age_us_p95=35978 tail_ms=173.9 keys=91
+    bin=roles size=120x40 walk=settled input_age_us_p95=37472 tail_ms=175.8 keys=91
+    bin=roles size=120x40 walk=focus input_age_us_p95=6247 tail_ms=0.0 keys=91
+    bin=roles size=200x50 walk=open input_age_us_p95=36201 tail_ms=210.1 keys=91
+    bin=roles size=200x50 walk=settled input_age_us_p95=33625 tail_ms=203.2 keys=91
+    bin=roles size=200x50 walk=focus input_age_us_p95=7380 tail_ms=0.0 keys=91
+    bin=tall size=120x40 walk=open input_age_us_p95=39263 tail_ms=192.6 keys=91
+    bin=tall size=120x40 walk=settled input_age_us_p95=28262 tail_ms=203.9 keys=91
+    bin=tall size=120x40 walk=focus input_age_us_p95=7609 tail_ms=0.0 keys=91
+    bin=tall size=200x50 walk=open input_age_us_p95=42150 tail_ms=195.0 keys=91
+    bin=tall size=200x50 walk=settled input_age_us_p95=41695 tail_ms=224.5 keys=91
+    bin=tall size=200x50 walk=focus input_age_us_p95=7820 tail_ms=0.0 keys=91
+summary: docs/perf/ease-accept.txt

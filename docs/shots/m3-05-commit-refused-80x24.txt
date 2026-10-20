@@ -1,26 +1,26 @@
 m3 walk capture: m3-05-commit-refused — scenario commit-refused-nothing-staged, keys c, unicode tier, 80x24
 
-COMMIT ── ⎇ main ── nothing staged
-
-▸Subject                                                   ┊                0/50
-
- Body
-
-
-
-
-
-
-
-
-
-
+ ◆ graft-trivial-0  …taged/graft-trivial-0  committing to main · not pushed yet
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ▸What did you change? (one line)                                             │
+│  More detail, if it needs it (optional)                                      │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+ Nothing goes in. Put a file in with space.
+────────────────────────────────────────────────────────────────────────────────
+ Going in (0)
+   nothing yet
+ Staying out (0)
+   nothing
 
 
 
 
 
 
-  nothing staged
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+
+
+
+
+ ⏎ type a message first  ⇥ more detail  esc cancel, your message is kept
