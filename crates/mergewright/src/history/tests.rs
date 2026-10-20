@@ -14,7 +14,7 @@ use mergewright_git::branches::Branches;
 use mergewright_git::history::{CHUNK, CommitTable, Order, Walk};
 use mergewright_git::repo::{RefTarget, RepoHandle};
 use mergewright_graph::layout::{CommitSource, StreamConfig, StreamingLayout, layout};
-use mergewright_graph::{BranchIdentity, Follow, Included, Inclusion, Row, Seeds};
+use mergewright_graph::{Follow, Included, Inclusion, Row, Seeds};
 
 use crate::jobs::Delivery;
 use crate::repos::RepoStore;
@@ -136,38 +136,6 @@ fn the_product_source_lays_out_every_shape_as_the_whole_layout_does() {
             "{shape}: reporting a fresh chunk reads the cache, it never rebuilds"
         );
     });
-}
-
-/// The seed builder's choice, on the shape that needs it: a remote ahead of
-/// its local branch is a known tip under its own name.
-#[test]
-fn seeds_anchor_the_default_branch_and_know_remote_tips() {
-    let dir = mergewright_fixtures::borrow(Shape::RefStates);
-    let handle = RepoHandle::open(&dir).expect("opens");
-    let refs = handle.references().expect("refs read");
-    let branches = Branches::resolve(&handle, None).expect("branches resolve");
-    let seeds = seeds_for(&refs, &branches);
-
-    let default = branches.default_branch().expect("a default branch");
-    let seed = seeds.default_branch.expect("lane 0 is seeded");
-    assert_eq!(seed.identity, BranchIdentity::of_name(default.shorthand()));
-    let remotes = refs
-        .iter()
-        .filter(|entry| entry.name.as_bytes().starts_with(b"refs/remotes/"))
-        .filter(|entry| matches!(entry.target, RefTarget::Object(_)))
-        .count();
-    assert!(remotes > 0, "the ref-states shape has remote-tracking refs");
-    let remote_seeds = seeds
-        .known_branches
-        .iter()
-        .filter(|known| {
-            refs.iter().any(|entry| {
-                entry.name.as_bytes().starts_with(b"refs/remotes/")
-                    && BranchIdentity::of_name(entry.name.shorthand()) == known.identity
-            })
-        })
-        .count();
-    assert_eq!(remote_seeds, remotes);
 }
 
 /// `graph.default_branch` reaches `Branches::resolve` through the store and

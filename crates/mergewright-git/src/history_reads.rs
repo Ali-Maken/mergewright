@@ -21,6 +21,7 @@ use crate::run::{GitArg, GitInvocation, RunError, Stop};
 use crate::version::GitVersion;
 
 mod compare;
+mod first_parent;
 mod forecast;
 mod merge_check;
 mod unreached;
@@ -29,6 +30,7 @@ pub use compare::{
     CompareSpan, LineEntry, StashOnly, commits_from, compare_span, count_between, entry_into,
     only_in_stash,
 };
+pub use first_parent::on_first_parent_line;
 pub use forecast::{Forecast, MergeStep, forecast_merge, merge_tree_step};
 pub use merge_check::{
     ClashForecast, MergeCheck, MergeForecast, UNRELATED, changed_paths, changed_paths_until,

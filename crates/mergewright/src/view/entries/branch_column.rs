@@ -12,7 +12,6 @@ use mergewright_term::sanitize_path_bytes;
 use mergewright_ui::graph_screen::{BranchCell, GraphEntry};
 
 use crate::history::History;
-use crate::refs::Upstream;
 use crate::update::AppState;
 
 /// Fills `entries` — one per row of `rows`, the visible history rows
@@ -104,19 +103,10 @@ fn names_of(
     }
     let mut head = None;
     if let Some(refs) = state.refs.as_deref() {
-        for (_, name, current, upstream) in refs.branches() {
+        for (_, name, current, _) in refs.branches() {
             offer(&mut names, name);
             if current {
                 head = Some(BranchIdentity::of_name(name));
-            }
-            // A remote level with its branch has no label of its own
-            // (`RefLabel::Remote`), but its tip may have seeded the lane:
-            // name that lane by the local branch, which is the same commit.
-            if let Upstream::InSync { remote } = upstream {
-                let id = BranchIdentity::of_name(&[remote.as_slice(), b"/", name].concat());
-                if wanted.contains(&id) {
-                    names.entry(id).or_insert_with(|| name.to_vec());
-                }
             }
         }
         for (_, name) in refs.remotes() {

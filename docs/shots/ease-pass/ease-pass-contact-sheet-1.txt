@@ -28,13 +28,13 @@ What right looks like: no row of a merged branch; beside the branch pane the mes
 ▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Graft  28h│ wallet-release  (you're here)
     ┃                         Graft · 28 hours ago · made on wallet-release · mer…│ ! not pushed yet
     ◉                         Merged PR 16021: Fix the wallet totals    Graft  28h│ · not merged
-    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with sara/fix-toc
+    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with main
   ◇━╯    main                 Add the readme  not pushed yet            Graft  28h│ · Graft, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -118,13 +118,13 @@ What right looks like: the merge's four commits appear under it on one lane of t
     ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Graft  28h│ wallet-release  (you're here)
 ▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Graft  28h│ ! not pushed yet
     ┃ ┊                         Graft · 28 hours ago · made on wallet-release · m…│ · not merged
-    ┃ ●    PR 16021             totals: test the sum                    Graft  28h│ ✓ up to date with sara/fix-toc
+    ┃ ●    PR 16021             totals: test the sum                    Graft  28h│ ✓ up to date with main
     ┃ ●    PR 16021             totals: drop the cache                  Graft  28h│ · Graft, last commit 28h ago
     ┃ ●    PR 16021             totals: round once                      Graft  28h│
     ┃ ●    PR 16021             totals: read the ledger                 Graft  28h│ built on
     ●┄╯                         Start the wallet release                Graft  28h│   main
-  ◇━╯      main                 Add the readme  not pushed yet          Graft  28h│    ─◆ sara/fix-toc
-                                                                                  │    ─◆ wallet-release
+  ◇━╯      main                 Add the readme  not pushed yet          Graft  28h│    ─◆ wallet-release
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -160,16 +160,16 @@ What right looks like: every commit of PR 16021 and `sara/fix-toc` drawn on its 
 
  ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
 
-▸   ◆─╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft  28h│ wallet-release  (you're here)
-    ┃ │                           Graft · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
+▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft  28h│ wallet-release  (you're here)
+    ┃ ┊                           Graft · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
     ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ · not merged
-    ◉─┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft  28h│ ✓ up to date with sara/fix-toc
+    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft  28h│ ✓ up to date with main
     ┃   ●    PR 16021             totals: test the sum                  Graft  28h│ · Graft, last commit 28h ago
     ┃   ●                         totals: drop the cache                Graft  28h│
     ┃   ●                         totals: round once                    Graft  28h│ built on
     ┃   ●                         totals: read the ledger               Graft  28h│   main
-    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft  28h│    ─◆ sara/fix-toc
-  ◇━╯        main                 Add the readme  not pushed yet        Graft  28h│    ─◆ wallet-release
+    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft  28h│    ─◆ wallet-release
+  ◇━╯        main                 Add the readme  not pushed yet        Graft  28h│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -208,13 +208,13 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
     ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Graft  28h│ wallet-release  (you're here)
 ▸   ◉                         Merged PR 16021: Fix the wallet totals    Graft  28h│ ! not pushed yet
     ┃                         Graft · 28 hours ago · made on wallet-release · mer…│ · not merged
-    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with sara/fix-toc
+    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with main
   ◇━╯    main                 Add the readme  not pushed yet            Graft  28h│ · Graft, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -253,13 +253,13 @@ What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branch
   ●    wallet-release (you) release: note 29                            Graft  27h│ wallet-release  (you're here)
   ●                         release: note 28                            Graft  27h│ ! not pushed yet
   ●                         release: note 27                            Graft  27h│ · not merged
-  ●                         release: note 26                            Graft  27h│ ✓ up to date with sara/fix-toc
+  ●                         release: note 26                            Graft  27h│ ✓ up to date with main
   ●                         release: note 25                            Graft  27h│ · Graft, last commit 27h ago
   ●                         release: note 24                            Graft  27h│
   ●                         release: note 23                            Graft  27h│ built on
   ●                         release: note 22                            Graft  27h│   main
-  ●                         release: note 21                            Graft  27h│    ─◆ sara/fix-toc
-  ●                         release: note 20                            Graft  27h│    ─◆ wallet-release
+  ●                         release: note 21                            Graft  27h│    ─◆ wallet-release
+  ●                         release: note 20                            Graft  27h│
   ●                         release: note 19                            Graft  27h│
   ●                         release: note 18                            Graft  27h│
   ●                         release: note 17                            Graft  27h│
@@ -386,16 +386,16 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                                                       7 commits  1 commit to push
 
     ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ feature/receipts  (you're here)
-▸   ◉─╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
-    ┃ │                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
+▸   ◉┄╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
+    ┃ ┊                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
     ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with wallet-release
-    ●─╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
+    ●┄╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
     ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ feature/receipts
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -425,17 +425,17 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                                   7 commits  1 commit to push
 
     ◆        feature… (you) Draw the receipts list          you  28h│ feature/receipts  (you're her…
-▸   ◉─╮                     Merge branch 'sara/fix-toc'…    you  28h│ ! 1 commit to push
-    ┃ │                     you · 28 hours ago · made on feature/re…│ · not merged
+▸   ◉┄╮                     Merge branch 'sara/fix-toc'…    you  28h│ ! 1 commit to push
+    ┃ ┊                     you · 28 hours ago · made on feature/re…│ · not merged
     ┃ ●      fix-toc        toc: fix the anchors           Sara  28h│ ✓ up to date with
-    ●─╯                     Start the wallet release        you  28h│   wallet-release
+    ●┄╯                     Start the wallet release        you  28h│   wallet-release
     ┃ ●      spike/cache    Try a read cache                you  28h│ · you, last commit 28h ago
     ┃ ┊ ●    ops/ci         Pin the CI image               Omar  28h│
   ◇━┴┄┴┄╯    main           Add the readme  tag v1.2        you  28h│ built on
                                                                     │   main
-                                                                    │    ─◆ sara/fix-toc
                                                                     │    ─◆ wallet-release
                                                                     │    ─◆ feature/receipts
+                                                                    │
                                                                     │
                                                                     │
                                                                     │
@@ -464,10 +464,10 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                         7 commits  1 commit to push
 
     ◆        featu… (you) Draw the receipts list  ↑1 to push  not merged         you  28h
-▸   ◉─╮                   Merge branch 'sara/fix-toc' into wallet-release  ▾     you  28h
-    ┃ │                   you · 28 hours ago · made on feature/receipts · merged 1 from …
+▸   ◉┄╮                   Merge branch 'sara/fix-toc' into wallet-release  ▾     you  28h
+    ┃ ┊                   you · 28 hours ago · made on feature/receipts · merged 1 from …
     ┃ ●      fix-toc      toc: fix the anchors                                  Sara  28h
-    ●─╯                   Start the wallet release                               you  28h
+    ●┄╯                   Start the wallet release                               you  28h
     ┃ ●      spike/cache  Try a read cache  not pushed yet                       you  28h
     ┃ ┊ ●    ops/ci       Pin the CI image                                      Omar  28h
   ◇━┴┄┴┄╯    main         Add the readme  tag v1.2                               you  28h
@@ -503,16 +503,16 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                                                       7 commits  1 commit to push
 
     ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ feature/receipts  (you're here)
-▸   ◉─╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
-    ┃ │                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
+▸   ◉┄╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
+    ┃ ┊                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
     ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with wallet-release
-    ●─╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
+    ●┄╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
     ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ feature/receipts
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -549,9 +549,9 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│ built on
                                                                                   │   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ feature/receipts
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -581,16 +581,16 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                                                       7 commits  1 commit to push
 
     ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ feature/receipts  (you're here)
-    ◉─╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
+    ◉┄╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
 ▸   ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ · not merged
-    ┃ │                           Sara · 28 hours ago · made on sara/fix-toc · b8…│ ✓ up to date with wallet-release
-    ●─╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
+    ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · b8…│ ✓ up to date with wallet-release
+    ●┄╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
     ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ feature/receipts
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -620,16 +620,16 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                                                       7 commits  1 commit to push
 
     ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ feature/receipts  (you're here)
-▸   ◉─╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
-    ┃ │                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
+▸   ◉┄╮                           Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 1 commit to push
+    ┃ ┊                           you · 28 hours ago · made on feature/receipts ·…│ · not merged
     ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with wallet-release
-    ●─╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
+    ●┄╯                           Start the wallet release                you  28h│ · you, last commit 28h ago
     ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ feature/receipts
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -1133,13 +1133,13 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 ▸   ◆    wal│ › graph                                                                                      │here)
     ┃       │ HERE                                                                                         │
     ◉       │ F3    Cycle the graph renderer                                               graph.renderer  │
-    ●       │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │ix-toc
+    ●       │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
   ◇━╯    mai│ X     Decline the commit-graph offer                             graph.decline_commit_graph  │ago
             │ GRAPH MODE                                                                                   │
             │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
             │▸○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
             ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
-                                                                                  │    ─◆ wallet-release
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │
@@ -1218,16 +1218,16 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 
  ◆ wallet  ~/code/wallet · wallet-release                                                 9 commits  every branch shown
 
-▸   ◆─╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft   3y│ wallet-release  (you're here)
-    ┃ │                           Graft · 3 years ago · made on wallet-release · …│ ! not pushed yet
+▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft   3y│ wallet-release  (you're here)
+    ┃ ┊                           Graft · 3 years ago · made on wallet-release · …│ ! not pushed yet
     ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Graft   3y│ · not merged
-    ◉─┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft   3y│ ✓ up to date with sara/fix-toc
+    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft   3y│ ✓ up to date with main
     ┃   ●    PR 16021             totals: test the sum                  Graft   3y│ · Graft, last commit 3y ago
     ┃   ●                         totals: drop the cache                Graft   3y│
     ┃   ●                         totals: round once                    Graft   3y│ built on
     ┃   ●                         totals: read the ledger               Graft   3y│   main
-    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft   3y│    ─◆ sara/fix-toc
-  ◇━╯        main                 Add the readme  not pushed yet        Graft   3y│    ─◆ wallet-release
+    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft   3y│    ─◆ wallet-release
+  ◇━╯        main                 Add the readme  not pushed yet        Graft   3y│
                                                                                   │
                                                                                   │
                                                                                   │

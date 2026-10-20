@@ -8,7 +8,7 @@
 # unverified: a capture carries no attributes), in places 1 and 2.
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    origin/sara/login-p… fix the bug                               Graft   3m│ main  (you're here)
+    ●    login-page           fix the bug  not pushed yet  not merged   Graft   3m│ main  (you're here)
 ▸ ◆ ┊    main (you)           main moves on                             Graft   4m│ reading…
  Checkout — already on main
  Cherry-pick (o) — already on main

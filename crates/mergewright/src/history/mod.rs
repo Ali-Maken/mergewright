@@ -37,6 +37,8 @@ mod promotion_tests;
 #[cfg(test)]
 mod reveal_tests;
 #[cfg(test)]
+mod seed_tests;
+#[cfg(test)]
 mod tests;
 
 pub use fold::{Inside, RowFold};

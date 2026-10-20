@@ -1,6 +1,6 @@
 //! The lanes a layout starts with, from the repository's refs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
@@ -41,14 +41,26 @@ pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
     Seeds {
         default_branch: branches.default_branch().and_then(seed),
         integration_branches: branches.integration().iter().filter_map(seed).collect(),
-        known_branches: refs
-            .iter()
-            .filter(|entry| {
-                let name = entry.name.as_bytes();
-                name.starts_with(HEADS) || name.starts_with(REMOTES)
-            })
-            .filter_map(|entry| seed(&entry.name))
-            .collect(),
+        known_branches: {
+            // One identity per tip: where a local branch sits, a remote at
+            // the same commit adds no seed. Otherwise the remote (listed
+            // after `heads`) would win the tip and the lane would be
+            // `origin/x` while the pane, `C` and the column look for `x`.
+            let local: HashSet<Oid> = refs
+                .iter()
+                .filter(|entry| entry.name.as_bytes().starts_with(HEADS))
+                .filter_map(|entry| tips.get(entry.name.as_bytes()).copied())
+                .collect();
+            refs.iter()
+                .filter(|entry| {
+                    let name = entry.name.as_bytes();
+                    name.starts_with(HEADS)
+                        || (name.starts_with(REMOTES)
+                            && tips.get(name).is_none_or(|tip| !local.contains(tip)))
+                })
+                .filter_map(|entry| seed(&entry.name))
+                .collect()
+        },
     }
 }
 
@@ -76,6 +88,11 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
                 .map(|(tip, short)| ([REMOTES, short].concat(), tip)),
         )
         .collect();
+    let local: HashSet<Oid> = tips
+        .iter()
+        .filter(|(name, _)| name.starts_with(HEADS))
+        .map(|(_, &tip)| tip)
+        .collect();
     let seed = |name: &RefName| {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
@@ -94,6 +111,7 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
             .collect(),
         known_branches: tips
             .iter()
+            .filter(|(name, tip)| name.starts_with(HEADS) || !local.contains(*tip))
             .map(|(name, &tip)| BranchSeed {
                 tip,
                 identity: BranchIdentity::of_name(shorthand_of(name)),
