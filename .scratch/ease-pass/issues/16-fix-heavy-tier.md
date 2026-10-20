@@ -1,6 +1,6 @@
 # fix round: heavy tier compiles, clippy clean, 16 failures triaged
 
-Status: ready
+Status: done (14 heavy failures left as questions)
 Blocked by: —
 Build with: Sonnet (builder-sonnet, model sonnet); fails twice → Opus
 
@@ -13,9 +13,9 @@ From the combined review, **Major 4** (`docs/reviews/ease-pass-07-14.md:160-180`
 4. Do not touch: `history/seeds.rs`, `view/entries/branch_column.rs`, `update/branch_pane.rs`, `mergewright-ops/src/branch_status.rs` (ticket 15 holds them).
 
 ## Acceptance (tick each with its test/command)
-- [ ] `cargo clippy --all-targets --features heavy-tests -- -D warnings` clean.
-- [ ] Heavy tier compiles and runs; per-failure table in NOTES: test · cause line · fixed / question.
-- [ ] Standard four gates green.
+- [x] `cargo clippy --all-targets --features heavy-tests -- -D warnings` clean (ran, exit 0).
+- [x] Heavy tier compiles and runs; per-failure table in NOTES (docs/perf/16-heavy.txt: 14 failed after run, table below; resolver fixed and re-run green).
+- [x] Standard four gates green (fmt, clippy, nextest 7199/7199, doc 3/3).
 
 ## NOTES (builder)
 Status: partial-done; Scout: none (known files, 3 mechanical splits). No compaction.
