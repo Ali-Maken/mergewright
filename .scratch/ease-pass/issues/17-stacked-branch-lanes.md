@@ -1,6 +1,6 @@
 # fix round: a stacked branch's commits carry its own name
 
-Status: ready (dispatch once Q1 below is answered; Q2 does not block)
+Status: ready (Q1 answered: (a) straight on, ADR-0064; Q2: bob/x not planned, user 2026-10-20)
 Blocked by: 15-fix-identity-and-base (lane identity per tip, and `history/seeds.rs`, which this also edits)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: the rule is decided here and pinned by a pure function and unit tests; the code is one lookup on a path that exists. Not a hard layout area at this size.
 Needs: 15's one-identity-per-tip seeds (local first, remote only where no local sits).

@@ -19,7 +19,7 @@ Commit         { id, parents: [CommitId; ≤N], author, committer, date, message
 BranchIdentity { stable hash of a branch name — the source of lane colour,
                  independent of which column the branch currently occupies }
 Lane           { index: usize,                 // the column
-                 identity: BranchIdentity,      // for colour, stays fixed for the lane's life
+                 identity: BranchIdentity,      // for colour; fixed until the lane reaches another branch's tip (ADR-0064)
                  waiting_for: CommitId,          // the next commit that continues this lane
                  reserved: bool }                // true for lane 0 and integration-branch lanes:
                                                   // never handed to the free pool
