@@ -72,7 +72,7 @@ fn shot(name: &str, right: &str, frame: &[String]) {
 /// sara/fix-toc`, naming neither `ali/x` nor `wallet-release`; `ali/x`'s
 /// lane on her row reads `┊`.
 #[test]
-fn g12_sibling_never_built_on() {
+pub(super) fn g12_sibling_never_built_on() {
     let (_scratch, app, state) = on_sara(true);
     let frame = drawn(&state);
     let lines = pane(&frame, 120);

@@ -17,7 +17,14 @@
 mod bar_and_pane;
 mod commit;
 mod fixture;
+mod flow;
+mod fold;
 mod graph;
+mod journeys;
+mod merge;
+mod merge_finish;
+mod questions;
+mod questions_late;
 mod screen;
 mod team;
 
@@ -136,6 +143,38 @@ pub fn within_the_note(id: &str, walked_keys: u32, note: &str) -> Result<(), Ove
     Ok(())
 }
 
+/// Each fence row's walk: its id and the test in [`journeys`] that walks it.
+const WALKS: &[(&str, &str)] = &[
+    ("commit-all-subject", "commit_all_subject"),
+    ("commit-with-body", "commit_with_body"),
+    ("commit-leave-first", "commit_leave_first"),
+    ("merge-one-clash", "merge_one_clash"),
+    ("merge-clean", "merge_clean"),
+    ("merge-three-clashes", "merge_three_clashes"),
+    ("undo-a-pick", "undo_a_pick"),
+    ("pause-and-resume", "pause_and_resume_on_the_merge"),
+    ("open-folded-merge", "open_folded_merge"),
+];
+
+/// The keys the fence allows `id`.
+pub fn allowed(id: &str) -> u32 {
+    journeys_in(&note())
+        .unwrap_or_else(|why| panic!("the fence: {why:?}"))
+        .into_iter()
+        .find(|row| row.id == id)
+        .map_or_else(|| panic!("no fence row {id:?}"), |row| row.keys)
+}
+
+/// A finished walk of `id` that pressed `route`: prints `journey <id>
+/// <walked>/<allowed>` and fails when it is over the fence's count.
+pub fn counted(id: &str, route: &[&str]) {
+    let walked = u32::try_from(route.len()).unwrap_or(u32::MAX);
+    println!("journey {id} {walked}/{} {route:?}", allowed(id));
+    if let Err(over) = within_the_note(id, walked, &note()) {
+        panic!("{over:?}: {route:?}");
+    }
+}
+
 /// The note's text.
 pub fn note() -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(NOTE);
@@ -178,6 +217,37 @@ fn one_key_over_fails_both_counted_journeys() {
         within_the_note("no-such-journey", 1, &note),
         Err(OverCount::NoRow("no-such-journey".to_owned()))
     );
+}
+
+/// Every fence row has a walk in `journeys.rs` that counts it, and every
+/// walk names a fence row.
+#[test]
+fn every_ease_journey_id_has_a_walk() {
+    let rows = journeys_in(&note()).expect("the fence parses");
+    let source = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/it/ease_walk/journeys.rs"),
+    )
+    .expect("journeys.rs reads");
+    for row in &rows {
+        let (_, test) = WALKS
+            .iter()
+            .find(|(id, _)| *id == row.id)
+            .unwrap_or_else(|| panic!("no walk for {:?}", row.id));
+        assert!(
+            source.contains(&format!("#[test]\nfn {test}()")),
+            "journeys.rs has no test {test}"
+        );
+        let plain = format!("counted(\"{}\"", row.id);
+        let wrapped = format!("counted(\n        \"{}\"", row.id);
+        assert!(
+            source.contains(&plain) || source.contains(&wrapped),
+            "journeys.rs never counts {:?}",
+            row.id
+        );
+    }
+    for (id, _) in WALKS {
+        assert!(rows.iter().any(|row| row.id == *id), "{id} is no fence row");
+    }
 }
 
 #[test]
