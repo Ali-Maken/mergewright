@@ -1463,3 +1463,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | ease/14-review-settle-hang | clash screen pay-307 after `o t n b`, `y`: settled_frame times out; suspect `Combined by git · reading…` never finishes; no line | **question** | ease-pass review |
 | ease/14-preview-footer-spaces | merge preview footer `y merge  esc cancel  ⏎ see…` double spaces where the note uses ` · ` | **question** (textual) | ease-pass review |
 | ease/14-refutes | 14's walk refutes ease/12-landing-bar, ease/08u-justmerged, ease/06-no-space-offer (landed bar reads `u undo the merge · P push · a amend · space show the 1 commit inside`); reviewer confirms, then close them | **question** | ease-pass review |
+| ease/14-pixel-ghostty | Ghostty pixel run (`docs/perf/ease-pixel-ghostty.txt`) never made; only the headless SUMMARY lines exist (`ease_walk::questions::q4_pixel_lag_summary_recorded`) | **unverified** (user runs it) | ease-pass stop |
+| ease/14-accept-in-process | `scripts/ease-accept.sh` walks in-process, not a pty as 14's spec says (14c NOTES) | **question** (review) | ease-pass review |
+| ease/14-m3-sheet-stale | m3-05-commit-refused captures re-shot by 14c (waiter now the commit screen's words, words.rs:191); `m3-contact-sheet.txt` not regenerated | **unverified** | pre-publish cleanup |
+| rename/m3-pty-script | `.scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py:32,43,57` still build/run `graft-fixtures`, `graft-walk-m3-` | **broken** (if run without `MWR_FIXTURES_BIN`) | pre-publish cleanup |
