@@ -20,6 +20,7 @@ use crate::app_harness::App;
 use crate::captures::{at_rest, frame_at};
 
 mod cursor_second_line;
+mod stacked_roles;
 
 const ROWS: u16 = 30;
 /// After every commit, so ages read the same.

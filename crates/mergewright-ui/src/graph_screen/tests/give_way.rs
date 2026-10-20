@@ -135,3 +135,24 @@ fn badges_drop_whole_before_the_subject_gives_way_at_80_columns() {
         "{screen:#?}"
     );
 }
+
+/// R4 (ease-pass 17): a branch's `is here` label is dropped where the
+/// branch column names it (`row_text::labels`), so the column must be drawn
+/// wherever a label could be. `Columns::compute` gives the column
+/// `min(branch_width_for(screen), left / 2)` and the message column the rest
+/// of `left`; it is empty only when `left <= 1`, which leaves the message
+/// column at most one cell: no label (`x is here` is 9 cells) fits there.
+#[test]
+fn the_branch_column_is_drawn_wherever_a_label_could_be() {
+    let rows = linear(2);
+    for width in 20..=200 {
+        let view = screen(&rows, true);
+        let columns = row_layout(&view, Rect::new(0, 0, width, 8)).columns;
+        assert!(
+            usize::from(columns.subject_width) < LABEL.len() || columns.branch_width > 0,
+            "{width}: subject {} branch {}",
+            columns.subject_width,
+            columns.branch_width
+        );
+    }
+}
