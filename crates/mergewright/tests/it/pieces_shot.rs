@@ -19,7 +19,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use mergewright::config::Loaded;
-use mergewright::jobs::{Dispatch, Shutdown};
+use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
 use mergewright::session::Session;
 use mergewright::update::{AppEvent, AppState, update};
 use mergewright::view::strips::{StripPaint, pixel_rows};
@@ -102,17 +102,7 @@ fn shot() -> Result<Shot, String> {
     let focused = press(&state, KeyCode::Char('F'));
     let focused = answered(&jobs, focused, &events, QUIET)?;
     let (on, on_pieces) = panel(&focused)?;
-    let shutdown = jobs.shutdown(
-        Duration::from_secs(10),
-        mergewright::jobs::EXIT_WRITE_WAIT,
-        &(),
-    );
-    if shutdown != Shutdown::CLEAN {
-        return Err(format!(
-            "the job pool did not stop cleanly: stalled {}",
-            shutdown.stalled
-        ));
-    }
+    shut_down(jobs)?;
     if off.width != on.width {
         return Err(format!(
             "panels differ in width: {} vs {}",
@@ -131,6 +121,22 @@ fn shot() -> Result<Shot, String> {
     let height = u32::try_from(pixels.len() / stride).map_err(|why| why.to_string())?;
     let png = on_dark(pixels, off.width, height)?;
     Ok((png, merge_row, (off_pieces, on_pieces)))
+}
+
+/// Stops the job pool, failing if it did not stop cleanly.
+fn shut_down(jobs: JobRunner<Post>) -> Result<(), String> {
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!(
+            "the job pool did not stop cleanly: stalled {}",
+            shutdown.stalled
+        ));
+    }
+    Ok(())
 }
 
 fn cursor_on_merge(state: &AppState) -> bool {

@@ -323,6 +323,7 @@ fn until_window_for(told: &mpsc::Receiver<HistoryUpdate>, request: u64) -> histo
             HistoryUpdate::Window(_)
             | HistoryUpdate::Progress { .. }
             | HistoryUpdate::LaidOut { .. }
+            | HistoryUpdate::FoldedHits { .. }
             | HistoryUpdate::Started(_) => None,
         },
     )
@@ -351,6 +352,7 @@ fn until_promoted_window_for(
             HistoryUpdate::Window(_)
             | HistoryUpdate::Progress { .. }
             | HistoryUpdate::LaidOut { .. }
+            | HistoryUpdate::FoldedHits { .. }
             | HistoryUpdate::Started(_) => None,
         },
     )

@@ -32,7 +32,7 @@ use std::time::Duration;
 
 use mergewright::config::Loaded;
 use mergewright::event_loop::{Exit, Wake, pump};
-use mergewright::jobs::{Dispatch, Shutdown};
+use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
 use mergewright::session::Session;
 use mergewright::update::{AppEvent, AppState, update};
 use mergewright_core::capabilities::RenderingTier;
@@ -250,6 +250,22 @@ fn session() -> Session {
     Session::settle(&Loaded::default(), answering_dsr(unicode))
 }
 
+/// Stops the job pool, failing if it did not stop cleanly.
+fn shut_down(jobs: JobRunner<Post>) -> Result<(), String> {
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
+    if shutdown != Shutdown::CLEAN {
+        return Err(format!(
+            "the job pool did not stop cleanly: stalled {}, forced {:?}",
+            shutdown.stalled, shutdown.forced
+        ));
+    }
+    Ok(())
+}
+
 fn measure(repo: &std::path::Path, control: Control) -> Result<Measured, String> {
     let (post, events) = mpsc::channel::<Posted>();
     let (jobs, state) = budget_run::open_into(repo, Post(post.clone()))?;
@@ -291,17 +307,7 @@ fn measure(repo: &std::path::Path, control: Control) -> Result<Measured, String>
     drop(spinner);
     let after_enter = replayed(settled, &found.replay, Some(enter_at()));
     let title_after_enter = title(&after_enter)?;
-    let shutdown = jobs.shutdown(
-        Duration::from_secs(10),
-        mergewright::jobs::EXIT_WRITE_WAIT,
-        &(),
-    );
-    if shutdown != Shutdown::CLEAN {
-        return Err(format!(
-            "the job pool did not stop cleanly: stalled {}, forced {:?}",
-            shutdown.stalled, shutdown.forced
-        ));
-    }
+    shut_down(jobs)?;
 
     let mut latencies = opened.latencies;
     latencies.extend(found.latencies);

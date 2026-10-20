@@ -227,6 +227,21 @@ fn ready_sized(
             jobs.dispatch(command);
         }
     }
+    let (mut state, taken) = wake_until_ready(&jobs, state, events)?;
+    if let Refs::FiftyThousand = refs {
+        state.refs = Some(Arc::new(fifty_thousand(&state)?));
+    }
+    print_state_clone(tier, refs, &state);
+    Ok((jobs, state, taken))
+}
+
+/// Takes each wake until the refs and a first window are in, timing each
+/// event (`budget_run::pump_until_from`'s loop, with each event timed).
+fn wake_until_ready(
+    jobs: &JobRunner<Post>,
+    mut state: AppState,
+    events: &Receiver<Posted>,
+) -> Result<(AppState, Vec<StartupWake>), String> {
     let ready = |state: &AppState| {
         state.refs.is_some()
             && state
@@ -271,11 +286,7 @@ fn ready_sized(
             return Err(format!("Mergewright quit: {quit:?}"));
         }
     }
-    if let Refs::FiftyThousand = refs {
-        state.refs = Some(Arc::new(fifty_thousand(&state)?));
-    }
-    print_state_clone(tier, refs, &state);
-    Ok((jobs, state, taken))
+    Ok((state, taken))
 }
 
 /// A terminal of `state`'s size writing into `sink`.
