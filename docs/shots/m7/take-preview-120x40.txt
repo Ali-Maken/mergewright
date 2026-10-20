@@ -9,8 +9,8 @@
 # put aside and back).
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●                           fix the bug                             Graft   3m│ origin/sara/login-page
-    │                           after cherry-pick                                 │ ✓ pushed
+▸   ●                           fix the bug                             Graft   3m│ login-page
+    │                           after cherry-pick                                 │ ! not pushed yet
     │ ○                         fix the bug  main is here               Graft    —│ · not merged
   ●─│─╯                         main moves on                           Graft   4m│ ! main has 1 new commit since it
   ●─╯                           add the base                            Graft   5m│   left
@@ -18,7 +18,7 @@
   ●                             Add the first note                      Graft   1y│
   ◇                             Add a readme                            Graft   1y│ built on
                                                                                   │   main
-                                                                                  │    ─◆ origin/sara/login-page
+                                                                                  │    ─◆ login-page
                                                                                   │
                                                                                   │
                                                                                   │

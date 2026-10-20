@@ -20,6 +20,7 @@ mod fixture;
 mod flow;
 mod fold;
 mod graph;
+mod identity;
 mod journeys;
 mod merge;
 mod merge_finish;

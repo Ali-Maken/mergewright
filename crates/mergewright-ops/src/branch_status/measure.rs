@@ -14,7 +14,11 @@
 //! - **Ordinary contenders**, when the walker is ordinary: tips reachable
 //!   from `w` (`--merged w`; R1's `base_only == 0`), and not from an able
 //!   `T`; of those, only the tips no other of them reaches (`merge-base
-//!   --independent`).
+//!   --independent`), and on `w`'s first-parent line (one `rev-list
+//!   --first-parent` for all of them): a branch merged into `w` through a
+//!   second parent is wholly under `w` but not what `w` was built on. A top
+//!   off the line hides the tips under it, so those are asked again
+//!   without it.
 //!
 //! Why the tops are enough: if contender `c`'s tip is under contender
 //! `c'`'s (a different commit), `c'`'s tip is in `w` and not in `c`, so
@@ -36,7 +40,7 @@ use std::collections::HashMap;
 
 use mergewright_core::oid::Oid;
 use mergewright_git::contained::{RefFilter, independent_tips, refs_where};
-use mergewright_git::history_reads::count_between;
+use mergewright_git::history_reads::{count_between, on_first_parent_line};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{RunError, Stop};
 
@@ -86,10 +90,22 @@ pub(super) fn measure(
     let chosen = match how {
         How::Contenders => contenders(repo, walker, &pool, ask, stop)?,
         #[cfg(test)]
-        How::Every => pool
-            .iter()
-            .map(|&c| Ok((c, apart(repo, walker, c, false, stop)?)))
-            .collect::<Result<_, RunError>>()?,
+        How::Every => {
+            let mut all = Vec::new();
+            for &c in &pool {
+                let apart = apart(repo, walker, c, false, stop)?;
+                // The same rule, asked of each candidate alone: an ordinary
+                // branch wholly under the walker counts only on its
+                // first-parent line.
+                let off_line = c.kind == CandidateKind::Other
+                    && apart.base_only == 0
+                    && on_first_parent_line(repo, walker.tip, &[c.tip], stop)?.is_empty();
+                if !off_line {
+                    all.push((c, apart));
+                }
+            }
+            all
+        }
     };
     Ok(chosen.into_iter().map(|(c, a)| (c.clone(), a)).collect())
 }
@@ -267,12 +283,28 @@ impl Sheet<'_, '_> {
             .collect();
         tips.sort_unstable();
         tips.dedup();
-        // Only a tip no other contender's tip reaches can win (module doc).
-        let unreached = if tips.len() > 1 {
-            independent_tips(self.repo, &tips, self.stop)?
-        } else {
-            tips
-        };
+        // Only a tip no other contender's tip reaches can win (module doc),
+        // and only one on the walker's first-parent line: a branch merged in
+        // through a second parent is wholly under the walker but not what it
+        // was built on. A top that is off the line hides the tips under it,
+        // so, when no top is on the line, the tips under the
+        // off-line ones are asked again without them.
+        let mut unreached = Vec::new();
+        while !tips.is_empty() {
+            let heads = if tips.len() > 1 {
+                independent_tips(self.repo, &tips, self.stop)?
+            } else {
+                tips.clone()
+            };
+            let on_line = on_first_parent_line(self.repo, self.walker.tip, &heads, self.stop)?;
+            if !on_line.is_empty() {
+                // Any other tip on the line lies under this top, or would
+                // have put it under another top; none can beat it.
+                unreached = on_line;
+                break;
+            }
+            tips.retain(|tip| !heads.contains(tip));
+        }
         self.take(|s, c| pending(s, c) && unreached.contains(&c.tip))
     }
 }

@@ -128,7 +128,7 @@
 545 crates/mergewright/src/event_loop/tests/pace.rs
 604 crates/mergewright/src/event_loop/tests/pixel_scroll.rs
 715 crates/mergewright/src/event_loop/tests/settle.rs
-1446 crates/mergewright/src/history/tests.rs
+1414 crates/mergewright/src/history/tests.rs
 560 crates/mergewright/src/jobs/operate.rs
 1291 crates/mergewright/src/jobs/tests.rs
 817 crates/mergewright/src/jobs/undo.rs

@@ -11,9 +11,9 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│ built on
                                                                                   │   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ feature/receipts
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │

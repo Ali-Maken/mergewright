@@ -3,13 +3,13 @@
 ▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…    you  now│ wallet-release  (you're here)
     ┃                         you · just now · made on wallet-release · merged 2 …│ ! not pushed yet
     ●                         release notes                               you   1y│ · not merged
-    ●                         the report                                  you   1y│ ✓ up to date with sara/fix-toc
+    ●                         the report                                  you   1y│ ✓ up to date with main
   ●━╯    main                 Correct the note  not pushed yet            you   7y│ · you, last commit just now
   ●                           Add the first note                          you   7y│
   ◇                           Add a readme                                you   7y│ built on
                                                                                   │   main
-                                                                                  │    ─◆ sara/fix-toc
                                                                                   │    ─◆ wallet-release
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │

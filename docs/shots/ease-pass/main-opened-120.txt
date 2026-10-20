@@ -6,13 +6,13 @@ What right looks like: the merge's four commits appear under it on one lane of t
     ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Graft  28h│ wallet-release  (you're here)
 ▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Graft  28h│ ! not pushed yet
     ┃ ┊                         Graft · 28 hours ago · made on wallet-release · m…│ · not merged
-    ┃ ●    PR 16021             totals: test the sum                    Graft  28h│ ✓ up to date with sara/fix-toc
+    ┃ ●    PR 16021             totals: test the sum                    Graft  28h│ ✓ up to date with main
     ┃ ●    PR 16021             totals: drop the cache                  Graft  28h│ · Graft, last commit 28h ago
     ┃ ●    PR 16021             totals: round once                      Graft  28h│
     ┃ ●    PR 16021             totals: read the ledger                 Graft  28h│ built on
     ●┄╯                         Start the wallet release                Graft  28h│   main
-  ◇━╯      main                 Add the readme  not pushed yet          Graft  28h│    ─◆ sara/fix-toc
-                                                                                  │    ─◆ wallet-release
+  ◇━╯      main                 Add the readme  not pushed yet          Graft  28h│    ─◆ wallet-release
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │

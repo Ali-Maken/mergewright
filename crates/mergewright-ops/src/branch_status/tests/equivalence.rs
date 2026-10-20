@@ -196,7 +196,8 @@ fn features_merged_one_after_another_answer_as_the_oracle() {
         .map(|name| find(&candidates, name))
         .collect();
     agrees(&repo, &candidates, &foci);
-    // From f3, f1 and stale/f1 lie under f2: only f2 is measured of them.
+    // From f3, f1, f2 and stale/f1 were all merged into main through second
+    // parents: none is on f3's first-parent line, so only main is measured.
     let f3 = find(&candidates, "f3");
     let measured = measure(
         &repo.handle(),
@@ -210,5 +211,5 @@ fn features_merged_one_after_another_answer_as_the_oracle() {
     .expect("measured");
     let mut names: Vec<&str> = measured.iter().map(|(c, _)| c.name.as_str()).collect();
     names.sort_unstable();
-    assert_eq!(names, ["refs/heads/f2", "refs/heads/main"]);
+    assert_eq!(names, ["refs/heads/main"]);
 }

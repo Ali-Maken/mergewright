@@ -278,7 +278,7 @@ fn walk_unheld(
 
 /// `rev-list --parents` output: every printed commit, in git's order, with
 /// its parents.
-fn parse_parents(stdout: &[u8]) -> Result<(Vec<Oid>, Parents), RunError> {
+pub(super) fn parse_parents(stdout: &[u8]) -> Result<(Vec<Oid>, Parents), RunError> {
     let mut order = Vec::new();
     let mut parents: Parents = HashMap::new();
     for line in stdout.split(|&byte| byte == b'\n') {
