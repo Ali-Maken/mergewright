@@ -1,6 +1,6 @@
 # ease-acceptance — walk the three mocks in the real app
 
-Status: partial — handoff in NOTES, 2026-10-20 (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17; 2026-10-18 planner: the m3 pty waiter and the stale pty records / contact sheets from 08t's NOTES added — "Earlier milestones' records" below; 08u, 08v added to Blocked by; 2026-10-19 planner: 09c, 09p added to Blocked by)
+Status: done except "Earlier records current" (not rebuilt, user 2026-10-19); 14b and 14c, 2026-10-20 (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17; 2026-10-18 planner: the m3 pty waiter and the stale pty records / contact sheets from 08t's NOTES added — "Earlier milestones' records" below; 08u, 08v added to Blocked by; 2026-10-19 planner: 09c, 09p added to Blocked by)
 Blocked by: 07b-graph-rows-cursor, 07c-graph-rows-rest, 09b-branch-picker-and-merged-label, 09c-branch-pane-rest, 09p-branch-pane-cost, all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c, 06u, 08s–08v
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
@@ -137,23 +137,23 @@ capture into the report.
 tree (`tests/it/m3_walk.rs` waiter). No product code.
 
 ## Acceptance
-- [ ] `scripts/ease-accept.sh` exits 0 and prints 9 journey lines with walked/allowed counts, including exactly
-  `commit-all-subject 3/3` and `merge-one-clash 5/5`.
+- [x] `scripts/ease-accept.sh` exits 0 and prints 9 journey lines with walked/allowed counts, including exactly
+  `commit-all-subject 3/3` and `merge-one-clash 5/5`. — ran it (2026-10-20): rc=0, 9 journey lines, none over, `commit-all-subject 3/3`, `merge-one-clash 5/5`; summary `docs/perf/ease-accept.txt`; the lines come from `ease_walk::journeys::*` (`counted`).
 - [x] A deliberately padded walk (one extra key) of each of those two fails `within_the_note` (negative test). — `ease_walk::one_key_over_fails_both_counted_journeys` (commit-all-subject 3→4 and merge-one-clash 5→6 each fail naming both numbers; at the count each passes).
 - [x] Every behaviour ID G1–G14, C1–C15, M1–M19 has a passing test named with the ID. The three `g12_…`, the three
   `fold_…`, `picks_shell_merge` and every `q1`–`q17` assertion pass. NOTES lists IDs → test names. — all in `crates/mergewright/tests/it/ease_walk/`, run `cargo nextest run -p mergewright --test it ease_walk`: 87/87 pass (2026-10-20). IDs → tests in NOTES, "14b completion".
-- [ ] Every capture under `docs/shots/ease-pass/` is ≤200 KB. The captions file has one line per capture with its mock
-  path. The contact sheet assembles with no `NOT RECORDED`.
-- [ ] The `TESTING.md` section is present, with one entry per capture and colour marked unverified.
-- [ ] Pixel summary lines quoted from `docs/perf/ease-pixel.txt`, or the gap recorded in `KNOWN_GAPS.md` as
-  **unverified**.
-- [ ] **m3 waiter:** the m3 pty walk passes `m3-05-commit-refused` waiting on the in-process scenario's refusal words
-  (name them); before/after result in NOTES. — the m3 pty walk's summary line for that scenario.
-- [ ] **Earlier records current:** every m3/m4/m6/m7/m8 walk named above exits 0 with `MWR_UPDATE_SHOTS=1`; each
+- [x] Every capture under `docs/shots/ease-pass/` is ≤200 KB. The captions file has one line per capture with its mock
+  path. The contact sheet assembles with no `NOT RECORDED`. — `ease_walk::shots::every_capture_is_under_the_cap`, `every_capture_has_a_caption_with_its_mock` (55 captions, each `mock <existing path>: …`), `the_contact_sheet_names_every_capture` (every capture's current text is in the sheet; no `NOT RECORDED`); `scripts/contact-sheet.sh --captions-order ease-pass docs/shots/ease-pass`: `wrote 55 captures, 0 without a recorded caption, in 2 part(s)` (177 767 B + 103 489 B; largest capture 10 123 B).
+- [x] The `TESTING.md` section is present, with one entry per capture and colour marked unverified. — `grep -c '^| `.*\.txt` | mock ' TESTING.md` finds the 55 capture rows (generated from the captions file, so `ease_walk::shots::every_capture_has_a_caption_with_its_mock` holds them to the files); the section opens and the capture table is headed "Colour: unverified"; each caption says `unverified` (same test).
+- [x] Pixel summary lines quoted from `docs/perf/ease-pixel.txt`, or the gap recorded in `KNOWN_GAPS.md` as
+  **unverified**. — quoted: `scripts/ease-accept.sh` step 5 prints the 18 `SUMMARY bin=base|roles|tall` lines (not judged); `ease_walk::questions::q4_pixel_lag_summary_recorded` holds that the three bins have lines. The Ghostty run (`docs/perf/ease-pixel-ghostty.txt`) does not exist: that part is **unverified**, the user's to run; for the conductor to log in `KNOWN_GAPS.md` (builders do not read it).
+- [x] **m3 waiter:** the m3 pty walk passes `m3-05-commit-refused` waiting on the in-process scenario's refusal words
+  (name them); before/after result in NOTES. — `pty-walk-m3.py 80x24 commit-refused-nothing-staged` and `160x48`: `docs/shots/m3-05-commit-refused-80x24.txt: 1337 bytes, settled`, `…-160x48.txt: 4215 bytes, settled`. Waiter now `Nothing goes in. Put a file in with space.` (`words.rs:191`, what `c` on a clean tree draws). Before/after in 14c's NOTES. The two captures were re-shot (they were the old COMMIT editor; the diff is the commit screen of ease-pass 04/08).
+- [ ] **Earlier records current — NOT DONE, not rebuilt (user, 2026-10-19: old sheets not rebuilt; 14 Remains item 6; 14c's scope):** every m3/m4/m6/m7/m8 walk named above exits 0 with `MWR_UPDATE_SHOTS=1`; each
   regenerated sheet assembles with no `NOT RECORDED`; `grep -rn ' ✓ ·\|✓ ·' docs/shots` finds no done line in the old
   shape (resolver `done ✓ · ▸` rows and `files · all done ✓` strips excepted — they are not done lines); every diff
   classified in NOTES, none "other". — each walk's exit line; the grep in NOTES.
-- [ ] Each tick names its test.
+- [x] Each tick names its test. — every box above is ticked with its test or command inline, except "Earlier records current", which is unticked with its reason.
 
 ## Gates
 fmt, clippy `-D warnings`, nextest, `cargo test --doc`, all workspace-wide; plus `scripts/ease-accept.sh`, and the

@@ -16,6 +16,12 @@ const CAP_BYTES: u64 = 200_000;
 
 const CAPTIONS: &str = "ease-pass-contact-sheet-captions.tsv";
 
+fn is_text(name: &str) -> bool {
+    Path::new(name)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("txt"))
+}
+
 fn shots_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/ease-pass")
 }
@@ -33,7 +39,7 @@ fn captures() -> BTreeSet<String> {
     for entry in entries {
         let entry = entry.unwrap_or_else(|why| panic!("{}: {why}", dir.display()));
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name.ends_with(".txt") && !name.starts_with("ease-pass-contact-sheet") {
+        if is_text(&name) && !name.starts_with("ease-pass-contact-sheet") {
             names.insert(name);
         }
     }
@@ -82,11 +88,11 @@ fn every_capture_is_under_the_cap() {
 #[test]
 fn every_capture_has_a_caption_with_its_mock() {
     let named: Vec<(String, String)> = captions();
-    let names: BTreeSet<&str> = named.iter().map(|(name, _)| name.as_str()).collect();
-    assert_eq!(names.len(), named.len(), "a capture is captioned twice");
+    let captioned: BTreeSet<&str> = named.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(captioned.len(), named.len(), "a capture is captioned twice");
     let on_disk = captures();
     for name in &on_disk {
-        assert!(names.contains(name.as_str()), "{name} has no caption");
+        assert!(captioned.contains(name.as_str()), "{name} has no caption");
     }
     for (name, caption) in &named {
         assert!(
@@ -97,11 +103,12 @@ fn every_capture_has_a_caption_with_its_mock() {
             !caption.starts_with("NOT RECORDED"),
             "{name} is not recorded"
         );
-        let mock = caption
+        let Some((mock, _)) = caption
             .strip_prefix("mock ")
             .and_then(|rest| rest.split_once(": "))
-            .map(|(path, _)| path)
-            .unwrap_or_else(|| panic!("{name}: the caption does not start `mock <path>: `"));
+        else {
+            panic!("{name}: the caption does not start `mock <path>: `");
+        };
         assert!(
             repo_root().join(mock).is_file(),
             "{name}: mock {mock} does not exist"
@@ -125,7 +132,7 @@ fn the_contact_sheet_names_every_capture() {
     for entry in entries {
         let entry = entry.unwrap_or_else(|why| panic!("{}: {why}", dir.display()));
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name.starts_with("ease-pass-contact-sheet") && name.ends_with(".txt") {
+        if name.starts_with("ease-pass-contact-sheet") && is_text(&name) {
             let part =
                 std::fs::read_to_string(entry.path()).unwrap_or_else(|why| panic!("{name}: {why}"));
             sheet.push_str(&part);

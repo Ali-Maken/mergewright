@@ -3387,3 +3387,201 @@ scenario and `mergewright: 8 scenarios, 0 failed`. The fence gains 4 ids (`open-
 | S6 Q2 picker on his branch | 3 (`C`, `main`, `⏎`) | `m8_walk::mergewright::picker_enter_current` | on `main`, cursor elsewhere: the picker closes, `▸` on HEAD's row (`◆ main`), the bottom row the graph's own bar (no status line); `git reflog -1` unchanged. Capture `docs/shots/m8-q2-picker-enter-current-120x36.txt` |
 | S7 what ships | 0 | step 6 reads `docs/release/plan.txt` | artifacts `mergewright-installer.sh`, `mergewright-{aarch64,x86_64}-apple-darwin.tar.xz`, `mergewright-{aarch64,x86_64}-unknown-linux-gnu.tar.xz`, each holding `[bin] mwr` and `[misc] CHANGELOG.md, README.md, mwr.1`; none named `graft` or `trib`. `build.txt`: `brew style mergewright.rb: ok (1 file inspected, no offenses detected)`. Dated 2026-10-12 (ticket 53's run; not re-run by 57: `dist` is not installed here) |
 | S8 no old name live | 0 | `rename_names::{no_old_message_literal, no_old_name_in_user_visible_strings, user_docs_and_scripts_name_the_command}`, `rename_names::scripts::{no_old_env_name, scripts_run_the_command, no_old_package_spec}`, `rename_opens::no_old_dir_literal` | all seven green |
+
+## Ease pass acceptance (ease-pass/14, 14b, 14c)
+
+Promise: **the three mock screens (main, commit, merge) are what the app draws and how it behaves.** Roles read by
+line shape, the commit screen says what goes in, a merge with one clash takes five keys. One command walks it:
+
+```sh
+scripts/ease-accept.sh    # raw: .scratch/ease-pass/accept/ · summary: docs/perf/ease-accept.txt
+```
+
+It runs the `ease_walk` tests (`crates/mergewright/tests/it/ease_walk/`): the real app in-process (`update`, `view`, the
+real job pool) over real `git` in two fixture repos, `mock` (shaped like the mocks) and `team` (01r's topologies),
+reading the drawn frame. **It does not run the `mwr` binary in a pty.** Steps: (1) the walks, captures compared and never
+rewritten (`MWR_UPDATE_SHOTS` unset); (2) the nine journey lines `journey <id> <walked>/<allowed>`, failing on any walk
+over its count; (3) a passing test per behaviour id; (4) the contact sheet and the 200 KB cap; (5) the pixel-lag summary,
+quoted. One walk alone: `cargo nextest run -p mergewright --test it -E 'test(/ease_walk::<module>::<test>$/)'`.
+
+**Colour: unverified (rule 5)** for every row below: the checks read words, glyphs and rows, never colour; the captures
+are character grids. Whether anything looks right is the user's to judge in his terminal (rule 6).
+
+### Journeys (the note's `journeys` fence, 9 ids)
+
+Each is read from `docs/design-notes/ease-pass.md` by `ease_walk::journeys_in` and held by `within_the_note`; one key
+over fails (`ease_walk::one_key_over_fails_both_counted_journeys`); `ease_walk::every_ease_journey_id_has_a_walk` holds the
+walks to the fence. Test paths are `ease_walk::journeys::<name>`.
+
+| Id | Keys | Test | Right looks like |
+|---|---|---|---|
+| commit-all-subject | 3 | `commit_all_subject` | `c`, type, `⏎`: back on the graph, HEAD one commit ahead, cursor on it, done line `✓ Committed N files to <branch>.` |
+| commit-with-body | 6 | `commit_with_body` | `c`, type, `⇥`, type, `esc`, `⏎`: one commit whose message holds subject and body |
+| commit-leave-first | 6 | `commit_leave_first` | `c`, type, `⇥ ⇥`, `space`, `⏎`: `git show --name-only HEAD` lists 2 of the 3 files, not `.env`; cursor on the new commit |
+| merge-one-clash | 5 | `merge_one_clash` | `m y o y y`: two-parent HEAD, cursor on the merge, `✓ Merged …` |
+| merge-clean | 2 | `merge_clean` | `m y` on `ops/ci`: lands on the merge commit on the graph, no clash screen |
+| merge-three-clashes | 8 | `merge_three_clashes` | `m y o o n o y y`: merge committed after three picks across two files |
+| undo-a-pick | 1 | `undo_a_pick` | `u` on the clash screen: the last pick is open again, cursor on it |
+| pause-and-resume | 2 | `pause_and_resume_on_the_merge` | `esc` → graph with the banner focused and the bar leading `⏎ back to the clashes`; `⏎` → the first open clash. Same on a rebase |
+| open-folded-merge | 1 | `open_folded_merge` | `space` on a folded merge: `▾`, its commits under it on one lane |
+
+### Graph (main mock) — `ease_walk::graph`, `ease_walk::bar_and_pane`, `ease_walk::team`
+
+| Id | Test | Right looks like |
+|---|---|---|
+| G1 | `g1_lane_shape_is_the_role_against_the_cursor_branch`, `g1_built_on_branch_draws_thin` | cursor's own branch `┃`, built-on `│`, trunk `║`, others `┊`; moving `j` changes which |
+| G2 | `g2_connectors_take_the_joining_branch_role` | `╯ ╮` joins use the joining branch's line shape |
+| G3 | `g3_commit_dot_and_merge_ring` | commits `●`, merges `◉` (HEAD's merge `◆`) |
+| G4 | `g4_merged_branches_fold_and_space_opens_and_closes` | folded merge ends `▸ N commits from PR <n>`; `space` → `▾`; `space` on an inner row closes it, cursor on the merge |
+| G5 | `g5_branch_column_once_per_change_with_you_on_head` | branch name once per run; `(you)` after HEAD's |
+| G6 | `g6_other_rows_draw_their_message_fainter` | other people's rows draw the message dim, yours not |
+| G7 | `g7_labels_after_the_message` | `↑1 to push`, `not merged`, `<branch> is here`, `tag <name>` after the message |
+| G8 | `g8_who_first_name_age_and_no_sha_or_badge` | who = first name or `you`; age `23h`; no SHA column |
+| G9 | `g9_cursor_row_second_line` | cursor row's second line starts with the author's name and ends with a 7-char hash |
+| G10, G11 | `g10_g11_header_counts_lanes_and_folds` | `lanes drawn: 5 of 8` at the top line's right end; `N merged branches folded` only while some are |
+| G12 | `g12_pane_heading_marks_and_route`, `g12_heading_says_youre_here_on_head`, `g12_sibling_never_built_on`, `g12_teammate_sync_is_not_a_merge`, `g12_dependent_before_the_move` | pane heading + `(you're here)`; four lines led by `! ✓ ·`; `built on` on sara never names `ali/x`; a teammate's sync merge reads `not merged`; before wallet-release moved, sara's route is `main ─◆ develop ─◆ wallet-release ─◆ sara/fix-toc` |
+| G13 | `g13_bar_per_row_kind` | folded merge: bar starts `space show the 1 commit inside · ⏎ open · x compare`; opened merge row: `space hide the commits inside · ⏎ open · x compare`; a row inside it (a live branch): starts `m merge receipts into yours`, no `space`; on `integration`: `m merge integration into yours · ⏎ open · o take · C switch to integration · x compare` |
+| G14 | `g14_hash_turns_colour_off_and_keeps_shapes` | `#`: no colour attribute in the frame, glyphs unchanged; `#` again restores |
+
+Fold (06, 06c): `fold_sync_merge_has_no_mark` (the sync merge's row has no `▸`), `fold_reveal_parent` (following parent 2
+of a folded PR merge: the row reads `▾ …`, cursor on parent 2), `fold_same_without_commit_graph` (rows' text equal with
+`.git/objects/info/commit-graph` removed). Picks in a shell-begun merge (05, 05b): `picks_shell_merge` (`⏎ o u o y y`
+→ merged; `git ls-files -u` non-empty until the last `y`).
+
+### Commit screen — `ease_walk::commit`
+
+| Id | Test | Right looks like |
+|---|---|---|
+| C1 | `c1_c_opens_on_the_message_with_its_placeholder` | header `committing to <branch>`; cursor in the subject; placeholder `What did you change? (one line)` |
+| C2 | `c2_subject_bold_counter_and_warning_past_72` | subject bold with `n/72`; a warning past 72 |
+| C3 | `c3_body_placeholder` | body placeholder `More detail, if it needs it (optional)` |
+| C4 | `c4_summary_line` | `3 files go in, +4 −0, as a new commit on <branch>. 1 stays out.` / `Nothing goes in. Put a file in with space.` |
+| C5 | `c5_two_groups_and_their_marks` | `Going in (3)` with `✓`, `Staying out (1)` with `·`; empty groups read `nothing yet` / `nothing` |
+| C6 | `c6_staged_decides_what_goes_in` | nothing staged → every change goes in; staged → only those |
+| C7 | `c7_secrets_file_stays_out_and_says_why` | `.env` listed under Staying out with `!` and `looks like a secrets file`; value drawn `••••••••` |
+| C8 | `c8_diff_lines` | the changes pane shows `+` and `−` lines |
+| C9 | `c9_enter_refuses_until_message_and_file` | `⏎` commits with a message and one file; else bar `type a message first` / `put a file in first` |
+| C10 | `c10_arrows_in_the_message_move_the_file_cursor` | `↑ ↓` in the message move the file cursor |
+| C11 | `c11_tab_cycles_and_esc_returns_to_the_message` | `⇥` message → body → files; `space`, `j k`, `⏎`, `esc` in the files |
+| C12 | `c12_the_three_bars` | message bar `⏎ commit 3 files  ⇥ more detail  ↑/↓ see a file's changes  esc cancel, your message is kept`; body bar `esc back to the message line  ⇥ files`; files bar `space leave it out  j/k move  ⏎ commit  esc back to the message` |
+| C13 | `c13_landing_line_bar_and_header` | landing line `✓ Committed N files …`, bar `u undo the commit, your edits come back · P push`, header `1 commit to push` |
+| C14 | `c14_u_then_c_after_the_commit` | `u` after commit and `c` again |
+| C15 | `c15_esc_keeps_the_message_for_the_next_c` | `esc` in the message closes; the next `c` shows the message again |
+
+### Merge — `ease_walk::merge`, `ease_walk::merge_finish`
+
+| Id | Test | Right looks like |
+|---|---|---|
+| M1 | `m1_bar_offers_merge_into_yours` | bar on a teammate's row has `m merge <b> into yours` |
+| M2 | `m2_preview_words_and_footer` | `Comes in 3 commits`, `Changes 3 files`, `You decide 1 file clashes`; footer `y merge · esc cancel · ⏎ see the 3 commits`; no `[ Cancel ]` / `[ Confirm ]` |
+| M3 | `m3_enter_lists_incoming_esc_back_y_merges` | `⏎` lists the incoming commits; `esc` back; `y` merges |
+| M4 | `m4_esc_cancels` | `esc` closes the preview; nothing written |
+| M5 | `m5_stop_lands_on_the_first_clash_with_its_header` | after `y`: clash screen, top row `merging <from> into <into>`, cursor on the first clash |
+| M6 | `m6_list_column` | `Clashing files`, `? notes.md 1 open`, `✓ … done`, `Combined by git (N)` |
+| M7 | `m7_file_title_numbered_lines_and_the_open_clash` | open clash `yours · <into>` left, `theirs · <from>` right, unnumbered; plain lines numbered |
+| M8 | `m8_taken_block_shrinks_and_says_which` | `o` → block shrinks, `◀ kept yours`; `t` → `▶ took theirs`; `b` → `kept both` |
+| M9 | `m9_advance_within_the_file_and_the_solved_line` | solved file reads `✓ Every clash in <f> is solved.` and offers `n next file` |
+| M10 | `m10_n_goes_to_the_first_open_clash` | `n` → the first open clash in the merge |
+| M11 | `m11_the_three_bars` | open clash: `o take yours (left) · t take theirs (right) · b take both · e edit by …`; all solved: `y review the merge · u undo pick · esc pause, come back later`; review: `y commit the merge · j/k move · ⏎ look at it · u undo last pick · …` |
+| M12 | `m12_u_undoes_the_last_pick_from_the_screen_and_the_review` | `u` reopens the last pick, cursor on it; also from the review |
+| M13 | `m13_e_edits_by_hand_at_the_cursor_block` | `e` asks for the external editor on `report.md` at the cursor block's line (the command is checked; no editor is run) |
+| M14 | `m14_esc_pauses_and_enter_comes_back` | `esc` → graph, banner focused; `⏎` → first open clash |
+| M15 | `m15_review_words_and_bar` | `All 3 clashes solved. Nothing committed yet.`; bar `y commit the merge · … esc back to the clashes` |
+| M16 | `m16_review_esc_back_and_y_again` | review `esc` → clashes; `y` → review |
+| M17 | `m17_enter_looks_read_only_and_the_combined_row` | `⏎` on a file: `… · as it will land · read only`; combined row per file `theirs +1 −1` with a `from theirs` sample |
+| M18 | `m18_commit_lands_on_the_folded_merge` | lands on the merge commit, `▸ N commits from <from>`, `✓ Merged …` |
+| M19 | `m19_u_undoes_the_merge` | `u` → HEAD back at the pre-merge commit |
+
+### Answered questions — `ease_walk::questions`, `ease_walk::questions_late`
+
+| Id | Test | Right looks like |
+|---|---|---|
+| Q1 | `q1_c_opens_the_list_on_his_branch_and_enter_switches` | `C` on a teammate's row: picker on that branch; `⏎` switches (2 keys) |
+| Q2 | `q2_x_compare_on_the_bar_and_x_x_compares` | bar has `x compare`; `x x` across two rows compares |
+| Q3 | `q3_hash_colour_off_until_pressed_again` | `#`: colour off, still off after opening and closing the commit screen |
+| Q4 | `q4_pixel_lag_summary_recorded` | `docs/perf/ease-pixel.txt` has `SUMMARY` lines for base, roles, tall (quoted in step 5; not judged) |
+| Q5 | `q5_ghost_rows_above_the_preview_box` | the ghost merge row sits above the preview box |
+| Q6 | `q6_no_buttons_and_enter_lists` | no `[ Cancel ]` / `[ Confirm ]`; `⏎` opens the incoming list |
+| Q7 | `q7_esc_pauses_on_the_banner_and_enter_resumes` | `esc`: graph, banner focused, bar leads `⏎ back to the clashes`; `⏎` → first open clash (merge and rebase) |
+| Q8 | `q8_options_off_screen_ctrl_s_and_ctrl_p` | no option row; `⌃S` signs off; `⌃P` lists amend, skip hooks, allow empty; skip hooks → `· skipping hooks` in the header |
+| Q9 | `q9_u_after_commit_keeps_the_message` | `u` after a commit: edits uncommitted; next `c` shows the old message |
+| Q10 | `q10_opened_merge_rows_on_their_own_lane` | an opened merge's rows sit on their own lane joining the merge |
+| Q11 | `q11_todays_frame_with_the_mocks_words` | top line keeps today's frame, ends `lanes drawn: N of M` |
+| Q12 | `q12_rebase_clash_marks_enter_stages_c_goes_on` | rebase clash uses the marks; `⏎` stages; `c` goes on |
+| Q13 | `q13_pr_merge_folds_as_commits_from_pr` | a PR merge's folded row reads `▸ N commits from PR <n>` |
+| Q14 | `q14_top_line_names_the_branch_once` | top line names HEAD's branch once; right end only `lanes drawn: …` / `… merged branches folded` |
+| Q15 | `q15_sibling_is_never_built_on` | as G12's `built on` line |
+| Q16 | `q16_retake_replaces_and_u_brings_the_earlier_back` | `o` then `t` on one clash: `▶ took theirs`, no `already taken`; `u` → `◀ kept yours` |
+| Q17 | `q17_rebase_clash_lands_on_the_clash_and_an_edit_stop_on_the_graph` | a rebase that clashes lands on the clash screen, 0 keys; an `edit` stop lands on the graph with the banner focused |
+
+### Pixel lag (Q4) — quoted, not judged
+
+`docs/perf/ease-pixel.txt`, from `scripts/ease-pixel-lag.sh` in a pty answering as Ghostty does (Kitty, deflate), `j` every
+33 ms for 3 s; `scripts/ease-accept.sh` step 5 prints the `SUMMARY bin=base|roles|tall` lines (input age p95, tail ms).
+**Unverified in Ghostty itself:** the terminal's own parse and paint is what no pty answers; the file's closing lines say how
+to run `MWR_PERF_TRACE=… mwr` on a copy of his repo, and `docs/perf/ease-pixel-ghostty.txt` does not exist yet.
+
+### Captures (55) — what right looks like
+
+`docs/shots/ease-pass/<file>`, each ≤200 KB, each beside the mock named in its row. Sheet:
+`scripts/contact-sheet.sh --captions-order ease-pass docs/shots/ease-pass` → `ease-pass-contact-sheet-{1,2}.txt` (parts at
+180 000 B; `ease_walk::shots::*` hold the cap, the captions and the sheet's currency). **Colour: unverified** on every row;
+the look is the user's to judge.
+
+| File | Mock · right looks like |
+|---|---|
+| `main-folded-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: no row of a merged branch; beside the branch pane the message column is 40 cells, so the merges' tails give way to their subjects (ease-pass 09 ruling W): `Merged PR 16021: Fix the wallet totals` whole, the named merge's subject cut with `…`; the PR's merge draws `◉` (the named merge is `HEAD`, `◆`); the header counts the shown commits. Colour unverified (rule 5). |
+| `main-folded-99.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: the PR's merge reads its whole subject, then `▸ 4 commits` two cells after it, no ` from PR 16021` and no word cut (the subject gives way last, ease-pass 09 ruling W); the named merge's tail shortens the same way or drops whole, never cut. Colour unverified (rule 5). |
+| `main-opened-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: the merge's four commits appear under it on one lane of their own that joins the merge row; the cursor stays on the merge (its tail gives way to the subject beside the branch pane, ease-pass 09 ruling W); `sara/fix-toc`'s merge stays folded. Colour unverified (rule 5). |
+| `main-merged-shown-120.txt` | mock prototypes/ease-mocks/mergewright-show-all-branches.html: every commit of PR 16021 and `sara/fix-toc` drawn on its own lane joining its merge; no `▸` tail on any row; the top line ends `every branch shown` and says nothing of merged branches folded. Colour unverified (rule 5). |
+| `main-search-folded-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: the header's search words read `/totals 5 matches · 4 in folded merges (1/5)` — every hit counted, the four behind the folded merge said once; the cursor on the first hit, the PR's merge, still folded (`▸ 4 commits from PR 16021`). At this width the header's `2 merged branches folded` gives way to the search (the header drops its lane words first). Colour unverified (rule 5). |
+| `main-header-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: the top line ends `lanes drawn: 1 of 2 · 2 merged branches folded` — two columns open in view, only `wallet-release`'s holds a commit, so the ledger's lane is not drawn; both merges in view are folded. `wallet-release` appears once on the top line, no `on`, no `+N lanes`. Colour unverified (rule 5). |
+| `main-header-90.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: both lane phrases still fit; the path gives way first (cut to `…api`), the branch name stays whole. Tail room at 90 is 81 cells, 64 once ` · wallet-release` (17) is kept; the tail is 58. Colour unverified (rule 5). |
+| `stash-entries-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: `stash@{0}` (newest, with an untracked file) draws `■`, not `◉`; its index and untracked commits are not drawn; `stash@{1}` (older) is not a row (only in the reflog); `HEAD` (`Write the second note`) draws `◆`. Colour unverified (rule 5). |
+| `main-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. What right looks like: a 20-cell branch column after the lanes, naming each run's branch once, in its role's colour, `(you)` after HEAD's; the opened merge's row reads `fix-toc`, dim; the message, then the labels that fit, whole, muted two cells after it — beside the branch pane they give way first, right-most first, and only then is the subject cut with `…` (ease-pass 09 ruling W; every label is asserted at 200); who (`you` bold on your rows, else a first name) and age right-aligned; no SHA, no `[…]`. Under the cursor row (the opened merge) its second line (07b, G9): `you · N hours ago · made on …` (made on: the lane's branch, as the branch column names it), cut at the pane's rule, muted, the lanes straight through it. Colour unverified (rule 5). |
+| `main-100.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 100x30. What right looks like: a 14-cell branch column after the lanes, naming each run's branch once, in its role's colour, `(you)` after HEAD's; the opened merge's row reads `fix-toc`, dim; the message, then the labels that fit, whole, muted two cells after it — beside the branch pane they give way first, right-most first, and only then is the subject cut with `…` (ease-pass 09 ruling W; every label is asserted at 200); who (`you` bold on your rows, else a first name) and age right-aligned; no SHA, no `[…]`. Under the cursor row (the opened merge) its second line (07b, G9): `you · N hours ago · made on …` (made on: the lane's branch, as the branch column names it), cut at the pane's rule, muted, the lanes straight through it. Colour unverified (rule 5). |
+| `main-90.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 90x30. What right looks like: a 12-cell branch column after the lanes, naming each run's branch once, in its role's colour, `(you)` after HEAD's; the opened merge's row reads `fix-toc`, dim; the message, then the labels that fit, whole, muted two cells after it — beside the branch pane they give way first, right-most first, and only then is the subject cut with `…` (ease-pass 09 ruling W; every label is asserted at 200); who (`you` bold on your rows, else a first name) and age right-aligned; no SHA, no `[…]`. Under the cursor row (the opened merge) its second line (07b, G9): `you · N hours ago · made on …` (made on: the lane's branch, as the branch column names it), cut at the pane's rule, muted, the lanes straight through it. Colour unverified (rule 5). |
+| `main-colours-off-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30, after `#`. What right looks like: the same grid as main-120.txt — `#` takes colour off and keeps bold and dim, so the roles still read by line shape (┃ │ ║ ┊). Colour unverified (rule 5): this grid cannot show that colour is gone; `view::frame::colours_off_tests` checks the buffer. |
+| `main-cursor-own-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. What right looks like: the cursor on HEAD's row `Draw the receipts list`; under it `you · N hours ago · made on feature/receipts ·…`, cut at the branch pane's rule (ease-pass 09); muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`. Colour unverified (rule 5). |
+| `main-cursor-teammate-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. What right looks like: the cursor on Sara's row inside the opened merge; under it `Sara · N hours ago · made on sara/fix-toc · <sha7>`, the sha cut at the branch pane's rule (ease-pass 09); muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`. Colour unverified (rule 5). |
+| `main-opened-merge-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. What right looks like: the cursor on the opened merge row; under it `you · N hours ago · made on feature/receipts ·…` (the lane's branch, as the branch column names it), cut at the branch pane's rule before `merged 1 from fix-toc` (ease-pass 09; asserted at 200); muted, no bold, the lanes straight down through it (no node, no connector); only the cursor row has one; never `reading…`. Colour unverified (rule 5). |
+| `main-pane-own-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. What right looks like: the cursor on HEAD's row; right of a `│` rule the pane heads `wallet-release (you're here)`, four answers each led by `!`, `✓` or `·`, the who line naming the author (`· Graft, …`: this fixture sets no `user.email`, so not `you`), then `built on` and its route `main ─◆ wallet-release`; no subject cut that would fit its column. Colour unverified (rule 5). |
+| `main-pane-teammate-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. What right looks like: the cursor on sara/fix-toc's row, moved there with `j` alone; the pane heads `sara/fix-toc`, four answers, and `built on` reads `main ─◆ sara/fix-toc`: wallet-release has a commit after sara's cut, so it is not her base (01r R1); never `ali/x`, whose lane draws `┊`. Colour unverified (rule 5). |
+| `main-pane-100.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 100x30. What right looks like: the same at 100: the pane 30 wide, its words wrapped or cut at its edge, the rows narrower beside it. Colour unverified (rule 5). |
+| `main-pane-reading-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. The pane's read withheld by the test harness (`branch_pane::rest_with`): the moment before the answer lands. What right looks like: the cursor on sara/fix-toc's row; the pane heads `sara/fix-toc`, then four lines each `reading…`; no `!`, `✓` or `·`, no `built on` yet. Colour unverified (rule 5). |
+| `main-pane-sibling-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: the pane on sara reads `sara/fix-toc`, then four lines marked `!` `·` `✓` `·`, then `built on` `main` `─◆ develop` `─◆ sara/fix-toc` — never `ali/x`, never `wallet-release` (it moved on: Q15 a); the merged line reads `not merged`, not `merged into bob/x`; `ali/x`'s lane on sara's row is `┊`. Colour unverified (rule 5). |
+| `main-pane-dependent-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: taken before wallet-release's extra commit: the pane's `built on` reads `main` `─◆ develop` `─◆ wallet-release` `─◆ sara/fix-toc` (all of wallet-release sits under hers); the merged line reads `not merged`. Colour unverified (rule 5). |
+| `picker-on-branch-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: 120x30. `C` pressed on sara/fix-toc's row. What right looks like: the picker is up with an empty query and its cursor on `sara/fix-toc`, not on the first row; `⏎` from here switches to it. Colour unverified (rule 5). |
+| `main-pixel-120.txt` | mock prototypes/ease-mocks/mergewright-main-screen.html: the Pixel tier's text layer and placement map at 120x40 (Kitty, six chains of 8 under an octopus merge): under the cursor row its second line (`Test · N years ago · <sha7>`), every row below one line lower; in the map strip A shows rows 0..=5, the band takes the second line's line, strip A's rows 6.. continue one line lower, strip B follows one line lower than its rows say; no blank line. No pixels, no colour: how the lanes look is yours to judge in Ghostty (rule 6). Colour unverified (rule 5). |
+| `help-graph-mode-120.txt` | mock prototypes/ease-mocks/mergewright-show-all-branches.html: ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks like — `?` on the graph, typed `graph`: three `HERE` rows `graph` also finds, then the `GRAPH MODE` group with `● Folded merges` (its detail, then `(on)`) and `○ Every branch` under the cursor `▸`, each with `graph.merged_branches` at the right. Look unjudged (rule 6); colour unverified (rule 5). |
+| `help-graph-mode-90.txt` | mock prototypes/ease-mocks/mergewright-show-all-branches.html: ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks like — as at 120, but 90 columns: no id column; `(on)` whole after Folded merges' detail. Look unjudged (rule 6); colour unverified (rule 5). |
+| `graph-mode-switched-120.txt` | mock prototypes/ease-mocks/mergewright-show-all-branches.html: ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks like — after `⏎` on Every branch: the palette gone, the top line ends `every branch shown`, the bar reads `✓ Graph: every branch · kept for next launch`. Look unjudged (rule 6); colour unverified (rule 5). |
+| `config-merged-branches-problem-120.txt` | mock prototypes/ease-mocks/mergewright-show-all-branches.html: first the graph, its bottom row `config: 3 problems · ? shows them`; then `?` open, `YOUR CONFIG` first, the graph problem last, reading `graph.merged_branches = "open" — takes "folded" or "shown"; using folded`. Colour unverified (rule 5). |
+| `commit-open-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `c` on three edits and a new `.env`. Header `◆ api ~/code/api committing to main` (level with `origin/main`: no push words): the repository words the graph's top line starts with, then the branch. Cursor in the subject, placeholder `What did you change? (one line)`; files `Going in (3)` then `Staying out (1)`; the first file's changes on the right; bar `⏎ type a message first ⇥ more detail …`. Colour unverified (rule 5). |
+| `commit-90.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `fix toc` typed, at 90 columns: under 100 the changes pane is hidden and the files take the width; the bar has no `↑ ↓` (no changes beside the files to look at) and keeps `⏎ commit 3 files` and `esc cancel, your message is kept`. Colour unverified (rule 5). |
+| `commit-files-focus-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `fix toc` typed, `⇥ ⇥`: the file list has focus; bar `space leave it out j/k move ⏎ commit esc back to the message`. Colour unverified (rule 5). |
+| `commit-partial-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `src/a.rs` staged, then one more line added to it and left unstaged; `c`: only `src/a.rs` goes in, its row ending `+1 part`; the line above the files reads `1 file goes in, +1 −0, as a new commit on main. 3 stay out.`; the changes pane's top line says `only the part you staged goes in; the rest stays uncommitted.`; the changes show the staged `fn b() {}` and not the unstaged `fn c() {}`. Colour unverified (rule 5). |
+| `commit-secrets-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `↓` three times from the subject: the cursor on `.env` under `Staying out`, marked `!` and `looks like a secrets file`; the note `! left out: looks like a secrets file. space puts it in.` over its contents on the right, its value drawn `TOKEN=••••••••`: the fixture's value is nowhere in this file. Colour unverified (rule 5). |
+| `commit-options-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `⌃S`, then `Skip the commit hooks` from `⌃P`: no option row anywhere; the header ends `· signing off · skipping hooks`. Colour unverified (rule 5). |
+| `commit-amend-from-c-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: `c`, `fix toc`, then `Amend the last commit` from `⌃P`: the header reads `amending 0000000 start` in place of `committing to main` (the id zeroed: the run made it); no push words; the line above the files reads `3 files go in, +4 −0, into the last commit. 1 stays out.`; message and files as they were. Colour unverified (rule 5). |
+| `commit-refused-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: every file left out with `space`, then `⏎`: nothing committed; all four under `Staying out`; the line above the files reads `Nothing goes in. Put a file in with space.`; the bar's `⏎` slot reads `put a file in first`. Colour unverified (rule 5). |
+| `commit-landed-120.txt` | mock prototypes/ease-mocks/mergewright-commit-screen.html: after `⏎`: the graph, the cursor on `fix toc`; the second-last row is the done line `✓ Committed 3 files to main. u undo · P push`, tick first; the last row is the bar: `. explain` first (the new commit carries a radar `ⓘ`), then `u undo the commit, your edits come back · P push · c commit`, `c commit again` at its short rung to make room; the top line ends `1 commit to push`; `Uncommitted changes (1 untracked)`: `.env`, left out. Colour unverified (rule 5). |
+| `merge-preview-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `m` on sara/fix-toc from wallet-release: title `Merge sara/fix-toc into wallet-release`; `Nothing has changed yet.`; `Comes in 3 commits … (Sara, Omar)`, `Changes 3 files`, `Git combines 2 files on its own`, `You decide 1 file clashes: report.md (2 places)`; `After y you go straight to the first clash.`; footer `y merge esc cancel ⏎ see the 3 commits`; no buttons; the ghost merge row above the box. Colour unverified (rule 5). |
+| `merge-preview-90.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: the same box at 90 columns: the lines whole where they fit, the footer's widest rung that fits. Colour unverified (rule 5). |
+| `merge-incoming-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `⏎` from the box: `The 3 commits that come in from sara/fix-toc`, newest first, `▸` on the first, who and age right-aligned; footer `esc back to the preview y merge`. Colour unverified (rule 5). |
+| `merge-clean-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: a merge with no clash: `You decide nothing: no file clashes`; `After y the merge is committed.` Colour unverified (rule 5). |
+| `merge-fast-forward-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `m` on sara/fix-toc from wallet-release, which has no commits of its own: `Comes in 3 commits … (Sara, Omar)`, `Changes 3 files`, `Git combines nothing: no merge commit is made`, `You decide nothing: no file clashes`; `After y wallet-release moves up to sara/fix-toc.`; footer `y merge esc cancel ⏎ see the 3 commits`. Colour unverified (rule 5). |
+| `merge-unrelated-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `m` on `stray`, which shares no history: `Comes in` stays; one line `Can't merge: stray and wallet-release share no history.`; no Changes/You decide/After lines; footer `esc cancel ⏎ see the 1 commit` (no `y`). Colour unverified (rule 5). |
+| `merge-clash-open-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: the top row `merging sara/fix-toc into wallet-release`; the list a column 30 wide headed `Clashing files`: `? notes.md 1 open`, `▏? report.md 2 open` (the open file), then a blank row, `Combined by git (2)`, `✓ refund.rs, locale.rs`; the first clash outlined, `? yours · wallet-release` left, `theirs · sara/fix-toc` right, its lines unnumbered, the plain lines numbered; the bar starts `o take yours (left)`. Colour unverified (rule 5). |
+| `merge-clash-100.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: 100 columns, the narrowest with the list column: the clash still two columns side by side. Colour unverified (rule 5). |
+| `merge-clash-90.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: 90 columns: the list a strip over the file; the clash's sides stacked, each under its `?`-marked name. Colour unverified (rule 5). |
+| `merge-clash-200.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: 200 columns (three panes retired): the same screen as at 120 — the 30-column list with `Combined by git (2)`, the clash's two sides side by side across the wider document, no `result` pane. Colour unverified (rule 5). |
+| `merge-clash-taken-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `o` on the first clash: it shrinks to `let tax = round_cents(total * rate);`, numbered 3, marked `◀`, ending `kept yours`; the second clash still open below; the list `report.md 1 open`; the bar `n next open clash · u undo pick`. Colour unverified (rule 5). |
+| `merge-file-solved-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: both clashes taken (`◀ kept yours`, `▶ took theirs`): under the file `✓ Every clash in report.md is solved. n next file, 1 clash left`; the list `✓ report.md done`; the bar names `n next file: notes.md`. Colour unverified (rule 5). |
+| `merge-all-solved-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: every clash in both files taken: the list `✓ notes.md done`, `✓ report.md done`, then `✓ Review the merge y`, a blank row, `Combined by git (2)`, `✓ refund.rs, locale.rs`; the solved line ends `y review the merge`; no `every file done` words on the notice row; the bar `y review the merge`. Colour unverified (rule 5). |
+| `rebase-clash-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: a rebase stopped on the same file: the same screen, sides by the rebase's names (`upstream · …` left, `yours · …` right); the bar `o take upstream (left)`. Colour unverified (rule 5). |
+| `merge-review-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: the review at `y` on the last clash: `All 3 clashes solved. Nothing committed yet.`; `This merge will put into wallet-release:` then `2 commits from sara/fix-toc`, `✓ notes.md you chose: ◀ yours`, `✓ report.md you chose: ◀ yours (1) · ▶ theirs (1)`, `✓ 2 files git combined on its own`; the message line `Merge branch 'sara/fix-toc' into wallet-release`; the bar `y commit the merge · j/k move · ⏎ look at it · u undo last pick · esc back to the clashes (y brings you here again)`. Nothing is staged until `y`. Colour unverified (rule 5). |
+| `merge-review-90.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: the same review at 90 columns: the box narrower, the lines and the bar's widest rung that fits; nothing cut mid-word. Colour unverified (rule 5). |
+| `merge-look-clashed-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `⏎` on a clashed file in the review: `notes.txt · as it will land · read only`, numbered lines as the worktree file reads (`2 TWO from feature`), typing changes nothing; the bottom edge reads `esc back to the review · y commit the merge`. Colour unverified (rule 5). |
+| `merge-look-combined-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: `⏎` on the combined row: `1 file git combined on its own: both sides changed different lines, so it kept both`; `✓ README.md theirs +1 −1` (counts equal `git diff --numstat`); a sample around line 1 with `+line TWO from theirs` marked where it came from. Colour unverified (rule 5). |
+| `merge-landed-120.txt` | mock prototypes/ease-mocks/mergewright-merge-screen.html: after `y` on the review: the graph, the cursor on the new merge `Merge branch 'sara/fix-toc' into wallet…` (`you`, `now`), its second line `you · just now · made on wallet-release · merged 2 …`; the branch pane says `! not pushed yet`; the done line `✓ Merged sara/fix-toc into wallet-release.` (tick first); the bar leads `u undo the merge · P push`. The merge's id is zeroed by the run. Colour unverified (rule 5). |

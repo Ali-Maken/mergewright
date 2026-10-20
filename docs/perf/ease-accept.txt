@@ -1,7 +1,7 @@
-# ease-pass acceptance — 2026-10-20T14:55:32Z
-# HEAD 919cbfe7
+# ease-pass acceptance — 2026-10-20T15:12:18Z
+# HEAD 37395041 +uncommitted
 # Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
-1 walks (in-process, real git): Summary [  31.657s] 90 tests run: 90 passed, 959 skipped · rc=0 · .scratch/ease-pass/accept/walks.txt
+1 walks (in-process, real git): Summary [  31.209s] 90 tests run: 90 passed, 959 skipped · rc=0 · .scratch/ease-pass/accept/walks.txt
 2 journeys (keys walked/allowed, the note's fence):
     commit-all-subject 3/3
     commit-leave-first 6/6
