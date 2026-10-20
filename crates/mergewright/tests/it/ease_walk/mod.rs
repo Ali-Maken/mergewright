@@ -22,6 +22,8 @@ mod graph;
 mod journeys;
 mod merge;
 mod merge_finish;
+mod questions;
+mod questions_late;
 mod screen;
 mod team;
 
