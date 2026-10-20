@@ -18,8 +18,7 @@ fn rebase_stopped() -> (tempfile::TempDir, App, AppState) {
     let scratch = mock();
     git(scratch.path(), &["switch", "--quiet", "ali/tidy"]);
     let (app, state) = open(scratch.path(), 120);
-    let state =
-        crate::clash_stops::stop_by(&app, state, b"integration", 'r', InProgress::Rebase);
+    let state = crate::clash_stops::stop_by(&app, state, b"integration", 'r', InProgress::Rebase);
     (scratch, app, state)
 }
 
@@ -45,7 +44,10 @@ fn q10_opened_merge_rows_on_their_own_lane() {
         .skip(merge + 1)
         .take(2)
         .collect();
-    assert!(joins.contains(['╮', '┐', '╗']), "joins the merge: {joins:?}");
+    assert!(
+        joins.contains(['╮', '┐', '╗']),
+        "joins the merge: {joins:?}"
+    );
     app.close();
 }
 
@@ -64,7 +66,10 @@ fn q11_todays_frame_with_the_mocks_words() {
     let short = key_at_rest(&app, &sized(&app, &state, 120, 10), 'G');
     let frame = drawn(&short);
     let line = top(&frame).trim_end();
-    assert!(line.starts_with(" ◆ api  ~/code/api · wallet-release "), "{line:?}");
+    assert!(
+        line.starts_with(" ◆ api  ~/code/api · wallet-release "),
+        "{line:?}"
+    );
     assert!(line.ends_with("lanes drawn: 5 of 7"), "{line:?}");
     app.close();
 }
@@ -75,21 +80,28 @@ fn q11_todays_frame_with_the_mocks_words() {
 fn q12_rebase_clash_marks_enter_stages_c_goes_on() {
     let (scratch, app, state) = rebase_stopped();
     let repo = scratch.path();
-    let state = pick(&app, &state, 'o');
+    let state = pick(&app, &state, 't');
     let frame = drawn(&state);
-    line_with(&frame, "◀  5 Report line 5, as Bob put it  kept upstream");
+    line_with(&frame, "▶  5 Report line 5");
     line_with(&frame, "✓ Every clash in report.md is solved.");
     assert!(!git(repo, &["ls-files", "-u"]).is_empty(), "not staged yet");
     let staged = app.settle_write(app.key(&state, KeyCode::Enter), "the stage");
     assert!(git(repo, &["ls-files", "-u"]).is_empty(), "`⏎` staged it");
     let staged = app.pump(staged, "the banner after the stage", |state| {
-        state.resolver.is_none() || state.banner_focus
+        state
+            .resolver
+            .as_ref()
+            .is_none_or(|open| open.job.is_none())
     });
     let state = if staged.banner_focus {
         staged
     } else {
         app.key(&staged, KeyCode::Escape)
     };
+    // `c` is refused while the files are still being re-read.
+    let state = app.pump(state, "the files re-read", |state| {
+        state.status_read.is_none()
+    });
     let gone_on = app.key(&state, KeyCode::Char('c'));
     let gone_on = app.pump(gone_on, "the rebase going on", |state| {
         state.operating.is_none() && state.in_progress.is_none()
@@ -158,9 +170,16 @@ fn q16_retake_replaces_and_u_brings_the_earlier_back() {
     let state = pick(&app, &state, 't');
     let frame = drawn(&state);
     line_with(&frame, "▶  5 Report line 5, as Bob put it  took theirs");
-    assert!(!shown(&frame).contains("already taken"), "{}", shown(&frame));
+    assert!(
+        !shown(&frame).contains("already taken"),
+        "{}",
+        shown(&frame)
+    );
     let state = pick(&app, &state, 'u');
-    line_with(&drawn(&state), "◀  5 Report line 5, for the release  kept yours");
+    line_with(
+        &drawn(&state),
+        "◀  5 Report line 5, for the release  kept yours",
+    );
     app.close();
 }
 

@@ -92,12 +92,19 @@ fn q3_hash_colour_off_until_pressed_again() {
     assert_eq!(coloured_cells(&buffer(&off)), 0);
     assert_eq!(drawn(&off), before, "glyphs unchanged");
     let commit = commit_opened(&app, &off);
-    assert_eq!(coloured_cells(&buffer(&commit)), 0, "off on the commit screen");
+    assert_eq!(
+        coloured_cells(&buffer(&commit)),
+        0,
+        "off on the commit screen"
+    );
     let closed = app.key(&commit, KeyCode::Escape);
     assert!(closed.commit_editor.is_none());
     assert_eq!(coloured_cells(&buffer(&closed)), 0, "still off after it");
     let on = app.key(&closed, KeyCode::Char('#'));
-    assert!(coloured_cells(&buffer(&on)) > 0, "`#` again restores colour");
+    assert!(
+        coloured_cells(&buffer(&on)) > 0,
+        "`#` again restores colour"
+    );
     app.close();
 }
 
@@ -107,8 +114,8 @@ fn q3_hash_colour_off_until_pressed_again() {
 #[test]
 fn q4_pixel_lag_summary_recorded() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/perf/ease-pixel.txt");
-    let text = std::fs::read_to_string(&path)
-        .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+    let text =
+        std::fs::read_to_string(&path).unwrap_or_else(|why| panic!("{}: {why}", path.display()));
     for bin in ["bin=base ", "bin=roles ", "bin=tall "] {
         assert!(
             text.lines()
@@ -137,7 +144,10 @@ fn q6_no_buttons_and_enter_lists() {
     let (_scratch, app, state) = opened();
     let state = previewed(&app, state, fixture::INTEGRATION);
     let text = shown(&drawn(&state));
-    assert!(!text.contains("[ Cancel ]") && !text.contains("[ Confirm ]"), "{text}");
+    assert!(
+        !text.contains("[ Cancel ]") && !text.contains("[ Confirm ]"),
+        "{text}"
+    );
     let list = app.key(&state, KeyCode::Enter);
     assert!(matches!(
         list.preview.as_ref().map(|preview| &preview.showing),
@@ -179,17 +189,34 @@ fn q8_options_off_screen_ctrl_s_and_ctrl_p() {
         assert!(!text.contains(word), "no option row: {word:?}\n{text}");
     }
     let signed = app.press(&state, KeyPress::control(KeyCode::Char('s')));
-    assert!(signed.commit_editor.as_ref().is_some_and(|editor| editor.sign_off));
+    assert!(
+        signed
+            .commit_editor
+            .as_ref()
+            .is_some_and(|editor| editor.sign_off)
+    );
     let palette = app.press(&signed, KeyPress::control(KeyCode::Char('p')));
     let listed = shown(&drawn(&palette));
     for word in ["Amend", "Skip the commit hooks", "Allow an empty commit"] {
         assert!(listed.contains(word), "{word:?} listed\n{listed}");
     }
-    let chosen = app.key(&typed(&app, &palette, "Skip the commit hooks"), KeyCode::Enter);
+    let chosen = app.key(
+        &typed(&app, &palette, "Skip the commit hooks"),
+        KeyCode::Enter,
+    );
     let chosen = settled(&app, chosen);
-    assert!(chosen.commit_editor.as_ref().is_some_and(|editor| editor.no_verify));
+    assert!(
+        chosen
+            .commit_editor
+            .as_ref()
+            .is_some_and(|editor| editor.no_verify)
+    );
     let header = drawn(&chosen);
-    assert!(top(&header).contains("· skipping hooks"), "{:?}", top(&header));
+    assert!(
+        top(&header).contains("· skipping hooks"),
+        "{:?}",
+        top(&header)
+    );
     app.close();
 }
 
