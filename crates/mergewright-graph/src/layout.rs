@@ -32,10 +32,9 @@ pub use self::source::{CommitSource, Pull};
 pub use self::stream::{
     Advance, Anchor, Invalidated, Resident, StreamConfig, StreamError, StreamingLayout, Work,
 };
-use crate::identity::BranchIdentity;
 use crate::lane::Lane;
 use crate::row::{MergeNames, Row, RowShape};
-use crate::seeds::Seeds;
+use crate::seeds::{BranchSeed, Seeds};
 
 /// Resolves a commit's id to its handle (ADR-0026).
 ///
@@ -206,7 +205,7 @@ pub struct LayoutCursor {
     /// Fixed once the cursor is built, so clones share one table. Keyed by
     /// id, not handle: a known tip need not be in the resolver's table, and
     /// a fresh tip's id is resolved anyway for its short-sha fallback.
-    known_identities: Arc<HashMap<Oid, BranchIdentity>>,
+    known_identities: Arc<HashMap<Oid, BranchSeed>>,
     /// Reserved columns whose tip no row has landed on yet. Such a lane is
     /// open, but nothing is drawn above its tip, so rows leave it out of
     /// [`Row::lanes`]. At most one entry per reserved lane.
@@ -230,7 +229,7 @@ impl LayoutCursor {
             seeds
                 .known_branches
                 .into_iter()
-                .map(|seed| (seed.tip, seed.identity))
+                .map(|seed| (seed.tip, seed))
                 .collect(),
         );
 

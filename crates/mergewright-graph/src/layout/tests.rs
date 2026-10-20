@@ -1,7 +1,8 @@
 use mergewright_core::commit::{Identity, Timestamp};
 use mergewright_core::commit_handle::{CommitHandle, Link};
 
-use crate::lane::LaneIdentity;
+use crate::identity::BranchIdentity;
+use crate::lane::{Lane, LaneIdentity};
 use crate::seeds::BranchSeed;
 
 use super::*;
@@ -41,6 +42,7 @@ fn seed(tip: u8, identity: BranchIdentity) -> BranchSeed {
     BranchSeed {
         tip: oid(tip),
         identity,
+        follows: None,
     }
 }
 
@@ -450,6 +452,7 @@ fn a_checkpoint_costs_the_same_after_a_long_history_as_after_a_short_one() {
         default_branch: Some(BranchSeed {
             tip,
             identity: BranchIdentity::of_name(b"main"),
+            follows: None,
         }),
         ..Seeds::default()
     };
@@ -602,6 +605,7 @@ pub(crate) fn extend_rows(
 }
 
 pub(crate) mod properties;
+pub(crate) mod stacked;
 
 #[test]
 fn a_row_records_the_identity_of_every_column_it_draws() {

@@ -1,10 +1,10 @@
 ---
-source: crates/graft-graph/tests/it/raster_pixels.rs
+source: crates/mergewright-graph/tests/it/raster_pixels.rs
 expression: out
 ---
 foxtrot-merge @17x37: 68x148 d3501c47fe1a6290
 criss-cross-merge @17x37: 170x259 cd817d42486d8bef
-octopus-merge @17x37: 136x185 9847c80c11f325d0
+octopus-merge @17x37: 136x185 adbda061847e44bc
 chain @17x37: 68x1184 c115a2af2cde8a66
 parallel-mid @17x37: 238x1184 1fa490e4f0afa73a
 wide-mid @17x37: 986x1184 35c0ab2f5b7364c7
@@ -12,7 +12,7 @@ wide-thread @17x37: 986x1184 2fed1de244ac05ba
 wide-marker @17x37: 408x1184 365e999962eb1487
 foxtrot-merge @8x16: 32x64 0dcb43eb4008330f
 criss-cross-merge @8x16: 80x112 80ce14492e58b51d
-octopus-merge @8x16: 64x80 c632f30598650f9d
+octopus-merge @8x16: 64x80 e23678fad7c654a3
 chain @8x16: 32x512 8b8e0dfd545d01ee
 parallel-mid @8x16: 112x512 4e883a7de1220d20
 wide-mid @8x16: 464x512 d03b04775d1adb6e

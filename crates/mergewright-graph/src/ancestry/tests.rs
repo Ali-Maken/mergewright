@@ -11,6 +11,7 @@ fn main_seed(tip: u8) -> Seeds {
         default_branch: Some(BranchSeed {
             tip: oid(tip),
             identity: BranchIdentity::of_name(b"main"),
+            follows: None,
         }),
         ..Seeds::default()
     }

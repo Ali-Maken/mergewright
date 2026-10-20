@@ -1,5 +1,5 @@
 ---
-source: crates/graft-graph/tests/it/corpus.rs
+source: crates/mergewright-graph/tests/it/corpus.rs
 expression: text
 ---
 shape: octopus-merge
@@ -9,7 +9,7 @@ integration: []
 commits: 5, columns: 4
 
 * \ \ \  e385b54  main               Merge branches 'topic-1', 'topic-2' and 'topic-3'
-| | | *  c95dba0  c95dba0            topic 3
-| | * |  3d625a5  3d625a5            topic 2
-| * | |  04bb363  04bb363            topic 1
+| | | *  c95dba0  topic-3            topic 3
+| | * |  3d625a5  topic-2            topic 2
+| * | |  04bb363  topic-1            topic 1
 * / / /  68d5d19  main               Add the base

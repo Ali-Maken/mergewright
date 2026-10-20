@@ -16,6 +16,10 @@ pub struct BranchSeed {
     pub tip: Oid,
     /// The colour this branch draws in.
     pub identity: BranchIdentity,
+    /// The local branch this ref is the remote copy of: its configured
+    /// upstream, else the same short name on a remote. `None` for local and
+    /// remote-only branches.
+    pub follows: Option<BranchIdentity>,
 }
 
 /// The branches a [`LayoutCursor`](crate::layout::LayoutCursor) is seeded

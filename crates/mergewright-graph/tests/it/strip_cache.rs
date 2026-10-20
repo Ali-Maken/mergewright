@@ -79,6 +79,7 @@ fn rows(count: usize) -> Vec<Row> {
         default_branch: Some(BranchSeed {
             tip: oid(0),
             identity: BranchIdentity::of_name(b"main"),
+            follows: None,
         }),
         ..Seeds::default()
     };

@@ -36,6 +36,7 @@ pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
+            follows: None,
         })
     };
     Seeds {
@@ -97,6 +98,7 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
+            follows: None,
         })
     };
     Seeds {
@@ -115,6 +117,7 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
             .map(|(name, &tip)| BranchSeed {
                 tip,
                 identity: BranchIdentity::of_name(shorthand_of(name)),
+                follows: None,
             })
             .collect(),
     }

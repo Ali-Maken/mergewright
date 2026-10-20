@@ -67,6 +67,7 @@ impl History {
         let at = |position: usize| BranchSeed {
             tip: self.commits[position].id,
             identity: BranchIdentity::of_name(format!("branch-{position}").as_bytes()),
+            follows: None,
         };
         Seeds {
             default_branch: self.plan.default.map(at),
@@ -335,6 +336,7 @@ fn check_column(
     after: Option<&Lane>,
     row: &Row,
     handles: &Handles,
+    seeds: &Seeds,
 ) -> Result<(), TestCaseError> {
     let Some(previous) = before else {
         return Ok(());
@@ -354,10 +356,18 @@ fn check_column(
         return Ok(());
     };
     prop_assert_eq!(column, row.lane, "only the row's own lane continues");
+    // ADR-0064: a lane keeps its identity until it reaches another branch's
+    // tip, where it takes that branch's name (`renamed_at_tip`).
+    let tip = seeds
+        .known_branches
+        .iter()
+        .find(|seed| seed.tip == row.commit.id);
+    let expected =
+        crate::layout::assign_row::renamed_at_tip(previous, tip).unwrap_or(previous.identity);
     prop_assert_eq!(
         now.identity,
-        previous.identity,
-        "a continuing lane keeps its identity"
+        expected,
+        "a continuing lane keeps its identity, bar a rename at a tip"
     );
     prop_assert_eq!(now.reserved, previous.reserved);
     prop_assert_eq!(
@@ -459,6 +469,7 @@ fn check_lanes_stay_put(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCas
                 after[column].as_ref(),
                 &row,
                 &handles,
+                seeds,
             )?;
         }
     }

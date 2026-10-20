@@ -6,6 +6,7 @@
 //! read as separate concerns; the type and its invariants are unchanged.
 
 use mergewright_core::commit_handle::{CommitHandle, Link};
+use mergewright_core::oid::Oid;
 
 use crate::identity::BranchIdentity;
 use crate::lane::{Lane, LaneIdentity};
@@ -61,8 +62,13 @@ impl LayoutCursor {
             })
             .collect();
 
-        let lane = winning_lane(&found)
-            .unwrap_or_else(|| self.open_new_lane(link.commit, first_parent, handles));
+        let waited_for = winning_lane(&found);
+        let lane =
+            waited_for.unwrap_or_else(|| self.open_new_lane(link.commit, first_parent, handles));
+        if waited_for.is_some() {
+            // ADR-0064: reaching another branch's tip, the lane takes its name.
+            self.rename_at_tip(lane, handles.id_of(link.commit));
+        }
         self.unreached.retain(|&column| column != lane);
         // Read before anything closes: a root that is also a fresh tip opens
         // and closes its lane on this one row.
@@ -94,8 +100,14 @@ impl LayoutCursor {
             None => self.close_lane(lane, &mut closing),
         }
         for parent in parents {
-            let (column, identity) =
-                self.open_merge_lane(link.commit, parent, order, &mut outgoing, &mut closing);
+            let (column, identity) = self.open_merge_lane(
+                link.commit,
+                parent,
+                handles,
+                order,
+                &mut outgoing,
+                &mut closing,
+            );
             set_column(&mut lanes, column, Some(identity));
         }
         while lanes.last().is_some_and(Option::is_none) {
@@ -160,14 +172,20 @@ impl LayoutCursor {
         &mut self,
         merge: CommitHandle,
         target: CommitHandle,
+        handles: &impl HandleLookup,
         order: &EmittedOrder,
         outgoing: &mut Vec<(usize, CommitHandle)>,
         closing: &mut Vec<usize>,
     ) -> (usize, LaneIdentity) {
         let lane = self.allocate_column();
-        let identity = LaneIdentity::Merge {
-            merge,
-            parent: target,
+        // A live branch at the parent beats a name recovered from the merge
+        // subject (ADR-0064); otherwise the name is recovered at assembly.
+        let identity = match self.known_identities.get(&handles.id_of(target)) {
+            Some(tip) => LaneIdentity::Known(tip.identity),
+            None => LaneIdentity::Merge {
+                merge,
+                parent: target,
+            },
         };
         self.active[lane] = Some(Lane {
             index: lane,
@@ -212,8 +230,7 @@ impl LayoutCursor {
         let identity = self
             .known_identities
             .get(&id)
-            .copied()
-            .unwrap_or_else(|| BranchIdentity::of_short_sha(id));
+            .map_or_else(|| BranchIdentity::of_short_sha(id), |seed| seed.identity);
         let waiting_for = first_parent.unwrap_or(commit);
         self.active[lane] = Some(Lane {
             index: lane,
@@ -222,6 +239,16 @@ impl LayoutCursor {
             reserved: false,
         });
         lane
+    }
+
+    /// Renames `lane` if `commit` is another branch's tip ([`renamed_at_tip`]).
+    fn rename_at_tip(&mut self, lane: usize, commit: Oid) {
+        let tip = self.known_identities.get(&commit);
+        if let Some(entry) = &mut self.active[lane] {
+            if let Some(identity) = renamed_at_tip(entry, tip) {
+                entry.identity = identity;
+            }
+        }
     }
 
     /// Takes the lowest-indexed free column, or opens a new one past every
@@ -289,4 +316,24 @@ fn winning_lane(incoming: &[usize]) -> Option<usize> {
     } else {
         incoming.iter().copied().min()
     }
+}
+
+/// The name a lane carries from this row down when it reaches `tip`, or
+/// `None` to keep its own (ADR-0064).
+///
+/// `None` when the lane is reserved, there is no tip here, the tip's
+/// identity is the lane's, or the tip is the remote copy of the lane's
+/// branch. A [`LaneIdentity::Merge`] lane is renamed by any tip: its name is
+/// only recovered at assembly.
+pub(crate) fn renamed_at_tip(lane: &Lane, tip: Option<&BranchSeed>) -> Option<LaneIdentity> {
+    let tip = tip?;
+    if lane.reserved {
+        return None;
+    }
+    if let LaneIdentity::Known(own) = lane.identity {
+        if own == tip.identity || tip.follows == Some(own) {
+            return None;
+        }
+    }
+    Some(LaneIdentity::Known(tip.identity))
 }

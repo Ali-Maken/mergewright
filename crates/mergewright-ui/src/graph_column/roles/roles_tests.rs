@@ -68,6 +68,7 @@ fn chain_rows() -> Vec<Row> {
             default_branch: Some(BranchSeed {
                 tip: oid(10),
                 identity: name("main"),
+                follows: None,
             }),
             ..Seeds::default()
         },

@@ -38,6 +38,7 @@ fn wide_history() -> Vec<Row> {
             default_branch: Some(BranchSeed {
                 tip: oid(13 + TOPICS),
                 identity: BranchIdentity::of_name(b"main"),
+                follows: None,
             }),
             ..Seeds::default()
         },

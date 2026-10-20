@@ -241,6 +241,7 @@ fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
+            follows: None,
         })
     };
     Seeds {

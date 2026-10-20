@@ -1,5 +1,5 @@
 ---
-source: crates/graft-graph/tests/it/raster.rs
+source: crates/mergewright-graph/tests/it/raster.rs
 expression: art(&frame)
 ---
                                                                 |
@@ -9,72 +9,72 @@ expression: art(&frame)
 ccc..ccc                                                        |
 c.    .c.                                                       |
 c .cc. cc                                                       |
-. cccc .c.fffffff......                                         |
-. cccc .c.fffffffffffffffffff....                               |
-c .cc. cc..hhhjj.kdddddddffffffffffff...                        |
-c.    .c.   .hhhh.    .kkkkkkk...fffffffff...                   |
-ccc..ccc       .hh.       ..kkkk.     ..ffffff..                |
- .cccc.         .hh.          .kkk.        ..ffff.              |
-   ..             hh.           .kk.          ..fff.            |
-   cc             .hh             kk.            .ff.           |
-   cc              hh              kk             .ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ..           |
-   cc              hh              kk            .ffff.         |
-   cc              hh              kk           ffffffff        |
-   cc              hh              kk          .ffffffff.       |
-   cc              hh              kk          ffffffffff       |
-   cc              hh              kk          ffffffffff       |
-   cc              hh              kk          ffffffffff       |
-   cc              hh              kk          ffffffffff       |
-   cc              hh              kk          .ffffffff.       |
-   cc              hh              kk           ffffffff        |
-   cc              hh              kk            .ffff.         |
-   cc              hh              kk              ..           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              ..              ff           |
-   cc              hh            .kkkk.            ff           |
-   cc              hh           kkkkkkkk           ff           |
-   cc              hh          .kkkkkkkk.          ff           |
-   cc              hh          kkkkkkkkkk          ff           |
-   cc              hh          kkkkkkkkkk          ff           |
-   cc              hh          kkkkkkkkkk          ff           |
-   cc              hh          kkkkkkkkkk          ff           |
-   cc              hh          .kkkkkkkk.          ff           |
-   cc              hh           kkkkkkkk           ff           |
-   cc              hh            .kkkk.            ff           |
-   cc              hh              ..              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              ..              kk              ff           |
-   cc            .hhhh.            kk              ff           |
-   cc           hhhhhhhh           kk              ff           |
-   cc          .hhhhhhhh.          kk              ff           |
-   cc          hhhhhhhhhh          kk              ff           |
-   cc          hhhhhhhhhh          kk              ff           |
-   cc          hhhhhhhhhh          kk              ff           |
-   cc          hhhhhhhhhh          kk              ff           |
-   cc          .hhhhhhhh.          kk              ff           |
-   cc           hhhhhhhh           kk              ff           |
-   cc            .hhhh.            kk              ff           |
-   cc              ..              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk              ff           |
-   cc              hh              kk             .ff           |
-   cc             .hh             kk.            .ff.           |
-   ..             hh.           .kk.          ..fff.            |
- .cccc.         .hh.          .kkk.        ..ffff.              |
-ccc..ccc       .hh.       ..kkkk.     ..ffffff..                |
-c.    .c.   .hhhh.    ..kkkkkk....fffffffff..                   |
-c      cc..hhhjj..dddddddfffffffffffff..                        |
-.      .c.fffffffffffffffffffff..                               |
-.      .c.ffffffff.....                                         |
+. cccc .c.lllllll......                                         |
+. cccc .c.lllllllllllllllllll....                               |
+c .cc. cc..iiibb.hhhhhhllllllllllllll...                        |
+c.    .c.   .iiii.    .hhhhhhh...lllllllll...                   |
+ccc..ccc       .ii.       ..hhhh.     ..llllll..                |
+ .cccc.         .ii.          .hhh.        ..llll.              |
+   ..             ii.           .hh.          ..lll.            |
+   cc             .ii             hh.            .ll.           |
+   cc              ii              hh             .ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ..           |
+   cc              ii              hh            .llll.         |
+   cc              ii              hh           llllllll        |
+   cc              ii              hh          .llllllll.       |
+   cc              ii              hh          llllllllll       |
+   cc              ii              hh          llllllllll       |
+   cc              ii              hh          llllllllll       |
+   cc              ii              hh          llllllllll       |
+   cc              ii              hh          .llllllll.       |
+   cc              ii              hh           llllllll        |
+   cc              ii              hh            .llll.         |
+   cc              ii              hh              ..           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              ..              ll           |
+   cc              ii            .hhhh.            ll           |
+   cc              ii           hhhhhhhh           ll           |
+   cc              ii          .hhhhhhhh.          ll           |
+   cc              ii          hhhhhhhhhh          ll           |
+   cc              ii          hhhhhhhhhh          ll           |
+   cc              ii          hhhhhhhhhh          ll           |
+   cc              ii          hhhhhhhhhh          ll           |
+   cc              ii          .hhhhhhhh.          ll           |
+   cc              ii           hhhhhhhh           ll           |
+   cc              ii            .hhhh.            ll           |
+   cc              ii              ..              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ..              hh              ll           |
+   cc            .iiii.            hh              ll           |
+   cc           iiiiiiii           hh              ll           |
+   cc          .iiiiiiii.          hh              ll           |
+   cc          iiiiiiiiii          hh              ll           |
+   cc          iiiiiiiiii          hh              ll           |
+   cc          iiiiiiiiii          hh              ll           |
+   cc          iiiiiiiiii          hh              ll           |
+   cc          .iiiiiiii.          hh              ll           |
+   cc           iiiiiiii           hh              ll           |
+   cc            .iiii.            hh              ll           |
+   cc              ..              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh              ll           |
+   cc              ii              hh             .ll           |
+   cc             .ii             hh.            .ll.           |
+   ..             ii.           .hh.          ..lll.            |
+ .cccc.         .ii.          .hhh.        ..llll.              |
+ccc..ccc       .ii.       ..hhhh.     ..llllll..                |
+c.    .c.   .iiii.    ..hhhhhh....lllllllll..                   |
+c      cc..iiibb..hhhhhlllllllllllllll..                        |
+.      .c.lllllllllllllllllllll..                               |
+.      .c.llllllll.....                                         |
 c      cc                                                       |
 c.    .c.                                                       |
 ccc..ccc                                                        |

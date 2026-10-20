@@ -89,6 +89,7 @@ fn seeds(tip: u8) -> Seeds {
         default_branch: Some(BranchSeed {
             tip: oid(tip),
             identity: BranchIdentity::of_name(b"main"),
+            follows: None,
         }),
         integration_branches: Vec::new(),
         known_branches: Vec::new(),

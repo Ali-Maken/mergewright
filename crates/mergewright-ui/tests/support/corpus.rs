@@ -126,6 +126,7 @@ fn seeds(refs: &[RefEntry], branches: &Branches, tips: &HashMap<&[u8], Oid>) -> 
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
+            follows: None,
         })
     };
     Seeds {

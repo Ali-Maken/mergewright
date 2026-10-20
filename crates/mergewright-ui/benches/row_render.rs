@@ -115,6 +115,7 @@ fn row_render(c: &mut Criterion) {
         default_branch: Some(BranchSeed {
             tip: oid(0),
             identity: BranchIdentity::of_name(b"main"),
+            follows: None,
         }),
         ..Seeds::default()
     };
