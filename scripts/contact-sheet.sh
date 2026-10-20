@@ -142,6 +142,7 @@ case "$milestone" in
   m6) promise="a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md \"Conflicts walk\", \"Conflict journeys\")." ;;
   m7) promise="you can rewrite, trace and recover history without leaving the app — the three promise scenarios (Rewrite, Trace, Recover) run end to end with no shell step, and each of the 29 journeys is walked at or under the note's count (TESTING.md \"M7 acceptance\")." ;;
   m8) promise="it stays smooth on your biggest repo, looks like the mock-up, installs with one command, and teaches itself from inside the app — the mock-up's scenes (m8-proto-*) first, then every M8 capture in ticket order; each journey of the note's fence is walked at or under its count (TESTING.md \"M8\")." ;;
+  ease-pass) promise="the three mock screens (main, commit, merge) are what the app draws and how it behaves — roles you can tell apart, the commit screen telling you what goes in, a merge you resolve in five keys; each of the nine journeys is walked at or under the note's count (TESTING.md \"Ease pass acceptance\"). Judge each capture beside the mock named in its caption." ;;
   *) promise="NOT RECORDED — add this milestone's promise to scripts/contact-sheet.sh." ;;
 esac
 

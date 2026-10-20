@@ -26,6 +26,7 @@ mod merge_finish;
 mod questions;
 mod questions_late;
 mod screen;
+mod shots;
 mod team;
 
 use std::path::Path;
