@@ -1,6 +1,6 @@
 # ease-acceptance — walk the three mocks in the real app
 
-Status: ready (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17; 2026-10-18 planner: the m3 pty waiter and the stale pty records / contact sheets from 08t's NOTES added — "Earlier milestones' records" below; 08u, 08v added to Blocked by; 2026-10-19 planner: 09c, 09p added to Blocked by)
+Status: partial — handoff in NOTES, 2026-10-20 (2026-10-17: a team-topology repo and G12 assertions added for 01r; 03b added to Blocked by / Needs and Q8 extended, 2026-10-17; 05b, 06b, 06c added and Q16/Q17 and the fold checks added after the 05/06 scouts, 2026-10-17; 03r added, Q14–Q17 fixed to the user's answers (14a 15a 16a 17a), opened-merge bar check added, 2026-10-17; 2026-10-18 planner: the m3 pty waiter and the stale pty records / contact sheets from 08t's NOTES added — "Earlier milestones' records" below; 08u, 08v added to Blocked by; 2026-10-19 planner: 09c, 09p added to Blocked by)
 Blocked by: 07b-graph-rows-cursor, 07c-graph-rows-rest, 09b-branch-picker-and-merged-label, 09c-branch-pane-rest, 09p-branch-pane-cost, all of 01–13, plus 01r, 03b, 03r, 05b, 06b, 06c, 06u, 08s–08v
 Build with: Fable. This is the acceptance ticket: it judges the promise against the mocks.
 Needs: every other ease-pass ticket: roles-and-route, roles-and-route-fixes (01r), ease-vocabulary,
@@ -162,3 +162,100 @@ earlier milestones' walks above.
 ## Size
 Large (~75k), plus ~15k for the earlier records. If it overruns, split the earlier records off first (they need no
 judgement against the mocks), then by screen (main / commit / merge).
+
+## NOTES — handoff, partial (2026-10-20, builder compacted once)
+
+**Compacted mid-ticket.** Done is the main mock and commit mock in-process walk (G1–G14, C1–C15), the team
+repository with its two captures, and the fence reader. Everything below "Remains" is not started. No acceptance
+box above is ticked: none is complete.
+
+### Done (committed, all passing; full workspace nextest 7145/7145, doc tests, fmt, clippy clean)
+- `crates/mergewright/tests/it/ease_walk/` (each file ≤400 lines):
+  - `mod.rs`: `JourneyRow`, `FenceError`, `OverCount`, `journeys_in`, `within_the_note`, `note()`. Tests:
+    `the_fence_reads_nine_rows_with_their_lists`, `one_key_over_fails_both_counted_journeys` (the negative test:
+    commit-all-subject 3→4 and merge-one-clash 5→6 each fail, naming both numbers), `a_bad_fence_is_named`.
+  - `fixture.rs`: `mock()` (mock-shaped repo, HEAD `wallet-release`, clean), `with_edits()` (commit mock's tree +
+    `.env`), `team(moved)` (01r's topologies). Branch map in the file's doc comments.
+  - `screen.rs`: frame readers (`drawn`, `bar`, `status`, `pane`, `line_with`, `cursor_on`, `buffer`, …).
+  - `graph.rs` G1–G8, `bar_and_pane.rs` G9–G14, `commit.rs` C1–C15, `team.rs` G12 on `team`.
+- IDs → tests so far: G1 `g1_lane_shape_is_the_role_against_the_cursor_branch`, `g1_built_on_branch_draws_thin`;
+  G2 `g2_connectors_take_the_joining_branch_role`; G3 `g3_commit_dot_and_merge_ring`; G4
+  `g4_merged_branches_fold_and_space_opens_and_closes`; G5 `g5_branch_column_once_per_change_with_you_on_head`; G6
+  `g6_other_rows_draw_their_message_fainter`; G7 `g7_labels_after_the_message`; G8
+  `g8_who_first_name_age_and_no_sha_or_badge`; G9 `g9_cursor_row_second_line`; G10/G11
+  `g10_g11_header_counts_lanes_and_folds`; G12 `g12_pane_heading_marks_and_route`, `g12_sibling_never_built_on`,
+  `g12_teammate_sync_is_not_a_merge`, `g12_dependent_before_the_move`, `g12_heading_says_youre_here_on_head`; G13
+  `g13_bar_per_row_kind`; G14 `g14_hash_turns_colour_off_and_keeps_shapes`; C1–C15 `c1_…`–`c15_…` in `commit.rs`
+  (each named by its ID).
+- New captures: `docs/shots/ease-pass/main-pane-sibling-120.txt`, `main-pane-dependent-120.txt` (4.4 KB each,
+  checked by the two team tests). Colour unverified.
+
+### Remains (exact next step first)
+1. `ease_walk/merge.rs` M1–M19 (split in two if over 400). The merge flow on `mock()`: `m` on `integration` (1 clash
+   in report.md), `pay-307` (3 clashes in notes.md ×2 + report.md ×1, checks.md combined by git), `ali/tidy` for the
+   rebase clash. Waits: preview plan not `Loading::Pending`; resolver `crate::resolver::settled`; review
+   `crate::finish::review_landed`.
+2. `ease_walk/journeys.rs`: 9 walks, one `#[test]` each, names in the WALKS map below; each calls
+   `counted("<id>", &[keys…])`. Then restore the walk check and helpers below into `mod.rs`/`screen.rs` (change
+   `counted`'s `.expect` to `unwrap_or_else(|| panic!…)`: `clippy::expect_used` is denied).
+3. `ease_walk/questions.rs` q1–q17; `ease_walk/fold.rs` (`fold_sync_merge_has_no_mark`, `fold_reveal_parent`,
+   `fold_same_without_commit_graph` — wait on `history.promotion.is_none()`; `picks_shell_merge` — shell-begun merge
+   via `clash_stops.rs:251 relaunched_with`). Known: Q9 `commit_screen.rs:186`; Q7 `clash_stops.rs:154,180`; the
+   picker `branch_pane/picker_on.rs:30`; commit options `commit_screen/shots.rs:145-148`.
+4. `ease_walk/shots.rs`: each `docs/shots/ease-pass/*` ≤200 KB and in the captions TSV with a mock path. Rewrite
+   `docs/shots/ease-pass/ease-pass-contact-sheet-captions.tsv` (today 45 rows, 9 ease-pass and 36 pointing at
+   `../m2…m8`; 46 ease-pass captures lack a row). Add an `ease-pass` promise case to `scripts/contact-sheet.sh`
+   (today the sheet says `Promise: NOT RECORDED`), regenerate with `--captions-order ease-pass docs/shots/ease-pass`.
+5. `scripts/ease-accept.sh`, the `TESTING.md` "## Ease pass acceptance" section, the Q4 pixel quote (`grep SUMMARY
+   docs/perf/ease-pixel.txt`, 31 lines), the m3 waiter (`tests/it/m3_walk.rs` ~:1016-1021 → `Nothing goes in. Put a
+   file in with space.`; run the pty walk before and after).
+6. Earlier records: the conductor said do not rebuild old milestone sheets (m3/m4/m6/m7/m8); leave that box
+   unticked with that reason.
+
+### Gotchas
+- `team`: `sara/fix-toc` folds under bob's sync merge (fold rule a), so the team tests open with
+  `MergedBranches::Shown` (`team::open_every_branch`).
+- Leaving every file out: the cursor follows a moved file, so press `k` to the top before each `space`
+  (`commit::leave_all_out`).
+- At 120 columns subjects truncate (`Merged PR 16021: Fix the wall…`); G2/G3/G7/G9/G13 draw at 200.
+- Frames after a write, drawn with the fixed clock, read ages "in the future"; the wall clock is better there.
+- `CARGO_TARGET_DIR` must be absolute: a relative one makes fixture paths relative and 171 clone/remote tests fail.
+- In the clash screen, after `o t n b` on pay-307, `y` reaches the review straight away, but
+  `captures::settled_frame` then times out "waiting for a frame with nothing loading". Suspect `Combined by git ·
+  reading…` never finishes. Not yet looked at: a **question**, no line.
+
+### Findings so far (for the owners, not fixed here)
+- **Defect (01r), `crates/mergewright-git/src/branch_status.rs:121`:** `(candidate.kind != CandidateKind::Other ||
+  apart.base_only == 0)` lets an ordinary branch already merged into wallet-release (`dana/receipts`) be a base. On
+  the mock, sara's pane reads `built on main ─◆ dana/receipts ─◆ wallet-release ─◆ sara/fix-toc`, and after his
+  commit the pane reads `✓ up to date with dana/receipts`.
+- **Question:** on `ops/ci`'s rows (tip and sync merge) the pane reads `<sha7> · not on a branch` while the second
+  line says `made on ops/ci`. Decided at `view/branch_pane.rs:33-37`, via `focused()` at
+  `update/branch_pane.rs:204-206` finding no candidate. Cause unknown (a branch level with its upstream?).
+- **Question:** on `team`, sara's first commit `toc: fix the anchors` carries `bob/x` in the branch column (see
+  `main-pane-sibling-120.txt`). Possibly the same as `ease/07b-made-on-lane`; no line yet.
+- **Confirms** `ease/07c-wallet-no-column` and `ease/07b-made-on-lane`: on the open mock, wallet-release's rows say
+  `made on sara/fix-toc` and no row reads `wallet-release (you)`.
+- **Refutes** `ease/12-landing-bar`, `ease/08u-justmerged`, `ease/06-no-space-offer`: the landed bar reads `u undo
+  the merge · P push · a amend · space show the 1 commit inside`, and `space` is offered on folded and opened merges.
+- **Textual question:** the merge preview's footer reads `y merge  esc cancel  ⏎ see the 1 commit` with double
+  spaces, where the note uses ` · `.
+
+### Restore into `mod.rs` once `journeys.rs` exists (taken out so the commit compiles)
+```rust
+const WALKS: &[(&str, &str)] = &[
+    ("commit-all-subject", "commit_all_subject"), ("commit-with-body", "commit_with_body"),
+    ("commit-leave-first", "commit_leave_first"), ("merge-one-clash", "merge_one_clash"),
+    ("merge-clean", "merge_clean"), ("merge-three-clashes", "merge_three_clashes"),
+    ("undo-a-pick", "undo_a_pick"), ("pause-and-resume", "pause_and_resume_on_the_merge"),
+    ("open-folded-merge", "open_folded_merge"),
+];
+// every_ease_journey_id_has_a_walk: for each fence row, its WALKS entry exists, journeys.rs holds
+// "#[test]\nfn <test>()" and `counted("<id>"` (or the rustfmt-wrapped `counted(\n        "<id>"`); every WALKS
+// id is a fence row.
+pub fn allowed(id: &str) -> u32 { /* the fence row's keys, panic if none */ }
+pub fn counted(id: &str, route: &[&str]) {
+    // walked = route.len(); println!("journey {id} {walked}/{allowed} {route:?}"); panic on within_the_note Err
+}
+// screen.rs: ctrl(c) -> KeyPress (control modifier); head_parents(repo) -> usize (git log -1 --format=%P).
+```

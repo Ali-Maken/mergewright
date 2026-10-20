@@ -1,0 +1,43 @@
+ease-pass 14, 120x40, 01r's team repository, every branch shown, cursor on `toc: number the headings` (sara/fix-toc).
+What right looks like: taken before wallet-release's extra commit: the pane's `built on` reads `main` `─◆ develop` `─◆ wallet-release` `─◆ sara/fix-toc` (all of wallet-release sits under hers); the merged line reads `not merged`. Colour unverified (rule 5).
+
+ ◆ api  ~/code/api · wallet-release                                                       8 commits  every branch shown
+
+      ◉━╮      bob/x                Merge branch 'sara/fix-toc' into …    Bob  27h│ sara/fix-toc
+      ● ┃                           x1: Bob's first try                   Bob  27h│ ! not pushed yet
+      ┊ ┃ ●    ali/x                x: try the other layout               you  27h│ · not merged
+▸     ┊ ● ┊    sara/fix-toc         toc: number the headings             Sara  28h│ ✓ up to date with wallet-release
+      ┊ ┃ ┊                         Sara · 28 hours ago · made on sara/fix-toc · …│ · Sara, last commit 28h ago
+      ●━╯ ┊    bob/x                toc: fix the anchors                 Sara  28h│
+      ◆┄┄┄╯                         Start the wallet release              you  28h│ built on
+    ●┄╯        develop              Start develop  not pushed yet         you  28h│   main
+  ◇─╯          main                 Add the readme  not pushed yet        you  28h│    ─◆ develop
+                                                                                  │    ─◆ wallet-release
+                                                                                  │    ─◆ sara/fix-toc
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+                                                                                  │
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ m merge fix-toc into yours · ⏎ open · o take · C switch to fix-toc · x compare · u undo · . actions · ? keys
