@@ -8,7 +8,7 @@ shape: ref-states (dark = light, asserted), truecolor
   │ ●     ..l.f...  b9b94c1  behind: theirs
   │ ●     ..l.a...  379c02d  behind: shared
   │ │ ●   ..l.a.h.  0994ff4  ahead: not pushed yet
-  │ │ ●   ..l.a.a.  7be40e6  ahead: pushed
-◆ │ │ │   c.l.a.a.  a676d37  Advance main again
-●─│─┴─╯   calaaaa.  31948ff  Advance main
+  │ │ ●   ..l.a.h.  7be40e6  ahead: pushed
+◆ │ │ │   c.l.a.h.  a676d37  Advance main again
+●─│─┴─╯   calaahh.  31948ff  Advance main
 ◇─╯       cll.....  68d5d19  Add the base

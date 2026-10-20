@@ -237,9 +237,20 @@ fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
             RefTarget::Symbolic(_) => None,
         })
         .collect();
+    // As the app's seeds: a remote-tracking ref follows the local branch of
+    // the same short name (ADR-0064), so a lane is never named `origin/x`.
     let seed = |name: &mergewright_core::ref_name::RefName| {
-        tips.get(name.as_bytes())
-            .map(|&tip| BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand())))
+        tips.get(name.as_bytes()).map(|&tip| BranchSeed {
+            follows: name
+                .as_bytes()
+                .strip_prefix(b"refs/remotes/")
+                .and_then(|rest| rest.splitn(2, |&byte| byte == b'/').nth(1))
+                .filter(|branch| {
+                    tips.contains_key([b"refs/heads/".as_slice(), branch].concat().as_slice())
+                })
+                .map(BranchIdentity::of_name),
+            ..BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand()))
+        })
     };
     Seeds {
         default_branch: branches.default_branch().and_then(seed),

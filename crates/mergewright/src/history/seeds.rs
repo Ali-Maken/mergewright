@@ -25,6 +25,28 @@ const REMOTES: &[u8] = b"refs/remotes/";
 /// symbolic is left out — the ref it aliases carries the tip.
 #[must_use]
 pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
+    seeds_with_upstreams(refs, branches, &HashMap::new())
+}
+
+/// [`seeds_for`] that also knows each local branch's configured upstream
+/// (`branch.<n>.merge`, read through the open repository, no process
+/// spawned): a remote-tracking ref follows the local branch that names it
+/// as upstream, even when the two are named differently; otherwise the
+/// same-short-name rule applies.
+#[must_use]
+pub fn seeds_with_upstreams(
+    refs: &[RefEntry],
+    branches: &Branches,
+    upstreams: &HashMap<RefName, RefName>,
+) -> Seeds {
+    // remote-tracking full name -> the local branch's short name
+    let followed: HashMap<&[u8], &[u8]> = upstreams
+        .iter()
+        .filter_map(|(local, remote)| {
+            let short = local.as_bytes().strip_prefix(HEADS)?;
+            Some((remote.as_bytes(), short))
+        })
+        .collect();
     let tips: HashMap<&[u8], Oid> = refs
         .iter()
         .filter_map(|entry| match entry.target {
@@ -36,7 +58,7 @@ pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
-            follows: follows_of(name.as_bytes(), |branch| {
+            follows: follows_of(name.as_bytes(), &followed, |branch| {
                 tips.contains_key([HEADS, branch].concat().as_slice())
             }),
         })
@@ -100,7 +122,7 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
-            follows: follows_of(name.as_bytes(), |branch| {
+            follows: follows_of(name.as_bytes(), &HashMap::new(), |branch| {
                 tips.contains_key([HEADS, branch].concat().as_slice())
             }),
         })
@@ -121,7 +143,7 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
             .map(|(name, &tip)| BranchSeed {
                 tip,
                 identity: BranchIdentity::of_name(shorthand_of(name)),
-                follows: follows_of(name, |branch| {
+                follows: follows_of(name, &HashMap::new(), |branch| {
                     tips.contains_key([HEADS, branch].concat().as_slice())
                 }),
             })
@@ -141,10 +163,18 @@ fn shorthand_of(full: &[u8]) -> &[u8] {
 }
 
 /// The local branch a remote-tracking ref is the copy of: `refs/remotes/o/x`
-/// follows `refs/heads/x` when that exists (the `↑n to push` pairing), else
-/// nothing. `None` for a local ref.
-fn follows_of(full: &[u8], local_exists: impl Fn(&[u8]) -> bool) -> Option<BranchIdentity> {
+/// follows the local branch whose configured upstream it is (`followed`), else
+/// `refs/heads/x` when that exists (the `↑n to push` pairing), else nothing.
+/// `None` for a local ref.
+fn follows_of(
+    full: &[u8],
+    followed: &HashMap<&[u8], &[u8]>,
+    local_exists: impl Fn(&[u8]) -> bool,
+) -> Option<BranchIdentity> {
     let rest = full.strip_prefix(REMOTES)?;
+    if let Some(local) = followed.get(full) {
+        return Some(BranchIdentity::of_name(local));
+    }
     let branch = rest.splitn(2, |&byte| byte == b'/').nth(1)?;
     local_exists(branch).then(|| BranchIdentity::of_name(branch))
 }

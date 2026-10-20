@@ -10,5 +10,5 @@ commits: 4, columns: 2
 
 * \  3222407  main               Merge branch 'main' of https://example.invalid/graft.git into main
 * |  abd2097  main               My commit
-| *  781b8cc  origin/main        Their commit
+| *  781b8cc  main               Their commit
 * /  68d5d19  main               Add the base

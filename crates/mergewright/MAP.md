@@ -95,6 +95,7 @@ Reading history for the screen: `mergewright-git`'s walk meets `mergewright-grap
 - `History::ask_folded` / `folded_ask_out` / `ask_again` (fn) — put a `FoldedAsk` on every request until answered; is one out; the request to carry it when none is due.
 - `Phase` (enum) — where the walk is: streaming, complete, and so on.
 - `preview_seeds` (fn) — ghost lanes' colours from the refs, for Ghost Preview.
+- `seeds_with_upstreams` (fn) — `seeds_for` plus each local branch's configured upstream (config read, no spawn), so a differently-named remote still `follows` its branch.
 ## history::parents
 A row's parents for everything but drawing (ease-pass 06 D1).
 - `of` (fn) — `(row, refs) -> &[Oid]`; the real parents, a stash entry's first only.

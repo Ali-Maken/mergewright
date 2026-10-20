@@ -32,6 +32,14 @@ impl BranchSeed {
             follows: None,
         }
     }
+
+    /// The name a lane takes on reaching this tip: the branch this ref is
+    /// the remote copy of, else its own (a branch and its remote are one
+    /// thing, so no lane is named `origin/...`).
+    #[must_use]
+    pub fn lane_name(&self) -> BranchIdentity {
+        self.follows.unwrap_or(self.identity)
+    }
 }
 
 /// The branches a [`LayoutCursor`](crate::layout::LayoutCursor) is seeded

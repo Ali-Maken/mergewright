@@ -43,7 +43,7 @@ mod tests;
 
 pub use fold::{Inside, RowFold};
 pub use scroll::Motion;
-pub use seeds::{preview_seeds, seeds_for};
+pub use seeds::{preview_seeds, seeds_for, seeds_with_upstreams};
 pub use serve::serve;
 pub use sought::{FoldedAsk, Found, Reveal, Sought};
 pub use source::WalkSource;

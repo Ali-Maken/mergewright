@@ -174,4 +174,5 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## seeds
 - `BranchSeed` (struct) — a branch tip, its identity, and `follows`: the local branch a remote ref is the copy of (ADR-0064). `BranchSeed::new(tip, identity)` makes one with `follows: None`.
+- `lane_name` (fn) — `BranchSeed::lane_name(&self) -> BranchIdentity`: `follows` if set, else `identity`; the name a lane takes on reaching this tip (ADR-0064: a remote is never a lane name).
 - `Seeds` (struct) — `default_branch`, `integration_branches`, `known_branches` a layout starts from.

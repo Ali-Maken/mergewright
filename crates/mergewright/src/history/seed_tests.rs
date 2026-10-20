@@ -80,3 +80,56 @@ fn a_remote_seed_follows_the_local_branch_of_the_same_name() {
         "the shape has a remote copy of a local branch"
     );
 }
+
+/// A configured upstream with a different name than its branch
+/// (`branch.<n>.merge`): the remote seed follows that local branch, not a
+/// same-named one.
+#[test]
+fn a_remote_seed_follows_the_branch_that_names_it_as_upstream() {
+    use std::collections::HashMap;
+
+    use mergewright_core::ref_name::RefName;
+
+    use super::seeds::seeds_with_upstreams;
+
+    let dir = mergewright_fixtures::borrow(Shape::RefStates);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let plain = seeds_for(&refs, &branches);
+    // A remote seed, and a local branch that does not share its short name
+    // (so the same-name rule would pick another branch, or none).
+    let remote = refs
+        .iter()
+        .filter(|e| e.name.as_bytes().starts_with(b"refs/remotes/"))
+        .find(|e| {
+            plain
+                .known_branches
+                .iter()
+                .any(|known| known.identity == BranchIdentity::of_name(e.name.shorthand()))
+        })
+        .expect("a remote seed in the shape");
+    let by_name = plain
+        .known_branches
+        .iter()
+        .find(|known| known.identity == BranchIdentity::of_name(remote.name.shorthand()))
+        .and_then(|known| known.follows);
+    let local = refs
+        .iter()
+        .filter(|e| e.name.as_bytes().starts_with(b"refs/heads/"))
+        .find(|e| Some(BranchIdentity::of_name(e.name.shorthand())) != by_name)
+        .expect("a local branch of another name");
+    let mut upstreams: HashMap<RefName, RefName> = HashMap::new();
+    upstreams.insert(local.name.clone(), remote.name.clone());
+
+    let seeds = seeds_with_upstreams(&refs, &branches, &upstreams);
+    let known = seeds
+        .known_branches
+        .iter()
+        .find(|known| known.identity == BranchIdentity::of_name(remote.name.shorthand()))
+        .expect("the remote is still a seed");
+    assert_eq!(
+        known.follows,
+        Some(BranchIdentity::of_name(local.name.shorthand()))
+    );
+}

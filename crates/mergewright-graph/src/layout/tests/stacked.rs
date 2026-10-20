@@ -146,3 +146,32 @@ fn renamed_at_tip_keeps_a_reserved_lane_and_the_lanes_own_name() {
         Some(LaneIdentity::Known(name("b")))
     );
 }
+
+#[test]
+fn a_remote_tip_names_its_lane_by_the_branch_it_follows() {
+    // M(6) merges 'origin/main' (5, the remote tip, following `main`).
+    let commits = [
+        commit(6, &[2, 5], 600, b"Merge branch 'main' of origin"),
+        commit(5, &[2], 550, b"remote work"),
+        commit(2, &[], 100, b"root"),
+    ];
+    let seeds = Seeds {
+        default_branch: Some(seed(6, name("main"))),
+        known_branches: vec![follower(5, "origin/main", "main")],
+        ..Seeds::default()
+    };
+    let rows = layout(&commits, seeds);
+    assert_eq!(rows[0].lanes[rows[0].outgoing[1].0], Some(name("main")));
+    assert_eq!(made_on(&rows[1]), Some(name("main")));
+    // the waited-for path, too: a lane reaching the remote tip is named by what it follows
+    let lane = Lane {
+        index: 1,
+        identity: LaneIdentity::Known(name("other")),
+        waiting_for: CommitHandle(0),
+        reserved: false,
+    };
+    assert_eq!(
+        renamed_at_tip(&lane, Some(&follower(9, "origin/x", "x"))),
+        Some(LaneIdentity::Known(name("x")))
+    );
+}

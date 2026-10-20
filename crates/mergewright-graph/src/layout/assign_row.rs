@@ -174,7 +174,7 @@ impl LayoutCursor {
         // A live branch at the parent beats a name recovered from the merge
         // subject (ADR-0064); otherwise the name is recovered at assembly.
         let identity = match self.known_identities.get(&handles.id_of(target)) {
-            Some(tip) => LaneIdentity::Known(tip.identity),
+            Some(tip) => LaneIdentity::Known(tip.lane_name()),
             None => LaneIdentity::Merge {
                 merge,
                 parent: target,
@@ -340,5 +340,5 @@ pub(crate) fn renamed_at_tip(lane: &Lane, tip: Option<&BranchSeed>) -> Option<La
     {
         return None;
     }
-    Some(LaneIdentity::Known(tip.identity))
+    Some(LaneIdentity::Known(tip.lane_name()))
 }

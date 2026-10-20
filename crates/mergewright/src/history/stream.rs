@@ -11,7 +11,7 @@ use mergewright_graph::layout::StreamConfig;
 use crate::jobs::Delivery;
 use crate::repos::RepoStore;
 
-use super::seeds::seeds_for;
+use super::seeds::seeds_with_upstreams;
 use super::serve::{error_chain, serve};
 use super::source::WalkSource;
 use super::state::{Ended, HistoryUpdate, RowRequest, WalkFacts};
@@ -41,7 +41,22 @@ pub fn stream(
     let branches = store.branches().map_err(|error| error.to_string())?;
     let repo = store.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    let seeds = seeds_for(&refs.refs, &branches);
+    // The configured upstreams, the same config read `refs::read` makes for
+    // the bar's `↑n to push`: no process is spawned.
+    let mut upstreams = std::collections::HashMap::new();
+    for entry in refs
+        .refs
+        .iter()
+        .filter(|entry| entry.name.as_bytes().starts_with(b"refs/heads/"))
+    {
+        if let Some(upstream) = handle
+            .upstream(&entry.name)
+            .map_err(|error| error.to_string())?
+        {
+            upstreams.insert(entry.name.clone(), upstream);
+        }
+    }
+    let seeds = seeds_with_upstreams(&refs.refs, &branches, &upstreams);
 
     let table = store.table().map_err(|error| error.to_string())?;
     let walk = Walk::from_tips(&handle, order, &refs.tips, Arc::clone(&table))

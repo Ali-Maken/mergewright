@@ -122,9 +122,20 @@ pub fn lay_out(shape: Shape, dir: &Path) -> Laid {
 /// The default branch on lane 0, integration branches beside it, every local
 /// and remote-tracking branch known by name.
 fn seeds(refs: &[RefEntry], branches: &Branches, tips: &HashMap<&[u8], Oid>) -> Seeds {
+    // As the app's seeds: a remote-tracking ref follows the local branch of
+    // the same short name (ADR-0064), so a lane is never named `origin/x`.
     let seed = |name: &mergewright_core::ref_name::RefName| {
-        tips.get(name.as_bytes())
-            .map(|&tip| BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand())))
+        tips.get(name.as_bytes()).map(|&tip| BranchSeed {
+            follows: name
+                .as_bytes()
+                .strip_prefix(b"refs/remotes/")
+                .and_then(|rest| rest.splitn(2, |&byte| byte == b'/').nth(1))
+                .filter(|branch| {
+                    tips.contains_key([b"refs/heads/".as_slice(), branch].concat().as_slice())
+                })
+                .map(BranchIdentity::of_name),
+            ..BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand()))
+        })
     };
     Seeds {
         default_branch: branches.default_branch().and_then(seed),
