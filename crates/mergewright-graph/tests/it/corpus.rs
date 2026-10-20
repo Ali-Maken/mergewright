@@ -238,11 +238,8 @@ fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
         })
         .collect();
     let seed = |name: &mergewright_core::ref_name::RefName| {
-        tips.get(name.as_bytes()).map(|&tip| BranchSeed {
-            tip,
-            identity: BranchIdentity::of_name(name.shorthand()),
-            follows: None,
-        })
+        tips.get(name.as_bytes())
+            .map(|&tip| BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand())))
     };
     Seeds {
         default_branch: branches.default_branch().and_then(seed),

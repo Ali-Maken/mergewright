@@ -4,8 +4,8 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
  ◆ api  ~/code/api · feature/receipts                         7 commits  1 commit to push
 
     ◆        featu… (you) Draw the receipts list  ↑1 to push  not merged         you  28h
-▸   ◉┄╮                   Merge branch 'sara/fix-toc' into wallet-release  ▾     you  28h
-    ┃ ┊                   you · 28 hours ago · made on feature/receipts · merged 1 from …
+▸   ◉┄╮      wallet-rele… Merge branch 'sara/fix-toc' into wallet-release  ▾     you  28h
+    ┃ ┊                   you · 28 hours ago · made on wallet-release · merged 1 from fi…
     ┃ ●      fix-toc      toc: fix the anchors                                  Sara  28h
     ●┄╯                   Start the wallet release                               you  28h
     ┃ ●      spike/cache  Try a read cache  not pushed yet                       you  28h

@@ -22,6 +22,18 @@ pub struct BranchSeed {
     pub follows: Option<BranchIdentity>,
 }
 
+impl BranchSeed {
+    /// A local or remote-only branch: it is no other ref's copy.
+    #[must_use]
+    pub fn new(tip: Oid, identity: BranchIdentity) -> Self {
+        Self {
+            tip,
+            identity,
+            follows: None,
+        }
+    }
+}
+
 /// The branches a [`LayoutCursor`](crate::layout::LayoutCursor) is seeded
 /// with, before it sees a single commit.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

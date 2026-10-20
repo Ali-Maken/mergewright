@@ -10,16 +10,16 @@
 
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
-    ●                           Show the login page                     Graft   2d│ feature-b
+    ●                           Show the login page                     Graft   2d│ feature-a  (you're here)
 ▸   ●                           Handle expired tokens                   Graft   2d│ ! not pushed yet
     │                           the result                                        │ · not merged
-    │ ○                         Show the login page                     Graft    —│ ✓ up to date with feature-a
+    │ ○                         Show the login page                     Graft    —│ ✓ up to date with main
     │ ○                         Handle expired tokens on refresh        Graft    —│ · Graft, last commit 2d ago
     ●─╯                         Add OAuth callback                      Graft   2d│
   ◇─╯                           m1  main is here  not pushed yet        Graft   2d│ built on
                                                                                   │   main
                                                                                   │    ─◆ feature-a
-                                                                                  │    ─◆ feature-b
+                                                                                  │
                                                                                   │
                                                                                   │
                                                                                   │

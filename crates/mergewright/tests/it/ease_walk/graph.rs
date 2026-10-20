@@ -19,10 +19,12 @@ fn g1_lane_shape_is_the_role_against_the_cursor_branch() {
     let integration = node_column(&frame, fixture::INTEGRATION);
     let main = node_column(&frame, fixture::BUMP);
     assert_eq!(cell(&frame, fixture::START_RELEASE, sara), '●');
+    // ADR-0064: the lane is sara's down to wallet-release's tip, where it
+    // takes that name; below it, what sara is built on, it draws thin.
     assert_eq!(
         cell(&frame, fixture::TIDY, sara),
-        '┃',
-        "sara's lane: {}",
+        '│',
+        "wallet-release, under sara: {}",
         shown(&frame)
     );
     assert_eq!(
@@ -77,12 +79,13 @@ fn g1_built_on_branch_draws_thin() {
 
 /// G2: connectors `╯` `╮` with `━` (the cursor's branch), `┄` (other) and
 /// `═` (trunk) on the row where the lanes join main; `━` moves with the
-/// cursor.
+/// cursor. The cursor starts on wallet-release's tip: sara is built on it,
+/// so her lane joins thin (ADR-0064) and the heavy join is wallet-release's.
 #[test]
 fn g2_connectors_take_the_joining_branch_role() {
     let scratch = mock();
     let (app, state) = open(scratch.path(), 200);
-    let state = cursor_on(&app, state, fixture::TOC_TWO);
+    let state = cursor_on(&app, state, fixture::RELEASE_REPORT);
     let frame = drawn(&state);
     let join = line_with(&frame, fixture::BUMP);
     for glyph in ['╯', '┄', '═', '━'] {
@@ -220,7 +223,11 @@ fn g7_labels_after_the_message() {
         line_with(&frame, fixture::TOC_TWO)
             .contains("toc: number the headings  ↑1 to push  not merged")
     );
-    assert!(line_with(&frame, fixture::RELEASE_REPORT).contains("wallet-release is here"));
+    // wallet-release's tip names it in the column (ADR-0064), so no label
+    // repeats it.
+    let release = line_with(&frame, fixture::RELEASE_REPORT);
+    assert!(release.contains("wallet-release (you)"), "{release:?}");
+    assert!(!release.contains("is here"), "{release:?}");
     assert!(line_with(&frame, fixture::README).contains("Add the readme  tag v1.2"));
     assert!(
         !frame.iter().any(|line| line.contains("origin/main")),

@@ -9,8 +9,8 @@ What right looks like: taken before wallet-release's extra commit: the pane's `b
 ▸     ┊ ● ┊    sara/fix-toc         toc: number the headings             Sara  28h│ ✓ up to date with wallet-release
       ┊ ┃ ┊                         Sara · 28 hours ago · made on sara/fix-toc · …│ · Sara, last commit 28h ago
       ●━╯ ┊    bob/x                toc: fix the anchors                 Sara  28h│
-      ◆┄┄┄╯                         Start the wallet release              you  28h│ built on
-    ●┄╯        develop              Start develop  not pushed yet         you  28h│   main
+      ◆┄┄┄╯    wallet-release (you) Start the wallet release              you  28h│ built on
+    ●─╯        develop              Start develop  not pushed yet         you  28h│   main
   ◇─╯          main                 Add the readme  not pushed yet        you  28h│    ─◆ develop
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ sara/fix-toc

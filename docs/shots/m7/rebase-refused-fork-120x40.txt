@@ -4,7 +4,7 @@
 ▸ ● ┊      main                 m2  not pushed yet                      Graft   2d│ ! not pushed yet
   ┃ ┊                           Graft · 2 days ago · made on main · fa34bcc       │ · the main line: branches merge into
   ┃ ┊ ●    feature-b            b1  not pushed yet                      Graft   2d│   it
-  ┃ ◆┄╯    feature-c            a1  feature-a is here  not pushed yet   Graft   2d│ · no upstream to compare with
+  ┃ ◆┄╯    feature-a (you)      a1  not pushed yet                      Graft   2d│ · no upstream to compare with
   ◇┄╯      main                 m1                                      Graft   2d│ · everyone, last commit 2d ago
                                                                                   │
                                                                                   │ built on

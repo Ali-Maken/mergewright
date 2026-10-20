@@ -104,7 +104,7 @@ Folding by default in the worker: lays out mending the provisional order's repai
 ## history::scroll
 Moving through history: cursor, viewport, and the `RowRequest` a move needs. Plain arithmetic on `History`.
 ## history::seeds
-The lanes a layout starts with, from the repository's refs.
+The lanes a layout starts with, from the repository's refs. A remote-tracking seed sets `follows` to the local branch of the same short name (ADR-0064).
 ## history::serve
 The history worker's loop: answers each `RowRequest`, lays out ahead between requests, parks when done.
 ## history::source

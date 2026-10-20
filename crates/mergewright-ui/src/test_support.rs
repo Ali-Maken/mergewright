@@ -136,11 +136,10 @@ pub(crate) fn wide_history(topics: u8) -> Vec<Row> {
     layout(
         &commits,
         Seeds {
-            default_branch: Some(BranchSeed {
-                tip: oid(merge(topics)),
-                identity: BranchIdentity::of_name(b"main"),
-                follows: None,
-            }),
+            default_branch: Some(BranchSeed::new(
+                oid(merge(topics)),
+                BranchIdentity::of_name(b"main"),
+            )),
             ..Seeds::default()
         },
     )

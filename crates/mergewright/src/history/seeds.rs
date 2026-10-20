@@ -36,7 +36,9 @@ pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
-            follows: None,
+            follows: follows_of(name.as_bytes(), |branch| {
+                tips.contains_key([HEADS, branch].concat().as_slice())
+            }),
         })
     };
     Seeds {
@@ -98,7 +100,9 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
-            follows: None,
+            follows: follows_of(name.as_bytes(), |branch| {
+                tips.contains_key([HEADS, branch].concat().as_slice())
+            }),
         })
     };
     Seeds {
@@ -117,7 +121,9 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
             .map(|(name, &tip)| BranchSeed {
                 tip,
                 identity: BranchIdentity::of_name(shorthand_of(name)),
-                follows: None,
+                follows: follows_of(name, |branch| {
+                    tips.contains_key([HEADS, branch].concat().as_slice())
+                }),
             })
             .collect(),
     }
@@ -132,4 +138,13 @@ fn shorthand_of(full: &[u8]) -> &[u8] {
         }
     }
     full
+}
+
+/// The local branch a remote-tracking ref is the copy of: `refs/remotes/o/x`
+/// follows `refs/heads/x` when that exists (the `↑n to push` pairing), else
+/// nothing. `None` for a local ref.
+fn follows_of(full: &[u8], local_exists: impl Fn(&[u8]) -> bool) -> Option<BranchIdentity> {
+    let rest = full.strip_prefix(REMOTES)?;
+    let branch = rest.splitn(2, |&byte| byte == b'/').nth(1)?;
+    local_exists(branch).then(|| BranchIdentity::of_name(branch))
 }

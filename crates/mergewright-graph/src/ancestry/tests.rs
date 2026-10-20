@@ -8,11 +8,7 @@ use crate::{BranchIdentity, BranchSeed, Fold, Seeds};
 
 fn main_seed(tip: u8) -> Seeds {
     Seeds {
-        default_branch: Some(BranchSeed {
-            tip: oid(tip),
-            identity: BranchIdentity::of_name(b"main"),
-            follows: None,
-        }),
+        default_branch: Some(BranchSeed::new(oid(tip), BranchIdentity::of_name(b"main"))),
         ..Seeds::default()
     }
 }

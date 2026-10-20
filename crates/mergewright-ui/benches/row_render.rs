@@ -112,11 +112,7 @@ fn terminal() -> Capabilities {
 
 fn row_render(c: &mut Criterion) {
     let seeds = Seeds {
-        default_branch: Some(BranchSeed {
-            tip: oid(0),
-            identity: BranchIdentity::of_name(b"main"),
-            follows: None,
-        }),
+        default_branch: Some(BranchSeed::new(oid(0), BranchIdentity::of_name(b"main"))),
         ..Seeds::default()
     };
     let rows = layout(&commits(1_000), seeds);

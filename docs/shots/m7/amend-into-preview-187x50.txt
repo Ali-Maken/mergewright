@@ -1,15 +1,15 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   4 commits
 
-    ●                           Show the login page                                                                                        Graft   2d│ feature-b
+    ●                           Show the login page                                                                                        Graft   2d│ feature-a  (you're here)
     ●                           Handle expired tokens                                                                                      Graft   2d│ ! not pushed yet
 ▸   ●                           Add OAuth callback                                                                                         Graft   2d│ · not merged
-    │                           the result                                                                                                           │ ✓ up to date with feature-a
+    │                           the result                                                                                                           │ ✓ up to date with main
     │ ○                         Show the login page  feature-b is here  not pushed yet                                                     Graft    —│ · Graft, last commit 2d ago
     │ ○                         Handle expired tokens  feature-a is here  not pushed yet                                                   Graft    —│
     │ ○                         Add OAuth callback                                                                                         Graft    —│ built on
   ◇─┴─╯                         m1  main is here  not pushed yet                                                                           Graft   2d│   main
                                                                                                                                                      │    ─◆ feature-a
-                                                                                                                                                     │    ─◆ feature-b
+                                                                                                                                                     │
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

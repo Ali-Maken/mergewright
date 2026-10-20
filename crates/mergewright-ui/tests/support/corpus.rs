@@ -123,11 +123,8 @@ pub fn lay_out(shape: Shape, dir: &Path) -> Laid {
 /// and remote-tracking branch known by name.
 fn seeds(refs: &[RefEntry], branches: &Branches, tips: &HashMap<&[u8], Oid>) -> Seeds {
     let seed = |name: &mergewright_core::ref_name::RefName| {
-        tips.get(name.as_bytes()).map(|&tip| BranchSeed {
-            tip,
-            identity: BranchIdentity::of_name(name.shorthand()),
-            follows: None,
-        })
+        tips.get(name.as_bytes())
+            .map(|&tip| BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand())))
     };
     Seeds {
         default_branch: branches.default_branch().and_then(seed),

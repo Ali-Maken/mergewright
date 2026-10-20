@@ -1,11 +1,11 @@
 ---
-source: crates/graft-ui/tests/graph_column.rs
+source: crates/mergewright-ui/tests/graph_column.rs
 expression: text
 ---
 shape: octopus-merge (dark = light, asserted), truecolor
 
-◆─┬─┬─╮   chhkkff.  e385b54  Merge branches 'topic-1', 'topic-2' and 'topic-3'
-│ │ │ ●   c.h.k.f.  c95dba0  topic 3
-│ │ ● │   c.h.k.f.  3d625a5  topic 2
-│ ● │ │   c.h.k.f.  04bb363  topic 1
-◇─┴─┴─╯   chhkkff.  68d5d19  Add the base
+◆─┬─┬─╮   ciihhll.  e385b54  Merge branches 'topic-1', 'topic-2' and 'topic-3'
+│ │ │ ●   c.i.h.l.  c95dba0  topic 3
+│ │ ● │   c.i.h.l.  3d625a5  topic 2
+│ ● │ │   c.i.h.l.  04bb363  topic 1
+◇─┴─┴─╯   ciihhll.  68d5d19  Add the base

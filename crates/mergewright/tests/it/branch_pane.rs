@@ -281,20 +281,16 @@ fn the_identity_of_every_candidate_is_its_lanes() {
             .unwrap_or_else(|| panic!("{name} has its tip on screen"));
         (identity_of(candidate), mergewright_graph::made_on(row))
     };
-    // A branch whose tip starts its own lane: the identity is that lane's.
-    for name in ["refs/heads/main", "refs/heads/sara/fix-toc"] {
+    // A branch's tip row is made on that branch, wherever its lane came from
+    // (ADR-0064): wallet-release sits under sara's lane and takes its name
+    // there, so its identity is its tip row's lane too.
+    for name in [
+        "refs/heads/main",
+        "refs/heads/sara/fix-toc",
+        "refs/heads/wallet-release",
+    ] {
         let (identity, lane) = lane_of(name);
         assert_eq!(Some(identity), lane, "{name}");
     }
-    // 01r R1: wallet-release sits wholly under sara's lane, so its tip row is
-    // sara's and no row on screen is made on wallet-release itself.
-    let (wallet, lane) = lane_of("refs/heads/wallet-release");
-    assert_eq!(lane, Some(lane_of("refs/heads/sara/fix-toc").0));
-    assert!(
-        window
-            .rows
-            .iter()
-            .all(|row| mergewright_graph::made_on(row) != Some(wallet))
-    );
     app.close();
 }

@@ -42,3 +42,41 @@ fn seeds_anchor_the_default_branch_and_know_remote_tips() {
         .count();
     assert_eq!(remote_seeds, remotes);
 }
+
+/// ADR-0064: a remote-tracking seed names the local branch it is the copy of
+/// (same short name), so a lane on that branch is not renamed `origin/x`.
+#[test]
+fn a_remote_seed_follows_the_local_branch_of_the_same_name() {
+    let dir = mergewright_fixtures::borrow(Shape::RefStates);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let seeds = seeds_for(&refs, &branches);
+
+    let local_names: Vec<&[u8]> = (refs.iter())
+        .filter_map(|e| e.name.as_bytes().strip_prefix(b"refs/heads/"))
+        .collect();
+    let mut following = 0;
+    for entry in &refs {
+        let Some(rest) = entry.name.as_bytes().strip_prefix(b"refs/remotes/") else {
+            continue;
+        };
+        let Some(known) = seeds
+            .known_branches
+            .iter()
+            .find(|known| known.identity == BranchIdentity::of_name(entry.name.shorthand()))
+        else {
+            continue;
+        };
+        let branch = rest.splitn(2, |&b| b == b'/').nth(1).unwrap_or(rest);
+        let expected = local_names
+            .contains(&branch)
+            .then(|| BranchIdentity::of_name(branch));
+        assert_eq!(known.follows, expected);
+        following += usize::from(expected.is_some());
+    }
+    assert!(
+        following > 0,
+        "the shape has a remote copy of a local branch"
+    );
+}

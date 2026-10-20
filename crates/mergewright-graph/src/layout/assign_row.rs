@@ -6,7 +6,6 @@
 //! read as separate concerns; the type and its invariants are unchanged.
 
 use mergewright_core::commit_handle::{CommitHandle, Link};
-use mergewright_core::oid::Oid;
 
 use crate::identity::BranchIdentity;
 use crate::lane::{Lane, LaneIdentity};
@@ -62,13 +61,7 @@ impl LayoutCursor {
             })
             .collect();
 
-        let waited_for = winning_lane(&found);
-        let lane =
-            waited_for.unwrap_or_else(|| self.open_new_lane(link.commit, first_parent, handles));
-        if waited_for.is_some() {
-            // ADR-0064: reaching another branch's tip, the lane takes its name.
-            self.rename_at_tip(lane, handles.id_of(link.commit));
-        }
+        let lane = self.lane_of_row(&found, link.commit, first_parent, handles);
         self.unreached.retain(|&column| column != lane);
         // Read before anything closes: a root that is also a fresh tip opens
         // and closes its lane on this one row.
@@ -241,14 +234,26 @@ impl LayoutCursor {
         lane
     }
 
-    /// Renames `lane` if `commit` is another branch's tip ([`renamed_at_tip`]).
-    fn rename_at_tip(&mut self, lane: usize, commit: Oid) {
-        let tip = self.known_identities.get(&commit);
-        if let Some(entry) = &mut self.active[lane] {
-            if let Some(identity) = renamed_at_tip(entry, tip) {
-                entry.identity = identity;
-            }
+    /// The lane `commit` lands in: the winner among the lanes waiting for it,
+    /// which takes the name of `commit`'s branch if it is another branch's
+    /// tip (ADR-0064); or a fresh one if nothing waited.
+    fn lane_of_row(
+        &mut self,
+        found: &[usize],
+        commit: CommitHandle,
+        first_parent: Option<CommitHandle>,
+        handles: &impl HandleLookup,
+    ) -> usize {
+        let Some(lane) = winning_lane(found) else {
+            return self.open_new_lane(commit, first_parent, handles);
+        };
+        let tip = self.known_identities.get(&handles.id_of(commit));
+        if let Some(entry) = &mut self.active[lane]
+            && let Some(identity) = renamed_at_tip(entry, tip)
+        {
+            entry.identity = identity;
         }
+        lane
     }
 
     /// Takes the lowest-indexed free column, or opens a new one past every
@@ -330,10 +335,10 @@ pub(crate) fn renamed_at_tip(lane: &Lane, tip: Option<&BranchSeed>) -> Option<La
     if lane.reserved {
         return None;
     }
-    if let LaneIdentity::Known(own) = lane.identity {
-        if own == tip.identity || tip.follows == Some(own) {
-            return None;
-        }
+    if let LaneIdentity::Known(own) = lane.identity
+        && (own == tip.identity || tip.follows == Some(own))
+    {
+        return None;
     }
     Some(LaneIdentity::Known(tip.identity))
 }

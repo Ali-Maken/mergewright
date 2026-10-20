@@ -39,11 +39,7 @@ pub(crate) fn commit(id: u8, parents: &[u8], seconds: i64, subject: &[u8]) -> Co
 type Placement = (usize, Vec<usize>, Vec<(usize, Oid)>);
 
 fn seed(tip: u8, identity: BranchIdentity) -> BranchSeed {
-    BranchSeed {
-        tip: oid(tip),
-        identity,
-        follows: None,
-    }
+    BranchSeed::new(oid(tip), identity)
 }
 
 #[test]
@@ -449,11 +445,7 @@ fn a_checkpoint_costs_the_same_after_a_long_history_as_after_a_short_one() {
             .collect()
     };
     let seeds = |tip: Oid| Seeds {
-        default_branch: Some(BranchSeed {
-            tip,
-            identity: BranchIdentity::of_name(b"main"),
-            follows: None,
-        }),
+        default_branch: Some(BranchSeed::new(tip, BranchIdentity::of_name(b"main"))),
         ..Seeds::default()
     };
 
@@ -604,6 +596,7 @@ pub(crate) fn extend_rows(
         .collect()
 }
 
+mod lanes;
 pub(crate) mod properties;
 pub(crate) mod stacked;
 

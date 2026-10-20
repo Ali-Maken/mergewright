@@ -104,11 +104,7 @@ fn commits(count: usize) -> Vec<Commit> {
 
 fn seeds() -> Seeds {
     Seeds {
-        default_branch: Some(BranchSeed {
-            tip: oid(0),
-            identity: BranchIdentity::of_name(b"main"),
-            follows: None,
-        }),
+        default_branch: Some(BranchSeed::new(oid(0), BranchIdentity::of_name(b"main"))),
         ..Seeds::default()
     }
 }

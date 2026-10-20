@@ -11,7 +11,7 @@
 ╰──────────────────────────────────────────────────────────────────────────────╯
   ●    feature-b    b2  not pushed yet                                Sara   2d
   ●                 b1                                                Sara   2d
-  ●                 a10  feature-a is here  not pushed yet           Graft   2d
+  ●    feature-a    a10  not pushed yet                              Graft   2d
   ●                 a9                                               Graft   2d
   ●                 a8                                               Graft   2d
   ●                 a7                                               Graft   2d
@@ -19,6 +19,6 @@
   ●                 a5                                               Graft   2d
   ●                 a4                                               Graft   2d
 ▸ ◆                 a3  HEAD · stopped here  HEAD is here            Graft   2d
-  ┃                 Graft · 2 days ago · made on feature-b · 7326de5
+  ┃                 Graft · 2 days ago · made on feature-a · 7326de5
   ●                 a2                                               Graft   2d
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys

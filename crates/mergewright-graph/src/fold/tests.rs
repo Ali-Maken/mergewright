@@ -35,11 +35,10 @@ fn wide_history() -> Vec<Row> {
     layout(
         &commits,
         Seeds {
-            default_branch: Some(BranchSeed {
-                tip: oid(13 + TOPICS),
-                identity: BranchIdentity::of_name(b"main"),
-                follows: None,
-            }),
+            default_branch: Some(BranchSeed::new(
+                oid(13 + TOPICS),
+                BranchIdentity::of_name(b"main"),
+            )),
             ..Seeds::default()
         },
     )

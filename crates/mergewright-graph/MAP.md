@@ -66,7 +66,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 ## lane
 - `LaneIdentity` (enum) — `Known(BranchIdentity)` or `Merge { merge, parent }`, a merge lane's name resolved at assembly.
 - `LaneIdentity::known` (fn) — `known() -> Option<BranchIdentity>`; the identity if already known.
-- `Lane` (struct) — one open column: `index`, `identity`, `waiting_for` (`CommitHandle`), `reserved`.
+- `Lane` (struct) — one open column: `index`, `identity`, `waiting_for` (`CommitHandle`), `reserved`. A lane takes the name of another branch's tip it reaches, from that row down (ADR-0064; crate-private `renamed_at_tip`).
 
 ## layout
 - `order`, `source`, `stream` (mod) — emitted order, the commit source trait, and the streaming layout.
@@ -173,5 +173,5 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `AssembleError` (enum) — `MergeNotGathered { merge }`.
 
 ## seeds
-- `BranchSeed` (struct) — a branch tip and its identity.
+- `BranchSeed` (struct) — a branch tip, its identity, and `follows`: the local branch a remote ref is the copy of (ADR-0064). `BranchSeed::new(tip, identity)` makes one with `follows: None`.
 - `Seeds` (struct) — `default_branch`, `integration_branches`, `known_branches` a layout starts from.

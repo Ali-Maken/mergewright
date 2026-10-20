@@ -86,11 +86,7 @@ fn never() -> bool {
 
 fn seeds(tip: u8) -> Seeds {
     Seeds {
-        default_branch: Some(BranchSeed {
-            tip: oid(tip),
-            identity: BranchIdentity::of_name(b"main"),
-            follows: None,
-        }),
+        default_branch: Some(BranchSeed::new(oid(tip), BranchIdentity::of_name(b"main"))),
         integration_branches: Vec::new(),
         known_branches: Vec::new(),
     }

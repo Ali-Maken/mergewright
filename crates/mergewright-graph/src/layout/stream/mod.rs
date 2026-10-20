@@ -203,4 +203,6 @@ mod materialise;
 mod viewport;
 
 #[cfg(test)]
+mod stacked_tests;
+#[cfg(test)]
 mod tests;

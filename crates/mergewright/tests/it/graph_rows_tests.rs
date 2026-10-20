@@ -205,13 +205,11 @@ fn every_local_branch_says_where_it_stands_and_who_made_each_row() {
     let start = line_with(&frame, "Start the wallet release");
     let before = &start[..start.find("Start the").expect("found by it")];
     assert!(!before.chars().any(char::is_alphabetic), "{start:?}");
-    // ` wallet-release`, not `origin/wallet-release`: at full width the
-    // remote's label is drawn too, on its own row above.
-    let release = line_with(&frame, " wallet-release is here");
-    assert!(
-        release.contains("wallet-release is here  \u{2191}2 to push"),
-        "{release:?}"
-    );
+    // The merge is wallet-release's tip (ADR-0064): the column names it, so
+    // no `is here` label repeats it (as for ops/ci), and the push state stays.
+    let release = line_with(&frame, "Merge branch 'sara/fix-toc'");
+    assert!(release.contains(" wallet-release "), "{release:?}");
+    assert!(release.contains("\u{2191}2 to push"), "{release:?}");
     let spike = line_with(&frame, "Try a read cache");
     assert!(spike.contains("not pushed yet"), "{spike:?}");
     let ci = line_with(&frame, "Pin the CI image");
@@ -236,6 +234,31 @@ fn every_local_branch_says_where_it_stands_and_who_made_each_row() {
     };
     assert_eq!(who(head), "you", "{head:?}");
     assert_eq!(who(ci), "Omar", "a first name only: {ci:?}");
+    drop(state);
+    app.close();
+}
+
+/// ADR-0064 on the fixture: `feature/receipts` sits on `wallet-release`.
+/// The merge row is wallet-release's tip, so the lane takes its name there;
+/// the release's first commit continues it and leaves the cell blank
+/// (written once where it changes); the remote copies add no `origin/…`.
+#[test]
+fn a_stacked_branchs_commits_carry_its_own_name() {
+    let scratch = main_screen_repo();
+    let (app, state) = opened(scratch.path());
+    let frame = label_words(&state);
+    let merge = line_with(&frame, "Merge branch 'sara/fix-toc'");
+    assert!(merge.contains(" wallet-release "), "{merge:?}");
+    let start = line_with(&frame, "Start the wallet release");
+    let before = &start[..start.find("Start the").expect("found by it")];
+    assert!(!before.chars().any(char::is_alphabetic), "{start:?}");
+    // `origin/…` appears only as a label (`origin/x is here`), never as a
+    // row's branch.
+    for line in commit_rows(&frame) {
+        for (at, _) in line.match_indices("origin/") {
+            assert!(line[at..].contains(" is here"), "{line:?}");
+        }
+    }
     drop(state);
     app.close();
 }
