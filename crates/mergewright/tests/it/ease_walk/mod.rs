@@ -18,6 +18,7 @@ mod bar_and_pane;
 mod commit;
 mod fixture;
 mod flow;
+mod fold;
 mod graph;
 mod journeys;
 mod merge;
