@@ -110,12 +110,12 @@ pub const WALKS: &[(&str, &str, &str)] = &[
     ),
     (
         "cherry-pick-in-view",
-        "m7_walk/picker.rs",
+        "m7_walk/picker/take.rs",
         "cherry_pick_in_view",
     ),
     (
         "cherry-pick-other-branch",
-        "m7_walk/picker.rs",
+        "m7_walk/picker/take.rs",
         "cherry_pick_other_branch",
     ),
     ("pr-contents", "m7_walk/pr_contents.rs", "pr_contents"),

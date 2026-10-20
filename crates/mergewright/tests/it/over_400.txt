@@ -236,7 +236,7 @@
 827 crates/mergewright/tests/it/m7_walk/amend_into.rs
 449 crates/mergewright/tests/it/m7_walk/blame.rs
 537 crates/mergewright/tests/it/m7_walk/journal.rs
-730 crates/mergewright/tests/it/m7_walk/picker.rs
+545 crates/mergewright/tests/it/m7_walk/picker.rs
 662 crates/mergewright/tests/it/m7_walk/rebase_line.rs
 509 crates/mergewright/tests/it/m7_walk/rewrite_editor.rs
 438 crates/mergewright/tests/it/m7_walk/rewrite_stops.rs
