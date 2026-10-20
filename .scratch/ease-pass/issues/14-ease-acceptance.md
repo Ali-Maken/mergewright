@@ -139,9 +139,9 @@ tree (`tests/it/m3_walk.rs` waiter). No product code.
 ## Acceptance
 - [ ] `scripts/ease-accept.sh` exits 0 and prints 9 journey lines with walked/allowed counts, including exactly
   `commit-all-subject 3/3` and `merge-one-clash 5/5`.
-- [ ] A deliberately padded walk (one extra key) of each of those two fails `within_the_note` (negative test).
-- [ ] Every behaviour ID G1–G14, C1–C15, M1–M19 has a passing test named with the ID. The three `g12_…`, the three
-  `fold_…`, `picks_shell_merge` and every `q1`–`q17` assertion pass. NOTES lists IDs → test names.
+- [x] A deliberately padded walk (one extra key) of each of those two fails `within_the_note` (negative test). — `ease_walk::one_key_over_fails_both_counted_journeys` (commit-all-subject 3→4 and merge-one-clash 5→6 each fail naming both numbers; at the count each passes).
+- [x] Every behaviour ID G1–G14, C1–C15, M1–M19 has a passing test named with the ID. The three `g12_…`, the three
+  `fold_…`, `picks_shell_merge` and every `q1`–`q17` assertion pass. NOTES lists IDs → test names. — all in `crates/mergewright/tests/it/ease_walk/`, run `cargo nextest run -p mergewright --test it ease_walk`: 87/87 pass (2026-10-20). IDs → tests in NOTES, "14b completion".
 - [ ] Every capture under `docs/shots/ease-pass/` is ≤200 KB. The captions file has one line per capture with its mock
   path. The contact sheet assembles with no `NOT RECORDED`.
 - [ ] The `TESTING.md` section is present, with one entry per capture and colour marked unverified.
@@ -259,3 +259,21 @@ pub fn counted(id: &str, route: &[&str]) {
 }
 // screen.rs: ctrl(c) -> KeyPress (control modifier); head_parents(repo) -> usize (git log -1 --format=%P).
 ```
+
+## NOTES — 14b completion (2026-10-20, continued after a killed run; no compaction)
+
+Ticked above: the negative-test box and the behaviour-IDs box. **Not ticked, and why:** the script box (14c, `scripts/ease-accept.sh`), captures/captions/sheet (14c), `TESTING.md` (14c), pixel quote (14c; `q4_pixel_lag_summary_recorded` only checks the SUMMARY lines exist), m3 waiter (14c), earlier records (not rebuilt, user 2026-10-19), "each tick names its test" (until the rest are ticked).
+
+IDs -> tests (all in `ease_walk/`):
+- G1–G14: `graph.rs`, `bar_and_pane.rs` (names in "Done" above); G12 on `team`: `team.rs` `g12_sibling_never_built_on`, `g12_teammate_sync_is_not_a_merge`, `g12_dependent_before_the_move`.
+- C1–C15: `commit.rs` `c1_…`–`c15_…`.
+- M1–M19: `merge.rs` `m1_bar_offers_merge_into_yours`, `m2_preview_words_and_footer`, `m3_enter_lists_incoming_esc_back_y_merges`, `m4_esc_cancels`, `m5_stop_lands_on_the_first_clash_with_its_header`, `m6_list_column`, `m7_file_title_numbered_lines_and_the_open_clash`, `m8_taken_block_shrinks_and_says_which`, `m9_advance_within_the_file_and_the_solved_line`, `m10_n_goes_to_the_first_open_clash`; `merge_finish.rs` `m11_the_three_bars`, `m12_u_undoes_the_last_pick_from_the_screen_and_the_review`, `m13_e_edits_by_hand_at_the_cursor_block`, `m14_esc_pauses_and_enter_comes_back`, `m15_review_words_and_bar`, `m16_review_esc_back_and_y_again`, `m17_enter_looks_read_only_and_the_combined_row`, `m18_commit_lands_on_the_folded_merge`, `m19_u_undoes_the_merge`.
+- Fold: `fold.rs` `fold_sync_merge_has_no_mark`, `fold_reveal_parent`, `fold_same_without_commit_graph`; `picks_shell_merge`.
+- Q1–Q9 `questions.rs` (`q1_c_opens_the_list_on_his_branch_and_enter_switches`, `q2_x_compare_on_the_bar_and_x_x_compares`, `q3_hash_colour_off_until_pressed_again`, `q4_pixel_lag_summary_recorded`, `q5_ghost_rows_above_the_preview_box`, `q6_no_buttons_and_enter_lists`, `q7_esc_pauses_on_the_banner_and_enter_resumes`, `q8_options_off_screen_ctrl_s_and_ctrl_p`, `q9_u_after_commit_keeps_the_message`); Q10–Q17 `questions_late.rs` (`q10_…`, `q11_…`, `q12_rebase_clash_marks_enter_stages_c_goes_on`, `q13_…`, `q14_…`, `q15_sibling_is_never_built_on`, `q16_retake_replaces_and_u_brings_the_earlier_back`, `q17_rebase_clash_lands_on_the_clash_and_an_edit_stop_on_the_graph`).
+- Journeys (`journeys.rs`, each `counted(...)`, `every_ease_journey_id_has_a_walk` ties them to the fence): commit-all-subject 3/3, commit-with-body 6/6, commit-leave-first 6/6, merge-one-clash 5/5, merge-clean 2/2, merge-three-clashes 8/8, undo-a-pick 1/1, pause-and-resume 2/2 (merge and rebase legs), open-folded-merge 1/1. **None over its count.**
+
+Found while finishing (none is a product defect proven by a line):
+- Q12 on the rebase: `o` (kept upstream) makes `ali/tidy`'s only commit identical to the base, so git drops it as empty on `c` and HEAD ends on `integration`'s tip. That is git, not Mergewright. The walk takes `t` (`▶`) so the commit survives and HEAD's subject is `Tidy the report heading`. `o` and the `◀ kept upstream` mark are covered on the merge (`m8_…`, `q16_…`).
+- The earlier "Combined by git · reading… never finishes" suspicion is closed: it was the test not waiting. `flow::read_in` (pump until no `reading…`) fixes it, used in `m17_…`.
+- `c` is refused with `still reading the file` while the resolver's next-file read is in flight (`update/resolver.rs:298`). A user pressing `c` the instant after `⏎` stages sees a sticky line, not a continue. Not filed as a defect: the key is answered with words, and a second press works. Mention for the usability walk.
+- `fold_reveal_parent` follows the parent through `update::detail::show_line` with the app's real job pool; the detail pane has no key that follows a parent (blame `^` / history `⏎` are the keyed callers). `fold_same_without_commit_graph` relies on `ease_walk::screen::open`, which waits on `history.promotion.is_none()`; it proves the two runs' rows are equal, not that the second run exercised a promotion (no event was observed to fire).

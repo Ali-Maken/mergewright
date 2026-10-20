@@ -1,6 +1,6 @@
 # ease-acceptance walks — 14's remainder, part 1 (split by conductor, 2026-10-20)
 
-Status: ready
+Status: done (2026-10-20) — items 1–3 walked; gates green: nextest 7196/7196, doc tests, fmt, clippy. 14's boxes for them ticked in 14's file.
 Blocked by: 14-ease-acceptance (part merged, 8b9fbbc6)
 Build with: Fable (acceptance)
 
@@ -19,3 +19,6 @@ Tick 14's boxes that these items complete, **in 14's file**, each naming its tes
 
 ## Read first
 14's Read first, Scope, Acceptance, NOTES (Done, Remains 1–3, Gotchas, Findings).
+
+## NOTES
+Continued from a killed run (no compaction). Committed the dead run's WIP first. Found q12 red: `c` was pressed while the resolver was still reading the next file (`still reading the file`); fixed in the test by waiting on `resolver.job.is_none()` and `status_read.is_none()`; then `o` made the rebased commit empty (git drops it), so q12 takes `t`. Added `ease_walk/fold.rs`. Details in 14's NOTES, "14b completion". Remains is 14c (items 4–6).
