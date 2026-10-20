@@ -1,7 +1,7 @@
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
   ●      main                 Change every file on main  not pushed yet                                      Graft   2h
-▸ ║ ◆    feature (you)        Change every file on feature  not pushed yet                                   Graft   2h
+▸ ║ ◆    feature (you)        Change every file on feature  not pushed yet  not merged                       Graft   2h
   ║ ┃                         Graft · 2 hours ago · made on feature · 9d44f42
   ◇━╯    main                 Add the files both sides will change                                           Graft   1y
 

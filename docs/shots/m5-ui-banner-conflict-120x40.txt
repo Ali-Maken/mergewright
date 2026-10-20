@@ -73,7 +73,7 @@
 ▸ ◌                           Uncommitted changes (16 unmerged)
   ┃                           not committed yet · 16 files · on main
   ◆      main (you)           main's take  not pushed yet                                                    Graft  87m
-  ┃ ●    feature              the feature's take  not pushed yet                                             Graft  88m
+  ┃ ●    feature              the feature's take  not pushed yet  not merged                                 Graft  88m
   ●┄╯    main (you)           the shared files                                                               Graft  89m
   ●                           Ship release 29                                                                Graft   2h
   ●                           Ship release 28                                                                Graft   2h

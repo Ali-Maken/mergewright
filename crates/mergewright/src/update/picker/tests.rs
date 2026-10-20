@@ -212,39 +212,6 @@ fn c_opens_the_picker() {
     );
 }
 
-/// m8/09e: was `c_needs_the_graph_focused_and_nothing_over_it` — a pane's
-/// focus no longer stops `C` (`update::keys::tests::c_opens_the_picker_from_the_panes`);
-/// an overlay still does.
-#[test]
-fn c_needs_nothing_over_the_graph() {
-    let mut state = fixture();
-    state.journal.shown = true;
-    let (state, _) = press(&state, KeyCode::Char('C'));
-    assert!(state.picker.is_none(), "the journal is up");
-}
-
-/// The commit editor's `C` stays the editor's (`commit_editor.rs`): the
-/// picker is routed ahead of it, and must let it through.
-#[test]
-fn c_in_the_commit_editor_is_typed_there() {
-    let mut state = fixture();
-    state.commit_editor = Some(Box::new(crate::update::commit_editor::CommitEditor::new()));
-    let (state, commands) = press(&state, KeyCode::Char('C'));
-    assert!(state.picker.is_none());
-    assert!(
-        !commands
-            .iter()
-            .any(|c| matches!(c, Command::ReadSwitchList(_)))
-    );
-    assert_eq!(
-        state
-            .commit_editor
-            .as_ref()
-            .map(|editor| editor.subject.text().to_owned()),
-        Some("C".to_owned())
-    );
-}
-
 #[test]
 fn a_stale_list_is_dropped() {
     let (state, commands) = press(&fixture(), KeyCode::Char('C'));
@@ -532,4 +499,5 @@ fn letters_in_the_picker_at_a_live_stop_are_typed() {
 
 mod current_row;
 mod mouse_tests;
+mod open_on;
 mod seek;

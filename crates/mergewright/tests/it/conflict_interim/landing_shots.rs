@@ -28,9 +28,11 @@ fn drawn(app: &App, state: &AppState, columns: u16, rows: u16) -> Vec<String> {
 /// catches a `reading…` or `sorting…` that a second later is gone.
 fn settled(app: &App, state: AppState, what: &str) -> AppState {
     app.pump(state, what, |state| {
-        crate::captures::frame(state, 120, 40)
-            .iter()
-            .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
+        // The branch pane's read too: it draws `not merged` (ease-pass 09b).
+        mergewright::update::branch_pane::settled(state)
+            && crate::captures::frame(state, 120, 40)
+                .iter()
+                .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
     })
 }
 

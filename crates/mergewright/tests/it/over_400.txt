@@ -163,7 +163,7 @@
 488 crates/mergewright/src/update/name_prompt/tests.rs
 1516 crates/mergewright/src/update/operate/tests.rs
 402 crates/mergewright/src/update/palette/mod.rs
-535 crates/mergewright/src/update/picker/tests.rs
+503 crates/mergewright/src/update/picker/tests.rs
 440 crates/mergewright/src/update/place.rs
 456 crates/mergewright/src/update/place/keys.rs
 1069 crates/mergewright/src/update/place/tests/history.rs
@@ -202,7 +202,7 @@
 656 crates/mergewright/tests/it/budget_run.rs
 456 crates/mergewright/tests/it/clock_pin.rs
 552 crates/mergewright/tests/it/commit_editor_writes.rs
-1931 crates/mergewright/tests/it/conflict_interim.rs
+1838 crates/mergewright/tests/it/conflict_interim.rs
 879 crates/mergewright/tests/it/context_menu.rs
 421 crates/mergewright/tests/it/credential_by_key.rs
 405 crates/mergewright/tests/it/drain_sink.rs
@@ -236,7 +236,7 @@
 827 crates/mergewright/tests/it/m7_walk/amend_into.rs
 449 crates/mergewright/tests/it/m7_walk/blame.rs
 537 crates/mergewright/tests/it/m7_walk/journal.rs
-730 crates/mergewright/tests/it/m7_walk/picker.rs
+545 crates/mergewright/tests/it/m7_walk/picker.rs
 662 crates/mergewright/tests/it/m7_walk/rebase_line.rs
 509 crates/mergewright/tests/it/m7_walk/rewrite_editor.rs
 438 crates/mergewright/tests/it/m7_walk/rewrite_stops.rs

@@ -249,6 +249,7 @@ The pure `update(state, event) -> (state, [Command])`: the only place `AppState`
 What `answer` hands a started job, a mergetool, the journal, a stash, an undo, a rewrite, the commit editor or an operation.
 ## update::branch_pane
 The branch pane's read: `focused` (via `view::focus`), `candidates` (locals and remote-only), `identity_of`, `status_key`; asked at rest after the fold count (unasked, keeps `rest_owed`); `settled` once answered.
+`Reads::not_merged`: a landed `Merged::NotYet`, what the `not merged` row label reads; `settled` is false while a refs read is in flight.
 ## update::banner
 The operation banner: which operation git is part-way through, and the conflict interim's keys.
 ## update::clash
@@ -308,6 +309,7 @@ Working-tree writes from the changes pane: stage, unstage, stage all, and openin
 The command palette and help (`?`, `⌃P`, `:`): one state, one listing from the live key table, one filter. Over the commit editor it lists only its rows, keyless options too.
 ## update::picker
 The branch picker (`C`): type part of a name, `⏎` switches through `switch` (on the branch HEAD is on it closes, as `Tab` does), `Tab` shows it on the graph; `hint_context` picks the bar (`Picker` / `PickerOnCurrent`).
+`open_on`: `C` on a row whose focused branch is not HEAD's sets `PickerState.wanted`; `listed` places the cursor on it; a move or edit first clears it.
 ## update::place
 Places: the blame and history screens opened over the graph, and the `^` trail `Esc` walks back.
 ## update::prelude

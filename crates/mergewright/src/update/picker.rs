@@ -15,8 +15,9 @@
 
 use std::sync::Arc;
 
-use mergewright_core::event::{KeyCode, KeyPress, MouseButton, MouseInput, MouseKind};
+use mergewright_core::event::{KeyCode, KeyPress};
 use mergewright_core::job::JobId;
+use mergewright_core::ref_name::RefName;
 use mergewright_ops::operation::Tip;
 use mergewright_ops::switch_list::{SwitchKind, SwitchList, SwitchRow, filter_switch_rows};
 use mergewright_ui::graph_screen::HintContext;
@@ -48,6 +49,10 @@ pub struct PickerState {
     /// The last click's row and time (ms), for a double-click (blame's
     /// rule, `place::keys`).
     pub last_click: Option<(usize, i64)>,
+    /// The branch [`open_on`] asked for, held until the list lands
+    /// ([`listed`] puts `selected` on it); cleared by any key that moves
+    /// the selection or edits the query first: his move wins (09b).
+    pub wanted: Option<RefName>,
 }
 
 impl PickerState {
@@ -127,7 +132,10 @@ pub fn picker_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPre
         // From a pane the keyboard goes to the graph first, as `S`/`J` do
         // (m6/85, m8/09e): `Esc` out of the picker lands on the graph.
         state.detail.focus = mergewright_ui::detail::DetailFocus::Graph;
-        commands.extend(open_picker(state));
+        match open_on::opens_on(state) {
+            Some(branch) => commands.extend(open_on(state, &branch)),
+            None => commands.extend(open_picker(state)),
+        }
         return true;
     }
     false
@@ -152,6 +160,12 @@ fn shown_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         return;
     };
     picker.note = None;
+    if matches!(
+        key.code,
+        KeyCode::Up | KeyCode::Down | KeyCode::Backspace | KeyCode::Char(_)
+    ) {
+        picker.wanted = None;
+    }
     match key.code {
         KeyCode::Escape => close(state, commands),
         KeyCode::Up => picker.selected = picker.selected.saturating_sub(1),
@@ -313,51 +327,6 @@ pub(super) fn picker_bounds_in(state: &AppState, pane: Bounds) -> Bounds {
 /// Two clicks on one row this close together are a double-click (blame's).
 pub(super) const DOUBLE_CLICK_MS: i64 = 500;
 
-/// The mouse while the picker is shown: a click on a row selects it, a
-/// second on the same row within [`DOUBLE_CLICK_MS`] switches to it — `⏎`'s
-/// own path. The picker is modal (keymap §2.16), so it claims every mouse
-/// event: nothing reaches the graph behind it. `true` when it claimed one.
-pub(super) fn picker_mouse(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    mouse: MouseInput,
-) -> bool {
-    if !shown(state) {
-        return false;
-    }
-    if mouse.kind != MouseKind::Down(MouseButton::Left) {
-        return true;
-    }
-    let Some(area) = super::geometry::picker_bounds(state) else {
-        return true;
-    };
-    if !area.contains(mouse.column, mouse.row) {
-        return true;
-    }
-    let now = state.harness.clock.now_millis();
-    let Some(picker) = state.picker.as_mut() else {
-        return true;
-    };
-    let count = picker.rows().len();
-    let Some(row) =
-        mergewright_ui::picker::row_at(area.height, count, picker.selected, mouse.row - area.y)
-    else {
-        return true;
-    };
-    let double = picker
-        .last_click
-        .is_some_and(|(at, when)| at == row && now - when <= DOUBLE_CLICK_MS);
-    picker.selected = row;
-    picker.note = None;
-    if double {
-        picker.last_click = None;
-        enter(state, commands);
-    } else {
-        picker.last_click = Some((row, now));
-    }
-    true
-}
-
 /// The list landed, or failed. A stale id (the picker closed, or opened
 /// again since) is dropped.
 pub(super) fn listed(state: &mut AppState, id: JobId, result: Result<Arc<SwitchList>, String>) {
@@ -371,7 +340,10 @@ pub(super) fn listed(state: &mut AppState, id: JobId, result: Result<Arc<SwitchL
         Ok(list) => Loading::Ready(list),
         Err(why) => Loading::Failed(why),
     };
-    picker.selected = 0;
+    let wanted = picker.wanted.take();
+    picker.selected = wanted
+        .and_then(|wanted| picker.rows().iter().position(|row| row.name == wanted))
+        .unwrap_or(0);
 }
 
 /// The preview it opened closed without writing (`Esc`, or refused): the
@@ -394,5 +366,10 @@ pub(super) fn preview_confirmed(state: &mut AppState) {
     }
 }
 
+mod mouse;
+mod open_on;
 #[cfg(test)]
 mod tests;
+
+pub(super) use mouse::picker_mouse;
+pub(crate) use open_on::open_on;

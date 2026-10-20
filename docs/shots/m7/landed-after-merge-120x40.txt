@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
-▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  not pushed yet                               you fut…
+▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  not pushed yet  not merged                   you fut…
     ┃ ║                         you · in the future · made on feature · 0000000
     ● ║                         finish the feature                                                             you  now
     ● ║                         start the feature                                                              you   2m
