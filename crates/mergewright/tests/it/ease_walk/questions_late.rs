@@ -116,14 +116,14 @@ fn q12_rebase_clash_marks_enter_stages_c_goes_on() {
 #[test]
 fn q13_pr_merge_folds_as_commits_from_pr() {
     let scratch = mock();
-    let (_app, state) = open(scratch.path(), 200);
+    let (app, state) = open(scratch.path(), 200);
     let frame = drawn(&state);
     assert!(
         line_with(&frame, fixture::PR_MERGE).contains("▸ 2 commits from PR 16021"),
         "{}",
         shown(&frame)
     );
-    _app.close();
+    app.close();
 }
 
 /// Q14 (a): the top line names HEAD's branch once — no `on <branch>` — and
