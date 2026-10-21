@@ -35,24 +35,28 @@ Whether it *looks* like the cursor's row is the user's call (rule 6).
 
 ## 2. The Unicode tier: `fix-scroll-release-unicode.txt`
 
-**Right looks like:** the same rows as the PNG (screen rows 38–48, history
-rows 178–188; the last, row 48, is the cursor's), the graph column only, cut
-at the `⋮` divider; every lane a `│`, the commit dots where the PNG has them.
-Characters only: the lit thread's colour and the cursor's fill are not
-recorded, so this grid cannot show which row is lit. Colour unverified.
+**Right looks like:** the pane rows the PNG covers (screen rows 35–46, the pane's rows 34..46 counted from 0),
+the graph column only (first 4 columns: the graph is as wide as the lanes in view, 2 here, so there is no `⋮`
+divider to cut at); a `◉` merge dot in the lane column on each row, the cursor `▸` on the last row (46).
+**The two do not line up row for row:** the PNG is the strips, 12 history rows 178–189 with the cursor's row 188
+not the last (why not checked: ease-pass 13's tall row is the suspect); the text grid is 12 screen lines with the cursor on
+the last. Characters only: the lit thread's colour and the cursor's fill are not recorded, so this grid cannot show
+which row is lit. Colour unverified. Re-taken 2026-10-22 (ease-pass-21) by the pty text walk of
+`scripts/47-scroll-acceptance.sh` step 5, run on its own (not the whole perf script).
 
 ```
-38|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ ⋮
-39|│ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ ⋮
-40|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ │ ⋮
-41|│ │ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ ⋮
-42|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● ⋮
-43|◉▾│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-44|│ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ ⋮
-45|│ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-46|│ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-47|│ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-48|│ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ ⋮
+35|  ◉
+36|  ◉
+37|  ◉
+38|  ◉
+39|  ◉
+40|  ◉
+41|  ◉
+42|  ◉
+43|  ◉▴
+44|  ◉
+45|  ◉
+46|▸ ◉
 ```
 
 The PNG is drawn by the Pixel tier and this grid by the Unicode tier, from
