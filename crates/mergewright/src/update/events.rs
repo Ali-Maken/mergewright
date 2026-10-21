@@ -509,13 +509,12 @@ pub enum Product {
         /// The answer.
         result: Result<crate::update::remote::Leaves, String>,
     },
-    /// How many commits a folded merge brought in
+    /// How many commits each asked folded merge brought in
     /// (`RestRead::CountFolded`), or git's reason it could not be counted.
+    /// One answer for the whole batch, in the order asked.
     FoldedCounted {
-        /// The folded merge.
-        merge: mergewright_core::oid::Oid,
-        /// The answer.
-        count: Result<usize, String>,
+        /// Each merge and its answer.
+        counts: Vec<(mergewright_core::oid::Oid, Result<usize, String>)>,
     },
     /// A branch's four answers and route (`RestRead::BranchStatus`), for
     /// the key it was asked under, or why they could not be read.

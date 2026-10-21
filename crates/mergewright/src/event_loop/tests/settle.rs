@@ -205,11 +205,10 @@ fn history_with_merges(cursor: usize) -> History {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
             done: true,
             rows: rows.into(),
-            promoted: false,
-            fold: [].into(),
-            sought: None,
+            ..Default::default()
         }),
         rows: usize::from(COMMITS),
         phase: Phase::Complete,

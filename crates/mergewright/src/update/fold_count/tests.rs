@@ -16,15 +16,69 @@ fn key(code: KeyCode) -> AppEvent {
     core(Event::Key(KeyPress::plain(code)))
 }
 
-/// The `CountFolded` commands in `commands`, by merge.
+/// The merges the `CountFolded` commands in `commands` ask for, in order.
 fn counts_asked(commands: &[Command]) -> Vec<Oid> {
     commands
         .iter()
-        .filter_map(|command| match command {
-            Command::AtRest(_, RestRead::CountFolded { merge }) => Some(*merge),
-            _ => None,
+        .flat_map(|command| match command {
+            Command::AtRest(_, RestRead::CountFolded { merges }) => merges.clone(),
+            _ => Vec::new(),
         })
         .collect()
+}
+
+/// How many `CountFolded` commands `commands` holds.
+fn count_commands(commands: &[Command]) -> usize {
+    commands
+        .iter()
+        .filter(|c| matches!(c, Command::AtRest(_, RestRead::CountFolded { .. })))
+        .count()
+}
+
+/// The screen of `uncounted` with `extra` more folding merges below the
+/// first, none counted. Returns the state and every merge, top row first.
+fn merges_on_screen(extra: u8) -> (AppState, Vec<Oid>) {
+    let (mut state, first) = uncounted();
+    let history = state.history.as_mut().expect("a walk");
+    let mut rows = vec![
+        history.row_at(0).expect("row 0").clone(),
+        history.row_at(1).expect("the merge").clone(),
+    ];
+    let mut merges = vec![first];
+    for n in 0..extra {
+        let mut row = rows[1].clone();
+        let merge = Oid::from_bytes(&[7 + n; Oid::SHA1_BYTES]).expect("an oid");
+        row.commit.id = merge;
+        rows.push(row);
+        merges.push(merge);
+    }
+    let folds = RowFold {
+        folds: Some(true),
+        inside: None,
+    };
+    let fold: Vec<RowFold> = std::iter::once(RowFold::default())
+        .chain(std::iter::repeat_n(folds, rows.len() - 1))
+        .collect();
+    history.apply(
+        HistoryUpdate::Window(Window {
+            request: history.asked,
+            first: 0,
+            laid_out: rows.len(),
+            walked: rows.len(),
+            hidden: 0,
+            rows: rows.into(),
+            done: true,
+            promoted: false,
+            fold: fold.into(),
+            sought: None,
+        }),
+        10,
+    );
+    (state, merges)
+}
+
+fn batch_answer(counts: Vec<(Oid, Result<usize, String>)>) -> AppEvent {
+    AppEvent::Produced(JobId::new(900), Product::FoldedCounted { counts })
 }
 
 /// `merge_on_screen` with its merge's count never asked, on a screen tall
@@ -49,11 +103,7 @@ fn asked() -> (AppState, Oid) {
 }
 
 fn answered(state: &AppState, merge: Oid, count: Result<usize, String>) -> AppState {
-    update(
-        state,
-        AppEvent::Produced(JobId::new(900), Product::FoldedCounted { merge, count }),
-    )
-    .0
+    update(state, batch_answer(vec![(merge, count)])).0
 }
 
 #[test]
@@ -64,71 +114,81 @@ fn a_folding_merge_on_screen_has_its_count_asked_at_rest_once() {
     assert_eq!(counts_asked(&commands), [] as [Oid; 0], "asked once");
 }
 
+/// ADR-0065 D2: every uncounted folding merge on screen, one read, top first.
 #[test]
-fn no_count_is_asked_mid_burst() {
-    let (mut state, merge) = uncounted();
-    state.defer_follow = true;
+fn one_rest_asks_every_uncounted_folding_merge_on_screen_in_one_read() {
+    let (state, merges) = merges_on_screen(2);
+    assert_eq!(merges.len(), 3);
     let (state, commands) = rest(&state);
-    assert_eq!(counts_asked(&commands), [] as [Oid; 0], "{commands:?}");
-    assert_eq!(state.fold_counts.get(&merge), None);
+    assert_eq!(count_commands(&commands), 1, "{commands:?}");
+    assert_eq!(counts_asked(&commands), merges, "top row first");
+    for merge in &merges {
+        assert_eq!(state.fold_counts.get(merge), Some(&FoldCount::Counting));
+    }
 }
 
-/// Every folding merge on screen is counted — one job each, one per rest,
-/// top row first, each answer's rest asking for the next — and never a
-/// second job for any of them.
+/// ADR-0065 D1: nothing is asked by another read's answer.
 #[test]
-fn every_folding_merge_on_screen_is_counted_one_job_each() {
-    let (mut state, first) = uncounted();
-    let history = state.history.as_mut().expect("a walk");
-    let mut second_row = history.row_at(1).expect("the merge").clone();
-    let second = Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("an oid");
-    second_row.commit.id = second;
-    let rows = vec![
-        history.row_at(0).expect("row 0").clone(),
-        history.row_at(1).expect("the merge").clone(),
-        second_row,
-    ];
-    let folds = RowFold {
-        folds: Some(true),
-        inside: None,
-    };
-    history.apply(
-        HistoryUpdate::Window(Window {
-            request: history.asked,
-            first: 0,
-            rows: rows.into(),
-            laid_out: 3,
-            done: true,
-            promoted: false,
-            fold: [RowFold::default(), folds.clone(), folds].into(),
-            sought: None,
-        }),
-        10,
-    );
-
-    let mut jobs = Vec::new();
-    let (mut state, commands) = rest(&state);
-    jobs.extend(counts_asked(&commands));
-    for _ in 0..4 {
-        let Some(&merge) = jobs.last() else { break };
-        let (next, commands) = update(
-            &state,
-            AppEvent::Produced(
-                JobId::new(900),
-                Product::FoldedCounted {
-                    merge,
-                    count: Ok(2),
-                },
-            ),
-        );
-        state = next;
-        jobs.extend(counts_asked(&commands));
-        let (next, commands) = rest(&state);
-        state = next;
-        jobs.extend(counts_asked(&commands));
+fn a_count_answer_asks_no_count() {
+    let (state, merges) = merges_on_screen(2);
+    let (state, _) = rest(&state);
+    let answer = merges.iter().map(|&m| (m, Ok(2))).collect();
+    let (state, commands) = update(&state, batch_answer(answer));
+    assert_eq!(count_commands(&commands), 0, "{commands:?}");
+    for merge in &merges {
+        assert_eq!(state.fold_counts.get(merge), Some(&FoldCount::Counted(2)));
     }
-    assert_eq!(jobs, [first, second], "one job per merge, top first");
-    assert_eq!(state.fold_counts.get(&second), Some(&FoldCount::Counted(2)));
+}
+
+#[test]
+fn a_merge_being_counted_is_not_asked_again() {
+    let (mut state, merges) = merges_on_screen(1);
+    // The second merge was counted already; only the first is asked.
+    state.fold_counts.insert(merges[1], FoldCount::Counted(4));
+    let (state, commands) = rest(&state);
+    assert_eq!(counts_asked(&commands), [merges[0]]);
+    // The first is now `Counting`: a second rest asks nothing.
+    let (_, again) = rest(&state);
+    assert_eq!(count_commands(&again), 0, "{again:?}");
+}
+
+#[test]
+fn one_failed_count_marks_only_that_merge() {
+    let (state, merges) = merges_on_screen(2);
+    let (state, _) = rest(&state);
+    let (state, _) = update(
+        &state,
+        batch_answer(vec![
+            (merges[0], Ok(3)),
+            (merges[1], Err("fatal: bad object".to_owned())),
+            (merges[2], Ok(5)),
+        ]),
+    );
+    assert_eq!(
+        state.fold_counts.get(&merges[0]),
+        Some(&FoldCount::Counted(3))
+    );
+    assert_eq!(state.fold_counts.get(&merges[1]), Some(&FoldCount::Failed));
+    assert_eq!(
+        state.fold_counts.get(&merges[2]),
+        Some(&FoldCount::Counted(5))
+    );
+    let sha7 = &merges[1].to_string()[..7];
+    assert_eq!(
+        state.status,
+        Status::Failed(format!(
+            "couldn't count {sha7}'s commits: fatal: bad object"
+        ))
+    );
+}
+
+#[test]
+fn a_burst_asks_no_count() {
+    let (mut state, merges) = merges_on_screen(2);
+    state.defer_follow = true;
+    let (state, commands) = rest(&state);
+    assert_eq!(count_commands(&commands), 0, "{commands:?}");
+    assert!(merges.iter().all(|m| !state.fold_counts.contains_key(m)));
 }
 
 #[test]

@@ -1,52 +1,20 @@
 //! The loop's wakes ([`Paced`]): the script's keys and the jobs' events, each
 //! stamped as the loop takes it and as its frame's phases end.
 
+use std::sync::PoisonError;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
-use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use mergewright::event_loop::{Phase, Waited, Wake, Wakes, joins_frame};
 use mergewright::history::HistoryUpdate;
-use mergewright::jobs::Dispatch;
-use mergewright::update::{AppEvent, Command, Progress};
+use mergewright::update::{AppEvent, Progress};
 use mergewright_core::event::{Event, KeyCode, KeyPress};
 
 use super::PATIENCE;
 use super::sink::Sink;
+use super::unasked::{AskedFrom, Role, job_of};
+pub(crate) use super::watching::Watching;
 use crate::frame_trace::{Posted, SentLog};
-
-/// The job pool, noting the id of every `ShowRows` the loop sends.
-pub(crate) struct Watching<'a, D> {
-    pub(crate) inner: &'a D,
-    pub(crate) asked: Mutex<Vec<u64>>,
-}
-
-impl<D: Dispatch> Dispatch for Watching<'_, D> {
-    fn dispatch(&self, command: Command) {
-        if let Command::ShowRows(_, request) = &command {
-            self.asked
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .push(request.id);
-        }
-        self.inner.dispatch(command);
-    }
-}
-
-impl<D> Watching<'_, D> {
-    /// How many `ShowRows` the loop has sent, and the newest id.
-    pub(super) fn asked_so_far(&self) -> (usize, Option<u64>) {
-        let asked = self.asked.lock().unwrap_or_else(PoisonError::into_inner);
-        (asked.len(), asked.last().copied())
-    }
-
-    pub(super) fn asked(&self) -> Vec<u64> {
-        self.asked
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .clone()
-    }
-}
 
 /// What one wake was.
 #[derive(Clone, Copy, Debug)]
@@ -68,6 +36,8 @@ pub(crate) struct Handed {
     pub(crate) kind: Kind,
     /// [`Wake::label`]: what it was, without its payload.
     pub(super) label: &'static str,
+    /// The job this wake belongs to and which of its wakes it is, if a job's.
+    pub(super) job: Option<(mergewright_core::job::JobId, Role)>,
     /// Just before it was sent (the input thread's or a job's send).
     pub(super) sent: Instant,
     /// When the loop took it: its frame runs from here to the next stamp.
@@ -205,10 +175,23 @@ impl<'a, D> Paced<'a, D> {
         if let Kind::Window(id) = kind {
             self.answered = self.answered.max(Some(id));
         }
+        let origin = match kind {
+            Kind::Key(..) => AskedFrom::Input,
+            Kind::Rest => AskedFrom::Rest,
+            Kind::Window(id) if self.first_window_answering(id) => AskedFrom::InputWindow,
+            Kind::Window(_) | Kind::Other => AskedFrom::Answer,
+        };
+        *self
+            .watching
+            .origin
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = origin;
+        let job = job_of(&event);
         let wake = Wake::Event(event);
         self.handed.push(Handed {
             kind,
             label: wake.label(),
+            job,
             sent,
             at: Instant::now(),
             due,
@@ -223,6 +206,16 @@ impl<'a, D> Paced<'a, D> {
             self.replay.push(event.clone());
         }
         wake
+    }
+
+    /// Is the window for request `id` the first answer to a `ShowRows` the
+    /// loop sent?
+    fn first_window_answering(&self, id: u64) -> bool {
+        self.watching.asked().contains(&id)
+            && !self
+                .handed
+                .iter()
+                .any(|handed| matches!(handed.kind, Kind::Window(earlier) if earlier == id))
     }
 
     pub(super) fn event(&mut self, event: AppEvent, sent: Instant) -> Wake {

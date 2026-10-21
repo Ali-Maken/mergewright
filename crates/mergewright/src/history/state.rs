@@ -158,9 +158,8 @@ pub struct Promote {
 }
 
 impl Promote {
-    /// The rows a viewport needs in `layout` so that the anchor sits where it
-    /// sat — or, folded away in this order, the merge it hides behind —
-    /// or `None` with no anchor, or one this view does not show.
+    /// The rows a viewport needs in `layout` so the anchor sits where it sat (or the
+    /// merge it hides behind), or `None` with no anchor or one this view does not show.
     pub(super) fn around<S: CommitSource>(
         &self,
         layout: &StreamingLayout<Included<S>>,
@@ -175,28 +174,29 @@ impl Promote {
 }
 
 /// The rows that answer one [`RowRequest`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Window {
     /// The request this answers.
     pub request: u64,
     /// The row number of `rows[0]`.
     pub first: usize,
-    /// The rows, in order. Shared rather than cloned: the state is copied on
-    /// every event.
+    /// The rows, in order. Shared, not cloned: the state is copied on every event.
     pub rows: Arc<[Row]>,
     /// How many rows the walk had laid out when it answered.
     pub laid_out: usize,
+    /// Commits the walk has read so far, shown or hidden.
+    pub walked: usize,
+    /// Of those, the ones the fold hides; `laid_out + hidden == walked` once done.
+    pub hidden: usize,
     /// Whether that is every row there is.
     pub done: bool,
-    /// Whether these rows answer a request's [`Promote`]: their row numbers
-    /// are the promoted order's, and the screen re-finds its anchor in them.
+    /// Whether these rows answer a [`Promote`]: their row numbers are the
+    /// promoted order's, and the screen re-finds its anchor in them.
     pub promoted: bool,
-    /// What the fold says about each of `rows`, in order; empty when the
-    /// view does not fold merged branches (ease-pass 06).
+    /// What the fold says about each of `rows`; empty when the view does not fold.
     pub fold: Arc<[RowFold]>,
-    /// What became of the commits the request sought: a promoted anchor
-    /// folded away, a find's answer ([`Sought`]). Boxed: rare, and every
-    /// `AppState` clone carries the window.
+    /// What became of the commits sought: a promoted anchor folded away, a
+    /// find's answer ([`Sought`]). Boxed: rare, and every clone carries it.
     pub sought: Option<Box<Sought>>,
 }
 
@@ -335,14 +335,14 @@ pub struct History {
     /// history unasked ([`HistoryUpdate::LaidOut`]); `None` until then. Kept
     /// as heard: nothing is drawn from it yet.
     pub laid_out: Option<usize>,
-    /// The first request waits for `HEAD`'s commit, so the walk starts
-    /// with it kept and a launch lays out once (ease-pass 06 D2): `show`
-    /// asks nothing until the opening or the refs say where `HEAD` is.
+    /// The first request waits for `HEAD`'s commit, so the walk starts with it kept
+    /// and a launch lays out once (ease-pass 06 D2): `show` asks nothing till then.
     pub head_pending: bool,
     /// The reveal the last find's answer left owed (`History::take_reveal`).
     pub(crate) reveal: Option<Reveal>,
     /// The search's folded ask every request carries until it is answered.
-    pub(crate) folded_ask: Option<FoldedAsk>,
+    /// Boxed: rare, and `AppState` stays within 8 KiB.
+    pub(crate) folded_ask: Option<Box<FoldedAsk>>,
     /// How many folded asks have been made: the next one's number.
     pub(crate) folded_asks: u64,
 }

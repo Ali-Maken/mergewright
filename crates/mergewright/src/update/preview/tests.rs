@@ -90,11 +90,10 @@ fn on_screen_with(rows: Vec<Row>) -> AppState {
         request: asked,
         first: 0,
         laid_out: rows.len(),
+        walked: rows.len(),
         rows: rows.into(),
         done: true,
-        promoted: false,
-        fold: [].into(),
-        sought: None,
+        ..Default::default()
     };
     let (state, _) = crate::update::update(
         &state,

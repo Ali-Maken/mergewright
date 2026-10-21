@@ -99,6 +99,8 @@ pub(crate) fn history_of(count: u8, cursor: usize) -> History {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
+            hidden: 0,
             done: true,
             rows: rows.into(),
             promoted: false,
@@ -410,6 +412,8 @@ fn history_with_subject(count: u8, cursor: usize, subject: &str) -> History {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
+            hidden: 0,
             done: true,
             rows: rows.into(),
             promoted: false,
@@ -1355,6 +1359,8 @@ fn evil_merge_state() -> AppState {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
+            hidden: 0,
             done: true,
             rows: rows.into(),
             promoted: false,
@@ -1704,6 +1710,8 @@ fn foxtrot_explain_history() -> History {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
+            hidden: 0,
             done: true,
             rows: rows.into(),
             promoted: false,
@@ -2055,76 +2063,6 @@ fn capture_m2_map_view_loading() {
         ),
         format!("{header}{screen}"),
     );
-}
-
-/// Two feature branches, each merged into `main`, `main`'s tip as `HEAD`:
-/// mirrors `mergewright_fixtures::Shape::FeatureBranches`'s shape without a real
-/// checkout (`view::strip::tests::feature_branches_state`'s twin — this
-/// module cannot see that private `#[cfg(test)]` item, so it is rebuilt
-/// here rather than shared).
-fn strip_capture_state() -> AppState {
-    use mergewright_core::commit::{Commit, Identity, Timestamp};
-    use mergewright_graph::layout::layout;
-    use mergewright_graph::seeds::Seeds;
-
-    fn who(seconds: i64) -> Identity {
-        Identity {
-            name: b"Test".to_vec(),
-            email: b"test@example.invalid".to_vec(),
-            when: Timestamp {
-                seconds,
-                offset_seconds: 0,
-            },
-        }
-    }
-    fn commit(id: u8, parents: Vec<Oid>, message: &str) -> Commit {
-        Commit {
-            id: oid(id),
-            parents,
-            author: who(i64::from(id)),
-            committer: who(i64::from(id)),
-            message: message.as_bytes().to_vec(),
-        }
-    }
-
-    let commits = vec![
-        commit(9, vec![oid(8), oid(4)], "Merge branch 'topic-b'"),
-        commit(8, vec![oid(7)], "topic-b work"),
-        commit(7, vec![oid(4)], "topic-b start"),
-        commit(4, vec![oid(3), oid(2)], "Merge branch 'topic-a'"),
-        commit(3, vec![oid(1)], "topic-a work"),
-        commit(2, vec![oid(1)], "topic-a start"),
-        commit(1, Vec::new(), "root"),
-    ];
-    let rows = layout(&commits, Seeds::default());
-    let row_count = rows.len();
-    let history = History {
-        window: Some(crate::history::Window {
-            request: 0,
-            first: 0,
-            laid_out: rows.len(),
-            done: true,
-            rows: rows.into(),
-            promoted: false,
-            fold: [].into(),
-            sought: None,
-        }),
-        rows: row_count,
-        phase: Phase::Complete,
-        cursor: 0,
-        reanchor: None,
-        ..History::started(crate::config::MergedBranches::Folded)
-    };
-    AppState {
-        history: Some(history),
-        refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(9))))),
-        size: Size {
-            columns: 80,
-            rows: 24,
-        },
-        strip_shown: true,
-        ..AppState::default()
-    }
 }
 
 /// Regenerates `docs/shots/m2-overview-strip.txt` (m2-details-and-diffs/20).
@@ -5060,6 +4998,8 @@ mod credential_footer;
 mod lane_cap;
 mod many_refs;
 mod pixel_preview;
+mod strip_state;
+use strip_state::strip_capture_state;
 
 /// m7-power-tools/07b: at a rewrite's `edit` stop `HEAD`'s row is tagged
 /// `HEAD · stopped here`, from the stop itself — no other row, and no tag

@@ -50,6 +50,8 @@ fn wallet() -> (History, [Oid; 3]) {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
+            hidden: 0,
             done: true,
             rows: rows.into(),
             promoted: false,

@@ -190,11 +190,10 @@ fn lines(chains: u8, length: u8, woven: bool) -> History {
             request: 0,
             first: 0,
             laid_out: rows.len(),
+            walked: rows.len(),
             done: true,
             rows: rows.clone().into(),
-            promoted: false,
-            fold: [].into(),
-            sought: None,
+            ..Default::default()
         }),
         rows: rows.len(),
         phase: Phase::Complete,

@@ -127,10 +127,9 @@ fn on_screen(at: usize, others: &[(&[u8], u8)]) -> AppState {
         first: 0,
         rows: vec![row(3, &[2]), row(2, &[1]), row(1, &[0])].into(),
         laid_out: 3,
+        walked: 3,
         done: true,
-        promoted: false,
-        fold: [].into(),
-        sought: None,
+        ..Default::default()
     };
     let (mut state, _) = update(
         &state,

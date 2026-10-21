@@ -64,6 +64,8 @@ fn space_inside_an_opened_merge_closes_it_and_lands_on_the_merge() {
         first: 0,
         rows: rows.into(),
         laid_out: 3,
+        walked: 3,
+        hidden: 0,
         done: true,
         promoted: false,
         fold: [crate::history::RowFold::default(), merge_fold, inside].into(),

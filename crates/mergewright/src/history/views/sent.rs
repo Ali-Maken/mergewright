@@ -12,6 +12,7 @@ use mergewright_graph::layout::{CommitSource, StreamError};
 use crate::jobs::Delivery;
 
 use super::super::fold::row_folds;
+use super::super::serve::walk_counts;
 use super::super::state::{HistoryUpdate, View, Window};
 use super::Views;
 
@@ -99,6 +100,7 @@ impl<S: CommitSource> Views<'_, S> {
             Some(layout) if layout.source().inclusion() == &sent.view.inclusion => {
                 let end = sent.window.end();
                 let laid_out = layout.rows_emitted();
+                let (walked, hidden) = walk_counts(layout);
                 let done = layout.is_done();
                 if sent.stale_from.is_some_and(|from| from < end) {
                     if laid_out < end && !done {
@@ -112,6 +114,8 @@ impl<S: CommitSource> Views<'_, S> {
                                 first: range.start,
                                 rows: rows.into(),
                                 laid_out,
+                                walked,
+                                hidden,
                                 done,
                                 promoted: false,
                                 fold,
@@ -124,6 +128,8 @@ impl<S: CommitSource> Views<'_, S> {
                     row_folds(layout, &sent.window.rows, &mut labels).map(|fold| {
                         (fold != sent.window.fold).then(|| Window {
                             laid_out,
+                            walked,
+                            hidden,
                             done,
                             promoted: false,
                             fold,

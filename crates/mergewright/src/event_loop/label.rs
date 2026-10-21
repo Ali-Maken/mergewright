@@ -206,6 +206,8 @@ mod tests {
             first: 0,
             rows: Vec::new().into(),
             laid_out: 0,
+            walked: 0,
+            hidden: 0,
             done: false,
             promoted: false,
             fold: [].into(),

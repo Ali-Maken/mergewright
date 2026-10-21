@@ -27,7 +27,6 @@
 //! prints every late key, recorded and not failing. The rows-on-hand check
 //! (no key drawn before its viewport rows arrived) follows the same rule:
 //! it depends on how fast the layout worker runs.
-
 //!
 //! The harness's parts: [`run`] opens the fixture and pumps one scroll,
 //! [`paced`] hands the loop its wakes and stamps them, [`readings`] turns
@@ -43,7 +42,9 @@ pub(crate) mod paced;
 mod readings;
 pub(crate) mod run;
 pub(crate) mod sink;
+mod unasked;
 mod verdict;
+mod watching;
 
 use std::sync::PoisonError;
 use std::time::Duration;

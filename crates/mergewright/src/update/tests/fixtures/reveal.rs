@@ -54,6 +54,8 @@ pub(crate) fn answer(walk: JobId, request: u64, bytes: &[u8], found: Option<Foun
         first: 0,
         rows: bytes.iter().map(|&byte| row(byte)).collect(),
         laid_out: bytes.len(),
+        walked: bytes.len(),
+        hidden: 0,
         done: true,
         promoted: false,
         fold: Arc::from([]),

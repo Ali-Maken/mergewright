@@ -17,7 +17,6 @@
 include!("held_key_bound.rs");
 
 use std::collections::BTreeSet;
-use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -394,10 +393,7 @@ fn run(
     drain.answering_fences(answer_on(post.clone()));
     let sink = Sink::draining(&drain);
     let mut terminal = in_memory(&sink, &state)?;
-    let watching = Watching {
-        inner: &jobs,
-        asked: Mutex::default(),
-    };
+    let watching = Watching::new(&jobs, Vec::new());
     let initial = state.clone();
     let script = keys(journal);
     let feed = KeyFeed::start(script.clone(), post)

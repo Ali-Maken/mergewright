@@ -297,7 +297,7 @@ impl History {
             // promotion's anchor is the selection already, and lands it.
             keep: self.reanchor.filter(|_| promote.is_none()),
             promote,
-            folded: self.folded_ask.clone(),
+            folded: self.folded_ask.as_deref().cloned(),
         }
     }
 }

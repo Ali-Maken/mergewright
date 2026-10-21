@@ -217,6 +217,7 @@ pub(super) fn answer<S: CommitSource>(
     }
 
     let laid_out = layout.rows_emitted();
+    let (walked, hidden) = walk_counts(layout);
     let (range, sought) = answered(layout, &request);
     layout.set_viewport(range.clone());
     let rows = layout.rows(range.clone())?;
@@ -225,6 +226,8 @@ pub(super) fn answer<S: CommitSource>(
         first: range.start,
         rows: rows.into(),
         laid_out,
+        walked,
+        hidden,
         done: layout.is_done(),
         promoted: request.promote.is_some(),
         fold: Arc::from([]),
@@ -239,6 +242,16 @@ pub(super) fn answer<S: CommitSource>(
         return Ok(Some(Ended::NobodyListening));
     }
     Ok(None)
+}
+
+/// `(walked, hidden)` of `layout`'s view for a [`Window`]: two counters read,
+/// no per-row work and no allocation (ADR-0065 D3).
+pub(super) fn walk_counts<S: CommitSource>(
+    layout: &StreamingLayout<Included<S>>,
+) -> (usize, usize) {
+    let included = layout.source();
+    let walked = included.walked().len();
+    (walked, walked.saturating_sub(included.shown().len()))
 }
 
 /// The rows `request` is answered with, once laid out far enough, and what

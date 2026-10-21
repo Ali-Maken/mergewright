@@ -47,11 +47,13 @@ fn main() -> ExitCode {
         }
     };
     println!(
-        "first paint {:?}, G {:?}, g {:?}, {} rows, provisional order: {}, peak RSS at paint {} MiB, after G {} MiB, end {} MiB, overflow_len {} (m1-the-graph/51b 2x check)",
+        "first paint {:?}, G {:?}, g {:?}, {} rows ({} walked, {} hidden by the fold), provisional order: {}, peak RSS at paint {} MiB, after G {} MiB, end {} MiB, overflow_len {} (m1-the-graph/51b 2x check)",
         numbers.first_paint,
         numbers.bottom,
         numbers.top,
         numbers.rows,
+        numbers.walked,
+        numbers.hidden,
         numbers.provisional,
         mib(numbers.rss_at_paint),
         mib(numbers.rss_at_bottom),

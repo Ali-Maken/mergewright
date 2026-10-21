@@ -54,6 +54,8 @@ fn answered(
         request,
         first,
         laid_out: first + rows.len(),
+        walked: first + rows.len(),
+        hidden: 0,
         rows: rows.into(),
         done: true,
         promoted: false,
@@ -279,7 +281,7 @@ fn every_branch_asks_no_fold_count_at_rest_and_offers_no_space_after_a_merge() {
     assert!(
         commands
             .iter()
-            .any(|command| matches!(command, Command::AtRest(_, RestRead::CountFolded { merge: m }) if *m == merge)),
+            .any(|command| matches!(command, Command::AtRest(_, RestRead::CountFolded { merges }) if merges.contains(&merge))),
         "{commands:?}"
     );
 }

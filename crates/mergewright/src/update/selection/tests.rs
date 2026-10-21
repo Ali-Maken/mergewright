@@ -240,6 +240,8 @@ fn state_with_rows() -> AppState {
         first: 0,
         rows: vec![commit_row(1), commit_row(2)].into(),
         laid_out: 2,
+        walked: 2,
+        hidden: 0,
         done: false,
         promoted: false,
         fold: [].into(),

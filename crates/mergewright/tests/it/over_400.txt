@@ -127,8 +127,8 @@
 1648 crates/mergewright/src/event_loop/tests.rs
 545 crates/mergewright/src/event_loop/tests/pace.rs
 604 crates/mergewright/src/event_loop/tests/pixel_scroll.rs
-715 crates/mergewright/src/event_loop/tests/settle.rs
-1414 crates/mergewright/src/history/tests.rs
+714 crates/mergewright/src/event_loop/tests/settle.rs
+1410 crates/mergewright/src/history/tests.rs
 560 crates/mergewright/src/jobs/operate.rs
 1291 crates/mergewright/src/jobs/tests.rs
 817 crates/mergewright/src/jobs/undo.rs
@@ -136,7 +136,7 @@
 550 crates/mergewright/src/repos.rs
 726 crates/mergewright/src/terminal.rs
 537 crates/mergewright/src/trace.rs
-924 crates/mergewright/src/update/amend_into/tests.rs
+923 crates/mergewright/src/update/amend_into/tests.rs
 571 crates/mergewright/src/update/banner/rewrite_stop_tests.rs
 1952 crates/mergewright/src/update/banner/tests.rs
 510 crates/mergewright/src/update/banner/tests/resume_words.rs
@@ -154,7 +154,7 @@
 412 crates/mergewright/src/update/detail/state.rs
 1025 crates/mergewright/src/update/detail/tests.rs
 543 crates/mergewright/src/update/drag/tests.rs
-531 crates/mergewright/src/update/events.rs
+530 crates/mergewright/src/update/events.rs
 453 crates/mergewright/src/update/events/command.rs
 511 crates/mergewright/src/update/geometry.rs
 1234 crates/mergewright/src/update/journal/tests.rs
@@ -169,7 +169,7 @@
 1069 crates/mergewright/src/update/place/tests/history.rs
 431 crates/mergewright/src/update/preview/slice.rs
 448 crates/mergewright/src/update/preview/slice/tests.rs
-2157 crates/mergewright/src/update/preview/tests.rs
+2156 crates/mergewright/src/update/preview/tests.rs
 970 crates/mergewright/src/update/quit/tests.rs
 1156 crates/mergewright/src/update/radar.rs
 577 crates/mergewright/src/update/remote.rs
@@ -177,7 +177,7 @@
 539 crates/mergewright/src/update/remote/tests/lease.rs
 964 crates/mergewright/src/update/resolver/tests.rs
 868 crates/mergewright/src/update/resolver/tests/file_list.rs
-1689 crates/mergewright/src/update/rewrite_editor/tests.rs
+1688 crates/mergewright/src/update/rewrite_editor/tests.rs
 536 crates/mergewright/src/update/stash.rs
 668 crates/mergewright/src/update/stash/tests.rs
 531 crates/mergewright/src/update/state.rs
@@ -194,12 +194,12 @@
 700 crates/mergewright/src/view/frame/tests.rs
 724 crates/mergewright/src/view/journal/tests.rs
 404 crates/mergewright/src/view/strips.rs
-459 crates/mergewright/src/view/strips/tests.rs
-5194 crates/mergewright/src/view/tests.rs
+458 crates/mergewright/src/view/strips/tests.rs
+5134 crates/mergewright/src/view/tests.rs
 465 crates/mergewright/src/view/tests/bottom_row.rs
 413 crates/mergewright/tests/it/app_harness.rs
 425 crates/mergewright/tests/it/blame_place.rs
-656 crates/mergewright/tests/it/budget_run.rs
+528 crates/mergewright/tests/it/budget_run.rs
 456 crates/mergewright/tests/it/clock_pin.rs
 552 crates/mergewright/tests/it/commit_editor_writes.rs
 1838 crates/mergewright/tests/it/conflict_interim.rs
@@ -207,11 +207,10 @@
 421 crates/mergewright/tests/it/credential_by_key.rs
 405 crates/mergewright/tests/it/drain_sink.rs
 419 crates/mergewright/tests/it/frame_trace.rs
-426 crates/mergewright/tests/it/frames/paced.rs
-439 crates/mergewright/tests/it/frames/readings.rs
+419 crates/mergewright/tests/it/frames/paced.rs
 1304 crates/mergewright/tests/it/gallery.rs
-507 crates/mergewright/tests/it/heavy.rs
-757 crates/mergewright/tests/it/held_key.rs
+442 crates/mergewright/tests/it/heavy.rs
+753 crates/mergewright/tests/it/held_key.rs
 965 crates/mergewright/tests/it/hint_bar.rs
 512 crates/mergewright/tests/it/journal_put_back.rs
 759 crates/mergewright/tests/it/journal_screen.rs

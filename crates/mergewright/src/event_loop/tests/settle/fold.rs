@@ -222,21 +222,20 @@ fn merge_on(state: &AppState, row: usize) -> Oid {
 fn counted_merges(commands: &[Command]) -> Vec<Oid> {
     commands
         .iter()
-        .filter_map(|command| match command {
-            Command::AtRest(_, RestRead::CountFolded { merge }) => Some(*merge),
-            _ => None,
+        .flat_map(|command| match command {
+            Command::AtRest(_, RestRead::CountFolded { merges }) => merges.clone(),
+            _ => Vec::new(),
         })
         .collect()
 }
 
-/// A count's answer that lands inside a burst with no follow owed (the
-/// launch's own case: the window landing moves the cursor to `HEAD`, and
-/// the first count answers within `BURST_GAP` of it) leaves the next ask
-/// to rest — and rest comes, though no follow is owed. Before the fix the
-/// loop woke for rest only while a follow was owed, so in the real binary
-/// the next folding merge's tail stayed `▸ commits from …` until a key.
+/// A count's answer that lands inside a burst asks nothing (ADR-0065 D1,
+/// D2): the key's own settle asked every uncounted folding merge on screen
+/// in one read, so the answer's settle and the rest after it ask no second
+/// count. (Before ease-pass 19 each answer asked the next merge — a chain
+/// of wakes at rest.)
 #[test]
-fn a_count_answered_mid_burst_asks_the_next_at_rest() {
+fn a_count_answered_mid_burst_asks_no_further_count() {
     let scratch = tempfile::tempdir().expect("a temporary directory");
     folded_prs(scratch.path());
     let mut state = opened(scratch.path());
@@ -250,8 +249,7 @@ fn a_count_answered_mid_burst_asks_the_next_at_rest() {
     let answer = Wake::Event(AppEvent::Produced(
         mergewright_core::job::JobId::new(1),
         Product::FoldedCounted {
-            merge: first,
-            count: Ok(1),
+            counts: vec![(first, Ok(1))],
         },
     ));
     let mut wakes = Timed::new(
@@ -267,16 +265,17 @@ fn a_count_answered_mid_burst_asks_the_next_at_rest() {
     let commands = jobs.commands();
     let handed = wakes.handed.clone();
     assert_eq!(handed.len(), 2);
-    assert_eq!(
-        counted_merges(&commands[handed[0]..handed[1]]),
-        vec![merge_on(&state, 1)],
-        "the key's own settle asks the next merge"
+    let batch = counted_merges(&commands[handed[0]..handed[1]]);
+    assert_eq!(batch.first(), Some(&merge_on(&state, 1)), "top row first");
+    assert!(
+        !batch.contains(&first),
+        "the one being counted is not asked again"
     );
     assert_eq!(state.fold_counts.get(&first), Some(&FoldCount::Counted(1)));
-    assert!(!follow_behind(&state), "no follow owed: only the count is");
+    assert!(!follow_behind(&state), "no follow owed");
     assert_eq!(
         counted_merges(&commands[handed[1]..]),
-        vec![merge_on(&state, 2)],
-        "at rest, the merge after it is asked"
+        Vec::<Oid>::new(),
+        "the answer's settle and the rest after it ask no count"
     );
 }

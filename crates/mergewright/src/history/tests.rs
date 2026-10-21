@@ -467,10 +467,9 @@ fn assert_late_jump_answers_are_dropped(history: &mut History, jump: u64) {
         first: 190,
         rows: Vec::new().into(),
         laid_out: 200,
+        walked: 200,
         done: true,
-        promoted: false,
-        fold: [].into(),
-        sought: None,
+        ..Default::default()
     };
     history.apply(HistoryUpdate::Window(late), HEIGHT);
     history.apply(
@@ -721,10 +720,9 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
             first,
             rows: rows.to_vec().into(),
             laid_out: whole.len(),
+            walked: whole.len(),
             done: false,
-            promoted: false,
-            fold: [].into(),
-            sought: None,
+            ..Default::default()
         })
     };
     history.asked = 1;
@@ -758,10 +756,9 @@ fn a_seek_still_out_survives_a_view_change() {
             first,
             rows: rows.to_vec().into(),
             laid_out: whole.len(),
+            walked: whole.len(),
             done: false,
-            promoted: false,
-            fold: [].into(),
-            sought: None,
+            ..Default::default()
         })
     };
     history.asked = 1;
@@ -1193,11 +1190,10 @@ fn window_of(first: usize, count: usize) -> Window {
         request: 1,
         first,
         laid_out: first + count,
+        walked: first + count,
         done: true,
         rows: rows.into(),
-        promoted: false,
-        fold: [].into(),
-        sought: None,
+        ..Default::default()
     }
 }
 
