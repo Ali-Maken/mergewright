@@ -8,6 +8,8 @@ after `j` held ×188 at 16 ms, before `J`. Numbers: `docs/perf/47-scroll-accepta
 
 ## 1. The Ghostty path: `fix-scroll-ghostty.png`
 
+*Re-shot 2026-10-22 (ease-pass-21); the old picture was 850×407 px.*
+
 **Right looks like:** the lit thread (the selection's lanes and dots) at full
 strength, the off-thread lanes at half strength, no line wider than another,
 the same rows as the Unicode grid below. **Colour unverified; Ghostty's own
@@ -18,8 +20,9 @@ rendering unverified until the user looks** (CLAUDE.md rules 5 and 6).
 What it is: every strip on screen as Graft sends it to a Kitty terminal with
 deflate on — the strip backdrop with the selection's emphasis image over it,
 built through `StripCache::composited` (ADR-0053: the picture the two Kitty
-layers blend to) — stacked, cropped to the graph column (50 cells, 850 px)
-and to the pane's rows 37–47 (history rows 178–188, the cursor's the last), over a stand-in dark
+layers blend to) — stacked, cropped to the graph column (2 cells, 34 px: the strips are as wide as
+the lanes in view (ease-pass 06 chain), not the 50-lane cap) and to the pane's rows 34–45
+(history rows 178–189, 12 rows of 37 px; the cursor's, 188, is drawn: `cursor_on_screen=true`), over a stand-in dark
 background (`#1E1E2E`), not his theme's. Drawn in-process by
 `crates/graft/tests/it/ghostty_shot.rs`; Ghostty itself never ran.
 
