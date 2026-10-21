@@ -34,10 +34,10 @@ pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
 /// as upstream, even when the two are named differently; otherwise the
 /// same-short-name rule applies.
 #[must_use]
-pub fn seeds_with_upstreams(
+pub fn seeds_with_upstreams<S: std::hash::BuildHasher>(
     refs: &[RefEntry],
     branches: &Branches,
-    upstreams: &HashMap<RefName, RefName>,
+    upstreams: &HashMap<RefName, RefName, S>,
 ) -> Seeds {
     // remote-tracking full name -> the local branch's short name
     let followed: HashMap<&[u8], &[u8]> = upstreams

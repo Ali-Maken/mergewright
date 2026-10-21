@@ -31,7 +31,7 @@
 1428 crates/mergewright-graph/src/layout/stream/tests.rs
 698 crates/mergewright-graph/src/layout/tests.rs
 539 crates/mergewright-graph/src/layout/tests/properties.rs
-453 crates/mergewright-graph/tests/it/corpus.rs
+464 crates/mergewright-graph/tests/it/corpus.rs
 588 crates/mergewright-graph/tests/it/emphasis_layer.rs
 992 crates/mergewright-graph/tests/it/raster.rs
 701 crates/mergewright-graph/tests/it/strip_cache.rs
