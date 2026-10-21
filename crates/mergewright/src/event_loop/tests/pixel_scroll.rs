@@ -21,6 +21,7 @@ use mergewright_graph::fold::Keep;
 
 mod emphasis_pieces;
 mod focus;
+mod pinned;
 mod tall;
 
 /// The spec's terminal for these runs (`120×40`).
