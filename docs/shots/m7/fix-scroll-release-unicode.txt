@@ -1,15 +1,17 @@
-# m7-power-tools/47, re-taken by 48: the release grid, pty text walk (Unicode), TeamSpec::MONOREPO
-# 187x50, held j x188 at 16 ms; every byte before J's frame, drawn by pyte. Screen rows 38:49 (the
-# PNG's rows), cut at the graph's divider. Characters only: colour, the lit thread and
-# the cursor's fill are not recorded (CLAUDE.md rule 5).
-38|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ ⋮
-39|│ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ ⋮
-40|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● │ │ ⋮
-41|│ │ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ ⋮
-42|│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ● ⋮
-43|◉▾│ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-44|│ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ │ ⋮
-45|│ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-46|│ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-47|│ │ │ │ │ ● │ │ │ │ │ │ │ │ │ │ │ │ │ ⋮
-48|│ │ │ │ │ │ │ │ │ │ ● │ │ │ │ │ │ │ │ ⋮
+# m7-power-tools/47, re-taken by ease-pass-21: the release grid, pty text walk (Unicode), TeamSpec::MONOREPO
+# 187x50, held j x188 at 16 ms; every byte before J's frame, drawn by pyte. Screen rows 35:47 (the
+# PNG's pane rows 34..46, counted from 0), cut to the first 4 columns: since the ease pass the graph is
+# as wide as the lanes in view (2 here) and there is no `⋮` divider to cut at. The cursor `▸` is on the
+# last row. Characters only: colour, the lit thread and the cursor's fill are not recorded (CLAUDE.md rule 5).
+35|  ◉
+36|  ◉
+37|  ◉
+38|  ◉
+39|  ◉
+40|  ◉
+41|  ◉
+42|  ◉
+43|  ◉▴
+44|  ◉
+45|  ◉
+46|▸ ◉
