@@ -1,6 +1,6 @@
 # fix round: fold rules — what may wake the app at rest, and rows vs commits under the fold
 
-Status: ready
+Status: done (17/17 boxes; one timing flake recorded, see NOTES)
 Blocked by: 18-lag-and-idle-wakes (merged), 17-stacked-branch-lanes (merged)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: both rules are decided below and pinned by unit tests that need no fixture; the code is one command's shape, one harness classification and three test assertions. The only judgement left (wake attribution in the harness) is spelled out case by case.
 Needs: none. 18's `refs::branch_list` (merged) is not touched.
@@ -100,27 +100,27 @@ Harness (test-private; fit names to the code): every job event the paced harness
 
 ## Acceptance (tick each with its test)
 App, fast tier:
-- [ ] 3 folding merges on screen, none counted, at rest → exactly one `CountFolded { merges }`, top row first, all three `Counting`.  <- `update::fold_count::tests::one_rest_asks_every_uncounted_folding_merge_on_screen_in_one_read`
-- [ ] The batch's answer lands with every on-screen merge asked → the settle sends no `CountFolded` (no chain).  <- `update::fold_count::tests::a_count_answer_asks_no_count`
-- [ ] A second rest with one new merge on screen asks only that merge; a `Counting` one is never asked again.  <- `update::fold_count::tests::a_merge_being_counted_is_not_asked_again`
-- [ ] Answer with one failure among three → that tail `?`, the others their numbers, one status line with the failure's words.  <- `update::fold_count::tests::one_failed_count_marks_only_that_merge`
-- [ ] A burst (held `j`) asks no count (today's rule kept; name the existing test if one exists, else write it).  <- `update::fold_count::tests::a_burst_asks_no_count`
-- [ ] The job counts each merge as git does: fixture with 2 merges; each count equals `git rev-list --count <m>^1..<m>^2` run in the test.  <- `jobs::fold_count::tests::one_read_counts_each_merge_as_git_does`
-- [ ] Row contract on a small fixture (one merged branch of k commits): `Folded` → `hidden == k`, `laid_out + hidden == walked == git rev-list --count --all`; `Shown` → `hidden == 0`, `laid_out == walked`.  <- `it history_rows::folded_rows_and_hidden_commits_add_up_to_every_commit`
+- [x] 3 folding merges on screen, none counted, at rest → exactly one `CountFolded { merges }`, top row first, all three `Counting`.  <- `update::fold_count::tests::one_rest_asks_every_uncounted_folding_merge_on_screen_in_one_read`
+- [x] The batch's answer lands with every on-screen merge asked → the settle sends no `CountFolded` (no chain).  <- `update::fold_count::tests::a_count_answer_asks_no_count`
+- [x] A second rest with one new merge on screen asks only that merge; a `Counting` one is never asked again.  <- `update::fold_count::tests::a_merge_being_counted_is_not_asked_again`
+- [x] Answer with one failure among three → that tail `?`, the others their numbers, one status line with the failure's words.  <- `update::fold_count::tests::one_failed_count_marks_only_that_merge`
+- [x] A burst (held `j`) asks no count (today's rule kept; name the existing test if one exists, else write it).  <- `update::fold_count::tests::a_burst_asks_no_count`
+- [x] The job counts each merge as git does: fixture with 2 merges; each count equals `git rev-list --count <m>^1..<m>^2` run in the test.  <- `jobs::fold_count::tests::one_read_counts_each_merge_as_git_does`
+- [x] Row contract on a small fixture (one merged branch of k commits): `Folded` → `hidden == k`, `laid_out + hidden == walked == git rev-list --count --all`; `Shown` → `hidden == 0`, `laid_out == walked`.  <- `it history_rows::folded_rows_and_hidden_commits_add_up_to_every_commit`
 
 Harness, `cargo nextest run --features heavy-tests -E 'test(unasked)'` (no fixture):
-- [ ] key → its window → count asked at `Rested` → its answer: 0 unasked.  <- `frames::readings::tests::unasked_a_count_asked_at_rest_is_asked`
-- [ ] count asked while handling the key's first window: 0.  <- `…::unasked_a_count_asked_by_the_keys_window_is_asked`
-- [ ] count asked while handling another count's answer: 1.  <- `…::unasked_a_count_asked_by_an_answer_is_counted`
-- [ ] a second final answer to one ask: 1; an answer to an id never asked: 1; a later `Window` (not the first): 1 (today's rule kept).  <- `…::unasked_repeats_strangers_and_later_windows_are_counted`
+- [x] key → its window → count asked at `Rested` → its answer: 0 unasked.  <- `frames::readings::tests::unasked_a_count_asked_at_rest_is_asked`
+- [x] count asked while handling the key's first window: 0.  <- `…::unasked_a_count_asked_by_the_keys_window_is_asked`
+- [x] count asked while handling another count's answer: 1.  <- `…::unasked_a_count_asked_by_an_answer_is_counted`
+- [x] a second final answer to one ask: 1; an answer to an id never asked: 1; a later `Window` (not the first): 1 (today's rule kept).  <- `…::unasked_repeats_strangers_and_later_windows_are_counted`
 
 Heavy, release, run by script (`scripts/19-fold-rules.sh` → `docs/perf/19-fold-rules.txt`, `--test-threads=1`, these tests only, no other cargo helper running; read SUMMARY lines only):
-- [ ] `frames::scrolling_the_100k_fixture_…_{pixel,unicode}_tier` and `frames::fifty_thousand_refs_…_at_the_{pixel,unicode}_tier`: `idle_gap_wakes=0` with `frames.rs:393` unchanged, each `woke=[]` line quoted. Their p99 line printed and stated. A p99 over 16 ms is recorded as a finding, never loosened.  <- the four named tests
-- [ ] `heavy::budgets_hold_*` ×5: `walked == scale.commits()`, `rows + hidden == walked`, `hidden > 0`; then the RSS and first-paint budgets run. State each fixture's rows/hidden.  <- the five named tests
-- [ ] Every branch shown, 100k without a commit-graph: `hidden == 0`, `rows == scale.commits()`, the same budgets.  <- `heavy::budgets_hold_on_the_100k_fixture_with_every_branch_shown`
-- [ ] `frames::after_idle::g_after_idle`: waits on `LaidOut`, not a row count. `G` lands on row `laid_out − 1`, and `walked == SCALE.commits()`.  <- `frames::after_idle::g_after_idle`
-- [ ] Every other `SCALE.commits()` / `scale.commits()` used as a row count in `tests/it/frames*` and `heavy*` is listed with its verdict (row count → fixed to D3; commit count → kept).  <- grep, in NOTES
-- [ ] Captures: none expected to change (same tails, same words). Re-run the capture/walk tests that wait on `fold_count::settled`; any byte change is listed with why, and no snapshot is accepted blind.  <- `cargo nextest run` (capture families)
+- [x] `frames::scrolling_the_100k_fixture_…_{pixel,unicode}_tier` and `frames::fifty_thousand_refs_…_at_the_{pixel,unicode}_tier`: `idle_gap_wakes=0` with `frames.rs:393` unchanged, each `woke=[]` line quoted. Their p99 line printed and stated. A p99 over 16 ms is recorded as a finding, never loosened.  <- the four named tests
+- [x] `heavy::budgets_hold_*` ×5: `walked == scale.commits()`, `rows + hidden == walked`, `hidden > 0`; then the RSS and first-paint budgets run. State each fixture's rows/hidden.  <- the five named tests
+- [x] Every branch shown, 100k without a commit-graph: `hidden == 0`, `rows == scale.commits()`, the same budgets.  <- `heavy::budgets_hold_on_the_100k_fixture_with_every_branch_shown`
+- [x] `frames::after_idle::g_after_idle`: waits on `LaidOut`, not a row count. `G` lands on row `laid_out − 1`, and `walked == SCALE.commits()`.  <- `frames::after_idle::g_after_idle`
+- [x] Every other `SCALE.commits()` / `scale.commits()` used as a row count in `tests/it/frames*` and `heavy*` is listed with its verdict (row count → fixed to D3; commit count → kept).  <- grep, in NOTES
+- [x] Captures: none expected to change (same tails, same words). Re-run the capture/walk tests that wait on `fold_count::settled`; any byte change is listed with why, and no snapshot is accepted blind.  <- `cargo nextest run` (capture families)
 
 ## Read first
 - This ticket. Then `docs/perf/18-lag.txt:28-35` and `16-fix-heavy-tier.md:24-29` only.
@@ -161,3 +161,30 @@ Consequences:
 - The design note's `:165` reads "asked at rest, in one read per rest".
 
 **Conductor:** my search tools were down this pass, so I couldn't grep `docs/adr/` for an existing rest or idle-wake ADR (m7-power-tools/12 introduced `idle_gap_wakes`). Check before numbering, and amend that ADR if one exists.
+
+## NOTES (builder-sonnet)
+No compaction. Scout: none (every file was named in the ticket and read directly; no wide sweep needed).
+
+**Boxes.** App 7/7 and harness 4/4 pass in the fast tier (`cargo nextest run`: 7225/7225, plus the 4 `unasked` + 2 `idle_gaps`/`batched_key` tests under `--features heavy-tests`). Heavy 6/6 by `scripts/19-fold-rules.sh` -> `docs/perf/19-fold-rules.txt` (release, `--test-threads=1`; other builders were running, load 3.5-7):
+- 4 frames tests: `idle_gap_wakes=0`, `woke=[]`, `pauses_after_laid_out=5 of 5`, `frames.rs:393` unchanged. p99: 100k pixel 14.7 ms (4 keys over 16 ms, max 35 ms: recorded), 50k pixel 11.7 ms, 50k unicode 12.2 ms; 100k unicode 2.5 / 3.6 ms in two reruns. **The first run of the 100k unicode test failed a different check**: `verdict.rs:62` "key 262 (PageDown): 0 of 34 rows on hand" (the layout-behind-keys timing check, `frames.rs:28-29`), not the wake rule, with its `idle_gap_wakes=0 woke=[]` line printed. Not reproduced in two reruns. Unverified cause (load); not loosened.
+- 5 `budgets_hold_*`: `walked=100000`, `rows+hidden==walked`, `hidden>0` on all five: rows=79195 hidden=20805 (100k, 100k realistic, 50k refs; each with/without commit-graph as named). Peak RSS 34-158 MB, first paint 17-138 ms (50k refs 138 ms, budget 150).
+- Every branch shown (100k, no commit-graph): rows=100000 walked=100000 hidden=0, RSS 101 MB, first paint 17 ms.
+- `g_after_idle`: waits on `LaidOut`; `rows=79195 walked=100000 laid_out=79195`, `idle_gap_wakes=0`.
+- Not run: the other heavy tests (`held_key`, `ghostty_shot`, `pieces_shot`, `resolver::frame_budget`, 1M, the slope guards, `fifty_thousand_refs_*_{detail_pane,diff,map_view}`).
+- Captures: full nextest passes, no file under `docs/shots/` changed, no snapshot accepted.
+
+**Idle wakes before/after.** Before (18's run, `docs/perf/18-lag.txt:28-35`, not re-measured): 5 x `Produced::FoldedCounted` per closed test, from `update/fold_count.rs:27-43` (one ask per answer). After: 0.
+
+**Causes, not symptoms.** D1/D2 fix the chain at its cause (`update/fold_count.rs::at_rest`, one `CountFolded { merges }`, `Product::FoldedCounted { counts }`); the harness (`tests/it/frames/unasked.rs`, `watching.rs`) now says what D1 allows instead of accepting any answer. No D4 stop: the branch pane's ask (`update/mod.rs:263-265`) was never flagged. Cost to the user: the first fold number shows once the whole batch is counted.
+
+**Grep of `.commits()` as a row count (verdicts).** `heavy.rs:104` commit slope: commit count, kept. `heavy.rs:177` (`the_table_and_the_order_...`), `:259` (`cold_jump`), `:275` (`order_bytes`): these lay out `View::default()` (not folded), rows == commits holds: kept, as the ticket said. `heavy/check.rs` and `after_idle.rs:72`: `walked`, a commit count: kept. The row uses in `check` and `after_idle` (`rows == commits`) were the two fixed. No other use in `tests/it/frames*` or `heavy*`.
+
+**Deviations / things to know.**
+- Test-side name change: `a_count_answered_mid_burst_asks_the_next_at_rest` (`event_loop/tests/settle/fold.rs`) described the chain D1 removes; rewritten to assert the key's settle asks the whole batch and the answer asks none. `every_folding_merge_on_screen_is_counted_one_job_each` and `no_count_is_asked_mid_burst` (`update/fold_count/tests.rs`) replaced by the ticket's named tests.
+- `AppState` was exactly 8192 bytes; `Window` +16 B tipped it over, and clippy `large_stack_arrays` failed five tests that build `[state, state]`. Fixed at the size, not the lint: `History::folded_ask` is now `Option<Box<FoldedAsk>>` (rare, like `Sought`).
+- `Window` now derives `Default`; six test files build windows with `..Default::default()` instead of repeating four fixed fields, so no `over_400` row rose. `over_400.txt`: rows updated down (settle.rs, history/tests.rs, amend_into, preview, rewrite_editor, strips/tests, view/tests.rs, budget_run.rs, paced.rs, held_key.rs, events.rs, heavy.rs), `frames/readings.rs` removed (now 316). Splits: `budget_run/child.rs`, `heavy/check.rs`, `frames/{unasked,watching}.rs`, `frames/readings/tests.rs`, `view/tests/strip_state.rs`. No graph-crate change (`HandleSet::len` existed).
+- `Window.walked/hidden` are filled in `history::serve::walk_counts` (two counter reads); the idle `refreshed` windows carry them too.
+- Harness limit: `command_id` lists the id-carrying reads that can wake at rest; any other command's wakes count as unasked (honest direction), so a new background read must be added there.
+- Design note `ease-pass.md:165` still says "asked at rest" (conductor's text per ADR-0065).
+
+**Touches:** `RestRead::CountFolded` / `Product::FoldedCounted` callers (`jobs/runner/{dispatch,lists}.rs`, `update/answer.rs`, `event_loop/label.rs` by grep and compile; `update/facts.rs` matches `{ .. }`); `rest_owed` (`event_loop/running/turn.rs`): `owed()` unchanged meaning, `a_count_answered_mid_burst_asks_no_further_count` and the rest-owed tests pass; `fold_count::settled` users (captures, ease_walk, fold_by_default): full nextest, no shot changed; branch pane ask: `branch_pane/tests.rs:191` position test passes, the harness never flagged it; `Window {` literals: grep, 40 sites compile and pass; `budgets --gate` example: still `run` (default mode), prints the two new fields; `held_key` `fold_changes_held=unread`: reads no count (`held_key` not re-run, no code path of it changed); search's folded count, keymap, journal, undo, PNGs: no file touched.
