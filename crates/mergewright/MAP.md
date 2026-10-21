@@ -84,7 +84,7 @@ The first-launch line: for his first launches, until he opens the palette, the s
 ## history
 Reading history for the screen: `mergewright-git`'s walk meets `mergewright-graph`'s layout here, laid out as it arrives.
 - `History` (struct) — the walk's history as the screen holds it: window, cursor, viewport, phase; `head_pending` while the first request waits for `HEAD` (ease-pass 06 D2).
-- `Window` (struct) — the laid-out rows the screen currently holds; `Window.fold` holds each row's `RowFold`, index for index; `Window.sought` what a find learnt, `Window::found` (fn) how it was found.
+- `Window` (struct) — the laid-out rows the screen currently holds; `Window.fold` is each row's `RowFold`; `Window.sought` what a find learnt, `Window::found` (fn) how; `walked`/`hidden`: commits reached / folded away.
 - `View` (struct) — `follow`, `inclusion`: the view a walk lays out; `View::folded` (fn) is what the app opens on — merged branches folded, none opened; `View::starting(MergedBranches)` (fn) the view a walk starts in per graph mode.
 - `RowFold` (struct) — `folds`, `inside`: does a merge row fold a branch; the opened merge a row sits inside.
 - `Inside` (struct) — `merge`, `label`: an opened merge and the branch name its subject gives.
@@ -142,7 +142,7 @@ The detail pane's reads: changed files, one file's diff, which refs contain a co
 ## jobs::finish
 The merge review's reads: `merge_review` (what lands, nothing staged) plus `HEAD..MERGE_HEAD` counted (`None` → `?`). `look`: the look's reads (`look_result`, `combined_look`, `read`).
 ## jobs::fold_count
-How many commits a folding merge brought in, behind its tail `▸ 4 commits from …`; kept for the session.
+How many commits each folding merge brought in, behind its tail `▸ 4 commits from …`; kept for the session. `count_each` counts a batch (one job, one answer, ADR-0065 D2).
 ## jobs::forced
 Which unstoppable writes a stop was forced on, and where each stop left git.
 ## jobs::journal_list
@@ -282,7 +282,7 @@ Facts beside the graph arriving (system git, refs, working-tree counts), their r
 ## update::finish
 The merge's review, drawn once its read lands; keys by id; git's message,: `y` commits it as `--no-edit` would, `u` undoes a pick, `⏎` a read-only `Look`. Lands `✓ Merged <from> into <into>.`; `just_merged_bar` once the count is known.
 ## update::fold_count
-A folding merge's count: asked at rest for the merges on screen (an uncounted one keeps `update::rest_owed`), counted once by a job, kept for the session. `settled(state)` — every one on screen answered.
+A folding merge's count: one `CountFolded { merges }` at rest for every uncounted merge on screen (keeps `update::rest_owed`); one answer, no chain (ADR-0065); kept for the session. `settled(state)` — every one on screen answered.
 ## update::geometry
 Pure screen geometry a mouse event needs: where the detail pane, its regions, the context menu and a ref badge land.
 ## update::history

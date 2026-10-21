@@ -85,10 +85,7 @@ pub(super) fn pumped<D: Dispatch>(
         },
     )
     .map_err(|why| format!("in-memory terminal: {why}"))?;
-    let watching = Watching {
-        inner: jobs,
-        asked: Mutex::default(),
-    };
+    let watching = Watching::new(jobs, Vec::new());
     let feed = KeyFeed::start(script.clone(), post.clone())
         .map_err(|why| format!("the input thread did not start: {why}"))?;
     let mut wakes = Paced::new(events, script, &watching, sink, feed.log());

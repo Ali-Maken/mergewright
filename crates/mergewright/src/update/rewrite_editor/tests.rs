@@ -120,10 +120,9 @@ fn on_screen(at: usize) -> AppState {
         ]
         .into(),
         laid_out: 5,
+        walked: 5,
         done: true,
-        promoted: false,
-        fold: [].into(),
-        sought: None,
+        ..Default::default()
     };
     let (mut state, _) = update(
         &state,

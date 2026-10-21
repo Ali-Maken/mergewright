@@ -38,6 +38,20 @@ pub(crate) fn count_folded(
     Ok(reached.saturating_sub(1))
 }
 
+/// One job, every merge asked: each counted in order with
+/// [`count_folded`], one answer for the batch (ADR-0065 D2). A merge that
+/// fails keeps its own reason; the others still count.
+pub(crate) fn count_each(
+    repos: &RepoStore,
+    merges: &[Oid],
+    cancel: &Cancel,
+) -> Vec<(Oid, Result<usize, String>)> {
+    merges
+        .iter()
+        .map(|&merge| (merge, count_folded(repos, merge, cancel)))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use mergewright_fixtures::Shape;
@@ -88,6 +102,58 @@ mod tests {
         let store = RepoStore::new(repo.to_path_buf(), None);
         let merge = oid(repo, &merge);
         assert_eq!(count_folded(&store, merge, &Cancel::new()), Ok(3));
+    }
+
+    /// Two merges in one read; each count is what `git rev-list --count
+    /// <m>^1..<m>^2` says, in the order asked.
+    #[test]
+    fn one_read_counts_each_merge_as_git_does() {
+        let scratch = mergewright_fixtures::copy_into_temp(Shape::OctopusMerge);
+        let repo = scratch.path();
+        let tree = |rev: &str| oid(repo, &format!("{rev}^{{tree}}")).to_string();
+        let commit_tree = |args: &[&str]| {
+            let out = mergewright_fixtures::git::run(repo, args).expect("commit-tree");
+            String::from_utf8(out).expect("hex").trim().to_owned()
+        };
+        let t4 = commit_tree(&["commit-tree", &tree("topic-1"), "-p", "topic-1", "-m", "t4"]);
+        let one = commit_tree(&[
+            "commit-tree",
+            &tree("main"),
+            "-p",
+            "main^1",
+            "-p",
+            "topic-1",
+            "-m",
+            "one",
+        ]);
+        let two = commit_tree(&[
+            "commit-tree",
+            &tree("main"),
+            "-p",
+            "main^1",
+            "-p",
+            &t4,
+            "-m",
+            "two",
+        ]);
+        let git_count = |merge: &str| {
+            let range = format!("{merge}^1..{merge}^2");
+            let out = mergewright_fixtures::git::run(repo, &["rev-list", "--count", &range])
+                .expect("rev-list");
+            String::from_utf8(out)
+                .expect("count")
+                .trim()
+                .parse::<usize>()
+                .expect("a number")
+        };
+        let store = RepoStore::new(repo.to_path_buf(), None);
+        let (one_id, two_id) = (oid(repo, &one), oid(repo, &two));
+        let answer = count_each(&store, &[one_id, two_id], &Cancel::new());
+        assert_eq!(
+            answer,
+            [(one_id, Ok(git_count(&one))), (two_id, Ok(git_count(&two)))]
+        );
+        assert_ne!(git_count(&one), git_count(&two), "not vacuous");
     }
 
     /// A commit that is not there: an error naming why, not a zero.

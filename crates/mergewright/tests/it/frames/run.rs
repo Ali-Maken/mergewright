@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver};
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use mergewright::config::Loaded;
@@ -78,10 +78,7 @@ pub(super) fn scroll(
     let sink = Sink::timed(traced).answering(post.clone());
     let mut terminal = in_memory(&sink, &state)?;
 
-    let watching = Watching {
-        inner: &jobs,
-        asked: Mutex::default(),
-    };
+    let watching = Watching::new(&jobs, Vec::new());
     let initial = state.clone();
     let feed = KeyFeed::start(keys(pane, control), post)
         .map_err(|why| format!("the input thread did not start: {why}"))?;

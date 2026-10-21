@@ -114,6 +114,8 @@ pub(crate) fn every_node(cursor: usize) -> AppState {
                 request: 0,
                 first: 0,
                 laid_out: count,
+                walked: count,
+                hidden: 0,
                 done: true,
                 rows: rows.into(),
                 promoted: false,

@@ -26,8 +26,8 @@
 //! release enforces it (ADR-0021). The release run is
 //! `scripts/m7-30p-perf.sh`'s.
 
+use std::sync::PoisonError;
 use std::sync::mpsc::{self, Receiver};
-use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use mergewright::config::Loaded;

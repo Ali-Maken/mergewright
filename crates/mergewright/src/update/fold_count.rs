@@ -6,7 +6,7 @@
 //! The count is a fact of the merge commit — it never changes — so it is
 //! never recounted: not on refresh, not on opening and closing. Asked at
 //! rest ([`at_rest`], from `update::settle` whenever the cursor is not
-//! mid-burst) for the folding merges drawn on screen.
+//! mid-burst) for the folding merges drawn on screen, all in one read.
 
 use mergewright_core::job::JobId;
 use mergewright_core::oid::Oid;
@@ -25,21 +25,24 @@ pub(crate) enum FoldCount {
     Failed,
 }
 
-/// At rest: asks for the count of the first folding merge drawn on screen
-/// that has none yet — one command per rest, top row first. Every answer is
-/// an event whose settle asks for the next, so every folding merge on screen
-/// is counted without a burst of reads at first paint. Once per merge per
-/// session.
+/// At rest: asks for every folding merge drawn on screen that has no count
+/// yet, in one command, top row first (ADR-0065 D2). The answer is one event
+/// with every count, so there is one wake and one frame — and no chain: an
+/// answer asks nothing. Each merge is marked `Counting` and asked once per
+/// session. Asks nothing when none is uncounted.
 pub(super) fn at_rest(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut dyn FnMut() -> JobId,
 ) {
-    let Some(merge) = uncounted(next) else {
+    let merges = uncounted(next);
+    if merges.is_empty() {
         return;
-    };
-    next.fold_counts.insert(merge, FoldCount::Counting);
-    commands.push(Command::AtRest(next_id(), RestRead::CountFolded { merge }));
+    }
+    for merge in &merges {
+        next.fold_counts.insert(*merge, FoldCount::Counting);
+    }
+    commands.push(Command::AtRest(next_id(), RestRead::CountFolded { merges }));
 }
 
 /// Is a count owed to rest — a folding merge on screen not yet asked? A
@@ -47,7 +50,7 @@ pub(super) fn at_rest(
 /// wake for rest while this holds, as it does for an owed follow
 /// (`update::rest_owed`).
 pub(crate) fn owed(state: &AppState) -> bool {
-    uncounted(state).is_some()
+    !uncounted(state).is_empty()
 }
 
 /// Has every folding merge on screen its answer — none owed, none still
@@ -63,31 +66,41 @@ pub fn settled(state: &AppState) -> bool {
             .any(|count| *count == FoldCount::Counting)
 }
 
-/// The first folding merge drawn on screen, top row first, with no count
-/// asked yet.
-fn uncounted(state: &AppState) -> Option<Oid> {
+/// The folding merges drawn on screen with no count asked yet, top row first.
+fn uncounted(state: &AppState) -> Vec<Oid> {
     let height = state.graph_rows();
-    let history = state.history.as_ref()?;
-    (history.top..history.top.saturating_add(height)).find_map(|at| {
-        let folds = history.fold_at(at)?.folds == Some(true);
-        let merge = history.row_at(at)?.commit.id;
-        (folds && !state.fold_counts.contains_key(&merge)).then_some(merge)
-    })
+    let Some(history) = state.history.as_ref() else {
+        return Vec::new();
+    };
+    (history.top..history.top.saturating_add(height))
+        .filter_map(|at| {
+            let folds = history.fold_at(at)?.folds == Some(true);
+            let merge = history.row_at(at)?.commit.id;
+            (folds && !state.fold_counts.contains_key(&merge)).then_some(merge)
+        })
+        .collect()
 }
 
-/// `Product::FoldedCounted`: keep the answer; a failure is said once, here,
-/// with git's reason (rule 3).
-pub(super) fn counted(next: &mut AppState, merge: Oid, count: Result<usize, String>) {
-    let entry = match count {
-        Ok(count) => FoldCount::Counted(count),
-        Err(reason) => {
-            let hex = merge.to_string();
-            let sha7 = hex.get(..7).unwrap_or(&hex);
-            next.status = Status::Failed(format!("couldn't count {sha7}'s commits: {reason}"));
-            FoldCount::Failed
-        }
-    };
-    next.fold_counts.insert(merge, entry);
+/// `Product::FoldedCounted`: keep every answer; a failure is said once, with
+/// the first failure's words (rule 3), the others marked `?`.
+pub(super) fn counted(next: &mut AppState, counts: Vec<(Oid, Result<usize, String>)>) {
+    let mut said = false;
+    for (merge, count) in counts {
+        let entry = match count {
+            Ok(count) => FoldCount::Counted(count),
+            Err(reason) => {
+                if !said {
+                    let hex = merge.to_string();
+                    let sha7 = hex.get(..7).unwrap_or(&hex);
+                    next.status =
+                        Status::Failed(format!("couldn't count {sha7}'s commits: {reason}"));
+                    said = true;
+                }
+                FoldCount::Failed
+            }
+        };
+        next.fold_counts.insert(merge, entry);
+    }
 }
 
 #[cfg(test)]

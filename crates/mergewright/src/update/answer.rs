@@ -227,8 +227,8 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
                 result,
             },
         ) => remote::leaves_arrived(next, sent, expected, result),
-        AppEvent::Produced(_, Product::FoldedCounted { merge, count }) => {
-            fold_count::counted(next, merge, count);
+        AppEvent::Produced(_, Product::FoldedCounted { counts }) => {
+            fold_count::counted(next, counts);
         }
         AppEvent::Produced(_, Product::BranchStatusRead { key, result }) => {
             super::branch_pane::read(next, key, result);

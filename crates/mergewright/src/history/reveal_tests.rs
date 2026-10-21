@@ -49,6 +49,8 @@ pub(super) fn answer(request: u64, bytes: &[u8], sought: Option<Sought>) -> Hist
         first: 0,
         rows: bytes.iter().map(|&byte| row(byte)).collect(),
         laid_out: bytes.len(),
+        walked: bytes.len(),
+        hidden: 0,
         done: false,
         promoted: false,
         fold: Arc::from([]),

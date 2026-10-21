@@ -15,8 +15,8 @@
 //! It reads what `G` cost before the idle advance, on the same harness.
 
 use std::path::Path;
+use std::sync::PoisonError;
 use std::sync::mpsc::{self, Receiver};
-use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use mergewright::config::Loaded;
@@ -58,20 +58,35 @@ fn g_after_idle() {
     let landing = g_after_gap(&repo, no_idle_advance).unwrap_or_else(|why| panic!("{why}"));
     drop(turn);
 
-    let rows = SCALE.commits() as usize;
+    // ADR-0065 D3: under the fold a row is a shown commit, so the rows the
+    // walk laid out are fewer than its commits; every commit is still walked.
+    let rows = landing.rows;
     assert!(
         landing.on_last_row,
         "`G`'s frame does not show the last row with the cursor on it: cursor {}, {rows} rows",
         landing.cursor
     );
+    if !no_idle_advance {
+        assert_eq!(
+            landing.walked,
+            SCALE.commits() as usize,
+            "the walk reached every commit"
+        );
+        assert_eq!(
+            landing.laid_out,
+            Some(rows),
+            "`G` landed on the last of the rows the walk said it laid out"
+        );
+    }
     let build = if no_idle_advance {
         "no-idle-advance"
     } else {
         "idle-advance"
     };
     println!(
-        "frames: g_after_idle build={build} tier={TIER:?} refs={:?} rows={rows} laid_out={} gap_ms={} latency_us={} asked={} wakes_between={} idle_gap_wakes={} woke={:?}",
+        "frames: g_after_idle build={build} tier={TIER:?} refs={:?} rows={rows} walked={} laid_out={} gap_ms={} latency_us={} asked={} wakes_between={} idle_gap_wakes={} woke={:?}",
         Refs::FiftyThousand,
+        landing.walked,
         landing
             .laid_out
             .map_or("-".to_owned(), |rows| rows.to_string()),
@@ -116,6 +131,10 @@ struct Landing {
     gap_wakes: Vec<&'static str>,
     /// What the walk said it laid out before the gap (`None`: never said).
     laid_out: Option<usize>,
+    /// Rows the frame after `G` holds in all, and the commits the walk had
+    /// reached by then (ADR-0065 D3: rows + hidden == walked).
+    rows: usize,
+    walked: usize,
     /// The cursor in that frame, and whether it sat on the last row with
     /// the row on hand.
     cursor: usize,
@@ -123,11 +142,10 @@ struct Landing {
 }
 
 fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
-    let rows = SCALE.commits() as usize;
     let (post, events) = mpsc::channel::<Posted>();
     let (jobs, state, _startup) =
         ready_to_scroll(repo, TIER, Refs::FiftyThousand, Post(post.clone()), &events)?;
-    let state = settle(&jobs, &events, state, rows, no_idle_advance)?;
+    let state = settle(&jobs, &events, state, no_idle_advance)?;
     let laid_out = state.history.as_ref().and_then(|history| history.laid_out);
 
     // His terminals answer DSR (ADR-0054): fenced, each fence answered as
@@ -137,10 +155,7 @@ fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
     let mut session = Session::settle(&Loaded::default(), answering);
     let sink = Sink::timed(false).answering(post.clone());
     let mut terminal = in_memory(&sink, &state)?;
-    let watching = Watching {
-        inner: &jobs,
-        asked: Mutex::default(),
-    };
+    let watching = Watching::new(&jobs, Vec::new());
     let initial = state.clone();
     let keys = vec![(KeyCode::Char('G'), GAP)];
     let feed = KeyFeed::start(keys.clone(), post)
@@ -158,7 +173,7 @@ fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
     if let Some(failure) = wakes.failure.take() {
         return Err(failure);
     }
-    let landing = landed(&wakes, initial, rows, laid_out)?;
+    let landing = landed(&wakes, initial, laid_out)?;
 
     let shutdown = jobs.shutdown(
         Duration::from_secs(10),
@@ -175,20 +190,20 @@ fn g_after_gap(repo: &Path, no_idle_advance: bool) -> Result<Landing, String> {
 }
 
 /// Pumps `events` until the walk has said `LaidOut` for every row in its
-/// final order (skipped with `no_idle_advance`: that build never says it)
+/// final order (it waits on that word, not on a row count: under the fold
+/// rows are fewer than commits, ADR-0065 D3) (skipped with `no_idle_advance`: that build never says it)
 /// and startup's other jobs have answered, so the gap after is the app
 /// sitting idle.
 fn settle(
     jobs: &JobRunner<Post>,
     events: &Receiver<Posted>,
     mut state: AppState,
-    rows: usize,
     no_idle_advance: bool,
 ) -> Result<AppState, String> {
     loop {
         let laid_out = no_idle_advance
             || state.history.as_ref().is_some_and(|history| {
-                history.laid_out == Some(rows)
+                history.laid_out.is_some()
                     && history
                         .walk
                         .as_ref()
@@ -199,7 +214,7 @@ fn settle(
         }
         let posted = events.recv_timeout(PATIENCE).map_err(|why| {
             format!(
-                "settling: no event for {PATIENCE:?} ({why}); laid out {:?} of {rows}",
+                "settling: no event for {PATIENCE:?} ({why}); laid out {:?}",
                 state.history.as_ref().and_then(|history| history.laid_out)
             )
         })?;
@@ -238,7 +253,6 @@ fn startup_done(state: &AppState) -> bool {
 fn landed<D>(
     wakes: &Paced<'_, D>,
     initial: AppState,
-    rows: usize,
     laid_out: Option<usize>,
 ) -> Result<Landing, String> {
     let (key, sent) = wakes
@@ -281,12 +295,16 @@ fn landed<D>(
         state = update(&state, event.clone()).0;
     }
     let history = state.history.as_ref().ok_or("no history after `G`")?;
+    let rows = laid_out.unwrap_or(history.rows);
+    let walked = history.window.as_ref().map_or(0, |window| window.walked);
     Ok(Landing {
         latency: drawn.saturating_duration_since(sent),
         asked,
         between: shown - key,
         gap_wakes,
         laid_out,
+        rows,
+        walked,
         cursor: history.cursor,
         on_last_row: history.cursor + 1 == rows && history.selected().is_some(),
     })

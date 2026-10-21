@@ -168,15 +168,15 @@ impl<S: JobEvents> JobRunner<S> {
 
     /// Counts what a folded merge brought in, for its tail's count
     /// (m8-polish-and-ship/17b).
-    pub(super) fn count_folded(&self, id: JobId, merge: Oid) {
+    pub(super) fn count_folded(&self, id: JobId, merges: Vec<Oid>) {
         let repos = Arc::clone(&self.repos);
         self.queue_as(id, None, move |_| {
             Box::new(move |cancel: &Cancel| {
-                let count = fold_count::count_folded(&repos, merge, cancel);
+                let counts = fold_count::count_each(&repos, &merges, cancel);
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::FoldedCounted { merge, count })
+                Outcome::Produced(Product::FoldedCounted { counts })
             })
         });
     }

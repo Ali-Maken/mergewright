@@ -86,7 +86,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadFinishLook(id, ask) => self.read_finish_look(id, ask),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
-            Command::AtRest(id, RestRead::CountFolded { merge }) => self.count_folded(id, merge),
+            Command::AtRest(id, RestRead::CountFolded { merges }) => self.count_folded(id, merges),
             Command::AtRest(id, RestRead::BranchStatus(ask)) => self.read_branch_status(id, *ask),
             Command::CancelJob(id) => self.cancel(id),
             Command::Unstoppable(id, what) => self.unstoppable(id, what),

@@ -45,7 +45,7 @@ impl History {
     pub fn ask_folded(&mut self, ids: Arc<[Oid]>) -> u64 {
         self.folded_asks += 1;
         let search = self.folded_asks;
-        self.folded_ask = Some(FoldedAsk { search, ids });
+        self.folded_ask = Some(Box::new(FoldedAsk { search, ids }));
         search
     }
 

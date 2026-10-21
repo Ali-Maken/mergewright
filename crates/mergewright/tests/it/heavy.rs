@@ -18,6 +18,7 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
+use mergewright::config::MergedBranches;
 use mergewright::history::{self, HistoryUpdate, Promote, RowRequest, View, Wanted};
 use mergewright::jobs::Delivery;
 use mergewright::repos::RepoStore;
@@ -34,6 +35,10 @@ const FIRST_PAINT_LIMIT: Duration = Duration::from_millis(150);
 
 /// Set by the parent for the child: the repository to measure.
 const CHILD_REPO: &str = "MWR_BUDGET_CHILD_REPO";
+
+/// Set by the parent for the child: `shown` runs with every branch shown;
+/// anything else, or nothing, is the default (merged branches folded).
+const CHILD_MODE: &str = "MWR_BUDGET_CHILD_MODE";
 
 /// The child's result line starts with this.
 const MARK: &str = "budget:";
@@ -71,7 +76,7 @@ const HEAP_SLOPE_BAR_BYTES: u64 = 50;
 /// 2026-09-14, ADR-0026 amended (m1-the-graph/61).
 const RSS_SLOPE_BAR_BYTES: u64 = 200;
 
-/// One pair of child runs (m1-the-graph/57's [`budget_run::gated_in_child`] on
+/// One pair of child runs (m1-the-graph/57's [`budget_run::child::gated_in_child`] on
 /// the 10k cg and 100k cg fixtures), two slopes: heap ([`HEAP_SLOPE_BAR_BYTES`])
 /// and peak RSS ([`RSS_SLOPE_BAR_BYTES`]). Replaces
 /// `peak_rss_slope_per_commit_with_a_commit_graph` (m1-the-graph/61): the old
@@ -131,9 +136,9 @@ fn slopes_per_commit_with_a_commit_graph() {
 
 /// One gated run's peak footprint and peak RSS on `scale`, measured in a
 /// child of its own.
-fn child_peak_of(scale: Scale) -> budget_run::ChildPeak {
+fn child_peak_of(scale: Scale) -> budget_run::child::ChildPeak {
     let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
-    budget_run::gated_in_child(&repo).unwrap_or_else(|why| panic!("{why}"))
+    budget_run::child::gated_in_child(&repo).unwrap_or_else(|why| panic!("{why}"))
 }
 
 /// The same history with commits sized after git/git (m1-the-graph/27d):
@@ -367,16 +372,16 @@ fn check_pixel(rate: u64) {
     );
 }
 
-/// Not a test of its own: the child side of [`budget_run::gated_in_child`]
-/// (m1-the-graph/57). Without [`budget_run::CHILD_REPO_ENV`] set — any
+/// Not a test of its own: the child side of [`budget_run::child::gated_in_child`]
+/// (m1-the-graph/57). Without [`budget_run::child::CHILD_REPO_ENV`] set — any
 /// ordinary run of the tier — there is nothing for it to measure and it
 /// returns at once.
 ///
 /// Runs exactly what `budgets --gate` runs on the path it is given, then
-/// prints the one line [`budget_run::gated_in_child`] parses back.
+/// prints the one line [`budget_run::child::gated_in_child`] parses back.
 #[test]
 fn child_gated_run() {
-    let Some(repo) = std::env::var_os(budget_run::CHILD_REPO_ENV) else {
+    let Some(repo) = std::env::var_os(budget_run::child::CHILD_REPO_ENV) else {
         return;
     };
     let numbers = budget_run::run(Path::new(&repo)).unwrap_or_else(|why| panic!("{why}"));
@@ -390,7 +395,7 @@ fn child_gated_run() {
         .current;
     println!(
         "{} rss={} footprint_peak={footprint_peak} footprint_after_g={footprint_after_g} first_paint_ms={}",
-        budget_run::CHILD_MARK,
+        budget_run::child::CHILD_MARK,
         numbers.peak_rss,
         numbers.first_paint.as_millis(),
     );
@@ -404,13 +409,19 @@ fn budget_child() {
     let Some(repo) = std::env::var_os(CHILD_REPO) else {
         return;
     };
-    let numbers = budget_run::run(Path::new(&repo)).unwrap_or_else(|why| panic!("{why}"));
+    let mode = match std::env::var(CHILD_MODE).as_deref() {
+        Ok("shown") => MergedBranches::Shown,
+        _ => MergedBranches::Folded,
+    };
+    let numbers = budget_run::run_in(Path::new(&repo), mode).unwrap_or_else(|why| panic!("{why}"));
     println!(
-        "{MARK} first_paint_us={} bottom_ms={} top_ms={} rows={} provisional={} rss_at_paint={} rss_at_bottom={} peak_rss={} overflow_len={}",
+        "{MARK} first_paint_us={} bottom_ms={} top_ms={} rows={} walked={} hidden={} provisional={} rss_at_paint={} rss_at_bottom={} peak_rss={} overflow_len={}",
         numbers.first_paint.as_micros(),
         numbers.bottom.as_millis(),
         numbers.top.as_millis(),
         numbers.rows,
+        numbers.walked,
+        numbers.hidden,
         numbers.provisional,
         numbers.rss_at_paint,
         numbers.rss_at_bottom,
@@ -419,89 +430,13 @@ fn budget_child() {
     );
 }
 
-fn check(scale: Scale, commit_graph: bool) {
-    let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
-    // Poisoned only when another budget test panicked while holding it; that
-    // test has already failed on its own, and the lock guards no data, so
-    // this one may still measure.
-    let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
-    let line = result_line(&repo);
-    drop(turn);
-    let line = line.as_str();
-    let field = |name: &str| -> String {
-        line.split_whitespace()
-            .find_map(|pair| pair.strip_prefix(name)?.strip_prefix('='))
-            .unwrap_or_else(|| panic!("no {name} in {line:?}"))
-            .to_owned()
-    };
-    let number = |name: &str| -> u64 {
-        field(name)
-            .parse()
-            .unwrap_or_else(|why| panic!("{name} in {line:?}: {why}"))
-    };
-    println!(
-        "{} ({}):{line}",
-        scale.name(),
-        if commit_graph {
-            "commit-graph"
-        } else {
-            "no commit-graph"
-        }
-    );
-
-    assert_eq!(
-        number("rows"),
-        u64::from(scale.commits()),
-        "every commit laid out"
-    );
-    // ADR-0008: without a commit-graph the first paint is provisional.
-    assert_eq!(field("provisional"), (!commit_graph).to_string());
-
-    let peak = number("peak_rss");
-    assert!(
-        peak < PEAK_RSS_LIMIT,
-        "peak RSS {} MiB is over the {} MiB budget",
-        peak / (1024 * 1024),
-        PEAK_RSS_LIMIT / (1024 * 1024)
-    );
-    let first_paint = Duration::from_micros(number("first_paint_us"));
-    if cfg!(debug_assertions) {
-        // ADR-0021: time budgets fail only in release; debug records them.
-        // Peak RSS above is asserted in both.
-        println!(
-            "first paint {first_paint:?} against the {FIRST_PAINT_LIMIT:?} budget: debug build, recorded not asserted"
-        );
-        return;
-    }
-    assert!(
-        first_paint <= FIRST_PAINT_LIMIT,
-        "first paint {first_paint:?} is over the {FIRST_PAINT_LIMIT:?} budget"
-    );
+/// ADR-0065 D3: the same budgets with every branch shown. It lays out the
+/// most rows, and PROMPT.md §7.1's 300 MB applies to the app whatever the
+/// mode (no commit-graph file: the heavier path, ADR-0008).
+#[test]
+fn budgets_hold_on_the_100k_fixture_with_every_branch_shown() {
+    check_in(Scale::HEAVY, false, MergedBranches::Shown);
 }
 
-/// Runs [`budget_child`] in a fresh process on `repo` and returns the
-/// result it printed, without the mark.
-fn result_line(repo: &Path) -> String {
-    let exe = std::env::current_exe()
-        .unwrap_or_else(|why| panic!("the test binary cannot find itself: {why}"));
-    let output = Command::new(exe)
-        .args([
-            "heavy::budget_child",
-            "--exact",
-            "--nocapture",
-            "--test-threads=1",
-        ])
-        .env(CHILD_REPO, repo)
-        .output()
-        .unwrap_or_else(|why| panic!("the test binary cannot run again: {why}"));
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        output.status.success(),
-        "the measuring child failed:\n{stdout}\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    stdout
-        .lines()
-        .find_map(|line| line.split_once(MARK).map(|(_, rest)| rest.to_owned()))
-        .unwrap_or_else(|| panic!("the child printed no result:\n{stdout}"))
-}
+mod check;
+use check::{check, check_in};

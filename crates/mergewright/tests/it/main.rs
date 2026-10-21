@@ -65,6 +65,7 @@ mod held_key;
 mod held_key;
 mod hint_bar;
 mod history_place;
+mod history_rows;
 mod idle_advance;
 mod in_the_way_status;
 mod journal_put_back;
