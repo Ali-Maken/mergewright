@@ -33,8 +33,8 @@ const PRESSES: usize = 60;
 const KEPT: usize = 6;
 const PATIENCE: Duration = Duration::from_secs(120);
 const QUIET: Duration = Duration::from_millis(300);
-/// The file this build is compared against (`before` was taken at 3123840e).
-const FILE: &str = "20-pinned-row-before.png";
+/// The file this build is compared against (`before` was taken at 3123840e, with the row inside its strip).
+const FILE: &str = "20-pinned-row-after.png";
 
 #[test]
 fn pinned_row_png() {
@@ -73,18 +73,26 @@ fn pinned_row_png() {
     });
     let paint = StripPaint::of(&session);
     let stacked = stack(&pixels, &paint).expect("stack");
-    let first = stacked
+    // The pane's rows: the pinned row, then history from `top` (the strips
+    // run on above it: at 3123840e the stack held the pinned row at `top`,
+    // now it sits first and the strips start at their own first row).
+    let top_row = state.history.as_ref().expect("history").top;
+    let pinned = stacked
         .drawn
         .iter()
         .position(Option::is_none)
         .expect("the uncommitted row is in the stack");
-    let cell_height = paint.cell_height as usize;
-    let stride = stacked.width as usize * 4;
-    let top = first * cell_height * stride;
-    let bottom = (first + KEPT) * cell_height * stride;
-    let height = u32::try_from(KEPT * cell_height).expect("height");
-    let png = on_dark(stacked.pixels[top..bottom].to_vec(), stacked.width, height).expect("png");
-    println!("SUMMARY pinned_row_png bytes={} under={:?}", png.len(), stacked.drawn.get(first + 1));
+    let from = stacked
+        .drawn
+        .iter()
+        .position(|row| *row == Some(top_row))
+        .expect("history row `top` is in the stack");
+    let band = paint.cell_height as usize * stacked.width as usize * 4;
+    let mut crop = stacked.pixels[pinned * band..(pinned + 1) * band].to_vec();
+    crop.extend_from_slice(&stacked.pixels[from * band..(from + KEPT - 1) * band]);
+    let height = u32::try_from(KEPT * paint.cell_height as usize).expect("height");
+    let png = on_dark(crop, stacked.width, height).expect("png");
+    println!("SUMMARY pinned_row_png bytes={} top={top_row}", png.len());
     assert!(png.len() <= 200 * 1024, "{} bytes: over the 200 KB cap", png.len());
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/ease-pass").join(FILE);
     let checked = mergewright_fixtures::capture::check_bytes(&path, &png);

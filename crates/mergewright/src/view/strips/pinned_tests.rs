@@ -130,3 +130,19 @@ fn under_the_pinned_row_the_top_history_row_is_its_real_self() {
         "the row under the pinned row is drawn from the pinned row, not from the row above it"
     );
 }
+
+/// 48's rule: a one-row pane shows the cursor's row, so the uncommitted row
+/// is not pinned and has no image of its own.
+#[test]
+fn a_one_row_pane_draws_no_pinned_image() {
+    let mut state = detached(40);
+    state.size.rows = super::tests::screen_rows(1);
+    assert_eq!(state.graph_pane_rows(), 1);
+    assert!(!state.uncommitted_row_pinned());
+
+    let rows = pixel_rows(&state, MAX_LANES, STRIP_ROWS);
+
+    assert!(rows.pinned.is_none());
+    assert!(!rows.uncommitted_on_top);
+    assert!(rows.strips.iter().all(|s| s.uncommitted_at().is_none()));
+}

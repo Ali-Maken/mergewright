@@ -202,7 +202,10 @@ pub(super) fn placed_columns(graph_width: u16, frame_columns: u32) -> u16 {
 
 /// The strip rows that land in a `height`-row graph column whose first row
 /// shows history row `top`, and the column row the first of them lands on.
-/// `lowered`: the uncommitted row sits above this strip's rows on screen.
+/// `lowered`: the uncommitted row sits above this strip's rows on screen, in
+/// the strip or as the pinned image: every strip row shows one line lower, and
+/// the strip's own rows start at history row `top` (a row above it would land
+/// on the pinned row's line).
 pub(super) fn on_screen(
     first_row: usize,
     row_count: usize,
@@ -212,7 +215,7 @@ pub(super) fn on_screen(
 ) -> Option<(Range<usize>, u16)> {
     // Strip row `j` is drawn on column row `start + j - top`.
     let start = first_row + usize::from(lowered);
-    let first = top.saturating_sub(start);
+    let first = top.saturating_sub(first_row);
     let end = (top + usize::from(height))
         .saturating_sub(start)
         .min(row_count);
@@ -246,6 +249,16 @@ mod tests {
         assert_eq!(on_screen(32, 33, false, 40, 20), Some((8..28, 0)));
         // A later strip sits one row lower than its history rows say.
         assert_eq!(on_screen(64, 32, true, 50, 20), Some((0..5, 15)));
+    }
+
+    #[test]
+    fn a_strip_holding_top_under_the_pinned_row_starts_at_top() {
+        // Top 40 in strip 32..64, the pinned row an image of its own: history
+        // row 40 (strip row 8) on line 1, the line under the pinned row, and
+        // row 39 (strip row 7) not drawn on the pinned row's line.
+        assert_eq!(on_screen(32, 32, true, 40, 20), Some((8..27, 1)));
+        // At a strip boundary: the strip starts on its first row, line 1.
+        assert_eq!(on_screen(64, 32, true, 64, 20), Some((0..19, 1)));
     }
 
     #[test]

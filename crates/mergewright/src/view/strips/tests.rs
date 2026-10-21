@@ -22,7 +22,7 @@ pub(super) const MAX_LANES: usize = 12;
 /// A screen tall enough for exactly `graph_rows` graph rows. From 30 rows
 /// the chrome is two rows taller (gap and rule, ADR-0058 §4), so
 /// `graph_rows + CHROME_ROWS` alone would come up short there.
-fn screen_rows(graph_rows: u16) -> u16 {
+pub(super) fn screen_rows(graph_rows: u16) -> u16 {
     let unspaced = graph_rows + CHROME_ROWS;
     if unspaced - chrome_rows(unspaced) == graph_rows {
         unspaced

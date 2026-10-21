@@ -26,6 +26,8 @@ use crate::update::AppState;
 use crate::view::strips::{PixelRows, StripPaint, TallRow, pixel_rows};
 
 mod layers;
+#[cfg(test)]
+mod pinned_tests;
 mod tall;
 
 use layers::{Drawn, Held, layers, on_screen, places};

@@ -248,11 +248,23 @@ pub(crate) struct Stack {
 }
 
 pub(crate) fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
-    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len());
+    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len() + 1);
     let mut drawn = Vec::new();
     let mut pixels = Vec::new();
     let mut width = None;
     let mut next_row = None;
+    // The pinned uncommitted row off `HEAD` is an image of its own, above
+    // the strips (ease-pass/20): the stack's `None` row, as before.
+    if let Some(strip) = &frame.pinned {
+        let raster = strip
+            .with_layers(frame, paint, |plain, selection| {
+                cache.composited(strip.first_row, plain, selection)
+            })
+            .map_err(|why| format!("composited the pinned row: {why:?}"))?;
+        width = Some(raster.width);
+        drawn.push(None);
+        pixels.extend_from_slice(&raster.pixels);
+    }
     for strip in &frame.strips {
         let raster = strip
             .with_layers(frame, paint, |plain, selection| {
