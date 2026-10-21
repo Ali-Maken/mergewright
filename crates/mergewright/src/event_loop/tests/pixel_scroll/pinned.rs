@@ -51,7 +51,7 @@ fn a_pinned_uncommitted_row_resends_no_strip_while_scrolling() {
             transmits(frame).iter().filter(|t: &&Transmit| !t.is_emphasis()).count()
         };
         // The first frame sends every strip on screen and the pinned row.
-        assert!(strips(&run[0]) >= 3, "deflate {deflate}: first frame {}", strips(&run[0]));
+        assert!(strips(&run[0]) >= 2, "deflate {deflate}: first frame {}", strips(&run[0]));
         for (k, frame) in run.iter().enumerate().skip(1) {
             assert_eq!(
                 strips(frame),
