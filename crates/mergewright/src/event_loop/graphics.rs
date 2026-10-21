@@ -51,6 +51,11 @@ const UNPLACED_BYTES: usize = 64 << 20;
 /// they weigh (`keep_at_least`).
 const STRIP_BUDGET: ByteBudget = ByteBudget(96 << 20);
 
+/// The terminal-side slot of the pinned uncommitted row's image. Strips are
+/// found by their first row; the pinned row's own strip is cached as row 0
+/// (aligned, one row), so it needs a slot that is no strip's.
+const PINNED_SLOT: usize = usize::MAX;
+
 /// Rows kept above and below the viewport, on top of its own strips.
 const BUFFER_ROWS: usize = STRIP_ROWS;
 
@@ -216,11 +221,19 @@ impl<R: GraphicsReplies> Graphics<R> {
         let height = graph_height.saturating_sub(u16::from(tall.is_some()));
         let mut drawn: Vec<Drawn> = Vec::new();
         let mut band: Option<Band> = None;
-        for strip in &pixels.strips {
+        // The pinned uncommitted row first: one row on the column's first
+        // line, in a slot of its own (a strip's slot is its first row).
+        let pinned = pixels
+            .pinned
+            .iter()
+            .map(|strip| (strip, PINNED_SLOT, Some((0..1, 0))));
+        let strips = pixels.strips.iter().map(|strip| {
             let lowered = pixels.uncommitted_on_top && strip.uncommitted_at().is_none();
-            let Some((rows, at)) =
-                on_screen(strip.first_row, strip.row_count(), lowered, top, height)
-            else {
+            let shown = on_screen(strip.first_row, strip.row_count(), lowered, top, height);
+            (strip, strip.first_row, shown)
+        });
+        for (strip, slot, shown) in pinned.chain(strips) {
+            let Some((rows, at)) = shown else {
                 continue;
             };
             let room = make_room(rows, at, tall);
@@ -234,7 +247,7 @@ impl<R: GraphicsReplies> Graphics<R> {
                 let layers = layers(cache, &mut held, strip.first_row, plain, selection, iterm2)?;
                 let band = room
                     .band
-                    .map(|(row, at)| Band::of(plain, selection, (strip.first_row, row, at), kitty))
+                    .map(|(row, at)| Band::of(plain, selection, (slot, row, at), kitty))
                     .transpose()
                     .map_err(CacheError::Raster)?
                     .flatten();
@@ -244,7 +257,7 @@ impl<R: GraphicsReplies> Graphics<R> {
                 Ok((((frame, key), emphasis), this_band)) => {
                     band = band.or(this_band);
                     drawn.extend(room.parts.into_iter().map(|(rows, at)| Drawn {
-                        first_row: strip.first_row,
+                        first_row: slot,
                         frame: Arc::clone(&frame),
                         key,
                         emphasis: emphasis.clone(),

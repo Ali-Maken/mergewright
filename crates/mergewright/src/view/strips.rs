@@ -38,6 +38,11 @@ pub struct PixelRows {
     /// The uncommitted row is on screen, above the viewport's first history
     /// row: every history row sits one screen row lower.
     pub uncommitted_on_top: bool,
+    /// The pinned uncommitted row as an image of its own, when `HEAD` is
+    /// off screen: an overlay on the viewport, so no strip's key depends
+    /// on where the viewport is (ease-pass/20). `None` when the row sits
+    /// on `HEAD` in its strip, or is not pinned.
+    pub pinned: Option<StripRows>,
     /// The lowest alpha any row of any strip draws at
     /// ([`Backdrop::lowest`]): every strip this frame is drawn at it, so a
     /// cursor move that keeps it leaves every strip as it was.
@@ -53,18 +58,21 @@ impl PixelRows {
     fn drawn_through(
         strips: Vec<StripRows>,
         fold: &Fold,
+        pinned: Option<StripRows>,
         uncommitted_on_top: bool,
         route: &Route,
     ) -> PixelRows {
         let backdrop = Backdrop::lowest(
             strips
                 .iter()
+                .chain(&pinned)
                 .flat_map(|strip| strip.rows.iter().map(PaintedRow::lit)),
         );
         let roles = roles_of(&strips, route);
         PixelRows {
             roles,
             strips,
+            pinned,
             uncommitted_on_top,
             backdrop,
             lane_columns: fold.drawn_columns(),
@@ -239,13 +247,26 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
                 .map(|above| fold.view(row_at(above)).row.into_owned()),
         })
         .collect();
+    // On `HEAD` the row hangs off its lane, so it is part of `HEAD`'s strip
+    // (that strip's index for it does not move with the viewport). Off
+    // `HEAD` it is an overlay on the pane's first line: an image of its own,
+    // so scrolling re-keys no strip.
+    let mut pinned = None;
     if let Some(virtual_row) = &virtual_row {
         let on_top = PaintedRow::uncommitted(&fold, virtual_row);
-        put_uncommitted(&mut strips, on_top, history.top, window_rows.is_empty());
+        if state.uncommitted_row_attached() {
+            put_uncommitted(&mut strips, on_top, history.top, window_rows.is_empty());
+        } else {
+            pinned = Some(StripRows {
+                first_row: 0,
+                rows: vec![on_top],
+                above: None,
+            });
+        }
     }
 
     let route = frame_route(state, history);
-    PixelRows::drawn_through(strips, &fold, uncommitted, &route)
+    PixelRows::drawn_through(strips, &fold, pinned, uncommitted, &route)
 }
 
 /// Whether the cursor sits in the viewport and its row has not arrived yet.
