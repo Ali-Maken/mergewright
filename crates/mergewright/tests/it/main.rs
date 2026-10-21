@@ -94,6 +94,9 @@ mod outside_repo;
 mod palette_find;
 mod palette_in_progress;
 mod pane_bar_space;
+/// ease-pass/20: the pinned row's before/after capture.
+#[cfg(feature = "heavy-tests")]
+mod pinned_row_shot;
 mod partial_fetch;
 /// m8 05 Part 2: the gate before wiring emphasis pieces.
 #[cfg(feature = "heavy-tests")]

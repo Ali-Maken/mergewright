@@ -238,16 +238,16 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
 }
 
 /// The frame's strips, composited, one under the other.
-struct Stack {
+pub(crate) struct Stack {
     /// Every drawn row, top to bottom: its history row, or `None` for the
     /// uncommitted row (which pushes the rows under it down).
-    drawn: Vec<Option<usize>>,
+    pub(crate) drawn: Vec<Option<usize>>,
     /// Premultiplied RGBA, `width` pixels a line.
-    pixels: Vec<u8>,
-    width: u32,
+    pub(crate) pixels: Vec<u8>,
+    pub(crate) width: u32,
 }
 
-fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
+pub(crate) fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
     let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len());
     let mut drawn = Vec::new();
     let mut pixels = Vec::new();
