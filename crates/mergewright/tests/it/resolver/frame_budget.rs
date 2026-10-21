@@ -138,8 +138,10 @@ fn late_keys_at(app: &App, state: &AppState, columns: u16) -> Vec<String> {
         "not inline side by side at {columns}x50:\n{body}"
     );
     assert!(
-        body.contains("◀"),
-        "no taken block's band on screen:\n{body}"
+        // The blocks were taken theirs (`t`): a taken block now shrinks to
+        // its lines marked `▶ took theirs` (ease-pass/11b), not a `◀` band.
+        body.contains("▶") && body.contains("took theirs"),
+        "no taken block's mark on screen:\n{body}"
     );
     assert!(body.contains('?'), "no open block on screen:\n{body}");
     let latencies = timed_keys(app, sized, columns);

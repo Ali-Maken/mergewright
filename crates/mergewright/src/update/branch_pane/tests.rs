@@ -323,4 +323,5 @@ fn an_unasked_focus_is_owed_to_rest_and_settles_when_its_read_lands() {
     assert!(settled(&state) && !owed(&state));
 }
 
+mod index;
 mod labels;
