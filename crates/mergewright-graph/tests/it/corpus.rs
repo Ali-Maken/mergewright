@@ -15,19 +15,20 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::corpus_seeds::seeds_for;
 use mergewright_core::commit::Commit;
 use mergewright_core::commit_handle::CommitHandle;
 use mergewright_core::oid::Oid;
 use mergewright_fixtures::Shape;
 use mergewright_git::branches::Branches;
 use mergewright_git::history::{CHUNK, Order, Walk};
-use mergewright_git::repo::{RefEntry, RefTarget, RepoHandle};
+use mergewright_git::repo::{RefEntry, RepoHandle};
 use mergewright_graph::identity::BranchIdentity;
 use mergewright_graph::lane::{Lane, LaneIdentity};
 use mergewright_graph::layout::{EmittedOrder, HandleLookup, LayoutCursor, layout};
 use mergewright_graph::merge_name::recover_branch_name;
 use mergewright_graph::row::{MergeNames, Row};
-use mergewright_graph::seeds::{BranchSeed, Seeds};
+use mergewright_graph::seeds::Seeds;
 
 /// A dense id-to-handle table over the commits this test lays out, built
 /// once per drawing — exactly what `layout()`'s own convenience path builds
@@ -64,9 +65,6 @@ impl HandleLookup for TestHandles {
         self.1[handle.index()]
     }
 }
-
-const HEADS: &[u8] = b"refs/heads/";
-const REMOTES: &[u8] = b"refs/remotes/";
 
 #[test]
 fn every_shape_lays_out_as_snapshotted() {
@@ -220,50 +218,6 @@ pub(super) fn walk_everything(handle: &RepoHandle, shape: Shape) -> (Vec<Commit>
         provisional: walk.is_provisional(),
     };
     (commits, walked)
-}
-
-/// The seeds the app would build from these refs: the default branch on
-/// lane 0, the integration branches next to it, and every local and
-/// remote-tracking branch known — a remote tip ahead of its local branch is
-/// a tip in its own right, and its lane should carry the remote's name, not
-/// a short SHA.
-fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
-    let tips: HashMap<&[u8], Oid> = refs
-        .iter()
-        .filter_map(|entry| match entry.target {
-            RefTarget::Object(id) => Some((entry.name.as_bytes(), id)),
-            // A symbolic branch aliases another ref, whose own entry carries
-            // the tip; nothing is lost by leaving the alias out.
-            RefTarget::Symbolic(_) => None,
-        })
-        .collect();
-    // As the app's seeds: a remote-tracking ref follows the local branch of
-    // the same short name (ADR-0064), so a lane is never named `origin/x`.
-    let seed = |name: &mergewright_core::ref_name::RefName| {
-        tips.get(name.as_bytes()).map(|&tip| BranchSeed {
-            follows: name
-                .as_bytes()
-                .strip_prefix(b"refs/remotes/")
-                .and_then(|rest| rest.splitn(2, |&byte| byte == b'/').nth(1))
-                .filter(|branch| {
-                    tips.contains_key([b"refs/heads/".as_slice(), branch].concat().as_slice())
-                })
-                .map(BranchIdentity::of_name),
-            ..BranchSeed::new(tip, BranchIdentity::of_name(name.shorthand()))
-        })
-    };
-    Seeds {
-        default_branch: branches.default_branch().and_then(seed),
-        integration_branches: branches.integration().iter().filter_map(seed).collect(),
-        known_branches: refs
-            .iter()
-            .filter(|entry| {
-                let name = entry.name.as_bytes();
-                name.starts_with(HEADS) || name.starts_with(REMOTES)
-            })
-            .filter_map(|entry| seed(&entry.name))
-            .collect(),
-    }
 }
 
 /// A name for every identity a lane could carry here: each ref's shorthand,

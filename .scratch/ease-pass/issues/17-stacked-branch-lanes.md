@@ -145,3 +145,7 @@ Did not compact. Scout: none (ruling named the sites).
 - Two fixes from the merged tree: (1) clippy `implicit_hasher` on `history::seeds::seeds_with_upstreams`: made generic over `BuildHasher` (cause fix, no behaviour change). (2) file-size ratchet: `mergewright-graph/tests/it/corpus.rs` 453 -> 464 in `over_400.txt` (17's mirror seeds added 11 lines; a split was out of scope; raise is visible in the diff).
 - Boxes :81 :82 ticked as superseded by R1/R2 (tests named inline). R3 (spawn count) left unticked for the conductor to measure.
 - Touches: radar (diff empty, tests pass); branch_pane (grep + merge read, tests pass); seeds callers (`seeds_with_upstreams` callers compile under both clippy runs); file-size ratchet (test passes); no snapshot accepted.
+
+### Send-back (conductor): ratchet + flake
+- over_400 row NOT raised: `seeds_for` moved to `crates/mergewright-graph/tests/it/corpus_seeds.rs`; `corpus.rs` row lowered 453 -> 418.
+- Flake, not fixed (conductor files the gap): one `cargo nextest run` failure, test `m7_walk::fork_rows::a_stop_inside_a_fork_names_it_on_the_banner`, at `crates/mergewright/tests/it/m7_walk/rebase_line.rs:23:31`: `git ["add", "-A"] ... in a fresh tempdir failed (exit status: 128): error: unable to create temporary file: No such file or directory / error: b.txt: failed to insert into database / fatal: adding files failed`. Passed on rerun; the repo tempdir apparently vanished mid-test. Not reproduced.
