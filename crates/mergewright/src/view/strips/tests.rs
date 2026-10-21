@@ -17,7 +17,7 @@ use crate::update::{AppState, CHROME_ROWS, Size};
 use crate::view::tests::{counts, history_of, oid, refs_with_head};
 use mergewright_ui::graph_screen::chrome_rows;
 
-const MAX_LANES: usize = 12;
+pub(super) const MAX_LANES: usize = 12;
 
 /// A screen tall enough for exactly `graph_rows` graph rows. From 30 rows
 /// the chrome is two rows taller (gap and rule, ADR-0058 §4), so
@@ -31,7 +31,7 @@ fn screen_rows(graph_rows: u16) -> u16 {
     }
 }
 
-fn state(history: History, graph_rows: u16) -> AppState {
+pub(super) fn state(history: History, graph_rows: u16) -> AppState {
     AppState {
         history: Some(history),
         size: Size {
@@ -42,7 +42,7 @@ fn state(history: History, graph_rows: u16) -> AppState {
     }
 }
 
-fn scrolled(mut history: History, top: usize) -> History {
+pub(super) fn scrolled(mut history: History, top: usize) -> History {
     history.top = top;
     history.cursor = top;
     history
@@ -57,7 +57,7 @@ fn firsts_and_lengths(rows: &PixelRows) -> Vec<(usize, usize)> {
 
 /// Every strip is rasterised through the cache, which refuses misaligned
 /// ones: its backdrop and the selection's emphasis over it.
-fn rasterise_all(rows: &PixelRows) {
+pub(super) fn rasterise_all(rows: &PixelRows) {
     let paint = StripPaint::of(&session());
     let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), 8);
     for strip in &rows.strips {
