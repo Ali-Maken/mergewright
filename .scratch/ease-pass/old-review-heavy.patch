@@ -1,0 +1,24 @@
+diff --git a/crates/mergewright/tests/it/heavy.rs b/crates/mergewright/tests/it/heavy.rs
+index b3346a8c..6efc47c1 100644
+--- a/crates/mergewright/tests/it/heavy.rs
++++ b/crates/mergewright/tests/it/heavy.rs
+@@ -323,7 +323,8 @@ fn until_window_for(told: &mpsc::Receiver<HistoryUpdate>, request: u64) -> histo
+             HistoryUpdate::Window(_)
+             | HistoryUpdate::Progress { .. }
+             | HistoryUpdate::LaidOut { .. }
+-            | HistoryUpdate::Started(_) => None,
++            | HistoryUpdate::Started(_)
++            | HistoryUpdate::FoldedHits { .. } => None,
+         },
+     )
+ }
+@@ -351,7 +352,8 @@ fn until_promoted_window_for(
+             HistoryUpdate::Window(_)
+             | HistoryUpdate::Progress { .. }
+             | HistoryUpdate::LaidOut { .. }
+-            | HistoryUpdate::Started(_) => None,
++            | HistoryUpdate::Started(_)
++            | HistoryUpdate::FoldedHits { .. } => None,
+         },
+     )
+ }

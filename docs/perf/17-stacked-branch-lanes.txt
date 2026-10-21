@@ -1,0 +1,20 @@
+SUMMARY machine ac=1 lowpower=0 os=darwin
+# ease-pass 09 branch-pane cost — 2026-10-21T18:51:46Z
+# HEAD 983d957d
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, team fixture MONOREPO; times without the spawn shim, spawns with it
+# uptime before: 23:50  up 34 days,  4:58, 2 users, load averages: 4.33 6.16 6.49
+# uptime after:  23:51  up 34 days,  4:59, 2 users, load averages: 5.61 6.01 6.40
+branch-pane-cost: candidates=1231 local=331 remote-only=900 trunk=1 integration=0 other=1230
+branch-pane-cost: focus runs=10 p50_ms=52.3 p95_ms=97.6 spawns=8
+branch-pane-cost: window rows=40 tips=21 total_ms=23218.3 spawns=2753
+branch-pane-cost: breakdown for-each-ref=3 merge-base=1 rev-list:--count=3 rev-list:--reverse=1
+branch-pane-cost: scaling others=10 spawns=6 others=500 spawns=6
+branch-pane-cost: budget OVER window-ms window-spawns
+
+CONDUCTOR NOTE (2026-10-21, ticket 17 R3): before (docs/perf/branch-pane.txt) focus spawns=8, window spawns=2753;
+after (this file, main at 17 merged) focus spawns=8, window spawns=2753. Equal. "budget OVER window-ms window-spawns"
+is in the baseline too (09p cost accepted by the user 2026-10-20), not new.
+Limit: crates/mergewright-ops/examples/branch_pane_cost.rs walks the fixture's tips and has no mergewright-graph
+dependency, so it never sees lane identity. It does not exercise the app choosing which branch to focus from a
+stacked row's renamed lane. That path is unmeasured (KNOWN_GAPS ease/17-pane-focus-by-identity, unverified).
