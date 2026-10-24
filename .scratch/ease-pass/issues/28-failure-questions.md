@@ -133,15 +133,21 @@ Out:
 - `fit_status_line`.
 
 Acceptance (tick each with its test):
-- [ ] At 92 cols the shell-landing ladder gives exactly ` merge in progress · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit`. <- `…::fitting::tests::tail_keys_yield_to_a_counted_wording`
-- [ ] The floor holds: where even the floor plus the shortest counted wording can't fit, the row is today's (bar, first three keys whole). <- `…::fitting::tests::the_floor_never_yields_to_the_count`
-- [ ] The origin costs no key but `q quit`: 108 cols gives count only with `q quit` kept, and 115 gives origin + count with `q quit` gone, both as today. <- `…::fitting::tests::the_origin_takes_no_key_but_quit`
-- [ ] Unset, every existing `stopped_row` test passes unchanged. <- `…::fitting::tests::without_keys_yield_through_nothing_changes` plus the existing suite
-- [ ] The app marks the last counted wording for the merge and rebase ladders. <- `mergewright::view::rows::tests::the_stop_ladder_marks_its_last_counted_wording`
-- [ ] Re-shot `docs/shots/ease-pass/27-footer-matrix.md`. "Right looks like": the banner-focused bottom row carries the count at every size, never the origin without the count, and `⏎ resolve  c finish  a abort` whole. Any other `docs/shots/` file whose bytes change is listed with why (expect m6 `m6-18-launch-shell-begun-160x48`). <- `.scratch/ease-pass/pty-ease27.py` run + the nextest capture compare
+- [x] At 92 cols the shell-landing ladder gives exactly ` merge in progress · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit`. <- `…::fitting::tests::tail_keys_yield_to_a_counted_wording` **Ticked:** `mergewright-ui graph_screen::hints::fitting::tests::tail_keys_yield_to_a_counted_wording`.
+- [x] The floor holds: where even the floor plus the shortest counted wording can't fit, the row is today's (bar, first three keys whole). <- `…::fitting::tests::the_floor_never_yields_to_the_count` **Ticked:** `...fitting::tests::the_floor_never_yields_to_the_count`.
+- [x] The origin costs no key but `q quit`: 108 cols gives count only with `q quit` kept, and 115 gives origin + count with `q quit` gone, both as today. <- `…::fitting::tests::the_origin_takes_no_key_but_quit` **Ticked:** `...fitting::tests::the_origin_takes_no_key_but_quit`.
+- [x] Unset, every existing `stopped_row` test passes unchanged. <- `…::fitting::tests::without_keys_yield_through_nothing_changes` plus the existing suite **Ticked:** `...fitting::tests::without_keys_yield_through_nothing_changes + existing suite (6812 pass)`.
+- [x] The app marks the last counted wording for the merge and rebase ladders. <- `mergewright::view::rows::tests::the_stop_ladder_marks_its_last_counted_wording` **Ticked:** `mergewright view::rows::tests::the_stop_ladder_marks_its_last_counted_wording`.
+- [x] Re-shot `docs/shots/ease-pass/27-footer-matrix.md`. "Right looks like": the banner-focused bottom row carries the count at every size, never the origin without the count, and `⏎ resolve  c finish  a abort` whole. Any other `docs/shots/` file whose bytes change is listed with why (expect m6 `m6-18-launch-shell-begun-160x48`). <- `.scratch/ease-pass/pty-ease27.py` run + the nextest capture compare **Ticked:** `matrix27.sh run; only 27-shell-landing-160x48 bytes changed; walks.sh 463/463`.
 
 Touches: every `stopped_row` caller (graph footer stop row, tab rows if any); the key sweep (fewer visible keys at 80/160 on stop rows: sweep must still pass); TESTING.md 27 line (list, don't edit); KNOWN_GAPS `ease/27-160-count-yields-to-keys` and `M6/21` (160 count): conductor closes both on merge.
 Gates: workspace-wide fmt, clippy, nextest, doc tests. Size: ~40k.
 
 ## Product preference
 None. His rule ("keep the count") decides Q3, ADR-0067 decides Q1, and Q2 needs no change.
+
+### Part B — builder NOTES (ease-28b)
+- Done. No scout, no compaction. Wiring: `hint_context::last_counted` (rposition of the last wording containing ` conflicted`) feeds `StopWording::keys_yield_through`; `footer.rs` `key_line` applies it only for `HintContext::Banner` (row bars after Esc call `without_keys_yield`; the ticket's "out"). No `StopLadder` field (clash.rs at its size ratchet).
+- The ticket's 80-col expectation does not hold: at 80 the Detail-tab layout draws the pane's own bar, not the banner's stop row. 80x24 unchanged. 120 and 187 and 200 unchanged; 160 changes.
+- Only docs/shots file changed: ease-pass/27-footer-matrix.md (160x48 shell-landing bottom row now `merge in progress · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit`; header line). m6-18 shot unchanged (walks pass).
+- Untested: colour (rule 5). The 187-col `⇥ graph  q quit` kept because count fits whole there.

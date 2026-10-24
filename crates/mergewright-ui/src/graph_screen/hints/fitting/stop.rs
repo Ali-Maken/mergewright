@@ -15,6 +15,7 @@ pub struct StopWording {
     full: SanitizedText,
     shorter: Vec<SanitizedText>,
     before_keys: bool,
+    keys_yield_through: Option<usize>,
 }
 
 impl StopWording {
@@ -25,6 +26,7 @@ impl StopWording {
             full,
             shorter,
             before_keys: false,
+            keys_yield_through: None,
         }
     }
 
@@ -40,6 +42,34 @@ impl StopWording {
             before_keys: true,
             ..self
         }
+    }
+
+    /// Wordings `0..=last` (fullest first) are worth a key: when the fullest
+    /// wording that fits whole beside the bar is past `last`, the bar's tail
+    /// keys give way, last first, never into its first three (ADR-0037 §4),
+    /// until one of `0..=last` fits whole. `q quit` still yields to any
+    /// fuller wording (unchanged). Off unless set.
+    #[must_use]
+    pub fn keys_yield_through(self, last: usize) -> Self {
+        Self {
+            keys_yield_through: Some(last),
+            ..self
+        }
+    }
+
+    /// [`StopWording::keys_yield_through`] switched off again.
+    #[must_use]
+    pub fn without_keys_yield(self) -> Self {
+        Self {
+            keys_yield_through: None,
+            ..self
+        }
+    }
+
+    /// The last wording [`StopWording::keys_yield_through`] set, if any.
+    #[must_use]
+    pub fn keys_yield_last(&self) -> Option<usize> {
+        self.keys_yield_through
     }
 
     /// Whether [`StopWording::before_keys`] was set.
@@ -127,6 +157,7 @@ pub fn stopped_row_before_keys(
 /// dropping it lets a fuller wording fit whole, it goes first.
 #[must_use]
 pub fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16, keys: &Keymap) -> String {
+    let hints = tail_keys_for_the_count(reason, hints, columns, keys).unwrap_or(hints);
     if let Some((last, rest)) = hints.split_last()
         && last.is(QUIT_YIELDS.keys)
         && fullest_whole(reason, rest, columns, keys) < fullest_whole(reason, hints, columns, keys)
@@ -134,6 +165,26 @@ pub fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16, keys: &Ke
         return stopped_row_as_given(reason, rest, columns, keys);
     }
     stopped_row_as_given(reason, hints, columns, keys)
+}
+
+/// The bar with its tail keys cut, last first and never into its first
+/// three (ADR-0037 §4), to the fewest that let a counted wording
+/// ([`StopWording::keys_yield_through`]) fit whole. `None` when the option
+/// is off, a counted wording already fits, or none can fit above the floor.
+fn tail_keys_for_the_count<'a>(
+    reason: &StopWording,
+    hints: &'a [Hint],
+    columns: u16,
+    keys: &Keymap,
+) -> Option<&'a [Hint]> {
+    let counted = reason.keys_yield_through?;
+    if fullest_whole(reason, hints, columns, keys) <= counted {
+        return None;
+    }
+    (3..hints.len())
+        .rev()
+        .map(|kept| &hints[..kept])
+        .find(|bar| fullest_whole(reason, bar, columns, keys) <= counted)
 }
 
 /// The key that gives way to the stop's reason (see [`stopped_row`]).

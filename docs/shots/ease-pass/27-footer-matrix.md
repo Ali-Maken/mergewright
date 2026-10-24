@@ -8,8 +8,10 @@ shell landing, `pane-closed` = Esc Esc. Taken by `.scratch/ease-pass/pty-ease27.
 the rows look right is the user's to judge (rule 6).
 
 Rule under test (user 2026-10-24): when room is short the origin words go first; the count stays.
-Right looks like: the bottom row never carries the origin without the count. Shell landing: 120 origin + count,
-160 neither, 187 count only, 200 origin + count with `q quit` yielded, 80 keys only.
+Right looks like (ease-28 Q3, tail keys yield to the count): the banner-focused bottom row carries the count wherever
+the bar fits, never the origin without the count, and `⏎ resolve  c finish  a abort` whole. Shell landing: 120 origin + count (unchanged); 160 count +
+five keys (`⇥ graph` and `q quit` gave way); 187 count only; 200 origin + count with `q quit` yielded; 80 draws
+the Detail pane's own bar, unchanged. The row bars after `Esc` (pane-focused, pane-closed) are unchanged.
 
 ## 27-shell-landing-80x24
 
@@ -79,6 +81,8 @@ STAGED (1)
 ## 27-shell-landing-160x48
 
 ```
+ease-27 capture: shell-landing, scenario b-launch-to-first-conflict, keys after landing: -, unicode tier, 160x48
+
  ◆ graft-trivial-0  …ch-to-first-conflict/graft-trivial-0 · main  merging feature into main  UNCOMMITTED · 1 staged
                                                                                              diff vs HEAD a301516
 ▸ ◌                   Uncommitted changes (2 unmerged, 1 staged)
@@ -126,7 +130,7 @@ STAGED (1)
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────
- merge in progress · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
+ merge in progress · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit
 ```
 
 ## 27-shell-landing-187x50
