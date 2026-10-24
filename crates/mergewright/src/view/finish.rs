@@ -210,6 +210,8 @@ pub fn look_view(state: &AppState) -> Option<LookView> {
             .map_or_else(|| sanitize_line(""), sanitize_path),
         body,
         top: 0,
+        // The frame sets the tier where it draws (`draw_finish`).
+        ascii: false,
     })
 }
 

@@ -63,6 +63,10 @@ pub struct StashView<'a> {
     pub notice: Option<SanitizedText>,
     /// Is `notice` a failure? Drawn in `Warning` rather than muted.
     pub notice_is_failure: bool,
+    /// Is `notice` a failed action (`Status::Failed`)? Drawn with the
+    /// failure mark. A sticky notice is `Warning` ink without the mark
+    /// (ease-pass 26, R3).
+    pub notice_failed: bool,
     /// A box (the put-back preview) is open over the list and holds every
     /// key: the list's bar row is left blank, as the graph's is under a
     /// preview (review 86, M2).
@@ -71,6 +75,8 @@ pub struct StashView<'a> {
     /// (graft's `update::remote::esc_stops_write`): the bar reads `esc
     /// cancels` … `S close`, never `S/esc close` (m8/59 Major A).
     pub esc_cancels: bool,
+    /// The ASCII tier: a failure's mark is `(x)`.
+    pub ascii: bool,
 }
 
 /// The overlay itself. Carries the theme like every other screen; the

@@ -127,6 +127,8 @@ pub struct BranchPane<'a> {
     pub view: &'a BranchPaneView,
     /// Colours.
     pub theme: &'a Theme,
+    /// The ASCII tier: a failed line's mark is `(x)`.
+    pub ascii: bool,
 }
 
 /// Between a stop and the one before it on the route.
@@ -217,9 +219,15 @@ impl BranchPane<'_> {
                 }
             }
             PaneLine::Failed(reason) => {
+                // The mark stands in the slot `!`/`✓`/`·` take on a known line.
                 let warn = foreground(self.theme, Token::Warning);
+                let mark = format!("{} ", crate::failure::mark(self.ascii));
                 let words = format!("can't tell: {}", reason.as_str());
-                writer.line(&[(&words, warn)]);
+                crate::failure::check_unmarked(&words);
+                writer.line(&[
+                    (&mark, foreground(self.theme, crate::failure::FAILED_INK)),
+                    (&words, warn),
+                ]);
             }
         }
     }

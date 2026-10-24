@@ -235,4 +235,6 @@ pub struct JournalView {
     /// (graft's `update::remote::esc_stops_write`): the bar then reads
     /// `J close` and `esc cancels`, never `J/esc close` (m8/59 Major A).
     pub esc_cancels: bool,
+    /// The ASCII tier: a failure's mark is `(x)`.
+    pub ascii: bool,
 }

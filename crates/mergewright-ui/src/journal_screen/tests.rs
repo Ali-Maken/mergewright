@@ -1,7 +1,6 @@
 use mergewright_core::capabilities::ColorDepth;
 use mergewright_term::sanitize::sanitize;
-use ratatui::Terminal;
-use ratatui::backend::TestBackend;
+use ratatui::{Terminal, backend::TestBackend};
 
 use super::*;
 use crate::test_support::terminal as test_capabilities;
@@ -14,7 +13,7 @@ fn theme() -> Theme {
     )
 }
 
-fn row(age: &str, description: &str, mark: RowMark) -> JournalRowView {
+pub(crate) fn row(age: &str, description: &str, mark: RowMark) -> JournalRowView {
     JournalRowView {
         age: sanitize(age),
         description: sanitize(description),
@@ -45,7 +44,7 @@ fn lost(words: &str, under: usize) -> JournalRowView {
 }
 
 /// The drawn grid, one string per line, trailing blanks trimmed.
-fn draw(view: &JournalView, width: u16, height: u16) -> Vec<String> {
+pub(crate) fn draw(view: &JournalView, width: u16, height: u16) -> Vec<String> {
     draw_with(view, width, height, Keymap::shipped())
 }
 
@@ -78,7 +77,7 @@ fn draw_with(view: &JournalView, width: u16, height: u16, keys: &Keymap) -> Vec<
         .collect()
 }
 
-fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
+pub(crate) fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
     JournalView {
         location: sanitize("~/code/api"),
         rows,
@@ -92,6 +91,7 @@ fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
         find: None,
         find_prompt: None,
         esc_cancels: false,
+        ascii: false,
     }
 }
 
@@ -195,7 +195,7 @@ fn an_expanded_fetch_row_lists_its_moves() {
         "refs the fetch moved · u does not move them back"
     );
     assert!(
-        lines[heading - 1].starts_with("failed: no repository"),
+        lines[heading - 1].contains("⊗ failed: no repository"),
         "after the failure: {grid:#?}"
     );
     for n in 0..20 {

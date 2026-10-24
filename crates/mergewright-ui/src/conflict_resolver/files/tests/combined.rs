@@ -39,7 +39,8 @@ fn reading_and_failed_say_so() {
     let failed = CombinedList::Failed(sanitize_line("git exited 128"));
     let rows = drawn(&with(failed), 10);
     assert_eq!(rows[5], "Combined by git · can't tell:");
-    assert_eq!(rows[6], "  git exited 128");
+    // The mark takes the reason's indent (ease-pass 26, Part B).
+    assert_eq!(rows[6], "⊗ git exited 128");
 }
 
 /// Status rule: nothing combined, and any operation but a merge, draw no
@@ -87,4 +88,20 @@ fn it_sits_under_the_review_row() {
     assert_eq!(rows[5], "");
     assert_eq!(rows[6], "Combined by git (1)");
     assert_eq!(rows[7], "✓ clean.txt");
+}
+
+/// Part B (ease-pass 26): a failed combined read marks its heading, both tiers.
+#[test]
+fn a_failed_combined_read_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let failed = CombinedList::Failed(sanitize_line("git exited 128"));
+        let g = if ascii {
+            Glyphs::ASCII
+        } else {
+            Glyphs::UNICODE
+        };
+        let rows = super::super::combined::combined_rows(&with(failed), 30, 10, g);
+        let text: Vec<String> = rows.into_iter().map(|(_, text)| text).collect();
+        crate::failure::assert_marked(&text.join("\n"), "git exited 128", ascii);
+    }
 }

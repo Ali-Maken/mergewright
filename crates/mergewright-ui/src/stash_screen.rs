@@ -16,6 +16,7 @@ use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
 use crate::detail::{FileListView, FileRowKind};
+use crate::failure::marked_if;
 use crate::fit::fit;
 use crate::graph_screen::hints::{place_close, place_footer_text};
 use crate::keymap::{ActionId, Keymap};
@@ -362,7 +363,9 @@ impl Widget for StashScreen<'_> {
             } else {
                 muted
             };
-            set_text(buf, area.x, notice_y, area, notice.as_str(), style);
+            let words = marked_if(self.view.notice_failed, notice.as_str(), self.view.ascii);
+            set_text(buf, area.x, notice_y, area, &words, style);
+            crate::failure::ink_marks(buf, area, self.theme, self.view.ascii);
             body.height = body.height.saturating_sub(1);
         }
         if let Some(prompt) = &self.view.prompt {
@@ -374,12 +377,10 @@ impl Widget for StashScreen<'_> {
             StashStatus::Loading => return centred(buf, body, "reading the stash list…", muted),
             StashStatus::Empty => return centred(buf, body, &empty(self.keys), muted),
             StashStatus::Failed(why) => {
-                return centred(
-                    buf,
-                    body,
-                    &format!("the stash list could not be read: {}", why.as_str()),
-                    foreground(self.theme, Token::Warning),
-                );
+                let why = format!("the stash list could not be read: {}", why.as_str());
+                let words = crate::failure::marked(&why, self.view.ascii);
+                centred(buf, body, &words, foreground(self.theme, Token::Warning));
+                return crate::failure::ink_marks(buf, body, self.theme, self.view.ascii);
             }
         }
         self.draw_list(buf, body);
@@ -387,4 +388,4 @@ impl Widget for StashScreen<'_> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

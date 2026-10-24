@@ -5,6 +5,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 
+use super::line_render::fit_head;
 use crate::detail::{
     CompareHeader, CompareState, ContainedIn, DetailFocus, DetailHeader, DetailView, RadarLine,
     Subject,
@@ -96,24 +97,6 @@ pub(crate) fn compare_title(compare: &CompareHeader, width: usize, keys: &Keymap
             fit_head(width, head, lead)
         }
     }
-}
-
-/// `words(head)` if it fits `width`; else `words` with `head` cut to fit,
-/// ending in `…`. Only the name is cut.
-fn fit_head(width: usize, head: &str, words: impl Fn(&str) -> String) -> String {
-    let whole = words(head);
-    if whole.width() <= width {
-        return whole;
-    }
-    let chars: Vec<char> = head.chars().collect();
-    for keep in (0..chars.len()).rev() {
-        let cut: String = chars[..keep].iter().chain(['\u{2026}'].iter()).collect();
-        let line = words(&cut);
-        if line.width() <= width {
-            return line;
-        }
-    }
-    words("\u{2026}")
 }
 
 pub(crate) fn radar_text(line: &RadarLine) -> String {
@@ -248,7 +231,9 @@ fn header_lines(view: &DetailView, keys: &Keymap) -> [String; 5] {
                 line
             }
         }
-        ContainedIn::Failed(message) => format!("Contained in: {}", message.as_str()),
+        ContainedIn::Failed(message) => {
+            crate::failure::marked(&format!("Contained in: {}", message.as_str()), view.ascii)
+        }
     };
 
     let radar_line = radar_lines_text(&header.radar);
@@ -278,6 +263,9 @@ pub(crate) fn render_header(
     let mut lines = header_lines(view, keys);
     if let Subject::Compare(compare) = &view.header.subject {
         lines[0] = compare_title(compare, usize::from(area.width), keys);
+        if matches!(compare.state, CompareState::Failed(_)) {
+            lines[0] = crate::failure::marked(&lines[0], view.ascii);
+        }
     }
     lines[4] = radar_lines_fit(&view.header.radar, usize::from(area.width));
     let displayed = displayed_lines(view, layout, &lines, usize::from(area.width));

@@ -271,7 +271,13 @@ impl Widget for &FinishScreen<'_> {
             } else {
                 Token::TextMuted
             };
-            self.text(buf, rect, words.as_str(), token, false);
+            if *problem {
+                let marked = crate::failure::marked(words.as_str(), self.ascii);
+                self.text(buf, rect, &marked, token, false);
+                crate::failure::ink_marks(buf, rect, self.theme, self.ascii);
+            } else {
+                self.text(buf, rect, words.as_str(), token, false);
+            }
         }
     }
 }
@@ -320,4 +326,4 @@ pub use layout::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

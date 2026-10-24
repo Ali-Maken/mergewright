@@ -164,9 +164,10 @@ pub(super) fn draw_finish(
     };
     let tier = tier_in_force(session, state);
     // Below the review's floor the review draws its one line instead.
-    if let Some(look) = crate::view::finish::look_view(state)
+    if let Some(mut look) = crate::view::finish::look_view(state)
         && crate::update::finish::fits(state)
     {
+        look.ascii = tier == RenderingTier::Ascii;
         frame.render_widget(
             &mergewright_ui::merge_look::MergeLook {
                 view: &look,

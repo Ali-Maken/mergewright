@@ -166,17 +166,23 @@ pub(super) fn draw_right(
     };
     lines.push(vec![(header, header_style)]);
     lines.push(Vec::new());
+    // A failure's words lead with the mark; a refusal's do not.
+    let say = |words: &SanitizedText, failed| {
+        vec![(
+            crate::failure::marked_if(failed, words.as_str(), view.ascii),
+            warning,
+        )]
+    };
     match &view.right {
         RightSide::After(AfterView::Checking) => {}
-        RightSide::After(AfterView::Failed(words) | AfterView::Refused(words)) => {
-            lines.push(vec![(words.as_str().to_owned(), warning)]);
-        }
+        RightSide::After(AfterView::Failed(words)) => lines.push(say(words, true)),
+        RightSide::After(AfterView::Refused(words)) => lines.push(say(words, false)),
         RightSide::After(AfterView::Ready { rows, facts }) => {
             lines.extend(after_lines(rows, facts, theme, glyphs));
         }
         RightSide::Changes { files, .. } => match files {
             ChangesView::Reading => lines.push(vec![("reading\u{2026}".to_owned(), muted)]),
-            ChangesView::Failed(words) => lines.push(vec![(words.as_str().to_owned(), warning)]),
+            ChangesView::Failed(words) => lines.push(say(words, true)),
             ChangesView::Files(files) if files.is_empty() => {
                 lines.push(vec![("no files changed".to_owned(), muted)]);
             }
@@ -193,6 +199,7 @@ pub(super) fn draw_right(
             x = put(buf, line, x, text, *style);
         }
     }
+    crate::failure::ink_marks(buf, right, theme, view.ascii);
 }
 
 /// The message block: a blank, its label, then each line behind `┊`; on a

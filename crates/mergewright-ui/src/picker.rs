@@ -121,6 +121,8 @@ pub struct PickerView {
     pub note: Option<SanitizedText>,
     /// At least 120 columns: every column; else glyph, name and age.
     pub wide: bool,
+    /// The ASCII tier: the failure mark is `(x)`.
+    pub ascii: bool,
 }
 
 /// Where the box goes over `graph`: as wide as `graph` less 4, at most
@@ -253,7 +255,10 @@ fn draw_body(buf: &mut Buffer, area: Rect, view: &PickerView, theme: &Theme) {
         body => {
             let words = match body {
                 PickerBody::Reading => "reading branches\u{2026}".to_owned(),
-                PickerBody::Failed(why) => format!("can't list branches \u{b7} {}", why.as_str()),
+                PickerBody::Failed(why) => crate::failure::marked(
+                    &format!("can't list branches \u{b7} {}", why.as_str()),
+                    view.ascii,
+                ),
                 PickerBody::NoBranches => closes("no branches yet"),
                 PickerBody::NoMatch(query) => {
                     closes(&format!("no branch matches \"{}\"", query.as_str()))
@@ -266,6 +271,7 @@ fn draw_body(buf: &mut Buffer, area: Rect, view: &PickerView, theme: &Theme) {
                 muted
             };
             buf.set_string(area.x, area.y + 2, content_row(&words, width), style);
+            crate::failure::ink_marks(buf, area, theme, view.ascii);
         }
     }
 }

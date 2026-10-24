@@ -56,7 +56,7 @@ The blame place's picture; pure draw, no state.
 - `IgnoreLine` (struct) — `count`, `applied`: the `.git-blame-ignore-revs` line, drawn only when `Some`.
 - `FindTitle<'a>` (struct) — `query`, `at` (1-based), `of` (0 = no match): the title's find tail.
 - `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, whitespace flags: everything the place draws.
-- `draw_blame` (fn) — `(frame, area, view, keys: &Keymap)`: title, ignore line, then gutter · number · code rows.
+- `draw_blame` (fn) — `(frame, area, view, keys: &Keymap)`; `draw_blame_in_tier(.., ascii)` is the same at a tier (a failed body's mark is `(x)` at ASCII): title, ignore line, then gutter · number · code rows.
 - `blame_row_at` (fn) — `(area, view, y) -> Option<usize>`: mouse hit-test into rows; `None` off the rows.
 
 ## history
@@ -71,7 +71,7 @@ The file history place's picture; pure draw, no state.
 - `Columns` (struct), `columns` (fn) — `columns(width, focus)`: where the list and file pane sit; shared with the mouse hit-test.
 - `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the file's rows from its one hunk, which changed, and a line's row.
 - `list_index_at`, `rows_through` (fns) — list hit-test and height, counting a rename's `↳ was` row.
-- `draw_history` (fn) — `(frame, area, view, keys: &Keymap)`: title, then list | file pane.
+- `draw_history` (fn) — `(frame, area, view, keys: &Keymap)`; `draw_history_in_tier(.., ascii)` is the same at a tier (a failed list or file pane leads with the mark): title, then list | file pane.
 
 ## detail
 View-model types for the detail pane; no widget. Every string is `SanitizedText`.
@@ -131,7 +131,7 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 - `PaneLine` (enum) — `Reading` (muted `reading…`), `Known { mark, words }`, `Failed(reason)` (`can't tell: …`).
 - `RouteStop` (struct) — `name`, `role`: one branch on the `built on` line, drawn in its role colour.
 - `BranchPaneView` (enum) — `Branch { heading, role, here, route, lines: [PaneLine; 4] }` or `NotOnBranch { sha7 }`.
-- `BranchPane` (struct, `Widget`) — `view`, `theme`: draws the pane, long answers wrapped under their words.
+- `BranchPane` (struct, `Widget`) — `view`, `theme`, `ascii` (a failed line leads with the mark): draws the pane, long answers wrapped under their words.
 - `ROUTE_JOIN` (const) — ` ─◆ `: between route stops.
 - `BUILT_ON` (const) — `built on`: the route's heading.
 - `READING` (const) — `reading…`: a line whose answer has not landed.
@@ -141,6 +141,8 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 - `word_spans` (fn) — word diff of `removed[i]` against `added[i]`; unpaired lines get empty spans.
 
 ## failure
+- `ink_marks` (fn) — `(buf, area, theme, ascii)`: paints every failure mark in `area` in `FAILED_INK`; a body drawn as one string calls it once at the end.
+- `marked_if` (fn) — `(failed, why, ascii)`: `marked` when `failed`, else `why`.
 - `FAILED_MARK`, `FAILED_MARK_ASCII` (consts) — `⊗` and `(x)`: the one failure mark, Unicode and ASCII tier.
 - `FAILED_INK` (const) — the mark's ink, `Token::Removed`; the one line an `error` token would replace.
 - `mark`, `lead_width` (fns) — `(ascii)`: the mark for a tier; cells the mark and its space take (cut the words by this).
@@ -427,7 +429,7 @@ The commits a merge brings in (ease-pass 10), `⏎` from the merge preview; dock
 - `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
 - `JournalStatusRow` (struct) — `words`, `problem` (Warning ink when true), `failure` (draws `⊗ ` first), `ascii` (tier of the mark); `refusal(words)` builds a refusal row. J's own status row, above the legend; `None` draws no row.
 - `JournalFindView` (struct) — `query: SanitizedText`, `at: Option<usize>` (`None` = no match), `of: usize`.
-- `JournalView` (struct) — `location`, `rows` (newest first), `selected`, `status`, `esc_cancels` (a write takes `Esc`: bar `esc cancels` … `J close`)
+- `JournalView` (struct) — `location`, `rows` (newest first), `selected`, `status`, `esc_cancels` (a write takes `Esc`: bar `esc cancels` … `J close`), `ascii` (a failed read and a row's failure line lead with the mark)
 
 ## keymap
 Decides, never draws: which action a chord means in which place (`ContextId` scope), and how a key is spelled. Hint bars and menus draw what it spells.
@@ -482,7 +484,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `LookLine` (enum) — `Plain { n, text }`, `From { n, text, origin }`.
 - `CombinedFile` (struct) — `path`, `yours`/`theirs` `(added, deleted)`.
 - `LookBody` (enum) — `Reading`, `Failed(why)`, `Clashed { lines }`, `Combined { files, sample }`.
-- `LookView` (struct) — `path`, `body`, `top`.
+- `LookView` (struct) — `path`, `body`, `top`, `ascii` (the failure mark's tier).
 - `MergeLook` (struct) — the widget: `view`, `theme`, `keys`; rounded frame, `Review(Look)` bar in its bottom border.
 - `look_hints` (fn) — the look's bar fitted to a frame `width` wide.
 - `side_words` (fn) — `yours +a −d`, zero parts left out; empty for no change.
@@ -537,7 +539,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `label` (fn) — Glyph and word, as the wide layout draws them.
 - `PickerRow` (struct) — One branch row, worded.
 - `PickerBody` (enum) — What stands under the query.
-- `PickerView` (struct) — Everything the box draws.
+- `PickerView` (struct) — Everything the box draws; `ascii` is the failure mark's tier.
 - `picker_area` (fn) — Where the box goes over `graph`: as wide as `graph` less 4, at most [`MAX_WIDTH`], centred; the lower 60% of it, so the graph above stays in view.
 - `picker_box` (fn) — [`picker_area`] in plain numbers ([`Cells`]), for a caller that must not name the rendering library (`mergewright::update::geometry` mirrors the frame so a click can find the row it landed on).
 - `first_drawn` (fn) — The first row drawn in a box `height` rows tall with `selected` under the cursor: the list scrolls only as far as keeps the cursor in view.
@@ -595,7 +597,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `StashRowView` (struct) — one entry's row: `name` (`stash@{0}`), `message` (quoted, first line), `age`, `files`.
 - `StashPromptView` (struct) — the save prompt: `title`, `message` (a `text_input::FieldView`), `staged_only`, `refusal` (what `s` would refuse, shown before `⏎` is pressed).
 - `StashStatus` (enum) — `Loading`, `Empty` (`no stashes — s stashes the working tree`), `Failed(SanitizedText)`, `Ready`.
-- `StashView` (struct) — `rows` (newest first), `selected`, `preview` (the selected stash's `detail::FileListView`, drawn under the list), `prompt`, `status`, `notice`/`notice_is_failure`, `esc_cancels` (a write has `Esc`)
+- `StashView` (struct) — `rows`, `selected`, `preview` (`detail::FileListView`), `prompt`, `status`, `notice`, `notice_is_failure` (ink), `notice_failed` (draws the mark; sticky has none), `ascii`, `esc_cancels` (a write has `Esc`)
 - `StashScreen` (struct) — `view`, `theme`, `keys`: footer and empty line spelled from his keymap; the save prompt, a text field, spells from `Keymap::shipped()` (`⏎ save  ⇥ scope  esc back`).
 - `files_label` (fn) — `1 file` / `3 files`: the count with the noun it agrees with.
 

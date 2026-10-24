@@ -212,8 +212,35 @@ Part A, app:
 - [x] **A5** **Verified by `mergewright::it failure_marks::failure_worded_sticky_sites_are_pinned_as_notices` plus the verdicts below.**: NOTES lists every `Status::Sticky` producer (file:line, words, verdict) and the words' ink per bar and body. <- grep, in NOTES
 
 Part B, ui:
-- [ ] **B1** (replaces box 5): every In arm of D4 and R2 renders `⊗ ` at its line start (in the mark slot for `PaneLine`), each once, with its words unchanged. One render per arm into a `Buffer`, and the test lists the arms by name: R2's six (picker, history state, walk, rewrite after, rewrite changes, commit body) plus every D4 body arm. <- `mergewright_ui::failure::tests::every_failed_body_draws_the_mark`
-- [ ] **B2**: under the ASCII tier the same arms draw `(x) ` and no `⊗`. <- `mergewright_ui::failure::tests::every_failed_body_draws_the_ascii_mark`
+- [x] **B1** **Verified by `mergewright_ui::failure::tests::every_failed_body_draws_the_mark` (lists the 21 arms and pins each arm's render test) plus the per-arm renders in `failure/body_tests.rs` and the widgets' own tests.** (replaces box 5): every In arm of D4 and R2 renders `⊗ ` at its line start (in the mark slot for `PaneLine`), each once, with its words unchanged. One render per arm into a `Buffer`, and the test lists the arms by name: R2's six (picker, history state, walk, rewrite after, rewrite changes, commit body) plus every D4 body arm. <- `mergewright_ui::failure::tests::every_failed_body_draws_the_mark`
+- [x] **B2** **Verified by the same per-arm renders (each loops `[false, true]` through `failure::assert_marked`), and `failure::tests::every_failed_body_draws_the_ascii_mark`.**: under the ASCII tier the same arms draw `(x) ` and no `⊗`. <- `mergewright_ui::failure::tests::every_failed_body_draws_the_ascii_mark`
+- [x] **B3** (added by the conductor, planner ruling 28-failure-questions:93): the review's notice with `problem == true` draws `⊗ ` before its words, `false` draws none. **Verified by `mergewright_ui::finish_summary::tests::a_problem_notice_is_marked`** (now in `failure/body_tests.rs`; both tiers, mark in `FAILED_INK`, words keep `Warning`). Site: `finish_summary.rs` render.
+
+## NOTES (builder, Part B, 2026-10-24)
+Scout: none (ticket and Part A notes named the arms; read source directly). Not compacted.
+
+**Bodies covered (21 arms):** picker `PickerBody::Failed`; history `HistoryList::Failed`, `FilePane::Failed`; blame `BlameBody::Failed`; stash `StashStatus::Failed` and the notice when `notice_failed`; J `JournalStatus::Failed` and the expanded row's failure line; Map `MapStatus::Failed`; merge look `LookBody::Failed`; branch pane `PaneLine::Failed` (mark in the `!`/`✓`/`·` slot); detail `BodyView::Failed`, `CompareState::Failed`, `ContainedIn::Failed`; resolver `CombinedList::Failed`; status screen `HistoryState::Failed`; graph header `WalkView::Failed` and `SearchTail.failed`; rewrite `AfterView::Failed` and `ChangesView::Failed`; commit editor `BodyView::Failed`; B3 review notice. `AfterView::Refused` and a sticky stash notice stay unmarked (R3).
+
+**Verdicts to look at:**
+- `CombinedList::Failed`: the mark takes the reason row's two indent cells (`⊗ git exited 128`), so the 30-cell heading is not cut; with no room for the reason row, the heading carries the mark.
+- `HistoryState::Failed` is a value inside a labelled row (`History     ⊗ failed: …, 412 rows laid out`); R2 says In, so In. Say if you want it Out (status_screen/mod.rs `history_row`).
+- `ContainedIn::Failed` in the Below layout sits mid-line (`title · ⊗ Contained in: …`).
+- Blame has no theme: its mark is drawn in the default ink. Colour of every mark is unverified (rule 5); the glyph is the carrier.
+- `StashView.notice_is_failure` (ink) is kept; new `notice_failed` (mark) is true only for `Status::Failed`, since a `Sticky` also sets the ink flag. The app invariant now lists stash as marked.
+- Words unchanged. Renderer-owned prefixes kept: `failed: ` (status screen, J row's own reason), `history failed: ` (walk). A leading space the old words carried (history list, blame) is replaced by the mark's own space, so those lines start one cell later.
+
+**Test order:** the per-arm tests were written after the draw code, not before (B3 was red first). Red shown for the aggregate by the arms having no mark before the edit is not recorded. Say so if that matters.
+
+**Snapshots/captures changed (each differs only by the mark):** `mergewright_ui__map_screen__tests__failed_snapshot.snap` (`⊗ ` before the centred line; header metadata also refreshed by insta); `docs/shots/m3-journal-expanded.txt`, `docs/shots/m8/21c-journal-partial-fetch-120x40.txt`, `docs/shots/m8/21c-journal-partial-fetch-80x24.txt` (the row's failure line, `⊗ ` added). Re-shot with `MWR_UPDATE_SHOTS=1`; diff read.
+Existing tests changed to expect the mark (text otherwise equal): blame `failed_body_shows_gits_first_line`, branch_pane unit and `it` `a_failed_read_says_cant_tell…`, combined `reading_and_failed_say_so`, history `a_failed_trace_is_one_line`, J `an_expanded_fetch_row_lists_its_moves`, status_screen `history_says_where…`, resolver `the_section_says_reading_failed_or_nothing`.
+
+**Line ratchet.** New per-arm tests live in `failure/body_tests.rs` (seven widgets' `tests` modules are now `pub(crate)` and a few fixtures `pub(crate)`), so no test file grew. Moved out to stay under rows: `cut_at_word` to `journal_screen/pieces.rs` (re-exported), `fit_head` to `detail_pane/line_render.rs`, `put` to `history/list.rs`, `draw_picker` to `view/frame/picker_box.rs`. Rows lowered: detail_pane/header.rs 445 to 433, journal_screen.rs 467 to 453, boxes.rs 443 to 430. No row raised.
+
+**API.** `failure::{ink_marks, marked_if}` added (ink: any body drawn as one string calls `ink_marks` once; `⊗` is no other mark). `draw_history_in_tier` and `draw_blame_in_tier` (old names kept, Unicode tier). `ascii` added to `PickerView`, `LookView`, `JournalView`, `StashView`, `BranchPane`, conflict `Glyphs`; app sets it where it draws.
+
+**Touches:** every constructor of the changed views (grep + compile: `PickerView`, `LookView`, `JournalView`, `StashView`, `BranchPane`); app draw sites `draw_over_graph` (now takes `session`), `draw_journal`, `draw_stash`, `draw_history_place`, `draw_place`, finish look; `view::status` invariant (stash true); fit: no bar fit tests changed beyond Part A; captures: three above, rest compared by the full nextest; ASCII tier: per-arm tests; MAP.md (ui) updated; TESTING.md / man page / README not grepped for quoted failure lines. Keymap, journal/undo, ops/git/graph crates: untouched.
+
+**Gates (full runs after the last edit):** fmt ok; clippy x2 ok; nextest 6805/6805; doctests ok; walks 463/463.
 
 ## NOTES (builder, Part A, 2026-10-24)
 Scout: none (the ticket named every file; read source directly). Not compacted. Part B (B1, B2) and boxes 5/the producers/Out-stays-out/captures/grep boxes: see below.

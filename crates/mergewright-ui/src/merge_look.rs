@@ -127,6 +127,8 @@ pub struct LookView {
     pub body: LookBody,
     /// The first body line on screen.
     pub top: usize,
+    /// The ASCII tier: a failure's mark is `(x)`.
+    pub ascii: bool,
 }
 
 /// The look's widget.
@@ -180,7 +182,13 @@ impl MergeLook<'_> {
             LookBody::Reading => (String::new(), vec![vec![("reading…".to_owned(), muted)]]),
             LookBody::Failed(why) => (
                 String::new(),
-                vec![vec![(format!("can't tell: {}", why.as_str()), text)]],
+                vec![vec![(
+                    crate::failure::marked(
+                        &format!("can't tell: {}", why.as_str()),
+                        self.view.ascii,
+                    ),
+                    text,
+                )]],
             ),
             LookBody::Clashed { lines } => (
                 format!("{} · as it will land · read only", self.view.path.as_str()),
@@ -340,6 +348,7 @@ impl Widget for &MergeLook<'_> {
             }
             y += 1;
         }
+        crate::failure::ink_marks(buf, inner, self.theme, self.view.ascii);
     }
 }
 

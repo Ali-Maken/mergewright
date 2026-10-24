@@ -70,3 +70,143 @@ fn the_mark_ink_differs_from_warning_in_every_theme() {
         );
     }
 }
+
+/// Every failed body arm (D4 and R2) and the test that renders it at both
+/// tiers through [`assert_marked`]: `(arm, test file, test name)`.
+const BODY_ARMS: [(&str, &str, &str); 21] = [
+    (
+        "PickerBody::Failed",
+        include_str!("../picker/tests.rs"),
+        "a_failed_body_draws_the_failure_mark",
+    ),
+    (
+        "HistoryList::Failed",
+        include_str!("body_tests.rs"),
+        "failed_trace_and_failed_file_draw_the_failure_mark",
+    ),
+    (
+        "FilePane::Failed",
+        include_str!("body_tests.rs"),
+        "failed_trace_and_failed_file_draw_the_failure_mark",
+    ),
+    (
+        "BlameBody::Failed",
+        include_str!("body_tests.rs"),
+        "a_failed_blame_draws_the_failure_mark",
+    ),
+    (
+        "StashStatus::Failed",
+        include_str!("body_tests.rs"),
+        "a_failed_list_and_a_failed_notice_draw_the_failure_mark",
+    ),
+    (
+        "StashView.notice (failure)",
+        include_str!("body_tests.rs"),
+        "a_failed_list_and_a_failed_notice_draw_the_failure_mark",
+    ),
+    (
+        "JournalStatus::Failed",
+        include_str!("body_tests.rs"),
+        "a_failed_read_and_a_row_failure_draw_the_failure_mark",
+    ),
+    (
+        "journal row failure line",
+        include_str!("body_tests.rs"),
+        "a_failed_read_and_a_row_failure_draw_the_failure_mark",
+    ),
+    (
+        "MapStatus::Failed",
+        include_str!("../map_screen/tests.rs"),
+        "a_failed_map_draws_the_failure_mark",
+    ),
+    (
+        "LookBody::Failed",
+        include_str!("../merge_look/tests.rs"),
+        "a_failed_look_draws_the_failure_mark",
+    ),
+    (
+        "PaneLine::Failed",
+        include_str!("../branch_pane/tests.rs"),
+        "a_failed_line_draws_the_failure_mark",
+    ),
+    (
+        "detail BodyView::Failed",
+        include_str!("body_tests.rs"),
+        "failed_body_compare_and_contained_in_draw_the_failure_mark",
+    ),
+    (
+        "CompareState::Failed",
+        include_str!("body_tests.rs"),
+        "failed_body_compare_and_contained_in_draw_the_failure_mark",
+    ),
+    (
+        "ContainedIn::Failed",
+        include_str!("body_tests.rs"),
+        "failed_body_compare_and_contained_in_draw_the_failure_mark",
+    ),
+    (
+        "CombinedList::Failed",
+        include_str!("../conflict_resolver/files/tests/combined.rs"),
+        "a_failed_combined_read_draws_the_failure_mark",
+    ),
+    (
+        "status_screen HistoryState::Failed",
+        include_str!("../status_screen/tests.rs"),
+        "a_failed_history_state_draws_the_failure_mark",
+    ),
+    (
+        "WalkView::Failed",
+        include_str!("../graph_screen/tests/problem_line.rs"),
+        "a_failed_walk_and_a_failed_search_draw_the_failure_mark",
+    ),
+    (
+        "SearchTail.failed",
+        include_str!("../graph_screen/tests/problem_line.rs"),
+        "a_failed_walk_and_a_failed_search_draw_the_failure_mark",
+    ),
+    (
+        "AfterView::Failed / ChangesView::Failed",
+        include_str!("body_tests.rs"),
+        "failed_after_and_failed_changes_draw_the_failure_mark",
+    ),
+    (
+        "commit_editor BodyView::Failed",
+        include_str!("../commit_editor/tests.rs"),
+        "a_failed_diff_body_draws_the_failure_mark",
+    ),
+    (
+        "finish_summary problem notice (B3)",
+        include_str!("body_tests.rs"),
+        "a_problem_notice_is_marked",
+    ),
+];
+
+/// B1 and B2: every arm has its render test, and that test draws the arm at
+/// the Unicode and the ASCII tier. The renders themselves live beside each
+/// widget's own fixtures; this pins the list, so a new `Failed` body that
+/// joins D4 has to join it.
+#[test]
+fn every_failed_body_draws_the_mark() {
+    for (arm, source, name) in BODY_ARMS {
+        let at = source
+            .find(&format!("fn {name}("))
+            .unwrap_or_else(|| panic!("{arm}: no test `{name}`"));
+        let body = &source[at..];
+        let body = &body[..body.find("\n}\n").unwrap_or(body.len())];
+        assert!(
+            body.contains("assert_marked") || body.contains("⊗"),
+            "{arm}: `{name}` never checks the mark"
+        );
+        assert!(
+            body.contains("ascii") || body.contains("[false, true]"),
+            "{arm}: `{name}` never draws the ASCII tier"
+        );
+    }
+}
+
+/// B2, restated: the ASCII helper refuses a `⊗` and a missing `(x) `.
+#[test]
+#[should_panic(expected = "ASCII tier drew")]
+fn every_failed_body_draws_the_ascii_mark() {
+    assert_marked("(x) why ⊗ why", "why", true);
+}

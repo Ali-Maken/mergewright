@@ -45,7 +45,7 @@ fn draw(view: &DetailView, layout: DetailLayout, columns: u16, rows: u16) -> Ter
     terminal
 }
 
-fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
+pub(crate) fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
     let buffer = terminal.backend().buffer();
     (0..buffer.area.height)
         .map(|y| {
@@ -60,7 +60,7 @@ fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "one hand-built view-model fixture, not logic"
 )]
-fn commit_view() -> DetailView {
+pub(crate) fn commit_view() -> DetailView {
     DetailView {
         header: DetailHeader {
             subject: Subject::Commit {
@@ -1327,7 +1327,7 @@ fn an_empty_untracked_file_says_empty_file() {
 
 // m7-14: a compare's first line, in words.
 
-fn compare(
+pub(crate) fn compare(
     head: &str,
     base: &str,
     state: crate::detail::CompareState,

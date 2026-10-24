@@ -154,7 +154,18 @@ pub struct BlameView<'a> {
 
 /// Draws the blame place into `area`, its keys spelled from `keys`.
 pub fn draw_blame(frame: &mut Frame, area: Rect, view: &BlameView, keys: &Keymap) {
-    draw_into(frame.buffer_mut(), area, view, keys);
+    draw_blame_in_tier(frame, area, view, keys, false);
+}
+
+/// [`draw_blame`] at a tier: a failed body's mark is `(x)` at the ASCII one.
+pub fn draw_blame_in_tier(
+    frame: &mut Frame,
+    area: Rect,
+    view: &BlameView,
+    keys: &Keymap,
+    ascii: bool,
+) {
+    draw_into(frame.buffer_mut(), area, view, keys, ascii);
 }
 
 /// Which row of `rows` sits at screen row `y`, for a click; `None` on the
@@ -183,7 +194,7 @@ fn body_area(area: Rect, view: &BlameView) -> Rect {
     }
 }
 
-fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap) {
+fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap, ascii: bool) {
     if area.is_empty() {
         return;
     }
@@ -218,7 +229,8 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &BlameView, keys: &Keymap) {
         BlameBody::Reading => {}
         BlameBody::Failed(first) => {
             if body.height > 0 {
-                let words = keys.after(&format!(" git blame stopped: {first}"), BACK, "back");
+                let stopped = crate::failure::marked(&format!("git blame stopped: {first}"), ascii);
+                let words = keys.after(&stopped, BACK, "back");
                 put(buf, body.x, body.y, body.width, &words, Style::default());
             }
         }
@@ -311,4 +323,4 @@ fn put(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
 mod line;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

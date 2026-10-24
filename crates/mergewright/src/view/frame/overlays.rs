@@ -28,6 +28,7 @@ pub(super) fn draw_journal(
     // else the notice (m7-power-tools/24, KNOWN_GAPS M3 :217). A refusal
     // inside J has somewhere to show; nothing wrong → no row.
     screen.status_row = journal_status_row(state, tier_in_force(session, state), area.width);
+    screen.ascii = tier_in_force(session, state) == RenderingTier::Ascii;
     // The put-back box over J names every key: J's bar is blank under it
     // (`JournalView::box_open`), as S's is under the stash box.
     let widget = JournalScreen {
@@ -103,7 +104,8 @@ pub(super) fn draw_stash(
     frame: &mut Frame,
     area: Rect,
 ) -> Option<Rect> {
-    let screen = stash_view(state, state.harness.clock.now_seconds());
+    let mut screen = stash_view(state, state.harness.clock.now_seconds());
+    screen.ascii = tier_in_force(session, state) == RenderingTier::Ascii;
     let widget = StashScreen {
         keys: &state.keymap,
         view: &screen,
@@ -134,7 +136,13 @@ fn draw_history_place(
     body: Rect,
 ) {
     history.view(state.harness.clock.now_seconds(), &session.theme, |view| {
-        mergewright_ui::history::draw_history(frame, body, view, &state.keymap);
+        mergewright_ui::history::draw_history_in_tier(
+            frame,
+            body,
+            view,
+            &state.keymap,
+            tier_in_force(session, state) == RenderingTier::Ascii,
+        );
     });
     if area.height == 0 {
         return;
@@ -190,7 +198,13 @@ pub(super) fn draw_place(
     let blame = state.trail.on_screen()?;
     let path = mergewright_term::sanitize::sanitize_path(&blame.path);
     blame.view(path.as_str(), state.harness.clock.now_seconds(), |view| {
-        mergewright_ui::blame::draw_blame(frame, body, view, &state.keymap);
+        mergewright_ui::blame::draw_blame_in_tier(
+            frame,
+            body,
+            view,
+            &state.keymap,
+            tier_in_force(session, state) == RenderingTier::Ascii,
+        );
     });
     if area.height == 0 {
         return None;

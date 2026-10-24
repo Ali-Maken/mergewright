@@ -6,13 +6,13 @@
 )]
 use super::*;
 
-pub(super) fn draw_list(buf: &mut Buffer, area: Rect, view: &HistoryView) {
+pub(super) fn draw_list(buf: &mut Buffer, area: Rect, view: &HistoryView, ascii: bool) {
     if view.tracing {
         return;
     }
     match &view.list {
         HistoryList::Failed(words) => {
-            let text = format!(" couldn't trace: {words}");
+            let text = crate::failure::marked(&format!("couldn't trace: {words}"), ascii);
             put(buf, area.x, area.y, area.width, &text, Style::default());
         }
         HistoryList::Rows {
@@ -109,4 +109,12 @@ fn counts(added: u32, removed: u32) -> String {
         parts.push(format!("\u{2212}{removed}"));
     }
     parts.join(" ")
+}
+
+/// Writes `text` at (`x`, `y`), clipped to `width` cells.
+pub(super) fn put(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
+    if width == 0 {
+        return;
+    }
+    buf.set_stringn(x, y, text, usize::from(width), style);
 }

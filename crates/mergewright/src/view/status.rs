@@ -256,7 +256,7 @@ mod tests {
             ("rewrite", Some(GraphOverlay::Rewrite), false),
             ("place", Some(GraphOverlay::Place), false),
             ("map", Some(GraphOverlay::Map), false),
-            ("stash", Some(GraphOverlay::Stash), false),
+            ("stash", Some(GraphOverlay::Stash), true),
         ];
         let mut wrong = Vec::new();
         for (name, overlay, expected) in shows_a_bar {

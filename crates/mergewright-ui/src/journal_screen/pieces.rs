@@ -1,11 +1,12 @@
 //! A journal row cut into pieces: glyph, source, age, words, mark, and the line under it.
 
+use crate::fit::fit;
 use crate::keymap::Keymap;
 
 use super::{
     AGE, COMMANDS_HEADING, CURSOR, Columns, GLYPH, Ink, JournalRowView, MARK, Piece, RowKind,
-    RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, cut_at_word, moved_heading,
-    pad, source_word,
+    RowMark, SOURCE, SanitizedText, UnicodeWidthStr, WORDS_BEFORE_GIT, moved_heading, pad,
+    source_word,
 };
 
 /// A row's own line: cursor, glyph, source word, age, words, and a `●`
@@ -208,6 +209,7 @@ pub(super) fn under_pieces(
     columns: Columns,
     width: usize,
     keys: &Keymap,
+    ascii: bool,
 ) -> Vec<Vec<Piece>> {
     let x = columns.words_x();
     let room = width.saturating_sub(x + 1);
@@ -228,7 +230,10 @@ pub(super) fn under_pieces(
     }
     if row.expanded {
         if let Some(failure) = &row.failure {
-            lines.push(one(failure.as_str().to_owned(), Ink::Warning));
+            lines.push(one(
+                crate::failure::marked(failure.as_str(), ascii),
+                Ink::Warning,
+            ));
         }
         if !row.moved.is_empty() {
             lines.push(one(moved_heading(keys), Ink::Muted));
@@ -244,4 +249,36 @@ pub(super) fn under_pieces(
         }
     }
     lines
+}
+
+/// `text` cut to at most `width` cells at a word boundary, with `…` where
+/// it was cut; whole when it fits. The spacing inside the kept part is left
+/// as it was (a padded column stays padded). A first word wider than
+/// `width` is cut mid-word, the only cut left.
+///
+/// `blame`'s own `cut_at_word` (private, `Option`-returning, `None` when no
+/// word fits) is the same rule for a subject alone; this one never gives
+/// up, because a row must draw something.
+#[must_use]
+pub fn cut_at_word(text: &str, width: usize) -> String {
+    if text.width() <= width {
+        return text.to_owned();
+    }
+    let room = width.saturating_sub(1);
+    let mut best: Option<&str> = None;
+    for (index, character) in text.char_indices() {
+        if character.is_whitespace() {
+            let kept = text[..index].trim_end();
+            if kept.width() > room {
+                break;
+            }
+            if !kept.is_empty() {
+                best = Some(kept);
+            }
+        }
+    }
+    match best {
+        Some(kept) => format!("{kept}…"),
+        None => fit(text, width).trim_end().to_owned(),
+    }
 }

@@ -16,7 +16,7 @@
 "  ●  Mergewright    14m ago   stage 3 files                                the index · backup saved                 ← u "
 "  ●  Mergewright    40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index  interrupted "
 "▸ ●  Mergewright    3h ago    discard…     failed: error: unable to unlink 'src/auth/refresh_test.rs':…                 "
-"                              failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied             "
+"                              ⊗ failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied           "
 "                              commands Mergewright ran                                                                  "
 "                              ┆ git --literal-pathspecs restore --worktree -- src/auth/refresh_test.rs                  "
 "  ●  Mergewright    26h ago   stage src/api/routes.rs                      the index · backup saved                     "

@@ -241,6 +241,8 @@ struct Glyphs {
     /// A file not read yet. Its own glyph: `more` also marks overflow and
     /// a left-cut path.
     unread: char,
+    /// The ASCII tier: the failure mark is `(x)`.
+    ascii: bool,
 }
 
 impl Glyphs {
@@ -252,6 +254,7 @@ impl Glyphs {
         more: '…',
         enter: '⏎',
         unread: '•',
+        ascii: false,
     };
     const ASCII: Glyphs = Glyphs {
         mark: '>',
@@ -261,6 +264,7 @@ impl Glyphs {
         more: '~',
         enter: '<',
         unread: '~',
+        ascii: true,
     };
 }
 

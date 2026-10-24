@@ -37,7 +37,7 @@ mod file_pane;
 mod list;
 
 use file_pane::{draw_file, wrap};
-use list::{draw_list, row_y};
+use list::{draw_list, put, row_y};
 
 /// The list's width at ≥180 columns (pass 1b's breakpoints).
 pub const LIST_WIDE: u16 = 56;
@@ -279,10 +279,22 @@ pub fn rows_through(rows: &[HistoryRow], top: usize, index: usize) -> usize {
 
 /// Draws the history place into `area`, its keys spelled from `keys`.
 pub fn draw_history(frame: &mut Frame, area: Rect, view: &HistoryView, keys: &Keymap) {
-    draw_into(frame.buffer_mut(), area, view, keys);
+    draw_history_in_tier(frame, area, view, keys, false);
 }
 
-fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
+/// [`draw_history`] at a tier: a failed body's mark is `(x)` at the ASCII one.
+pub fn draw_history_in_tier(
+    frame: &mut Frame,
+    area: Rect,
+    view: &HistoryView,
+    keys: &Keymap,
+    ascii: bool,
+) {
+    draw_into(frame.buffer_mut(), area, view, keys, ascii);
+    crate::failure::ink_marks(frame.buffer_mut(), area, view.theme, ascii);
+}
+
+fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap, ascii: bool) {
     if area.is_empty() {
         return;
     }
@@ -313,7 +325,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
             width: area.width,
             height: body_height,
         };
-        draw_list(buf, whole, view);
+        draw_list(buf, whole, view, ascii);
         return;
     }
     let columns = columns(area.width, view.focus);
@@ -330,7 +342,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
             width,
             height: body_height,
         };
-        draw_list(buf, list_area, view);
+        draw_list(buf, list_area, view, ascii);
     }
     if let Some((x, width)) = columns.file {
         // One cell of air after the rule.
@@ -345,7 +357,7 @@ fn draw_into(buf: &mut Buffer, area: Rect, view: &HistoryView, keys: &Keymap) {
             width,
             height: body_height,
         };
-        draw_file(buf, file_area, view);
+        draw_file(buf, file_area, view, ascii);
     }
 }
 
@@ -378,13 +390,5 @@ fn pad(text: &str, cells: usize) -> String {
     format!("{text}{}", " ".repeat(cells.saturating_sub(width)))
 }
 
-/// Writes `text` at (`x`, `y`), clipped to `width` cells.
-fn put(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
-    if width == 0 {
-        return;
-    }
-    buf.set_stringn(x, y, text, usize::from(width), style);
-}
-
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

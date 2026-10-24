@@ -64,11 +64,23 @@ pub(super) fn combined_rows(
     if top >= height {
         return Vec::new();
     }
+    // The mark leads the reason, in the two cells its indent takes. With no
+    // row for the reason, the heading carries the mark instead (its words
+    // are cut by `fit`, never the mark).
+    let reason_row = matches!(view.combined, CombinedList::Failed(_)) && top + 1 < height;
+    let heading = if matches!(view.combined, CombinedList::Failed(_)) && !reason_row {
+        crate::failure::marked(&heading, g.ascii)
+    } else {
+        heading
+    };
     let mut rows = vec![(top, fit(&heading, full))];
     // The reason on its own row: beside the heading a 30-cell column
     // would cut it to nothing.
     if let (CombinedList::Failed(why), true) = (&view.combined, top + 1 < height) {
-        rows.push((top + 1, fit(&format!("  {}", why.as_str()), full)));
+        crate::failure::check_unmarked(why.as_str());
+        let lead = crate::failure::mark(g.ascii);
+        let pad = " ".repeat(2usize.saturating_sub(lead.width()).max(1));
+        rows.push((top + 1, fit(&format!("{lead}{pad}{}", why.as_str()), full)));
     }
     if let CombinedList::Files(names) = &view.combined {
         let room = usize::from(height - top - 1);
@@ -151,4 +163,5 @@ pub(super) fn draw_combined(
             foreground(theme, Token::TextMuted),
         );
     }
+    crate::failure::ink_marks(buf, area, theme, g.ascii);
 }

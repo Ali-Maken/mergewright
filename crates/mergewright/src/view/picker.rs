@@ -58,6 +58,8 @@ pub fn picker_view(state: &AppState) -> Option<PickerView> {
         footer,
         note: picker.note.as_deref().map(sanitize_line),
         wide: state.size.columns >= WIDE_FROM,
+        // The frame sets the tier where it draws (`draw_picker`).
+        ascii: false,
     })
 }
 
