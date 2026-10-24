@@ -31,7 +31,10 @@ Env:
                  byte read before the first frame begun after `J` (all bytes
                  without THEN_J). Characters only, no colour (CLAUDE.md rule
                  5). One line per row, `NN|text`. GRID_ROWS=a:b keeps screen
-                 rows a..b-1, cut at the graph's divider column.
+                 rows a..b-1. GRID_COLS=n keeps the first n columns; unset,
+                 the columns stop at the graph's divider (`⋮`) when every kept
+                 row has it in one column, and with a graph of 2 lanes there
+                 is none, so the whole line is kept.
   SCROLL_LAG_DUMP=<path>  write the raw stream there (never commit it).
 
 Prints one SUMMARY line: keys sent, frames (DEC 2026 begin markers) and bytes
@@ -298,8 +301,9 @@ def kitty_uploads(stream):
 
 def write_grid(stream, cols, rows, path):
     """The screen pyte draws from `stream`, characters only. GRID_ROWS=a:b
-    keeps screen rows a..b-1; the columns then stop at the graph's divider
-    (`⋮`) when every kept row has it in the same column."""
+    keeps screen rows a..b-1. GRID_COLS=n keeps the first n columns. Without
+    it the columns stop at the graph's divider (`⋮`) when every kept row has
+    it in the same column; a graph of 2 lanes has no divider, so no cut."""
     import pyte
 
     screen = pyte.Screen(cols, rows)
@@ -309,10 +313,14 @@ def write_grid(stream, cols, rows, path):
     if os.environ.get("GRID_ROWS"):
         a, b = (int(v) for v in os.environ["GRID_ROWS"].split(":"))
         keep = range(a, b)
-        dividers = {line.find("⋮") for line in (text[y] for y in keep)}
-        if len(dividers) == 1 and -1 not in dividers:
-            end = dividers.pop() + 1
-            text = [line[:end] for line in text]
+        if os.environ.get("GRID_COLS"):
+            end = int(os.environ["GRID_COLS"])
+            text = [line[:end].rstrip() for line in text]
+        else:
+            dividers = {line.find("⋮") for line in (text[y] for y in keep)}
+            if len(dividers) == 1 and -1 not in dividers:
+                end = dividers.pop() + 1
+                text = [line[:end] for line in text]
     with open(path, "w", encoding="utf-8") as out:
         out.write("".join(f"{y:2d}|{text[y]}\n" for y in keep))
 
