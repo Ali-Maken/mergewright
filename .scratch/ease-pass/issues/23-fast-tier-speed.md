@@ -239,7 +239,7 @@ mergewright::it tour_tasks::task_1_ticks_by_staging_a_hunk
 **Scripts calling nextest, verdicts** (`grep nextest scripts/`):
 - ease-accept.sh:48, m7-accept.sh:47, m8-accept.sh:56 and :112: selected walk/pty modules or the whole tier; GAINED `--ignore-default-filter`. Run: `cargo nextest list --ignore-default-filter -p mergewright --test it -E 'test(/^ease_walk::/)'` selects 93 tests; without the flag 0.
 - m8-accept.sh:67 (heavy, `--features heavy-tests`): its three filters hit `frames::`, `heavy::`, `held_key::`, none in the walk set; 11 selected with and without the flag. Unchanged.
-- git-matrix.sh:91 (`rewrite_preview::`, one `cherry_pick::` test): not walk modules; 0 selected for `rewrite_preview` is the `-p mergewright --test it` slice only (that module lives in ops), unchanged. linux-fast-tier.sh:77 and toolchain-bench.sh: mean the fast tier; unchanged on purpose.
+- git-matrix.sh:91 (workspace-wide, `rewrite_preview::` and one `cherry_pick::` test, both in mergewright-ops, no walk module): unchanged, not run. linux-fast-tier.sh:77 and toolchain-bench.sh: mean the fast tier; unchanged on purpose.
 - 19-fold-rules.sh uses `cargo test`, which ignores nextest config: unchanged.
 - Acceptance commands in TESTING.md (older sections, e.g. lines naming `m5_walk`, `m7_walk`) and `.scratch/*/issues` acceptance lines naming a walk now select nothing without `--profile walks`/`--ignore-default-filter`: not edited (a note in TESTING.md "The walk tier" says so). List them with `grep -rn "nextest" .scratch/*/issues`.
 
