@@ -2,19 +2,19 @@
 source: crates/mergewright-graph/tests/it/raster_pixels.rs
 expression: out
 ---
-foxtrot-merge @17x37: 68x148 d3501c47fe1a6290
-criss-cross-merge @17x37: 170x259 cd817d42486d8bef
-octopus-merge @17x37: 136x185 adbda061847e44bc
-chain @17x37: 68x1184 c115a2af2cde8a66
-parallel-mid @17x37: 238x1184 1fa490e4f0afa73a
-wide-mid @17x37: 986x1184 35c0ab2f5b7364c7
-wide-thread @17x37: 986x1184 2fed1de244ac05ba
-wide-marker @17x37: 408x1184 365e999962eb1487
-foxtrot-merge @8x16: 32x64 0dcb43eb4008330f
-criss-cross-merge @8x16: 80x112 80ce14492e58b51d
-octopus-merge @8x16: 64x80 e23678fad7c654a3
-chain @8x16: 32x512 8b8e0dfd545d01ee
-parallel-mid @8x16: 112x512 4e883a7de1220d20
-wide-mid @8x16: 464x512 d03b04775d1adb6e
-wide-thread @8x16: 464x512 3f0dbffb14d0b4c4
-wide-marker @8x16: 192x512 21a9672a011b0213
+foxtrot-merge @17x37: 85x148 cf7e80f01733fe65
+criss-cross-merge @17x37: 187x259 e7d31d3db7f25067
+octopus-merge @17x37: 153x185 502d5fdd5070aa00
+chain @17x37: 85x1184 bba10364473614aa
+parallel-mid @17x37: 255x1184 e865b837e7ac356f
+wide-mid @17x37: 1003x1184 bea5b4d31193a142
+wide-thread @17x37: 1003x1184 2c0bd3d2e39188ad
+wide-marker @17x37: 425x1184 71477a47deeb5a46
+foxtrot-merge @8x16: 40x64 fd85ae5434323806
+criss-cross-merge @8x16: 88x112 f1ea1ef475a466c7
+octopus-merge @8x16: 72x80 adbc56007e74c718
+chain @8x16: 40x512 834b461f3149a7a5
+parallel-mid @8x16: 120x512 b40db69308f9a53f
+wide-mid @8x16: 472x512 06806efd68574409
+wide-thread @8x16: 472x512 f94009b2636a4a31
+wide-marker @8x16: 200x512 a6c65923030b32bd

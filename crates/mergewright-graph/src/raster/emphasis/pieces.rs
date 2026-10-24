@@ -39,8 +39,8 @@ use mergewright_core::capabilities::Rgb;
 
 use super::super::geometry::goes_down;
 use super::super::{
-    CELLS_PER_LANE, Edge, Inked, LaneStroke, Part, RasterError, RasterPool, alpha_byte, edge_at,
-    lifted, paint_part,
+    CELLS_PER_LANE, Edge, Inked, LaneStroke, Part, RasterError, RasterPool, STRIP_LEAD_CELLS,
+    alpha_byte, edge_at, lifted, paint_part,
 };
 use super::{Backdrop, Emphasised, PlainStrip, Selection, crop, painted_cells_in, painted_rows};
 use crate::identity::BranchIdentity;
@@ -238,7 +238,7 @@ impl<'k, 's> Keys<'k, 's> {
         // What of the cells around the anchor the strip has room for: a node
         // on the first or last lane reaches past the strip's edge, clipped.
         let cells = node_cells(self.strip, column);
-        let anchor = signed(column) * signed_cells(CELLS_PER_LANE);
+        let anchor = signed_cells(STRIP_LEAD_CELLS) + signed(column) * signed_cells(CELLS_PER_LANE);
         (cells.start - anchor, cells.end - anchor).hash(&mut hasher);
         draws.then(|| hasher.finish())
     }

@@ -120,10 +120,11 @@ fn alpha(frame: &RasterFrame, x: usize, y: usize) -> u8 {
     frame.pixels[(y * width + x) * 4 + 3]
 }
 
-/// Lane column `column`'s cell, pixels `x0..x1`, on band `row`.
+/// Lane column `column`'s own cell, pixels `x0..x1`, on band `row`: the strip
+/// leads the graph column by one gutter cell (ease-pass/29 D5).
 fn lane_cell(column: usize) -> std::ops::Range<usize> {
     let width = CELL_W;
-    let left = column * 2 * width;
+    let left = (column * 2 + 1) * width;
     left..left + width
 }
 

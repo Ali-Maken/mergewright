@@ -145,8 +145,10 @@ impl GraphScreen<'_> {
     ) {
         let graph_width = graph_width(area, fold);
         // At the pixel tier the cells stay blank: text drawn there would sit
-        // on top of the terminal's images.
-        if !self.view.pixel {
+        // on top of the terminal's images. Not on a screen with no gutter:
+        // a strip starts in the gutter's gap cell (ease-pass/29 D5), so none
+        // is placed there and the column draws as text.
+        if !self.view.pixel || gutter.is_none() {
             let graph_lines: Vec<GraphLine<'_>> =
                 rows.iter().map(|entry| entry.line.clone()).collect();
             let column = GraphColumn::new(&graph_lines, self.theme)

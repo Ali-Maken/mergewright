@@ -6,7 +6,9 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use mergewright_core::capabilities::PixelProtocol;
+use mergewright_graph::raster::STRIP_LEAD_CELLS;
 use mergewright_graph::raster::cache::STRIP_ROWS;
+use mergewright_term::kitty::Layer;
 use ratatui::layout::Rect;
 
 use super::place::PINNED_SLOT;
@@ -189,5 +191,52 @@ fn the_cursor_on_the_pinned_row_still_makes_room_for_its_second_line() {
     assert_eq!(
         history_row_line(&state, 18).map(|l| l - column_top(&state)),
         Some(2)
+    );
+}
+
+/// ease-pass/29 D5: every strip, the pinned row, the tall row's band and
+/// every emphasis piece is placed from the gutter's gap cell, one cell left
+/// of the graph column, and none reaches past the graph column's right edge.
+#[test]
+fn a_strip_starts_in_the_gutter_gap_cell() {
+    let lead = u16::try_from(STRIP_LEAD_CELLS).expect("small");
+    let state = pinned_state(18, 18);
+    for protocol in [PixelProtocol::Kitty, PixelProtocol::Iterm2] {
+        let iterm2 = protocol == PixelProtocol::Iterm2;
+        let (_graphics, drawn, band) = drawn_of(&state, &pixel_session(protocol), iterm2);
+        let graph = Rect::new(2, 1, 60, 20);
+        let mut places = places(&drawn, graph);
+        places.extend(band.as_ref().map(|band| band.place(graph)));
+        assert!(!places.is_empty(), "{protocol:?}: something is placed");
+        let strips = places
+            .iter()
+            .filter(|place| place.layer == Layer::Strip)
+            .count();
+        assert_eq!(strips, drawn.len(), "{protocol:?}: one strip image a part");
+        for place in &places {
+            let cells = place.cells;
+            assert!(
+                cells.column >= graph.x - lead && cells.column + cells.columns <= graph.right(),
+                "{protocol:?}: {:?} spans {}..{} outside the gutter cell and graph {}..{}",
+                place.layer,
+                cells.column,
+                cells.column + cells.columns,
+                graph.x - lead,
+                graph.right()
+            );
+            if place.layer == Layer::Strip {
+                assert_eq!(cells.column, graph.x - lead, "{protocol:?}: strip left");
+            }
+        }
+        assert!(band.is_some(), "the cursor's second line has a band");
+        let band = band.expect("checked");
+        assert_eq!(band.place(graph).cells.column, graph.x - lead, "band left");
+    }
+    assert!(
+        drawn_of(&state, &pixel_session(PixelProtocol::Kitty), false)
+            .1
+            .iter()
+            .any(|strip| !strip.emphasis.is_empty()),
+        "the fixture draws emphasis pieces, so their placement is checked too"
     );
 }

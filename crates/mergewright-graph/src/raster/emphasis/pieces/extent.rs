@@ -2,8 +2,8 @@
 
 use std::ops::Range;
 
-use super::super::super::CELLS_PER_LANE;
 use super::super::super::Edge;
+use super::super::super::{CELLS_PER_LANE, STRIP_LEAD_CELLS};
 use super::super::PlainStrip;
 use super::{Keys, Piece, PieceKind};
 
@@ -66,12 +66,15 @@ pub(super) fn node_cells(strip: &PlainStrip<'_>, column: usize) -> Range<i64> {
 }
 
 /// Strip cells from one left of lane `first`'s own cell to the end of the
-/// cell right of lane `last + extra`'s, within the strip.
+/// cell right of lane `last + extra`'s, within the strip. Lane `c`'s own
+/// cell is strip cell `STRIP_LEAD_CELLS + 2c`, so lane 0 never reaches the
+/// clamp at 0.
 fn lane_cells(strip: &PlainStrip<'_>, first: usize, last: usize, extra: usize) -> Range<i64> {
     let lane = signed_cells(CELLS_PER_LANE);
-    let strip_cells = signed(strip.lane_columns) * lane;
-    let start = (signed(first) * lane - 1).max(0);
-    let end = (signed(last + extra) * lane + 2).min(strip_cells);
+    let lead = signed_cells(STRIP_LEAD_CELLS);
+    let strip_cells = lead + signed(strip.lane_columns) * lane;
+    let start = (lead + signed(first) * lane - 1).max(0);
+    let end = (lead + signed(last + extra) * lane + 2).min(strip_cells);
     start..end
 }
 

@@ -57,7 +57,9 @@ impl NodeSize {
     /// stays inside its band and short of the next lane.
     pub(super) fn for_cell(cell_width: f32, cell_height: f32, stroke: f32) -> Self {
         let gap = stroke * 0.6;
-        let room = (cell_height / 2.0).min(cell_width) - gap;
+        // The clear gap, and at least a whole pixel: the halo's anti-aliased
+        // fringe must not reach the lane's edge pixel (ease-pass/29 D4).
+        let room = (cell_height / 2.0).min(cell_width) - gap.max(1.0);
         // The head's halo reaches 1.4 radii (see `draw`).
         let radius = (room / 1.4).max(1.0);
         NodeSize {
@@ -67,10 +69,18 @@ impl NodeSize {
         }
     }
 
-    /// From the node's centre to the nearest point a line may touch beside
-    /// a plain node: its outer radius plus the clear gap.
-    pub(super) fn clearance(self) -> f32 {
-        self.radius + self.gap
+    /// From the node's centre to the outer edge of `ring`'s widest mark.
+    pub(super) fn reach(self, ring: Ring) -> f32 {
+        match ring {
+            Ring::Head => self.radius * 1.4,
+            _ => self.radius,
+        }
+    }
+
+    /// The clear gap punched around a node.
+    #[cfg(test)]
+    pub(super) fn gap_px(self) -> f32 {
+        self.gap
     }
 }
 
@@ -84,11 +94,8 @@ pub(super) fn draw(
     ink: Option<Ink>,
     shift: Transform,
 ) {
-    let NodeSize { radius, gap, .. } = size;
-    let reach = match ring {
-        Ring::Head => radius * 1.4,
-        _ => radius,
-    };
+    let NodeSize { gap, .. } = size;
+    let reach = size.reach(ring);
     fill_circle(pixmap, centre, reach + gap, None, shift);
     if let Some(ink) = ink {
         draw_ring(pixmap, ring, centre, size, ink, shift);
@@ -134,7 +141,9 @@ fn draw_ring(
         ),
         Ring::Head => {
             fill_circle(pixmap, centre, radius, Some(ink), shift);
-            let halo = thickness * 0.6;
+            // Never thinner than the one pixel a hairline draws at: the
+            // halo's outer edge is then exactly 1.4 radii (ease-pass/29).
+            let halo = (thickness * 0.6).max(1.0);
             stroke_circle(
                 pixmap,
                 centre,
@@ -217,5 +226,7 @@ fn fill_square(pixmap: &mut Pixmap, (x, y): (f32, f32), half: f32, ink: Ink, shi
     pixmap.fill_rect(rect, &paint(ink), Transform::identity(), None);
 }
 
+#[cfg(test)]
+pub(super) mod extent_tests;
 #[cfg(test)]
 mod tests;

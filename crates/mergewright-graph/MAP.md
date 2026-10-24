@@ -110,11 +110,13 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## raster
 - `cache` (mod) — the strip cache.
-- `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
+- `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier. A lane's centre is its own cell's centre, where the Unicode node glyph sits (`lane_centre_x`).
+- `STRIP_LEAD_CELLS` (const) — cells a strip carries left of the graph column (1): the gutter's gap cell (ADR-0058 §4), so lane 0's node has room. Width is `STRIP_LEAD_CELLS + lanes × CELLS_PER_LANE`.
+- `lane_centre_x(column, cell_width) -> f32` (fn) — x of a lane's centre in strip pixels, `(STRIP_LEAD_CELLS + 2·column + 0.5)·cell_width`; the one place that formula lives.
 - `OFF_THREAD_ALPHA` (const) — alpha of a column off the selection's thread.
 - `FADED_ALPHA` (const) — alpha of a dimmed row or column with no thread in play.
 - `Emphasis` (enum) — `Normal` or `Dimmed`; alpha only, never width.
-- `Stub` (struct) — `identity`, `toward`: a folded edge as the rasteriser draws it.
+- `Stub` (struct) — `identity`, `toward`: a folded edge as the rasteriser draws it. Pixel tier: a corner tail from the node's rim, inside its lane (`Below` lower-right, `Above` upper-right).
 - `Marker` (struct) — the rail column: `column`.
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`, `Selection`.
 - `Ring` (enum) — node style: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of(&Row)` from git's parents (`Row::is_merge`: a folded merge is `Merge`), stash-blind.

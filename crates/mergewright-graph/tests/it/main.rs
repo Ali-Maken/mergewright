@@ -6,6 +6,7 @@
 mod corpus;
 mod corpus_seeds;
 mod emphasis_layer;
+mod node_shots;
 mod raster;
 mod raster_continuation;
 mod raster_pieces;

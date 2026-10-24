@@ -103,7 +103,7 @@ fn alpha(frame: &RasterFrame, x: u32, y: u32) -> u8 {
 /// Whether lane column `column`'s centre line is drawn at the band's top,
 /// middle and bottom scanlines.
 fn straight_in(frame: &RasterFrame, column: usize) -> bool {
-    let centre = u32::try_from(column).unwrap() * 2 * CELL_W + CELL_W / 2;
+    let centre = (u32::try_from(column).unwrap() * 2 + 1) * CELL_W + CELL_W / 2;
     [0, CELL_H / 2, CELL_H - 1]
         .into_iter()
         .all(|y| (centre - 1..=centre + 1).any(|x| alpha(frame, x, y) > 64))
@@ -153,7 +153,7 @@ fn every_lane_leaving_the_row_runs_straight_through_its_second_line() {
         assert_eq!((frame.rows, frame.height), (1, CELL_H), "one cell row");
         assert_eq!(
             frame.width,
-            u32::try_from(strip.lane_columns).unwrap() * 2 * CELL_W
+            (u32::try_from(strip.lane_columns).unwrap() * 2 + 1) * CELL_W
         );
         for column in 0..strip.lane_columns {
             if through.contains(&column) {
@@ -213,7 +213,7 @@ fn the_thread_lane_stays_lit_through_the_band_and_the_key_follows_the_paint() {
         .unwrap()
         .unwrap();
     let peak = |column: usize| {
-        let centre = u32::try_from(column).unwrap() * 2 * CELL_W + CELL_W / 2;
+        let centre = (u32::try_from(column).unwrap() * 2 + 1) * CELL_W + CELL_W / 2;
         (0..frame.width.min(centre + 3))
             .skip(centre as usize - 2)
             .map(|x| alpha(&frame, x, CELL_H / 2))
