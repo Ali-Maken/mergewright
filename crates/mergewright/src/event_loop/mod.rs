@@ -23,6 +23,7 @@
 
 mod exit_wait;
 mod graphics;
+pub use graphics::{Placed, Room, placements};
 mod headless;
 pub mod input;
 mod label;

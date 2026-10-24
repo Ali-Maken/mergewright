@@ -8,44 +8,45 @@ after `j` held ×188 at 16 ms, before `J`. Numbers: `docs/perf/47-scroll-accepta
 
 ## 1. The Ghostty path: `fix-scroll-ghostty.png`
 
-*Re-shot 2026-10-22 (ease-pass-21); the old picture was 850×407 px.*
+*Re-shot 2026-10-22 (ease-pass-22): the old picture drew the strips bare; this one is laid out as the real frame places them.*
 
 **Right looks like:** the lit thread (the selection's lanes and dots) at full
 strength, the off-thread lanes at half strength, no line wider than another,
-the same rows as the Unicode grid below. **Colour unverified; Ghostty's own
-rendering unverified until the user looks** (CLAUDE.md rules 5 and 6).
+the same lines as the Unicode grid below, one for one. **Colour unverified;
+Ghostty's own rendering unverified until the user looks** (CLAUDE.md rules 5 and 6).
 
 ![Kitty+deflate frame at release](fix-scroll-ghostty.png)
 
-What it is: every strip on screen as Graft sends it to a Kitty terminal with
-deflate on — the strip backdrop with the selection's emphasis image over it,
-built through `StripCache::composited` (ADR-0053: the picture the two Kitty
-layers blend to) — stacked, cropped to the graph column (2 cells, 34 px: the strips are as wide as
-the lanes in view (ease-pass 06 chain), not the 50-lane cap) and to the pane's rows 34–45
-(history rows 178–189, 12 rows of 37 px; the cursor's, 188, is drawn: `cursor_on_screen=true`), over a stand-in dark
-background (`#1E1E2E`), not his theme's. Drawn in-process by
-`crates/graft/tests/it/ghostty_shot.rs`; Ghostty itself never ran.
+What it is: every strip on screen as Mergewright sends it to a Kitty terminal
+with deflate on — the strip backdrop with the selection's emphasis image over
+it, built through `StripCache::composited` (ADR-0053) — laid out by
+`event_loop::placements`, the call the real frame places its strips with:
+cropped to the graph column (2 cells, 34 px) and to the pane's lines 34–45
+(12 lines of 37 px, 444 px): history rows 178–188, the cursor's row 188 on
+line 44, and line 45, the cursor row's second line, drawn as its continuation
+band (a vertical stroke, no dot). Over a stand-in dark background
+(`#1E1E2E`), not his theme's. Drawn in-process by
+`crates/mergewright/tests/it/ghostty_shot.rs`; Ghostty itself never ran.
 
-**The cursor's row is in it** (re-taken by m7-power-tools/48). The cursor is
-on history row 188; with the uncommitted row on top the pane now draws rows
-142–188, so row 188 is the last drawn row (`cursor_on_screen=true` in the
-SUMMARY line, `docs/perf/scroll-cursor-under-uncommitted-row.txt`). Before 48
-the pane drew 141–187 and the cursor sat one row below it (47 NOTES Q1).
-Whether it *looks* like the cursor's row is the user's call (rule 6).
+**Why the cursor was "44 vs 45" and the old PNG had 189:** the old shot
+skipped the tall-row step, so it kept history row 189 where the real frame
+puts the second line, and the cursor looked one line from the end. The
+"45" was a miscount of the text grid: the pane starts on screen row 2 (row 0
+the title bar, row 1 blank), not 1, so the grid's cursor on screen row 46 is
+pane line 44, the PNG's.
 
 ## 2. The Unicode tier: `fix-scroll-release-unicode.txt`
 
-**Right looks like:** the pane rows the PNG covers (screen rows 35–46, the pane's rows 34..46 counted from 0),
+**Right looks like:** the same 12 pane lines as the PNG (screen rows 36–47, pane lines 34..46 counted from 0),
 the graph column only (first 4 columns: the graph is as wide as the lanes in view, 2 here, so there is no `⋮`
-divider to cut at); a `◉` merge dot in the lane column on each row, the cursor `▸` on the last row (46).
-**The two do not line up row for row:** the PNG is the strips, 12 history rows 178–189 with the cursor's row 188
-not the last (why not checked: ease-pass 13's tall row is the suspect); the text grid is 12 screen lines with the cursor on
-the last. Characters only: the lit thread's colour and the cursor's fill are not recorded, so this grid cannot show
-which row is lit. Colour unverified. Re-taken 2026-10-22 (ease-pass-21) by the pty text walk of
+divider to cut at); a `◉` merge dot in the lane column on each history row, the cursor `▸` on line 44 (screen row 46),
+and a `┃` on line 45 (screen row 47), the cursor row's second line. **The two line up row for row:** 11 history
+rows 178–188 and the second line. The `▴` on row 185's line is a text-tier marker the PNG has no counterpart for. Characters only:
+the lit thread's colour and the cursor's fill are not recorded, so this grid cannot show which row is lit.
+Colour unverified. Re-taken 2026-10-22 (ease-pass-22) by the pty text walk of
 `scripts/47-scroll-acceptance.sh` step 5, run on its own (not the whole perf script).
 
 ```
-35|  ◉
 36|  ◉
 37|  ◉
 38|  ◉
@@ -57,11 +58,12 @@ which row is lit. Colour unverified. Re-taken 2026-10-22 (ease-pass-21) by the p
 44|  ◉
 45|  ◉
 46|▸ ◉
+47|  ┃
 ```
 
 The PNG is drawn by the Pixel tier and this grid by the Unicode tier, from
-two different runs, and their graph columns are not the same width (50 cells
-in the PNG, 38 here plus the divider), so compare rows, not columns.
+two different runs, and their graph columns are not the same width, so compare
+lines, not columns.
 
 ## 3. Before and after
 
