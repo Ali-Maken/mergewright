@@ -140,11 +140,11 @@ pub struct AppState {
     pub detail: super::detail::DetailState,
     /// Ids for the jobs `update` names itself (the detail pane's).
     pub local_jobs: super::detail::LocalJobs,
-    /// The tier-drop key (`F3`) forced this tier for the rest of the run, or
-    /// `None` for whatever `Session::settle` decided. A view-time override
-    /// like `lanes_expanded` — the rows are untouched, only how they draw
-    /// changes (`graph.renderer`, m1-the-graph/19).
+    /// `F3` (or a pixel failure) forced this tier for the run; `None` is
+    /// `Session::settle`'s. Rows untouched (`graph.renderer`, m1-the-graph/19).
     pub renderer_override: Option<RenderingTier>,
+    /// Why pixels gave way to text; cleared with the override (ease-pass/30).
+    pub pixels_failed: Option<Box<mergewright_term::SanitizedText>>,
     /// The tier `Session::settle` decided, copied in when the loop starts so
     /// `update` knows what `F3` drops from and whether row requests pad to
     /// pixel strips. `None` in a state built without a session (tests,
@@ -274,7 +274,7 @@ pub struct AppState {
     /// means `M` refuses in words instead of launching `git mergetool` and
     /// letting git ask "which tool?" on a terminal Mergewright has just handed
     /// over, where the question has no way back to the user.
-    pub mergetool: Option<String>,
+    pub mergetool: Option<Box<str>>,
     /// The operation banner has the keyboard: `c`/`s`/`a`/`M`/`e` act on the
     /// operation and every other key is swallowed
     /// (`docs/design/02-keymap.md` §2.1, §2.6).

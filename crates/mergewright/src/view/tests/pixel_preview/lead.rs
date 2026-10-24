@@ -110,13 +110,8 @@ fn preview_nodes_sit_where_the_pixel_nodes_were() {
     let pixel = pixel_session();
     let (open, _) = previewing_at();
     let shut = closed(&open);
-    let (_, graph) = buffer_at(&pixel, &shut, &GraphicsStatus::Ok);
-    let graph = graph.expect("premise: strips draw, closed");
-    let lead = f32::from(u16::try_from(STRIP_LEAD_CELLS).expect("small"));
     // The frames that draw the column as text: a preview's picture, the
-    // session a failed graphics probe leaves (Unicode tier), and `F3`. (A
-    // `Failed` status alone only adds a header message; the column is then
-    // not drawn as text, so there is no node to compare.)
+    // session a failed graphics probe leaves (Unicode tier), and `F3`.
     let unicode_session = session();
     let f3 = AppState {
         renderer_override: Some(RenderingTier::Unicode),
@@ -132,24 +127,53 @@ fn preview_nodes_sit_where_the_pixel_nodes_were() {
         ("F3 to unicode", &pixel, f3),
     ];
     for (name, with, state) in frames {
-        let (buffer, _) = buffer_at(with, &state, &GraphicsStatus::Ok);
-        let mut checked = 0;
-        for y in graph.y..graph.bottom() {
-            let Some(column) = node_column(&buffer, graph, y) else {
-                continue;
-            };
-            for width in [6.0_f32, 7.0, 8.0, 9.0, 10.0, 17.0, 24.0] {
-                let pixel_node = (f32::from(graph.x) - lead) * width + lane_centre_x(0, width);
-                let glyph = (f32::from(column) + 0.5) * width;
-                assert!(
-                    (pixel_node - glyph).abs() < 0.01,
-                    "{name}, line {y}, cell width {width}: pixel node at {pixel_node}, glyph at {glyph}"
-                );
-            }
-            checked += 1;
-        }
-        assert!(checked > 5, "{name}: premise: real rows drawn ({checked})");
+        assert_nodes_at_pixel_centres(name, with, &state, &shut);
     }
+}
+
+/// ease-pass/30 D5: the drop a pixel failure makes (`renderer_override`
+/// Unicode, a reason kept) leaves every node where the pixel tier had it.
+#[test]
+fn fallback_nodes_sit_where_the_pixel_nodes_were() {
+    let pixel = pixel_session();
+    let shut = closed(&previewing());
+    let dropped = AppState {
+        renderer_override: Some(RenderingTier::Unicode),
+        pixels_failed: Some(Box::new(mergewright_term::sanitize_line("EINVAL:bad"))),
+        ..shut.clone()
+    };
+    assert_nodes_at_pixel_centres("pixels failed", &pixel, &dropped, &shut);
+}
+
+/// Every real row of `state`'s frame draws its glyph on the cell whose
+/// centre is where `pixel_state`'s strip draws that row's node, at every
+/// cell width a terminal has.
+fn assert_nodes_at_pixel_centres(
+    name: &str,
+    with: &Session,
+    state: &AppState,
+    pixel_state: &AppState,
+) {
+    let (_, graph) = buffer_at(&pixel_session(), pixel_state, &GraphicsStatus::Ok);
+    let graph = graph.expect("premise: strips draw, closed");
+    let lead = f32::from(u16::try_from(STRIP_LEAD_CELLS).expect("small"));
+    let (buffer, _) = buffer_at(with, state, &GraphicsStatus::Ok);
+    let mut checked = 0;
+    for y in graph.y..graph.bottom() {
+        let Some(column) = node_column(&buffer, graph, y) else {
+            continue;
+        };
+        for width in [6.0_f32, 7.0, 8.0, 9.0, 10.0, 17.0, 24.0] {
+            let pixel_node = (f32::from(graph.x) - lead) * width + lane_centre_x(0, width);
+            let glyph = (f32::from(column) + 0.5) * width;
+            assert!(
+                (pixel_node - glyph).abs() < 0.01,
+                "{name}, line {y}, cell width {width}: pixel node at {pixel_node}, glyph at {glyph}"
+            );
+        }
+        checked += 1;
+    }
+    assert!(checked > 5, "{name}: premise: real rows drawn ({checked})");
 }
 
 /// ease-pass/29 D5.6: below four columns the body has no gutter, so there is

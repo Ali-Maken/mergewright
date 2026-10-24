@@ -51,6 +51,7 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
         // repository screen never submits one, so never hears of one.
         AppEvent::Rested | AppEvent::Produced(_, Product::Cloned(_)) => {}
         AppEvent::Started(id, task) => started(next, commands, id, &task),
+        AppEvent::PixelsFailed(why) => super::keys::fall_back_from_pixels(next, commands, why),
         AppEvent::GraphModeKept { mode, result } => {
             palette::graph_mode_kept(next, mode, result);
         }

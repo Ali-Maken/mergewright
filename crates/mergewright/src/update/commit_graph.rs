@@ -157,7 +157,8 @@ pub(super) fn commit_graph_event(next: &mut AppState, event: AppEvent) {
         | AppEvent::Progress(..)
         | AppEvent::Produced(..)
         | AppEvent::Rested
-        | AppEvent::GraphModeKept { .. } => {}
+        | AppEvent::GraphModeKept { .. }
+        | AppEvent::PixelsFailed(_) => {}
     }
 }
 

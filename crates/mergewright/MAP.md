@@ -54,7 +54,7 @@ The loop that turns a terminal into an application: wake, `update`, draw. Every 
 ## event_loop::exit_wait
 After the terminal is given back: stop the job pool, wait a bounded time for an unstoppable write, say what happened.
 ## event_loop::graphics
-The pixel tier's output: Kitty or iTerm2 images in the graph column, and the terminal's replies about them.
+The pixel tier's output: Kitty or iTerm2 images in the graph column, and the terminal's replies about them. A failure it cannot cure (`take_failure`) drops the graph to Unicode as `F3` would; cured replies and prefetch failures do not.
 ## event_loop::headless
 Runs Mergewright to one finished frame with no terminal, when stdout is not a tty.
 ## event_loop::input
@@ -74,7 +74,7 @@ When the cursor has stopped: per-row work starts only for the row he stops on, n
 ## event_loop::row_clear
 A backend whose full-screen clear erases row by row, so a resize does not free the pixel tier's images.
 ## event_loop::running
-The loop's entry points: `pump` and its test and pixel forms, idle prefetch, the paced turn, the free at exit.
+The loop's entry points: `pump` and its test and pixel forms, idle prefetch, the paced turn, the free at exit. `turn/answers.rs` holds the fence answers and `pixels_failed` (applies `AppEvent::PixelsFailed` at the top of every turn).
 ## event_loop::signals
 Leaving cleanly on `SIGTERM`, `SIGINT`, `SIGHUP`, `SIGTSTP`: the terminal is restored however Mergewright stops.
 ## event_loop::startup
@@ -277,7 +277,7 @@ Dragging a branch badge onto a row: the three-event state machine and the menu t
 ## update::edge
 Where a pressed key meets the user's `[keys]` remaps, ahead of every dispatcher.
 ## update::events
-What flows through `update`: events in, commands out (`Command`), a take (`TakeRequest`, `TakeAt`), the commit-graph offer (`CommitGraphOffer`), and the job-runner vocabulary between them.
+What flows through `update`: events in, commands out (`Command`), a take (`TakeRequest`, `TakeAt`), the commit-graph offer (`CommitGraphOffer`), and the job-runner vocabulary between them. `PixelsFailed(reason)` is the loop's own.
 ## update::facts
 Facts beside the graph arriving (system git, refs, working-tree counts), their read failures, and the name prompt's key claim.
 ## update::finish
@@ -355,7 +355,7 @@ The uncommitted-changes row's one-bit selection, kept beside `History`'s cursor.
 The stash overlay's state (`S`) and its keys: save, apply, pop, drop.
 ## update::state
 Everything Mergewright knows as one value (`AppState`), plus the small types it is built from.
-- File state.rs holds `AppState` alone; each type below is re-exported from it unchanged.
+- File state.rs holds `AppState` alone; each type below is re-exported from it unchanged. `pixels_failed` is why pixels gave way to text, kept beside `renderer_override`.
 - File state/screen.rs — `Screen`, `GraphOverlay`, `Size`, `CHROME_ROWS`.
 - File state/queries.rs — `impl AppState`: tier, graph rows, Uncommitted row, focus, overlay.
 - File state/key_owner.rs — `impl AppState`: quitting, text fields, modal key and bottom-row ownership, `shown_status`.
@@ -398,7 +398,7 @@ A radar `Explanation` turned into the sanitised `ExplainView` the Explain panel 
 ## view::finish
 The merge review's view model (`ReviewView`, how each clashed file was solved from `AppState::choices`); keys, mouse and draw build the same view; bar `Review(List)`, or `Look` while `look_view` is open.
 ## view::frame
-The top of the draw: picks the tier and screen, then hands off to `rows` and `status`.
+The top of the draw: picks the tier and screen, then hands off to `rows` and `status`. `notices::renderer_line` words `F3`'s line, with `pixels failed: <reason>` after a pixel failure, fitted to the row.
 ## view::hit
 Which drawn thing a screen cell belongs to: the hit-test half that needs the view's layout.
 ## view::journal

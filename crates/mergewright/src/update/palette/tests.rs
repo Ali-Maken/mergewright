@@ -106,7 +106,7 @@ fn in_progress_rows_run_as_the_focused_banner_would() {
     // it was — words that differ by design, as focus does.
     let unfocused = |mut state: AppState| {
         state.banner_focus = false;
-        state.mergetool = Some("vimdiff".to_owned());
+        state.mergetool = Some("vimdiff".into());
         state
     };
     let stops = vec![

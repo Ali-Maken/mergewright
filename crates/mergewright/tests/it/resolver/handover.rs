@@ -111,7 +111,7 @@ fn M_hands_over() {
     assert!(reason.contains("no merge.tool configured"), "{reason:?}");
 
     let mut configured = state.clone();
-    configured.mergetool = Some("vimdiff".to_owned());
+    configured.mergetool = Some("vimdiff".into());
     let (_, commands) = press_for_commands(&configured, KeyPress::plain(KeyCode::Char('M')));
     assert!(
         matches!(commands.as_slice(), [Command::OpenMergetool { path }] if path == Path::new("both.txt")),

@@ -522,7 +522,7 @@ fn mergetool_with_none_configured_refuses_before_handing_over() {
 #[test]
 fn mergetool_with_one_configured_asks_the_loop_for_the_first_conflict() {
     let mut state = stopped(InProgress::Merge, &["src/auth.rs", "src/login.rs"]);
-    state.mergetool = Some("vimdiff".to_owned());
+    state.mergetool = Some("vimdiff".into());
     let (claimed, commands) = press(&mut state, KeyCode::Char('M'));
     assert!(claimed);
     let [Command::OpenMergetool { path }] = commands.as_slice() else {
@@ -746,7 +746,7 @@ fn answer_and_read_disagree_says_so() {
 fn mergetool_and_edit_refuse_in_words_when_nothing_is_conflicted() {
     for code in [KeyCode::Char('M'), KeyCode::Char('e')] {
         let mut state = stopped(InProgress::Rebase, &[]);
-        state.mergetool = Some("meld".to_owned());
+        state.mergetool = Some("meld".into());
         let (claimed, commands) = press(&mut state, code);
         assert!(claimed);
         assert!(commands.is_empty(), "{code:?} queued {commands:?}");
@@ -1092,7 +1092,7 @@ fn every_hint_the_focused_banner_draws_is_answered_by_banner_key() {
         let mut base = stopped(kind, paths);
         // So `M` can queue the hand-over rather than refuse for want of a
         // tool: the refusal is its own test.
-        base.mergetool = Some("meld".to_owned());
+        base.mergetool = Some("meld".into());
         let banner = banner_view(&base).expect("an operation is live");
         assert_eq!(banner.skippable, skippable);
         assert_eq!(banner.conflict.is_some(), conflicted);

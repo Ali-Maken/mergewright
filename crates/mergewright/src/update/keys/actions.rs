@@ -2,6 +2,7 @@
 //! compare mark — split out of `keys` (review m6-amend-16 M3).
 
 use mergewright_core::capabilities::RenderingTier;
+use mergewright_term::SanitizedText;
 
 use super::super::events::Command;
 use super::super::state::{AppState, Status};
@@ -18,6 +19,31 @@ pub(super) fn cycle_tier(next: &mut AppState, commands: &mut Vec<Command>) {
     // Back at the top the override clears, so the footer has nothing extra
     // to say (`mergewright::view`). On an ASCII-only terminal that is every press.
     next.renderer_override = lower.filter(|&tier| tier != top);
+    if next.renderer_override.is_none() {
+        next.pixels_failed = None;
+    }
+    tier_changed(next, commands);
+}
+
+/// The pixel tier failed in a way it cannot cure (`AppEvent::PixelsFailed`):
+/// at the pixel tier in force, drop to Unicode as `F3` would and keep `why`
+/// for the footer. Off it — a late reply after `F3` — there is nothing to
+/// drop from, so nothing changes. A second failure at Unicode likewise.
+pub(in crate::update) fn fall_back_from_pixels(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    why: SanitizedText,
+) {
+    if next.tier() != RenderingTier::Pixel {
+        return;
+    }
+    next.renderer_override = Some(RenderingTier::Unicode);
+    next.pixels_failed = Some(Box::new(why));
+    tier_changed(next, commands);
+}
+
+/// The history's row requests follow the tier in force.
+fn tier_changed(next: &mut AppState, commands: &mut Vec<Command>) {
     let tier = next.tier();
     let height = next.graph_rows();
     if let Some(history) = next.history.as_mut() {
