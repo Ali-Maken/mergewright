@@ -175,7 +175,10 @@ fn panel(state: &AppState) -> Result<(Panel, usize), String> {
     });
     let paint = StripPaint::of(&session);
     let (mut drawn, mut stacked, mut width, mut count) = (Vec::new(), Vec::new(), None, 0);
-    for strip in &pixels.strips {
+    // The pinned uncommitted row is an image of its own, stacked first
+    // (ease-pass/20); the strips run on above `top`, cut below.
+    let pinned = usize::from(pixels.pinned.is_some());
+    for strip in pixels.pinned.iter().chain(&pixels.strips) {
         let frame = strip.with_layers(&pixels, &paint, |plain, selection| {
             // The strip key only names the pieces; nothing here is held.
             let mut frame = rasterise_backdrop(plain, selection.backdrop)?;
@@ -197,7 +200,7 @@ fn panel(state: &AppState) -> Result<(Panel, usize), String> {
         let uncommitted = strip.uncommitted_at();
         let mut row = strip.first_row;
         for k in 0..strip.row_count() {
-            if uncommitted == Some(k) {
+            if uncommitted == Some(k) || (pinned == 1 && drawn.is_empty()) {
                 drawn.push(None);
             } else {
                 drawn.push(Some(row));
@@ -207,12 +210,20 @@ fn panel(state: &AppState) -> Result<(Panel, usize), String> {
         stacked.extend_from_slice(&frame.pixels);
     }
     let width = width.ok_or("no strip on screen")?;
+    let line = paint.cell_height as usize * width as usize * 4;
+    if pinned == 1 {
+        let from = drawn
+            .iter()
+            .position(|row| *row == Some(history.top))
+            .ok_or("history row `top` is in no strip")?;
+        drawn.drain(1..from);
+        stacked.drain(line..from * line);
+    }
     let at = drawn
         .iter()
         .position(|row| *row == Some(history.cursor))
         .ok_or("the cursor's row is in no strip")?;
     let shown = at.saturating_sub(AROUND)..(at + AROUND + 1).min(drawn.len());
-    let line = paint.cell_height as usize * width as usize * 4;
     let pixels = stacked[shown.start * line..shown.end * line].to_vec();
     Ok((Panel { pixels, width }, count))
 }
