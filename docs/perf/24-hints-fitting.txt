@@ -1,0 +1,48 @@
+== before ==  rev d085cc32 2026-10-24
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=83369
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=82348
+PASS [   0.016s] (1/8) mergewright-ui empty_state::tests::bar_keys_follow_the_form
+PASS [  19.790s] (2/8) mergewright-ui graph_screen::hints::tests::no_context_hides_every_key
+PASS [  20.141s] (3/8) mergewright-ui graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+PASS [  36.300s] (4/8) mergewright-ui graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+PASS [  37.435s] (5/8) mergewright-ui graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+PASS [  17.268s] (6/8) mergewright-ui graph_screen::hints::tests::the_three_most_relevant_never_fall_below_their_floor_rung
+PASS [  35.031s] (7/8) mergewright-ui graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+PASS [  39.254s] (8/8) mergewright-ui graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+
+== after ==  rev d085cc32 2026-10-24
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=30250
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=30354
+PASS [   0.021s] (1/8) mergewright-ui empty_state::tests::bar_keys_follow_the_form
+PASS [   7.591s] (2/8) mergewright-ui graph_screen::hints::tests::no_context_hides_every_key
+PASS [   8.477s] (3/8) mergewright-ui graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+PASS [  14.623s] (4/8) mergewright-ui graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+PASS [  16.607s] (5/8) mergewright-ui graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+PASS [   7.076s] (6/8) mergewright-ui graph_screen::hints::tests::the_three_most_relevant_never_fall_below_their_floor_rung
+PASS [  14.359s] (7/8) mergewright-ui graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+PASS [  18.724s] (8/8) mergewright-ui graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+
+== after2 ==  rev d085cc32 2026-10-24
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=33180
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=33234
+PASS [   0.018s] (1/8) mergewright-ui empty_state::tests::bar_keys_follow_the_form
+PASS [   8.104s] (2/8) mergewright-ui graph_screen::hints::tests::no_context_hides_every_key
+PASS [   9.108s] (3/8) mergewright-ui graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+PASS [  15.509s] (4/8) mergewright-ui graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+PASS [  17.416s] (5/8) mergewright-ui graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+PASS [   7.609s] (6/8) mergewright-ui graph_screen::hints::tests::the_three_most_relevant_never_fall_below_their_floor_rung
+PASS [  15.395s] (7/8) mergewright-ui graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+PASS [  19.859s] (8/8) mergewright-ui graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+
+== after3 ==  rev d085cc32 2026-10-24
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=29170
+test graph_screen::hints::bench24::bench_hints_for ... BENCH calls=682962 hints_drawn=7127997 ns_per_call=28992
+PASS [   0.017s] (1/8) mergewright-ui empty_state::tests::bar_keys_follow_the_form
+PASS [   7.056s] (2/8) mergewright-ui graph_screen::hints::tests::no_context_hides_every_key
+PASS [   8.090s] (3/8) mergewright-ui graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+PASS [  14.219s] (4/8) mergewright-ui graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+PASS [  15.827s] (5/8) mergewright-ui graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+PASS [   6.710s] (6/8) mergewright-ui graph_screen::hints::tests::the_three_most_relevant_never_fall_below_their_floor_rung
+PASS [  13.875s] (7/8) mergewright-ui graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+PASS [  18.190s] (8/8) mergewright-ui graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+

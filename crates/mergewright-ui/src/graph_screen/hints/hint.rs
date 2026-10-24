@@ -192,7 +192,13 @@ impl Hint {
     /// after the key and its space, for a caller that styles the two apart.
     #[must_use]
     pub fn drawn_verb(&self) -> Option<&str> {
-        match self.rung {
+        self.verb_at(self.rung)
+    }
+
+    /// [`Hint::drawn_verb`] as if the hint stood at `rung`, without building
+    /// that hint — the fitter measures a candidate rung this way.
+    pub(super) fn verb_at(&self, rung: Rung) -> Option<&str> {
+        match rung {
             Rung::Key => None,
             Rung::Short => Some(self.short().unwrap_or(&self.verb)),
             Rung::Full => Some(&self.verb),

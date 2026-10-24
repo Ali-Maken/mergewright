@@ -25,7 +25,7 @@ pub(super) fn spelled_bar(
     keys: &Keymap,
 ) -> (Vec<Hint>, Option<Hint>) {
     let (list, trailer) = whole_bar(context, divider, keys);
-    let list = spelled(list, keys);
+    let (list, drawn) = spell(list, keys);
     // `? keys`, or `⌃P keys` when `?` is unbound (m8/11b decision 1): the
     // one fallback, [`doorway_hint`], which the place footers spell too.
     let trailer = trailer.and_then(|door| {
@@ -35,8 +35,11 @@ pub(super) fn spelled_bar(
             Some(door)
         }
     });
+    // The doorway is drawn unless its key is unbound or already on the bar:
+    // [`spelled`]'s own rule, applied to the labels it already collected.
     let trailer = trailer.filter(|door| {
-        spelled(list.iter().cloned().chain([door.clone()]).collect(), keys).len() > list.len()
+        let labels = door.labels(keys);
+        !labels.is_empty() && !labels.iter().any(|label| drawn.contains(label))
     });
     (list, trailer)
 }
@@ -69,6 +72,11 @@ pub(crate) fn doorway_key(keys: &Keymap) -> Option<String> {
 /// drawing a chord an earlier hint already draws (the earlier one is the
 /// more relevant: tables put a place's own keys first).
 pub(super) fn spelled(list: Vec<Hint>, keys: &Keymap) -> Vec<Hint> {
+    spell(list, keys).0
+}
+
+/// [`spelled`], and every label the kept hints draw.
+fn spell(list: Vec<Hint>, keys: &Keymap) -> (Vec<Hint>, Vec<String>) {
     let mut drawn: Vec<String> = Vec::new();
     let mut kept = Vec::new();
     for hint in list {
@@ -79,7 +87,7 @@ pub(super) fn spelled(list: Vec<Hint>, keys: &Keymap) -> Vec<Hint> {
         drawn.extend(labels);
         kept.push(hint);
     }
-    kept
+    (kept, drawn)
 }
 
 /// Whether `context`'s bar is words-only (ADR-0058 §4): every context that

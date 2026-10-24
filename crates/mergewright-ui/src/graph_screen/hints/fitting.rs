@@ -150,35 +150,115 @@ pub(super) fn fit_list(
     // One slot per list entry, `None` until a step places it; a later step
     // raises a placed hint in its slot, so the drawn row is always the
     // placed slots in list order.
-    let mut slots: Vec<Option<Hint>> = list
+    let mut rungs: Vec<Option<Rung>> = list
         .iter()
         .enumerate()
-        .map(|(index, hint)| (index < floor).then(|| hint.at(hint.floor_rung())))
+        .map(|(index, hint)| (index < floor).then(|| hint.floor_rung()))
         .collect();
-    // Width does not depend on order (every join is the same separator),
-    // so a candidate is measured in fit order and drawn in list order.
-    let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().cloned().collect::<Vec<_>>();
-    let in_list_order = |slots: &[Option<Hint>]| {
-        let mut placed: Vec<(usize, Hint)> = order
-            .iter()
-            .zip(slots)
-            .filter_map(|(&at, slot)| slot.clone().map(|hint| (at, hint)))
-            .collect();
-        placed.sort_by_key(|&(at, _)| at);
-        placed.into_iter().map(|(_, hint)| hint).collect::<Vec<_>>()
-    };
-    if !fits(&drawn(&slots), trailer.as_ref(), room, keys) {
+    // Each entry is measured once per rung it is tried at, never the whole
+    // row again: the row's width is the sum of its parts (every join is the
+    // same separator), so a step costs one measure plus an addition.
+    let mut row = Row::new(words, room);
+    if let Some(trailer) = &trailer {
+        row.add(width_at(trailer, trailer.rung, key_width(trailer, keys)));
+    }
+    let key_widths: Vec<Option<usize>> = list.iter().map(|hint| key_width(hint, keys)).collect();
+    for ((hint, rung), key) in list.iter().zip(&rungs).zip(&key_widths) {
+        if let Some(rung) = rung {
+            row.add(width_at(hint, *rung, *key));
+        }
+    }
+    if !row.fits() {
         return below_the_floor(list, trailer, room, words, keys);
     }
     for Step { index, rung } in ladder(list, floor, words) {
-        let mut candidate = slots.clone();
-        candidate[index] = Some(list[index].at(rung));
-        if !fits(&drawn(&candidate), trailer.as_ref(), room, keys) {
+        let before = rungs[index].map(|old| width_at(&list[index], old, key_widths[index]));
+        let mut candidate = row;
+        if let Some(before) = before {
+            candidate.remove(before);
+        }
+        candidate.add(width_at(&list[index], rung, key_widths[index]));
+        if !candidate.fits() {
             break;
         }
-        slots = candidate;
+        row = candidate;
+        rungs[index] = Some(rung);
     }
-    place_doorway(in_list_order(&slots), trailer)
+    let mut placed: Vec<(usize, Hint)> = order
+        .iter()
+        .zip(&rungs)
+        .zip(list)
+        .filter_map(|((&at, rung), hint)| rung.map(|rung| (at, hint.at(rung))))
+        .collect();
+    placed.sort_by_key(|&(at, _)| at);
+    place_doorway(placed.into_iter().map(|(_, hint)| hint).collect(), trailer)
+}
+
+/// The cells of `hint`'s keys, `None` when it draws nothing. Measured once
+/// per hint, then combined with each rung by [`width_at`].
+fn key_width(hint: &Hint, keys: &Keymap) -> Option<usize> {
+    hint.key_text(keys).map(|key| key.width())
+}
+
+/// The cells `hint.at(rung).text(keys)` takes given its `key_width`,
+/// measured without cloning the hint or spelling its key again.
+fn width_at(hint: &Hint, rung: Rung, key_width: Option<usize>) -> Option<usize> {
+    let key = key_width?;
+    Some(match hint.verb_at(rung) {
+        Some(verb) => key + 1 + verb.width(),
+        None => key,
+    })
+}
+
+/// The width of a bar as the sum of its hints, so a ladder step is measured
+/// by adding the one hint it changes. Matches [`hints_text`] exactly: a
+/// leading space, then the hints' texts (a hint naming no bound key draws
+/// nothing and counts nothing) joined by the bar's separator.
+#[derive(Clone, Copy)]
+struct Row {
+    separator: usize,
+    room: usize,
+    texts: usize,
+    cells: usize,
+}
+
+impl Row {
+    fn new(words: Words, room: usize) -> Self {
+        // `fit_list` stamps every hint of a words-only bar, so one rule
+        // picks `hints_text`'s separator for the whole row.
+        let separator = match words {
+            Words::Only => text_width(HINT_SEPARATOR),
+            Words::Keys => text_width(KEYS_SEPARATOR),
+        };
+        Row {
+            separator,
+            room,
+            texts: 0,
+            cells: 0,
+        }
+    }
+
+    fn add(&mut self, width: Option<usize>) {
+        if let Some(width) = width {
+            self.texts += 1;
+            self.cells += width;
+        }
+    }
+
+    fn remove(&mut self, width: Option<usize>) {
+        if let Some(width) = width {
+            self.texts -= 1;
+            self.cells -= width;
+        }
+    }
+
+    fn fits(&self) -> bool {
+        let width = match self.texts {
+            0 => 0,
+            n => 1 + self.cells + (n - 1) * self.separator,
+        };
+        width <= self.room
+    }
 }
 
 /// The order [`fit_list`] fits `list` in: list order, except that
@@ -197,11 +277,8 @@ pub(super) fn fit_order(list: &[Hint]) -> Vec<usize> {
     order
 }
 
-/// Does `drawn` plus `trailer` fit in `room`?
-///
-/// The trailer is measured on the end wherever [`place_doorway`] will put
-/// it: [`hints_text`] separates every pair of hints the same way, so moving
-/// one hint within the row changes no cell count.
+/// Does `drawn` plus `trailer` fit in `room`? The whole-row measure, for the
+/// callers that have a built row; [`fit_list`] sums [`Row`] instead.
 fn fits(drawn: &[Hint], trailer: Option<&Hint>, room: usize, keys: &Keymap) -> bool {
     let mut measured = drawn.to_vec();
     measured.extend(trailer.cloned());
