@@ -160,7 +160,7 @@ below it, and ADR-0016 is superseded — not edited — if the answer changes.
 
 The loop never writes ahead of the terminal.
 
-- Every frame is `SYNC_BEGIN` · text · image commands · `SYNC_END` · `CSI 5 n`.
+- Every frame is `SYNC_BEGIN` · iTerm2 band erase (only when bands were drawn) · text · image commands · `SYNC_END` · `CSI 5 n`. The erase precedes the text because it blanks cells the text may now fill.
 - The next frame waits for that frame's `CSI 0 n`. Wakes that arrive meanwhile are applied to state, not drawn; the
   answer releases one frame showing the latest state.
 - A fence unanswered after 500 ms draws anyway; three in a row stop fencing for the run, and frames are then capped

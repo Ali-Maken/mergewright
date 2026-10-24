@@ -184,6 +184,15 @@ impl<R: GraphicsReplies> Graphics<R> {
         Ok(changed)
     }
 
+    /// Append the erase of every cell the last frame's iTerm2 bands covered.
+    /// It goes out *before* the frame's text: a band is a picture over cells
+    /// that hold blanks, so the erase has to precede whatever the text now
+    /// writes there (the glyphs of a drop to Unicode, a preview opening),
+    /// never follow it. Kitty placements are not cells; nothing to do.
+    pub fn erase_bands(&mut self, out: &mut Vec<u8>) {
+        self.bands.hide(out);
+    }
+
     /// Append the commands that put this frame's strips into `graph`, the
     /// graph column; `None` (no pixels this frame) removes every placement.
     /// Off the pixel tier (`F3`) it frees every upload too: the terminal may
@@ -206,7 +215,7 @@ impl<R: GraphicsReplies> Graphics<R> {
             } else {
                 self.images.free_all(out);
             }
-            self.bands.hide(out);
+            // The cells were erased before the text (`erase_bands`).
             return;
         };
         self.strips.keep_at_least(StripCache::capacity_for(

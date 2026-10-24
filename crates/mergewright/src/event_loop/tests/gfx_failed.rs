@@ -181,3 +181,102 @@ fn a_fallback_settles_without_waking_again() {
     assert!(frames.len() <= 3, "{} frames: {frames:?}", frames.len());
     assert!(frames[1].contains(FALLBACK_NOTICE));
 }
+
+/// A terminal's cells after `stream`: cursor moves, the cursor save and
+/// restore, erase-characters and printed text; images, colour and the rest
+/// are skipped. Enough to tell whether a glyph was erased after it was drawn.
+fn screen_after(stream: &str) -> Vec<Vec<char>> {
+    let mut grid = vec![vec![' '; usize::from(PIXEL_COLUMNS)]; usize::from(PIXEL_ROWS)];
+    let (mut row, mut column, mut saved) = (0usize, 0usize, (0usize, 0usize));
+    let mut chars = stream.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\x1b' {
+            if let Some(cell) = grid.get_mut(row).and_then(|line| line.get_mut(column)) {
+                *cell = c;
+            }
+            column += 1;
+            continue;
+        }
+        match chars.next() {
+            Some('[') => {
+                let mut params = String::new();
+                let last = loop {
+                    match chars.next() {
+                        Some(p) if p.is_ascii_digit() || p == ';' || p == '?' => params.push(p),
+                        Some(last) => break last,
+                        None => return grid,
+                    }
+                };
+                let nums: Vec<usize> = params.split(';').filter_map(|n| n.parse().ok()).collect();
+                match last {
+                    'H' => {
+                        row = nums.first().copied().unwrap_or(1) - 1;
+                        column = nums.get(1).copied().unwrap_or(1) - 1;
+                    }
+                    'X' => {
+                        for cell in grid[row].iter_mut().skip(column).take(nums[0]) {
+                            *cell = ' ';
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Some('7') => saved = (row, column),
+            Some('8') => (row, column) = saved,
+            // OSC and APC: skip to the string terminator.
+            Some(']' | '_') => {
+                let mut previous = ' ';
+                for c in chars.by_ref() {
+                    if c == '\x07' || (previous == '\x1b' && c == '\\') {
+                        break;
+                    }
+                    previous = c;
+                }
+            }
+            _ => {}
+        }
+    }
+    grid
+}
+
+fn glyphs(grid: &[Vec<char>]) -> usize {
+    grid.iter().flatten().filter(|&&c| c == '\u{25cf}').count()
+}
+
+#[test]
+fn an_iterm2_drop_keeps_the_text_column() {
+    // Kitty-format replies are read whichever protocol draws, so an uncured
+    // one drops an iTerm2 session too.
+    let (frames, _tail) = run_in(
+        with_protocol(PixelProtocol::Iterm2),
+        vec![unbound_key(), unbound_key(), quit_key()],
+        vec![UNCURED.to_vec()],
+    );
+    assert!(frames[0].contains("1337;File="), "premise: bands drawn");
+    let drop = screen_after(&frames[..2].concat());
+    assert!(
+        glyphs(&drop) > 5,
+        "the drop frame's glyphs survive its erase: {}",
+        glyphs(&drop)
+    );
+    let next = screen_after(&frames[..3].concat());
+    assert!(glyphs(&next) > 5, "and the next frame's");
+}
+
+#[test]
+fn f3_off_iterm2_pixels_keeps_the_text_column() {
+    let f3 = key(KeyPress::plain(KeyCode::Function(3)));
+    let (frames, _tail) = run_in(
+        with_protocol(PixelProtocol::Iterm2),
+        vec![f3, quit_key()],
+        vec![],
+    );
+    assert!(frames[0].contains("1337;File="), "premise: bands drawn");
+    assert!(!frames[1].contains("1337;File="), "premise: F3 left pixels");
+    let unicode = screen_after(&frames[..2].concat());
+    assert!(
+        glyphs(&unicode) > 5,
+        "F3's glyphs survive the band erase: {}",
+        glyphs(&unicode)
+    );
+}

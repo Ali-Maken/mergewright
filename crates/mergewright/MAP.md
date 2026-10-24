@@ -54,7 +54,7 @@ The loop that turns a terminal into an application: wake, `update`, draw. Every 
 ## event_loop::exit_wait
 After the terminal is given back: stop the job pool, wait a bounded time for an unstoppable write, say what happened.
 ## event_loop::graphics
-The pixel tier's output: Kitty or iTerm2 images in the graph column, and the terminal's replies about them. A failure it cannot cure (`take_failure`) drops the graph to Unicode as `F3` would; cured replies and prefetch failures do not.
+The pixel tier's output: Kitty or iTerm2 images in the graph column, and the terminal's replies. An uncured failure (`take_failure`) drops the graph to Unicode as `F3` would. `erase_bands` runs before the text.
 ## event_loop::headless
 Runs Mergewright to one finished frame with no terminal, when stdout is not a tty.
 ## event_loop::input
