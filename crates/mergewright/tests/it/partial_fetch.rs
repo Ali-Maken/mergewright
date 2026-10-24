@@ -43,7 +43,7 @@ fn journal(repo: &std::path::Path) -> Vec<JournalEntry> {
 fn line(status: &Status) -> String {
     match status {
         Status::Done { what, .. } => what.clone(),
-        Status::Sticky { reason, keys } => match keys {
+        Status::Sticky { reason, keys, .. } => match keys {
             Some(keys) => format!("{reason} \u{b7} {keys}"),
             None => reason.clone(),
         },
@@ -212,7 +212,7 @@ fn capture_j_at(app: &App, state: &AppState, (columns, rows): (u16, u16), tips: 
     assert!(
         collapsed
             .iter()
-            .any(|line| line.starts_with("fetch all remotes failed")
+            .any(|line| line.starts_with("⊗ fetch all remotes failed")
                 && line.ends_with(" \u{b7} origin/main moved before it stopped")),
         "{}",
         collapsed.join("\n")

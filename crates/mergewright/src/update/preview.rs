@@ -198,7 +198,11 @@ pub fn open_preview(
         return false;
     }
     if let Some(reason) = preview_refusal(state) {
-        state.status = Status::Sticky { reason, keys: None };
+        state.status = Status::Sticky {
+            reason,
+            keys: None,
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
+        };
         return false;
     }
 

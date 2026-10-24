@@ -585,10 +585,10 @@ fn journal_has_the_push(app: &App, state: AppState) -> AppState {
 
 /// The words a non-fast-forward rejection leaves.
 fn rejected_status(branch: &str) -> Status {
-    Status::Sticky {
-        reason: format!("push rejected: origin/{branch} has commits you don't"),
-        keys: Some("p pull, then m or r · P force with lease".to_owned()),
-    }
+    Status::sticky_failure_keys(
+        format!("push rejected: origin/{branch} has commits you don't"),
+        Some("p pull, then m or r · P force with lease".to_owned()),
+    )
 }
 
 /// An amended, already-pushed commit: `P` is rejected in words; the next
@@ -700,10 +700,10 @@ fn a_push_after_head_moved_is_refused_in_words() {
     // A refusal is sticky, like the stale lease's: it stays until read.
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "HEAD moved to another branch since it was read — look again".to_owned(),
-            keys: None,
-        }
+        Status::sticky_keys(
+            "HEAD moved to another branch since it was read — look again".to_owned(),
+            None
+        )
     );
     assert_eq!(
         rev(remote.bare(), &main),

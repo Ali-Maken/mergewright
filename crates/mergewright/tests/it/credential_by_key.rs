@@ -220,7 +220,7 @@ fn wrong_then_right_password_pushes() {
     let state = push_answering(&app, &state, "the refused push", WRONG, &mut seen);
 
     match &state.status {
-        Status::Sticky { reason, keys } => {
+        Status::Sticky { reason, keys, .. } => {
             assert!(
                 reason.starts_with("authentication failed"),
                 "the line names the failure: {reason}"

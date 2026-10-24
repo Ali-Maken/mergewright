@@ -61,7 +61,11 @@ pub fn history_key(
             );
         }
         Err(reason) => {
-            state.status = Status::Sticky { reason, keys: None };
+            state.status = Status::Sticky {
+                reason,
+                keys: None,
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
+            };
         }
     }
 }

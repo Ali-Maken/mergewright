@@ -156,6 +156,7 @@ pub(crate) fn recover_answered(
             state.status = Status::Sticky {
                 reason: why.clone(),
                 keys: offer_branch_keys(name, &crate::update::place::short(*at), &state.keymap),
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
             };
             state.journal.offered = Some((row, name.clone()));
         }

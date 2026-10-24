@@ -36,7 +36,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-fetch all remotes failed: no repository a… · origin/main moved before it stopped
+⊗ fetch all remotes failed: no repository… · origin/main moved before it stopped
 ● done in Mergewright: u can undo it · $ done outside Mergewright: u never…
 / find  space command log  J/esc close  ? keys
 
@@ -63,6 +63,6 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-fetch all remotes failed: no repository a… · origin/main moved before it stopped
+⊗ fetch all remotes failed: no repository… · origin/main moved before it stopped
 ● done in Mergewright: u can undo it · $ done outside Mergewright: u never…
 / find  space command log  J/esc close  ? keys

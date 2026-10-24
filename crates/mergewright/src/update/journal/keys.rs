@@ -159,6 +159,7 @@ pub(super) fn branch_here(next: &mut AppState) {
             next.status = Status::Sticky {
                 reason: "a lost edit has no commit".to_owned(),
                 keys: lost_edit_keys(&next.keymap),
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
             };
             return;
         }

@@ -42,6 +42,7 @@ pub(super) fn restart_box(state: &mut AppState) {
         state.status = Status::Sticky {
             reason,
             keys: card.then(|| super::names::side_keys(state)),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         };
         return;
     }

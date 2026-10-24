@@ -52,7 +52,7 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no ac… · origin/main moved before it stopped
+⊗ fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no … · origin/main moved before it stopped
 ● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds
 / find  space command log  J/esc close  ? keys
 
@@ -95,6 +95,6 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no ac… · origin/main moved before it stopped
+⊗ fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no … · origin/main moved before it stopped
 ● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds
 / find  space command log  J/esc close  ? keys

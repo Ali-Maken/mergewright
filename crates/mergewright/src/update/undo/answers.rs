@@ -280,7 +280,7 @@ pub fn undone(
             // refresh of its own, and that refresh finishing would wipe the
             // reason off the screen before it could be read (m3/05 review,
             // Major 7).
-            state.status = Status::sticky(error);
+            state.status = Status::sticky_failure(error);
             match what {
                 Some(what) => refresh(state, what, next_id),
                 None => Vec::new(),

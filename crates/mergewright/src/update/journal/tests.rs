@@ -763,10 +763,10 @@ fn b_on_a_step_with_no_commit_says_so() {
     assert!(state.name_prompt.is_none());
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "a lost edit has no commit".to_owned(),
-            keys: Some("\u{23ce} puts it back".to_owned()),
-        }
+        Status::sticky_keys(
+            "a lost edit has no commit".to_owned(),
+            Some("\u{23ce} puts it back".to_owned())
+        )
     );
 }
 
@@ -798,10 +798,10 @@ fn moved_on_shows_the_words_and_b_prefills_the_name() {
     assert!(commands.is_empty(), "{commands:?}");
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "main has moved on since".to_owned(),
-            keys: Some("b makes branch \"main-restored\" at 0404040".to_owned()),
-        }
+        Status::sticky_keys(
+            "main has moved on since".to_owned(),
+            Some("b makes branch \"main-restored\" at 0404040".to_owned())
+        )
     );
     press(&mut state, KeyCode::Char('b'));
     let prompt = state.name_prompt.as_ref().expect("the name prompt");

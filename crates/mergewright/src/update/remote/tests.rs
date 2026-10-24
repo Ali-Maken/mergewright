@@ -516,10 +516,10 @@ fn failures_are_worded_and_remembered() {
     let rejected = "push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease";
     assert_eq!(
         remote_failed(&mut after, &op, &RemoteFailure::NonFastForward, rejected),
-        Status::Sticky {
-            reason: "push rejected: origin/main has commits you don't".to_owned(),
-            keys: Some("p pull, then m or r · P force with lease".to_owned()),
-        }
+        Status::sticky_failure_keys(
+            "push rejected: origin/main has commits you don't".to_owned(),
+            Some("p pull, then m or r · P force with lease".to_owned())
+        )
     );
     assert_eq!(
         after.remote.last_rejected_push,
@@ -741,10 +741,7 @@ fn a_pull_that_would_overwrite_names_s_s() {
     );
     assert_eq!(
         status,
-        Status::Sticky {
-            reason: reason.to_owned(),
-            keys: Some("S s stashes them first".to_owned()),
-        }
+        Status::sticky_failure_keys(reason.to_owned(), Some("S s stashes them first".to_owned()))
     );
     state.status = status;
     let screen = crate::view::tests::draw(&state, 80, 24);
@@ -766,10 +763,10 @@ fn diverged_pull_sets_m_r_source() {
     );
     assert_eq!(
         status,
-        Status::Sticky {
-            reason: "main and origin/main have diverged".to_owned(),
-            keys: Some("m merge it  r rebase onto it".to_owned()),
-        }
+        Status::sticky_failure_keys(
+            "main and origin/main have diverged".to_owned(),
+            Some("m merge it  r rebase onto it".to_owned())
+        )
     );
     assert_eq!(
         state.remote.diverged_upstream,
@@ -816,10 +813,10 @@ fn the_diverged_line_aims_at_where_the_fetch_left_the_tracking_ref() {
     let mut state = diverged_with_tracking_at(oid(MOVED));
     // What `remote_failed` recorded, pre-fetch.
     state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
-    state.status = Status::Sticky {
-        reason: "main and origin/main have diverged".to_owned(),
-        keys: Some("m merge it  r rebase onto it".to_owned()),
-    };
+    state.status = Status::sticky_keys(
+        "main and origin/main have diverged".to_owned(),
+        Some("m merge it  r rebase onto it".to_owned()),
+    );
 
     // One event with the line still on screen: the refs have caught up, so
     // the tail re-points the tip at them.
@@ -874,10 +871,10 @@ fn diverged_with_tracking_at(tracking: Oid) -> AppState {
 fn dismissing_the_diverged_line_takes_its_keys_with_it() {
     let mut state = diverged();
     state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
-    state.status = Status::Sticky {
-        reason: "main and origin/main have diverged".to_owned(),
-        keys: Some("m merge it  r rebase onto it".to_owned()),
-    };
+    state.status = Status::sticky_keys(
+        "main and origin/main have diverged".to_owned(),
+        Some("m merge it  r rebase onto it".to_owned()),
+    );
     let (dismissed, _) = press(&state, KeyPress::plain(KeyCode::Escape));
     assert_eq!(dismissed.remote.diverged_upstream, None);
     assert_eq!(dismissed.status, Status::Ready);
@@ -891,10 +888,10 @@ fn dismissing_the_diverged_line_takes_its_keys_with_it() {
 fn the_remembered_upstream_dies_with_the_line_that_explained_it() {
     let mut state = diverged();
     state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
-    state.status = Status::Sticky {
-        reason: "main and origin/main have diverged".to_owned(),
-        keys: Some("m merge it  r rebase onto it".to_owned()),
-    };
+    state.status = Status::sticky_keys(
+        "main and origin/main have diverged".to_owned(),
+        Some("m merge it  r rebase onto it".to_owned()),
+    );
 
     // Any event at all, with the line replaced by something else first.
     state.status = Status::done("fetched origin");
@@ -1551,3 +1548,4 @@ fn undo_locally_still_runs_when_there_is_no_re_push() {
 }
 
 mod lease;
+mod rejected_push;

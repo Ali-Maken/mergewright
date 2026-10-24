@@ -47,4 +47,4 @@
   ●                         Commit 167                                  Graft   7y│
   ●                         Commit 166                                  Graft   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or no … · origin/main moved before it stopped
+ ⊗ fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or n… · origin/main moved before it stopped

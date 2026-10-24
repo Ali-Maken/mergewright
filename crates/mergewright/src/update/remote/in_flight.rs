@@ -4,6 +4,7 @@
 use mergewright_core::job::JobId;
 use mergewright_git::remote::RemoteFailure;
 use mergewright_ops::operation::Operation;
+use mergewright_ui::graph_screen::ProblemKind;
 
 use super::{
     NARROW_COLUMNS, RejectedPush, Stoppable, diverged_keys, esc_hint, overwrite_keys, short_branch,
@@ -179,7 +180,11 @@ pub fn remote_failed(
 ) -> Status {
     let sticky = || {
         let (reason, keys) = split_reason_and_keys(explained);
-        Status::Sticky { reason, keys }
+        Status::Sticky {
+            reason,
+            keys,
+            kind: ProblemKind::Failure,
+        }
     };
     match (failure, op) {
         // A remote write a stop ended (21c B+1): `jobs::operate::outcome`
@@ -220,6 +225,7 @@ pub fn remote_failed(
                     short_tracking(&params.upstream.tracking_ref)
                 ),
                 keys: diverged_keys(&state.keymap),
+                kind: ProblemKind::Failure,
             }
         }
         // `ops` names his edits and no keys; the keys that get him through
@@ -227,6 +233,7 @@ pub fn remote_failed(
         (RemoteFailure::WouldOverwrite { .. }, Operation::Pull(_)) => Status::Sticky {
             reason: explained.to_owned(),
             keys: overwrite_keys(&state.keymap),
+            kind: ProblemKind::Failure,
         },
         _ => sticky(),
     }

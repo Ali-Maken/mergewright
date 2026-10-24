@@ -242,7 +242,7 @@ fn check_rows(sitting: &Sitting, size: &str, rows: &[String]) {
     assert_eq!(rows[0], sitting.prompt_keys, "{}", at(0));
     let head: String = sitting.failure_words.chars().take(20).collect();
     assert!(
-        rows[1].starts_with(&head) && rows[1].ends_with("esc dismiss"),
+        rows[1].starts_with(&format!("⊗ {head}")) && rows[1].ends_with("esc dismiss"),
         "{}",
         at(1)
     );

@@ -41,7 +41,7 @@ fn press(state: &AppState, code: KeyCode) -> (AppState, Vec<Command>) {
 /// The status line's reason and keys, or a panic naming what it was.
 fn sticky(state: &AppState) -> (&str, Option<&str>) {
     match &state.status {
-        Status::Sticky { reason, keys } => (reason.as_str(), keys.as_deref()),
+        Status::Sticky { reason, keys, .. } => (reason.as_str(), keys.as_deref()),
         other => panic!("expected a sticky line, got {other:?}"),
     }
 }

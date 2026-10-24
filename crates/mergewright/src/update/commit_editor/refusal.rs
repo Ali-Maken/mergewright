@@ -94,6 +94,7 @@ impl OperationRefusal {
         Status::Sticky {
             reason: self.reason.clone(),
             keys: self.keys.clone(),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         }
     }
 }

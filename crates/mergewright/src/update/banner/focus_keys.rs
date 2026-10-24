@@ -244,6 +244,7 @@ pub(super) fn nothing_conflicted(state: &mut AppState) {
     state.status = Status::Sticky {
         reason: "nothing conflicted".to_owned(),
         keys: continue_abort(&state.keymap),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     };
 }
 

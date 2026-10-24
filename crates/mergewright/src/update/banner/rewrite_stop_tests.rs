@@ -203,10 +203,10 @@ fn a_failed_progress_read_lands_with_todays_banner_and_says_so() {
     assert_eq!(words(&state), "REBASING step 2 of 5", "today's banner");
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "couldn't read the rewrite's progress: git-rebase-todo: unreadable".to_owned(),
-            keys: None,
-        }
+        Status::sticky_keys(
+            "couldn't read the rewrite's progress: git-rebase-todo: unreadable".to_owned(),
+            None
+        )
     );
     assert!(state.banner_focus, "a stop it can't read focuses as today");
 }

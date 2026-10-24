@@ -72,7 +72,7 @@
   ●                 Commit 182                                       Graft   7y
   ●                 Commit 181                                       Graft   7y
   ●                 Commit 180                                       Graft   7y
- fetch all remotes failed: no repository at '/graft-no-such-remo… · esc dismiss
+ ⊗ fetch all remotes failed: no repository at '/graft-no-such-re… · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                           200 commits

@@ -486,10 +486,10 @@ fn u_on_an_entry_from_before_a_shell_merge_refuses_in_words() {
     let state = app.pump(state, "ops' answer", |state| state.operating.is_none());
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "finish or abort the merge first".to_owned(),
-            keys: Some("⇧⇥ banner".to_owned()),
-        }
+        Status::sticky_keys(
+            "finish or abort the merge first".to_owned(),
+            Some("⇧⇥ banner".to_owned())
+        )
     );
     // m8/20b R5, 20d: the graph with the pane open is three `⇥` from the
     // banner (files, diff, banner) and one `⇧⇥`; the shorter way is named.

@@ -107,10 +107,9 @@ pub(in crate::update) fn reverted_to(
         RevertedTo::Refused { description, error } => {
             // Nothing ran, so nothing is to be refreshed and nothing is
             // half-done: a refusal, worded as one (review 08 Minor 4).
-            state.status = Status::Sticky {
-                reason: format!("cannot revert to before \u{201c}{description}\u{201d}: {error}"),
-                keys: None,
-            };
+            state.status = Status::sticky(format!(
+                "cannot revert to before \u{201c}{description}\u{201d}: {error}"
+            ));
             Vec::new()
         }
         RevertedTo::Failed {
@@ -121,13 +120,13 @@ pub(in crate::update) fn reverted_to(
         } => {
             // Sticky, and worded as a state: some steps really did run, and
             // each of them is its own journal entry the browser can show.
-            state.status = Status::Sticky {
-                reason: format!(
+            state.status = Status::sticky_keys(
+                format!(
                     "revert stopped after {done} of {total} {}: {error}",
                     if total == 1 { "step" } else { "steps" }
                 ),
-                keys: journal_keys(&state.keymap),
-            };
+                journal_keys(&state.keymap),
+            );
             if done > 0 {
                 refresh(state, Refresh::Everything, next_id)
             } else {

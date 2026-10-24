@@ -280,8 +280,9 @@ fn an_in_the_way_rung_is_measured_as_drawn() {
         ignored: Vec::new(),
         untracked: vec![PathBuf::from(path)],
     };
-    let Status::Sticky { reason, keys: next } =
-        crate::update::operate::refusal_status(&stage(), &refused, 80, &keys)
+    let Status::Sticky {
+        reason, keys: next, ..
+    } = crate::update::operate::refusal_status(&stage(), &refused, 80, &keys)
     else {
         panic!("a sticky line");
     };

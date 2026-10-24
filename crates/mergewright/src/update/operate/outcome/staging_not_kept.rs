@@ -106,5 +106,9 @@ pub(crate) fn staging_not_kept_status(
         }
         None => picked,
     };
-    Status::Sticky { reason, keys: undo }
+    Status::Sticky {
+        reason,
+        keys: undo,
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
+    }
 }

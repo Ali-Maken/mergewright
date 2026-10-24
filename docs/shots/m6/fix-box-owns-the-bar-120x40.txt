@@ -98,7 +98,7 @@
   ●                         Commit 168                                  Graft   7y│
   ●                         Commit 167                                  Graft   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
+ ⊗ push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
 
 === frame 3: the drift box `u` opened ===
  ◆ api  ~/code/api · fix                                                                6 commits  date order, sorting…

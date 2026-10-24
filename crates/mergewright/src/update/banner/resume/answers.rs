@@ -96,6 +96,7 @@ fn resumed_answer(
             state.status = Status::Sticky {
                 reason,
                 keys: super::super::abort_key(&state.keymap),
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
             };
             match refresh {
                 Some(what) => crate::update::operate::refresh_scope(state, what, next_id),

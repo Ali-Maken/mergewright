@@ -93,10 +93,7 @@ fn rejected_push(columns: u16, rows: u16) -> AppState {
             )
         }),
     });
-    state.status = Status::Sticky {
-        reason: REJECTION.to_owned(),
-        keys: Some(REJECTION_KEYS.to_owned()),
-    };
+    state.status = Status::sticky_keys(REJECTION.to_owned(), Some(REJECTION_KEYS.to_owned()));
     state
 }
 
@@ -139,10 +136,7 @@ fn esc_from_the_box_brings_the_rejection_back() {
 fn statuses() -> [(Status, &'static str); 3] {
     [
         (
-            Status::Sticky {
-                reason: REJECTION.to_owned(),
-                keys: Some(REJECTION_KEYS.to_owned()),
-            },
+            Status::sticky_keys(REJECTION.to_owned(), Some(REJECTION_KEYS.to_owned())),
             "push rejected",
         ),
         (

@@ -333,7 +333,7 @@ pub(crate) fn planned(
             state.amend_into.reword_read = state.head_message;
         }
         Err(why) => {
-            state.status = Status::sticky(format!("couldn't plan the put-in: {why}"));
+            state.status = Status::sticky_failure(format!("couldn't plan the put-in: {why}"));
         }
     }
 }
