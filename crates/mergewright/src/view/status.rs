@@ -3,7 +3,7 @@
 
 use mergewright_git::version::SystemGit;
 use mergewright_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
-use mergewright_ui::graph_screen::ProblemLine;
+use mergewright_ui::graph_screen::{ProblemKind, ProblemLine};
 use mergewright_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusView,
 };
@@ -39,19 +39,31 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
 /// [`graph_problem`] instead, so it can keep a sticky failure's keys whole),
 /// so they cannot drift apart (m3/05 review).
 #[must_use]
-pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
+pub(crate) fn problem(status: &Status) -> Option<ProblemLine> {
     match status {
         Status::Ready
         | Status::Copied { .. }
         | Status::Busy(_)
         | Status::Waiting(_)
         | Status::Done { .. } => None,
-        Status::Failed(message) => Some(sanitize_line(message)),
-        Status::Sticky { reason, keys: None } => Some(sanitize_line(reason)),
+        Status::Failed(message) => Some(words_only(ProblemKind::Failure, message)),
+        Status::Sticky { reason, keys: None } => Some(words_only(ProblemKind::Notice, reason)),
         Status::Sticky {
             reason,
             keys: Some(keys),
-        } => Some(sanitize_line(&format!("{reason} · {keys}"))),
+        } => Some(words_only(
+            ProblemKind::Notice,
+            &format!("{reason} · {keys}"),
+        )),
+    }
+}
+
+/// A problem with no keys of its own, for the screens that draw one line of words.
+fn words_only(kind: ProblemKind, words: &str) -> ProblemLine {
+    ProblemLine {
+        kind,
+        reason: sanitize_line(words),
+        keys: None,
     }
 }
 
@@ -106,10 +118,12 @@ pub(crate) fn graph_problem(
         | Status::Waiting(_)
         | Status::Done { .. } => None,
         Status::Failed(message) => Some(ProblemLine {
+            kind: ProblemKind::Failure,
             reason: sanitize_line(message),
             keys: dismiss(),
         }),
         Status::Sticky { reason, keys } => Some(ProblemLine {
+            kind: ProblemKind::Notice,
             reason: sanitize_line(reason),
             keys: match keys {
                 Some(keys) => Some(sanitize_line(keys)),
@@ -129,6 +143,7 @@ pub(crate) fn graph_problem(
 pub(crate) fn modal_problem(state: &AppState) -> Option<ProblemLine> {
     let refusal = crate::update::name_prompt::refusal_words(state)?;
     Some(ProblemLine {
+        kind: ProblemKind::Notice,
         reason: sanitize_line(&refusal),
         keys: None,
     })
@@ -216,6 +231,58 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
 #[cfg(test)]
 mod tests {
     use super::done_line;
+    use crate::update::{AppState, GraphOverlay, Screen, Status};
+
+    /// ease-pass 26, the invariant: whichever screen owns the bottom row,
+    /// `Status::Failed` with words only draws `⊗ <words>` once and no `✗`.
+    /// The screens are every reader of `shown_status` that draws a bar row:
+    /// the graph footer and the tab layout (`draw_status_or_hints`), the
+    /// resolver, the commit editor, J (`journal_status_row`), the status
+    /// screen. `false` rows draw no `⊗` today: Map and finish draw no status
+    /// words; S draws its notice as a body line, which part B marks.
+    #[test]
+    fn every_failed_status_draws_the_mark_once() {
+        let words = "x went wrong";
+        let shows_a_bar: [(&str, Option<GraphOverlay>, bool); 9] = [
+            ("graph", None, true),
+            ("resolver", Some(GraphOverlay::Resolver), true),
+            ("commit editor", Some(GraphOverlay::CommitEditor), true),
+            ("journal", Some(GraphOverlay::Journal), true),
+            // The finish summary's bottom row is `view::finish::finish_bar`
+            // (finish.rs:157-167): ` committing…` or empty, never the
+            // status, so no words and no mark. Product question, not a defect
+            // of the mark.
+            ("finish", Some(GraphOverlay::Finish), false),
+            ("rewrite", Some(GraphOverlay::Rewrite), false),
+            ("place", Some(GraphOverlay::Place), false),
+            ("map", Some(GraphOverlay::Map), false),
+            ("stash", Some(GraphOverlay::Stash), false),
+        ];
+        let mut wrong = Vec::new();
+        for (name, overlay, expected) in shows_a_bar {
+            for (columns, rows) in [(120, 40), (187, 50)] {
+                let mut state = crate::view::frame::tests::standing_on(overlay);
+                state.status = Status::Failed(words.to_owned());
+                let drawn = crate::view::tests::draw(&state, columns, rows);
+                let marks = drawn.matches(&format!("⊗ {words}")).count();
+                let lost = drawn.matches('✗').count();
+                if (expected && marks != 1) || marks > 1 || lost != 0 {
+                    wrong.push(format!("{name} {columns}x{rows}: {marks} marks, {lost} ✗"));
+                }
+            }
+        }
+        let mut status = AppState {
+            screen: Screen::Status,
+            status: Status::Failed(words.to_owned()),
+            ..AppState::default()
+        };
+        status.repo_path = std::path::PathBuf::from("/code/api");
+        let drawn = crate::view::tests::draw(&status, 120, 40);
+        if drawn.matches(&format!("⊗ {words}")).count() != 1 || drawn.contains('✗') {
+            wrong.push(format!("status screen:\n{drawn}"));
+        }
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
 
     /// The commit mock's landing line (`mergewright-commit-screen.html:178`):
     /// the tick first, then what finished, two spaces, then the keys.
@@ -245,6 +312,35 @@ mod tests {
             done_line("rebase", Some("your edits are back"), Some("u undoes")),
             "✓ rebase · your edits are back  u undoes"
         );
+    }
+
+    /// ease-pass 26, A4: a sticky line is a lifetime and a name-prompt
+    /// refusal is the app declining input; neither is a failure, so neither
+    /// carries `⊗` (R3). Drawn on the graph footer and on the modal's bar.
+    #[test]
+    fn sticky_and_refusal_lines_carry_no_mark() {
+        let mut state = crate::view::frame::tests::standing_on(None);
+        state.status = Status::sticky("x went wrong");
+        let drawn = crate::view::tests::draw(&state, 120, 40);
+        assert!(drawn.contains(" x went wrong"), "{drawn}");
+        assert!(!drawn.contains('⊗') && !drawn.contains("(x)"), "{drawn}");
+
+        let at =
+            mergewright_core::oid::Oid::from_bytes(&[7; mergewright_core::oid::Oid::SHA1_BYTES])
+                .expect("20 bytes");
+        let mut state = crate::view::frame::tests::standing_on(None);
+        assert!(crate::update::name_prompt::open_name_prompt(
+            &mut state,
+            crate::update::name_prompt::NameKind::Tag { at },
+        ));
+        state
+            .name_prompt
+            .as_mut()
+            .expect("the prompt is open")
+            .refusal = Some(crate::update::name_prompt::PromptRefusal::EmptyName);
+        let drawn = crate::view::tests::draw(&state, 120, 40);
+        assert!(drawn.contains("a tag needs a name"), "{drawn}");
+        assert!(!drawn.contains('⊗') && !drawn.contains("(x)"), "{drawn}");
     }
 
     /// A wait is not a problem: neither the status screen nor the graph

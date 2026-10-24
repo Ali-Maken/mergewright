@@ -17,6 +17,7 @@ pub mod detail;
 pub mod detail_pane;
 pub mod diff_words;
 pub mod empty_state;
+pub mod failure;
 pub mod finish_summary;
 pub mod fit;
 mod frame_box;

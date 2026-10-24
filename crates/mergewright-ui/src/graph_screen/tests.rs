@@ -29,6 +29,7 @@ mod give_way;
 mod header_narrowing;
 mod lanes_in_view;
 mod pane_columns;
+mod problem_line;
 mod row_cells_tests;
 mod walk_words;
 
@@ -462,20 +463,6 @@ fn the_stopped_header_keeps_the_widest_wording_that_fits() {
     let narrower = header(65);
     assert!(narrower.trim_end().ends_with("stopped"), "{narrower}");
     assert!(!narrower.contains("stopped at"), "{narrower}");
-}
-
-#[test]
-fn a_problem_takes_the_footers_place() {
-    let rows = linear(2);
-    let mut view = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    view.problem = Some(ProblemLine {
-        reason: sanitize_line("job 3 failed: not a git repository"),
-        keys: None,
-    });
-    let screen = text(&draw(&view, 60, 5));
-
-    assert!(screen[4].contains("not a git repository"), "{screen:#?}");
-    assert!(!screen[4].contains("⏎ open"), "{screen:#?}");
 }
 
 #[test]

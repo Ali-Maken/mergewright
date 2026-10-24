@@ -36,22 +36,20 @@ pub(super) fn draw_status_or_hints(
     // While a modal is open the only problem is its own refusal, and the
     // notice is `None` (`footer_notice`): the modal owns the row
     // (m6-conflicts/69, Decided 1).
-    let (text, token) = match crate::view::status::bottom_row_problem(state) {
-        Some(problem) => (
-            format!(
-                " {}",
-                mergewright_ui::graph_screen::fit_status_line(
-                    problem.reason.as_str(),
-                    problem.keys.as_ref().map(SanitizedText::as_str),
-                    width.saturating_sub(1),
-                )
-            ),
-            Token::Warning,
-        ),
-        None => match footer_notice(state, tier, width) {
-            Some(notice) => (format!(" {}", notice.as_str()), Token::TextMuted),
-            None => (hints(), Token::TextMuted),
-        },
+    if let Some(problem) = crate::view::status::bottom_row_problem(state) {
+        let line = mergewright_ui::failure::status_line(
+            &problem,
+            tier == RenderingTier::Ascii,
+            width,
+            theme,
+            Style::default().fg(color(theme.token(Token::Warning))),
+        );
+        frame.buffer_mut().set_line(x, y, &line, width);
+        return;
+    }
+    let (text, token) = match footer_notice(state, tier, width) {
+        Some(notice) => (format!(" {}", notice.as_str()), Token::TextMuted),
+        None => (hints(), Token::TextMuted),
     };
     frame.buffer_mut().set_string(
         x,

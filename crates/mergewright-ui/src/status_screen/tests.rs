@@ -14,6 +14,7 @@ use super::{
     HeadView, HistoryState, HistoryView, RenderingView, RepositoryView, StatusScreen, StatusView,
     TierSource,
 };
+use crate::graph_screen::{ProblemKind, ProblemLine};
 use crate::test_support::terminal as capabilities;
 use crate::theme::{Theme, ThemeKind};
 
@@ -240,7 +241,11 @@ fn notes_and_a_problem() {
         text("git 2.30.1 is older than the 2.38 Mergewright needs"),
         text("unknown config key `ui.colour`, ignored"),
     ];
-    view.problem = Some(text("could not read HEAD: permission denied"));
+    view.problem = Some(ProblemLine {
+        kind: ProblemKind::Failure,
+        reason: text("could not read HEAD: permission denied"),
+        keys: None,
+    });
 
     insta::assert_snapshot!(draw(&view, 60, 16));
 }

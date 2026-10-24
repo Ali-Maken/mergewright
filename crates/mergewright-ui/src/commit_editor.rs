@@ -203,7 +203,7 @@ pub struct CommitScreenView<'a> {
     pub refusal: Option<Refusal>,
     /// Why the last write failed (a hook, a refusal), while it is worth
     /// saying: it takes the bar's row until `esc` dismisses it.
-    pub status: Option<SanitizedText>,
+    pub status: Option<crate::graph_screen::ProblemLine>,
     /// A commit is running: the bar says so, and every key but `esc` is
     /// ignored.
     pub busy: bool,
@@ -223,6 +223,8 @@ pub struct CommitScreen<'a> {
     /// The keys the bar spells. The screen is a text field, so its keys
     /// are fixed (ADR-0055): the caller hands the shipped table.
     pub keys: &'a Keymap,
+    /// The ASCII tier: the failure mark is `(x)`.
+    pub ascii: bool,
 }
 
 #[cfg(test)]

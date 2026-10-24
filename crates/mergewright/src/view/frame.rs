@@ -149,6 +149,22 @@ fn status_row_notice(
     })
 }
 
+/// The status screen, at the tier in force (the failure mark's `(x)` form).
+fn draw_status_screen(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
+    let screen = status_view(session, state);
+    let ascii = tier_in_force(session, state) == RenderingTier::Ascii;
+    frame.render_widget(
+        StatusScreen::new(&screen, &session.theme).ascii(ascii),
+        area,
+    );
+    None
+}
+
 /// [`view`], saying `graphics` in the header when the graph is drawn in
 /// pixels; returns the rectangle those pixels go in, or `None` when this
 /// frame draws no pixels.
@@ -269,11 +285,7 @@ pub fn view_with_graphics(
         // A fetch started from the graph can ask for a password while the
         // user is reading this screen: the question follows them, and so
         // does any box that is still waiting for its answer.
-        Screen::Status => {
-            let screen = status_view(session, state);
-            frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
-            (None, Vec::new())
-        }
+        Screen::Status => (draw_status_screen(session, state, frame, area), Vec::new()),
     };
     draw_box_bars(session, state, frame, area);
     let palette = draw_palette(session, state, frame, area);
@@ -300,4 +312,4 @@ mod colours_off_tests;
 #[cfg(test)]
 mod landing_tests;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

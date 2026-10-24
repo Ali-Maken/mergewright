@@ -60,13 +60,23 @@ fn journal_status_row(
     width: u16,
 ) -> Option<mergewright_ui::journal_screen::JournalStatusRow> {
     if let Some(problem) = crate::view::status::bottom_row_problem(state) {
+        let ascii = tier == RenderingTier::Ascii;
+        let failure = problem.kind == mergewright_ui::graph_screen::ProblemKind::Failure;
+        // The words are cut to what the mark leaves; the mark is the row's.
+        let lead = if failure {
+            mergewright_ui::failure::lead_width(ascii)
+        } else {
+            0
+        };
         return Some(mergewright_ui::journal_screen::JournalStatusRow {
             words: mergewright_ui::graph_screen::fit_status_line(
                 problem.reason.as_str(),
                 problem.keys.as_ref().map(SanitizedText::as_str),
-                width,
+                width.saturating_sub(u16::try_from(lead).unwrap_or(u16::MAX)),
             ),
             problem: true,
+            failure,
+            ascii,
         });
     }
     footer_notice(state, tier, width).map(|notice| {
@@ -75,6 +85,8 @@ fn journal_status_row(
                 .trim_end()
                 .to_owned(),
             problem: false,
+            failure: false,
+            ascii: false,
         }
     })
 }

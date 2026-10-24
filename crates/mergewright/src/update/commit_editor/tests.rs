@@ -990,11 +990,8 @@ fn a_refused_commits_reason_reaches_the_editors_own_view() {
     );
 
     let view = crate::view::commit_screen_view(&after).expect("the editor is still open");
-    let said = view
-        .status
-        .expect("the reason is on the editor")
-        .to_string();
-    assert!(said.contains("pre-commit hook"), "{said}");
+    let said = view.status.expect("the reason is on the editor").reason;
+    assert!(said.as_str().contains("pre-commit hook"), "{said:?}");
 }
 
 /// And `Esc` dismisses it without closing the editor — the same two-stage

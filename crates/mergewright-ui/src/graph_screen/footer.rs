@@ -9,9 +9,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
-use super::hints::{
-    Divider, fit_status_line, hints_for, hints_text, stopped_row, stopped_row_before_keys,
-};
+use super::hints::{Divider, hints_for, hints_text, stopped_row, stopped_row_before_keys};
 use super::lanes::graph_width;
 use super::layout::ScreenRows;
 use super::row_columns::Columns;
@@ -64,7 +62,20 @@ impl GraphScreen<'_> {
             );
             buf.set_line(x, chrome.status.y, &line, chrome.status.width);
         }
-        if chrome.footer.height > 0 {
+        if chrome.footer.height > 0
+            && let Some(problem) = &self.view.problem
+        {
+            // A problem wins the row; the mark is the renderer's, in its own
+            // ink, and the words are cut before it (`failure::status_line`).
+            let line = crate::failure::status_line(
+                problem,
+                self.view.ascii,
+                u16::try_from(width).unwrap_or(u16::MAX),
+                self.theme,
+                foreground(self.theme, Token::Warning),
+            );
+            buf.set_line(x, chrome.footer.y, &line, chrome.footer.width);
+        } else if chrome.footer.height > 0 {
             let (text, token) = self.footer_line((body, screen.width), rows, fold, width, above);
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(x, chrome.footer.y, &footer, chrome.footer.width);
@@ -102,28 +113,11 @@ impl GraphScreen<'_> {
             .map(|entry| entry.subject.as_str().to_owned());
 
         let notice = self.view.notice.as_ref().filter(|_| !notice_above);
-        match (
-            &self.view.problem,
-            &self.view.search,
-            notice,
-            &self.view.compare_footer,
-        ) {
-            (Some(problem), _, _, _) => {
-                let width16 = u16::try_from(width.saturating_sub(1)).unwrap_or(u16::MAX);
-                let line = fit_status_line(
-                    problem.reason.as_str(),
-                    problem
-                        .keys
-                        .as_ref()
-                        .map(mergewright_term::SanitizedText::as_str),
-                    width16,
-                );
-                (format!(" {line}"), Token::Warning)
-            }
-            (None, Some(SearchLine::Prompt(typed)), _, _) => (format!(" /{typed}_"), Token::Info),
-            (None, None, Some(notice), _) => (format!(" {notice}"), Token::Info),
-            (None, None, None, Some(compare)) => (format!(" {compare}"), Token::Accent),
-            (None, None, None, None) => {
+        match (&self.view.search, notice, &self.view.compare_footer) {
+            (Some(SearchLine::Prompt(typed)), _, _) => (format!(" /{typed}_"), Token::Info),
+            (None, Some(notice), _) => (format!(" {notice}"), Token::Info),
+            (None, None, Some(compare)) => (format!(" {compare}"), Token::Accent),
+            (None, None, None) => {
                 if let Some(subject) = &reveal_subject {
                     (format!(" {subject}"), Token::Text)
                 } else {

@@ -26,6 +26,7 @@ pub(super) fn draw_commit_editor(
         view: &view,
         theme: &session.theme,
         keys: mergewright_ui::keymap::Keymap::shipped(),
+        ascii: tier_in_force(session, state) == RenderingTier::Ascii,
     };
     frame.render_widget(Clear, area);
     frame.render_widget(&screen, area);

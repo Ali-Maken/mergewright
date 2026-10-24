@@ -201,13 +201,17 @@ fn the_files_bar_is_the_mocks() {
 #[test]
 fn a_failure_takes_the_bar_row() {
     let failed = CommitScreenView {
-        status: Some(sanitize_line("pre-commit hook said no")),
+        status: Some(crate::graph_screen::ProblemLine {
+            kind: crate::graph_screen::ProblemKind::Failure,
+            reason: sanitize_line("pre-commit hook said no"),
+            keys: None,
+        }),
         ..view("fix toc", CommitFocus::Subject)
     };
     let drawn = draw(&failed, 120, 30);
     assert_eq!(
         last_line(&drawn),
-        " pre-commit hook said no · esc dismisses"
+        " ⊗ pre-commit hook said no · esc dismisses"
     );
     assert!(drawn.contains("fix toc"), "the message is kept: {drawn}");
 }

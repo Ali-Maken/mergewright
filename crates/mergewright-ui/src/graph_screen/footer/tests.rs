@@ -30,12 +30,13 @@ fn a_problem_still_wins_over_a_stop() {
         last_row(&shown)
     );
     shown.problem = Some(ProblemLine {
+        kind: crate::graph_screen::ProblemKind::Failure,
         reason: sanitize_line("a hook refused the commit"),
         keys: Some(sanitize_line("a abort")),
     });
     let row = last_row(&shown);
     assert!(
-        row.starts_with(" a hook refused the commit · a abort"),
+        row.starts_with(" ⊗ a hook refused the commit · a abort"),
         "{row}"
     );
     assert!(!row.contains("merge stopped"), "{row}");

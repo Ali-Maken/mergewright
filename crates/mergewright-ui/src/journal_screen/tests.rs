@@ -394,10 +394,7 @@ fn at_24_rows_the_frame_stays_and_the_rows_scroll() {
     }
     let mut view = view(rows, JournalStatus::Ready);
     view.selected = 29;
-    view.status_row = Some(JournalStatusRow {
-        words: "nothing to undo".to_owned(),
-        problem: true,
-    });
+    view.status_row = Some(JournalStatusRow::refusal("nothing to undo"));
     view.enter_words = Some("revert to before this".to_owned());
     let grid = draw(&view, 187, 24);
     assert!(grid[0].starts_with("JOURNAL"), "{grid:?}");
