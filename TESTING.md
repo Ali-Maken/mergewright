@@ -1,10 +1,11 @@
 # Testing Mergewright
 
-Three tiers. You only need the first one day to day.
+Four tiers. You only need the first one day to day.
 
 | Tier | Command | When | Budget (PROMPT.md §7.1) | Measured |
 |---|---|---|---|---|
-| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket | under 3 min, ~2 GB | **34.3 s** of test time for 1822 tests (one run, 2026-09-20, after the 19 M4 walk tests, whose own test time is 14.8 s spread over the workers; 50.8 s wall including a rebuild, so the warm wall figure is not measured). Before M4: **38–40 s** warm (two runs, 2026-09-19, after the 22 M3 walk tests; 36.2 s without them the same hour, 21.7 s the morning before — the walk adds 2–4 s, the rest is not explained) |
+| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket. Leaves out the walk tier (the row below) by the default filter in `.config/nextest.toml` | under 3 min, ~2 GB | **387 s and 391 s run wall, 6772 tests** (`scripts/23-fast-tier.sh`, `docs/perf/23-fast-tier.txt` `== after-filter ==` and `== after-2 ==`, 2026-10-24, build 0.3 s warm, load 2 to 5): **over the budget**, ease-pass/23 NOTES lists the slow families. Before the walks left: 516.8 s for 7235 tests. Older figures: **34.3 s** of test time for 1822 tests (one run, 2026-09-20, after the 19 M4 walk tests, whose own test time is 14.8 s spread over the workers; 50.8 s wall including a rebuild, so the warm wall figure is not measured). Before M4: **38–40 s** warm (two runs, 2026-09-19, after the 22 M3 walk tests; 36.2 s without them the same hour, 21.7 s the morning before — the walk adds 2–4 s, the rest is not explained) |
+| **Walk** | `scripts/walks.sh` | After every merge, on main (the conductor). A builder runs it once before handing in when its ticket changes what the app draws, changes a key, or touches a walk. Milestone reviews | no budget set yet | **124 s** for 463 tests (2026-10-24, one run, solo) |
 | **Heavy** | two commands, [below](#the-heavy-tier) | Milestone reviews only | under 10 min, ~3 GB | **1.7 s** with fixtures cached, 6 s when it has to build them |
 | **Manual** | [the checklist](#the-manual-terminal-checklist) | Only when you choose to. The M1 and M8 checkpoints | — | about 20 min per terminal pass |
 
@@ -15,18 +16,45 @@ your laptop.
 ## The three gates
 
 Code is not done until all three pass. This is the whole of a builder's
-obligation:
+obligation, plus `scripts/walks.sh` once before hand-in when the ticket changes
+what the app draws, changes a key, or touches a walk (ease-pass/23, D5):
 
 ```sh
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo nextest run
 cargo test --doc   # nextest does not run doctests
+scripts/walks.sh   # the walk tier, when the ticket calls for it (see above)
 ```
+
+## The walk tier
+
+`cargo nextest run` skips two kinds of test, by `default-filter` in
+`.config/nextest.toml`; `scripts/walks.sh` runs exactly those, under
+`--profile walks`:
+
+- **Acceptance walks:** every test in a module named `*_walk` (`ease_walk`,
+  `m7_walk`, `tour_walk`, and so on).
+- **Pty tests:** every test in a module of the `mergewright::it` binary that
+  spawns `mwr` on a pseudo-terminal (the module list is in the filter).
+
+**Convention: a new acceptance walk lives in a `*_walk` module**, and lands in
+the walk tier with no edit. A new pty module is added to the module list in
+both profiles of `.config/nextest.toml` (the same text twice).
+`scripts/walks.sh` first proves the two profiles split every test (no test in
+both, none in neither, counts add up to `--ignore-default-filter`), then runs
+the walks and prints one `SUMMARY walks tests=N failed=M wall_s=X` line.
+Everything stays compiled and clippy'd by the plain gates; only where it runs
+moves. Not feature-gated and not `#[ignore]`d, on purpose.
+
+**A `-E 'test(m7_walk::...)'` command selects nothing under the default
+profile.** Add `--profile walks`, or `--ignore-default-filter` to select across
+both tiers. The older per-milestone commands in this file that name a walk
+module need that flag; the acceptance scripts under `scripts/` already have it.
 
 ## Captures
 
-Every file under `docs/shots/` is **asserted by every `cargo nextest run`** and
+Every file under `docs/shots/` is **asserted by `cargo nextest run` (fast) or `scripts/walks.sh` (walk)**, by the tier of the test that owns it, and
 written only when you ask for it (m5-history-and-ghost-preview/40). Change what
 the app draws and the run goes red, naming the file, the first differing line
 and its column. There is no tolerance to relax: the captures are what the user
@@ -40,7 +68,7 @@ red.
 When the new picture is the right one:
 
 ```sh
-MWR_UPDATE_SHOTS=1 cargo nextest run   # rewrites, and fails anyway
+MWR_UPDATE_SHOTS=1 cargo nextest run --ignore-default-filter   # both tiers; rewrites, and fails anyway
 git diff --stat docs/shots/              # read it before you commit it
 ```
 
@@ -48,7 +76,7 @@ git diff --stat docs/shots/              # read it before you commit it
 fail, so a changed capture cannot reach a commit without someone having looked
 at it. One pass rewrites everything: a generator that owns several files
 collects its mismatches (`mergewright_fixtures::Captures`) instead of aborting at the
-first. Then run the gate again, plain, and it is green.
+first. Then run the gate again, plain, and `scripts/walks.sh`, and both are green.
 
 A capture must be reproducible on any machine, so nothing the run invents may
 reach the file. Two seams handle that for you: `captures::frame_at` draws every
