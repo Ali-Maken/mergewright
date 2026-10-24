@@ -97,9 +97,18 @@ where
     let _frame = redetect::hold_output();
     terminal.backend_mut().write_all(SYNC_BEGIN)?;
 
+    // Erase the last frame's iTerm2 bands before the text, so the text can
+    // draw into their cells. `frame` writes the bands after it.
+    let mut erased = Vec::new();
+    graphics.erase_bands(&mut erased);
+    let erased = terminal.backend_mut().write_all(&erased);
+
     let mut graph = None;
-    let drawn = terminal
-        .draw(|frame| graph = view_with_graphics(session, state, graphics.status(), frame))
+    let drawn = erased
+        .and_then(|()| {
+            terminal
+                .draw(|frame| graph = view_with_graphics(session, state, graphics.status(), frame))
+        })
         .map(|_| ());
     let placed = drawn.as_ref().map_or(Ok(()), |()| {
         let mut images = Vec::new();
