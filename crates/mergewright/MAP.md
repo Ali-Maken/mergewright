@@ -50,6 +50,7 @@ The palette on the start screen: opening it, its keys, a paste into its query, d
 The loop that turns a terminal into an application: wake, `update`, draw. Every wake arrives down one channel.
 - `Wake` (enum) — what woke the loop: input, a signal, a job's event, a redetect reply.
 - `Exit` (enum) — why the loop stopped: quit, a handed-back key, a signal, a fatal error, a write stopped half-way.
+- `placements` (fn), `Placed`, `Room` — where each strip's rows land in the graph column around the cursor row's second line; the frame and the Ghostty capture both place from it.
 ## event_loop::exit_wait
 After the terminal is given back: stop the job pool, wait a bounded time for an unstoppable write, say what happened.
 ## event_loop::graphics

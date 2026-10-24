@@ -277,19 +277,25 @@ shot=$(grep -E '^SUMMARY ghostty_png' "$WORK/shot.txt")
 echo "$shot" >>"$OUT"
 [ "$status_s" -eq 0 ] || miss "ghostty_shot:: exited $status_s (capture drifted or missing): $WORK/shot.txt"
 say "capture docs/shots/m7/fix-scroll-ghostty.png exit=$status_s $(echo "$shot" | grep -oE 'bytes=[0-9]+ .*')"
-# The PNG's rows, counted from the graph pane's first row; the pane starts on
-# screen row 1, under the title bar.
+# The PNG's lines, counted from the graph pane's first line (the uncommitted
+# row). The pane starts on screen row 2: row 0 is the title bar and row 1 a
+# blank line (measured by drawing the whole screen: ease-pass/22).
+PANE_TOP=2
+# The columns kept: the strips' width in cells (PNG px / his 17 px cell) and the
+# cursor's two-column gutter.
+cols=$(($(field "$shot" width_px) / 17 + 2))
 pane=$(field "$shot" pane_rows)
 GRID=docs/shots/m7/fix-scroll-release-unicode.txt
 if [ -n "$pane" ] && [ -d "$REPO" ]; then
-  rows="$((${pane%..*} + 1)):$((${pane#*..} + 1))"
-  line=$(pty grid text "" "" GRID_OUT="$WORK/grid.txt" GRID_ROWS="$rows")
+  rows="$((${pane%..*} + PANE_TOP)):$((${pane#*..} + PANE_TOP))"
+  line=$(pty grid text "" "" GRID_OUT="$WORK/grid.txt" GRID_ROWS="$rows" GRID_COLS="$cols")
   echo "$line" >>"$OUT"
   {
     echo "# m7-power-tools/47: the release grid, pty text walk (Unicode), TeamSpec::MONOREPO 187x50,"
     echo "# held j x188 at 16 ms; every byte before J's frame, drawn by pyte. Screen rows $rows (the"
-    echo "# PNG's rows), cut at the graph's divider. Characters only: colour, the lit thread and"
-    echo "# the cursor's fill are not recorded (CLAUDE.md rule 5)."
+    echo "# PNG's lines; pane lines from the uncommitted row at screen row $PANE_TOP), first $cols columns (the strips' width"
+    echo "# and the cursor gutter; no \`⋮\` divider to cut at). The cursor's second line is the last line."
+    echo "# Characters only: colour, the lit thread and the cursor's fill are not recorded (CLAUDE.md rule 5)."
     cat "$WORK/grid.txt"
   } >"$GRID"
   cargo run -q -p mergewright-fixtures -- redact "$GRID" >"$WORK/redact.txt" 2>&1 \

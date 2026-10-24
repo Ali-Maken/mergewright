@@ -29,7 +29,42 @@ mod layers;
 mod tall;
 
 use layers::{Drawn, Held, layers, on_screen, places};
+pub use tall::Room;
 use tall::{Band, make_room};
+
+/// Where one strip's rows land in the graph column this frame: the strip
+/// (its index in [`PixelRows::strips`]) and its [`Room`] (the parts, as strip
+/// rows and the graph line each starts on, and the cursor row's second line).
+/// The shape of the frame is decided here, once: `Graphics::drawn` places
+/// from it and the Ghostty capture (`tests/it/ghostty_shot.rs`) stacks from
+/// it, so the two cannot drift.
+pub struct Placed {
+    /// Index into [`PixelRows::strips`].
+    pub strip: usize,
+    /// Where its rows go.
+    pub room: Room,
+}
+
+/// Every strip on screen in a `graph_height`-line column, placed around the
+/// cursor row's second line (07b): strips show one line fewer and make room.
+pub fn placements(state: &AppState, pixels: &PixelRows, graph_height: u16) -> Vec<Placed> {
+    let top = state.history.as_ref().map_or(0, |history| history.top);
+    let tall = TallRow::of(state);
+    let height = graph_height.saturating_sub(u16::from(tall.is_some()));
+    pixels
+        .strips
+        .iter()
+        .enumerate()
+        .filter_map(|(strip, rows)| {
+            let lowered = pixels.uncommitted_on_top && rows.uncommitted_at().is_none();
+            let (shown, at) = on_screen(rows.first_row, rows.row_count(), lowered, top, height)?;
+            Some(Placed {
+                strip,
+                room: make_room(shown, at, tall),
+            })
+        })
+        .collect()
+}
 
 /// iTerm2 bands kept: a tall viewport plus a strip either side
 /// (`StripCache::capacity_for(32, 256, 64)` is 11).
@@ -209,21 +244,11 @@ impl<R: GraphicsReplies> Graphics<R> {
         graph_height: u16,
         iterm2: bool,
     ) -> (Vec<Drawn>, Option<Band>) {
-        let top = state.history.as_ref().map_or(0, |history| history.top);
-        // The second line takes a line of the column (07b): strips show one
-        // row fewer, and make room for it.
-        let tall = TallRow::of(state);
-        let height = graph_height.saturating_sub(u16::from(tall.is_some()));
         let mut drawn: Vec<Drawn> = Vec::new();
         let mut band: Option<Band> = None;
-        for strip in &pixels.strips {
-            let lowered = pixels.uncommitted_on_top && strip.uncommitted_at().is_none();
-            let Some((rows, at)) =
-                on_screen(strip.first_row, strip.row_count(), lowered, top, height)
-            else {
-                continue;
-            };
-            let room = make_room(rows, at, tall);
+        for placed in placements(state, pixels, graph_height) {
+            let strip = &pixels.strips[placed.strip];
+            let room = placed.room;
             let mut held = Held {
                 images: &self.images,
                 pieces: &mut self.pieces,

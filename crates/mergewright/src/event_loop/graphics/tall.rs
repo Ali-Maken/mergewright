@@ -21,9 +21,11 @@ use crate::view::strips::TallRow;
 /// each part's strip rows and the graph line the first lands on, and the
 /// strip row whose second line falls in this strip, with that line.
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct Room {
-    pub(super) parts: Vec<(Range<usize>, u16)>,
-    pub(super) band: Option<(usize, u16)>,
+pub struct Room {
+    /// Strip rows shown, and the graph line each part starts on.
+    pub parts: Vec<(Range<usize>, u16)>,
+    /// The strip row whose second line falls here, and that line.
+    pub band: Option<(usize, u16)>,
 }
 
 /// `rows` of a strip shown from graph line `at`, as placed around `tall`.

@@ -6,12 +6,13 @@
 //! it — the strip's backdrop with the selection's emphasis image over it —
 //! built through `StripCache::composited`, the same picture the two Kitty
 //! layers blend to (ADR-0053). Stacked top to bottom, cropped to the graph
-//! column and the cursor's row ±10 rows, over a stand-in dark background.
-//! Only rows the pane draws are kept: the strips run past the screen, and
-//! with the uncommitted row on top the pane draws one history row fewer
-//! (`view/strips.rs` `pixel_rows`). `cursor_on_screen` says whether the
-//! cursor's row is one of them; the shot does not assert it (47 reports, it
-//! does not fix).
+//! column and the cursor's line ±10 lines, over a stand-in dark background.
+//! Only the lines the pane draws are kept, laid out as the real frame places
+//! them (`event_loop::placements`, the call `Graphics::drawn` makes): the
+//! uncommitted row on top, and under the cursor's row the line its second
+//! line takes, drawn as the continuation band. So the cursor's row is never
+//! the last line, and the crop's lines are the text grid's, one for one
+//! (`scripts/47-scroll-acceptance.sh` step 5).
 //!
 //! Colour is unverified (CLAUDE.md rule 5) and Ghostty's own rendering is
 //! unverified until the user looks. Run by `scripts/47-scroll-acceptance.sh`
@@ -22,20 +23,18 @@ use std::path::Path;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
-use mergewright::config::Loaded;
-use mergewright::event_loop::Wake;
+use mergewright::event_loop::{Wake, placements};
 use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
-use mergewright::session::Session;
 use mergewright::update::{AppEvent, AppState, update};
-use mergewright::view::strips::{PixelRows, StripPaint, pixel_rows};
+use mergewright::view::strips::{PixelRows, pixel_rows};
 use mergewright_core::capabilities::RenderingTier;
 use mergewright_core::event::{Event, KeyCode, KeyPress};
 use mergewright_fixtures::team::{self, TeamSpec};
-use mergewright_graph::raster::cache::{ByteBudget, STRIP_ROWS, StripCache};
+use mergewright_graph::raster::cache::STRIP_ROWS;
 
 use crate::frame_trace::{Post, Posted};
 use crate::frames::Refs;
-use crate::frames::run::{capabilities, ready_to_scroll_at};
+use crate::frames::run::ready_to_scroll_at;
 
 /// His terminal, `(columns, rows)` (as `held_key::SIZE`).
 const SIZE: (u16, u16) = (187, 50);
@@ -52,7 +51,7 @@ const MAX_BYTES: usize = 200 * 1024;
 
 #[test]
 fn fix_scroll_ghostty_png() {
-    let shot = shot().unwrap_or_else(|why| panic!("{why}"));
+    let shot = shared().as_ref().unwrap_or_else(|why| panic!("{why}"));
     println!(
         "SUMMARY ghostty_png bytes={} width_px={} height_px={} cursor_row={} rows={}..{} pane_rows={}..{} cursor_on_screen={} strips={} deflate=on",
         shot.png.len(),
@@ -78,6 +77,23 @@ fn fix_scroll_ghostty_png() {
     }
 }
 
+/// The red-first test of ease-pass/22: the PNG's lines are the lines the real
+/// frame places for the same state (`placements`), the cursor row's second
+/// line included, and the cursor row is not the last line it shows.
+#[test]
+fn the_shot_shows_the_lines_the_real_frame_places() {
+    let shot = shared().as_ref().unwrap_or_else(|why| panic!("{why}"));
+    let real: Vec<Option<Line>> =
+        shot.real[shot.first_line..shot.first_line + shot.lines.len()].to_vec();
+    let shown: Vec<Option<Line>> = shot.lines.iter().copied().map(Some).collect();
+    assert_eq!(shown, real, "PNG lines from pane line {}", shot.first_line);
+    assert!(
+        shot.lines.contains(&Line::Second),
+        "the cursor row's second line is in the shot: {:?}",
+        shot.lines
+    );
+}
+
 /// The capture and what it shows.
 struct Shot {
     png: Vec<u8>,
@@ -95,6 +111,60 @@ struct Shot {
     cursor_on_screen: bool,
     /// Strips stacked before cropping.
     strips: usize,
+    /// What each line of the PNG shows, top to bottom.
+    lines: Vec<Line>,
+    /// The pane line the first of them is.
+    first_line: usize,
+    /// Every line of the pane as the real frame places it.
+    real: Vec<Option<Line>>,
+}
+
+/// The shot is taken once for both tests (it lays out a 17 700-commit repo).
+fn shared() -> &'static Result<Shot, String> {
+    static SHOT: std::sync::OnceLock<Result<Shot, String>> = std::sync::OnceLock::new();
+    SHOT.get_or_init(shot)
+}
+
+/// One line of the graph column.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Line {
+    /// A history row.
+    Row(usize),
+    /// The uncommitted row.
+    Uncommitted,
+    /// The cursor row's second line: the band the real frame leaves under it.
+    Second,
+}
+
+/// The pane's lines as the real frame places them: `placements`, the same
+/// call `Graphics::drawn` makes, read off its rows.
+fn real_lines(state: &AppState, pixels: &PixelRows) -> Vec<Option<Line>> {
+    let height = state.graph_pane_rows();
+    let mut lines = vec![None; height];
+    for placed in placements(state, pixels, u16::try_from(height).unwrap_or(u16::MAX)) {
+        let strip = &pixels.strips[placed.strip];
+        let uncommitted = strip.uncommitted_at();
+        for (shown, at) in &placed.room.parts {
+            for (k, row) in shown.clone().enumerate() {
+                let line = usize::from(*at) + k;
+                let history_row =
+                    strip.first_row + row - usize::from(uncommitted.is_some_and(|u| u < row));
+                if let Some(slot) = lines.get_mut(line) {
+                    *slot = Some(if uncommitted == Some(row) {
+                        Line::Uncommitted
+                    } else {
+                        Line::Row(history_row)
+                    });
+                }
+            }
+        }
+        if let Some((_, line)) = placed.room.band
+            && let Some(slot) = lines.get_mut(usize::from(line))
+        {
+            *slot = Some(Line::Second);
+        }
+    }
+    lines
 }
 
 fn shot() -> Result<Shot, String> {
@@ -166,10 +236,9 @@ pub(crate) fn answered(
     }
 }
 
-/// Every strip on screen, composited and stacked, cropped around the cursor.
-fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
-    let history = state.history.as_ref().ok_or("no history")?;
-    let cursor = history.cursor;
+/// The cursor's row, once the hold landed and the lane cap reads as drawn.
+fn checked(state: &AppState, want: usize) -> Result<usize, String> {
+    let cursor = state.history.as_ref().ok_or("no history")?.cursor;
     if cursor != want {
         return Err(format!(
             "the cursor is on row {cursor}, not {want}: the hold did not land"
@@ -181,128 +250,68 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
     if state.detail.shown {
         return Err("the detail pane is open: the lane cap would read a narrower graph".to_owned());
     }
+    Ok(cursor)
+}
+
+/// Every strip on screen, composited, laid out as the real frame places them
+/// (`placements`: the uncommitted row, the cursor row's second line with its
+/// continuation band), cropped around the cursor.
+fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
+    let cursor = checked(state, want)?;
     let max_lanes =
         mergewright_ui::graph_screen::max_lanes_for(state.size.columns, state.max_lanes);
     let pixels = pixel_rows(state, max_lanes, STRIP_ROWS);
-    let session = Session::settle(&Loaded::default(), {
-        let mut caps = capabilities(RenderingTier::Pixel);
-        caps.kitty_deflate = true;
-        caps
-    });
-    let paint = StripPaint::of(&session);
+    let paint = kitty_paint();
     let Stack {
         drawn,
         pixels: stacked,
         width,
     } = stack(&pixels, &paint)?;
-    let at = drawn
-        .iter()
-        .position(|row| *row == Some(cursor))
-        .ok_or_else(|| format!("the cursor's row {cursor} is in no strip on screen"))?;
-    // Strips are aligned, so they run past the screen's top and bottom: the
-    // pane draws `graph_pane_rows` rows (the uncommitted row and the history
-    // rows under it) from the uncommitted row when it is on top, else from
-    // `top` (48).
-    let pane_first = if pixels.uncommitted_on_top {
-        drawn.iter().position(Option::is_none)
-    } else {
-        drawn.iter().position(|row| *row == Some(history.top))
-    }
-    .ok_or("the pane's first row is in no strip")?;
-    let pane = pane_first..(pane_first + state.graph_pane_rows()).min(drawn.len());
-    let shown = at.saturating_sub(AROUND).max(pane.start)..(at + AROUND + 1).min(pane.end);
-    let cursor_on_screen = pane.contains(&at);
-    let rows =
-        drawn[shown.start].unwrap_or(cursor)..drawn[shown.end - 1].map_or(cursor, |row| row + 1);
     let cell_height = paint.cell_height as usize;
     let stride = width as usize * 4;
     if stacked.len() != drawn.len() * cell_height * stride {
         return Err("the strips' pixels do not match their rows".to_owned());
     }
-    let top = shown.start * cell_height * stride;
-    let bottom = shown.end * cell_height * stride;
+    let real = real_lines(state, &pixels);
+    let at = real
+        .iter()
+        .position(|line| *line == Some(Line::Row(cursor)))
+        .ok_or_else(|| format!("the cursor's row {cursor} is on no line of the pane"))?;
+    let cursor_on_screen = true;
+    let first = at.saturating_sub(AROUND);
+    let end = (at + AROUND + 1).min(real.len());
+    let kept = &real[first..end];
+    let band = continuation(state, &pixels, &paint)?;
+    if band.as_ref().is_some_and(|(w, _)| *w != width) {
+        return Err("the continuation band is not as wide as the strips".to_owned());
+    }
+    let (canvas, rows) = crop(
+        kept,
+        first,
+        &stacked,
+        &drawn,
+        band.as_ref(),
+        (width, cell_height),
+    )?;
     let height =
-        u32::try_from(shown.len() * cell_height).map_err(|why| format!("crop height: {why}"))?;
+        u32::try_from(kept.len() * cell_height).map_err(|why| format!("crop height: {why}"))?;
     let frames = pixels.strips.len();
-    let png = on_dark(stacked[top..bottom].to_vec(), width, height)?;
+    let png = on_dark(canvas, width, height)?;
     Ok(Shot {
         png,
         width,
         height,
         cursor,
-        pane_rows: shown.start - pane.start..shown.end - pane.start,
+        pane_rows: first..end,
         cursor_on_screen,
-        rows,
+        rows: rows.0..rows.1,
         strips: frames,
+        lines: kept.iter().filter_map(|line| *line).collect(),
+        first_line: first,
+        real,
     })
 }
 
-/// The frame's strips, composited, one under the other.
-struct Stack {
-    /// Every drawn row, top to bottom: its history row, or `None` for the
-    /// uncommitted row (which pushes the rows under it down).
-    drawn: Vec<Option<usize>>,
-    /// Premultiplied RGBA, `width` pixels a line.
-    pixels: Vec<u8>,
-    width: u32,
-}
-
-fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
-    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len());
-    let mut drawn = Vec::new();
-    let mut pixels = Vec::new();
-    let mut width = None;
-    let mut next_row = None;
-    for strip in &frame.strips {
-        let raster = strip
-            .with_layers(frame, paint, |plain, selection| {
-                cache.composited(strip.first_row, plain, selection)
-            })
-            .map_err(|why| format!("composited strip {}: {why:?}", strip.first_row))?;
-        let follows = next_row.is_none_or(|next| next == strip.first_row);
-        if !follows || *width.get_or_insert(raster.width) != raster.width {
-            return Err(format!(
-                "strip at row {} (width {}) does not follow row {next_row:?} (width {width:?})",
-                strip.first_row, raster.width
-            ));
-        }
-        let uncommitted = strip.uncommitted_at();
-        let mut history_row = strip.first_row;
-        for k in 0..strip.row_count() {
-            if uncommitted == Some(k) {
-                drawn.push(None);
-            } else {
-                drawn.push(Some(history_row));
-                history_row += 1;
-            }
-        }
-        next_row = Some(history_row);
-        pixels.extend_from_slice(&raster.pixels);
-    }
-    Ok(Stack {
-        drawn,
-        pixels,
-        width: width.ok_or("no strip on screen")?,
-    })
-}
-
-/// Premultiplied RGBA over a stand-in dark background (as
-/// `mergewright-graph/tests/it/emphasis_layer.rs::on_dark`), as a PNG.
-pub(crate) fn on_dark(pixels: Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, String> {
-    use tiny_skia::{Color, IntSize, Pixmap, PixmapPaint, Transform};
-    let size = IntSize::from_wh(width, height).ok_or("an empty crop has no PNG")?;
-    let strip = Pixmap::from_vec(pixels, size).ok_or("the pixel buffer does not match its size")?;
-    let mut canvas = Pixmap::new(width, height).ok_or("no canvas for the background")?;
-    canvas.fill(Color::from_rgba8(0x1E, 0x1E, 0x2E, 255));
-    canvas.draw_pixmap(
-        0,
-        0,
-        strip.as_ref(),
-        &PixmapPaint::default(),
-        Transform::identity(),
-        None,
-    );
-    canvas
-        .encode_png()
-        .map_err(|why| format!("encoding a PNG: {why}"))
-}
+mod pixels;
+pub(crate) use pixels::on_dark;
+use pixels::{Stack, continuation, crop, kitty_paint, stack};
