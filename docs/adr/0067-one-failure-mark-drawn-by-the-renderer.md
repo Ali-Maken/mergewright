@@ -9,7 +9,7 @@ Scout `.scratch/ease-pass/scouts/25q-failure-marks.md`: failure bars were incons
 that put it there ("as every other failure bar", ease/06i) was wrong.
 
 ## Decision
-- Every failure reads `⊗ <why>` (ASCII `(x) <why>`), the mark in the error colour.
+- Every failure reads `⊗ <why>` (ASCII `(x) <why>`), the mark in red (the `removed` colour).
 - One ui module (`failure`) draws it; producers pass words only; a test fails on a producer that types its own mark.
 - `✗` stays "a commit no branch holds"; `!` attention, `⚠` warning, `ⓘ` info, `gfx:` graphics status. `⊗` and `(x)` are
   taken app-wide.

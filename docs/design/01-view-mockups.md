@@ -396,7 +396,7 @@ the whole legend fits: at this mock's 130 cells it no longer does since the prod
 
 An expanded `●` row lists `commands Mergewright ran`, each drawn `┆ git …`; `$`
 means only "outside Mergewright".
-**Failure mark (ease-pass 26, ADR-0067).** Anything that failed (an action he asked for, or a read a whole line or pane stands for) reads `⊗ <why>`, ASCII `(x) <why>`, the mark in the error colour. One mark app-wide, drawn by the screen, never typed into the words. Not a failure, so not `⊗`: `✗` a commit no branch holds (J), `!` needs attention, `⚠` warning, `ⓘ` info, `?` a value not known (the why is on the bar), `gfx: <error>` the graphics status. Amended 2026-10-24 (user 'yes'; KNOWN_GAPS ease/25-failure-mark-consistency).
+**Failure mark (ease-pass 26, ADR-0067).** Anything that failed (an action he asked for, or a read a whole line or pane stands for) reads `⊗ <why>`, ASCII `(x) <why>`, the mark in red (the `removed` colour). One mark app-wide, drawn by the screen, never typed into the words. Not a failure, so not `⊗`: `✗` a commit no branch holds (J), `!` needs attention, `⚠` warning, `ⓘ` info, `?` a value not known (the why is on the bar), `gfx: <error>` the graphics status. Amended 2026-10-24 (user 'yes'; KNOWN_GAPS ease/25-failure-mark-consistency).
 
 
 ### 1.11 Stash list + diff
