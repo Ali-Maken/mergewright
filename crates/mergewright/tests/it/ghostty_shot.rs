@@ -194,11 +194,7 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
         drawn,
         pixels: stacked,
         width,
-    } = under_the_pinned_row(
-        stack(&pixels, &paint)?,
-        history.top,
-        paint.cell_height as usize,
-    );
+    } = pane_stack(&pixels, &paint, history.top)?;
     let at = drawn
         .iter()
         .position(|row| *row == Some(cursor))
@@ -239,6 +235,15 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
         rows,
         strips: frames,
     })
+}
+
+/// The frame's stack as the pane shows it.
+fn pane_stack(frame: &PixelRows, paint: &StripPaint, top: usize) -> Result<Stack, String> {
+    Ok(under_the_pinned_row(
+        stack(frame, paint)?,
+        top,
+        paint.cell_height as usize,
+    ))
 }
 
 /// The strips run on above `top`, and the pinned uncommitted row (its own
