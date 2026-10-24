@@ -45,11 +45,18 @@ fn a_pinned_uncommitted_row_leaves_strip_keys_alone() {
     let next = pixel_rows(&detached(41), MAX_LANES, STRIP_ROWS);
 
     let (at, next) = (keys(&at), keys(&next));
-    let shared: Vec<_> = at.iter().filter(|(first, _)| next.iter().any(|n| n.0 == *first)).collect();
+    let shared: Vec<_> = at
+        .iter()
+        .filter(|(first, _)| next.iter().any(|n| n.0 == *first))
+        .collect();
     assert!(!shared.is_empty(), "the two frames share a strip");
     for (first, key) in shared {
         let other = next.iter().find(|n| n.0 == *first).map(|n| n.1);
-        assert_eq!(other, Some(*key), "strip {first} re-keyed when the viewport moved one row");
+        assert_eq!(
+            other,
+            Some(*key),
+            "strip {first} re-keyed when the viewport moved one row"
+        );
     }
 }
 

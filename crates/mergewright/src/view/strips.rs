@@ -233,99 +233,20 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
         fold: &fold,
     };
 
-    let mut strips: Vec<StripRows> = ranges
-        .iter()
-        .map(|range| StripRows {
-            first_row: range.start,
-            rows: range
-                .clone()
-                .map(|index| painter.row(index, row_at(index)))
-                .collect(),
-            above: range
-                .start
-                .checked_sub(1)
-                .map(|above| fold.view(row_at(above)).row.into_owned()),
-        })
-        .collect();
-    // On `HEAD` the row hangs off its lane, so it is part of `HEAD`'s strip
-    // (that strip's index for it does not move with the viewport). Off
-    // `HEAD` it is an overlay on the pane's first line: an image of its own,
-    // so scrolling re-keys no strip.
-    let mut pinned = None;
-    if let Some(virtual_row) = &virtual_row {
+    let mut strips = painted(&ranges, &painter, row_at);
+    let pinned = virtual_row.as_ref().and_then(|virtual_row| {
         let on_top = PaintedRow::uncommitted(&fold, virtual_row);
-        if state.uncommitted_row_attached() {
-            put_uncommitted(&mut strips, on_top, history.top, window_rows.is_empty());
-        } else {
-            pinned = Some(StripRows {
-                first_row: 0,
-                rows: vec![on_top],
-                above: None,
-            });
-        }
-    }
+        place_uncommitted(
+            state,
+            &mut strips,
+            on_top,
+            history.top,
+            window_rows.is_empty(),
+        )
+    });
 
     let route = frame_route(state, history);
     PixelRows::drawn_through(strips, &fold, pinned, uncommitted, &route)
-}
-
-/// Whether the cursor sits in the viewport and its row has not arrived yet.
-///
-/// Such a row is on its way. Until it comes there is no thread, and strips
-/// drawn without one would be rasterised and sent unlit, then again lit once
-/// the window arrives: a page key's frame and its answer each sent every
-/// strip (30b). The wheel moves the viewport and leaves the cursor behind,
-/// and a cursor off screen is never on its way: waiting for it blanked the
-/// graph until a key brought the cursor back (37).
-fn cursor_row_on_its_way(history: &History, height: usize) -> bool {
-    history.selected().is_none() && (history.top..history.top + height).contains(&history.cursor)
-}
-
-/// The aligned strips covering `viewport` whose rows and row above are
-/// `on_hand`, each clipped to the rows there.
-fn strip_ranges(
-    viewport: Range<usize>,
-    on_hand: &Range<usize>,
-    strip_rows: usize,
-) -> Vec<Range<usize>> {
-    aligned(viewport, strip_rows)
-        .filter_map(|range| {
-            let above_on_hand = range.start == 0 || on_hand.contains(&(range.start - 1));
-            let end = range.end.min(on_hand.end);
-            (on_hand.contains(&range.start) && above_on_hand && range.start < end)
-                .then_some(range.start..end)
-        })
-        .collect()
-}
-
-/// Puts the uncommitted row on top of `HEAD`'s row `top`, in whichever strip
-/// holds it. An unborn branch has no rows, so there the virtual row makes a
-/// strip of its own.
-fn put_uncommitted(strips: &mut Vec<StripRows>, on_top: PaintedRow, top: usize, no_history: bool) {
-    let holding = strips
-        .iter()
-        .position(|strip| (strip.first_row..strip.first_row + strip.rows.len()).contains(&top));
-    match holding {
-        Some(at) => {
-            let strip = &mut strips[at];
-            strip.rows.insert(top - strip.first_row, on_top);
-        }
-        None if strips.is_empty() && no_history => strips.push(StripRows {
-            first_row: 0,
-            rows: vec![on_top],
-            above: None,
-        }),
-        // `HEAD`'s strip is still waiting on its rows; it draws once they
-        // come, with the virtual row on top. Nothing is lost by waiting.
-        None => {}
-    }
-}
-
-/// The aligned strips covering `viewport`, top to bottom (`StripCache::strips_for`).
-fn aligned(viewport: Range<usize>, strip_rows: usize) -> impl Iterator<Item = Range<usize>> {
-    let first = viewport.start / strip_rows;
-    let end = viewport.end.max(viewport.start + 1).div_ceil(strip_rows);
-    (first..end).map(move |index| index * strip_rows..(index + 1) * strip_rows)
 }
 
 /// One fold over every strip drawn, so a lane keeps its column across strip
@@ -367,6 +288,29 @@ fn plan<'r>(
         max_lanes
     };
     Fold::plan(max_lanes, &keep, &drawn)
+}
+
+/// The strips over `ranges`, every row painted and each strip's row above
+/// drawn through the same fold.
+fn painted<'r>(
+    ranges: &[Range<usize>],
+    painter: &Painter<'_>,
+    row_at: impl Fn(usize) -> &'r Row,
+) -> Vec<StripRows> {
+    ranges
+        .iter()
+        .map(|range| StripRows {
+            first_row: range.start,
+            rows: range
+                .clone()
+                .map(|index| painter.row(index, row_at(index)))
+                .collect(),
+            above: range
+                .start
+                .checked_sub(1)
+                .map(|above| painter.fold.view(row_at(above)).row.into_owned()),
+        })
+        .collect()
 }
 
 /// Paints a history row the way `visible_rows` does for text.
@@ -415,13 +359,15 @@ impl Painter<'_> {
 
 mod paint;
 #[cfg(test)]
+mod pinned_tests;
+mod ranges;
+#[cfg(test)]
 mod roles_tests;
 mod tall;
-#[cfg(test)]
-mod pinned_tests;
 #[cfg(test)]
 pub(crate) mod tests;
 
 pub use paint::StripPaint;
 use paint::{roles_of, stubs_of};
+use ranges::{cursor_row_on_its_way, place_uncommitted, strip_ranges};
 pub(crate) use tall::TallRow;

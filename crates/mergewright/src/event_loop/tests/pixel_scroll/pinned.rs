@@ -23,7 +23,10 @@ fn scrolled_dirty(state: &AppState, top: usize) -> AppState {
 
 /// Placements (`a=p`) in one frame's bytes.
 fn placements(frame: &str) -> usize {
-    frame.split("\x1b_G").filter(|c| c.starts_with("a=p")).count()
+    frame
+        .split("\x1b_G")
+        .filter(|c| c.starts_with("a=p"))
+        .count()
 }
 
 #[test]
@@ -48,10 +51,17 @@ fn a_pinned_uncommitted_row_resends_no_strip_while_scrolling() {
         run.pop();
 
         let strips = |frame: &String| -> usize {
-            transmits(frame).iter().filter(|t: &&Transmit| !t.is_emphasis()).count()
+            transmits(frame)
+                .iter()
+                .filter(|t: &&Transmit| !t.is_emphasis())
+                .count()
         };
         // The first frame sends every strip on screen and the pinned row.
-        assert!(strips(&run[0]) >= 2, "deflate {deflate}: first frame {}", strips(&run[0]));
+        assert!(
+            strips(&run[0]) >= 2,
+            "deflate {deflate}: first frame {}",
+            strips(&run[0])
+        );
         for (k, frame) in run.iter().enumerate().skip(1) {
             assert_eq!(
                 strips(frame),

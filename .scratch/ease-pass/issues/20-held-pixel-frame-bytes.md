@@ -99,53 +99,36 @@ scout unless a named line has moved; then stop and report.
 
 Order: step 0 first, red-checked; then build; boxes tick only with the named test, green, inline.
 
-- [ ] Step 0, before any code change: `docs/shots/ease-pass/20-pinned-row-before.png` — the top 6 pane rows of the
-  pixel graph column with the uncommitted row pinned (`TeamSpec::MONOREPO`, 187×50, after `j`×60, in-process as
-  `ghostty_shot.rs` draws, stand-in dark background), ≤200 KB. Drawn at HEAD 3123840e.
-- [ ] Red first, then green: `view::strips::tests::a_pinned_uncommitted_row_leaves_strip_keys_alone` — `PixelRows`
-  at `top = t` and `top = t + 1`, both pinned, same fold and roles: every strip present in both has an equal cache
-  key. Red at HEAD (the strip holding `top` differs), green after.
-- [ ] Red first, then green: `pixel_scroll::a_pinned_uncommitted_row_resends_no_strip_while_scrolling` — 46c's
-  test shape with a dirty working tree and `HEAD` scrolled off: after the first frame, `j` steps inside the cached
-  strips with the fold unchanged transmit zero strips; the pinned row's image is transmitted once and placed by id
-  after. (Roles: hold the focus branch fixed in the fixture, or count role re-keys apart; say which.)
-- [ ] `view::strips::tests::the_pinned_row_image_matches_the_virtual_row` — the pinned one-row image's pixels equal
-  the virtual row's band as HEAD 3123840e rasterises it (golden bytes taken at step 0 and committed with the test).
-- [ ] Red first, then green: `view::strips::tests::under_the_pinned_row_the_top_history_row_is_its_real_self` — the
-  top history row's band under the pinned row equals that row's band rasterised in its strip with no uncommitted row.
-  Red at HEAD confirms the debugger's premise (`pen.rs:261` reads the virtual row). **If it is green at HEAD, stop
-  and report**: the premise is wrong and the visible-change paragraph above is void.
-- [ ] `view::strips::tests::the_pinned_row_keeps_every_screen_line` — pinned row on pane line 0, history row `top` on
-  line 1, …, each equal to `history_row_line`; the mouse hit-test lands on the same rows. Plus 48's
-  `scroll-cursor-under-uncommitted-row` test(s) green unmodified (name them).
-- [ ] `view::strips::tests::the_uncommitted_row_sits_on_head_in_its_strip` (`strips/tests.rs:114-130`) green
-  **unmodified**: attached to `HEAD` on screen, the row stays in its strip (its index does not move with scroll).
-- [ ] `event_loop::graphics::tall::tests::the_cursor_band_under_the_pinned_row_keeps_its_lines` (name to fit the
-  module) — cursor on the top history row with its second line (`TallRow`): pinned image, cursor strip twice,
-  continuation band, strips below one row lower; no two images on one line.
-- [ ] `view::strips::tests::a_one_row_pane_draws_no_pinned_image` — 48's rule: a 1-row pane shows the cursor row,
-  uncommitted row unpinned; no pinned placement.
-- [ ] iTerm2: `event_loop::graphics::iterm2::tests::the_pinned_row_is_its_own_band` — the pinned row drawn as its own
-  `ItermImages` band over the same line; strips below lowered as on Kitty.
-- [ ] Bytes: `held_key::{held_j_stops_on_release_pixel, held_j_stops_on_release_pixel_free,
-  j_then_journal_opens_at_once_pixel}` green, 3 debug runs each from `scripts/ease-20-held-pixel-bytes.sh`, appended
-  to `docs/perf/20-held-pixel-bytes.txt` as `# after` with `bytes_per_frame_held` per run. Budget unchanged. Any run
-  over 512 KiB → box open, report the numbers; do not raise it (budget is the conductor's). Also record the deflate
-  test's `bytes_per_frame_held` and `strip_transmits_held` after (expected lower; reported, not judged).
-- [ ] Text tiers untouched: every Unicode/text capture test green with no shot file rewritten (`git diff --stat
-  docs/shots` lists only this ticket's PNGs).
-- [ ] `docs/shots/ease-pass/20-pinned-row-after.png`, same frame as step 0, ≤200 KB, and a contact-sheet entry
-  (`docs/shots/ease-pass/20-pinned-row.md`): before above after, under the line *"Right looks like: the pinned
-  uncommitted row identical in both; in the after, the history row directly under it has its lanes and its commit's
-  upward line running to the top edge of the row; every other row identical. Colour unverified."* Judged by the
-  user, not ticked by the builder's eye.
-- [ ] `ghostty_shot.rs` / `pieces_shot.rs` PNGs: not re-shot here (ticket 21 owns them, runs after this). NOTES
-  say whether either frame has a pinned row, so 21 knows what changes.
-- [ ] Touches: line covering every file in the debugger's list, each with how it was checked.
-- [ ] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
-  `cargo test --doc`.
+- [x] Step 0: `docs/shots/ease-pass/20-pinned-row-before.png` (5.6 KB), drawn at HEAD 3123840e by `pinned_row_shot::pinned_row_png` (`tests/it/pinned_row_shot.rs`, `MWR_UPDATE_SHOTS=1`, committed 6c014e92 before any code change).
+- [x] Red first, then green: `view::strips::pinned_tests::a_pinned_uncommitted_row_leaves_strip_keys_alone`. <- red at f408cea2 ("strip 32 re-keyed when the viewport moved one row"), green after 87fc9ae7. (Lives in `pinned_tests.rs`, not `tests.rs`: `tests.rs` is an over_400 row.)
+- [x] Red first, then green: `event_loop::tests::pixel_scroll::pinned::a_pinned_uncommitted_row_resends_no_strip_while_scrolling`. <- red on the HEAD 3123840e sources ("scroll step 1 re-sent a strip under a pinned row, left 1 right 0"), green after. Raw and deflate. Roles: `history_of(100)` is one branch, so the role key never changes.
+- [x] `view::strips::pinned_tests::the_pinned_row_image_matches_the_virtual_row`. **Deviation, see NOTES 1:** golden = the virtual row as HEAD 3123840e rasterised it with *no history row above it* (`top` 0, `HEAD` on row 1, 1296 bytes, `pinned_row.golden`). With a history row above it, HEAD drew that row's lane into the pinned row's top edge (pixel rows 0-2, x 3-5 at the test cell); that is not reproducible in a one-row image.
+- [x] Red first, then green: `view::strips::pinned_tests::under_the_pinned_row_the_top_history_row_is_its_real_self`. <- red at f408cea2 (the premise holds; not green at HEAD), green after 87fc9ae7.
+- [x] `event_loop::graphics::pinned_tests::the_pinned_row_keeps_every_screen_line` (pinned image on the column's first line in `PINNED_SLOT`, each history row on `history_row_line`, no two images on one line) + `...::the_cursor_on_the_pinned_row_still_makes_room_for_its_second_line`. Mouse hit-test: `update::mouse::tests::click_on_the_last_row_under_the_uncommitted_row` and `a_click_in_a_one_row_pane_selects_what_is_drawn` green unmodified (`graph_row_at` is `update`-private and unchanged); 48's `view::tests::held_j_keeps_the_cursor_on_screen_under_the_uncommitted_row`, `update::tests::every_cursor_key_keeps_the_cursor_drawn`, `n_and_capital_n_keep_the_cursor_drawn_under_the_uncommitted_row`, `a_landing_under_the_uncommitted_row_keeps_the_cursor_drawn`, `a_dirty_tree_arriving_keeps_a_shown_cursor_shown`, `view::strips::tests::held_j_keeps_the_cursor_lit_under_the_uncommitted_row` green unmodified. Found by this test: `layers::on_screen` showed a lowered strip from row `top - 1`, which would land on the pinned row's line; fixed (`first = top - first_row`), `layers::tests::a_strip_holding_top_under_the_pinned_row_starts_at_top`.
+- [x] `view::strips::tests::the_uncommitted_row_sits_on_head_in_its_strip` green **unmodified** (attached: the row stays in its strip).
+- [x] `event_loop::graphics::pinned_tests::the_cursor_band_under_the_pinned_row_keeps_its_lines`: pinned image, cursor strip twice (rows `top..top+1` on line 1, the rest from line 3), band on line 2, no two images on one line.
+- [x] `view::strips::pinned_tests::a_one_row_pane_draws_no_pinned_image`.
+- [x] iTerm2: `event_loop::graphics::pinned_tests::the_pinned_row_is_its_own_band` (the same placements as Kitty; a one-row band in its own slot; `Graphics::frame` on iTerm2 ends `gfx ok` and encodes bands).
+- [x] Bytes: `held_key::{held_j_stops_on_release_pixel, held_j_stops_on_release_pixel_free, j_then_journal_opens_at_once_pixel}` green in all 3 runs of `scripts/ease-20-held-pixel-bytes.sh` (`docs/perf/20-held-pixel-bytes.txt`, `# ease-20 ... [after run N]`). `bytes_per_frame_held` (A 40 MB/s / A free / B): run 1 466,032 / 426,548 / 452,426; run 2 466,126 / 473,211 / 495,976; run 3 245,995 / 458,529 / 480,396. Worst 495,976 = 94.6 % of 524,288: tight, passes, budget not moved. Deflate test after: 18,037 B/held frame, 36 strip transmits (before 64,343 / 55). Before: 1.65-1.85 MB.
+- [x] Text tiers untouched: `git diff --stat main..HEAD -- docs/shots` lists only `docs/shots/ease-pass/20-pinned-row*`; text/Unicode paths not edited (`view/strips`, `event_loop/graphics` are pixel-only; grep below).
+- [x] `docs/shots/ease-pass/20-pinned-row-after.png` (5.9 KB) + `20-pinned-row.md` with the "Right looks like" line. **Not ticked by eye**: the user judges. The md states a measured difference the ruling did not expect (NOTES 1).
+- [x] `ghostty_shot.rs` / `pieces_shot.rs` PNGs not re-shot here. See NOTES 3.
+- [x] Touches: NOTES.
+- [ ] Gates workspace-wide: see NOTES 4.
 
 Size: one context. Files: `crates/mergewright/src/view/strips.rs` (+ tests), `crates/mergewright/src/event_loop/graphics.rs`,
 `graphics/layers.rs`, `graphics/tall.rs`, the iTerm2 image path; `mergewright-graph` raster only if the one-row image
 needs an entry point (name it in NOTES; no key-shape change). For the conductor after merge: gap row
 M7/46-kitty-no-deflate takes the new raw numbers (tail/j may still miss; bytes no longer the reason).
+
+## NOTES (builder, ease-20)
+
+Scout: none. The debugger's NOTES name every line and the ruling designates them as the scout (ADR-0035); no named line had moved. No compaction.
+
+**1. One thing the ruling got wrong (flag, not a silent deviation).** The ruling says the pinned row is "drawn identically" alone in a one-row image. It is not, at HEAD, whenever a history row sits above `top`: the pen draws a row's upward stub when the row above goes down its lane (`pen.rs:261`), and at HEAD the virtual row's "row above" was the real history row `top - 1`, so the pinned row (a lane-less node on the screen's first line) got a short grey stub into its top edge (measured: 9 pixels, x 7-9 y 0-3 of the capture; at the test cell, pixel rows 0-2 x 3-5). That stub is the same mistake the ruling fixes for the row under it: a line from a row that is off screen. A one-row image cannot draw it, and drawing it needs `above` in the key, which is the re-key this ticket removes. So the pinned row loses it. The golden test pins the virtual row with no row above (what the ruling means by "identical"). The user sees: dashed ring with no tick at its top edge. `docs/shots/ease-pass/20-pinned-row.md` says so.
+
+**2. Behaviour.** Attached to `HEAD` (HEAD on the top visible row): unchanged, the row sits in `HEAD`'s strip (its index does not move while attached). Detached (the case that scrolled): `PixelRows.pinned`, a one-row `StripRows` at `first_row` 0 (aligned for the cache, one row, `Ring::Uncommitted`, so its key cannot equal a history strip's). `graphics::drawn` places it on line 0 in `PINNED_SLOT = usize::MAX` (Kitty finds a strip by `first_row`, so slot 0 would have freed strip 0's image each frame). `pixel_rows` was over clippy's 60 lines: `view/strips/ranges.rs` (new) holds `strip_ranges`, `aligned`, `cursor_row_on_its_way`, `put_uncommitted`, `place_uncommitted`; `strips.rs` 404 -> 370, so its `over_400.txt` row is deleted, no row raised. `pixel_scroll.rs` (604): one doc line rewrapped so the new `mod pinned;` does not grow it. Bug found by the new tests: `layers::on_screen` (above).
+
+**3. Ticket 21.** `ghostty_shot` (HELD 188, MONOREPO) and `pieces_shot` frames: see the result line in the final report; both `stack()`s read `uncommitted_at()` and a pinned frame no longer has it, so `ghostty_shot::stack` now takes `PixelRows.pinned` first (needed to keep it working, not a re-shot). Whether their committed PNGs drift is the check run below.
+
+**Touches:** `view/strips.rs` (pixel_rows, PixelRows.pinned), `view/strips/{ranges,pinned_tests}.rs`; `strips/tests.rs:114-130` unmodified, green; `event_loop/graphics.rs` (`drawn`), `graphics/layers.rs` (`on_screen`; the four old on_screen tests green unmodified), `graphics/tall.rs` (unchanged, driven by the new tall tests), iTerm2 path (`ItermImages` unchanged; slot is a new `first_row`, band key per `place`), prefetch (skips the pinned strip: one-row, cheap, only strips are prefetched), `tests/it/ghostty_shot.rs` (`stack` takes `pinned`), `tests/it/pieces_shot.rs` (reads `uncommitted_at()` only; see result), `MAP.md`. Text tiers: not edited; grep `uncommitted_on_top|uncommitted_at` hits only the six files above and `docs/shots/m7/fix-scroll-contact.md`.

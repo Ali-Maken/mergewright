@@ -77,7 +77,10 @@ fn assert_lines_agree(state: &AppState, drawn: &[Drawn], band: Option<&Band>) ->
     let mut claim = |line: u16, what: &str| {
         assert!(lines.insert(line), "{what}: two images on line {line}");
     };
-    let pinned: Vec<&Drawn> = drawn.iter().filter(|d| d.first_row == PINNED_SLOT).collect();
+    let pinned: Vec<&Drawn> = drawn
+        .iter()
+        .filter(|d| d.first_row == PINNED_SLOT)
+        .collect();
     assert_eq!(pinned.len(), 1, "one pinned image");
     assert_eq!((pinned[0].rows.clone(), pinned[0].at), (0..1, 0));
     claim(column, "the pinned row");
@@ -93,7 +96,12 @@ fn assert_lines_agree(state: &AppState, drawn: &[Drawn], band: Option<&Band>) ->
             claim(line, "a strip row");
         }
     }
-    let graph = Rect::new(0, column, 80, u16::try_from(state.graph_pane_rows()).expect("small"));
+    let graph = Rect::new(
+        0,
+        column,
+        80,
+        u16::try_from(state.graph_pane_rows()).expect("small"),
+    );
     band.map(|band| {
         let line = band.place(graph).cells.row;
         claim(line, "the continuation band");
@@ -110,7 +118,10 @@ fn the_pinned_row_keeps_every_screen_line() {
     // Pinned row on line 0, history row 18 on line 1, the cursor (row 24)
     // on line 7, its band under it.
     assert_eq!(line, Some(8));
-    assert_eq!(history_row_line(&state, 18).map(|l| l - column_top(&state)), Some(1));
+    assert_eq!(
+        history_row_line(&state, 18).map(|l| l - column_top(&state)),
+        Some(1)
+    );
 }
 
 #[test]
@@ -124,9 +135,15 @@ fn the_cursor_band_under_the_pinned_row_keeps_its_lines() {
     assert_eq!(line, Some(2));
     let held = drawn.iter().filter(|d| d.first_row == 0).count();
     assert_eq!(held, 2, "the cursor's strip is placed twice");
-    let first = drawn.iter().find(|d| d.first_row == 0 && d.at == 1).expect("part above");
+    let first = drawn
+        .iter()
+        .find(|d| d.first_row == 0 && d.at == 1)
+        .expect("part above");
     assert_eq!(first.rows, 18..19);
-    let rest = drawn.iter().find(|d| d.first_row == 0 && d.at == 3).expect("part below");
+    let rest = drawn
+        .iter()
+        .find(|d| d.first_row == 0 && d.at == 3)
+        .expect("part below");
     assert_eq!(rest.rows.start, 19);
 }
 
@@ -140,10 +157,16 @@ fn the_pinned_row_is_its_own_band() {
     assert_eq!(line, Some(2));
     // The same placements as Kitty's: pinned row first, strips lowered alike.
     let shape = |drawn: &[Drawn]| -> Vec<(usize, std::ops::Range<usize>, u16)> {
-        drawn.iter().map(|d| (d.first_row, d.rows.clone(), d.at)).collect()
+        drawn
+            .iter()
+            .map(|d| (d.first_row, d.rows.clone(), d.at))
+            .collect()
     };
     assert_eq!(shape(&drawn), shape(&kitty.1));
-    let pinned = drawn.iter().find(|d| d.first_row == PINNED_SLOT).expect("pinned band");
+    let pinned = drawn
+        .iter()
+        .find(|d| d.first_row == PINNED_SLOT)
+        .expect("pinned band");
     assert_eq!(pinned.frame.rows, 1, "a one-row band");
     // And the iTerm2 path takes it: one band for the pinned row, no error.
     let (area, mut out) = (Rect::new(0, 0, 80, 20), Vec::new());
@@ -162,5 +185,8 @@ fn the_cursor_on_the_pinned_row_still_makes_room_for_its_second_line() {
     // a lane-less row's second line); either way the lines agree: row 18 on
     // line 2, one below where it sits with the cursor elsewhere.
     assert_lines_agree(&state, &drawn, band.as_ref());
-    assert_eq!(history_row_line(&state, 18).map(|l| l - column_top(&state)), Some(2));
+    assert_eq!(
+        history_row_line(&state, 18).map(|l| l - column_top(&state)),
+        Some(2)
+    );
 }

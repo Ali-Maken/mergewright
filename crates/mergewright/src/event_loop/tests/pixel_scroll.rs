@@ -4,9 +4,8 @@
 //! changes. Kitty deflates when the probe said it may, and stops when the
 //! terminal objects; iTerm2 gets one composited band per strip.
 //!
-//! Driven through the loop's own `draw` (and `pump_with` where replies
-//! matter), on an in-memory terminal; the bytes are read back and each
-//! Kitty transmit classified by its header.
+//! Driven through the loop's own `draw` (and `pump_with` where replies matter),
+//! on an in-memory terminal; each Kitty transmit is classified by its header.
 
 use mergewright_core::capabilities::{PixelProtocol, RenderingTier};
 use mergewright_graph::raster::Backdrop;

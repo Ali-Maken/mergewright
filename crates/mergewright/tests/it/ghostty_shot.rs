@@ -194,7 +194,11 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
         drawn,
         pixels: stacked,
         width,
-    } = stack(&pixels, &paint)?;
+    } = under_the_pinned_row(
+        stack(&pixels, &paint)?,
+        history.top,
+        paint.cell_height as usize,
+    );
     let at = drawn
         .iter()
         .position(|row| *row == Some(cursor))
@@ -235,6 +239,32 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
         rows,
         strips: frames,
     })
+}
+
+/// The strips run on above `top`, and the pinned uncommitted row (its own
+/// image, ease-pass/20) is stacked before them: drop the rows between it and
+/// history row `top`, so the stack reads as the pane does, the pinned row
+/// then `top` and on (as it did when the row sat inside its strip).
+fn under_the_pinned_row(stack: Stack, top: usize, cell_height: usize) -> Stack {
+    let (Some(pinned), Some(from)) = (
+        stack.drawn.iter().position(Option::is_none),
+        stack.drawn.iter().position(|row| *row == Some(top)),
+    ) else {
+        return stack;
+    };
+    if from <= pinned + 1 {
+        return stack;
+    }
+    let band = cell_height * stack.width as usize * 4;
+    let mut drawn = stack.drawn[..=pinned].to_vec();
+    drawn.extend_from_slice(&stack.drawn[from..]);
+    let mut pixels = stack.pixels[..(pinned + 1) * band].to_vec();
+    pixels.extend_from_slice(&stack.pixels[from * band..]);
+    Stack {
+        drawn,
+        pixels,
+        width: stack.width,
+    }
 }
 
 /// The frame's strips, composited, one under the other.
