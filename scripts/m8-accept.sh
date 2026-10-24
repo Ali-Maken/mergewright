@@ -53,7 +53,7 @@ out() { echo "$1" | tee -a "$SUMMARY"; }
 } > "$SUMMARY"
 
 # ── 1. the fast tier: walks, teaches, tour, captures ────────────────────────
-env -u MWR_UPDATE_SHOTS cargo nextest run --workspace --no-fail-fast > "$ACCEPT/nextest.txt" 2>&1
+env -u MWR_UPDATE_SHOTS cargo nextest run --ignore-default-filter --workspace --no-fail-fast > "$ACCEPT/nextest.txt" 2>&1
 rc=$?
 line=$(grep -E '^ +Summary ' "$ACCEPT/nextest.txt" | tail -1 | sed -E 's/^ +//')
 out "1 fast tier: ${line:-no summary (build failed?)} · rc=$rc · $ACCEPT/nextest.txt"
@@ -109,7 +109,7 @@ out "5 journeys: $(echo "$fence" | wc -l | tr -d ' ') in the fence · missing a 
 # manual's NAME line; S7 reads docs/release/plan.txt (dist is not re-run
 # here) and refuses an artifact under another name.
 MW_FILTER='test(/^m8_walk::mergewright::/) | test(/^rename_names::/) | test(/^rename_opens::no_old_dir_literal$/)'
-env -u MWR_UPDATE_SHOTS cargo nextest run -p mergewright --test it --no-fail-fast \
+env -u MWR_UPDATE_SHOTS cargo nextest run --ignore-default-filter -p mergewright --test it --no-fail-fast \
   --status-level pass -E "$MW_FILTER" > "$ACCEPT/mergewright.txt" 2>&1
 out "6 mergewright (S1–S8 · $ACCEPT/mergewright.txt):"
 bin="${CARGO_TARGET_DIR:-target}/debug/mwr"

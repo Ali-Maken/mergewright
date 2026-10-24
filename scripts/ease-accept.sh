@@ -45,7 +45,7 @@ out() { echo "$1" | tee -a "$SUMMARY"; }
 } > "$SUMMARY"
 
 # ── 1. the ease_walk tests ──────────────────────────────────────────────────
-env -u MWR_UPDATE_SHOTS cargo nextest run -p mergewright --test it --no-fail-fast \
+env -u MWR_UPDATE_SHOTS cargo nextest run --ignore-default-filter -p mergewright --test it --no-fail-fast \
   --status-level pass --success-output immediate -E 'test(/^ease_walk::/)' \
   > "$ACCEPT/walks.txt" 2>&1
 rc=$?

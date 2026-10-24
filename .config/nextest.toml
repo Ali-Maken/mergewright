@@ -1,5 +1,27 @@
 # Laptop-safe, matching RUST_TEST_THREADS = 4 in .cargo/config.toml (PROMPT.md 7.1).
+#
+# Two profiles split every test (ease-pass/23, TESTING.md "Tiers"):
+#   default  the fast tier, what `cargo nextest run` runs;
+#   walks    the walk tier, run by `scripts/walks.sh`.
+# A test is a walk when it is in a `*_walk` module (acceptance walks) or in a
+# module of the `mergewright::it` binary that spawns `mwr` on a pseudo-terminal
+# (pty tests). The filter is by module path, so a new test in those modules is
+# a walk with no edit here. The expression is the same text in both profiles;
+# `scripts/walks.sh --check` proves they partition the suite. A new pty module
+# is added to the second line in BOTH places.
+
 [profile.default]
 test-threads = 4
 failure-output = "immediate-final"
 status-level = "fail"
+slow-timeout = { period = "10s" }
+default-filter = 'not (test(/(^|::)[a-z0-9_]*_walk::/) | (binary_id(mergewright::it) & test(/^(clock_pin|first_launch|graph_mode_keep|keymap_config|not_a_repo|outside_repo|palette_find|quit_waits|tour|tour_tasks)::/)))'
+
+[profile.default.junit]
+path = "junit.xml"
+
+[profile.walks]
+default-filter = 'test(/(^|::)[a-z0-9_]*_walk::/) | (binary_id(mergewright::it) & test(/^(clock_pin|first_launch|graph_mode_keep|keymap_config|not_a_repo|outside_repo|palette_find|quit_waits|tour|tour_tasks)::/))'
+
+[profile.walks.junit]
+path = "junit.xml"
