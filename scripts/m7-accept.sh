@@ -44,7 +44,7 @@ out() { echo "$1" | tee -a "$SUMMARY"; }
 
 # ── 1. the walks ────────────────────────────────────────────────────────────
 FILTER='test(/^m7_walk::/) | test(/journey_counts_match_the_note$/) | test(/^hint_bar::/)'
-cargo nextest run --workspace --no-fail-fast --status-level pass -E "$FILTER" > "$ACCEPT/nextest.txt" 2>&1
+cargo nextest run --ignore-default-filter --workspace --no-fail-fast --status-level pass -E "$FILTER" > "$ACCEPT/nextest.txt" 2>&1
 rc=$?
 line=$(grep -E '^ +Summary ' "$ACCEPT/nextest.txt" | tail -1 | sed -E 's/^ +//')
 out "1 nextest: ${line:-no summary (build failed?)} · rc=$rc · $ACCEPT/nextest.txt"
