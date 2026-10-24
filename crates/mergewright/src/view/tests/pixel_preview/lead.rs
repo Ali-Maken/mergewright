@@ -165,8 +165,7 @@ fn no_strip_without_a_gutter() {
     };
     let (_, graph) = buffer_at(&pixel, &state, &GraphicsStatus::Ok);
     assert_eq!(graph, None, "no strip at 3 columns");
-    // And the column is text there: the same screen with the pixel tier off
-    // draws the same cells.
+    // And the column is text there, not left blank for an image.
     let (text, _) = buffer_at(&pixel, &state, &GraphicsStatus::Ok);
     assert!(
         (0..state.size.rows).any(|y| (0..3).any(|x| text[(x, y)].symbol() != " ")),
