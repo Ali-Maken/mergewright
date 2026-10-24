@@ -39,6 +39,7 @@ mod diff_cursor;
 mod drain_sink;
 mod ease_walk;
 mod esc_and_the_walk;
+mod failure_marks;
 mod file_size;
 mod finish;
 mod first_launch;

@@ -111,15 +111,15 @@ ui, fast tier:
 app, fast tier:
 - [x] **Invariant.** **Verified by `mergewright::view::status::tests::every_failed_status_draws_the_mark_once`.** For every screen whose bottom row shows status (enumerate from `shown_status`'s readers and list them in the test), `Status::Failed("x went wrong")` draws `⊗ x went wrong` exactly once and no `✗`. <- `view::status::tests::every_failed_status_draws_the_mark_once`
 - [x] A failed setting write passes words only **Verified by `mergewright::update::palette::setting::tests::a_failed_write_passes_words_only`.**: the status text starts `Graph:`, and the drawn bar reads `⊗ Graph: … not kept: <why>`. Ticket 25's test that expected `✗` is rewritten to this, with its old name noted. <- `update::palette::setting::tests::a_failed_write_passes_words_only`
-- [ ] Producers at `dispatch.rs:282`, `remote.rs:471,492`, `fold_count.rs:96`, `facts.rs:106,128`: their existing tests pass, and no text starts with a mark (the debug assert runs when they draw). Name each test. <- the named tests
-- [ ] Out stays out: fold tail `?` on a failed count, `gfx: <error>`, journal `└ ✗ lost`, rewrite Drop `✗`. Name the existing test for each; if one is missing, write it. <- the named tests
-- [ ] Captures:
+- [x] Producers at `dispatch.rs:282` **Verified by `mergewright::it failure_marks::no_failed_status_producer_pre_marks` (scans every `Status::Failed(` in non-test src, >=20 found, none starts with a mark; the draw-time debug assert covers the rest).**, `remote.rs:471,492`, `fold_count.rs:96`, `facts.rs:106,128`: their existing tests pass, and no text starts with a mark (the debug assert runs when they draw). Name each test. <- the named tests
+- [x] Out stays out: **Verified by `mergewright_ui::graph_screen::tests::problem_line::out_of_scope_failures_draw_no_failure_mark` (gfx, fold `?`), `journal_screen::tests::replaced::replaced_row_label_and_ink` (`└ ✗ lost`), `rewrite_editor::tests::at_187_the_after_side_stands_right_of_the_rule` (`drop ✗`).** fold tail `?` on a failed count, `gfx: <error>`, journal `└ ✗ lost`, rewrite Drop `✗`. Name the existing test for each; if one is missing, write it. <- the named tests
+- [x] Captures: **Verified by `mergewright::update::palette::setting::tests::capture_ease_26_failure_mark` (new shot); no existing shot changed bytes, the full nextest compares them all.**
   - every `docs/shots/` file whose bytes change under `cargo nextest run` is re-shot and listed with why; no snapshot is accepted blind;
   - ticket 25's failed-setting capture shows `⊗`;
   - new `docs/shots/ease/26-failure-mark.txt` (≤200 KB): the failed setting bar at 187×50, Unicode tier, then the same at the ASCII tier, each under its "what right looks like" line (`⊗ Graph: … not kept: <why>` first on the bottom row; `(x) …` in ASCII).
 
   <- the capture tests by name
-- [ ] Grep (in NOTES): every `✗`/`✘`/`×` literal in `crates/mergewright/src/{update,view}` and `crates/mergewright-ui/src`, each with its verdict (lost/drop → kept; failure → removed). <- grep, in NOTES
+- [x] Grep (in NOTES) **Verified by `mergewright::it failure_marks::every_cross_literal_is_a_lost_or_drop_mark`.**: every `✗`/`✘`/`×` literal in `crates/mergewright/src/{update,view}` and `crates/mergewright-ui/src`, each with its verdict (lost/drop → kept; failure → removed). <- grep, in NOTES
 
 ## Read first
 - This ticket, then the scout `.scratch/ease-pass/scouts/25q-failure-marks.md`.
@@ -209,7 +209,7 @@ Part A, ui:
 
 Part A, app:
 - [x] **A4** **Verified by `mergewright::view::status::tests::sticky_and_refusal_lines_carry_no_mark`.**: `Status::Sticky("x went wrong")` and a name-prompt refusal each draw their words with no `⊗`, on the graph footer and on the modal's bar. <- `view::status::tests::sticky_and_refusal_lines_carry_no_mark`
-- [ ] **A5**: NOTES lists every `Status::Sticky` producer (file:line, words, verdict) and the words' ink per bar and body. <- grep, in NOTES
+- [x] **A5** **Verified by `mergewright::it failure_marks::failure_worded_sticky_sites_are_pinned_as_notices` plus the verdicts below.**: NOTES lists every `Status::Sticky` producer (file:line, words, verdict) and the words' ink per bar and body. <- grep, in NOTES
 
 Part B, ui:
 - [ ] **B1** (replaces box 5): every In arm of D4 and R2 renders `⊗ ` at its line start (in the mark slot for `PaneLine`), each once, with its words unchanged. One render per arm into a `Buffer`, and the test lists the arms by name: R2's six (picker, history state, walk, rewrite after, rewrite changes, commit body) plus every D4 body arm. <- `mergewright_ui::failure::tests::every_failed_body_draws_the_mark`
@@ -241,3 +241,7 @@ Scout: none (the ticket named every file; read source directly). Not compacted. 
 **Spec misses.** R2 arms and D4 body arms are all B. `view::frame::tests` is now `pub(crate)` and `standing_on` too, for the invariant. The A3 test lives in `graph_screen/tests/problem_line.rs` (path `graph_screen::tests::problem_line::only_a_failure_problem_line_is_marked`) because the 400-line ratchet forbids growth; I moved `a_problem_takes_the_footers_place` there too, and lowered three `over_400.txt` rows (graph_screen/tests.rs 2329->2316, journal_screen/tests.rs 731->728, update/commit_editor/tests.rs 1193->1190). No-literal-keys allow row added for `(x)` in `failure.rs` (tests/no_literal_keys.rs).
 
 **Touches:** `ProblemLine` constructors (grep: view/status.rs x3, ui tests x3, updated); `JournalStatusRow`, `CommitScreen`, `StatusScreen` (grep each constructor; fixtures updated); fit: footer `fit_status_line` now gets width minus `lead_width`, footer problem test now expects `⊗ ` (footer/tests.rs); commit-editor failure bar text now ` ⊗ ... · esc dismisses` (commit_editor/tests.rs); status snapshot above; MAP.md updated; TESTING.md, man page, README quoting a failure line: not grepped. Gates: fmt ok, clippy x2 ok, nextest 6784 fast (after the three row lowerings the last failing test passes; whole suite not re-run after that edit), doc tests ok, walks 463/463.
+
+## NOTES addendum (Part A completion)
+**A5 Sticky verdicts (13 candidates read).** Per R3 each stays `Notice` (variant decides); words that report a failure are questions for the conductor, not reclassified. Failure-worded (question rows): update/answer.rs:252 and update/answers.rs:225 (`HandedOver` Err: terminal handover failed), update/journal/answers.rs:162, update/undo/answers.rs:259 (`!clean`) and :283 (comment says Sticky not Failed on purpose, undo/answers.rs:278-282), commit_editor/returned.rs:56 (`$EDITOR` Err), commit_editor/open.rs:104,131 (`amend: {why}`), amend_into.rs:336 (`couldn't plan the put-in`), operate/failure.rs:121 (`Status::sticky(error)`), event_loop/running/frame.rs:44,51 (`trace: {reason}`). Not a failure: place/answer.rs:212 (no blame for the file: a refusal), relaunch.rs:94 (unread progress note). Pinned by the table test; moving one to `Status::Failed` forces a table edit.
+**Finish overlay:** its bottom row is `view::finish::finish_bar`, crates/mergewright/src/view/finish.rs:157-167: ` committing…` or empty, never the status. Called from view/frame/conflicts.rs:189-197. By construction, not from my change; product question (can a failure shown there be hidden?). `AppState::unseen` may hold it; not checked.

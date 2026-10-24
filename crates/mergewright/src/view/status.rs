@@ -248,8 +248,10 @@ mod tests {
             ("resolver", Some(GraphOverlay::Resolver), true),
             ("commit editor", Some(GraphOverlay::CommitEditor), true),
             ("journal", Some(GraphOverlay::Journal), true),
-            // Observed: the finish summary draws no status words at all
-            // (a pre-existing gap, KNOWN_GAPS candidate), so no mark either.
+            // The finish summary's bottom row is `view::finish::finish_bar`
+            // (finish.rs:157-167): ` committing…` or empty, never the
+            // status, so no words and no mark. Product question, not a defect
+            // of the mark.
             ("finish", Some(GraphOverlay::Finish), false),
             ("rewrite", Some(GraphOverlay::Rewrite), false),
             ("place", Some(GraphOverlay::Place), false),

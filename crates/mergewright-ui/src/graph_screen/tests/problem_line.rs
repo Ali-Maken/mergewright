@@ -55,3 +55,26 @@ fn only_a_failure_problem_line_is_marked() {
         "{row}"
     );
 }
+
+/// ease-pass 26, "Out stays out": the graphics status keeps `gfx: <error>`
+/// and a failed fold count keeps its `?`; neither draws `⊗` or `(x)`.
+/// (The journal `└ ✗ lost` and rewrite `drop ✗` stay pinned by
+/// `journal_screen::tests::replaced::replaced_row_label_and_ink` and
+/// `rewrite_editor::tests::at_187_the_after_side_stands_right_of_the_rule`.)
+#[test]
+fn out_of_scope_failures_draw_no_failure_mark() {
+    let rows = linear(1);
+    let mut screen = view(&rows, WalkView::Complete { rows: 1 }, 0);
+    screen.graphics = Some(GraphicsStatus::Failed(sanitize_line("ENOENT:gone")));
+    let header = text(&draw(&screen, 80, 4))[0].clone();
+    assert!(header.contains("gfx: ENOENT:gone"), "{header}");
+    assert!(!header.contains('⊗') && !header.contains("(x)"), "{header}");
+    let tail = FoldMark {
+        open: false,
+        count: FoldCount::Failed,
+        from: Some(sanitize_line("PR 16021")),
+    }
+    .words(false);
+    assert_eq!(tail, "\u{25b8} ? commits from PR 16021");
+    assert!(!tail.contains('⊗'), "{tail}");
+}
