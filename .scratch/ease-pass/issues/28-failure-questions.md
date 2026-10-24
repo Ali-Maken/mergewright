@@ -1,6 +1,6 @@
 # ruling: three failure questions — Sticky failures, the finish bar, which keys yield to the count
 
-Status: draft (ruling by planner, 2026-10-24)
+Status: ready
 Build with: see each Part. Part A and Part B are disjoint files and can run as two builders.
 Needs: ticket 26 Part A (merged, 8ee79e1d): `graph_screen::ProblemKind`, `failure::status_line`, `view::status::graph_problem`.
 
