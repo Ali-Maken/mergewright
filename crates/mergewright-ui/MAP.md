@@ -16,6 +16,7 @@ One line per public item. Update when a public item changes.
 - `diff_words` (mod) — word-level highlighting inside a paired diff line.
 - `empty_state` (mod) — the screen outside a repository: recent repositories, open and clone prompts.
 - `finish_summary` (mod) — the merge's review: what lands before `y` commits it.
+- `failure` (mod) — the one failure mark `⊗`, drawn by the renderer.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `graph_screen` (mod) — the graph screen Mergewright opens on: header, banner, rows, footer hints.
@@ -139,6 +140,14 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 - `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line.
 - `word_spans` (fn) — word diff of `removed[i]` against `added[i]`; unpaired lines get empty spans.
 
+## failure
+- `FAILED_MARK`, `FAILED_MARK_ASCII` (consts) — `⊗` and `(x)`: the one failure mark, Unicode and ASCII tier.
+- `FAILED_INK` (const) — the mark's ink, `Token::Removed`; the one line an `error` token would replace.
+- `mark`, `lead_width` (fns) — `(ascii)`: the mark for a tier; cells the mark and its space take (cut the words by this).
+- `marked` (fn) — `(why, ascii)`: `⊗ <why>` as a string; debug-asserts `why` is unmarked.
+- `spans`, `line` (fns) — `(why, ascii, theme, words_style)`: the mark in `FAILED_INK`, then the words, as spans or one owned line.
+- `status_line` (fn) — `(problem, ascii, width, theme, words_style)`: a bar row; a `Failure` is marked, a `Notice` is not; the words are cut, the mark kept.
+
 ## fit
 - `MAX_MARKS` (const) — combining marks kept per base character.
 - `fit` (fn) — text laid into exactly N cells: padded, or cut with `…`; wide chars never split.
@@ -168,7 +177,8 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 - `GUTTER`, `RIGHT_MARGIN` (consts) — 2 cells left of every list row (cursor slot + gap), 1 right.
 - `Location` (struct) — `repo`, `path`, `branch`, `practice`: where the header says the screen is.
 - `GraphView` (struct) — everything the graph screen draws: rows, header state, banner, tour, pending, footer state, hint context, and `pane`, the branch pane's view.
-- `ProblemLine` (struct) — `reason`, `keys`: a failure the footer shows in place of the hints.
+- `ProblemLine` (struct) — `kind`, `reason`, `keys`: a problem the footer shows in place of the hints.
+- `ProblemKind` (enum) — `Failure` (drawn `⊗ <why>`) or `Notice` (a sticky line or refusal: no mark); the variant decides the mark.
 - `MarkerView` (struct) — a Mistake Radar marker's `severity`, painted in the row's marker slot.
 - `GraphicsStatus` (enum) — `Ok` / `Failed(text)`: drawn `gfx ok` / `gfx: <error>`.
 - `Filters` (struct) — `first_parent`, `stash_hidden`, `focused`, `every_branch` (graph mode, said by the lane phrases, not `text`); `Filters::text(keys)` is the header's words.
@@ -273,7 +283,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `Refusal` (enum) — why `⏎` would do nothing: `NoMessage`, `NoFile`.
 - `CommitHeader` (struct) — the top row: the repository words as the graph's top line says them (`location`), committing to / amending, the push state, the options on.
 - `CommitScreenView` (struct) — everything the screen draws: header, subject/body, summary, files and cursor, the cursor file's changes, focus, refusal, status, busy, and a live operation's words.
-- `CommitScreen` (struct) — `view`, `theme`, `keys`; `Widget`: the whole-area commit screen (header, message box, summary, files | changes, bar).
+- `CommitScreen` (struct) — `ascii`: the failure mark's tier; `view`, `theme`, `keys`; `Widget`: the whole-area commit screen (header, message box, summary, files | changes, bar).
 - `bar` (fn) — the bar's words for the focused part, keys spelled from the keymap.
 - `summary_line` (fn) — the sentence above the files.
 - `CommitLayout` (struct, from `layout.rs`) — where each part of the screen stands, in `Cells`: header, message box, subject, body, summary, rule, files, diff, bar.
@@ -415,7 +425,7 @@ The commits a merge brings in (ease-pass 10), `⏎` from the merge preview; dock
 - `RowKind` (enum) — `Mergewright` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup), `Replaced` (`└ ⇢ replaced`) / `Deleted` (`└ ⇢ deleted`), muted: a commit `u` brings back.
 - `JournalRowView` (struct) — `age`, `description`, `summary`, `mark`, `commands` (the Command Log, drawn while expanded), `failure` (the whole reason, same), `moved`, ADR-0062: the refs a fetch or a pull's fetch moved, one line each
 - `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
-- `JournalStatusRow` (struct) — `words`, `problem` (Warning ink when true): J's own status row, above the legend; `None` draws no row.
+- `JournalStatusRow` (struct) — `words`, `problem` (Warning ink when true), `failure` (draws `⊗ ` first), `ascii` (tier of the mark); `refusal(words)` builds a refusal row. J's own status row, above the legend; `None` draws no row.
 - `JournalFindView` (struct) — `query: SanitizedText`, `at: Option<usize>` (`None` = no match), `of: usize`.
 - `JournalView` (struct) — `location`, `rows` (newest first), `selected`, `status`, `esc_cancels` (a write takes `Esc`: bar `esc cancels` … `J close`)
 
@@ -599,6 +609,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `TierSource` (enum) — where the rendering tier came from.
 - `StatusScreen` (struct) — the status screen, ready to render.
 - `new` (fn) — Draw `view` in `theme`.
+- `ascii` (fn) — `(bool)`: draw at the ASCII tier, so the failure mark is `(x)`.
 
 ## still_to_apply
 - `TITLE` (const) — The box's title, in its top border.

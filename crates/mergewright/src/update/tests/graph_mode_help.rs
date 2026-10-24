@@ -249,7 +249,7 @@ fn the_bar_says_kept_or_why_not_with_its_mark_drawn() {
     );
     let drawn = bottom_row(&failed);
     assert!(
-        drawn.starts_with("✗ Graph: every branch for this run · not kept: can't write"),
+        drawn.starts_with("⊗ Graph: every branch for this run · not kept: can't write"),
         "{drawn}"
     );
     let history = failed.history.as_ref().expect("a walk");

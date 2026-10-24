@@ -1012,8 +1012,8 @@ fn a_failure_becomes_the_problem_line_and_is_sanitised() {
     let view = status_view(&session(), &state);
     let problem = view.problem.expect("a failure must be shown");
 
-    assert!(!problem.as_str().contains('\u{1b}'), "{problem:?}");
-    assert!(problem.as_str().contains("no such"), "{problem:?}");
+    assert!(!problem.reason.as_str().contains('\u{1b}'), "{problem:?}");
+    assert!(problem.reason.as_str().contains("no such"), "{problem:?}");
 }
 
 #[test]

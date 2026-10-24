@@ -15,10 +15,10 @@ fn a_failure_reads_mark_space_words() {
 }
 
 /// Glyphs other marks draw, read as literals because none is a public
-/// const: journal `Lost` `✗` (journal_screen/view.rs), rewrite `Drop` `✗` and
-/// its ASCII `x` (rewrite_editor/draw.rs:104,120), `⇢` replaced/deleted,
-/// `⚠`/`ⓘ` radar (graph_screen/render.rs:316,318), branch-pane `!` `✓` `·`,
-/// conflict `?` `◀` `▶` `◆`.
+/// const: journal `Lost` `✗` (`journal_screen/view.rs`), rewrite `Drop` `✗`
+/// and its ASCII `x` (`rewrite_editor/draw.rs:104,120`), `⇢` replaced and
+/// deleted, `⚠`/`ⓘ` radar (`graph_screen/render.rs:316,318`), branch-pane
+/// `!` `✓` `·`, conflict `?` `◀` `▶` `◆`.
 const OTHER_MARKS: [&str; 14] = [
     "✗", "x", "⇢", "->", "⚠", "ⓘ", "!", "✓", "·", "?", "◀", "▶", "◆", "i",
 ];

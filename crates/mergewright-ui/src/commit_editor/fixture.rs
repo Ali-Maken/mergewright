@@ -111,6 +111,7 @@ pub(super) fn buffer(view: &CommitScreenView<'_>, columns: u16, rows: u16) -> Bu
                     view,
                     theme: &theme,
                     keys: Keymap::shipped(),
+                    ascii: false,
                 },
                 frame.area(),
             );

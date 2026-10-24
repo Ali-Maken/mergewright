@@ -415,7 +415,7 @@ impl JournalScreen<'_> {
             } else {
                 muted
             };
-            set_text(buf, area.x, bottom, area, &status.words, ink);
+            buf.set_line(area.x, bottom, &status.line(self.theme, ink), area.width);
         }
         bottom
     }

@@ -106,33 +106,41 @@ impl CommitScreen<'_> {
     /// "the failure on its status row"). `diff_shown`: a diff is on screen
     /// for `↑/↓` to show.
     fn draw_bar(&self, buf: &mut Buffer, row: Rect, diff_shown: bool) {
-        let (line, token) = match &self.view.status {
-            Some(status) => {
-                let dismiss = self
-                    .keys
-                    .key_verb(&[crate::keymap::ActionId("app.back")], "dismisses");
-                let line = match dismiss {
-                    Some(dismiss) => format!("{} \u{b7} {dismiss}", status.as_str()),
-                    None => status.as_str().to_owned(),
-                };
-                (line, Token::Warning)
-            }
+        if let Some(status) = &self.view.status {
+            // A failure leads with the renderer's mark; the dismiss key is
+            // the line's keys, kept whole while the reason is cut.
+            let dismiss = self
+                .keys
+                .key_verb(&[crate::keymap::ActionId("app.back")], "dismisses");
+            let problem = crate::graph_screen::ProblemLine {
+                keys: dismiss.map(|words| mergewright_term::sanitize_line(&words)),
+                ..status.clone()
+            };
+            let line = crate::failure::status_line(
+                &problem,
+                self.ascii,
+                row.width,
+                self.theme,
+                foreground(self.theme, Token::Warning),
+            );
+            buf.set_line(row.x, row.y, &line, row.width);
+            return;
+        }
+        let (line, token) = match &self.view.live {
             // An operation went live while the screen was up: `⏎` would be
             // refused, so its words — where the operation is finished —
             // take the bar's row (m6-conflicts/48).
-            None => match &self.view.live {
-                Some(live) => (live.as_str().to_owned(), Token::Warning),
-                // Whole keys or none, the least needed dropped first.
-                None => (
-                    fitted_bar(
-                        self.view,
-                        self.keys,
-                        usize::from(row.width).saturating_sub(1),
-                        diff_shown,
-                    ),
-                    Token::TextMuted,
+            Some(live) => (live.as_str().to_owned(), Token::Warning),
+            // Whole keys or none, the least needed dropped first.
+            None => (
+                fitted_bar(
+                    self.view,
+                    self.keys,
+                    usize::from(row.width).saturating_sub(1),
+                    diff_shown,
                 ),
-            },
+                Token::TextMuted,
+            ),
         };
         buf.set_string(
             row.x,

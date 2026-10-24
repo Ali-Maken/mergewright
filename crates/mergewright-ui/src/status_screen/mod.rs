@@ -21,6 +21,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Widget, Wrap};
 
+use crate::graph_screen::{ProblemKind, ProblemLine};
 use crate::paint::foreground;
 use crate::theme::{Theme, ThemeKind, Token};
 
@@ -41,7 +42,7 @@ pub struct StatusView {
     pub notes: Vec<SanitizedText>,
     /// Something went wrong and has not been superseded. Absent when nothing
     /// is wrong — there is no permanent error field on this screen (CLAUDE.md).
-    pub problem: Option<SanitizedText>,
+    pub problem: Option<ProblemLine>,
     /// The history walk, once one has been started. `None` before that, and
     /// nothing is drawn for it.
     pub history: Option<HistoryView>,
@@ -157,13 +158,25 @@ pub enum TierSource {
 pub struct StatusScreen<'a> {
     view: &'a StatusView,
     theme: &'a Theme,
+    ascii: bool,
 }
 
 impl<'a> StatusScreen<'a> {
     /// Draw `view` in `theme`.
     #[must_use]
     pub fn new(view: &'a StatusView, theme: &'a Theme) -> Self {
-        Self { view, theme }
+        Self {
+            view,
+            theme,
+            ascii: false,
+        }
+    }
+
+    /// Draw at the ASCII tier: the failure mark is `(x)`.
+    #[must_use]
+    pub fn ascii(mut self, ascii: bool) -> Self {
+        self.ascii = ascii;
+        self
     }
 
     /// Every line of the screen, in order.
@@ -205,10 +218,15 @@ impl<'a> StatusScreen<'a> {
 
         if let Some(problem) = &self.view.problem {
             lines.push(Line::default());
-            lines.push(Line::from(Span::styled(
-                problem.as_str().to_owned(),
-                foreground(self.theme, Token::Warning),
-            )));
+            let words = foreground(self.theme, Token::Warning);
+            lines.push(match problem.kind {
+                ProblemKind::Failure => {
+                    crate::failure::line(problem.reason.as_str(), self.ascii, self.theme, words)
+                }
+                ProblemKind::Notice => {
+                    Line::from(Span::styled(problem.reason.as_str().to_owned(), words))
+                }
+            });
         }
 
         lines.push(Line::default());

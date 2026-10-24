@@ -86,6 +86,9 @@ pub(crate) fn graph_mode_kept(
     };
     state.status = match result {
         Ok(()) => Status::done(format!("Graph: {named} · kept for next launch")),
-        Err(why) => Status::Failed(format!("✗ Graph: {named} for this run · not kept: {why}")),
+        Err(why) => Status::Failed(format!("Graph: {named} for this run · not kept: {why}")),
     };
 }
+
+#[cfg(test)]
+mod tests;

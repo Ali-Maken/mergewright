@@ -68,6 +68,17 @@ pub fn spans<'a>(why: &'a str, ascii: bool, theme: &Theme, words_style: Style) -
     ]
 }
 
+/// [`spans`] as one owned line, for a screen that builds its lines up.
+#[must_use]
+pub fn line(why: &str, ascii: bool, theme: &Theme, words_style: Style) -> Line<'static> {
+    Line::from(
+        spans(why, ascii, theme, words_style)
+            .into_iter()
+            .map(|span| Span::styled(span.content.into_owned(), span.style))
+            .collect::<Vec<_>>(),
+    )
+}
+
 /// A bar row's problem, one row `width` cells wide: a leading space, then
 /// for a [`ProblemKind::Failure`] the mark and a space, then the reason cut
 /// to what is left (`fit_status_line`: the reason first, the keys whole).

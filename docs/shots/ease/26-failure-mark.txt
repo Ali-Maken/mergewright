@@ -1,0 +1,14 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_ease_26_failure_mark in crates/mergewright/src/update/palette/setting/tests.rs
+# (asserted). Last three rows of the frame, 187x50. Colour (the mark in red)
+# is unverified: a capture cannot show it.
+#
+=== Unicode tier. Right: the bottom row starts `⊗ Graph: every branch for this run · not kept: <why>`, then ` · esc dismiss` ===
+"                                                                                                                                                     │                                     "
+"───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+" ⊗ Graph: every branch for this run · not kept: can't write /x/config.toml: denied · esc dismiss                                                                                           "
+
+=== ASCII tier. Right: the same row starts `(x) Graph: ...`, no `⊗` ===
+"                                                                                                                                                     │                                     "
+"-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+" (x) Graph: every branch for this run · not kept: can't write /x/config.toml: denied · esc dismiss                                                                                         "

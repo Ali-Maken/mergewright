@@ -2,6 +2,9 @@
 
 use super::SanitizedText;
 use crate::keymap::{ActionId, Keymap};
+use crate::theme::Theme;
+use ratatui::style::Style;
+use ratatui::text::Line;
 
 /// What a row is to `u` and `U`, in words rather than colour.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -154,6 +157,34 @@ pub struct JournalStatusRow {
     pub words: String,
     /// A refusal or a failure, drawn as a warning; else a notice, muted.
     pub problem: bool,
+    /// The problem is a failure (`Status::Failed`): drawn `⊗ <words>`, the mark
+    /// the renderer's. A refusal or a sticky line is a problem, not a failure.
+    pub failure: bool,
+    /// The ASCII tier: the failure mark is `(x)`.
+    pub ascii: bool,
+}
+
+impl JournalStatusRow {
+    /// A refusal: a problem, not a failure, so no mark.
+    #[must_use]
+    pub fn refusal(words: &str) -> Self {
+        Self {
+            words: words.to_owned(),
+            problem: true,
+            failure: false,
+            ascii: false,
+        }
+    }
+
+    /// The row as drawn: `ink` for the words, and for a failure the
+    /// renderer's mark before them (`crate::failure`).
+    pub(super) fn line(&self, theme: &Theme, ink: Style) -> Line<'static> {
+        if self.failure {
+            crate::failure::line(&self.words, self.ascii, theme, ink)
+        } else {
+            Line::styled(self.words.clone(), ink)
+        }
+    }
 }
 
 /// J's kept `/` find, for the title's tail (m7-power-tools/30o-c): drawn as

@@ -268,7 +268,7 @@ fn an_open_resolver() -> crate::update::resolver::ResolverState {
 /// A state with `overlay` standing where the graph would be. The match is
 /// exhaustive on purpose: a new `GraphOverlay` stops this file compiling
 /// until the sweep below stands a confirm box on it too.
-fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
+pub(crate) fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
     let mut state = AppState {
         history: Some(crate::view::tests::history_of(5, 0)),
         ..AppState::default()
