@@ -1,0 +1,38 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_gfx_failed_fallback in crates/mergewright/src/event_loop/tests/gfx_failed/ease_30_shots.rs
+# (asserted). 100x30, Kitty pixel tier, after an uncured error reply (EINVAL:bad).
+# AFTER: the graph drawn as text from its first column, no `gfx` field.
+# Right: no `gfx` in the header; status row `renderer: unicode · pixels failed: EINVAL:bad (F3 cycles)`.
+# Cells under an image are blank in a capture: pixels are not recorded. Colour
+# is unverified: a capture cannot show it.
+#
+                                                                                        100 commits
+
+▸ ●                   Commit 100␛[31m                      Test  57y│
+  ┃                   Test · 57 years ago · 6464646                 │ reading…
+  ●                   Commit 99␛[31m                       Test  57y│ reading…
+  ●                   Commit 98␛[31m                       Test  57y│ reading…
+  ●                   Commit 97␛[31m                       Test  57y│ reading…
+  ●                   Commit 96␛[31m                       Test  57y│
+  ●                   Commit 95␛[31m                       Test  57y│
+  ●                   Commit 94␛[31m                       Test  57y│
+  ●                   Commit 93␛[31m                       Test  57y│
+  ●                   Commit 92␛[31m                       Test  57y│
+  ●                   Commit 91␛[31m                       Test  57y│
+  ●                   Commit 90␛[31m                       Test  57y│
+  ●                   Commit 89␛[31m                       Test  57y│
+  ●                   Commit 88␛[31m                       Test  57y│
+  ●                   Commit 87␛[31m                       Test  57y│
+  ●                   Commit 86␛[31m                       Test  57y│
+  ●                   Commit 85␛[31m                       Test  57y│
+  ●                   Commit 84␛[31m                       Test  57y│
+  ●                   Commit 83␛[31m                       Test  57y│
+  ●                   Commit 82␛[31m                       Test  57y│
+  ●                   Commit 81␛[31m                       Test  57y│
+  ●                   Commit 80␛[31m                       Test  57y│
+  ●                   Commit 79␛[31m                       Test  57y│
+  ●                   Commit 78␛[31m                       Test  57y│
+  ●                   Commit 77␛[31m                       Test  57y│
+  ●                   Commit 76␛[31m                       Test  57y│
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ renderer: unicode · pixels failed: EINVAL:bad (F3 cycles)

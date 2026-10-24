@@ -46,7 +46,7 @@ pub(super) fn stopped_at(spot: Spot) -> AppState {
         columns: 187,
         rows: 50,
     };
-    state.mergetool = Some("vimdiff".to_owned());
+    state.mergetool = Some("vimdiff".into());
     match spot {
         Spot::Banner => state.banner_focus = true,
         Spot::Graph => state.detail.shown = false,

@@ -32,6 +32,7 @@ fn event_label(event: &AppEvent) -> &'static str {
         AppEvent::Progress(_, progress) => progress_label(progress),
         AppEvent::Rested => "Rested",
         AppEvent::GraphModeKept { .. } => "GraphModeKept",
+        AppEvent::PixelsFailed(_) => "PixelsFailed",
     }
 }
 

@@ -50,7 +50,8 @@ pub(crate) fn detail_event(next: &mut AppState, commands: &mut Vec<Command>, eve
         | AppEvent::Progress(..)
         | AppEvent::Core(_)
         | AppEvent::Rested
-        | AppEvent::GraphModeKept { .. } => {}
+        | AppEvent::GraphModeKept { .. }
+        | AppEvent::PixelsFailed(_) => {}
     }
 }
 

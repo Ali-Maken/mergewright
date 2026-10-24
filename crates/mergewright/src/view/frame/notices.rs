@@ -82,8 +82,34 @@ pub(super) fn footer_notice(
     // cycles back to the top (m1-the-graph/33).
     state
         .renderer_override
-        .map(|_| sanitize_line(&format!("renderer: {} (F3 cycles)", tier_name(tier))))
+        .map(|_| sanitize_line(&renderer_line(tier, state.pixels_failed.as_deref(), cells)))
 }
+
+/// Narrower than this the reason for a pixel failure goes and the line is
+/// `F3`'s own.
+const REASON_MIN_CELLS: usize = 40;
+
+/// `renderer: <tier> (F3 cycles)`; after a pixel failure
+/// `renderer: <tier> · pixels failed: <reason> (F3 cycles)`, the reason cut
+/// with `…` to fit `cells` and the rest whole (ease-pass/30 D4).
+fn renderer_line(tier: RenderingTier, why: Option<&SanitizedText>, cells: usize) -> String {
+    let head = format!("renderer: {}", tier_name(tier));
+    let tail = " (F3 cycles)";
+    let Some(why) = why.filter(|_| cells >= REASON_MIN_CELLS) else {
+        return format!("{head}{tail}");
+    };
+    let lead = format!("{head} \u{b7} pixels failed: ");
+    let room = cells.saturating_sub(lead.chars().count() + tail.chars().count());
+    if room < 2 {
+        // Not even a letter and the cut mark fit: today's line.
+        return format!("{head}{tail}");
+    }
+    let reason = mergewright_ui::fit::fit(why.as_str(), room);
+    format!("{lead}{}{tail}", reason.trim_end())
+}
+
+#[cfg(test)]
+mod tests;
 
 /// The first-launch line (m8/18d, R7): the graph's status row when
 /// nothing else is on it — no problem (drawn before the notice), no notice,

@@ -41,6 +41,7 @@ fn every_field_spelled_out() -> AppState {
         detail: DetailState::default(),
         local_jobs: LocalJobs::default(),
         renderer_override: None,
+        pixels_failed: None,
         settled_tier: None,
         icons: mergewright_ui::graph_screen::Icons::Plain,
         max_lanes: None,

@@ -528,22 +528,6 @@ fn at_the_pixel_tier_strips_are_sent_once_and_freed_on_exit() {
     }
 }
 
-#[test]
-fn an_enoent_reply_re_sends_the_strip_and_says_so() {
-    let (frames, _tail) = pixel_run(
-        vec![unbound_key(), quit_key()],
-        vec![b"\x1b_Gi=1000;ENOENT:image not found\x1b\\".to_vec()],
-    );
-
-    assert_eq!(transmitted(&frames[0]).first(), Some(&1000));
-    assert!(!transmitted(&frames[1]).is_empty(), "{:?}", frames[1]);
-    assert!(
-        frames[1].contains("gfx: ENOENT:image not found"),
-        "{:?}",
-        frames[1]
-    );
-}
-
 /// Pixels, then `F3` three times (Unicode, ASCII, pixels again), then
 /// quit: the four frames and the tail.
 fn f3_round_trip() -> (Vec<String>, String) {
@@ -1604,6 +1588,7 @@ fn a_failed_clipboard_write_ends_the_loop_with_its_error() {
     assert_eq!(error.to_string(), "the terminal went away");
 }
 
+mod gfx_failed;
 mod pace;
 mod perf_trace;
 mod pixel_scroll;

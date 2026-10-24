@@ -17,7 +17,7 @@ use mergewright_graph::raster::cache::{ByteBudget, CacheError, Flush, STRIP_ROWS
 use mergewright_term::input::ReplyWaiter;
 use mergewright_term::iterm2::ItermImages;
 use mergewright_term::kitty::{self, KittyImages, UploadKey};
-use mergewright_term::{Transport, sanitize_line};
+use mergewright_term::{SanitizedText, Transport, sanitize_line};
 use mergewright_ui::graph_screen::GraphicsStatus;
 use ratatui::layout::Rect;
 
@@ -25,6 +25,8 @@ use crate::session::Session;
 use crate::update::AppState;
 use crate::view::strips::{PixelRows, StripPaint, pixel_rows};
 
+#[cfg(test)]
+mod failure_tests;
 mod layers;
 #[cfg(test)]
 mod pinned_tests;
@@ -103,6 +105,9 @@ pub struct Graphics<R> {
     pieces: HashMap<UploadKey, layers::Crop>,
     replies: R,
     status: GraphicsStatus,
+    /// The first failure since the last [`Self::take_failure`] the pixel
+    /// tier cannot cure itself (ticket 30 D1).
+    failure: Option<SanitizedText>,
 }
 
 impl<R: GraphicsReplies> Graphics<R> {
@@ -121,6 +126,7 @@ impl<R: GraphicsReplies> Graphics<R> {
             pieces: HashMap::new(),
             replies,
             status: GraphicsStatus::Ok,
+            failure: None,
         }
     }
 
@@ -138,6 +144,21 @@ impl<R: GraphicsReplies> Graphics<R> {
         &self.status
     }
 
+    /// The first failure since the last take that the pixel tier cannot cure
+    /// itself (an uncured Kitty reply, an iTerm2 band error, a strip that
+    /// would not rasterise on screen); `None` when there is none. The loop
+    /// hands it to `update` as `AppEvent::PixelsFailed` (ticket 30 D1).
+    pub fn take_failure(&mut self) -> Option<SanitizedText> {
+        self.failure.take()
+    }
+
+    /// Note an uncured failure. The first wins: the later ones in the same
+    /// take are its consequences or the same kind, and the tier is gone
+    /// either way.
+    fn fail(&mut self, why: SanitizedText) {
+        self.failure.get_or_insert(why);
+    }
+
     /// Take in every reply that has arrived since the last wake. The status
     /// is the last error among them, or `gfx ok` when none failed. `true`
     /// when the status changed, so the screen should say so.
@@ -145,9 +166,17 @@ impl<R: GraphicsReplies> Graphics<R> {
         let bytes = self.replies.take()?;
         let mut status = GraphicsStatus::Ok;
         for reply in kitty::replies(&bytes) {
+            let was_deflating = self.images.is_deflating();
             self.images.answer(&reply);
             if reply.is_error() {
                 status = GraphicsStatus::Failed(sanitize_line(&reply.message));
+                // Cured: a missing image goes again, a deflated upload goes
+                // plain. Anything else the tier cannot mend.
+                let cured =
+                    reply.is_missing_image() || (was_deflating && !self.images.is_deflating());
+                if !cured {
+                    self.fail(sanitize_line(&reply.message));
+                }
             }
         }
         let changed = status != self.status;
@@ -194,7 +223,9 @@ impl<R: GraphicsReplies> Graphics<R> {
         places.extend(band.as_ref().map(|band| band.place(graph)));
         if iterm2 {
             if let Err(why) = self.bands.frame(&places, out) {
-                self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string()));
+                let why = sanitize_line(&why.to_string());
+                self.status = GraphicsStatus::Failed(why.clone());
+                self.fail(why);
             }
         } else {
             self.images.frame(&places, out);
@@ -249,7 +280,11 @@ impl<R: GraphicsReplies> Graphics<R> {
                         at,
                     }));
                 }
-                Err(why) => self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string())),
+                Err(why) => {
+                    let why = sanitize_line(&why.to_string());
+                    self.status = GraphicsStatus::Failed(why.clone());
+                    self.fail(why);
+                }
             }
         }
         (drawn, band)
@@ -280,13 +315,18 @@ impl<R: GraphicsReplies> Graphics<R> {
             if waiting() {
                 break;
             }
-            match strip.with_layers(&pixels, &paint, |plain, selection| {
-                cache.backdrop(strip.first_row, plain, selection.backdrop)
-            }) {
-                Ok(_frame) => rasterised += 1,
-                // The same failure `frame` shows when this strip comes on
-                // screen; shown now too, so it is never lost.
-                Err(why) => self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string())),
+            // A failure drops nothing and shows nothing: the strip stays
+            // uncached, `drawn` rasterises it again before it is on screen,
+            // and that failure drops the column. Dropping for an off-screen
+            // strip would change the graph while he is idle, with nothing
+            // pressed (ticket 30 D1).
+            if strip
+                .with_layers(&pixels, &paint, |plain, selection| {
+                    cache.backdrop(strip.first_row, plain, selection.backdrop)
+                })
+                .is_ok()
+            {
+                rasterised += 1;
             }
         }
         rasterised

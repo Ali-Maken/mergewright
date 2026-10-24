@@ -34,8 +34,8 @@ pub(in crate::update) mod view_change;
 
 pub(in crate::update) use acknowledge::acknowledge;
 use acknowledge::dismiss_unseen;
-pub(in crate::update) use actions::strip_rows_for;
 use actions::{copy_selected_sha, cycle_tier, toggle_compare_selected};
+pub(in crate::update) use actions::{fall_back_from_pixels, strip_rows_for};
 #[cfg(test)]
 pub(crate) use bound::bound_actions;
 use commit::commit_key;

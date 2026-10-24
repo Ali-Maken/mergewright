@@ -33,6 +33,8 @@ use crate::update::{
 /// queue.
 const BATCH_BUDGET: Duration = Duration::from_millis(8);
 
+mod answers;
+
 /// The loop's body: draw, wait, update, repeat.
 pub(in crate::event_loop) fn frames<B, W, D, R>(
     Screen { terminal, graphics }: Screen<'_, B, R>,
@@ -122,6 +124,11 @@ where
     /// One step: draw what is undrawn if the turn is over and the terminal
     /// is ready for it, else take one wake. `Some` when the loop ends.
     fn turn(&mut self) -> io::Result<Option<Exit>> {
+        // After every drain and every frame: the pixel tier's failure, if it
+        // cannot cure it, is the first thing applied (ticket 30).
+        if let Some(exit) = self.pixels_failed()? {
+            return Ok(Some(exit));
+        }
         let rest_at = self.rest_deadline();
         if rest_at.is_some_and(|at| self.wakes.now() >= at) {
             return self.rested();
@@ -259,18 +266,6 @@ where
             // Taken above.
             Wake::Fence => Ok(None),
         }
-    }
-
-    /// The terminal has read every frame up to the oldest fence owed.
-    fn fence_answered(&mut self) -> io::Result<()> {
-        let waited = self.pacer.answered(self.wakes.now());
-        self.tracer.fenced(waited);
-        // Replies to the frames already drawn: an `ENOENT` here makes the
-        // next frame transmit that strip again.
-        if self.graphics.drain()? {
-            self.undrawn_since.get_or_insert_with(|| self.wakes.now());
-        }
-        Ok(())
     }
 
     /// A re-detected cell size or theme: the strips drawn for the old one
@@ -437,25 +432,6 @@ where
             self.now = true;
         }
         Ok(None)
-    }
-
-    /// Before the terminal goes to another program: take the answers still
-    /// owed to fences, up to the pacer's timeout. An answer that arrived
-    /// after the reader was paused would be read by `$EDITOR` as typing.
-    /// What else comes meanwhile is held back, in order, for after.
-    fn settle_fences(&mut self) {
-        while let Some(deadline) = self.pacer.owed() {
-            match self.wakes.next_wake_by(deadline) {
-                Waited::Woke(Wake::Fence) => {
-                    let waited = self.pacer.answered(self.wakes.now());
-                    self.tracer.fenced(waited);
-                }
-                Waited::Woke(wake) => self.deferred.push_back(wake),
-                // Unanswered: hand over anyway; `forget` follows the
-                // handover. Ended: the loop finds out at its next wait.
-                Waited::TimedOut | Waited::Ended => return,
-            }
-        }
     }
 
     /// Write one frame, fenced when the pacer says so.

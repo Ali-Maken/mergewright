@@ -161,7 +161,7 @@ pub(super) fn working_tree_read(
     }
     next.working_tree = Some(read.status);
     next.in_progress = read.in_progress;
-    next.mergetool = read.mergetool;
+    next.mergetool = read.mergetool.map(String::into_boxed_str);
     // An open commit screen follows the files that came or went
     // (ease-pass/08 C6).
     let mut local_jobs = next.local_jobs;

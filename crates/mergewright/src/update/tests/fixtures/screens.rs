@@ -113,7 +113,7 @@ pub(crate) fn resolver_on_screen(walk: JobId) -> AppState {
             status_entry("later.rs", true),
         ],
     }));
-    state.mergetool = Some("vimdiff".to_string());
+    state.mergetool = Some("vimdiff".into());
     state.resolver = Some(resolver::ResolverState {
         path: PathBuf::from("conflicted.rs"),
         opened_from: resolver::OpenedFrom::Pane,
@@ -157,7 +157,7 @@ pub(crate) fn resolver_card_on_screen(walk: JobId) -> AppState {
             status_entry("later.rs", true),
         ],
     }));
-    state.mergetool = Some("vimdiff".to_string());
+    state.mergetool = Some("vimdiff".into());
     state.resolver = Some(resolver::ResolverState {
         path: PathBuf::from("gone.txt"),
         opened_from: resolver::OpenedFrom::Pane,

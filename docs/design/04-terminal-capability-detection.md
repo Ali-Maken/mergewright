@@ -74,12 +74,14 @@ to force.
 
 | Condition | Tier |
 |---|---|
-| `graph.renderer` set in config | Whatever it says — always wins over detection. Forcing `pixel` on a terminal that didn't ack the query still attempts it, using the reachable protocol above, with a one-key escape hatch to drop a tier if the output looks garbled |
+| `graph.renderer` set in config | Whatever it says — always wins over detection. Forcing `pixel` on a terminal that didn't ack the query still attempts it, using the reachable protocol above. `F3` drops a tier if the output looks garbled; a failure the terminal or the rasteriser reports drops it on its own (below) |
 | Kitty protocol reachable | **Pixel**, via Kitty |
 | Truecolor indicated (`COLORTERM=truecolor`/`24bit`, or a known-truecolor terminal) | **Unicode** |
 | Inside tmux, with no graphics protocol through the passthrough (§4.3) | **Unicode** — not ASCII: tmux itself draws Unicode fine, and the missing capability is the image transport, not the character set (ADR-0014) |
 | iTerm2 or Sixel reachable, and neither of the two rows above matched | **Pixel**, via that protocol — an image protocol with no truecolor beats ASCII, which is the only comparison it has to win (ADR-0016) |
 | Anything left, or `TERM=dumb`, or output isn't a TTY | **ASCII** |
+
+**When pixels fail.** The tier is chosen once, but a pixel tier can fail while it runs: the terminal answers an image command with an error, or a strip will not rasterise or encode. Then the graph drops to the Unicode tier for the rest of the run, as `F3` would, whether the pixel tier was detected or forced — config picks what is attempted, not a blank graph. The footer says so: `renderer: unicode · pixels failed: <reason> (F3 cycles)`; `F3` cycles back to pixels, and a fresh failure drops again. Not a failure: an error Mergewright cures itself (a missing image sent again, a deflated upload sent plain), which keeps pixels and shows in the header's `gfx` field until the next error-free reply. No timed retry: nothing wakes the loop at rest to try pixels again, and a column that swapped back and forth would read as the graph changing.
 
 iTerm2 and Sixel move above Unicode only when a `TESTING.md` manual-checklist
 row, run by the user in that terminal with both tiers on screen, says the

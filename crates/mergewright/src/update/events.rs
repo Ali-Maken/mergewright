@@ -1,6 +1,8 @@
 //! What flows through [`super::update`]: events in, commands out, and the
 //! job-runner vocabulary that ties the two together.
 
+use std::sync::Arc;
+
 use mergewright_core::event::Event;
 use mergewright_core::job::JobId;
 
@@ -58,6 +60,9 @@ pub enum AppEvent {
         /// `Err` holds why the file was not written (`KeepError`'s words).
         result: Result<(), String>,
     },
+    /// The pixel tier failed in a way it cannot cure: draw the graph as text
+    /// (ease-pass/30). Sent by the loop from `Graphics::take_failure`.
+    PixelsFailed(mergewright_term::SanitizedText),
 }
 
 /// What a job was started to do.
@@ -257,8 +262,8 @@ pub enum Product {
     Files(
         Result<
             (
-                std::sync::Arc<mergewright_ui::detail::FileListView>,
-                std::sync::Arc<mergewright_git::diff::FileList>,
+                Arc<mergewright_ui::detail::FileListView>,
+                Arc<mergewright_git::diff::FileList>,
             ),
             String,
         >,
@@ -272,16 +277,16 @@ pub enum Product {
         super::detail::DiffKey,
         Result<
             (
-                std::sync::Arc<mergewright_ui::detail::DiffView>,
-                std::sync::Arc<mergewright_git::diff::FileDiff>,
+                Arc<mergewright_ui::detail::DiffView>,
+                Arc<mergewright_git::diff::FileDiff>,
             ),
             String,
         >,
     ),
     /// A blame place's blame, or why none (m7-power-tools/20).
-    Blame(Result<std::sync::Arc<super::place::BlameAnswer>, super::place::BlameFailure>),
+    Blame(Result<Arc<super::place::BlameAnswer>, super::place::BlameFailure>),
     /// A history place's trace, or why none (m7-power-tools/21).
-    Trace(Result<std::sync::Arc<super::place::TraceAnswer>, super::place::TraceFailure>),
+    Trace(Result<Arc<super::place::TraceAnswer>, super::place::TraceFailure>),
     /// A history place's whole file at one commit, or git's words.
     WholeFile(Result<WholeFileAnswer, String>),
     /// The refs containing a commit, or why not.
@@ -291,7 +296,7 @@ pub enum Product {
     ),
     /// The Mistake Radar's default-branch context, or why it could not be
     /// read.
-    RadarContext(Result<std::sync::Arc<crate::jobs::radar::RadarContext>, String>),
+    RadarContext(Result<Arc<crate::jobs::radar::RadarContext>, String>),
     /// One merge's evil-merge verdict. Never a `Result`: "could not check"
     /// is one of the verdict's own three answers, not a failure.
     EvilProbe(
@@ -308,17 +313,15 @@ pub enum Product {
         mergewright_ops::mistake_radar::probes::ForcePushVerdict,
     ),
     /// The duplicate-commit probe's groups, or why it could not run.
-    DuplicatesProbe(
-        Result<std::sync::Arc<mergewright_ops::mistake_radar::probes::Duplicates>, String>,
-    ),
+    DuplicatesProbe(Result<Arc<mergewright_ops::mistake_radar::probes::Duplicates>, String>),
     /// The commits only a stash reaches, each with the newest entry `n`
     /// (`stash@{n}`) reaching it, or why they could not be read
     /// (m7-power-tools/16).
-    StashOnly(Result<std::sync::Arc<mergewright_git::history_reads::StashOnly>, String>),
+    StashOnly(Result<Arc<mergewright_git::history_reads::StashOnly>, String>),
     /// The Map view's per-branch bucket counts, or why it could not be built
     /// (`crate::map`). A `Stop` firing mid-walk is one more line here, the
     /// same as any other failure — not folded into a silent cancellation.
-    Map(Result<std::sync::Arc<crate::map::MapData>, String>),
+    Map(Result<Arc<crate::map::MapData>, String>),
     /// `commit.template`'s contents, or `None` where the config names no
     /// template (m3-working-tree-undo-and-stash/05). A template that is
     /// configured but unreadable is `None` with the reason on the status
@@ -399,19 +402,11 @@ pub enum Product {
     /// (m6-conflicts/04): the document as it now stands, with its new
     /// fingerprint, or why nothing was written
     /// ([`mergewright_ops::conflict::TakeError`]'s `Display`).
-    Taken(
-        Result<
-            std::sync::Arc<mergewright_git::conflict::ConflictFile>,
-            crate::jobs::conflict::TakeFailure,
-        >,
-    ),
+    Taken(Result<Arc<mergewright_git::conflict::ConflictFile>, crate::jobs::conflict::TakeFailure>),
     /// The last pick was put back and the file written once (ease-pass
     /// 05): the document as it now stands, or why nothing was written.
     Untaken(
-        Result<
-            std::sync::Arc<mergewright_git::conflict::ConflictFile>,
-            crate::jobs::conflict::UntakeFailure,
-        >,
+        Result<Arc<mergewright_git::conflict::ConflictFile>, crate::jobs::conflict::UntakeFailure>,
     ),
     /// The merge base was attached to every block of the open file, or it
     /// could not be (`B`, m6-conflicts/05): the document with every block's
@@ -420,15 +415,7 @@ pub enum Product {
     /// (`no base (added on both sides)`, `base unavailable after edits`, or
     /// git's own `diff3` failure), paired with whether they are a problem —
     /// only a failure is; no base and edited-past-git are facts.
-    BaseLoaded(
-        Result<
-            (
-                std::sync::Arc<mergewright_git::conflict::ConflictFile>,
-                usize,
-            ),
-            (String, bool),
-        >,
-    ),
+    BaseLoaded(Result<(Arc<mergewright_git::conflict::ConflictFile>, usize), (String, bool)>),
     /// The files the operation in progress conflicted on
     /// (`mergewright_ops::conflict::operation_conflicts`, m6-conflicts/13), or why
     /// not; and a merge's files git combined (ease-pass/11b).
@@ -438,11 +425,11 @@ pub enum Product {
     /// m6-conflicts/19, ease-pass/05b), or why it could not be read.
     FinishSummary(Result<crate::update::finish::Reviewed, crate::update::finish::ReviewFailed>),
     /// The review's read-only look, or why not (ease-pass/12b).
-    FinishLook(Result<std::sync::Arc<crate::update::finish::LookRead>, String>),
+    FinishLook(Result<Arc<crate::update::finish::LookRead>, String>),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.
-    Preview(Result<std::sync::Arc<super::preview::Planned>, super::preview::PreviewFailure>),
+    Preview(Result<Arc<super::preview::Planned>, super::preview::PreviewFailure>),
     /// The journal's time machine finished, stopped part-way, or hit
     /// §6.7's drift rail (m5-history-and-ghost-preview/08). Not a plain
     /// `Result`, for [`Product::Undone`]'s reasons.
@@ -457,47 +444,47 @@ pub enum Product {
     /// The undo journal, newest entry last, or why it could not be read.
     /// `Arc`: the journal browser holds it across frames, never copied per
     /// event (m3-working-tree-undo-and-stash/06).
-    Journal(Result<std::sync::Arc<crate::jobs::undo::JournalRead>, String>),
+    Journal(Result<Arc<crate::jobs::undo::JournalRead>, String>),
     /// The tour's ticks (`Command::TourProgress`), in
     /// `mergewright_ops::tour::TourTask::ALL` order, or why the journal could not
     /// be read (m8-polish-and-ship/19b).
     TourProgress(Result<[bool; 8], String>),
     /// J's stage 2 answered (`Command::ReadOutside`): the reflog records, or
     /// why they could not be read. `Arc`: the list holds them across frames.
-    Outside(Result<std::sync::Arc<Vec<mergewright_ops::journal_list::OutsideRecord>>, String>),
+    Outside(Result<Arc<Vec<mergewright_ops::journal_list::OutsideRecord>>, String>),
     /// J's stage 3 answered (`Command::FindLost`), or why the scan failed —
     /// the title says so (m7-power-tools/24).
-    LostFound(Result<std::sync::Arc<crate::jobs::journal_list::LostFound>, String>),
+    LostFound(Result<Arc<crate::jobs::journal_list::LostFound>, String>),
     /// What `⏎` on a J row puts back (`Command::RecoverFor`); `Err` is the
     /// status row's words, a refusal or a failed read.
     RecoverFor(Result<mergewright_ops::journal_list::Recover, String>),
     /// The stash list, `stash@{0}` first, or why it could not be read.
     /// `Arc` for the same reason as [`Product::Journal`]: the overlay holds
     /// it across frames (m3-working-tree-undo-and-stash/06).
-    Stashes(Result<std::sync::Arc<Vec<mergewright_git::stash::StashEntry>>, String>),
+    Stashes(Result<Arc<Vec<mergewright_git::stash::StashEntry>>, String>),
     /// The branch picker's rows in drawn order, or why they could not be
     /// read (`Command::ReadSwitchList`, m7-power-tools/10). `Arc`: the
     /// picker holds it across frames and filters it per key.
-    SwitchList(Result<std::sync::Arc<mergewright_ops::switch_list::SwitchList>, String>),
+    SwitchList(Result<Arc<mergewright_ops::switch_list::SwitchList>, String>),
     /// Every branch with its tip's date, for the palette's BRANCHES, or why
     /// they could not be read (`Command::ReadPaletteBranches`,
     /// m8-polish-and-ship/12).
-    PaletteBranches(Result<std::sync::Arc<mergewright_git::switch_refs::SwitchRefs>, String>),
+    PaletteBranches(Result<Arc<mergewright_git::switch_refs::SwitchRefs>, String>),
     /// The names job's answer for one query (`Command::PaletteNames`).
-    PaletteNames(std::sync::Arc<crate::jobs::palette::NameHits>),
+    PaletteNames(Arc<crate::jobs::palette::NameHits>),
     /// Every tracked path, for the palette's FILES, or why they could not be
     /// read (`Command::ReadTrackedPaths`, m8-polish-and-ship/12b).
-    TrackedPaths(Result<std::sync::Arc<mergewright_git::status::TrackedPaths>, String>),
+    TrackedPaths(Result<Arc<mergewright_git::status::TrackedPaths>, String>),
     /// The commits job's answer for one query: the first
     /// `update::palette::COMMIT_HITS` in walk order, or why the walk failed
     /// (`Command::PaletteCommits`, m8-polish-and-ship/12b).
-    PaletteCommits(Result<std::sync::Arc<[crate::search::CommitHit]>, String>),
+    PaletteCommits(Result<Arc<[crate::search::CommitHit]>, String>),
     /// The index now, for a stash clash's tie, or why it could not be read
     /// (`Command::ReadIndexState`).
     IndexState(Result<mergewright_core::journal::IndexState, String>),
     /// The remotes, `HEAD`'s branch and its upstream, or why they could not
     /// be read (m4-remotes/05).
-    Remotes(Result<std::sync::Arc<crate::jobs::remote::RemoteFacts>, String>),
+    Remotes(Result<Arc<crate::jobs::remote::RemoteFacts>, String>),
     /// What a force-with-lease push would take off the remote, for the
     /// lease key it was asked for (`Command::ReadLeaves`), or why it could
     /// not be read.
@@ -522,9 +509,9 @@ pub enum Product {
         /// The branch and candidate tips it was asked for.
         key: crate::update::branch_pane::StatusKey,
         /// The answer.
-        result: Result<std::sync::Arc<mergewright_ops::branch_status::BranchStatus>, String>,
+        result: Result<Arc<mergewright_ops::branch_status::BranchStatus>, String>,
     },
     /// Every change against `HEAD` with its line counts
     /// (`Command::ReadCommitFiles`), or why it could not be read.
-    CommitFiles(Result<std::sync::Arc<mergewright_git::diff::FileList>, String>),
+    CommitFiles(Result<Arc<mergewright_git::diff::FileList>, String>),
 }
