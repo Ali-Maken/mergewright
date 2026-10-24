@@ -1,6 +1,6 @@
-//! A node lies whole inside its own lane (ease-pass/29): the lane's centre
-//! is the boundary between its two cells, so a node sized with one cell of
-//! room each side is neither cut flat on the left nor lopsided.
+//! A node lies whole inside its own lane (ease-pass/29): the strip leads the
+//! graph column by one gutter cell (D5), so a lane's box, one cell each side
+//! of its centre, holds a node sized with one cell of room each side.
 
 use mergewright_core::capabilities::Rgb;
 use mergewright_core::raster::RasterFrame;
@@ -10,7 +10,7 @@ use crate::Seeds;
 use crate::layout::layout;
 use crate::layout::tests::commit;
 use crate::raster::{
-    Backdrop, CELLS_PER_LANE, Emphasis, Lit, Marker, PlainRow, PlainStrip, Selection,
+    Backdrop, Emphasis, Lit, Marker, PlainRow, PlainStrip, STRIP_LEAD_CELLS, Selection,
     emphasis_pieces, rasterise_backdrop, rasterise_piece,
 };
 use crate::row::Row;
@@ -90,12 +90,21 @@ fn bounds(frame: &RasterFrame, x_offset: u32, y_offset: u32) -> Option<(u32, u32
     found
 }
 
+/// Lane `lane`'s box in strip pixels (D5.4): the two cells centred on its
+/// centre, `[(LEAD + 2c - 0.5)w, (LEAD + 2c + 1.5)w]`, as whole pixels
+/// `(left, right)` with a half pixel rounded outward.
+pub(in crate::raster) fn lane_box(lane: usize, cell_width: u32) -> (u32, u32) {
+    let half_cells = 2 * STRIP_LEAD_CELLS + 4 * u32::try_from(lane).expect("small");
+    let left = (half_cells - 1) * cell_width / 2;
+    let right = ((half_cells + 3) * cell_width).div_ceil(2);
+    (left, right)
+}
+
 /// Holds `bounds` to lane `lane`'s two cells and the row band; `what` names
 /// the case on failure.
 fn assert_whole(bounds: Option<(u32, u32, u32, u32)>, lane: usize, cell: (u32, u32), what: &str) {
     let (min_x, max_x, min_y, max_y) = bounds.unwrap_or_else(|| panic!("{what}: nothing drawn"));
-    let lane_left = u32::try_from(lane).expect("small") * CELLS_PER_LANE * cell.0;
-    let next_left = lane_left + CELLS_PER_LANE * cell.0;
+    let (lane_left, next_left) = lane_box(lane, cell.0);
     assert!(
         min_x > lane_left && max_x < next_left - 1,
         "{what}: x {min_x}..={max_x} leaves lane {lane_left}..{next_left} with a pixel to spare"
@@ -177,6 +186,59 @@ fn a_node_piece_holds_its_node_whole() {
                     cell,
                     &format!("{ring:?} piece at {}x{} lane {lane}", cell.0, cell.1),
                 );
+            }
+        }
+    }
+}
+
+/// ease-pass/29 D5: the lead cell, left of the graph column, holds nothing
+/// but lane 0's node: no edge, arc, rail or stub reaches left of lane 0's box.
+#[test]
+fn the_lead_cell_holds_only_lane_zeros_node() {
+    use crate::raster::PlainRow;
+    // A merge off lane 0 onto lane 1, with the rail on lane 0 and a stub.
+    let commits = [
+        commit(4, &[3, 2], 4, b"merge"),
+        commit(3, &[1], 3, b"main"),
+        commit(2, &[1], 2, b"side"),
+        commit(1, &[], 1, b"root"),
+    ];
+    let rows = layout(&commits, Seeds::default());
+    for cell in CELLS {
+        let plain: Vec<PlainRow<'_>> = rows
+            .iter()
+            .map(|row| PlainRow {
+                row,
+                ring: if row.lane == 0 {
+                    Ring::Head
+                } else {
+                    Ring::Commit
+                },
+                stubs: vec![crate::raster::Stub {
+                    identity: crate::identity::BranchIdentity::of_name(b"f"),
+                    toward: crate::fold::Toward::Below,
+                }],
+            })
+            .collect();
+        let strip = strip(&plain, cell, Some(Marker { column: 0 }), 2);
+        let frame = rasterise_backdrop(&strip, Backdrop::Full).expect("rasterises");
+        let (box_left, _) = lane_box(0, cell.0);
+        for (index, row) in rows.iter().enumerate() {
+            let top = u32::try_from(index).expect("small") * cell.1;
+            for y in top..top + cell.1 {
+                for x in 0..STRIP_LEAD_CELLS * cell.0 {
+                    let ink = frame.pixel(x, y).is_some_and(|pixel| pixel[3] > 0);
+                    // Left of lane 0's box nothing ever draws; in the rest of
+                    // the lead cell only a lane-0 node does.
+                    let allowed = x >= box_left && row.lane == 0;
+                    assert!(
+                        !ink || allowed,
+                        "{}x{} row {index} (lane {}): ink at ({x},{y}) in the lead cell",
+                        cell.0,
+                        cell.1,
+                        row.lane
+                    );
+                }
             }
         }
     }

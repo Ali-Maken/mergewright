@@ -120,12 +120,12 @@ fn alpha(frame: &RasterFrame, x: usize, y: usize) -> u8 {
     frame.pixels[(y * width + x) * 4 + 3]
 }
 
-/// The pixels `x0..x1` one cell wide around lane column `column`'s centre
-/// line, which is the boundary between the lane's two cells (ease-pass/29).
+/// Lane column `column`'s own cell, pixels `x0..x1`, on band `row`: the strip
+/// leads the graph column by one gutter cell (ease-pass/29 D5).
 fn lane_cell(column: usize) -> std::ops::Range<usize> {
     let width = CELL_W;
-    let centre = (column * 2 + 1) * width;
-    centre - width / 2..centre + width / 2
+    let left = (column * 2 + 1) * width;
+    left..left + width
 }
 
 /// Runs of drawn pixels (alpha > 64) across lane column `column`'s cell at

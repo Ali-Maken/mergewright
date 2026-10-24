@@ -7,6 +7,8 @@ use mergewright_ui::graph_screen::{GraphicsStatus, row_at};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
+mod lead;
+
 use super::scrolled_preview;
 use crate::session::Session;
 use crate::session::for_tests::session;

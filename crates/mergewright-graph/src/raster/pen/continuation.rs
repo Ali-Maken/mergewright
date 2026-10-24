@@ -14,7 +14,8 @@ use mergewright_core::raster::RasterFrame;
 use tiny_skia::{IntSize, Pixmap};
 
 use super::super::{
-    CELLS_PER_LANE, Edge, Ink, Inked, Pen, PlainStrip, RasterError, Selection, edge_at,
+    CELLS_PER_LANE, Edge, Ink, Inked, Pen, PlainStrip, RasterError, STRIP_LEAD_CELLS, Selection,
+    edge_at,
 };
 
 /// Strip row `row`'s inked row, or `None` past the strip.
@@ -158,6 +159,7 @@ pub fn rasterise_continuation(
     let columns = u32::try_from(strip.lane_columns)
         .ok()
         .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
+        .and_then(|cells| cells.checked_add(STRIP_LEAD_CELLS))
         .ok_or_else(too_large)?;
     let width = columns
         .checked_mul(strip.cell_width)

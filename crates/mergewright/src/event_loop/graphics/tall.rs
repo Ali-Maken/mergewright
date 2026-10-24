@@ -10,7 +10,8 @@ use std::sync::Arc;
 
 use mergewright_core::raster::RasterFrame;
 use mergewright_graph::raster::{
-    CELLS_PER_LANE, PlainStrip, RasterError, Selection, continuation_key, rasterise_continuation,
+    CELLS_PER_LANE, PlainStrip, RasterError, STRIP_LEAD_CELLS, Selection, continuation_key,
+    rasterise_continuation,
 };
 use mergewright_term::kitty::{CellRect, KittyImages, Layer, Place, UploadKey};
 use ratatui::layout::Rect;
@@ -94,7 +95,9 @@ impl Band {
             key,
             frame,
             at,
-            columns: lanes.saturating_mul(CELLS_PER_LANE),
+            columns: lanes
+                .saturating_mul(CELLS_PER_LANE)
+                .saturating_add(STRIP_LEAD_CELLS),
         }))
     }
 
@@ -102,6 +105,7 @@ impl Band {
     /// Known by its key alone, like an emphasis piece (the strip layer is
     /// one upload per strip), and nothing lies under it.
     pub(super) fn place(&self, graph: Rect) -> Place<'_> {
+        let graph = super::layers::strip_area(graph);
         Place {
             first_row: self.first_row,
             key: self.key,

@@ -9,15 +9,17 @@ use tiny_skia::{Pixmap, Rect, Transform};
 use super::geometry::{arc_in, arc_out, count, goes_down, line, paint, pixels, stroke};
 use super::{
     Band, BranchIdentity, CELLS_PER_LANE, Edge, Ink, Inked, LaneStroke, Look, Marker, Part, Pen,
-    PieceKind, RefCell, Row, Toward, alpha_byte, edge_at, lifted, node, stroke_width,
+    PieceKind, RefCell, Row, STRIP_LEAD_CELLS, Toward, alpha_byte, edge_at, lifted, node,
+    stroke_width,
 };
 
-/// x of a lane column's centre in strip pixels: the boundary between its
-/// two cells, so a node sized by `node.rs` (one cell of room each side)
-/// stays inside its lane.
-pub(crate) fn lane_centre_x(column: usize, cell_width: f32) -> f32 {
-    let lane = pixels(CELLS_PER_LANE) * cell_width;
-    count(column) * lane + lane / 2.0
+/// x of a lane column's centre in strip pixels: the centre of the lane's own
+/// cell, where the Unicode tier draws the node glyph, counted from the
+/// strip's left edge, which is [`STRIP_LEAD_CELLS`] cells left of the graph
+/// column (D5). Lane 0's node so has a full cell of room on its left.
+pub fn lane_centre_x(column: usize, cell_width: f32) -> f32 {
+    let cells = pixels(STRIP_LEAD_CELLS) + count(column) * pixels(CELLS_PER_LANE);
+    cells * cell_width + cell_width / 2.0
 }
 
 impl<'a> Pen<'a> {

@@ -180,9 +180,9 @@ fn colour_never_exceeds_alpha_and_untouched_pixels_are_clear() {
                 continue;
             }
             let top = u32::try_from(index).unwrap() * cell_height;
-            // The boundary between each pair of lanes (the last lane has none).
-            for lane in 0..u32::try_from(width_of(&rows)).unwrap().saturating_sub(1) {
-                let x = (lane * 2 + 2) * cell_width;
+            // The gap cell right of each lane's cell (strips lead by a cell).
+            for lane in 0..u32::try_from(width_of(&rows)).unwrap() {
+                let x = (lane * 2 + 2) * cell_width + cell_width / 2;
                 for y in top..top + cell_height {
                     assert_eq!(
                         frame.pixel(x, y),
@@ -205,7 +205,7 @@ fn a_fork_is_an_antialiased_curve_not_an_elbow() {
     );
     let (cell_width, cell_height) = USER_CELL;
     let frame = render(std::slice::from_ref(merge), USER_CELL);
-    let (node_x, lane_x) = (cell_width, 3 * cell_width);
+    let (node_x, lane_x) = (cell_width + cell_width / 2, 3 * cell_width + cell_width / 2);
     // Below 0.3 of the band the arcs to lanes 2 and 3 have already left for
     // the right, so this window holds lane 1's arc alone.
     let mut centroids = Vec::new();
@@ -308,8 +308,8 @@ fn rings_differ_in_shape_whatever_the_colour() {
         }
     }
     // The centre pixel: hollow rings are hollow, filled ones filled.
-    let (width, height) = (USER_CELL.0 * 2, USER_CELL.1);
-    let centre = usize::try_from((height / 2) * width + USER_CELL.0).unwrap();
+    let (width, height) = (USER_CELL.0 * 3, USER_CELL.1);
+    let centre = usize::try_from((height / 2) * width + USER_CELL.0 + USER_CELL.0 / 2).unwrap();
     let hollow: Vec<bool> = masks.iter().map(|mask| !mask[centre]).collect();
     assert_eq!(hollow, [false, false, true, false, false, true]);
 }
@@ -437,9 +437,9 @@ fn the_thread_is_alpha_not_a_wider_stroke() {
             solid_run(frame, y)
         );
     }
-    // Lane 0 (x 17) is on the thread; lane 1 (x 51) is not.
-    let on_thread_peak = peak_alpha(&on, y, 10..25);
-    let off_thread_peak = peak_alpha(&on, y, 44..58);
+    // Lane 0 (x 25) is on the thread; lane 1 (x 59) is not.
+    let on_thread_peak = peak_alpha(&on, y, 18..33);
+    let off_thread_peak = peak_alpha(&on, y, 52..66);
     assert!(
         (f32::from(off_thread_peak) - f32::from(on_thread_peak) / 2.0).abs() <= 0.05 * 255.0,
         "off-thread ({off_thread_peak}) should be about half on-thread ({on_thread_peak})"
@@ -559,7 +559,7 @@ fn a_folded_edge_is_a_corner_tail_inside_its_lane() {
         assert!(!own.is_empty(), "band {band} draws a tail");
         for &&(x, y, _) in &own {
             assert!(
-                (cell_width..2 * cell_width).contains(&x),
+                (cell_width + cell_width / 2..2 * cell_width + cell_width / 2).contains(&x),
                 "band {band}: tail pixel at x {x} is outside the node's lane"
             );
             // Row 0's first stub leads down, row 2's up; one tail a row.
@@ -593,9 +593,9 @@ fn the_rail_is_a_grey_dotted_line_whose_dashes_never_jump() {
     let rows = folded_rows();
     let (_, cell_height) = USER_CELL;
     let frame = folded_frame(&rows, None, true, USER_CELL);
-    // Lane 1's centre line is x 51, the boundary of its two cells; the rail
-    // takes the whole pixel right of it.
-    let x = 51;
+    // Lane 1's centre line is x 59.5 (the strip leads the graph column by a
+    // cell); the rail takes the whole pixel 59.
+    let x = 59;
     let alpha = |frame: &RasterFrame, y: u32| frame.pixel(x, y).unwrap()[3];
     for y in 0..frame.height {
         let [red, green, blue, _] = frame.pixel(x, y).unwrap();

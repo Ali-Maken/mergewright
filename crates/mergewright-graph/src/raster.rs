@@ -52,12 +52,18 @@ pub use emphasis::{
 };
 pub use node::Ring;
 pub use pen::continuation::{continuation_key, rasterise_continuation};
+pub use pen::lane_centre_x;
 pub use pool::RasterPool;
 pub use stroke::LaneStroke;
 
 /// Terminal cells one lane column takes, matching the Unicode tier: the
 /// lane's own cell and the gap right of it.
 pub const CELLS_PER_LANE: u32 = 2;
+
+/// Cells a strip image carries left of the graph column: the gutter's gap
+/// cell (ADR-0058 §4), so lane 0's node has a full cell of room on its left
+/// (ease-pass/29 D5). The image's right edge is the graph column's.
+pub const STRIP_LEAD_CELLS: u32 = 1;
 
 /// Alpha for a column off the selection's thread (ADR-0024): the thread is
 /// emphasised by contrast, never by a heavier stroke.
@@ -286,6 +292,7 @@ fn paint_part(
         None => u32::try_from(look.lane_columns)
             .ok()
             .and_then(|lanes| lanes.checked_mul(CELLS_PER_LANE))
+            .and_then(|cells| cells.checked_add(STRIP_LEAD_CELLS))
             .ok_or_else(too_large)?,
     };
     let window = part.map_or(0..rows.len(), |part| {

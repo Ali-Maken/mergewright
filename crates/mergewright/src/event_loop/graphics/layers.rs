@@ -8,7 +8,8 @@ use std::sync::Arc;
 use mergewright_core::raster::RasterFrame;
 use mergewright_graph::raster::cache::{CacheError, StripCache};
 use mergewright_graph::raster::{
-    CELLS_PER_LANE, PieceKind, PlainStrip, Selection, emphasis_pieces, rasterise_piece,
+    CELLS_PER_LANE, PieceKind, PlainStrip, STRIP_LEAD_CELLS, Selection, emphasis_pieces,
+    rasterise_piece,
 };
 use mergewright_term::kitty::{CellRect, KittyImages, Layer, Place, UploadKey};
 use ratatui::layout::Rect;
@@ -31,9 +32,11 @@ pub(super) struct Crop {
     rows: usize,
 }
 
-/// A piece's anchor in the strip: (cell column, row).
+/// A piece's anchor in the strip: (cell column, row). Strip cells count from
+/// the strip's left edge, [`STRIP_LEAD_CELLS`] left of the graph column.
 fn anchor(column: usize, kind: PieceKind) -> (i64, i64) {
-    let cell = i64::try_from(column).unwrap_or(i64::MAX) * i64::from(CELLS_PER_LANE);
+    let cell = i64::from(STRIP_LEAD_CELLS)
+        + i64::try_from(column).unwrap_or(i64::MAX) * i64::from(CELLS_PER_LANE);
     match kind {
         PieceKind::Arc { row } => (cell, i64::from(row)),
         PieceKind::Run | PieceKind::Node => (cell, 0),
@@ -143,9 +146,24 @@ pub(super) struct Drawn {
     pub(super) at: u16,
 }
 
-/// Where each drawn strip goes in `graph`: the strip across its own columns,
-/// then each emphasis piece from the cell column it starts on.
+/// Where strips start and how wide they may be: the graph column, widened
+/// left by [`STRIP_LEAD_CELLS`] into the gutter's gap cell (ease-pass/29
+/// D5, ADR-0058 §4). The right edge is the graph column's. The caller places
+/// no strip where the gutter is absent (`view::frame::layout`).
+pub(super) fn strip_area(graph: Rect) -> Rect {
+    let lead = u16::try_from(STRIP_LEAD_CELLS).unwrap_or(u16::MAX);
+    Rect {
+        x: graph.x.saturating_sub(lead),
+        width: graph.width.saturating_add(lead),
+        ..graph
+    }
+}
+
+/// Where each drawn strip goes in `graph`: the strip across its own columns
+/// (from the gutter's gap cell), then each emphasis piece from the cell
+/// column it starts on, counted from there.
 pub(super) fn places(drawn: &[Drawn], graph: Rect) -> Vec<Place<'_>> {
+    let graph = strip_area(graph);
     let mut places = Vec::with_capacity(2 * drawn.len());
     for strip in drawn {
         let cells = |column: u16, columns: u32| CellRect {

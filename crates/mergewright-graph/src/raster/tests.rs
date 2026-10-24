@@ -1,8 +1,7 @@
 use super::node::NodeSize;
-use super::node::extent_tests::{CELLS, STYLES, lone_row, strip};
-use super::{
-    Backdrop, CELLS_PER_LANE, Marker, PlainRow, Ring, Stub, rasterise_backdrop, stroke_width,
-};
+use super::node::extent_tests::{CELLS, STYLES, lane_box, lone_row, strip};
+use super::pen::lane_centre_x;
+use super::{Backdrop, Marker, PlainRow, Ring, Stub, rasterise_backdrop, stroke_width};
 use crate::fold::Toward;
 use crate::identity::BranchIdentity;
 
@@ -116,9 +115,8 @@ fn assert_stub(
 ) {
     let size = NodeSize::for_cell(px(cell.0), px(cell.1), stroke_width(cell.0));
     let reach = size.reach(ring);
-    let lane_left = u32::try_from(case.lane).expect("small") * CELLS_PER_LANE * cell.0;
-    let next_left = lane_left + CELLS_PER_LANE * cell.0;
-    let (cx, cy) = (px(lane_left + cell.0), px(cell.1) / 2.0);
+    let (lane_left, next_left) = lane_box(case.lane, cell.0);
+    let (cx, cy) = (lane_centre_x(case.lane, px(cell.0)), px(cell.1) / 2.0);
     assert!(!lit.is_empty(), "{name}: no stub drawn");
     let (mut nearest, mut farthest) = (f32::MAX, 0.0_f32);
     for &(x, y) in lit {

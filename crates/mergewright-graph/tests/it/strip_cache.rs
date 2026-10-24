@@ -2,8 +2,7 @@
 //! rasterises at most one new strip, scrolling back is a hit, a theme change
 //! flushes, and a layout change on one row costs only its own strip.
 
-use std::ops::Range;
-use std::time::Instant;
+use std::{ops::Range, time::Instant};
 
 use mergewright_core::capabilities::Rgb;
 use mergewright_core::commit::{Commit, Identity, Timestamp};
@@ -88,6 +87,7 @@ fn roomy(min_strips: usize) -> StripCache {
     StripCache::with_budget(ByteBudget(usize::MAX), min_strips)
 }
 
+const LEAD: usize = mergewright_graph::raster::STRIP_LEAD_CELLS as usize; // ease-pass/29 D5
 fn width_of(rows: &[Row]) -> usize {
     rows.iter()
         .map(|row| row.lanes.len().max(row.lane + 1))
@@ -274,7 +274,7 @@ fn a_layout_change_on_one_row_invalidates_only_its_strip() {
 
 /// The bytes one full backdrop strip of `rows` weighs at `cell`.
 fn strip_bytes(rows: &[Row], cell: (u32, u32)) -> usize {
-    STRIP_ROWS * cell.1 as usize * width_of(rows) * 2 * cell.0 as usize * 4
+    STRIP_ROWS * cell.1 as usize * (width_of(rows) * 2 + LEAD) * cell.0 as usize * 4
 }
 
 #[test]
@@ -411,7 +411,7 @@ fn resident_bytes_for_a_viewport_plus_buffer() {
         frame(&mut cache, &rows, top..top + 60, &PALETTE, USER_CELL);
     }
     let lanes = width_of(&rows);
-    let per_strip = STRIP_ROWS * USER_CELL.1 as usize * lanes * 2 * USER_CELL.0 as usize * 4;
+    let per_strip = strip_bytes(&rows, USER_CELL);
     assert_eq!(cache.len(), capacity);
     assert_eq!(cache.resident_bytes(), capacity * per_strip);
     eprintln!(
@@ -466,7 +466,7 @@ fn strip_height_numbers() {
             })
             .collect();
         hit.sort_unstable();
-        let bytes = height * USER_CELL.1 as usize * lanes * 2 * USER_CELL.0 as usize * 4;
+        let bytes = height * USER_CELL.1 as usize * (lanes * 2 + LEAD) * USER_CELL.0 as usize * 4;
         eprintln!(
             "{height:>3} rows × {lanes} lanes at {}×{}: rasterise median {} µs, key {} ns, {} KiB a strip",
             USER_CELL.0,

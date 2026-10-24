@@ -14,10 +14,12 @@ pub(super) fn painted_cells(
     let width = usize::try_from(frame.width).ok()?;
     let cell = usize::try_from(cell_width).ok()?;
     let lane = cell * usize::try_from(super::super::CELLS_PER_LANE).ok()?;
-    // From a cell left of the first lane's own cell to the end of the cell
-    // right of the last lane's own cell.
-    let from = (reach.0 * lane).saturating_sub(cell).min(width);
-    let to = (reach.1 * lane + 2 * cell).min(width);
+    // The strip leads the graph column by `STRIP_LEAD_CELLS`. From a cell
+    // left of the first lane's own cell to the end of the cell right of the
+    // last lane's own cell.
+    let lead = cell * usize::try_from(super::super::STRIP_LEAD_CELLS).ok()?;
+    let from = (lead + reach.0 * lane).saturating_sub(cell).min(width);
+    let to = (lead + reach.1 * lane + 2 * cell).min(width);
     painted_cells_in(frame, cell_width, from..to)
 }
 

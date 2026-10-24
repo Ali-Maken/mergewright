@@ -96,7 +96,13 @@ pub(super) fn render_graph_screen(
 ) -> Option<Rect> {
     let widget = GraphScreen::new(screen, theme);
     let Some((marks, ascii)) = strip.filter(|_| !pixels && area.width > 1) else {
-        let graph = pixels.then(|| widget.graph_area(area));
+        // A strip starts in the gutter's gap cell, left of the graph column
+        // (ease-pass/29 D5). Without a gutter (a screen under four columns)
+        // there is no such cell: no strip, the column stays text.
+        let lead = u16::try_from(mergewright_graph::raster::STRIP_LEAD_CELLS).unwrap_or(u16::MAX);
+        let graph = pixels
+            .then(|| widget.graph_area(area))
+            .filter(|graph| graph.x >= area.x.saturating_add(lead));
         frame.render_widget(widget, area);
         return graph;
     };
@@ -356,9 +362,13 @@ pub(super) fn pixels_above_overlays(
 ) -> Option<Rect> {
     let graph = graph?;
     let mut height = graph.height;
+    // The strips start in the gutter's gap cell (ease-pass/29 D5), so an
+    // overlay that covers only that cell still covers image.
+    let lead = u16::try_from(mergewright_graph::raster::STRIP_LEAD_CELLS).unwrap_or(u16::MAX);
+    let left = graph.x.saturating_sub(lead);
     for overlay in overlays {
         if overlay.is_empty()
-            || overlay.right() <= graph.x
+            || overlay.right() <= left
             || overlay.x >= graph.right()
             || overlay.bottom() <= graph.y
         {

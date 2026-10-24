@@ -313,4 +313,6 @@ mod colours_off_tests;
 #[cfg(test)]
 mod landing_tests;
 #[cfg(test)]
+mod lead_tests;
+#[cfg(test)]
 pub(crate) mod tests;

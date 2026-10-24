@@ -3,7 +3,9 @@
 //! nearest-neighbour on the dark theme's background.
 //!
 //! Right: every node a whole circle or ring, the left as round as the right,
-//! a clear gap to the image's left edge; each stub a short line leaving its
+//! lane 0's node centred over the graph column's first cell (the grey ticks
+//! top and bottom mark the graph column's left edge: the strip starts one
+//! gutter cell left of it) with a clear gap to the image's left edge; each stub a short line leaving its
 //! node toward the lane's lower-right (`Below`) or upper-right (`Above`)
 //! corner, ending inside the lane. Colour is **unverified** (CLAUDE.md
 //! rule 5). Written under `MWR_UPDATE_SHOTS=1`; `MWR_NODES_SHOT=before`
@@ -19,7 +21,7 @@ use mergewright_core::raster::RasterFrame;
 use mergewright_graph::fold::Toward;
 use mergewright_graph::identity::BranchIdentity;
 use mergewright_graph::raster::{
-    Backdrop, Marker, PlainRow, PlainStrip, Ring, Stub, rasterise_backdrop,
+    Backdrop, Marker, PlainRow, PlainStrip, Ring, STRIP_LEAD_CELLS, Stub, rasterise_backdrop,
 };
 use tiny_skia::{Color, IntSize, Pixmap, PixmapPaint, Transform};
 
@@ -36,7 +38,7 @@ const MUTED: Rgb = Rgb {
     blue: 0x88,
 };
 /// A grid slot: wide enough for a 3-lane strip, with a gap.
-const SLOT: (u32, u32) = (6 * CELL.0 + 8, CELL.1 + 4);
+const SLOT: (u32, u32) = (7 * CELL.0 + 8, CELL.1 + 4);
 const PER_ROW: u32 = 4;
 
 fn one(ring: Ring, lane: usize, columns: usize, rail: bool, stub: Option<Toward>) -> RasterFrame {
@@ -106,6 +108,16 @@ fn sheet() -> Vec<u8> {
             Transform::identity(),
             None,
         );
+        // The graph column's left edge: a 1 px tick at the top and bottom.
+        let edge = u32::try_from(x).unwrap() + STRIP_LEAD_CELLS * CELL.0;
+        let top = u32::try_from(y).unwrap();
+        let across = canvas.width();
+        for tick in (0..3).chain(CELL.1 - 3..CELL.1) {
+            canvas.pixels_mut()[((top + tick) * across + edge) as usize] =
+                Color::from_rgba8(0x88, 0x88, 0x88, 255)
+                    .premultiply()
+                    .to_color_u8();
+        }
     }
     let mut big = Pixmap::new(canvas.width() * SCALE, canvas.height() * SCALE).unwrap();
     for y in 0..big.height() {
