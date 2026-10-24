@@ -142,8 +142,13 @@ fn real_lines(state: &AppState, pixels: &PixelRows) -> Vec<Option<Line>> {
     let height = state.graph_pane_rows();
     let mut lines = vec![None; height];
     for placed in placements(state, pixels, u16::try_from(height).unwrap_or(u16::MAX)) {
-        let strip = &pixels.strips[placed.strip];
-        let uncommitted = strip.uncommitted_at();
+        let Some(strip) = placed.strip_of(pixels) else {
+            continue;
+        };
+        // The pinned row is an image of its own (ease-pass/20): its only row.
+        let uncommitted = strip
+            .uncommitted_at()
+            .or(placed.strip.is_none().then_some(0));
         for (shown, at) in &placed.room.parts {
             for (k, row) in shown.clone().enumerate() {
                 let line = usize::from(*at) + k;
@@ -314,4 +319,5 @@ fn composed(state: &AppState, want: usize) -> Result<Shot, String> {
 
 mod pixels;
 pub(crate) use pixels::on_dark;
-use pixels::{Stack, continuation, crop, kitty_paint, stack};
+pub(crate) use pixels::stack;
+use pixels::{Stack, continuation, crop, kitty_paint};

@@ -101,6 +101,9 @@ mod piece_gate;
 /// m8 05 Part 2: `docs/shots/m8-05-emphasis-pieces.png`, on the team fixture.
 #[cfg(feature = "heavy-tests")]
 mod pieces_shot;
+/// ease-pass/20: the pinned row's before/after capture.
+#[cfg(feature = "heavy-tests")]
+mod pinned_row_shot;
 mod piped_stdout;
 mod preview;
 mod pty;

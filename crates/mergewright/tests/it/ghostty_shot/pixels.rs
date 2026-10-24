@@ -77,7 +77,9 @@ pub(super) fn continuation(
         let Some((row, _)) = placed.room.band else {
             continue;
         };
-        let strip = &frame.strips[placed.strip];
+        let Some(strip) = placed.strip_of(frame) else {
+            continue;
+        };
         let band = strip
             .with_layers(frame, paint, |plain, selection| {
                 rasterise_continuation(plain, selection, row)
@@ -89,21 +91,33 @@ pub(super) fn continuation(
 }
 
 /// The frame's strips, composited, one under the other.
-pub(super) struct Stack {
+pub(crate) struct Stack {
     /// Every drawn row, top to bottom: its history row, or `None` for the
     /// uncommitted row (which pushes the rows under it down).
-    pub(super) drawn: Vec<Option<usize>>,
+    pub(crate) drawn: Vec<Option<usize>>,
     /// Premultiplied RGBA, `width` pixels a line.
-    pub(super) pixels: Vec<u8>,
-    pub(super) width: u32,
+    pub(crate) pixels: Vec<u8>,
+    pub(crate) width: u32,
 }
 
-pub(super) fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
-    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len());
+pub(crate) fn stack(frame: &PixelRows, paint: &StripPaint) -> Result<Stack, String> {
+    let mut cache = StripCache::with_budget(ByteBudget(usize::MAX), frame.strips.len() + 1);
     let mut drawn = Vec::new();
     let mut pixels = Vec::new();
     let mut width = None;
     let mut next_row = None;
+    // The pinned uncommitted row off `HEAD` is an image of its own, stacked
+    // first as the `None` row (ease-pass/20).
+    if let Some(strip) = &frame.pinned {
+        let raster = strip
+            .with_layers(frame, paint, |plain, selection| {
+                cache.composited(strip.first_row, plain, selection)
+            })
+            .map_err(|why| format!("composited the pinned row: {why:?}"))?;
+        width = Some(raster.width);
+        drawn.push(None);
+        pixels.extend_from_slice(&raster.pixels);
+    }
     for strip in &frame.strips {
         let raster = strip
             .with_layers(frame, paint, |plain, selection| {

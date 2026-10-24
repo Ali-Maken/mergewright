@@ -444,6 +444,7 @@ The pixel tier's rows: the viewport's history cut into whole aligned strips, pai
 Lanes are stroked and coloured by role on the frame's route (`PixelRows.roles`); `StripPaint::for_frame` mutes them under `#`.
 `TallRow::of`: the graph line the cursor row is on while its second line takes the next (`cursor_body_line`, as the hit-test).
 Around it `event_loop::graphics` places the cursor's strip twice from one upload, a continuation band between, strips below one row lower.
+`PixelRows.pinned`: the pinned uncommitted row as its own one-row strip when `HEAD` is off screen, so no strip's key moves with the viewport. `graphics` places it on line 0 in `PINNED_SLOT`.
 ## working_tree
 The working tree's full status, one entry per changed path, for the uncommitted row and the changes pane. Read by a job.
 - `WorkingTree` (struct) — staged, unstaged and untracked entries as one read gives them.

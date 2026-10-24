@@ -193,7 +193,6 @@
 443 crates/mergewright/src/view/frame/boxes.rs
 700 crates/mergewright/src/view/frame/tests.rs
 724 crates/mergewright/src/view/journal/tests.rs
-404 crates/mergewright/src/view/strips.rs
 458 crates/mergewright/src/view/strips/tests.rs
 5134 crates/mergewright/src/view/tests.rs
 465 crates/mergewright/src/view/tests/bottom_row.rs

@@ -1,0 +1,141 @@
+# ease-20 held pixel bytes [baseline]: HEAD 98588e87, debug, exit 101, 64 s
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=10 frames_after_release=1 tail_ms=58 bytes_per_frame_held=1772529 strip_transmits_held=18 emphasis_transmits_held=32 rows_scrolled=188 rest_frames=1 rest_ms=136 fold_changes_held=unread bytes_per_key=124729 emphasis_area_per_key=0.2 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=75 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=18: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=33 frames_after_release=2 tail_ms=42 bytes_per_frame_held=1846536 strip_transmits_held=48 emphasis_transmits_held=74 rows_scrolled=188 rest_frames=1 rest_ms=93 fold_changes_held=unread bytes_per_key=354569 emphasis_area_per_key=0.5 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=111 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: FAILED
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=48: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=11 frames_after_release=1 tail_ms=58 bytes_per_frame_held=1652061 strip_transmits_held=19 emphasis_transmits_held=33 rows_scrolled=188 j_ms=5 j_done_ms=1 frames_before_J=1 fold_changes_held=unread bytes_per_key=124774 emphasis_area_per_key=0.2 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=111 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: FAILED
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held=19: unjudged (fold_changes_held unread)
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 1114 filtered out; finished in 23.88s
+# tests: held_j_stops_on_release_pixel FAILED, held_j_stops_on_release_pixel_free FAILED, j_then_journal_opens_at_once_pixel FAILED (bytes_per_frame_held<=512KiB, all three)
+
+# SPLIT: held_j_stops_on_release_pixel (A, raw, 40 MB/s), one run with temporary [DEBUG-e20] eprintln in kitty/mod.rs frame+ensure_uploaded and event_loop/graphics.rs frame (removed; HEAD 98588e87).
+# Per held Kitty frame, transmit bytes by why the strip slot re-keyed (vs the frame before): uncommitted_moved = only the strip's
+# uncommitted-row index changed (view/strips.rs:290); roles = frame roles hash changed, top/fold same; fold = lane_columns/marker changed;
+# new_slot = strip entering the viewport; other = re-keyed, none of those (frame 3, strip 32: unattributed).
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=10 frames_after_release=1 tail_ms=37 bytes_per_frame_held=1772517 strip_transmits_held=18 emphasis_transmits_held=32 rows_
+SPLIT held_frames=10 kitty_bytes_held=17679069 per_frame=1767906
+SPLIT   emphasis=3921335 (22%) per_frame=392133
+SPLIT   strip:fold=665772 (3%) per_frame=66577
+SPLIT   strip:new_slot=3012557 (17%) per_frame=301255
+SPLIT   strip:other=2151750 (12%) per_frame=215175
+SPLIT   strip:roles=4370736 (24%) per_frame=437073
+SPLIT   strip:uncommitted_moved=3550620 (20%) per_frame=355062
+SPLIT   kitty_other(placements,deletes)=6299
+SPLIT   frame2 kitty=5054555 emphasis=682733 strip:roles=4370736
+SPLIT   frame3 kitty=7095358 emphasis=571820 strip:new_slot=2151750 strip:other=2151750 strip:uncommitted_moved=2218986
+SPLIT   frame4 kitty=1550950 emphasis=675959 strip:fold=443833 strip:new_slot=430381
+SPLIT   frame5 kitty=881628 emphasis=443934 strip:fold=221939 strip:new_slot=215213
+SPLIT   frame6 kitty=444300 emphasis=221945 strip:uncommitted_moved=221939
+SPLIT   frame7 kitty=444302 emphasis=221945 strip:uncommitted_moved=221939
+SPLIT   frame8 kitty=874872 emphasis=437164 strip:new_slot=215213 strip:uncommitted_moved=221939
+SPLIT   frame9 kitty=444442 emphasis=221945 strip:uncommitted_moved=221939
+SPLIT   frame10 kitty=444362 emphasis=221945 strip:uncommitted_moved=221939
+SPLIT   frame11 kitty=444300 emphasis=221945 strip:uncommitted_moved=221939
+
+# ABLATIONS (temporary env switch E20_ABLATE, removed): unc = pinned uncommitted row not inserted into the strip (strips.rs:289-290 skipped);
+# roles = PlainStrip.roles None (strips.rs:160). Same three tests, debug, one thread. scenario drain frames_while_held bytes_per_frame_held strips emphasis.
+ABLATE=none
+  A 40000000 frames_while_held=8 bytes_per_frame_held=2148191 strip_transmits_held=16 emphasis_transmits_held=31
+  A 18446744073709551615 frames_while_held=35 bytes_per_frame_held=1666765 strip_transmits_held=50 emphasis_transmits_held=82
+  B 40000000 frames_while_held=11 bytes_per_frame_held=1652032 strip_transmits_held=19 emphasis_transmits_held=33
+ABLATE=unc
+  A 40000000 frames_while_held=32 bytes_per_frame_held=485046 strip_transmits_held=13 emphasis_transmits_held=24
+  A 18446744073709551615 frames_while_held=91 bytes_per_frame_held=493982 strip_transmits_held=26 emphasis_transmits_held=38
+  B 40000000 frames_while_held=39 bytes_per_frame_held=395630 strip_transmits_held=13 emphasis_transmits_held=23
+ABLATE=roles
+  A 40000000 frames_while_held=14 bytes_per_frame_held=1285227 strip_transmits_held=18 emphasis_transmits_held=51
+  A 18446744073709551615 frames_while_held=53 bytes_per_frame_held=1294821 strip_transmits_held=53 emphasis_transmits_held=114
+  B 40000000 frames_while_held=13 bytes_per_frame_held=1342166 strip_transmits_held=17 emphasis_transmits_held=45
+ABLATE=unc,roles
+  A 40000000 frames_while_held=72 bytes_per_frame_held=177058 strip_transmits_held=11 emphasis_transmits_held=40
+  A 18446744073709551615 frames_while_held=130 bytes_per_frame_held=326505 strip_transmits_held=24 emphasis_transmits_held=60
+  B 40000000 frames_while_held=72 bytes_per_frame_held=177192 strip_transmits_held=11 emphasis_transmits_held=40
+ABLATE=unc repeat runs 2,3:
+  A 40000000 frames_while_held=44 bytes_per_frame_held=350985 strip_transmits_held=13 emphasis_transmits_held=23
+  A 18446744073709551615 frames_while_held=104 bytes_per_frame_held=433453 strip_transmits_held=26 emphasis_transmits_held=40
+  B 40000000 frames_while_held=43 bytes_per_frame_held=365361 strip_transmits_held=13 emphasis_transmits_held=24
+  A 40000000 frames_while_held=38 bytes_per_frame_held=413250 strip_transmits_held=13 emphasis_transmits_held=24
+  A 18446744073709551615 frames_while_held=110 bytes_per_frame_held=371629 strip_transmits_held=24 emphasis_transmits_held=38
+  B 40000000 frames_while_held=55 bytes_per_frame_held=239706 strip_transmits_held=12 emphasis_transmits_held=23
+
+# DEFLATE reference (held_j_stops_on_release_pixel_deflate, same build as SPLIT):
+SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=38 frames_after_release=2 tail_ms=46 bytes_per_frame_held=64343 strip_transmits_held=55 emphasis_transmits_held=87 rows_scro
+# ease-20 held pixel bytes [after run 1]: HEAD 2be15fb9, debug, exit 0, 23 s
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=33 frames_after_release=1 tail_ms=8 bytes_per_frame_held=466032 strip_transmits_held=16 emphasis_transmits_held=26 rows_scrolled=188 rest_frames=1 rest_ms=59 fold_changes_held=unread bytes_per_key=107509 emphasis_area_per_key=0.1 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=75 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=16: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=96 frames_after_release=1 tail_ms=7 bytes_per_frame_held=426548 strip_transmits_held=28 emphasis_transmits_held=41 rows_scrolled=188 rest_frames=1 rest_ms=70 fold_changes_held=unread bytes_per_key=243516 emphasis_area_per_key=0.2 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=107 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=28: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=34 frames_after_release=1 tail_ms=7 bytes_per_frame_held=452426 strip_transmits_held=16 emphasis_transmits_held=26 rows_scrolled=188 j_ms=3 j_done_ms=0 frames_before_J=0 fold_changes_held=unread bytes_per_key=107571 emphasis_area_per_key=0.1 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=107 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held=16: unjudged (fold_changes_held unread)
+test held_key::held_j_stops_on_release_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=4 max=283
+test held_key::held_j_stops_on_release_pixel_free ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=8 max=18
+test held_key::j_then_journal_opens_at_once_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=8 max=86
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1115 filtered out; finished in 14.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 202 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 896 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+# ease-20 held pixel bytes [after run 2]: HEAD 2be15fb9, debug, exit 0, 14 s
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=33 frames_after_release=1 tail_ms=8 bytes_per_frame_held=466126 strip_transmits_held=16 emphasis_transmits_held=26 rows_scrolled=188 rest_frames=1 rest_ms=59 fold_changes_held=unread bytes_per_key=107525 emphasis_area_per_key=0.1 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=74 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=16: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=96 frames_after_release=1 tail_ms=6 bytes_per_frame_held=473211 strip_transmits_held=30 emphasis_transmits_held=43 rows_scrolled=188 rest_frames=1 rest_ms=66 fold_changes_held=unread bytes_per_key=267344 emphasis_area_per_key=0.2 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=134 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=30: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=31 frames_after_release=2 tail_ms=61 bytes_per_frame_held=495976 strip_transmits_held=16 emphasis_transmits_held=26 rows_scrolled=188 j_ms=8 j_done_ms=6 frames_before_J=1 fold_changes_held=unread bytes_per_key=107536 emphasis_area_per_key=0.1 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=134 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held=16: unjudged (fold_changes_held unread)
+test held_key::held_j_stops_on_release_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=8 max=44
+test held_key::held_j_stops_on_release_pixel_free ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=2 max=12
+test held_key::j_then_journal_opens_at_once_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=2 max=15
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1115 filtered out; finished in 13.90s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 202 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 896 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+# ease-20 held pixel bytes [after run 3]: HEAD 2be15fb9, debug, exit 0, 15 s
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=54 frames_after_release=1 tail_ms=8 bytes_per_frame_held=245995 strip_transmits_held=16 emphasis_transmits_held=26 rows_scrolled=188 rest_frames=1 rest_ms=70 fold_changes_held=unread bytes_per_key=96363 emphasis_area_per_key=0.1 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=75 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=16: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=99 frames_after_release=1 tail_ms=6 bytes_per_frame_held=458529 strip_transmits_held=30 emphasis_transmits_held=45 rows_scrolled=188 rest_frames=1 rest_ms=68 fold_changes_held=unread bytes_per_key=267164 emphasis_area_per_key=0.2 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=126 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=A frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=A bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=A strip_transmits_held=30: unjudged (fold_changes_held unread)
+SUMMARY held_key tier=Pixel scenario=B size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=189 frames_while_held=32 frames_after_release=2 tail_ms=59 bytes_per_frame_held=480396 strip_transmits_held=16 emphasis_transmits_held=26 rows_scrolled=188 j_ms=7 j_done_ms=6 frames_before_J=1 fold_changes_held=unread bytes_per_key=107522 emphasis_area_per_key=0.1 emphasis_cells_p99=20 deflated_transmits=0 peak_rss_mb=126 premise_wide=188/188 premise_lit_changed=161/188
+VERDICT held_key tier=Pixel scenario=B frames_after_release<=2: ok
+VERDICT held_key tier=Pixel scenario=B frames_before_J<=1: ok
+VERDICT held_key tier=Pixel scenario=B bytes_per_frame_held<=512KiB: ok
+VERDICT held_key tier=Pixel scenario=B strip_transmits_held=16: unjudged (fold_changes_held unread)
+test held_key::held_j_stops_on_release_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=8 max=42
+test held_key::held_j_stops_on_release_pixel_free ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=8 max=16
+test held_key::j_then_journal_opens_at_once_pixel ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=3 max=26
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1115 filtered out; finished in 13.94s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 202 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 896 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+# DEFLATE reference after (held_j_stops_on_release_pixel_deflate, HEAD 2be15fb9, debug; before: bytes_per_frame_held=64343 strip_transmits_held=55 over 38 frames):
+SUMMARY held_key tier=Pixel scenario=A-deflate size=187x50 cell=17x37 drain=40000000B/s pipe=16384 keys=188 frames_while_held=114 frames_after_release=1 tail_ms=8 bytes_per_frame_held=18037 strip_transmits_held=36 emphasis_transmits_held=50 rows_scrolled=188 r
