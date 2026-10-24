@@ -143,3 +143,33 @@ fn the_offer_row_drops_its_keys_off_the_graph() {
         " no commit-graph file · B build one · X never here"
     );
 }
+
+/// ease-28 Q3: only the focused banner's bar gives keys for the count; the
+/// laddered row bar after `Esc` is drawn as before.
+#[test]
+fn only_the_focused_banner_gives_keys_for_the_count() {
+    let rows = linear(3);
+    let ladder = StopWording::new(
+        sanitize_line("merge in progress · 2 files conflicted"),
+        vec![
+            sanitize_line("merge in progress · 2 conflicted"),
+            sanitize_line("merge in progress"),
+        ],
+    )
+    .keys_yield_through(1);
+    let row_at = |context: HintContext, width: u16| {
+        let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
+        shown.stopped = Some(ladder.clone());
+        shown.hint_context = context;
+        text(&draw(&shown, width, 8)).pop().expect("rows")
+    };
+    let banner = HintContext::Banner {
+        skippable: false,
+        conflicted: true,
+        merge: true,
+    };
+    let focused = row_at(banner, 92);
+    assert!(focused.contains(" conflicted"), "{focused}");
+    let unfocused = row_at(HintContext::WorkingTreeRow, 92);
+    assert!(!unfocused.contains(" conflicted"), "{unfocused}");
+}

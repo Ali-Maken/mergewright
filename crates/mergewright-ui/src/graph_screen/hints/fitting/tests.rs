@@ -120,3 +120,96 @@ fn a_stop_without_before_keys_fits_as_today() {
         );
     }
 }
+
+/// The banner-focused stop row of a merge begun in the shell with two files
+/// conflicted, as `mergewright::update::banner::stop_wordings` writes it.
+fn shell_merge(yield_through: bool) -> StopWording {
+    let wording = StopWording::new(
+        mergewright_term::sanitize_line(
+            "merge in progress \u{b7} begun outside Mergewright \u{b7} 2 files conflicted",
+        ),
+        [
+            "merge in progress \u{b7} from the shell \u{b7} 2 conflicted",
+            "merge in progress \u{b7} 2 conflicted",
+            "merge in progress",
+        ]
+        .iter()
+        .map(|words| mergewright_term::sanitize_line(words))
+        .collect(),
+    );
+    if yield_through {
+        wording.keys_yield_through(2)
+    } else {
+        wording
+    }
+}
+
+fn banner_row(reason: &StopWording, columns: u16) -> String {
+    let context = HintContext::Banner {
+        skippable: false,
+        conflicted: true,
+        merge: true,
+    };
+    let hints = super::super::hints_for(&context, Divider::Hidden, columns, keys());
+    stopped_row(reason, &hints, columns, keys())
+}
+
+const FLOOR_KEYS: &str = "\u{23ce} resolve  c finish  a abort";
+
+/// Ticket ease-28 Q3 (his rule: "drop the origin, keep the count"): at 92
+/// cells the count is drawn and the bar's tail keys give way for it.
+#[test]
+fn tail_keys_yield_to_a_counted_wording() {
+    assert_eq!(
+        banner_row(&shell_merge(true), 92),
+        " merge in progress \u{b7} 2 conflicted \u{b7} \u{23ce} resolve  c finish  a abort  \
+         M mergetool  e edit"
+    );
+    for columns in 70u16..=200 {
+        let row = banner_row(&shell_merge(true), columns);
+        assert!(row.width() <= usize::from(columns), "{columns}: {row:?}");
+        assert!(row.contains(" conflicted"), "{columns}: {row:?}");
+        assert!(row.contains(FLOOR_KEYS), "{columns}: {row:?}");
+    }
+}
+
+/// Where the floor plus the shortest counted wording cannot fit, the row is
+/// today's: the bar and its first three keys whole.
+#[test]
+fn the_floor_never_yields_to_the_count() {
+    for columns in 30u16..70 {
+        let with = banner_row(&shell_merge(true), columns);
+        let without = banner_row(&shell_merge(false), columns);
+        if !with.contains(" conflicted") {
+            assert_eq!(with, without, "{columns}");
+        }
+        if without.contains(FLOOR_KEYS) {
+            assert!(with.contains(FLOOR_KEYS), "{columns}: {with:?}");
+        }
+    }
+}
+
+/// No key but `q quit` gives way to the origin: it drops only when that
+/// lets a fuller wording fit whole, as before, and never another key.
+#[test]
+fn the_origin_takes_no_key_but_quit() {
+    for columns in 100u16..=200 {
+        let with = banner_row(&shell_merge(true), columns);
+        let without = banner_row(&shell_merge(false), columns);
+        if without.contains(" conflicted") {
+            assert_eq!(with, without, "{columns}");
+        }
+        if with.contains("from the shell") || with.contains("begun outside") {
+            assert!(with.contains("e edit"), "{columns}: {with:?}");
+        }
+    }
+}
+
+/// Unset, the bar is never trimmed beyond `q quit`: the 92-cell row is the
+/// bar whole with the reason cut to what is left, as today.
+#[test]
+fn without_keys_yield_through_nothing_changes() {
+    let row = banner_row(&shell_merge(false), 92);
+    assert!(!row.contains("2 conflicted"), "{row:?}");
+    assert!(row.ends_with("\u{21e5} graph  q quit"), "{row:?}");
+}

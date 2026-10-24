@@ -14,7 +14,7 @@ use super::lanes::graph_width;
 use super::layout::ScreenRows;
 use super::row_columns::Columns;
 use super::row_text::subject_truncated;
-use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
+use super::{CommitGraphLine, GraphEntry, GraphScreen, HintContext, SearchLine};
 use crate::fit::fit;
 use crate::keymap::{ActionId, Keymap};
 use crate::paint::foreground;
@@ -156,10 +156,22 @@ impl GraphScreen<'_> {
                 ),
                 Token::Text,
             ),
-            Some(reason) => (
-                stopped_row(reason, &hints, width16, self.view.keys),
-                Token::Text,
-            ),
+            // Only the focused banner's short bar gives keys for the count;
+            // a laddered row bar (after `Esc`) stays as accepted (ease-28 Q3).
+            Some(reason) => {
+                let banner = matches!(self.view.hint_context, HintContext::Banner { .. });
+                let row = if banner {
+                    stopped_row(reason, &hints, width16, self.view.keys)
+                } else {
+                    stopped_row(
+                        &reason.clone().without_keys_yield(),
+                        &hints,
+                        width16,
+                        self.view.keys,
+                    )
+                };
+                (row, Token::Text)
+            }
             None => (hints_text(&hints, self.view.keys), Token::TextMuted),
         }
     }
