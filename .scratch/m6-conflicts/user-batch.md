@@ -1,3 +1,5 @@
+**Triaged 2026-10-24** (`.scratch/ease-pass/scouts/user-batch-triage.md`): 1–5, 7, 10, 11 stale; 8 stale except Shift+Tab unconfirmed; 9 unclear (re-capture at 120 cols); 6 answered by the user 2026-10-24: drop the origin, keep the count (current behaviour).
+
 # Questions for you at the end of the conflict-fixing work
 Numbers (1)–(8) match the list kept during the build. Items 9–11 were filed later.
 
