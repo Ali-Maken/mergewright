@@ -160,6 +160,17 @@ pub struct Location {
     pub practice: bool,
 }
 
+/// What a [`ProblemLine`] is. The variant decides the mark, not the widget:
+/// a failure is an outcome (`Status::Failed`); a sticky line is a lifetime and
+/// a refusal is the app declining input before anything ran.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProblemKind {
+    /// Something ran or was read and failed: drawn `⊗ <why>`.
+    Failure,
+    /// Not a failure: drawn as its words.
+    Notice,
+}
+
 /// A problem the footer shows in place of the key hints: a failure, read or
 /// write (`Status::Failed`/`Status::Sticky`). Split in two so the width
 /// rule (`hints::fit_status_line`, ADR-0037 §4) can keep `keys` whole and
@@ -167,6 +178,9 @@ pub struct Location {
 /// the very key the message was naming (`m4-07-acceptance` M2).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProblemLine {
+    /// Whether the line is a failure (drawn `⊗ `, by [`crate::failure`]) or a
+    /// notice that is not one (a sticky line, a refusal).
+    pub kind: ProblemKind,
     /// What went wrong, in words.
     pub reason: SanitizedText,
     /// The key(s) that answer it, worded as they'd read in the hint bar

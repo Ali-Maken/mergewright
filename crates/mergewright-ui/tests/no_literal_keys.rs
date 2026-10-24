@@ -58,6 +58,11 @@ fn allowed() -> impl Iterator<Item = &'static (&'static str, &'static str, &'sta
 /// and the literal's exact text.
 const ALLOWED: &[(&str, &str, &str)] = &[
     (
+        "failure.rs",
+        "(x)",
+        "the failure mark's ASCII form, a glyph, not a key",
+    ),
+    (
         "finish_summary.rs",
         "1 clash solved. Nothing committed yet.",
         "`1` is the review's clash count, not a tab key",
