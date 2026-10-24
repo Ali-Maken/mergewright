@@ -57,7 +57,7 @@ fn the_section_says_reading_failed_or_nothing() {
     assert!(row_with(&reading, "Combined by git").starts_with("Combined by git · reading…"));
     let failed = with(Loading::Failed("index locked".to_owned()));
     assert!(row_with(&failed, "Combined by git").starts_with("Combined by git · can't tell:"));
-    row_with(&failed, "  index locked");
+    row_with(&failed, "⊗ index locked");
     let none = with(Loading::Ready(std::sync::Arc::new(Vec::new())));
     assert!(!none.contains("Combined"), "{none}");
 }

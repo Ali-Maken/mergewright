@@ -211,8 +211,10 @@ impl CommitScreen<'_> {
                     },
                 );
             }
-            BodyView::Empty(words) | BodyView::Loading(words) | BodyView::Failed(words) => {
-                say(buf, words.as_str());
+            BodyView::Empty(words) | BodyView::Loading(words) => say(buf, words.as_str()),
+            BodyView::Failed(words) => {
+                say(buf, &crate::failure::marked(words.as_str(), self.ascii));
+                crate::failure::ink_marks(buf, area, self.theme, self.ascii);
             }
             BodyView::Message { lines } => {
                 for (row, line) in lines.iter().take(usize::from(area.height)).enumerate() {

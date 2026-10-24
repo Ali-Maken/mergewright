@@ -1,11 +1,9 @@
 use mergewright_core::capabilities::ColorDepth;
 use mergewright_term::sanitize::sanitize;
-use ratatui::Terminal;
-use ratatui::backend::TestBackend;
+use ratatui::{Terminal, backend::TestBackend};
 
 use super::*;
-use crate::test_support::terminal as test_capabilities;
-use crate::theme::ThemeKind;
+use crate::{test_support::terminal as test_capabilities, theme::ThemeKind};
 
 /// m8/59 Major A, the stash list too: while a write runs `Esc` stops it
 /// before the list sees the key, so the bar reads `esc cancels` … `S close`,
@@ -49,7 +47,7 @@ fn row(name: &str, message: &str, age: &str, files: usize) -> StashRowView {
     }
 }
 
-fn view<'a>(rows: Vec<StashRowView>, status: StashStatus) -> StashView<'a> {
+pub(crate) fn view<'a>(rows: Vec<StashRowView>, status: StashStatus) -> StashView<'a> {
     StashView {
         rows,
         selected: 0,
@@ -58,12 +56,14 @@ fn view<'a>(rows: Vec<StashRowView>, status: StashStatus) -> StashView<'a> {
         status,
         notice: None,
         notice_is_failure: false,
+        notice_failed: false,
         box_open: false,
         esc_cancels: false,
+        ascii: false,
     }
 }
 
-fn grid(view: &StashView<'_>, width: u16, height: u16) -> Vec<String> {
+pub(crate) fn grid(view: &StashView<'_>, width: u16, height: u16) -> Vec<String> {
     let theme = theme();
     let mut terminal =
         Terminal::new(TestBackend::new(width, height)).expect("a test backend opens");

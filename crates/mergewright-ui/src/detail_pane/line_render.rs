@@ -7,6 +7,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use unicode_width::UnicodeWidthChar;
+use unicode_width::UnicodeWidthStr as _;
 
 use crate::detail::{LineKindView, LineView};
 use crate::fit::fit;
@@ -359,4 +360,22 @@ pub(crate) fn draw_line(buf: &mut Buffer, area: Rect, offset: u16, text: &str, s
     let y = area.y.saturating_add(offset);
     let fitted = fit(text, usize::from(area.width));
     buf.set_stringn(area.x, y, fitted, usize::from(area.width), style);
+}
+
+/// `words(head)` if it fits `width`; else `words` with `head` cut to fit,
+/// ending in `…`. Only the name is cut.
+pub(super) fn fit_head(width: usize, head: &str, words: impl Fn(&str) -> String) -> String {
+    let whole = words(head);
+    if whole.width() <= width {
+        return whole;
+    }
+    let chars: Vec<char> = head.chars().collect();
+    for keep in (0..chars.len()).rev() {
+        let cut: String = chars[..keep].iter().chain(['\u{2026}'].iter()).collect();
+        let line = words(&cut);
+        if line.width() <= width {
+            return line;
+        }
+    }
+    words("\u{2026}")
 }

@@ -4,6 +4,8 @@
 //! spell it its own way. `✗` stays a commit no branch holds (J), `!` needs
 //! attention, `⚠` warns: none of them is a failure.
 
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
@@ -40,7 +42,7 @@ pub fn lead_width(ascii: bool) -> usize {
     mark(ascii).width() + 1
 }
 
-fn check_unmarked(why: &str) {
+pub(crate) fn check_unmarked(why: &str) {
     debug_assert!(
         !FOREIGN_MARKS.iter().any(|m| why.starts_with(m)),
         "failure words must be unmarked, the renderer adds the mark: {why:?}"
@@ -55,6 +57,16 @@ pub fn marked(why: &str, ascii: bool) -> String {
     format!("{} {why}", mark(ascii))
 }
 
+/// [`marked`] when `failed`, else `why` as it is.
+#[must_use]
+pub fn marked_if(failed: bool, why: &str, ascii: bool) -> String {
+    if failed {
+        marked(why, ascii)
+    } else {
+        why.to_owned()
+    }
+}
+
 /// The same line as styled spans: the mark in [`FAILED_INK`], a space, then
 /// `why` in `words_style`. Under a colourless theme the mark has no colour
 /// and still draws.
@@ -66,6 +78,35 @@ pub fn spans<'a>(why: &'a str, ascii: bool, theme: &Theme, words_style: Style) -
         Span::styled(" ", words_style),
         Span::styled(why, words_style),
     ]
+}
+
+/// Paints the failure mark in [`FAILED_INK`] wherever a body drew it inside
+/// `area`. A body that draws its words as one string in one style calls this
+/// once at the end of its render: `⊗` is no other mark (the glyph test), so
+/// every one found is a failure's. At the ASCII tier the mark is `(x)`
+/// followed by a space. Under a colourless theme the glyph keeps no colour.
+pub fn ink_marks(buf: &mut Buffer, area: Rect, theme: &Theme, ascii: bool) {
+    let ink = foreground(theme, FAILED_INK);
+    let area = area.intersection(*buf.area());
+    for y in area.y..area.bottom() {
+        for x in area.x..area.right() {
+            let hit = if ascii {
+                x + 3 < area.right()
+                    && buf[(x, y)].symbol() == "("
+                    && buf[(x + 1, y)].symbol() == "x"
+                    && buf[(x + 2, y)].symbol() == ")"
+                    && buf[(x + 3, y)].symbol() == " "
+            } else {
+                buf[(x, y)].symbol() == FAILED_MARK
+            };
+            if hit {
+                let cells = if ascii { 3 } else { 1 };
+                for at in x..x + cells {
+                    buf[(at, y)].set_style(ink);
+                }
+            }
+        }
+    }
 }
 
 /// [`spans`] as one owned line, for a screen that builds its lines up.
@@ -119,4 +160,42 @@ pub fn status_line(
 }
 
 #[cfg(test)]
+mod body_tests;
+#[cfg(test)]
 mod tests;
+
+/// The shared check of every failed-body test (boxes B1, B2): `grid` holds
+/// exactly one `⊗ <words>` (ASCII: `(x) <words>` and no `⊗`).
+#[cfg(test)]
+pub(crate) fn assert_marked(grid: &str, words: &str, ascii: bool) {
+    let want = format!("{} {words}", mark(ascii));
+    assert_eq!(
+        grid.matches(&want).count(),
+        1,
+        "one `{want}` expected in:\n{grid}"
+    );
+    if ascii {
+        assert!(!grid.contains(FAILED_MARK), "ASCII tier drew ⊗:\n{grid}");
+    }
+}
+
+/// `draw` run on a `width` x `height` test frame; its rows joined by `\n`.
+#[cfg(test)]
+pub(crate) fn frame_text(
+    width: u16,
+    height: u16,
+    draw: impl FnOnce(&mut ratatui::Frame),
+) -> String {
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, height))
+        .expect("a test backend opens");
+    terminal.draw(draw).expect("a test backend draws");
+    let buf = terminal.backend().buffer();
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| buf[(x, y)].symbol().to_owned())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}

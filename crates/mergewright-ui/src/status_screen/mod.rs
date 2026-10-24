@@ -247,6 +247,21 @@ impl<'a> StatusScreen<'a> {
             Span::styled(value.to_owned(), foreground(self.theme, token)),
         ])
     }
+
+    /// A labelled row whose value is a failure: the mark leads the value.
+    fn failed_row(&self, label: &str, value: &str, token: Token) -> Line<'static> {
+        let mut line = Line::from(Span::styled(
+            format!("{label:LABEL_WIDTH$}"),
+            foreground(self.theme, Token::TextMuted),
+        ));
+        line.spans.extend(crate::failure::line(
+            value,
+            self.ascii,
+            self.theme,
+            foreground(self.theme, token),
+        ));
+        line
+    }
 }
 
 /// `History     streaming, 412 rows laid out`.
@@ -258,7 +273,11 @@ fn history_row(screen: &StatusScreen<'_>, history: &HistoryView) -> Line<'static
         HistoryState::Failed(reason) => (format!("failed: {}", reason.as_str()), Token::Warning),
     };
     let value = format!("{state}, {} rows laid out", history.rows);
-    screen.row("History", &value, token)
+    if matches!(history.state, HistoryState::Failed(_)) {
+        screen.failed_row("History", &value, token)
+    } else {
+        screen.row("History", &value, token)
+    }
 }
 
 impl Widget for StatusScreen<'_> {

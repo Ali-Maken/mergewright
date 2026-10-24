@@ -370,3 +370,17 @@ fn the_doorway_ends_the_keys_and_the_notes_follow() {
         .expect("the doorway is drawn");
     assert_ne!(cells[at_door].1.fg, warning.fg, "the doorway is muted");
 }
+
+/// Part B (ease-pass 26): a failed map build draws the mark, both tiers.
+#[test]
+fn a_failed_map_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let mut view = sample_view(ascii);
+        view.status = MapStatus::Failed(sanitize_line("git for-each-ref: not a repository"));
+        crate::failure::assert_marked(
+            &draw(&view, 80, 24),
+            "git for-each-ref: not a repository",
+            ascii,
+        );
+    }
+}

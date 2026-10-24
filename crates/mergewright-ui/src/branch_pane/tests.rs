@@ -59,6 +59,7 @@ fn buffer(view: &BranchPaneView, columns: u16, rows: u16) -> Buffer {
     BranchPane {
         view,
         theme: &theme,
+        ascii: false,
     }
     .render(area, &mut buf);
     buf
@@ -164,7 +165,7 @@ fn before_the_read_each_line_reads_reading_and_a_failure_stays_on_its_line() {
         [
             "│ x",
             "│ reading…",
-            "│ can't tell: no repo",
+            "│ ⊗ can't tell: no repo",
             "│ reading…",
             "│ reading…",
             "│",
@@ -178,4 +179,25 @@ fn a_commit_on_no_branch_says_so() {
         sha7: sanitize_line("abc1234"),
     };
     assert_eq!(grid(&buffer(&view, 37, 1)), ["│ abc1234 · not on a branch"]);
+}
+
+/// Part B (ease-pass 26): a failed line leads with the mark, both tiers.
+#[test]
+fn a_failed_line_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let mut view = sara();
+        if let BranchPaneView::Branch { lines, .. } = &mut view {
+            lines[0] = PaneLine::Failed(sanitize_line("no repo"));
+        }
+        let theme = theme();
+        let area = Rect::new(0, 0, 60, 12);
+        let mut buf = Buffer::empty(area);
+        BranchPane {
+            view: &view,
+            theme: &theme,
+            ascii,
+        }
+        .render(area, &mut buf);
+        crate::failure::assert_marked(&grid(&buf).join("\n"), "can't tell: no repo", ascii);
+    }
 }

@@ -54,7 +54,7 @@ pub use view::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// From this width the AFTER side stands right of the rows, past a `│`.
 pub const WIDE_MIN: u16 = 180;

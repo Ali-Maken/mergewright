@@ -28,6 +28,7 @@ mod pieces;
 mod view;
 pub use legend::legend;
 use legend::legend_at;
+pub use pieces::cut_at_word;
 use pieces::{row_pieces, under_pieces};
 pub use view::{
     JournalFindView, JournalRowView, JournalStatus, JournalStatusRow, JournalView, RowKind,
@@ -110,38 +111,6 @@ impl Columns {
     /// Where the words start on every row.
     fn words_x(self) -> usize {
         CURSOR + GLYPH + if self.source { SOURCE } else { 0 } + AGE
-    }
-}
-
-/// `text` cut to at most `width` cells at a word boundary, with `…` where
-/// it was cut; whole when it fits. The spacing inside the kept part is left
-/// as it was (a padded column stays padded). A first word wider than
-/// `width` is cut mid-word, the only cut left.
-///
-/// `blame`'s own `cut_at_word` (private, `Option`-returning, `None` when no
-/// word fits) is the same rule for a subject alone; this one never gives
-/// up, because a row must draw something.
-#[must_use]
-pub fn cut_at_word(text: &str, width: usize) -> String {
-    if text.width() <= width {
-        return text.to_owned();
-    }
-    let room = width.saturating_sub(1);
-    let mut best: Option<&str> = None;
-    for (index, character) in text.char_indices() {
-        if character.is_whitespace() {
-            let kept = text[..index].trim_end();
-            if kept.width() > room {
-                break;
-            }
-            if !kept.is_empty() {
-                best = Some(kept);
-            }
-        }
-    }
-    match best {
-        Some(kept) => format!("{kept}…"),
-        None => fit(text, width).trim_end().to_owned(),
     }
 }
 
@@ -296,7 +265,14 @@ impl JournalScreen<'_> {
                 row: Some(index),
                 selected,
             });
-            for pieces in under_pieces(row, selected, columns, usize::from(width), self.keys) {
+            for pieces in under_pieces(
+                row,
+                selected,
+                columns,
+                usize::from(width),
+                self.keys,
+                self.view.ascii,
+            ) {
                 lines.push(Line {
                     pieces,
                     row: Some(index),
@@ -423,6 +399,13 @@ impl JournalScreen<'_> {
 
 impl Widget for JournalScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        self.render_body(area, buf);
+        crate::failure::ink_marks(buf, area, self.theme, self.view.ascii);
+    }
+}
+
+impl JournalScreen<'_> {
+    fn render_body(self, area: Rect, buf: &mut Buffer) {
         if area.is_empty() {
             return;
         }
@@ -456,7 +439,10 @@ impl Widget for JournalScreen<'_> {
             JournalStatus::Failed(why) => centred(
                 buf,
                 body,
-                &format!("the journal could not be read: {}", why.as_str()),
+                &crate::failure::marked(
+                    &format!("the journal could not be read: {}", why.as_str()),
+                    self.view.ascii,
+                ),
                 foreground(self.theme, Token::Warning),
             ),
         }
@@ -464,4 +450,4 @@ impl Widget for JournalScreen<'_> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -56,12 +56,12 @@ fn a_failed_read_says_cant_tell_on_all_four_lines_with_one_reason() {
     assert!(
         answers
             .iter()
-            .all(|line| *line == "can't tell: the disk went away"),
+            .all(|line| *line == "⊗ can't tell: the disk went away"),
         "{lines:#?}"
     );
     assert!(
         lines.iter().all(|line| !line.starts_with(['!', '✓', '·'])),
-        "no line carries a mark: {lines:#?}"
+        "no line carries a known-line mark: {lines:#?}"
     );
     app.close();
 }

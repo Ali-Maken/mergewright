@@ -11,7 +11,7 @@ use crate::theme::ThemeKind;
 const NOW: i64 = 2_000_000_000;
 const DAY: i64 = 86_400;
 
-fn theme() -> Theme {
+pub(crate) fn theme() -> Theme {
     Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false))
 }
 
@@ -128,7 +128,7 @@ const TITLE: &str = "src/auth/session.rs \u{b7} fn refresh_token, lines 18\u{201
 const HEADER: &str = "a1b2c3d \u{b7} Lina \u{b7} 7 months ago \u{b7} Retry refresh once on 401 \u{b7} this file +3 \u{2212}1";
 const END: &str = "the file starts here (5e6f7a8 added it)";
 
-fn view<'a>(
+pub(crate) fn view<'a>(
     rows: &'a [HistoryRow<'a>],
     hunks: &'a [HunkView],
     theme: &'a Theme,
@@ -358,7 +358,7 @@ fn a_failed_trace_is_one_line() {
         whitespace_ignored: false,
     };
     let frame = draw(&v, 140, 10);
-    assert!(frame[1].starts_with(" couldn't trace: git could not run"));
+    assert!(frame[1].starts_with("⊗ couldn't trace: git could not run"));
     assert!(!frame[0].contains("tracing"));
 }
 

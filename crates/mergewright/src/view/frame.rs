@@ -39,6 +39,7 @@ mod conflicts;
 mod layout;
 mod notices;
 mod overlays;
+mod picker_box;
 
 // Each child reaches its siblings, and these files' own imports, through
 // `use super::*`; what is named here is what more than one of them uses.
@@ -275,7 +276,7 @@ pub fn view_with_graphics(
                 } else {
                     render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
                 };
-                let overlays = draw_over_graph(state, frame, area, &session.theme);
+                let overlays = draw_over_graph(state, frame, area, session);
                 (
                     pixels_above_overlays(graph, overlays.into_iter().flatten()),
                     row_columns(session, state, &screen, area),

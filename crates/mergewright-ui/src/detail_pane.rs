@@ -41,4 +41,4 @@ pub use side_by_side::diff_body_side_by_side;
 pub use unified::diff_body;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

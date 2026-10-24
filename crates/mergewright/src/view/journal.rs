@@ -69,6 +69,8 @@ pub fn journal_view(state: &AppState, now_seconds: i64) -> JournalView {
         find: find_view(state),
         find_prompt: state.journal.find.typing.as_deref().map(sanitize_line),
         esc_cancels: crate::update::remote::esc_stops_write(state),
+        // The frame sets the tier where it draws (`draw_journal`).
+        ascii: false,
     }
 }
 

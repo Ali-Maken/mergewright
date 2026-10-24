@@ -34,6 +34,7 @@ pub fn stash_view(state: &AppState, now_seconds: i64) -> StashView<'_> {
         Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => None,
     };
     let (notice, notice_is_failure) = notice(state);
+    let notice_failed = matches!(state.shown_status(), Status::Failed(_));
     StashView {
         rows,
         selected,
@@ -44,10 +45,13 @@ pub fn stash_view(state: &AppState, now_seconds: i64) -> StashView<'_> {
         status,
         notice,
         notice_is_failure,
+        notice_failed,
         // The put-back preview over the list holds every key; its footer is
         // the bar (review 86, M2).
         box_open: state.preview.is_some(),
         esc_cancels: crate::update::remote::esc_stops_write(state),
+        // The frame sets the tier where it draws (`draw_stash`).
+        ascii: false,
     }
 }
 

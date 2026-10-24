@@ -1,6 +1,5 @@
 ---
-source: crates/graft-ui/src/map_screen.rs
-assertion_line: 313
+source: crates/mergewright-ui/src/map_screen/tests.rs
 expression: "draw(&view, 80, 24)"
 ---
 "MAP · main · last 40 days                                                       "
@@ -15,7 +14,7 @@ expression: "draw(&view, 80, 24)"
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"                       git for-each-ref: not a repository                       "
+"                      ⊗ git for-each-ref: not a repository                      "
 "                                                                                "
 "                                                                                "
 "                                                                                "

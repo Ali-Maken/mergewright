@@ -285,7 +285,7 @@ fn history_says_where_the_walk_is_and_how_many_rows_it_has() {
         (HistoryState::Cancelled, "cancelled, 412 rows laid out"),
         (
             HistoryState::Failed(text("the pack is corrupt")),
-            "failed: the pack is corrupt, 412 rows laid out",
+            "⊗ failed: the pack is corrupt, 412 rows laid out",
         ),
     ];
     for (state, expected) in states {
@@ -301,4 +301,25 @@ fn history_says_where_the_walk_is_and_how_many_rows_it_has() {
         !draw(&healthy(), 72, 10).contains("History"),
         "no walk started, no history row"
     );
+}
+
+/// Part B (ease-pass 26): a failed history state leads its value with the mark.
+#[test]
+fn a_failed_history_state_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let mut view = healthy();
+        view.history = Some(HistoryView {
+            state: HistoryState::Failed(text("the pack is corrupt")),
+            rows: 412,
+        });
+        let theme = Theme::new(ThemeKind::Dark, &capabilities(ColorDepth::TrueColor, false));
+        let shown = crate::failure::frame_text(100, 14, |frame| {
+            frame.render_widget(StatusScreen::new(&view, &theme).ascii(ascii), frame.area());
+        });
+        crate::failure::assert_marked(
+            &shown,
+            "failed: the pack is corrupt, 412 rows laid out",
+            ascii,
+        );
+    }
 }

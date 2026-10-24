@@ -350,3 +350,25 @@ fn the_narrow_bar_drops_by_rank() {
     assert_eq!(bar_at(50), "⏎ commit 3 files");
     assert_eq!(bar_at(10), "");
 }
+
+/// Part B (ease-pass 26): a failed diff body draws the mark, both tiers.
+#[test]
+fn a_failed_diff_body_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let mut shown = view("fix", CommitFocus::Subject);
+        shown.diff = BodyView::Failed(sanitize_line("git diff: bad object"));
+        let theme = theme();
+        let text = crate::failure::frame_text(160, 40, |frame| {
+            frame.render_widget(
+                &CommitScreen {
+                    view: &shown,
+                    theme: &theme,
+                    keys: crate::keymap::Keymap::shipped(),
+                    ascii,
+                },
+                frame.area(),
+            );
+        });
+        crate::failure::assert_marked(&text, "git diff: bad object", ascii);
+    }
+}

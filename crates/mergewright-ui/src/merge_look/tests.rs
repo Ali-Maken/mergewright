@@ -43,6 +43,7 @@ fn look(body: LookBody) -> LookView {
         path: sanitize_line("docs/report.md"),
         body,
         top: 0,
+        ascii: false,
     }
 }
 
@@ -157,4 +158,15 @@ fn reading_and_failed_say_so() {
         failed.contains("can't tell: no merge is in progress"),
         "{failed}"
     );
+}
+
+/// Part B (ease-pass 26): a failed look draws the mark, both tiers.
+#[test]
+fn a_failed_look_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let mut failed = look(LookBody::Failed(sanitize_line("merge-tree failed")));
+        failed.ascii = ascii;
+        let text = draw(&failed, 100, 12).join("\n");
+        crate::failure::assert_marked(&text, "can't tell: merge-tree failed", ascii);
+    }
 }

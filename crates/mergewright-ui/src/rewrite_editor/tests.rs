@@ -44,7 +44,7 @@ const MELDS: &str = "melds into the row below";
     clippy::too_many_lines,
     reason = "one hand-built view fixture, not logic"
 )]
-fn view() -> RewriteEditorView {
+pub(crate) fn view() -> RewriteEditorView {
     let mut fixup = row(
         RowMark::Fixup,
         "4c3b2a1",
@@ -156,7 +156,7 @@ fn view() -> RewriteEditorView {
     }
 }
 
-fn draw(view: &RewriteEditorView, columns: u16, rows: u16) -> Vec<String> {
+pub(crate) fn draw(view: &RewriteEditorView, columns: u16, rows: u16) -> Vec<String> {
     draw_keyed(view, columns, rows, crate::keymap::Keymap::shipped())
 }
 
@@ -184,7 +184,7 @@ fn draw_keyed(
         .collect()
 }
 
-fn screen(lines: &[String]) -> String {
+pub(crate) fn screen(lines: &[String]) -> String {
     lines.join("\n")
 }
 

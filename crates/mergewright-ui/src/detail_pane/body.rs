@@ -60,6 +60,7 @@ impl Widget for DetailPane<'_> {
             render_files(self.view, areas.files, self.theme, buf);
             render_body(self.view, areas.body, self.theme, self.keys, buf);
         }
+        crate::failure::ink_marks(buf, area, self.theme, self.view.ascii);
     }
 }
 
@@ -79,7 +80,13 @@ fn render_body(view: &DetailView, area: Rect, theme: &Theme, keys: &Keymap, buf:
     match &view.body {
         BodyView::Empty(text) => draw_line(buf, area, 0, text.as_str(), muted),
         BodyView::Loading(text) => draw_line(buf, area, 0, text.as_str(), text_style),
-        BodyView::Failed(text) => draw_line(buf, area, 0, text.as_str(), warning),
+        BodyView::Failed(text) => draw_line(
+            buf,
+            area,
+            0,
+            &crate::failure::marked(text.as_str(), view.ascii),
+            warning,
+        ),
         BodyView::Message { lines } => {
             for (index, line) in lines.iter().enumerate() {
                 let Ok(offset) = u16::try_from(index) else {

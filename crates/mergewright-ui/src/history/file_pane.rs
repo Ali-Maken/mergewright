@@ -6,7 +6,7 @@
 )]
 use super::*;
 
-pub(super) fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {
+pub(super) fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView, ascii: bool) {
     if view.tracing || area.is_empty() {
         return;
     }
@@ -19,7 +19,14 @@ pub(super) fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {
     match &view.file {
         FilePane::Empty => {}
         FilePane::NoChange => put(buf, area.x, area.y, area.width, "no change to show", dim()),
-        FilePane::Failed(words) => put(buf, area.x, area.y, area.width, words, Style::default()),
+        FilePane::Failed(words) => put(
+            buf,
+            area.x,
+            area.y,
+            area.width,
+            &crate::failure::marked(words, ascii),
+            Style::default(),
+        ),
         FilePane::Reading { header } => {
             header_and_line(buf, area, header, ("reading\u{2026}".to_owned(), dim()));
         }

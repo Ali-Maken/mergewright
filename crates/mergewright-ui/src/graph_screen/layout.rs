@@ -190,7 +190,11 @@ impl<'a> GraphScreen<'a> {
     /// before it moved here: a warning when the search failed.
     fn search_item(&self) -> Option<TailItem> {
         self.view.search_tail.as_ref().map(|search| TailItem {
-            text: search.text.as_str().to_owned(),
+            text: if search.failed {
+                crate::failure::marked(search.text.as_str(), self.view.ascii)
+            } else {
+                search.text.as_str().to_owned()
+            },
             style: foreground(
                 self.theme,
                 if search.failed {
@@ -216,6 +220,12 @@ impl<'a> GraphScreen<'a> {
             }
         };
         let (walk, token) = walk_text_within(&self.view.walk, room);
+        // A failed walk leads with the mark; the words stay `history failed: …`.
+        let walk = if matches!(self.view.walk, WalkView::Failed(_)) {
+            crate::failure::marked(&walk, self.view.ascii)
+        } else {
+            walk
+        };
         push(walk, foreground(self.theme, token), Drop::Walk);
         let filters = self.view.filters.text(self.view.keys);
         push(

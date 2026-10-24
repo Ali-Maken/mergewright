@@ -12,7 +12,7 @@ use super::*;
 use crate::test_support::terminal as test_capabilities;
 use crate::theme::ThemeKind;
 
-fn theme() -> Theme {
+pub(crate) fn theme() -> Theme {
     Theme::new(
         ThemeKind::Dark,
         &test_capabilities(mergewright_core::capabilities::ColorDepth::TrueColor, false),
@@ -36,7 +36,7 @@ fn file(path: &str, how: HowSolved) -> ReviewFile {
 
 /// The ticket's fixture: `sara/fix-toc` into `wallet-release`, `report.md`
 /// (2 clashes, `o` then `t`), `notes.md` (1, `o`), 2 files combined.
-fn view<'a>() -> ReviewView<'a> {
+pub(crate) fn view<'a>() -> ReviewView<'a> {
     ReviewView {
         keys: crate::keymap::Keymap::shipped(),
         from: sanitize_line("sara/fix-toc"),

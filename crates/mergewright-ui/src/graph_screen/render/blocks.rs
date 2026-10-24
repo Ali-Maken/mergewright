@@ -41,6 +41,7 @@ impl GraphScreen<'_> {
         crate::branch_pane::BranchPane {
             view,
             theme: self.theme,
+            ascii: self.view.ascii,
         }
         .render(area, buf);
     }

@@ -77,7 +77,7 @@ const ON_22: usize = 4;
 /// Index of line 27 in [`mockup`].
 const ON_27: usize = 9;
 
-fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
+pub(crate) fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
     BlameView {
         path: "src/auth/session.rs",
         rev: BlameRev::Now,
@@ -314,7 +314,7 @@ fn failed_body_shows_gits_first_line() {
     let lines = draw(&v, 187, 20);
     assert_eq!(
         lines[1],
-        " git blame stopped: fatal: no such path 'src/x.rs' in HEAD · esc back"
+        "⊗ git blame stopped: fatal: no such path 'src/x.rs' in HEAD · esc back"
     );
 }
 

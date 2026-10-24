@@ -89,6 +89,8 @@ impl Widget for GraphScreen<'_> {
                 &self.header(area.width, LaneTally::of(&fold, rows)),
                 area.width,
             );
+            // A failed search or walk in the header's tail leads with the mark.
+            crate::failure::ink_marks(buf, chrome.header, self.theme, self.view.ascii);
         }
         self.rule(chrome.rule, buf);
         self.banner(area, chrome.banner, buf);

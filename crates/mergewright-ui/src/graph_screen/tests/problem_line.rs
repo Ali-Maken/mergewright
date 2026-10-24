@@ -78,3 +78,24 @@ fn out_of_scope_failures_draw_no_failure_mark() {
     assert_eq!(tail, "\u{25b8} ? commits from PR 16021");
     assert!(!tail.contains('⊗'), "{tail}");
 }
+
+/// Part B (ease-pass 26): a failed walk and a failed search lead with the mark in the header.
+#[test]
+fn a_failed_walk_and_a_failed_search_draw_the_failure_mark() {
+    for ascii in [false, true] {
+        let rows = linear(1);
+        let mut walk = view(&rows, WalkView::Failed(sanitize_line("bad object")), 0);
+        walk.ascii = ascii;
+        let header = text(&draw(&walk, 100, 4))[0].clone();
+        crate::failure::assert_marked(&header, "history failed: bad object", ascii);
+
+        let mut search = view(&rows, WalkView::Complete { rows: 1 }, 0);
+        search.ascii = ascii;
+        search.search_tail = Some(SearchTail {
+            text: sanitize_line("search: bad regex"),
+            failed: true,
+        });
+        let header = text(&draw(&search, 100, 4))[0].clone();
+        crate::failure::assert_marked(&header, "search: bad regex", ascii);
+    }
+}

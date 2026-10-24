@@ -45,6 +45,7 @@ fn listed() -> PickerView {
         footer: "5 branches".to_owned(),
         note: None,
         wide: true,
+        ascii: false,
     }
 }
 
@@ -239,4 +240,18 @@ fn a_click_finds_the_row_drawn_on_its_line() {
 fn the_closing_words_spell_the_shipped_back_key() {
     use crate::keymap::sweep::assert_shipped;
     assert_shipped(&closes("no branches yet"), &[&["app.back"]]);
+}
+
+/// Part B (ease-pass 26): a failed list draws the mark, both tiers.
+#[test]
+fn a_failed_body_draws_the_failure_mark() {
+    for ascii in [false, true] {
+        let view = PickerView {
+            body: PickerBody::Failed(sanitize_line("git exploded")),
+            ascii,
+            ..listed()
+        };
+        let text = drawn(&view, 120, 40).join("\n");
+        crate::failure::assert_marked(&text, "can't list branches \u{b7} git exploded", ascii);
+    }
 }

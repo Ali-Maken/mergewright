@@ -383,9 +383,10 @@ impl Widget for MapScreen<'_> {
                 draw_centered(
                     buf,
                     body,
-                    line.as_str(),
+                    &crate::failure::marked(line.as_str(), self.view.ascii),
                     foreground(self.theme, Token::Warning),
                 );
+                crate::failure::ink_marks(buf, body, self.theme, self.view.ascii);
             }
             MapStatus::Ready => self.draw_rows(buf, body),
         }
