@@ -176,13 +176,7 @@ fn take_refused_on_a_merge() {
         "{} is a merge \u{b7} taking a merge isn't in Mergewright yet",
         &merge[..7]
     );
-    assert_eq!(
-        state.status,
-        Status::Sticky {
-            reason: words.clone(),
-            keys: None
-        }
-    );
+    assert_eq!(state.status, Status::sticky_keys(words.clone(), None));
     let text = drawn(&state, 120, 40);
     assert!(text.contains(&words), "`{words}`:\n{text}");
     check_shot(

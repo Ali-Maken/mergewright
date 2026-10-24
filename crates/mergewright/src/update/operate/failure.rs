@@ -57,6 +57,7 @@ pub(crate) fn edits_status(failure: &str, at: mergewright_ops::EditsAt, keys: &K
     Status::Sticky {
         reason: failure.to_owned(),
         keys: edits_clause(at, keys),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     }
 }
 
@@ -118,7 +119,15 @@ pub(super) fn failure_line(
         (Some(op), Some(failure)) => {
             crate::update::remote::remote_failed(state, op, failure, &error)
         }
-        _ => history_refusal(state, refused).unwrap_or_else(|| Status::sticky(error)),
+        // A refusal the app declined before anything ran is a notice; only a
+        // write that was attempted and failed is a failure (ease-pass 28, Q1).
+        _ => history_refusal(state, refused).unwrap_or_else(|| {
+            if refused.is_some() {
+                Status::sticky(error)
+            } else {
+                Status::sticky_failure(error)
+            }
+        }),
     }
 }
 
@@ -145,6 +154,7 @@ pub(super) fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Op
             keys: running
                 .and_then(|running| running.opened_by)
                 .map(|key| format!("{key} again")),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         }),
         // Hard choice 4: refuse before git runs rather than `--autostash`,
         // whose pop can conflict outside any journal entry. The refusal
@@ -174,6 +184,7 @@ pub(super) fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Op
                     .key_verbs(&[("changes.edit", "edit"), ("changes.mergetool", "mergetool")]),
             )
             .filter(|keys| !keys.is_empty()),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         }),
         _ => None,
     }
@@ -213,6 +224,7 @@ pub(crate) fn refusal_status(
                     if *count == 1 { "file" } else { "files" }
                 ),
             ),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         },
         refused @ Refusal::InTheWay { .. } => in_the_way_status(refused, columns, keys),
         other => Status::sticky(other.explain(&OpKeys(keys))),
@@ -257,6 +269,7 @@ fn in_the_way_status(refusal: &Refusal, columns: u16, keymap: &Keymap) -> Status
     Status::Sticky {
         reason: picked.reason.clone(),
         keys: keys(picked.next.as_deref()),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     }
 }
 

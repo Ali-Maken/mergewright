@@ -221,7 +221,7 @@ fn enter_refuses_while_open() {
             .any(|command| matches!(command, Command::Operate(..))),
         "`⏎` staged a file with conflicts still in it: {commands:?}"
     );
-    let Status::Sticky { reason, keys } = &after.status else {
+    let Status::Sticky { reason, keys, .. } = &after.status else {
         panic!("`⏎` said {:?}", after.status)
     };
     assert_eq!(reason, "3 conflicts still open in three.txt");

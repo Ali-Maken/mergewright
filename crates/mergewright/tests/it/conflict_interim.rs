@@ -523,7 +523,7 @@ fn continue_refuses_while_unmerged_then_finishes() {
         refused.status
     );
     match &refused.status {
-        Status::Sticky { reason, keys } => {
+        Status::Sticky { reason, keys, .. } => {
             assert_eq!(reason, "2 files still conflicted");
             assert_eq!(keys.as_deref(), Some("⏎ resolve  M mergetool  e edit"));
         }
@@ -638,7 +638,7 @@ fn skip_on_a_merge_says_nothing_to_skip() {
     assert!(after.confirm.is_none(), "no box: there is nothing to ask");
     assert!(after.operating.is_none(), "and nothing ran");
     match &after.status {
-        Status::Sticky { reason, keys } => {
+        Status::Sticky { reason, keys, .. } => {
             assert_eq!(reason, "nothing to skip in a merge");
             assert_eq!(keys.as_deref(), Some("c continue  a abort"));
         }
@@ -672,7 +672,7 @@ fn mergetool_absent_refuses_in_words() {
     );
     let after = app.key(&state, KeyCode::Char('M'));
     match &after.status {
-        Status::Sticky { reason, keys } => {
+        Status::Sticky { reason, keys, .. } => {
             assert_eq!(reason, "no merge.tool configured");
             assert!(
                 keys.as_deref().is_some_and(|keys| keys.contains("e edit")),
@@ -779,7 +779,7 @@ fn space_on_a_conflicted_row_refuses_while_markers_remain() {
         state.operating.is_none()
     });
     match &state.status {
-        Status::Sticky { reason, keys } => {
+        Status::Sticky { reason, keys, .. } => {
             assert_eq!(reason, "notes.md still has conflict markers");
             assert_eq!(keys.as_deref(), Some("e edit  M mergetool"));
         }
@@ -957,9 +957,8 @@ fn u_still_refuses_after_relaunch_into_a_merge_begun_in_mergewright() {
     // m8/20b R5: the keys name as many `⇥` as reach the banner from where
     // he is — off it, Esc leaves him on the file list: two. On the banner
     // itself, none: he is there (review m8 words-focus M2).
-    let refusal = |keys: Option<&str>| Status::Sticky {
-        reason: "finish or abort the merge first".to_owned(),
-        keys: keys.map(str::to_owned),
+    let refusal = |keys: Option<&str>| {
+        Status::sticky_keys("finish or abort the merge first", keys.map(str::to_owned))
     };
     let off_the_banner = app.key(&state, KeyCode::Escape);
     assert!(

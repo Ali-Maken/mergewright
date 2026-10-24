@@ -54,8 +54,11 @@ pub(super) fn status_words(status: &Status) -> String {
         Status::Sticky {
             reason,
             keys: Some(keys),
+            ..
         } => format!("{reason} \u{b7} {keys}"),
-        Status::Sticky { reason, keys: None } => reason.clone(),
+        Status::Sticky {
+            reason, keys: None, ..
+        } => reason.clone(),
         Status::Failed(words) | Status::Waiting(words) | Status::Busy(words) => words.clone(),
         other => format!("{other:?}"),
     }

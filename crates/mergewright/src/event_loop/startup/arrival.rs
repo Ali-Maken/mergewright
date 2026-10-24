@@ -76,7 +76,11 @@ pub(in crate::event_loop) fn arrive(state: &mut AppState, arrival: Arrival) {
     state.graph_mode = arrival.graph_mode;
     state.first_launch = arrival.first_launch.map(Box::new);
     if let Some(reason) = super::super::places::joined(arrival.notice, arrival.status) {
-        state.status = crate::update::Status::Sticky { reason, keys: None };
+        state.status = crate::update::Status::Sticky {
+            reason,
+            keys: None,
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
+        };
     } else if arrival.tour_done {
         let again = state.keymap.key_verb(
             &[mergewright_ui::keymap::ActionId("app.palette")],

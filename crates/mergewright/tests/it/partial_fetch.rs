@@ -43,7 +43,7 @@ fn journal(repo: &std::path::Path) -> Vec<JournalEntry> {
 fn line(status: &Status) -> String {
     match status {
         Status::Done { what, .. } => what.clone(),
-        Status::Sticky { reason, keys } => match keys {
+        Status::Sticky { reason, keys, .. } => match keys {
             Some(keys) => format!("{reason} \u{b7} {keys}"),
             None => reason.clone(),
         },

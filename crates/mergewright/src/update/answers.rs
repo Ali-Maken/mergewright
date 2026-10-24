@@ -41,6 +41,7 @@ pub(super) fn mergetool_returned(
             next.status = Status::Sticky {
                 reason: why,
                 keys: banner::mergetool_fallback(place, path, &next.keymap),
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
             };
         }
     }
@@ -222,7 +223,7 @@ pub(super) fn commit_editor_answer(
         // `e`'s file, or `Ctrl+Z`'s suspend: nothing came back but whether
         // the terminal handover worked, and a failure is the user's to see.
         AppEvent::Produced(_, Product::HandedOver(Err(why))) => {
-            next.status = Status::sticky(why);
+            next.status = Status::sticky_failure(why);
         }
         AppEvent::Produced(_, Product::HandedOver(Ok(()))) => {}
         other => debug_assert!(false, "not the commit editor's: {other:?}"),

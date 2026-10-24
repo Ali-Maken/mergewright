@@ -341,10 +341,7 @@ fn an_unbound_key_drops_the_failure_clause() {
             120,
             &no_stash
         ),
-        Status::Sticky {
-            reason: "stage needs a clean tree".to_owned(),
-            keys: None
-        }
+        Status::sticky_keys("stage needs a clean tree".to_owned(), None)
     );
     assert_eq!(
         crate::update::operate::edits_clause(EditsAt::Back { copy: None }, &no_stash).as_deref(),
@@ -365,7 +362,7 @@ fn an_unbound_key_drops_the_failure_clause() {
             .as_deref(),
         Some("a copy is in stash@{1}")
     );
-    let Status::Sticky { reason, keys } = crate::update::operate::staging_not_kept_status(
+    let Status::Sticky { reason, keys, .. } = crate::update::operate::staging_not_kept_status(
         "checkout fix",
         &[PathBuf::from("base.txt")],
         &[],

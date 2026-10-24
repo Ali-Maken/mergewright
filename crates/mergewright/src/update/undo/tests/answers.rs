@@ -180,8 +180,10 @@ fn nothing_to_undo_names_the_redo_waiting() {
     );
 }
 
+/// ease-pass 28 A: the refresh a failed undo asks for finishes, and the
+/// failure is still on screen, still marked as one.
 #[test]
-fn a_failed_undo_stays_on_screen_past_its_own_refresh() {
+fn a_failed_undo_stays_marked_after_its_refresh() {
     let mut state = AppState {
         operating: Some(JobId::new(2)),
         ..AppState::default()
@@ -191,15 +193,23 @@ fn a_failed_undo_stays_on_screen_past_its_own_refresh() {
         JobId::new(2),
         Undone::Failed {
             error: "refs/heads/main is not where it was".to_owned(),
-            refresh: None,
+            refresh: Some(Refresh::WorkingTree),
         },
         &mut ids(),
     );
-    assert_eq!(
-        state.status,
-        Status::sticky("refs/heads/main is not where it was".to_owned())
-    );
-    assert!(commands.is_empty(), "nothing ran: {commands:?}");
+    assert!(!commands.is_empty(), "the refresh was asked for");
+    let want = Status::sticky_failure_keys("refs/heads/main is not where it was".to_owned(), None);
+    assert_eq!(state.status, want);
+    for n in 1..=4 {
+        let (next, _) = crate::update::update(
+            &state,
+            crate::update::AppEvent::Core(mergewright_core::event::Event::JobFinished(JobId::new(
+                n,
+            ))),
+        );
+        state = next;
+    }
+    assert_eq!(state.status, want, "the refresh must not wipe it");
 }
 
 #[test]

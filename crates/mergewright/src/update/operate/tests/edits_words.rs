@@ -116,10 +116,10 @@ fn a_put_back_failure_names_the_stash_and_s_p() {
     );
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "checkout fix: error: cannot lock ref".to_owned(),
-            keys: Some("your edits are in stash@{0} \u{b7} S p puts them back".to_owned()),
-        }
+        Status::sticky_keys(
+            "checkout fix: error: cannot lock ref".to_owned(),
+            Some("your edits are in stash@{0} \u{b7} S p puts them back".to_owned())
+        )
     );
 }
 
@@ -152,10 +152,7 @@ fn each_place_the_edits_can_be_is_worded() {
         failed_with(&mut state, failure, Some(at));
         assert_eq!(
             state.status,
-            Status::Sticky {
-                reason: failure.to_owned(),
-                keys: Some(clause.to_owned()),
-            },
+            Status::sticky_keys(failure.to_owned(), Some(clause.to_owned())),
             "{at:?}"
         );
         if !matches!(at, EditsAt::Stash { .. }) {
@@ -178,6 +175,7 @@ fn the_clause_is_kept_whole_at_80() {
         let Status::Sticky {
             reason,
             keys: Some(keys),
+            ..
         } = edits_status(failure, at, mergewright_ui::keymap::Keymap::shipped())
         else {
             panic!("a failure with edits is sticky with keys");

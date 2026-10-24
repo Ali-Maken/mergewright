@@ -46,7 +46,11 @@ pub(crate) fn open_rewrite(
         return;
     }
     if let Some(reason) = crate::update::preview::preview_refusal(state) {
-        state.status = Status::Sticky { reason, keys: None };
+        state.status = Status::Sticky {
+            reason,
+            keys: None,
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
+        };
         return;
     }
     let Some(from) = cursor_commit(state) else {
@@ -81,7 +85,11 @@ pub(crate) fn open_rewrite_from_rebase(
         return;
     }
     if let Some(reason) = crate::update::preview::preview_refusal(state) {
-        state.status = Status::Sticky { reason, keys: None };
+        state.status = Status::Sticky {
+            reason,
+            keys: None,
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
+        };
         return;
     }
     cancel_opening(state, commands);
@@ -163,6 +171,7 @@ pub(crate) fn opened(
                 state.status = Status::Sticky {
                     reason: NOT_OPENED.to_owned(),
                     keys,
+                    kind: mergewright_ui::graph_screen::ProblemKind::Notice,
                 };
                 return;
             }

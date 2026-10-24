@@ -1,0 +1,16 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_ease_28_sticky_failure in crates/mergewright/src/update/undo/tests/sticky_failure.rs
+# (asserted). Bottom row of the frame, 120x40. Colour (the mark in red) is
+# unverified: a capture cannot show it.
+#
+=== Failed undo, Unicode. Right: `⊗ ` first on the bottom row ===
+⊗ refs/heads/main is not where it was · esc dismiss
+
+=== Rejected push, Unicode. Right: `⊗ ` first, `p pull · P force` whole ===
+⊗ push rejected: origin/main has commits you don't · p pull · P force
+
+=== Failed undo, ASCII. Right: `(x) ` first, no `⊗` ===
+(x) refs/heads/main is not where it was · esc dismiss
+
+=== Rejected push, ASCII. Right: `(x) ` first, `p pull · P force` whole ===
+(x) push rejected: origin/main has commits you don't · p pull · P force

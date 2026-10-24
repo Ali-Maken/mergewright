@@ -28,6 +28,7 @@ pub fn open_resolver(
             keys: state
                 .keymap
                 .key_verb(&[mergewright_ui::keymap::ActionId("app.back")], "closes it"),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         };
         return true;
     }
@@ -102,6 +103,7 @@ fn open_refusal(state: &AppState) -> Option<Status> {
             keys: state
                 .keymap
                 .key_verb(&[mergewright_ui::keymap::ActionId("app.back")], "stops it"),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         });
     }
     None

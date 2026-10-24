@@ -101,7 +101,7 @@ pub fn head_message_arrived(
         // Not swallowed: `a` did nothing, and the user is told why — an
         // unborn `HEAD` is the common reason.
         Err(why) => {
-            state.status = Status::sticky(format!("amend: {why}"));
+            state.status = Status::sticky_failure(format!("amend: {why}"));
             return;
         }
     };
@@ -128,7 +128,7 @@ fn amend_the_stop(
             let launched = super::super::operate::launch(state, commands, amend, next_id);
             super::super::operate::say_if_refused(state, launched);
         }
-        Err(why) => state.status = Status::sticky(format!("amend: {why}")),
+        Err(why) => state.status = Status::sticky_failure(format!("amend: {why}")),
     }
 }
 

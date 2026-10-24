@@ -41,14 +41,14 @@ where
     R: GraphicsReplies,
 {
     if let Some(reason) = tracer.unreported() {
-        state.status = Status::sticky(format!("trace: {reason}"));
+        state.status = Status::sticky_failure(format!("trace: {reason}"));
     }
     let began = tracer.clock();
     draw_frame(terminal, session, state, graphics, fence)?;
     tracer.drew(began, state);
     Ok(match tracer.unreported() {
         Some(reason) => {
-            state.status = Status::sticky(format!("trace: {reason}"));
+            state.status = Status::sticky_failure(format!("trace: {reason}"));
             true
         }
         None => false,

@@ -203,10 +203,10 @@ fn continue_refuses_in_words_while_anything_is_unmerged() {
     assert!(commands.is_empty(), "no job runs: {commands:?}");
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "2 files still conflicted".to_owned(),
-            keys: Some("⏎ resolve  M mergetool  e edit".to_owned()),
-        }
+        Status::sticky_keys(
+            "2 files still conflicted".to_owned(),
+            Some("⏎ resolve  M mergetool  e edit".to_owned())
+        )
     );
     assert!(state.banner_focus, "the banner keeps the keyboard");
 }
@@ -257,10 +257,10 @@ fn skip_on_a_merge_says_there_is_nothing_to_skip() {
     assert!(state.confirm.is_none(), "no box opens on a merge");
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "nothing to skip in a merge".to_owned(),
-            keys: Some("c continue  a abort".to_owned()),
-        }
+        Status::sticky_keys(
+            "nothing to skip in a merge".to_owned(),
+            Some("c continue  a abort".to_owned())
+        )
     );
 }
 
@@ -512,10 +512,10 @@ fn mergetool_with_none_configured_refuses_before_handing_over() {
     );
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "no merge.tool configured".to_owned(),
-            keys: Some("e edits src/auth.rs  a abort".to_owned()),
-        }
+        Status::sticky_keys(
+            "no merge.tool configured".to_owned(),
+            Some("e edits src/auth.rs  a abort".to_owned())
+        )
     );
 }
 
@@ -603,10 +603,10 @@ fn a_failed_resume_keeps_a_abort() {
     );
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "a hook refused the commit".to_owned(),
-            keys: Some("a abort".to_owned()),
-        },
+        Status::sticky_keys(
+            "a hook refused the commit".to_owned(),
+            Some("a abort".to_owned())
+        ),
         "a failed resume still offers the way out"
     );
     assert!(
@@ -752,10 +752,10 @@ fn mergetool_and_edit_refuse_in_words_when_nothing_is_conflicted() {
         assert!(commands.is_empty(), "{code:?} queued {commands:?}");
         assert_eq!(
             state.status,
-            Status::Sticky {
-                reason: "nothing conflicted".to_owned(),
-                keys: Some("c continue  a abort".to_owned()),
-            },
+            Status::sticky_keys(
+                "nothing conflicted".to_owned(),
+                Some("c continue  a abort".to_owned())
+            ),
             "{code:?} said nothing"
         );
     }
@@ -966,10 +966,10 @@ fn did_a_resume_verb(
         "continue" => match continue_refusal(before) {
             Some(reason) => assert_eq!(
                 after.status,
-                Status::Sticky {
+                Status::sticky_keys(
                     reason,
-                    keys: resolve_keys(crate::update::banner::refused_at(after), &after.keymap),
-                },
+                    resolve_keys(crate::update::banner::refused_at(after), &after.keymap)
+                ),
                 "`{key} {verb}`"
             ),
             None => continued(key, verb, before, after, commands),
@@ -1198,7 +1198,7 @@ fn a_focused_banner_answers_u_instead_of_swallowing_it() {
             else {
                 panic!("the unfocused banner refuses {code:?} in words");
             };
-            let Status::Sticky { reason, keys } = &state.status else {
+            let Status::Sticky { reason, keys, .. } = &state.status else {
                 panic!("{code:?} drew nothing: {:?}", state.status);
             };
             assert_eq!(reason, &unfocused_reason, "{code:?} says the same reason");
@@ -1412,10 +1412,10 @@ fn the_stop_line_outlives_a_dismissed_problem() {
 #[test]
 fn tab_keeps_a_failed_resumes_words() {
     let mut state = stopped(InProgress::Rebase, &["a.rs"]);
-    let failed = Status::Sticky {
-        reason: "a hook refused the commit".to_owned(),
-        keys: Some("a abort".to_owned()),
-    };
+    let failed = Status::sticky_keys(
+        "a hook refused the commit".to_owned(),
+        Some("a abort".to_owned()),
+    );
     state.status = failed.clone();
     let (claimed, _) = press(&mut state, KeyCode::Tab);
     assert!(claimed);

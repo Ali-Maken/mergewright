@@ -227,6 +227,7 @@ pub(super) fn open_failed(state: &mut AppState, failure: &crate::jobs::conflict:
     state.status = Status::Sticky {
         reason: failure.words.clone(),
         keys: crate::update::banner::edit_or_mergetool(place, &state.keymap),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     };
 }
 

@@ -1011,17 +1011,17 @@ fn a_refused_history_operation_says_which_key_answers_it() {
             Refusal::Moved {
                 name: "refs/heads/main".to_owned(),
             },
-            Status::Sticky {
-                reason: "main moved since the preview".to_owned(),
-                keys: Some("r again".to_owned()),
-            },
+            Status::sticky_keys(
+                "main moved since the preview".to_owned(),
+                Some("r again".to_owned()),
+            ),
         ),
         (
             Refusal::DirtyTree { count: 3 },
-            Status::Sticky {
-                reason: "rebase needs a clean tree".to_owned(),
-                keys: Some("S stash 3 changed files".to_owned()),
-            },
+            Status::sticky_keys(
+                "rebase needs a clean tree".to_owned(),
+                Some("S stash 3 changed files".to_owned()),
+            ),
         ),
     ];
     for (refusal, want) in cases {
@@ -1114,7 +1114,7 @@ fn operated_failed_part_way_reports_the_error_and_still_refreshes() {
         "a working-tree failure must not restart the walk: {commands:?}"
     );
     assert_eq!(state.operating, None);
-    assert_eq!(state.status, Status::sticky("boom"));
+    assert_eq!(state.status, Status::sticky_failure("boom"));
 }
 
 #[test]
@@ -1142,7 +1142,7 @@ fn operated_failed_before_anything_ran_leaves_the_screen_alone() {
     );
     assert!(commands.is_empty(), "{commands:?}");
     assert_eq!(state.operating, None);
-    assert_eq!(state.status, Status::sticky("nothing to do"));
+    assert_eq!(state.status, Status::sticky_failure("nothing to do"));
 }
 
 /// The state a conflicted merge leaves: one journaled `Pending` entry,

@@ -78,6 +78,7 @@ pub fn open_mergetool(
         state.status = Status::Sticky {
             reason: "no merge.tool configured".to_owned(),
             keys: mergetool_fallback(place, path, &state.keymap),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         };
         return true;
     };

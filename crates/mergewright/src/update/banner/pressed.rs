@@ -139,6 +139,7 @@ pub(crate) fn continued_in_git(
             state.status = Status::Sticky {
                 reason: why,
                 keys: super::continue_abort(&state.keymap),
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
             };
         }
     }
@@ -174,6 +175,7 @@ pub(in crate::update) fn land_after_continue_in_git(
     state.status = Status::Sticky {
         reason: format!("{command} exited {code} · still stopped"),
         keys: super::continue_abort(&state.keymap),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     };
 }
 
@@ -188,6 +190,7 @@ pub(in crate::update) fn continue_refused(
     Status::Sticky {
         reason,
         keys: super::resolve_keys(at, keys),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     }
 }
 
@@ -201,6 +204,7 @@ pub(super) fn skip_pressed(state: &mut AppState) {
         state.status = Status::Sticky {
             reason: "nothing to skip in a merge".to_owned(),
             keys: super::continue_abort(&state.keymap),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         };
         return;
     }

@@ -72,7 +72,7 @@ pub(super) fn key(state: &AppState, code: CoreKey) -> (AppState, Vec<Command>) {
 
 pub(super) fn sticky(state: &AppState) -> (String, Option<String>) {
     match &state.status {
-        Status::Sticky { reason, keys } => (reason.clone(), keys.clone()),
+        Status::Sticky { reason, keys, .. } => (reason.clone(), keys.clone()),
         other => panic!("a sticky line: {other:?}"),
     }
 }

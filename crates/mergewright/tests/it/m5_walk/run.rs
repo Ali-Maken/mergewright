@@ -678,11 +678,9 @@ pub(super) fn status_text(state: &AppState) -> String {
             .map(String::as_str)
             .collect::<Vec<_>>()
             .join(" · "),
-        Status::Sticky { reason, keys: None } => reason.clone(),
-        Status::Sticky {
-            reason,
-            keys: Some(keys),
-        } => format!("{reason} · {keys}"),
+        Status::Sticky { reason, keys, .. } => keys
+            .as_ref()
+            .map_or_else(|| reason.clone(), |keys| format!("{reason} · {keys}")),
     }
 }
 

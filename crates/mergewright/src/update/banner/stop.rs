@@ -120,6 +120,7 @@ pub(super) fn stopped_again(
         Some(why) => Status::Sticky {
             reason: format!("stopped again: {why}"),
             keys: Some(STUCK_KEYS.to_owned()),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         },
         None => progress_unread(&stop).map_or(Status::Ready, Status::sticky),
     };

@@ -290,17 +290,8 @@ fn c_from_the_pane_and_from_the_banner_emit_the_same() {
         assert_eq!(pane_commands, banner_commands, "{what:?}");
         // A refusal names the keys acting where each `c` was pressed
         // (m8/10l): reason the same, keys each from its own place.
-        match (&pane.status, &banner.status) {
-            (
-                Status::Sticky {
-                    reason: p,
-                    keys: pk,
-                },
-                Status::Sticky {
-                    reason: b,
-                    keys: bk,
-                },
-            ) if p.ends_with("still conflicted") => {
+        match (pane.status.sticky_parts(), banner.status.sticky_parts()) {
+            (Some((p, pk)), Some((b, bk))) if p.ends_with("still conflicted") => {
                 assert_eq!(p, b, "{what:?}");
                 for (s, keys) in [(&pane, pk), (&banner, bk)] {
                     let at = crate::update::banner::refused_at(s);
@@ -364,8 +355,8 @@ fn on_a_conflicts_row_the_pane_names_space_and_off_it_nothing() {
         state.size = shape.size;
         let (pane, _) = c(&state);
         let (banner, _) = from_the_banner(&state);
-        let (Status::Sticky { reason: p, keys }, Status::Sticky { reason: b, .. }) =
-            (&pane.status, &banner.status)
+        let (Some((p, keys)), Some((b, _))) =
+            (pane.status.sticky_parts(), banner.status.sticky_parts())
         else {
             panic!("both refuse: {:?} / {:?}", pane.status, banner.status);
         };

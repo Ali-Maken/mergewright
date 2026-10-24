@@ -145,10 +145,10 @@ fn u_refused_during_an_operation() {
             assert_eq!(state.operating, None, "{word}: a job was claimed");
             assert_eq!(
                 state.status,
-                Status::Sticky {
-                    reason: format!("finish or abort the {word} first"),
-                    keys: Some("\u{21e5} banner".to_owned()),
-                },
+                Status::sticky_keys(
+                    format!("finish or abort the {word} first"),
+                    Some("\u{21e5} banner".to_owned())
+                ),
                 "{word}"
             );
         }
@@ -327,10 +327,10 @@ fn an_operation_live_answer_is_a_refusal() {
     assert_eq!(state.operating, None);
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "finish or abort the merge first".to_owned(),
-            keys: Some("\u{21e5} banner".to_owned()),
-        }
+        Status::sticky_keys(
+            "finish or abort the merge first".to_owned(),
+            Some("\u{21e5} banner".to_owned())
+        )
     );
 }
 
@@ -374,6 +374,7 @@ mod answers;
 mod landing;
 mod notice;
 mod set_aside;
+mod sticky_failure;
 
 // `set_aside` reaches these through `tests`, as it did before the split.
 use landing::{done_line_of, finish_undone, read_lands};

@@ -1,7 +1,6 @@
 //! ease-pass 26: the failure mark is the renderer's. These scan the source for
-//! the ways a producer could still type one, and pin the Sticky sites whose
-//! words read like a failure (Ruling R3: they stay `Notice`, a question for
-//! the conductor, not reclassified here).
+//! the ways a producer could still type one, and pin each Sticky site by its kind
+//! (ease-pass 28).
 #![allow(
     clippy::expect_used,
     reason = "an unreadable workspace tree has nothing to scan; the panic names why"
@@ -98,54 +97,98 @@ fn every_cross_literal_is_a_lost_or_drop_mark() {
     assert!(stray.is_empty(), "unjudged cross literals: {stray:#?}");
 }
 
-/// Sticky sites whose words read like a failure. They are `Notice` by
-/// variant (R3); this table makes changing one a decision: move it to
-/// `Status::Failed` and it leaves the table, and the bar then marks it.
+#[derive(Clone, Copy)]
+enum Kind {
+    Failure,
+    Notice,
+    /// Both kinds live here, split by a condition the snippet names.
+    Split,
+}
+
+/// Sticky sites whose words read like a failure, each judged (ease-pass 28,
+/// Q1). `Failure` sites build `Status::sticky_failure` (or `kind: Failure`);
+/// `Notice` sites build `Status::sticky`. Changing one is a decision: it
+/// moves in this table too, or the test fails.
+/// Every site judged, as `(file, snippet, kind)`.
+use Kind::{Failure, Notice, Split};
+
+const SITES: [(&str, &str, Kind); 13] = [
+    (
+        "update/answer.rs",
+        "Err(why) => next.status = Status::sticky_failure(why)",
+        Failure,
+    ),
+    (
+        "update/answers.rs",
+        "next.status = Status::sticky_failure(why);",
+        Failure,
+    ),
+    (
+        "update/journal/answers.rs",
+        "Err(why) => state.status = Status::sticky(why.clone())",
+        Notice,
+    ),
+    ("update/undo/answers.rs", "Status::sticky(why)", Notice),
+    (
+        "update/undo/answers.rs",
+        "state.status = Status::sticky_failure(error);",
+        Failure,
+    ),
+    (
+        "update/commit_editor/returned.rs",
+        "Err(why) => state.status = Status::sticky_failure(why)",
+        Failure,
+    ),
+    (
+        "update/commit_editor/open.rs",
+        "Status::sticky_failure(format!(\"amend: {why}\"))",
+        Failure,
+    ),
+    (
+        "update/amend_into.rs",
+        "Status::sticky_failure(format!(\"couldn't plan the put-in: {why}\"))",
+        Failure,
+    ),
+    (
+        "update/place/answer.rs",
+        "state.status = Status::sticky(no_blame_words(why));",
+        Notice,
+    ),
+    ("update/operate/failure.rs", "if refused.is_some() {", Split),
+    (
+        "update/operate/failure.rs",
+        "Status::sticky_failure(error)",
+        Split,
+    ),
+    (
+        "event_loop/running/frame.rs",
+        "Status::sticky_failure(format!(\"trace: {reason}\"))",
+        Failure,
+    ),
+    (
+        "update/remote/in_flight.rs",
+        "kind: ProblemKind::Failure",
+        Failure,
+    ),
+];
+
 #[test]
-fn failure_worded_sticky_sites_are_pinned_as_notices() {
-    let sites = [
-        (
-            "update/answer.rs",
-            "Err(why) => next.status = Status::sticky(why)",
-        ),
-        ("update/answers.rs", "next.status = Status::sticky(why);"),
-        (
-            "update/journal/answers.rs",
-            "Err(why) => state.status = Status::sticky(why.clone())",
-        ),
-        ("update/undo/answers.rs", "Status::sticky(why)"),
-        (
-            "update/undo/answers.rs",
-            "state.status = Status::sticky(error);",
-        ),
-        (
-            "update/commit_editor/returned.rs",
-            "Err(why) => state.status = Status::sticky(why)",
-        ),
-        (
-            "update/commit_editor/open.rs",
-            "Status::sticky(format!(\"amend: {why}\"))",
-        ),
-        (
-            "update/amend_into.rs",
-            "Status::sticky(format!(\"couldn't plan the put-in: {why}\"))",
-        ),
-        (
-            "update/place/answer.rs",
-            "state.status = Status::sticky(no_blame_words(why));",
-        ),
-        ("update/operate/failure.rs", "Status::sticky(error)"),
-        (
-            "event_loop/running/frame.rs",
-            "Status::sticky(format!(\"trace: {reason}\"))",
-        ),
-    ];
+fn sticky_sites_are_pinned_by_kind() {
     let base = root().join("crates/mergewright/src");
-    for (file, snippet) in sites {
+    for (file, snippet, kind) in SITES {
         let text = fs::read_to_string(base.join(file)).expect("read site");
         assert!(
             text.contains(snippet),
             "{file} no longer has `{snippet}`: re-judge it"
+        );
+        let wrong = match kind {
+            Failure => snippet.replace("sticky_failure(", "sticky("),
+            Notice => snippet.replace("sticky(", "sticky_failure("),
+            Split => snippet.to_owned(),
+        };
+        assert!(
+            wrong == snippet || !text.contains(&wrong),
+            "{file}: `{wrong}` is the other kind"
         );
     }
 }

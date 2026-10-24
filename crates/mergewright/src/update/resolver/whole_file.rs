@@ -136,6 +136,7 @@ pub(super) fn whole_file_both_refused(state: &mut AppState) -> bool {
     state.status = Status::Sticky {
         reason: format!("no both for a {} file", whole.how.words()),
         keys: Some(super::names::side_keys(state)),
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     };
     true
 }

@@ -311,7 +311,7 @@ fn b_refused_on_whole_file() {
 
     let state = app.key(&state, KeyCode::Char('b'));
     assert!(state.operating.is_none(), "`b` wrote nothing");
-    let Status::Sticky { reason, keys } = &state.status else {
+    let Status::Sticky { reason, keys, .. } = &state.status else {
         panic!("`b` on a whole-file card said {:?}", state.status)
     };
     assert_eq!(reason, "no both for a deleted by them file");

@@ -42,6 +42,7 @@ pub(super) fn mark_resolved(
                 &[mergewright_ui::keymap::ActionId("resolver.next_block")],
                 "next",
             ),
+            kind: mergewright_ui::graph_screen::ProblemKind::Notice,
         };
         return;
     }

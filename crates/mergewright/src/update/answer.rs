@@ -249,7 +249,7 @@ pub(super) fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: Ap
                         finish::record_edited(next, &path);
                     }
                 }
-                Err(why) => next.status = Status::sticky(why),
+                Err(why) => next.status = Status::sticky_failure(why),
             }
             let mut local_jobs = next.local_jobs;
             resolver::handed_back(next, commands, &mut || local_jobs.next_id());

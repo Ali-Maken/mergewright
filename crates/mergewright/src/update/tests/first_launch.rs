@@ -131,10 +131,7 @@ fn a_broken_file_warns_once_and_never_stops_the_app() {
         assert!(warning.starts_with("first-launch: "), "{warning}");
         // `drive` hands it to the first place as its status (`Arrival`).
         let state = AppState {
-            status: Status::Sticky {
-                reason: warning.clone(),
-                keys: None,
-            },
+            status: Status::sticky_keys(warning.clone(), None),
             ..graph(line.line())
         };
         let row = footer(&state);

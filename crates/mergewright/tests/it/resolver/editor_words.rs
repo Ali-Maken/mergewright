@@ -127,19 +127,19 @@ fn tabs(count: usize) -> String {
 /// The pane's answer to `c`/`a` on a merge Mergewright began, `count` tabs from
 /// the banner. A merge's `c` is `c finish` (m6-conflicts/70, n2).
 fn mergewright_merge_refusal(count: usize) -> Status {
-    Status::Sticky {
-        reason: "merge in progress".to_owned(),
-        keys: Some(format!("{}banner, then c finish  a abort", tabs(count))),
-    }
+    Status::sticky_keys(
+        "merge in progress".to_owned(),
+        Some(format!("{}banner, then c finish  a abort", tabs(count))),
+    )
 }
 
 /// The pane's answer to `c`/`a` on a merge begun in the shell, `count` tabs
 /// from the banner.
 pub(super) fn shell_merge_refusal(count: usize) -> Status {
-    Status::Sticky {
-        reason: "merge begun in the shell".to_owned(),
-        keys: Some(format!("{}banner, then c finishes it", tabs(count))),
-    }
+    Status::sticky_keys(
+        "merge begun in the shell".to_owned(),
+        Some(format!("{}banner, then c finishes it", tabs(count))),
+    )
 }
 
 /// `c` in `state` opens the finish summary, as the banner's `c` does
@@ -215,10 +215,10 @@ fn every_way_to_open_the_editor_refuses_mid_operation() {
     // Graph → Files → Diff → banner is three `⇥`, but one `⇧⇥`: the
     // shorter way is named (m8/20d). The pane's files: two either way, so
     // forward.
-    let from_the_graph = Status::Sticky {
-        reason: "merge begun in the shell".to_owned(),
-        keys: Some("⇧⇥ banner, then c finishes it".to_owned()),
-    };
+    let from_the_graph = Status::sticky_keys(
+        "merge begun in the shell".to_owned(),
+        Some("⇧⇥ banner, then c finishes it".to_owned()),
+    );
     for (where_, state, refusal) in [
         ("graph", &graph, from_the_graph),
         ("changes pane", &pane, shell_merge_refusal(2)),
@@ -286,10 +286,10 @@ fn the_pane_words_fit_at_80() {
     let refused = app.key(&pane, KeyCode::Char('a'));
     assert_eq!(
         refused.status,
-        Status::Sticky {
-            reason: "cherry-pick in progress".to_owned(),
-            keys: Some("⇥ ⇥ banner, then c continue  a abort".to_owned()),
-        }
+        Status::sticky_keys(
+            "cherry-pick in progress".to_owned(),
+            Some("⇥ ⇥ banner, then c continue  a abort".to_owned())
+        )
     );
     let sized = app.resize(&refused, 80, 24);
     let frame = crate::captures::frame(&sized, 80, 24);

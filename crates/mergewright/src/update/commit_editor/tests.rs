@@ -1180,10 +1180,7 @@ fn the_pane_status_is_the_editor_words_split() {
                 mergewright_ui::keymap::Keymap::shipped()
             )
             .status(),
-            Status::Sticky {
-                reason: reason.to_owned(),
-                keys: keys.map(str::to_owned)
-            },
+            Status::sticky_keys(reason.to_owned(), keys.map(str::to_owned)),
             "{live:?}"
         );
     }

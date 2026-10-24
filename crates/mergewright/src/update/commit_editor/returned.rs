@@ -53,7 +53,7 @@ pub fn editor_returned(state: &mut AppState, id: JobId, result: Result<String, S
         Ok(text) => editor.load_message(strip_comments(&text).trim_end_matches('\n')),
         // The old text is still in the fields: nothing was thrown away, and
         // the reason says so.
-        Err(why) => state.status = Status::sticky(why),
+        Err(why) => state.status = Status::sticky_failure(why),
     }
 }
 

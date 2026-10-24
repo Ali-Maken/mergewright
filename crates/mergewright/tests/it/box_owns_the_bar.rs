@@ -119,7 +119,7 @@ fn capture_fix_box_owns_the_bar() {
         );
         let back = bottom(&escaped[index]);
         assert!(
-            back.starts_with("push rejected") && back.ends_with("P force with lease"),
+            back.starts_with("⊗ push rejected") && back.ends_with("P force with lease"),
             "{size}: {back}"
         );
         assert_eq!(

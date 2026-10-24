@@ -84,10 +84,10 @@ fn a_shell_continue_that_exited_non_zero_keeps_the_stop() {
     assert!(landed.in_progress.is_some());
     assert_eq!(
         landed.status,
-        Status::Sticky {
-            reason: "git cherry-pick --continue exited 128 · still stopped".to_owned(),
-            keys: Some("c continue  a abort".to_owned()),
-        }
+        Status::sticky_keys(
+            "git cherry-pick --continue exited 128 · still stopped".to_owned(),
+            Some("c continue  a abort".to_owned())
+        )
     );
 }
 

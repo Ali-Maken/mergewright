@@ -1071,10 +1071,7 @@ fn take_feature() -> Operation {
 }
 
 fn sticky(reason: &str) -> Status {
-    Status::Sticky {
-        reason: reason.to_owned(),
-        keys: None,
-    }
+    Status::sticky_keys(reason.to_owned(), None)
 }
 
 #[test]

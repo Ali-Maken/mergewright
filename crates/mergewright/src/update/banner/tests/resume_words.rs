@@ -149,10 +149,10 @@ fn a_continue_whose_drop_fails_says_the_edits_are_back() {
     );
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: failure.to_owned(),
-            keys: Some("your edits are back \u{b7} a copy stays in stash@{0}".to_owned()),
-        }
+        Status::sticky_keys(
+            failure.to_owned(),
+            Some("your edits are back \u{b7} a copy stays in stash@{0}".to_owned())
+        )
     );
     let row = bottom_row(&state, 120, 40);
     assert!(row.contains("your edits are back"), "{row:?}");

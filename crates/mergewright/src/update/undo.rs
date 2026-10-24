@@ -150,6 +150,7 @@ pub(super) fn after_push_chosen(
             state.status = Status::Sticky {
                 reason: format!("undo-after-push: no choice {other} on this box"),
                 keys: None,
+                kind: mergewright_ui::graph_screen::ProblemKind::Notice,
             };
         }
     }
@@ -256,6 +257,7 @@ pub(super) fn live_refusal(
     Status::Sticky {
         reason: live_refusal_words(kind),
         keys,
+        kind: mergewright_ui::graph_screen::ProblemKind::Notice,
     }
 }
 

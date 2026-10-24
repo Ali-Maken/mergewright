@@ -90,7 +90,7 @@ pub(super) fn amend_locally(fixture: &Fixture) -> Result<(), String> {
 }
 
 pub(super) fn sticky_containing(state: &AppState, texts: &[&str]) -> Result<(), String> {
-    let Status::Sticky { reason, keys } = &state.status else {
+    let Status::Sticky { reason, keys, .. } = &state.status else {
         return Err(format!("not a sticky failure: {:?}", state.status));
     };
     let line = match keys {

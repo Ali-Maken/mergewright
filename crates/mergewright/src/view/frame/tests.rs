@@ -422,10 +422,10 @@ fn detail_tab_mid_rebase(banner_focus: bool) -> AppState {
 fn the_detail_tab_below_100_columns_draws_the_status_line() {
     let statuses = [
         (
-            Status::Sticky {
-                reason: "rebase still in progress from a previous run".to_owned(),
-                keys: Some("⏎ resolve  c continue  a abort".to_owned()),
-            },
+            Status::sticky_keys(
+                "rebase still in progress from a previous run".to_owned(),
+                Some("⏎ resolve  c continue  a abort".to_owned()),
+            ),
             "rebase still in progress from a previous run",
         ),
         (Status::Failed("git said no".to_owned()), "git said no"),
@@ -529,10 +529,10 @@ fn the_start_over_box_clears_its_band_over_the_resolver() {
 /// tab, the banner focused and not, and in the resolver's footer.
 #[test]
 fn a_status_on_a_standin_footer_starts_at_column_one() {
-    let sticky = Status::Sticky {
-        reason: "rebase still in progress from a previous run".to_owned(),
-        keys: None,
-    };
+    let sticky = Status::sticky_keys(
+        "rebase still in progress from a previous run".to_owned(),
+        None,
+    );
     let mut states: Vec<(String, AppState, u16, u16)> = [true, false]
         .into_iter()
         .map(|focus| {

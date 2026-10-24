@@ -1656,10 +1656,10 @@ fn an_answer_under_a_preview_does_not_open_the_editor() {
     assert!(state.preview.is_some(), "the preview is still up");
     assert!(state.rewrite.editor.is_none());
     assert!(state.rewrite.opening.is_none());
-    let said = Status::Sticky {
-        reason: "rewrite editor not opened \u{b7} another box was open".to_owned(),
-        keys: Some("R opens it".to_owned()),
-    };
+    let said = Status::sticky_keys(
+        "rewrite editor not opened \u{b7} another box was open".to_owned(),
+        Some("R opens it".to_owned()),
+    );
     assert_eq!(state.status, said);
 
     // Hidden under the box, not cleared: he reads it when he closes it.
@@ -1680,9 +1680,9 @@ fn an_answer_under_a_preview_from_a_rebase_names_r_then_r() {
     assert!(state.rewrite.editor.is_none());
     assert_eq!(
         state.status,
-        Status::Sticky {
-            reason: "rewrite editor not opened \u{b7} another box was open".to_owned(),
-            keys: Some("r then R opens it".to_owned()),
-        }
+        Status::sticky_keys(
+            "rewrite editor not opened \u{b7} another box was open".to_owned(),
+            Some("r then R opens it".to_owned())
+        )
     );
 }

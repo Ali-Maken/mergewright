@@ -73,7 +73,7 @@ fn staging_not_kept_status_picks_the_rung_that_fits() {
         mergewright_ui::keymap::Keymap::shipped(),
     );
     for (columns, rung) in [(187, 0), (80, 1), (60, 2)] {
-        let Status::Sticky { reason, keys } = staging_not_kept_status(
+        let Status::Sticky { reason, keys, .. } = staging_not_kept_status(
             "checkout fix",
             &files,
             &[],
