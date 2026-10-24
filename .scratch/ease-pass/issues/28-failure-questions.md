@@ -75,12 +75,12 @@ Out:
 - `modal_problem` (Notice, R3 stands for refusals).
 
 Acceptance (tick each with its test):
-- [ ] A Sticky with kind `Failure` draws `⊗ <reason>` once, keys whole after it; kind `Notice` draws no `⊗`/`(x)`. Checked on the graph footer and the modal bar. <- `mergewright::view::status::tests::sticky_draws_the_mark_by_its_kind`
-- [ ] The kind table: each row above is pinned at its file and verdict, and a site moved without a table edit fails the test. Replaces `failure_marks::failure_worded_sticky_sites_are_pinned_as_notices` (record the old name in NOTES). <- `mergewright::it failure_marks::sticky_sites_are_pinned_by_kind`
-- [ ] Lifetime kept: after `Undone::Failed`, the refresh it asks for finishes and the status is still `Sticky { kind: Failure, .. }` with the error. <- `mergewright::update::undo::tests::a_failed_undo_stays_marked_after_its_refresh`
-- [ ] A rejected push at 80 cols reads `⊗ push rejected: …` with `p pull · P force` whole; the reason is cut first. <- `mergewright::update::remote::tests::a_rejected_push_is_marked_and_keeps_its_keys`
-- [ ] Notices stay plain: the journal recover refusal and the part-way undo cancel draw no mark. <- `mergewright::view::status::tests::sticky_notices_carry_no_mark`
-- [ ] Capture `docs/shots/ease-pass/28-sticky-failure.txt` (≤200 KB). Contents: failed-undo bar and rejected-push bar at 120x40, Unicode then ASCII, each under its line ("`⊗ ` first on the bottom row, `p pull · P force` whole"; ASCII `(x) `). Every existing `docs/shots/` file whose bytes change is re-shot and listed with why. <- `mergewright::update::undo::tests::capture_ease_28_sticky_failure`
+- [x] A Sticky with kind `Failure` draws `⊗ <reason>` once, keys whole after it; kind `Notice` draws no `⊗`/`(x)`. Checked on the graph footer and the modal bar. <- `mergewright::view::status::tests::sticky_draws_the_mark_by_its_kind`
+- [x] The kind table: each row above is pinned at its file and verdict, and a site moved without a table edit fails the test. Replaces `failure_marks::failure_worded_sticky_sites_are_pinned_as_notices` (record the old name in NOTES). <- `mergewright::it failure_marks::sticky_sites_are_pinned_by_kind`
+- [x] Lifetime kept: after `Undone::Failed`, the refresh it asks for finishes and the status is still `Sticky { kind: Failure, .. }` with the error. <- `mergewright::update::undo::tests::a_failed_undo_stays_marked_after_its_refresh`
+- [x] A rejected push at 80 cols reads `⊗ push rejected: …` with `p pull · P force` whole; the reason is cut first. <- `mergewright::update::remote::tests::a_rejected_push_is_marked_and_keeps_its_keys`
+- [x] Notices stay plain: the journal recover refusal and the part-way undo cancel draw no mark. <- `mergewright::view::status::tests::sticky_notices_carry_no_mark`
+- [x] Capture `docs/shots/ease-pass/28-sticky-failure.txt` (≤200 KB). Contents: failed-undo bar and rejected-push bar at 120x40, Unicode then ASCII, each under its line ("`⊗ ` first on the bottom row, `p pull · P force` whole"; ASCII `(x) `). Every existing `docs/shots/` file whose bytes change is re-shot and listed with why. <- `mergewright::update::undo::tests::capture_ease_28_sticky_failure`
 
 Touches: every `Status::Sticky {` literal and non-`..` pattern (compiler-forced; list them), `is_failure` callers, the invariant test `every_failed_status_draws_the_mark_once` (Failed only; unchanged), TESTING.md lines quoting these bars (list them, don't edit), the journal and undo answers (no journal change: status only).
 Gates: workspace-wide fmt, clippy, nextest, doc tests. Size: ~35k.
@@ -151,3 +151,12 @@ None. His rule ("keep the count") decides Q3, ADR-0067 decides Q1, and Q2 needs 
 - The ticket's 80-col expectation does not hold: at 80 the Detail-tab layout draws the pane's own bar, not the banner's stop row. 80x24 unchanged. 120 and 187 and 200 unchanged; 160 changes.
 - Only docs/shots file changed: ease-pass/27-footer-matrix.md (160x48 shell-landing bottom row now `merge in progress · 2 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit`; header line). m6-18 shot unchanged (walks pass).
 - Untested: colour (rule 5). The 187-col `⇥ graph  q quit` kept because count fits whole there.
+
+
+## NOTES (Part A, builder)
+- Old test `failure_marks::failure_worded_sticky_sites_are_pinned_as_notices` replaced by `sticky_sites_are_pinned_by_kind`.
+- Scout: none (scout 25q + ticket table were enough).
+- Deviations: (1) `operate/failure.rs`: a write that came back with `refused: Some(..)` and no history wording stays Notice (a refusal ran nothing; test `a_refusal_with_no_key_to_offer_keeps_the_plain_sentence`); only attempted-and-failed writes are Failure. (2) Every `remote_failed` line except a cancel is Failure, incl. "have diverged" and the would-overwrite pull. (3) `place/answer.rs` (no-blame) is pinned Notice; not in the table. (4) Two new tests live in submodules (`remote::tests::rejected_push::`, `undo::tests::sticky_failure::`) and `view/status.rs` tests moved to `view/status/tests.rs`, to keep the over_400 rows from rising; seven rows were lowered.
+- New helpers: `Status::sticky_failure`, `sticky_keys`, `sticky_failure_keys`, `sticky_parts`.
+- `is_failure()` unchanged (true for every Sticky); callers: keys.rs, place/*, commit_editor/keys.rs, context_menu, stash, dispatch (all lifetime gates).
+- Shots changed (by bytes) because the mark now draws: m8/21c-status-partial-fetch-120x40, m8/21c-journal-partial-fetch-120x40 and -80x24, m6/fix-box-owns-the-bar-120x40 and -80x24, m6/fix-status-under-a-box-120x40 and -80x24 (`⊗ ` before a failed fetch/push bar); ease-pass contact sheets 1-2 + captions row for 28. New: ease-pass/28-sticky-failure.txt. Colour of the mark unverified.

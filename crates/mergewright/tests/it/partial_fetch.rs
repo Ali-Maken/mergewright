@@ -212,7 +212,7 @@ fn capture_j_at(app: &App, state: &AppState, (columns, rows): (u16, u16), tips: 
     assert!(
         collapsed
             .iter()
-            .any(|line| line.starts_with("fetch all remotes failed")
+            .any(|line| line.starts_with("⊗ fetch all remotes failed")
                 && line.ends_with(" \u{b7} origin/main moved before it stopped")),
         "{}",
         collapsed.join("\n")

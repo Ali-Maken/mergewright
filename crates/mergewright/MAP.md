@@ -364,7 +364,7 @@ Everything Mergewright knows as one value (`AppState`), plus the small types it 
 - File state/stop.rs — `Stop`, `ClashState`.
 - File state/reads.rs — `RefsRead`, `IndexRead`, `HeadLanding`.
 - File state/stash_marks.rs — `StashOnlyMarks`.
-- File state/status.rs — `Status` and its constructors.
+- File state/status.rs — `Status` and its constructors; `Sticky` carries a `kind` (Failure draws `⊗`, Notice none): `sticky`, `sticky_failure`, `sticky_keys`, `sticky_failure_keys`, `sticky_parts`.
 ## update::status_read
 The working-tree status read the app is waiting on after a write, and the line that waits for it.
 ## update::strip
