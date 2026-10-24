@@ -1,5 +1,5 @@
 //! The typed fields' fixed keys and the branch picker's two bars. Moved out
-//! of `hints/tests.rs` (m8/47) to keep that file under its size row.
+//! of `hints/tests.rs` (m8/47) to keep that file under its size row, with ease-pass/27's resolver-bar test.
 
 use super::*;
 
@@ -109,4 +109,15 @@ fn picker_on_current_enter_says_what_tab_says() {
     assert!(text.contains("⏎ show it on the graph"), "{text}");
     assert!(!text.contains("⏎ close"), "{text}");
     assert!(!text.contains("switch to it"), "{text}");
+}
+
+/// ease-pass/27 item 3: the resolver bar at 120 columns with `B base` and
+/// `d start over` both offered keeps the words of `d` and `esc` (the keys
+/// the user reaches for last), whatever it shortens earlier in the row.
+#[test]
+fn resolver_bar_at_120_with_base_keeps_the_words_of_d_and_esc() {
+    let hints = hints_for(&document(true, true), Divider::Hidden, 120);
+    let text = hints_text(&hints);
+    assert!(text.contains("B base"), "`B base` is drawn: {text}");
+    assert!(text.ends_with("d start over  esc close"), "{text}");
 }
