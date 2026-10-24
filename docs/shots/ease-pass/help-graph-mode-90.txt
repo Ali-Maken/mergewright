@@ -3,13 +3,13 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
  ◆ wallet  ~/code/wallet · wallet-release             4 commits  2 merged branches folded
 ╭─ keys here ───────────────────────────────────────────────────────────────── esc close ╮
 │ › graph                                                                                │
+│ GRAPH MODE                                                                             │
+│ ●     Folded merges   merged branches fold into their merge row   (on)                 │
+│▸○     Every branch    every branch on its own lane, as before                          │
 │ HERE                                                                                   │
 │ F3    Cycle the graph renderer                                                         │
 │ B     Write the commit-graph file (when offered)                                       │
 │ X     Decline the commit-graph offer                                                   │
-│ GRAPH MODE                                                                             │
-│ ●     Folded merges   merged branches fold into their merge row   (on)                 │
-│▸○     Every branch    every branch on its own lane, as before                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 
