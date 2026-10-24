@@ -193,3 +193,47 @@ fn no_drawn_cursor_row_picks_a_plain_row() {
         }
     );
 }
+
+/// Ticket ease-28 Q3: the stop ladder's tail keys yield only down to the
+/// last wording that carries the count. Merge and rebase, with and without
+/// files conflicted (no count, no wording is worth a key).
+#[test]
+fn the_stop_ladder_marks_its_last_counted_wording() {
+    use crate::update::LiveOrigin;
+    use crate::update::Stop;
+    use mergewright_git::state::InProgress;
+    for (kind, origin, count, marked) in [
+        (
+            InProgress::Merge,
+            LiveOrigin::OutsideMergewright,
+            2,
+            Some(2),
+        ),
+        (InProgress::Merge, LiveOrigin::ThisRun, 2, Some(1)),
+        (InProgress::Rebase, LiveOrigin::PreviousRun, 2, Some(2)),
+        (InProgress::Merge, LiveOrigin::ThisRun, 0, None),
+    ] {
+        let state = AppState {
+            stopped: Some(Stop {
+                origin,
+                again: false,
+                kind,
+                paths_at_stop: count,
+                rewrite: None,
+            }),
+            ..AppState::default()
+        };
+        let ladder = crate::update::banner::stop_line_wordings(&state).expect("a stop");
+        if let Some(last) = marked {
+            assert!(ladder.wordings[last].contains("conflicted"), "{ladder:?}");
+            assert!(
+                ladder.wordings[last + 1..]
+                    .iter()
+                    .all(|words| !words.contains("conflicted")),
+                "{ladder:?}"
+            );
+        }
+        let wording = stopped_line(&state).expect("a stop");
+        assert_eq!(wording.keys_yield_last(), marked, "{kind:?} {origin:?}");
+    }
+}

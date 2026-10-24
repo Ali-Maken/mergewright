@@ -61,9 +61,21 @@ pub(crate) fn stopped_line(state: &AppState) -> Option<mergewright_ui::graph_scr
     let wording = mergewright_ui::graph_screen::StopWording::new(full, wordings.collect());
     Some(if ladder.before_keys {
         wording.before_keys()
+    } else if let Some(last) = last_counted(&ladder.wordings) {
+        // His rule: drop the origin, keep the count; tail keys give way for it.
+        wording.keys_yield_through(last)
     } else {
         wording
     })
+}
+
+/// The last wording that still says how many files are conflicted: the bar's
+/// tail keys give way for these and never for a shorter one (ease-28 Q3).
+/// `None` with no count to keep.
+fn last_counted(wordings: &[String]) -> Option<usize> {
+    wordings
+        .iter()
+        .rposition(|words| words.contains(" conflicted"))
 }
 
 /// What the footer offers under this frame's rows.

@@ -260,6 +260,7 @@ Decides which hints the footer draws, per context; `graph_screen`'s footer draws
 - `hints_for` (fn) — `(context, divider, columns)`: as many whole hints for `context` as fit.
 - `HINT_SEPARATOR` (const), `hints_text` (fn) — `" · "`; hints as the footer draws them.
 - `StopWording` (struct) — why an operation stopped, fullest wording first; `StopWording::new`, `StopWording::full`, `StopWording::before_keys`, `StopWording::is_before_keys`.
+- `StopWording::keys_yield_through`, `StopWording::without_keys_yield`, `StopWording::keys_yield_last` — tail keys give way for a counted wording (ease-28).
 - `stopped_row`, `stopped_row_before_keys` (fns) — the bottom row while an operation is stopped: reason and bar.
 - `fit_status_line` (fn) — `(reason, keys, columns)`: a `reason · keys` status line cut to fit.
 - `doorway_words` (fn) — `(keys) -> Option<String>`: the bar's doorway, `? keys` as the keymap spells it.
