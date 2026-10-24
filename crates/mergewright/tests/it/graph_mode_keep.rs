@@ -113,9 +113,20 @@ fn typed_graph_on_every_branch(columns: u16) -> (Pty, Screen, Isolated) {
     pty.send(b"graph");
     let typed = pty.wait_for("the group", |s| s.has("Every branch") && s.has("› graph"));
     assert!(typed.has("Cycle the graph renderer"), "{}", typed.text());
-    for _ in 0..4 {
-        pty.send(DOWN);
-    }
+    // The group lists first (ease-pass 25): one `↓` from Folded merges.
+    let (group, here) = (
+        typed.text().find("GRAPH MODE").expect("the group"),
+        typed
+            .text()
+            .find("Cycle the graph renderer")
+            .expect("a HERE row"),
+    );
+    assert!(
+        group < here,
+        "GRAPH MODE before the HERE rows\n{}",
+        typed.text()
+    );
+    pty.send(DOWN);
     let screen = pty.wait_for("the cursor on Every branch", |s| {
         cursor_on(s, "○", "Every branch")
     });
@@ -130,8 +141,8 @@ fn typed_graph_lists_the_group_after_here_at_120_and_90() {
     shot(
         &mut shots,
         "help-graph-mode-120.txt",
-        "`?` on the graph, typed `graph`: three `HERE` rows `graph` also finds, then the \
-         `GRAPH MODE` group with `● Folded merges` (its detail, then `(on)`) and `○ Every \
+        "`?` on the graph, typed `graph`: the `GRAPH MODE` group first, then the `HERE` rows \
+         `graph` also finds; the group has `● Folded merges` (its detail, then `(on)`) and `○ Every \
          branch` under the cursor `▸`, each with `graph.merged_branches` at the right.",
         &wide,
     );

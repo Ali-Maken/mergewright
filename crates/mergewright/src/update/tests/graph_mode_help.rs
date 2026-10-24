@@ -248,11 +248,8 @@ fn the_bar_says_kept_or_why_not_with_its_mark_drawn() {
         },
     );
     let drawn = bottom_row(&failed);
-    // The spec asked for `✗` before these words; `Status::Failed` draws
-    // none (`view/status.rs:108`), and a new variant is a spec change — the
-    // gap is the ticket's NOTES, the words are pinned here.
     assert!(
-        drawn.starts_with("Graph: every branch for this run · not kept: can't write"),
+        drawn.starts_with("✗ Graph: every branch for this run · not kept: can't write"),
         "{drawn}"
     );
     let history = failed.history.as_ref().expect("a walk");
@@ -261,4 +258,45 @@ fn the_bar_says_kept_or_why_not_with_its_mark_drawn() {
         MergedBranches::Shown,
         "the switch stands"
     );
+}
+
+/// Typing the setting's name lists it before the HERE rows (ease-pass 25).
+#[test]
+fn a_setting_named_by_the_query_lists_before_here() {
+    for word in ["graph", "every", "fold"] {
+        let order = headers(&typed(&help(), word));
+        assert_eq!(
+            order.first().map(String::as_str),
+            Some("GRAPH MODE"),
+            "{word}: {order:?}"
+        );
+    }
+}
+
+/// `? graph ↓ ⏎` switches the mode: four steps, typed word one (ease-pass 25).
+#[test]
+fn the_graph_switch_journey_is_four_steps() {
+    let steps = [
+        key(KeyCode::Char('?')),
+        key(KeyCode::Down),
+        key(KeyCode::Enter),
+    ];
+    let (mut state, _) = merge_on_screen(WALK, 1);
+    state.size = Size {
+        columns: 120,
+        rows: 36,
+    };
+    let (state, _) = update(&state, steps[0].clone());
+    let state = typed(&state, "graph"); // one step: the word
+    let (state, _) = update(&state, steps[1].clone());
+    let (after, commands) = update(&state, steps[2].clone());
+    assert_eq!(kept(&commands), vec![MergedBranches::Shown]);
+    assert_eq!(
+        after
+            .history
+            .as_ref()
+            .map(crate::history::History::merged_branches),
+        Some(MergedBranches::Shown)
+    );
+    assert_eq!(steps.len() + 1, 4);
 }

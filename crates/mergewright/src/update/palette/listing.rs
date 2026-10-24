@@ -269,7 +269,7 @@ pub(super) fn filter(
         .ok()
         .filter(|chord| keymap.translate(at, *chord) != Translated::Unbound)
         .and_then(|chord| keymap.acting(at, chord));
-    let mut out: Vec<(bool, Group)> = Vec::new();
+    let mut out: Vec<(bool, bool, Group)> = Vec::new();
     for (header, entries) in groups {
         let mut kept: Vec<(u32, usize, Entry)> = entries
             .into_iter()
@@ -300,15 +300,25 @@ pub(super) fn filter(
             && kept
                 .first()
                 .is_some_and(|(_, _, entry)| action_of(entry) == chord_row);
+        // A setting group whose name (header or a choice's title) starts with
+        // the query lists before the other groups (ease-pass 25).
+        let lower = typed.to_lowercase();
+        let named = !typed.is_empty()
+            && kept.iter().any(|(_, _, entry)| {
+                matches!(entry.row.kind, RowKind::Setting { .. })
+                    && (header.to_lowercase().starts_with(&lower)
+                        || entry.row.label.as_str().to_lowercase().starts_with(&lower))
+            });
         let rows = kept
             .into_iter()
             .map(|(_, _, entry)| (entry.row, entry.target))
             .collect();
-        out.push((has_chord, (sanitize_line(header), rows)));
+        out.push((has_chord, named, (sanitize_line(header), rows)));
     }
-    // The chord's group first; the rest keep their order (a stable sort).
-    out.sort_by_key(|(has_chord, _)| !has_chord);
-    out.into_iter().map(|(_, group)| group).collect()
+    // The chord's group first, then a setting the query names; the rest keep
+    // their order (a stable sort).
+    out.sort_by_key(|(has_chord, named, _)| (!has_chord, !named));
+    out.into_iter().map(|(_, _, group)| group).collect()
 }
 
 /// One shown row, flattened: its group's header, the row, what it runs.

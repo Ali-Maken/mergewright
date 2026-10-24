@@ -1,15 +1,15 @@
-ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks like — `?` on the graph, typed `graph`: three `HERE` rows `graph` also finds, then the `GRAPH MODE` group with `● Folded merges` (its detail, then `(on)`) and `○ Every branch` under the cursor `▸`, each with `graph.merged_branches` at the right. Look unjudged (rule 6); colour unverified (rule 5).
+ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks like — `?` on the graph, typed `graph`: the `GRAPH MODE` group first, then the `HERE` rows `graph` also finds; the group has `● Folded merges` (its detail, then `(on)`) and `○ Every branch` under the cursor `▸`, each with `graph.merged_branches` at the right. Look unjudged (rule 6); colour unverified (rule 5).
 
  ◆ wallet  ~/code/wallet · wallet-release                                           4 commits  2 merged branches folded
             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
 ▸   ◆    wal│ › graph                                                                                      │here)
-    ┃       │ HERE                                                                                         │
-    ◉       │ F3    Cycle the graph renderer                                               graph.renderer  │
-    ●       │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
-  ◇━╯    mai│ X     Decline the commit-graph offer                             graph.decline_commit_graph  │ago
-            │ GRAPH MODE                                                                                   │
-            │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
-            │▸○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
+    ┃       │ GRAPH MODE                                                                                   │
+    ◉       │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
+    ●       │▸○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
+  ◇━╯    mai│ HERE                                                                                         │ago
+            │ F3    Cycle the graph renderer                                               graph.renderer  │
+            │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
+            │ X     Decline the commit-graph offer                             graph.decline_commit_graph  │
             ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
                                                                                   │
                                                                                   │
