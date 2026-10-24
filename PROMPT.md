@@ -494,7 +494,8 @@ Tests run on the developer's laptop while they're using it. **The suite must nev
 
 | Tier | Command | When | Budget |
 |---|---|---|---|
-| **Fast** (default) | `cargo test` | After every change; the gate for every ticket | Under 3 minutes and about 2 GB of RAM in total |
+| **Fast** (default) | `cargo nextest run` + `cargo test --doc` | After every change; the gate for every ticket | Under 6 minutes (user, 2026-10-24; was 3 — unreachable at 4 test threads, ease-pass/24) and about 2 GB of RAM in total |
+| **Walk** | `scripts/walks.sh` (acceptance walks and pty tests, split from Fast by nextest's default filter, ADR-0066) | After every merge (conductor); before hand-in when a ticket changes drawing, keys or a walk (builder); milestone reviews | Set from measurement: 120 s on 2026-10-24 |
 | **Heavy** | `cargo test --features heavy-tests -- --test-threads=2` | Milestone reviews only | Under 10 minutes and about 3 GB |
 | **Manual** | Steps in `TESTING.md` | Only when the user chooses (the M1 and M8 checkpoints) | — |
 

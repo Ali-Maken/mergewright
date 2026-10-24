@@ -15,7 +15,7 @@ largest product-code cost is the hint bar's fitting (ticket 24).
 - What moves is chosen by kind, never by time alone. A fast test over 10 s is a bug.
 
 ## Consequences
-- Fast tier 387–391 s after the split (6772 tests); walks 463 tests, 120–124 s solo. 180 s still unmet → ticket 24.
+- Fast tier 387–391 s after the split (6772 tests); walks 463 tests, 120–124 s solo. 180 s still unmet → ticket 24 (hints fitting, 355 s). 180 s is unreachable at 4 test threads (sum ~1410 s); the user set the budget to 6 minutes on 2026-10-24.
 - A builder can break a walk and not see it until the merge gate, unless its ticket triggers the walk run.
 - Acceptance commands naming walk modules need `--ignore-default-filter` or `--profile walks` (scripts updated in 23;
   older TESTING.md/ticket lines are not).

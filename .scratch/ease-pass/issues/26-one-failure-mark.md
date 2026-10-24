@@ -1,6 +1,6 @@
 # fix round: one failure mark — every failure in the app starts with `⊗`, drawn by the renderer, never by the producer
 
-Status: draft (waits on Q1, below: it changes one line of an accepted mock)
+Status: ready (Q1 answered by the user 2026-10-24: yes, `⊗`)
 Blocked by: 25 (merged)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: the rule is decided below and pinned by an invariant test plus a glyph-collision test. What's left is mechanical: one ui module, its callers, and stripping one producer's `✗`. The one judgement (which `Failed` arms get the mark) is a stated rule with a fixed list.
 Needs: none.
@@ -66,6 +66,7 @@ Today a failed push, a failed count and a failed read reach the bar as bare word
 
 ## Q1 (to the user, via the conductor; recommendation first)
 A failed action shows `⊗` before its words, not `✗` (J already uses `✗` for a lost commit). This changes the setting mock's `✗ Graph: … not kept`. **yes (recommended)** / keep `✗` / other mark.
+**Answer (user, 2026-10-24): yes.** Design text applied (`docs/design/01-view-mockups.md` after :398), ADR-0067 filed.
 
 ## Scope
 In:
