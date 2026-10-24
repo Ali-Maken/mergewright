@@ -16,6 +16,14 @@ use super::{
     PieceKind, RefCell, Rgb, Row, Toward, alpha_byte, edge_at, lifted, node, stroke_width,
 };
 
+/// x of a lane column's centre in strip pixels: the boundary between its
+/// two cells, so a node sized by `node.rs` (one cell of room each side)
+/// stays inside its lane.
+pub(crate) fn lane_centre_x(column: usize, cell_width: f32) -> f32 {
+    let lane = pixels(CELLS_PER_LANE) * cell_width;
+    count(column) * lane + lane / 2.0
+}
+
 impl<'a> Pen<'a> {
     pub(super) fn new(
         look: &'a Look<'a>,
@@ -85,7 +93,7 @@ impl<'a> Pen<'a> {
 
     /// The x of a lane column's centre line, in strip pixels.
     fn x(&self, column: usize) -> f32 {
-        (count(column) * pixels(CELLS_PER_LANE) + 0.5) * self.cell_width
+        lane_centre_x(column, self.cell_width)
     }
 
     /// Whether this pass draws what a node piece of lane column `column`
@@ -372,3 +380,6 @@ impl<'a> Pen<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

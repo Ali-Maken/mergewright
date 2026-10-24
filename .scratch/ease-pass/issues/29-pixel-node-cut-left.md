@@ -94,3 +94,13 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Planner's note to the conductor
 Search tools (rg) were down this pass, so Glob and Grep failed. I could not list `issues/` (28's file name unknown; format taken from 26), grep DESIGN for a pixel node-placement rule (none found in 03 §3.x or 04, read by hand), or list `docs/shots/`. The shot list above is from the scout and the log, so the builder's NOTES list is the real one.
+
+## NOTES (builder, 2026-10-24) — BLOCKED on D3, partial
+
+Red seen on main: `every_node_style_lies_whole_inside_its_lane` -> "Commit at 9x20 lane 0: x 0..=10 leaves lane 0..18 with a pixel to spare".
+
+Done (committed): `lane_centre_x` in `raster/pen.rs` (Pen::x calls it; the only lane-x formula, other CELLS_PER_LANE sites are cell-range crops, not lane x); D4 in `raster/node.rs` (room reserves `gap.max(1.0)`; head halo never thinner than 1 px hairline, else the fringe hit the lane edge pixel at 8x16, 9x20). Tests green: `node::extent_tests::{every_node_style_lies_whole_inside_its_lane, a_node_piece_holds_its_node_whole}`, `pen::tests::a_lane_centres_on_the_boundary_of_its_two_cells`.
+
+BLOCKED (D3 stop condition): the pixel "stub" is the folded-edge tail (`pen.rs` `tail`), which runs from node edge toward the next lane's centre. It already left its lane on main (pixel x=18 at 9x20, lane edge 18). Max tail x vs lane right edge, after D1 (both Below/Above): 6x24 15/12, 7x28 18/14, 8x16 21/16, 9x20 24/18, 10x22 27/20, 17x37 48/34, 24x52 68/48. Room between node edge and lane edge is w - clearance ~ 0.3w - gap (9x20: 18 - 15.7 = 2.3 px), so no corner holds the tail at its current size. The stub test (strict: tail alpha>0 pixels x < 2w) was removed from the commit because it cannot pass. Needs a conductor decision: shorten tail to fit, or relax the rule to "tail stays left of the next lane's centre" (ADR-0022).
+
+Not done: integration tests/snapshots in `tests/it` (raster*.rs, raster_continuation) fail because pixels moved +0.5 cell; no re-shots, no capture test, no app crate checks, no gates beyond fmt/clippy on graph (clean) and graph lib tests (167 pass).

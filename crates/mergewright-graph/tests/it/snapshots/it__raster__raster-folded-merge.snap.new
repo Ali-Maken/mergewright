@@ -1,0 +1,69 @@
+---
+source: crates/mergewright-graph/tests/it/raster.rs
+assertion_line: 516
+expression: "art(&folded_frame(&rows, None, true, SNAPSHOT_CELL))"
+---
+                        j       |
+                        j       |
+                        j       |
+     .cccc.                     |
+    ccc..ccc                    |
+   .c.    .c.           j       |
+   cc .cc. cc           j       |
+   c. cccc .c f...      j       |
+   c. cccc .c ffff.             |
+   cc .cc. cc   .....           |
+   .c.    .c.     ....  .       |
+    ccc..ccc       ...  j       |
+     .cccc.         ..  j       |
+       ..            .  .       |
+       cc            .          |
+       cc            .          |
+       cc               j       |
+       cc               j       |
+       ..               j       |
+     .cccc.                     |
+    cccccccc                    |
+   .cccccccc.           j       |
+   cccccccccc           j       |
+   cccccccccc           j       |
+   cccccccccc                   |
+   cccccccccc                   |
+   .cccccccc.           .       |
+    cccccccc            j       |
+     .cccc.             j       |
+       ..               .       |
+       cc                       |
+       cc                       |
+       cc            .  j       |
+       cc            .  j       |
+       ..            .  j       |
+     .cccc.         ..          |
+    cccccccc       ...          |
+   .cccccccc.     ....  j       |
+   cccccccccc   .....   j       |
+   cccccccccc dddd.     j       |
+   cccccccccc d...              |
+   cccccccccc                   |
+   .cccccccc.           .       |
+    cccccccc            j       |
+     .cccc.             j       |
+       ..               .       |
+       cc                       |
+       cc                       |
+       cc               j       |
+       cc               j       |
+       ..               j       |
+     .cccc.                     |
+    cccccccc                    |
+   .cccccccc.           j       |
+   cccccccccc           j       |
+   cccccccccc           j       |
+   cccccccccc                   |
+   cccccccccc                   |
+   .cccccccc.           .       |
+    cccccccc            j       |
+     .cccc.             j       |
+                        .       |
+                                |
+                                |
