@@ -69,10 +69,18 @@ impl NodeSize {
         }
     }
 
-    /// From the node's centre to the nearest point a line may touch beside
-    /// a plain node: its outer radius plus the clear gap.
-    pub(super) fn clearance(self) -> f32 {
-        self.radius + self.gap
+    /// From the node's centre to the outer edge of `ring`'s widest mark.
+    pub(super) fn reach(self, ring: Ring) -> f32 {
+        match ring {
+            Ring::Head => self.radius * 1.4,
+            _ => self.radius,
+        }
+    }
+
+    /// The clear gap punched around a node.
+    #[cfg(test)]
+    pub(super) fn gap_px(self) -> f32 {
+        self.gap
     }
 }
 
@@ -86,11 +94,8 @@ pub(super) fn draw(
     ink: Option<Ink>,
     shift: Transform,
 ) {
-    let NodeSize { radius, gap, .. } = size;
-    let reach = match ring {
-        Ring::Head => radius * 1.4,
-        _ => radius,
-    };
+    let NodeSize { gap, .. } = size;
+    let reach = size.reach(ring);
     fill_circle(pixmap, centre, reach + gap, None, shift);
     if let Some(ink) = ink {
         draw_ring(pixmap, ring, centre, size, ink, shift);
@@ -222,6 +227,6 @@ fn fill_square(pixmap: &mut Pixmap, (x, y): (f32, f32), half: f32, ink: Ink, shi
 }
 
 #[cfg(test)]
-mod extent_tests;
+pub(super) mod extent_tests;
 #[cfg(test)]
 mod tests;

@@ -376,17 +376,4 @@ struct Scanline {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::stroke_width;
-
-    #[test]
-    #[allow(
-        clippy::float_cmp,
-        reason = "Exact clamp bounds and an exact division; no rounding involved."
-    )]
-    fn stroke_width_clamps_by_cell_width() {
-        assert_eq!(stroke_width(8), 1.5);
-        assert_eq!(stroke_width(24), 2.5);
-        assert_eq!(stroke_width(17), 17.0 / 8.0);
-    }
-}
+mod tests;

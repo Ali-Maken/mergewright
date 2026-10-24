@@ -17,7 +17,7 @@ use crate::row::Row;
 
 /// The cell sizes the node is held to: the user's, the fallback, a larger
 /// pair and two narrow-tall ones.
-const CELLS: [(u32, u32); 7] = [
+pub(in crate::raster) const CELLS: [(u32, u32); 7] = [
     (9, 20),
     (8, 16),
     (10, 22),
@@ -26,7 +26,7 @@ const CELLS: [(u32, u32); 7] = [
     (6, 24),
     (7, 28),
 ];
-const STYLES: [Ring; 6] = [
+pub(in crate::raster) const STYLES: [Ring; 6] = [
     Ring::Commit,
     Ring::Merge,
     Ring::Root,
@@ -34,7 +34,7 @@ const STYLES: [Ring; 6] = [
     Ring::Stash,
     Ring::Uncommitted,
 ];
-const LANES: usize = 3;
+pub(in crate::raster) const LANES: usize = 3;
 const PALETTE: [Rgb; 1] = [Rgb {
     red: 0x00,
     green: 0x77,
@@ -47,7 +47,7 @@ const MUTED: Rgb = Rgb {
 };
 
 /// One root commit with no edges, its node moved to `lane`.
-fn lone_row(lane: usize) -> Row {
+pub(in crate::raster) fn lone_row(lane: usize) -> Row {
     let mut row = layout(&[commit(1, &[], 0, b"only")], Seeds::default()).remove(0);
     row.lane = lane;
     // No lane is drawn through the row: only the node.
@@ -55,11 +55,16 @@ fn lone_row(lane: usize) -> Row {
     row
 }
 
-fn strip<'a>(rows: &'a [PlainRow<'a>], cell: (u32, u32), marker: Option<Marker>) -> PlainStrip<'a> {
+pub(in crate::raster) fn strip<'a>(
+    rows: &'a [PlainRow<'a>],
+    cell: (u32, u32),
+    marker: Option<Marker>,
+    lane_columns: usize,
+) -> PlainStrip<'a> {
     PlainStrip {
         rows,
         above: None,
-        lane_columns: LANES,
+        lane_columns,
         marker,
         cell_width: cell.0,
         cell_height: cell.1,
@@ -120,7 +125,7 @@ fn every_node_style_lies_whole_inside_its_lane() {
                     ring,
                     stubs: Vec::new(),
                 }];
-                let frame = rasterise_backdrop(&strip(&rows, cell, None), Backdrop::Full)
+                let frame = rasterise_backdrop(&strip(&rows, cell, None, LANES), Backdrop::Full)
                     .expect("one lone row rasterises");
                 assert_whole(
                     bounds(&frame, 0, 0),
@@ -144,7 +149,7 @@ fn a_node_piece_holds_its_node_whole() {
                     ring,
                     stubs: Vec::new(),
                 }];
-                let strip = strip(&rows, cell, None);
+                let strip = strip(&rows, cell, None, LANES);
                 let thread = std::collections::BTreeSet::from([lane]);
                 let lit = [Lit {
                     emphasis: Emphasis::Normal,

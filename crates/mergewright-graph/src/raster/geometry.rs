@@ -2,7 +2,7 @@
 //! in [`super`].
 
 use tiny_skia::{
-    BlendMode, FillRule, LineCap, Paint, Path, PathBuilder, PathSegment, Pixmap, Stroke, Transform,
+    BlendMode, FillRule, Paint, Path, PathBuilder, PathSegment, Pixmap, Stroke, Transform,
 };
 
 use super::{Ink, Row};
@@ -71,24 +71,6 @@ pub(super) fn stroke(
     // nothing to draw.
     let Some(path) = path else { return };
     super::stroke::styled(pixmap, &path, &paint(ink), ink.width, ink.shape, shift);
-}
-
-pub(super) fn stroke_with(
-    pixmap: &mut Pixmap,
-    path: Option<tiny_skia::Path>,
-    paint: &Paint<'_>,
-    width: f32,
-    shift: Transform,
-) {
-    // `finish` yields `None` only for a path with no length; there is then
-    // nothing to draw.
-    let Some(path) = path else { return };
-    let stroke = Stroke {
-        width,
-        line_cap: LineCap::Butt,
-        ..Stroke::default()
-    };
-    stroke_placed(pixmap, &path, paint, &stroke, shift);
 }
 
 /// Pixels per [`snap`] step: outlines sit on a 1/1024 px grid.

@@ -110,11 +110,11 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 
 ## raster
 - `cache` (mod) — the strip cache.
-- `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
+- `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier. A lane's centre is the boundary between its two cells (`lane_centre_x`, crate-private, `raster/pen.rs`).
 - `OFF_THREAD_ALPHA` (const) — alpha of a column off the selection's thread.
 - `FADED_ALPHA` (const) — alpha of a dimmed row or column with no thread in play.
 - `Emphasis` (enum) — `Normal` or `Dimmed`; alpha only, never width.
-- `Stub` (struct) — `identity`, `toward`: a folded edge as the rasteriser draws it.
+- `Stub` (struct) — `identity`, `toward`: a folded edge as the rasteriser draws it. Pixel tier: a corner tail from the node's rim, inside its lane (`Below` lower-right, `Above` upper-right).
 - `Marker` (struct) — the rail column: `column`.
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`, `Selection`.
 - `Ring` (enum) — node style: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of(&Row)` from git's parents (`Row::is_merge`: a folded merge is `Merge`), stash-blind.

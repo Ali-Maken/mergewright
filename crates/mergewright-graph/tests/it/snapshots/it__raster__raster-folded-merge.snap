@@ -1,68 +1,68 @@
 ---
-source: crates/graft-graph/tests/it/raster.rs
+source: crates/mergewright-graph/tests/it/raster.rs
 expression: "art(&folded_frame(&rows, None, true, SNAPSHOT_CELL))"
 ---
-                    j           |
-                    j           |
-                    j           |
- .cccc.                         |
-ccc..ccc                        |
-c.    .c.           j           |
-c .cc. cc           j           |
-. cccc .c f...      j           |
-. cccc .c ffff.                 |
-c .cc. cc   .....               |
-c.    .c.     ....  .           |
-ccc..ccc       ...  j           |
- .cccc.         ..  j           |
-   ..            .  .           |
-   cc            .              |
-   cc            .              |
-   cc               j           |
-   cc               j           |
-   ..               j           |
- .cccc.                         |
-cccccccc                        |
-cccccccc.           j           |
-ccccccccc           j           |
-ccccccccc           j           |
-ccccccccc                       |
-ccccccccc                       |
-cccccccc.           .           |
-cccccccc            j           |
- .cccc.             j           |
-   ..               .           |
-   cc                           |
-   cc                           |
-   cc            .  j           |
-   cc            .  j           |
-   ..            .  j           |
- .cccc.         ..              |
-cccccccc       ...              |
-cccccccc.     ....  j           |
-ccccccccc   .....   j           |
-ccccccccc dddd.     j           |
-ccccccccc d...                  |
-ccccccccc                       |
-cccccccc.           .           |
-cccccccc            j           |
- .cccc.             j           |
-   ..               .           |
-   cc                           |
-   cc                           |
-   cc               j           |
-   cc               j           |
-   ..               j           |
- .cccc.                         |
-cccccccc                        |
-cccccccc.           j           |
-ccccccccc           j           |
-ccccccccc           j           |
-ccccccccc                       |
-ccccccccc                       |
-cccccccc.           .           |
-cccccccc            j           |
- .cccc.             j           |
-                    .           |
+                        j       |
+                        j       |
+                        j       |
+     .cccc.                     |
+    ccc..ccc                    |
+   .c.    .c.           j       |
+   cc .cc. cc           j       |
+   c. cccc .c           j       |
+   c. cccc .c                   |
+   cc .cc. cc                   |
+   .c.    .c.           .       |
+    ccc..ccff           j       |
+     .cccc.fff          j       |
+       ..   fff         .       |
+       cc    f.                 |
+       cc                       |
+       cc               j       |
+       cc               j       |
+       ..               j       |
+     .cccc.                     |
+    cccccccc                    |
+   .cccccccc.           j       |
+   cccccccccc           j       |
+   cccccccccc           j       |
+   cccccccccc                   |
+   cccccccccc                   |
+   .cccccccc.           .       |
+    cccccccc            j       |
+     .cccc.             j       |
+       ..               .       |
+       cc                       |
+       cc                       |
+       cc               j       |
+       cc    d.         j       |
+       ..   ddd         j       |
+     .cccc.ddd                  |
+    cccccccdd                   |
+   .cccccccc.           j       |
+   cccccccccc           j       |
+   cccccccccc           j       |
+   cccccccccc                   |
+   cccccccccc                   |
+   .cccccccc.           .       |
+    cccccccc            j       |
+     .cccc.             j       |
+       ..               .       |
+       cc                       |
+       cc                       |
+       cc               j       |
+       cc               j       |
+       ..               j       |
+     .cccc.                     |
+    cccccccc                    |
+   .cccccccc.           j       |
+   cccccccccc           j       |
+   cccccccccc           j       |
+   cccccccccc                   |
+   cccccccccc                   |
+   .cccccccc.           .       |
+    cccccccc            j       |
+     .cccc.             j       |
+                        .       |
                                 |
                                 |

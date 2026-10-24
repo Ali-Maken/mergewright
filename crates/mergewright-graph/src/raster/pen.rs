@@ -4,16 +4,12 @@
 pub(super) mod continuation;
 mod straight;
 
-use tiny_skia::{
-    Color, GradientStop, LinearGradient, Paint, Pixmap, Point, Rect, SpreadMode, Transform,
-};
+use tiny_skia::{Pixmap, Rect, Transform};
 
-use super::geometry::{
-    arc_in, arc_out, count, goes_down, line, paint, pixels, stroke, stroke_with,
-};
+use super::geometry::{arc_in, arc_out, count, goes_down, line, paint, pixels, stroke};
 use super::{
     Band, BranchIdentity, CELLS_PER_LANE, Edge, Ink, Inked, LaneStroke, Look, Marker, Part, Pen,
-    PieceKind, RefCell, Rgb, Row, Toward, alpha_byte, edge_at, lifted, node, stroke_width,
+    PieceKind, RefCell, Row, Toward, alpha_byte, edge_at, lifted, node, stroke_width,
 };
 
 /// x of a lane column's centre in strip pixels: the boundary between its
@@ -273,7 +269,6 @@ impl<'a> Pen<'a> {
                 stroke(pixmap, line(x, local.mid, x, local.bottom), lane_ink, place);
             }
         }
-        self.tail(pixmap, inked, local, place);
         if let Some(marker) = self.look.marker {
             self.rail(pixmap, inked, marker, band);
         }
@@ -294,15 +289,19 @@ impl<'a> Pen<'a> {
             ring_ink,
             place,
         );
+        self.tail(pixmap, inked, local, place);
     }
 
-    /// A folded edge's tail (ADR-0022): leaves the node's right edge level,
-    /// curves toward where the folded branch went (down for `Below`, up for
-    /// `Above`) over half a band, and fades from the lane's alpha to nothing
-    /// before the next column's centre line, so it never reads as reaching
-    /// another lane. Several folded edges on a row draw one tail, in the
-    /// first edge's colour.
-    /// `band` and `place` are the node's, local (`local`).
+    /// A folded edge's stub (ADR-0022), ease-pass/29 D3: a short straight
+    /// tail in the node's own lane, on the ray from the node's centre to the
+    /// lane's corner on its side (down-right for `Below`, up-right for
+    /// `Above`). It starts at the node's rim, over the punched gap, and ends
+    /// where its stroke is still one pixel inside the lane and the row, so it
+    /// never reaches another lane or the image edge; the Unicode tier puts
+    /// its `▾`/`▴` in the same gap cell. Several folded edges on a row draw
+    /// one tail, in the first edge's colour.
+    /// `band` and `place` are the node's, local (`local`); drawn after the
+    /// node, whose punched disc would otherwise clear its start.
     fn tail(&self, pixmap: &mut Pixmap, inked: &Inked<'_>, band: Band, place: Transform) {
         let Some(first) = inked.stubs.first() else {
             return;
@@ -315,42 +314,25 @@ impl<'a> Pen<'a> {
             return;
         };
         let ink = self.ink(Some(first.identity), alpha);
-        let from = (self.x(0) + self.node.clearance(), band.mid);
-        // Half a stroke short, and half again for anti-aliasing: the tail's
-        // widest reach stays left of the next centre line.
-        let to_x = self.x(1) - self.stroke;
-        let to_y = match first.toward {
-            Toward::Below => band.bottom,
-            Toward::Above => band.top,
+        let centre = (self.x(0), band.mid);
+        let corner_dy = match first.toward {
+            Toward::Below => self.cell_height / 2.0,
+            Toward::Above => -self.cell_height / 2.0,
         };
-        let Rgb { red, green, blue } = ink.rgb;
-        // A gradient across x: alpha falls with distance from the node,
-        // whichever way the curve bends.
-        let shader = LinearGradient::new(
-            Point::from_xy(from.0, band.mid),
-            Point::from_xy(to_x, band.mid),
-            vec![
-                GradientStop::new(0.0, Color::from_rgba8(red, green, blue, ink.alpha)),
-                GradientStop::new(1.0, Color::from_rgba8(red, green, blue, 0)),
-            ],
-            SpreadMode::Pad,
-            Transform::identity(),
-        );
-        // `new` is `None` only when start and end coincide; the tail then
-        // has no length and there is nothing to draw.
-        let Some(shader) = shader else { return };
-        let paint = Paint {
-            shader,
-            anti_alias: true,
-            ..Paint::default()
-        };
-        stroke_with(
-            pixmap,
-            arc_out(from, (to_x, to_y)),
-            &paint,
-            ink.width,
-            place,
-        );
+        let norm = self.cell_width.hypot(corner_dy);
+        let (ux, uy) = (self.cell_width / norm, corner_dy / norm);
+        // Longest reach keeping the stroke's half-width and a pixel inside.
+        let margin = 1.0 + ink.width / 2.0;
+        let along_x = (self.cell_width - margin) / ux;
+        let along_y = (self.cell_height / 2.0 - margin) / uy.abs();
+        let end = along_x.min(along_y);
+        let start = self.node.reach(inked.ring);
+        if end <= start {
+            return;
+        }
+        let point = |t: f32| (centre.0 + ux * t, centre.1 + uy * t);
+        let (from, to) = (point(start), point(end));
+        stroke(pixmap, line(from.0, from.1, to.0, to.1), ink, place);
     }
 
     /// The rail on one band: a 1 px dotted vertical on the marker column's
