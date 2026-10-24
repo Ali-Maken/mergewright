@@ -9,6 +9,7 @@ use mergewright_core::capabilities::PixelProtocol;
 use mergewright_graph::raster::cache::STRIP_ROWS;
 use ratatui::layout::Rect;
 
+use super::place::PINNED_SLOT;
 use super::*;
 use crate::session::for_tests::session;
 use crate::update::{Size, history_row_line};
