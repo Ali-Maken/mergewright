@@ -7,7 +7,8 @@ No design note: this is no user-facing feature. The one visible change (04 Part 
 ## For the user: one question, two checks
 
 **Question**
-- **U1. Code that moves the old-name folders.** Builds from before the rename kept each repo's undo history and settings in a folder named after the old project, inside that repo's `.git`. The app moves that folder to the new name the first time it opens the repo. The moving code has to spell the old name, so the old name would be in the public code. Your other rule says the public repo must not carry it. Which one wins?
+- **U1 answered 2026-10-25: DROP** (user: "drop it.....code contains nothing but current state of code"). Follow-up ticket 11b removes the old-name folder code, its tests and allow-list lines; runs after 11. Standing rule: no migration/old-generation code for pre-public states.
+- ~~**U1.**~~ Code that moves the old-name folders.** Builds from before the rename kept each repo's undo history and settings in a folder named after the old project, inside that repo's `.git`. The app moves that folder to the new name the first time it opens the repo. The moving code has to spell the old name, so the old name would be in the public code. Your other rule says the public repo must not carry it. Which one wins?
   - **keep** (recommended): any repo you haven't opened since the rename still gets its undo history moved. The old name shows in a few lines of public code, each marked as old-folder handling.
   - **drop**: open each of your repos once first. After that, the code and the old name go.
   - Until you answer, ticket 11 allow-lists those lines (reason `old-generation`). "Drop" becomes a follow-up ticket.
