@@ -1,0 +1,312 @@
+pp-01 A/B: old=68eec82c new=e4278ff2, order old new old new
+== ab-old-1 ==
+date 2026-10-25  rev 68eec82c  cargo-nextest 0.9.145 (00af4550e 2026-09-16)
+load before: 14.97 11.90 8.38   after: 8.44 10.06 8.90
+build_s 0.6  run_wall_s 407.5  tests 6774  sum_test_s 1620.4  slow_over_10s 9
+per-binary totals (s):
+     687.7  mergewright-ops::it
+     444.5  mergewright::it
+     112.8  mergewright-ui
+     106.5  mergewright
+      68.8  mergewright-ops
+      56.4  mergewright-git::it
+      51.0  mergewright-git
+      37.8  mergewright-graph::it
+      18.6  mergewright-fixtures
+      14.1  mergewright-graph
+       9.9  mergewright-fixtures::it
+       7.2  mergewright-ui::pane_boundaries
+       2.2  mergewright-term
+       1.0  mergewright-capabilities::checker
+       0.4  mergewright-core
+       0.3  mergewright-ui::lanes_without_hue
+       0.2  mergewright-ui::selection
+       0.2  mergewright-ui::no_literal_keys
+       0.2  mergewright-ui::graph_column
+       0.2  mergewright-ui::ascii_tier
+       0.1  mergewright-capabilities
+       0.1  mergewright-ui::graph_screen
+       0.1  mergewright-ui::resolver_layout
+       0.0  mergewright-ui::border_rules
+       0.0  mergewright-term::it
+slowest 20:
+    20.23  mergewright-ui  graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+    17.54  mergewright-ui  graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+    15.94  mergewright-ui  graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+    15.22  mergewright-ui  graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+    14.77  mergewright-git::it  diff_fixture::parse_unified_matches_numstat_for_every_shape
+    12.28  mergewright-ops::it  undo_cancel::cancel_at_every_step_boundary_is_clean
+    10.91  mergewright-graph::it  emphasis_layer::a_threaded_rows_emphasis_draws_nothing
+    10.60  mergewright-graph::it  raster_pieces::pieces_composite_equals_single_emphasis
+    10.46  mergewright  update::tests::bar_keys::every_key_the_bar_draws_is_answered
+    10.00  mergewright-graph  layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded
+     9.63  mergewright-ops  branch_status::tests::equivalence::stale_and_sibling_others_answer_as_the_oracle
+     9.29  mergewright-ops::it  conflict_ops::whole_file_shapes_resolve_like_git
+     9.24  mergewright-ops::it  pull_set_aside::the_ff_pull_set_aside_round_trips
+     9.17  mergewright::it  resolver::whole_file::whole_file_ops_per_row
+     9.02  mergewright  event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget
+     8.96  mergewright-ui  graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+     7.95  mergewright-ops::it  merge_set_aside::redo_of_a_set_aside_merge_round_trips
+     7.77  mergewright-ops::it  rewrite_preview::the_preview_honours_stop
+     7.72  mergewright-ui  graph_screen::hints::tests::no_context_hides_every_key
+     7.24  mergewright::it  published_repo::nothing_a_commit_would_carry_names_this_machine
+SLOW lines: 0
+
+== ab-new-1 ==
+date 2026-10-25  rev e4278ff2  cargo-nextest 0.9.145 (00af4550e 2026-09-16)
+load before: 8.44 10.06 8.90   after: 9.11 9.50 9.02
+build_s 0.7  run_wall_s 380.3  tests 6844  sum_test_s 1511.4  slow_over_10s 9
+per-binary totals (s):
+     665.0  mergewright-ops::it
+     418.3  mergewright::it
+     113.2  mergewright
+     106.3  mergewright-ui
+      46.4  mergewright-ops
+      39.9  mergewright-git
+      39.9  mergewright-git::it
+      36.5  mergewright-graph::it
+      13.6  mergewright-graph
+      12.7  mergewright-fixtures
+       7.4  mergewright-fixtures::it
+       7.2  mergewright-ui::pane_boundaries
+       2.2  mergewright-term
+       1.0  mergewright-capabilities::checker
+       0.4  mergewright-core
+       0.3  mergewright-ui::lanes_without_hue
+       0.3  mergewright-ui::selection
+       0.2  mergewright-ui::no_literal_keys
+       0.2  mergewright-ui::graph_column
+       0.2  mergewright-ui::ascii_tier
+       0.1  mergewright-capabilities
+       0.1  mergewright-ui::graph_screen
+       0.1  mergewright-ui::resolver_layout
+       0.0  mergewright-ui::border_rules
+       0.0  mergewright-term::it
+slowest 20:
+    19.12  mergewright-ui  graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+    16.28  mergewright-ui  graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+    14.45  mergewright-ui  graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+    14.37  mergewright-ui  graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+    12.27  mergewright-ops::it  undo_cancel::cancel_at_every_step_boundary_is_clean
+    11.52  mergewright  update::tests::bar_keys::every_key_the_bar_draws_is_answered
+    10.36  mergewright-graph::it  emphasis_layer::a_threaded_rows_emphasis_draws_nothing
+    10.22  mergewright-graph::it  raster_pieces::pieces_composite_equals_single_emphasis
+    10.19  mergewright-git::it  diff_fixture::parse_unified_matches_numstat_for_every_shape
+     9.75  mergewright-graph  layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded
+     9.25  mergewright  event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget
+     9.23  mergewright-ops::it  conflict_ops::whole_file_shapes_resolve_like_git
+     8.94  mergewright-ops::it  pull_set_aside::the_ff_pull_set_aside_round_trips
+     8.47  mergewright-ui  graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+     7.83  mergewright-ops::it  merge_set_aside::redo_of_a_set_aside_merge_round_trips
+     7.73  mergewright-ops::it  rewrite_preview::the_preview_honours_stop
+     7.46  mergewright-ui  graph_screen::hints::tests::no_context_hides_every_key
+     7.04  mergewright::it  published_repo::nothing_a_commit_would_carry_names_this_machine
+     6.92  mergewright-ui  graph_screen::hints::tests::the_three_most_relevant_never_fall_below_their_floor_rung
+     6.86  mergewright-graph::it  raster_pieces::equal_keys_equal_pixels
+SLOW lines: 0
+
+== ab-old-2 ==
+date 2026-10-25  rev 68eec82c  cargo-nextest 0.9.145 (00af4550e 2026-09-16)
+load before: 9.11 9.50 9.02   after: 8.84 9.26 9.08
+build_s 0.8  run_wall_s 381.3  tests 6774  sum_test_s 1515.4  slow_over_10s 8
+per-binary totals (s):
+     686.4  mergewright-ops::it
+     409.3  mergewright::it
+     110.8  mergewright-ui
+      96.5  mergewright
+      49.6  mergewright-ops
+      40.9  mergewright-git::it
+      40.4  mergewright-git
+      36.0  mergewright-graph::it
+      13.3  mergewright-graph
+      12.7  mergewright-fixtures
+       7.6  mergewright-fixtures::it
+       6.9  mergewright-ui::pane_boundaries
+       2.4  mergewright-term
+       1.0  mergewright-capabilities::checker
+       0.4  mergewright-core
+       0.3  mergewright-ui::lanes_without_hue
+       0.2  mergewright-ui::no_literal_keys
+       0.2  mergewright-ui::ascii_tier
+       0.2  mergewright-ui::graph_column
+       0.1  mergewright-ui::selection
+       0.1  mergewright-capabilities
+       0.1  mergewright-ui::graph_screen
+       0.0  mergewright-ui::border_rules
+       0.0  mergewright-ui::resolver_layout
+       0.0  mergewright-term::it
+slowest 20:
+    19.54  mergewright-ui  graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+    17.39  mergewright-ui  graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+    15.74  mergewright-ui  graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+    14.16  mergewright-ui  graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+    14.08  mergewright-ops::it  undo_cancel::cancel_at_every_step_boundary_is_clean
+    10.95  mergewright-git::it  diff_fixture::parse_unified_matches_numstat_for_every_shape
+    10.44  mergewright-graph::it  emphasis_layer::a_threaded_rows_emphasis_draws_nothing
+    10.30  mergewright  update::tests::bar_keys::every_key_the_bar_draws_is_answered
+     9.96  mergewright-graph::it  raster_pieces::pieces_composite_equals_single_emphasis
+     9.45  mergewright-graph  layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded
+     9.38  mergewright  event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget
+     9.36  mergewright-ops::it  pull_set_aside::the_ff_pull_set_aside_round_trips
+     9.25  mergewright-ui  graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+     9.09  mergewright-ops::it  conflict_ops::whole_file_shapes_resolve_like_git
+     7.96  mergewright-ui  graph_screen::hints::tests::no_context_hides_every_key
+     7.72  mergewright-ops::it  merge_set_aside::redo_of_a_set_aside_merge_round_trips
+     7.55  mergewright-ops::it  rewrite_preview::the_preview_honours_stop
+     7.02  mergewright::it  published_repo::nothing_a_commit_would_carry_names_this_machine
+     6.88  mergewright-ui  graph_screen::hints::tests::the_three_most_relevant_never_fall_below_their_floor_rung
+     6.52  mergewright-graph::it  raster_pieces::equal_keys_equal_pixels
+SLOW lines: 0
+
+== ab-new-2 ==
+date 2026-10-25  rev e4278ff2  cargo-nextest 0.9.145 (00af4550e 2026-09-16)
+load before: 8.37 9.15 9.05   after: 9.41 9.35 9.25
+build_s 0.8  run_wall_s 515.6  tests 6844  sum_test_s 2048.7  slow_over_10s 12
+per-binary totals (s):
+     938.3  mergewright-ops::it
+     585.6  mergewright::it
+     121.6  mergewright
+     116.8  mergewright-ui
+      77.3  mergewright-ops
+      57.4  mergewright-git::it
+      55.8  mergewright-git
+      39.8  mergewright-graph::it
+      16.9  mergewright-fixtures
+      14.4  mergewright-graph
+      11.5  mergewright-fixtures::it
+       7.4  mergewright-ui::pane_boundaries
+       2.6  mergewright-term
+       1.1  mergewright-capabilities::checker
+       0.4  mergewright-core
+       0.4  mergewright-ui::lanes_without_hue
+       0.3  mergewright-ui::no_literal_keys
+       0.3  mergewright-ui::selection
+       0.2  mergewright-capabilities
+       0.2  mergewright-ui::ascii_tier
+       0.2  mergewright-ui::graph_column
+       0.1  mergewright-ui::graph_screen
+       0.1  mergewright-ui::resolver_layout
+       0.1  mergewright-ui::border_rules
+       0.0  mergewright-term::it
+slowest 20:
+    20.70  mergewright-ui  graph_screen::hints::tests::the_bar_never_draws_a_fragment_of_itself
+    17.32  mergewright-ui  graph_screen::hints::tests::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn
+    15.57  mergewright-ops::it  conflict_ops::whole_file_shapes_resolve_like_git
+    15.46  mergewright-ui  graph_screen::hints::tests::the_bare_keys_are_a_tail_not_a_scatter
+    15.33  mergewright-ui  graph_screen::hints::tests::no_hint_loses_ground_as_the_room_for_it_grows
+    15.22  mergewright-git::it  diff_fixture::parse_unified_matches_numstat_for_every_shape
+    14.78  mergewright-ops::it  undo_cancel::cancel_at_every_step_boundary_is_clean
+    12.70  mergewright  update::tests::bar_keys::every_key_the_bar_draws_is_answered
+    11.95  mergewright-ops::it  pull_set_aside::the_ff_pull_set_aside_round_trips
+    11.46  mergewright-ops::it  merge_set_aside::redo_of_a_set_aside_merge_round_trips
+    11.24  mergewright-graph::it  emphasis_layer::a_threaded_rows_emphasis_draws_nothing
+    10.96  mergewright-graph::it  raster_pieces::pieces_composite_equals_single_emphasis
+    10.00  mergewright-graph  layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded
+     9.94  mergewright-ops  branch_status::tests::equivalence::stale_and_sibling_others_answer_as_the_oracle
+     9.93  mergewright  event_loop::tests::pixel_scroll::held_j_on_wide_strips_stays_within_the_byte_budget
+     9.03  mergewright-ops::it  restart_whole_file::gate_and_apply_agree_on_every_shape
+     8.91  mergewright-ui  graph_screen::hints::tests::a_words_only_bar_draws_no_bare_key_and_ends_with_its_doorway
+     8.87  mergewright-ops::it  merge_set_aside::undo_of_a_set_aside_merge_round_trips
+     8.86  mergewright-ops::it  set_aside::a_stop_before_each_step_loses_nothing
+     8.74  mergewright-ops::it  rewrite_preview::the_preview_honours_stop
+SLOW lines: 0
+
+== per binary (mean s over 2 runs): old, new, delta ==
+     687.0    801.6   +114.6  mergewright-ops::it
+     426.9    502.0    +75.0  mergewright::it
+     101.5    117.4    +15.9  mergewright
+      59.2     61.8     +2.7  mergewright-ops
+      45.7     47.9     +2.2  mergewright-git
+      36.9     38.1     +1.2  mergewright-graph::it
+       8.7      9.5     +0.7  mergewright-fixtures::it
+      13.7     14.0     +0.3  mergewright-graph
+       7.1      7.3     +0.2  mergewright-ui::pane_boundaries
+       2.3      2.4     +0.1  mergewright-term
+       1.0      1.1     +0.1  mergewright-capabilities::checker
+       0.2      0.3     +0.1  mergewright-ui::selection
+       0.1      0.2     +0.0  mergewright-capabilities
+       0.2      0.3     +0.0  mergewright-ui::no_literal_keys
+       0.3      0.3     +0.0  mergewright-ui::lanes_without_hue
+       0.0      0.1     +0.0  mergewright-ui::resolver_layout
+       0.2      0.2     +0.0  mergewright-ui::ascii_tier
+       0.0      0.0     +0.0  mergewright-term::it
+       0.2      0.2     +0.0  mergewright-ui::graph_column
+       0.0      0.0     +0.0  mergewright-ui::border_rules
+       0.1      0.1     -0.0  mergewright-ui::graph_screen
+       0.4      0.4     -0.0  mergewright-core
+      48.7     48.6     -0.0  mergewright-git::it
+     111.8    111.6     -0.2  mergewright-ui
+      15.6     14.8     -0.8  mergewright-fixtures
+== top 30 per-test growth (in both): old, new, delta ==
+     9.19   12.40   +3.21  mergewright-ops::it conflict_ops::whole_file_shapes_resolve_like_git
+     7.83    9.65   +1.81  mergewright-ops::it merge_set_aside::redo_of_a_set_aside_merge_round_trips
+    10.38   12.11   +1.73  mergewright update::tests::bar_keys::every_key_the_bar_draws_is_answered
+     6.09    7.45   +1.36  mergewright-ops::it merge_set_aside::undo_of_a_set_aside_merge_round_trips
+     5.96    7.24   +1.28  mergewright-ops::it set_aside::a_stop_before_each_step_loses_nothing
+     5.46    6.70   +1.24  mergewright-ops::it merge_set_aside::a_stop_anywhere_in_a_set_aside_merge_keeps_the_edits
+     9.30   10.45   +1.15  mergewright-ops::it pull_set_aside::the_ff_pull_set_aside_round_trips
+     6.32    7.46   +1.14  mergewright-ops::it restart_whole_file::gate_and_apply_agree_on_every_shape
+     5.32    6.41   +1.09  mergewright-ops::it history_ops::refusals::every_preview_refuses_exactly_what_check_refuses
+     2.68    3.73   +1.05  mergewright::it lane_cap::capture_lane_cap_for_docs_shots
+     2.65    3.59   +0.94  mergewright::it m6_stash_put_back::set_aside::a_stopped_rebase_then_a_clash_is_eight_keys
+     2.64    3.57   +0.93  mergewright::it lane_cap::the_pane_narrows_the_graph_so_the_graph_folds_more
+     2.18    3.03   +0.85  mergewright::it conflict_interim::banner_shot::capture_banner_for_docs_shots
+     2.46    3.27   +0.80  mergewright::it preview::a_preview_scrolled_into_history_draws_the_rows_the_user_was_on
+     3.38    4.18   +0.80  mergewright-ops::it merge_set_aside::the_merge_preview_forecasts_the_put_back
+     2.04    2.83   +0.79  mergewright::it m6_stash_put_back::set_aside::a_switch_whose_staging_cannot_come_back_says_so
+     3.58    4.37   +0.79  mergewright::it m6_stash_put_back::kill::edits_survive_a_kill_at_every_step
+     0.67    1.45   +0.77  mergewright::it conflict_interim::relaunch_into_a_live_conflict
+     1.64    2.41   +0.77  mergewright::it m6_stash_put_back::set_aside::aborting_a_stopped_rebase_puts_the_edits_back
+     2.58    3.32   +0.74  mergewright-ops::it set_aside::undo_after_a_stop_at_4_or_5_restores_everything
+     2.43    3.16   +0.73  mergewright::it finish::a_hook_refusal_keeps_the_summary_open
+     2.99    3.71   +0.72  mergewright::it preview::capture_scrolled_preview_for_docs_shots
+     1.19    1.91   +0.72  mergewright::it conflict_interim::space_on_a_conflicted_row_refuses_while_markers_remain
+     3.02    3.74   +0.72  mergewright-ops::it restart_whole_file::undo_after_a_whole_file_start_over_matches_markers
+     6.19    6.88   +0.69  mergewright-fixtures::it corpus::two_builds_produce_the_same_object_ids
+     1.18    1.87   +0.69  mergewright::it conflict_interim::the_banner_and_its_keys_are_on_the_frame_at_every_width
+     1.18    1.84   +0.66  mergewright::it conflict_interim::the_banner_and_its_keys_draw_once_on_the_graph_tab
+     1.36    2.01   +0.65  mergewright-ops::it finish::comment_lines::gits_comment_lines_never_reach_the_summary
+     1.17    1.82   +0.65  mergewright::it conflict_interim::the_banner_reads_the_same_at_every_width
+     1.24    1.88   +0.65  mergewright::it m6_stash_put_back::set_aside::esc_u_undoes_a_clashed_switch
+== top 30 tests only in new, by time (74 such, sum 1.8 s) ==
+     0.22  mergewright-graph::it node_shots::capture_ease_29_nodes
+     0.21  mergewright::it failure_marks::every_cross_literal_is_a_lost_or_drop_mark
+     0.19  mergewright-graph raster::tests::a_stub_leaves_its_node_into_its_lane_corner
+     0.08  mergewright-graph::it raster::a_folded_edge_is_a_corner_tail_inside_its_lane
+     0.07  mergewright event_loop::graphics::pinned_tests::a_strip_starts_in_the_gutter_gap_cell
+     0.05  mergewright view::status::tests::every_failed_status_draws_the_mark_once
+     0.04  mergewright-graph raster::node::extent_tests::every_node_style_lies_whole_inside_its_lane
+     0.04  mergewright-graph raster::node::extent_tests::a_node_piece_holds_its_node_whole
+     0.03  mergewright::it failure_marks::no_failed_status_producer_pre_marks
+     0.03  mergewright event_loop::tests::gfx_failed::a_deflate_error_keeps_the_pixel_tier
+     0.03  mergewright view::tests::pixel_preview::lead::preview_nodes_sit_where_the_pixel_nodes_were
+     0.03  mergewright event_loop::tests::gfx_failed::a_fallback_settles_without_waking_again
+     0.03  mergewright event_loop::tests::gfx_failed::an_iterm2_drop_keeps_the_text_column
+     0.03  mergewright event_loop::tests::gfx_failed::a_forced_pixel_renderer_falls_back_too
+     0.03  mergewright view::tests::pixel_preview::lead::the_gutter_gap_cell_under_a_strip_is_blank
+     0.03  mergewright event_loop::tests::gfx_failed::f3_off_iterm2_pixels_keeps_the_text_column
+     0.03  mergewright event_loop::tests::gfx_failed::an_enoent_reply_re_sends_the_strip_and_says_so
+     0.03  mergewright event_loop::tests::gfx_failed::an_uncured_kitty_reply_draws_the_graph_as_text
+     0.02  mergewright event_loop::tests::gfx_failed::a_strip_that_will_not_rasterise_draws_the_graph_as_text
+     0.02  mergewright-ui picker::tests::a_failed_body_draws_the_failure_mark
+     0.02  mergewright-ui failure::body_tests::rewrite_editor_failed::failed_after_and_failed_changes_draw_the_failure_mark
+     0.02  mergewright-graph raster::node::extent_tests::the_lead_cell_holds_only_lane_zeros_node
+     0.02  mergewright-ui merge_look::tests::a_failed_look_draws_the_failure_mark
+     0.02  mergewright view::tests::pixel_preview::lead::fallback_nodes_sit_where_the_pixel_nodes_were
+     0.02  mergewright update::undo::tests::sticky_failure::capture_ease_28_sticky_failure
+     0.02  mergewright view::tests::pixel_preview::lead::no_strip_without_a_gutter
+     0.02  mergewright update::tests::pixels_failed::pixels_failed_drops_to_unicode_once
+     0.02  mergewright update::tests::pixels_failed::pixels_failed_off_the_pixel_tier_changes_nothing
+     0.02  mergewright update::remote::tests::rejected_push::a_rejected_push_is_marked_and_keeps_its_keys
+     0.01  mergewright view::status::tests::sticky_draws_the_mark_by_its_kind
+== tests gone: 4 (sum 0.1 s) ==
+     0.07  mergewright-graph::it raster::a_folded_edge_is_a_tail_that_fades_out_before_the_next_column
+     0.01  mergewright-ui graph_screen::tests::a_problem_takes_the_footers_place
+     0.01  mergewright update::undo::tests::answers::a_failed_undo_stays_on_screen_past_its_own_refresh
+     0.04  mergewright event_loop::tests::an_enoent_reply_re_sends_the_strip_and_says_so
+TOTALS both_old=1567.8 both_new=1778.2 new_only=1.8 gone=0.1
+SUMMARY label=ab-old-1 tests=6774 run_wall_s=407.5 build_s=0.6 sum_test_s=1620.4 slow_over_10s=9
+SUMMARY label=ab-new-1 tests=6844 run_wall_s=380.3 build_s=0.7 sum_test_s=1511.4 slow_over_10s=9
+SUMMARY label=ab-old-2 tests=6774 run_wall_s=381.3 build_s=0.8 sum_test_s=1515.4 slow_over_10s=8
+SUMMARY label=ab-new-2 tests=6844 run_wall_s=515.6 build_s=0.8 sum_test_s=2048.7 slow_over_10s=12
+SUMMARY old_wall=394.4 new_wall=448.0 delta_s=53.6 grown_s=210.4 new_tests_s=1.8 aa_spread_s=135.3 (old 407.5/381.3, new 380.3/515.6) load=see run sections

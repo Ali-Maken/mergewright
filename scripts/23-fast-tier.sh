@@ -3,8 +3,10 @@
 # Appends a section to docs/perf/23-fast-tier.txt; prints one SUMMARY line.
 set -u
 label=${1:?label}
-cd "$(dirname "$0")/.."
-out=docs/perf/23-fast-tier.txt
+# pp-01 options (env): FT_ROOT = checkout to measure (default: this one), FT_OUT =
+# file to append to, FT_JUNIT = path to keep this run's junit file at.
+cd "${FT_ROOT:-$(dirname "$0")/..}" || exit 1
+out=${FT_OUT:-docs/perf/23-fast-tier.txt}
 tdir=${CARGO_TARGET_DIR:-target}
 load() { uptime | sed 's/.*load averages*: //'; }
 now() { python3 -I -c 'import time;print(time.time())'; }
@@ -18,6 +20,7 @@ grep -E 'SLOW' "$tdir/23-run.log" >"$tdir/23-slow.log"
 # nextest keeps its store under the workspace `target/`, which is not always
 # $CARGO_TARGET_DIR; take the junit file this run wrote.
 junit=$(ls -t "$tdir/nextest/default/junit.xml" target/nextest/default/junit.xml 2>/dev/null | head -1)
+[ -n "${FT_JUNIT:-}" ] && cp "$junit" "$FT_JUNIT"
 python3 -I - "$junit" "$label" "$build_s" "$run_s" "$l0" "$l1" "$(git rev-parse --short HEAD)" "$(cargo nextest --version | head -1)" "$(date +%F)" "$tdir/23-slow.log" >>"$out" <<'PY'
 import sys, xml.etree.ElementTree as ET, collections
 p, label, b, r, l0, l1, rev, ver, date, slowf = sys.argv[1:]

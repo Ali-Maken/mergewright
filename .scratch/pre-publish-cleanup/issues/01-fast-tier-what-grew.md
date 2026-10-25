@@ -1,6 +1,6 @@
 # pre-publish: fast tier back under 6 min. Find what grew since ticket 24, fix its cause
 
-Status: ready
+Status: stopped at a stop condition (A/A spread > delta); see NOTES
 Blocked by: none
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: a measuring script, then fixes of known classes in test code. A product-code cause is reported, not fixed here. Nothing structural, no interface. **Run solo**: no other cargo-running helper, because its numbers are wall times.
 Scout: no. Why: the place to change isn't known until the growth table names it. Source is read only where the table points.
@@ -57,13 +57,13 @@ scripts/23-fast-tier.sh <label>     # unchanged contract; may gain an option to 
 ```
 
 ## Acceptance (tick each with its test or script, inline)
-- [ ] A/B recorded: four run sections, both growth tables, A/A spread, SUMMARY ← `scripts/pp-fast-tier-ab.sh <old> <new>` → `docs/perf/pp-01-fast-tier-ab.txt`
-- [ ] Every top-30 grower and top-30 new test classified, each with its line or "cause not found" ← NOTES table vs the growth tables
+- [x] A/B recorded: four run sections, both growth tables, A/A spread, SUMMARY ← `scripts/pp-fast-tier-ab.sh <old> <new>` → `docs/perf/pp-01-fast-tier-ab.txt`
+- [x] Every top-30 grower and top-30 new test classified, each with its line or "cause not found" ← NOTES table vs the growth tables
 - [ ] Each class (a) fix keeps every assert (read in the diff), with before/after seconds per test ← the test names + `scripts/23-fast-tier.sh pp-01-after-fix`
 - [ ] Class (b), if any: the bisect names the commit, the test and its seconds before/after ← `== bisect ==` section
 - [ ] Fast tier ≤ 360 s twice, load beside each, or **NOT MET** with the remaining causes listed ← `scripts/23-fast-tier.sh pp-01-after-1` and `pp-01-after-2`, SUMMARY lines quoted
-- [ ] The perf file names no path or account on this machine ← `published_repo::nothing_a_commit_would_carry_names_this_machine` green in the full run
-- [ ] No test deleted, no `#[ignore]` added: tier counts before = after, `#[ignore]` grep count before = after ← `scripts/walks.sh --check` before and after, the grep quoted
+- [x] The perf file names no path or account on this machine ← `published_repo::nothing_a_commit_would_carry_names_this_machine` green in the full run
+- [x] No test deleted, no `#[ignore]` added: tier counts before = after, `#[ignore]` grep count before = after ← `scripts/walks.sh --check` before and after, the grep quoted
 
 ## Touches (check each, say how)
 - `published_repo` scanner: perf file content, and where the A/B worktrees and target dirs live.
@@ -87,3 +87,24 @@ Workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
 
 ## Size
 ~40k tokens: one script, one table, ≤5 test-code fixes. Wall time is long (two builds, 4+2 runs of ~6 min). That's the machine, not the context.
+
+## NOTES (builder)
+Stopped by the ticket's stop condition: **A/A spread larger than the delta.** No scout (ticket said none). Did not compact. No product or test code changed.
+
+Built `scripts/pp-fast-tier-ab.sh` + `scripts/pp-junit-diff.py`; `scripts/23-fast-tier.sh` gained env options FT_ROOT / FT_OUT / FT_JUNIT (defaults unchanged). Old = 68eec82c (24 merged), new = e4278ff2. Both checked out under `target/` (ignored), each with its own target dir, removed afterwards. Alone: no other cargo process (ps count 0).
+
+`SUMMARY old_wall=394.4 new_wall=448.0 delta_s=53.6 grown_s=210.4 new_tests_s=1.8 aa_spread_s=135.3` (old 407.5/381.3, new 380.3/515.6). Full file: `docs/perf/pp-01-fast-tier-ab.txt`.
+
+What it shows:
+- **Growth is not visible on this machine.** new-2 ran 515.6 s (sum_test_s 2048 vs 1511 in new-1, same code): +37% on identical code. Old-2 381.3 vs new-1 380.3: same wall with 70 more tests. The A/A spread (135 s) is 2.5x the A/B delta (53.6 s).
+- **Load, not code.** Load average was 8-15 before every run on a 10-core machine, with no cargo running; `dasd` and `fseventsd` at ~100% CPU each (the churn 23 saw). The load stayed high during all four runs.
+- **New tests cost 1.8 s in total** (70 tests, ~0.03 s each), against the ~3.5 s the ticket expected. None is a slow one.
+- **Per-binary and per-test growth is uniform** (ops::it +17%, mergewright::it +18%, top growers +10..35% across unrelated tests, e.g. conflict_ops 9.2 -> 12.4, bar_keys 10.4 -> 12.1): the shape of a skewed run, not of one grown test.
+
+Classification (D2): every top-30 grower is **(c) load noise** (delta within the A/A spread; line: the per-test table in the perf file, no test whose delta stands out from its binary's). No (a), no (b); no bisect run (nothing to bisect). Top-30 new-only tests: all <= small, 1.8 s total, class (c)/no cost.
+
+Not done, because the stop condition applies: class (a) fixes, `pp-01-after-1/2` runs, D4 (<= 360 s twice). Acceptance boxes left open: class (a) fixes, class (b), Fast <= 360 s twice. Fast tier floor seen in this A/B on the quietest runs is ~380 s on this machine, so <= 360 s is **NOT MET**, and the 341.1 s of ticket 24 (different load) cannot be reproduced by old code here either (old: 407.5/381.3).
+
+Suggested next step (conductor's call): rerun A B A B when fseventsd/dasd are quiet (a reboot or Spotlight/Time Machine off), or A/B with `RUST_TEST_THREADS` left alone but measuring `sum_test_s` per run as a load-normalised figure. The known real cost remains the six-ish tests over 10 s from ticket 24's NOTES (hints sweeps, bar_keys 10-12 s): a product-side cache (`whole_bar`, `live_labels`), outside this ticket.
+
+Gates: this ticket changed scripts and a perf file only. Ran `cargo fmt --check`, shellcheck on both scripts, `published_repo::nothing_a_commit_would_carry_names_this_machine` (1/1 green, perf file holds no path), `scripts/walks.sh --check` before (fast=6844 walks=463 all=7307). The `#[ignore]` count in crates is 22 before and after (no Rust file touched). Full clippy/nextest/doc/walks not rerun: no Rust changed.
