@@ -280,3 +280,4 @@ Format: one line per helper or gate run, ending with the harness tool count.
 - conductor gates on main after 30: fmt/clippy/heavy-clippy/doc ok; fast 6842/6842 625.7 s (beside builder 30b — not a valid timing); walks 463/0 192.1 s. Builder 30b cut by session limit, uncommitted WIP → resumed.
 - builder-opus (sonnet) 30b merged (14d67496): cause fix — erase_bands moved into draw_frame before text (erase, text, images; same bytes); red seen both tests; 4/4 ticked; ticket 30 box 11 ticked by conductor; nextest 6844/6844, walks 463/0 · 8 tools resumed leg (first leg cut by limit) · skills: none — SKILL.md not read, says test-first (red lines recorded). Gap ease/29-gfx-failed closed.
 - conductor gates on main after 30b: fmt/clippy/heavy-clippy/doc ok; fast 6844/6844 367.5 s (alone — over 6 min, ease/28 gap); walks 463/0 128.8 s. Ease pass back at user stop.
+- user 2026-10-25: 29-nodes-after.png and 30-gfx-failed-after.txt judged 'yes'.
