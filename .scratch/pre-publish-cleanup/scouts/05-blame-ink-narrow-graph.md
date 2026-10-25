@@ -1,0 +1,19 @@
+# Scout 05: blame ink, narrow graph
+
+## Part A
+- Blame body: `crates/mergewright-ui/src/blame.rs:230-236`: `failure::marked(...)` then `keys.after(..)`, `put(.., Style::default())`. No `ink_marks` call anywhere in `blame.rs`. Mark is uncoloured (confirmed cause).
+- Signature: `draw_blame(frame, area, view: &BlameView, keys)` `blame.rs:156`; `draw_blame_in_tier(.., keys, ascii)` `:161`. `draw_into(buf, area, view, keys, ascii)` `:~192`. `BlameView` (fields ~`:120-155`) has no `theme`.
+- Sibling `history` HAS a theme, in the view: `HistoryView.theme: &'a Theme` `history.rs:165`; `draw_history_in_tier` calls `failure::ink_marks(frame.buffer_mut(), area, view.theme, ascii)` `history.rs:294`. Caller threads it: `update/place/history/view.rs:11,56` (`view(now, theme, draw)`), `view/frame/overlays.rs:136`. So the ticket's `theme: &Theme` parameter form is NOT the pattern; the pattern is a view field + `ink_marks` after `draw_into`. Same in `merge_look.rs:351`, `stash_screen.rs:368`, `picker.rs:274`, `journal_screen.rs:403`, `map_screen/render.rs:389`. branch_pane styles the mark span directly (`branch_pane.rs:224-228`).
+- `ink_marks` `failure.rs:83-`; `FAILED_INK = Token::Removed` `failure.rs:23`. Colourless theme: mark keeps no colour (`failure.rs:80-81` doc).
+- Callers of `draw_blame*` (non-test): `view/frame/overlays.rs:201` (`_in_tier`) only. `BlameView` built at `update/place/blame_state.rs:89` (`blame.view(path, now, draw)` called `overlays.rs:199`; theme is `session.theme`, as at `:136`). Tests: `blame/tests.rs:103,628` (`draw_blame`), `failure/body_tests.rs:22` (`draw_blame_in_tier`). `draw_blame` (non-tier) has no non-test caller.
+- Existing coverage: `failure/body_tests.rs:17 a_failed_blame_draws_the_failure_mark` (text only, ascii both; no ink assert). Ink assertion pattern: `failure/tests.rs:50-68`. `failure/body_tests.rs:135` checks ink for notice only if `!ascii`. History's ink test: could not confirm by name (not read).
+- `blame/tests.rs` is `over_400.txt` row (677 lines per ticket; not re-counted).
+
+## Part B
+- Test exists: `mergewright/src/view/tests/pixel_preview/lead.rs:183 no_strip_without_a_gutter` (3 cols x 30 rows).
+- Ticket assumption disagrees: the no-gutter rule is on **screen width**, not graph area. `layout::inset` `graph_screen/layout.rs:298`: gutter only if `columns > GUTTER(2)+RIGHT_MARGIN(1)` (`mod.rs:144,147`), i.e. none at <=3 columns. Render: `gutter = (body.x >= area.x+GUTTER)` `render.rs:113`; text path `render.rs:151`. `area` is the GraphScreen's own rect (the carve of whatever the frame hands it).
+- Graph column width = `min(lanes want, body/2)` `lanes.rs:14-22`. At 4 cols: body 1, graph 0. 5 cols: body 2, graph 1. So gutter-present graph <=3 wide for screens 5..~10 cols, but those draw a strip (pixel), not text.
+- Detail pane can't shrink the graph to <=3 by layout: Right layout only at width >=160 (`detail_pane/layout.rs:33,48`), pane = 42% min 48, graph ~92+ at 160. Below at 100-159 and Tab below 100: graph keeps full width. Resize cap keeps graph >=40: `update/detail/state.rs:37`, `ops.rs:669,698`. Possible hole: `override_cells` has only a lower clamp `layout.rs:51`; `split_area` clamps to area width `:99` (graph can reach 0). Could not confirm whether a stale override survives a terminal shrink.
+- Branch pane: >=100 cols, 30/36 wide (`branch_pane.rs:23-27`); leaves >=~64 body.
+- No min-terminal-size guard found for the graph screen (grep of mergewright/, mergewright-ui/: only prompt `TOO_SMALL`, resolver MIN_*). So the only reachable <=3-col graph is a **<=3-column terminal** (or none). Could not confirm a real terminal can be 3 cols wide (Ghostty minimum unverified).
+- Capture helper `buffer_at(&pixel, &state, &GraphicsStatus::Ok)` `lead.rs:21` returns (buffer, graph strip option); "no Kitty/iTerm bytes" assert: could not find an existing byte-level helper in that file (not searched elsewhere).
