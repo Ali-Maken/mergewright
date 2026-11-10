@@ -14,6 +14,17 @@ Spec-only pass 3, same day: 11b3's build stopped at its fence. Its red test `jou
 
 The mapping never caused either. 11b3's fence is now a parity test pinning today's behaviour. Fixing undo is out of this pass, filed as a question.
 
+Spec-only pass 4: 11a/11b/11c merged. New **11d** takes what 11c left on purpose:
+- the ghost-id seed;
+- the rebase fork label;
+- `is_graft_internal`;
+- the fixture scratch prefix;
+- two cited test names;
+- the guard inputs that can go;
+- the five `11c` allow-list rows.
+
+12 gains the `graft.git` fixture URL and now runs after 11d.
+
 ## For the user
 
 **Answered**
@@ -26,6 +37,7 @@ The mapping never caused either. 11b3's fence is now a parity test pinning today
 - Undo of entries from before the rename behaves exactly as it does today; 11b3 pins that with a test. (Separately, an open question: undo of an entry whose saved state git has since cleaned away fails, but leaves a half-started line behind first.)
 - Stashes and practice folders made by the old-name builds look like anyone else's: no special label, no automatic clean-up.
 - His old config folder isn't read. If he changed settings since the rename, they're already in the new folder.
+- **Before 11d merges:** finish or abort any rebase or rewrite the app started and left stopped. After 11d, the app won't recognise one an older build stopped (its step labels change name).
 - Kept on purpose: the journal's "rename" entries in every repo he has opened. Removing that entry kind would make those journals unreadable and lose **all** his undo history, so it stays as a read-only kind with no old name in it (11b3 D2).
 
 **Pending his confirmation:** 07–10 (the line-count ratchet) cut from this pass. Nothing here is blocked by them now.
@@ -33,11 +45,13 @@ The mapping never caused either. 11b3's fence is now a parity test pinning today
 **Checks only you can do** (no ticket; each needs his terminal and eye)
 - After 05: in Ghostty, narrow the window until the graph is 3 columns or fewer (05 NOTES gives the exact size). The graph should still draw as text (`●`, `│`), never as a blank column. (gap `ease/29-narrow-graph-text`)
 - After 05: in Ghostty (dark), open blame on a file that fails to blame (05 NOTES gives a way). The `⊗` should be red, the same red as in other panes. Captures can't show colour (rule 5). (gap `ease/26-blame-mark-uncoloured`)
+- After 11d: the ghost commits in a preview (e.g. reorder in the rewrite editor) get new short ids, so an unnamed ghost lane may change colour. Captures can't show colour; it ships unverified.
 - After 12: `docs/shots/pp-12-identity-review.md`. Every capture whose rows reordered or whose unnamed-lane colour changed when the fixture authors were renamed. He says whether any of them looks wrong.
 
 **Rulings applied, not asked**
 - The m3 contact sheet is deleted, not rebuilt (06). It's the same class as the m6/m8 sheets he ruled on ("delete, not rebuild", 2026-10-19).
 - Fixture authors get neutral names of the same length, with no product name in them (12), so a later rename can't touch them again.
+- The ghost-id seed becomes neutral (`preview-ghost`), so a later rename never moves ghost ids (11d).
 
 ## Groups
 
@@ -50,19 +64,21 @@ The mapping never caused either. 11b3's fence is now a parity test pinning today
 | 05 | small-ui-leftovers | ease/26-blame-mark-uncoloured, ease/29-narrow-graph-text (test half) | Sonnet | **yes** (`scouts/05-blame-ink-narrow-graph.md`) | none |
 | 06 | stale-sheets-and-shots | ease/11b-three-pane-shots, ease/12b-m6-sheet-stale, ease/06i-m8-sheets, ease/14-m3-sheet-stale | Sonnet | no (docs only, files named, drift script checks) | none |
 | ~~07–10~~ | ~~ratchet-*~~ | rename/over400-raised: **cut from this pass, pending the user** | — | — | — |
-| ~~11~~ | ~~codename-leftovers~~ | superseded by 11b1–11b4, 11a, 11c | — | — | — |
+| ~~11~~ | ~~codename-leftovers~~ | superseded by 11b1–11b4, 11a, 11c, 11d | — | — | — |
 | 11b1 | current-names-and-guards | (step toward rename/graft-leftovers) | Sonnet | done (`scouts/11-codename-hits.md`) | 06 |
 | 11b2 | old-gen-app-side (+ git `names_in_force` → `CURRENT`, + every move test deleted) | — | Sonnet; **continue in `.claude/worktrees/ppc-11b2`** | done | 11b1, **user opened each repo** |
 | 11b3 | old-gen-ops-side (fence = parity test) | — | Sonnet; **continue on `ppc-11b3`** | done | 11b2 |
 | 11b4 | old-gen-delete-table | — | Sonnet | done | 11b3 |
 | 11a | codename-app-scripts-docs | rename/graft-leftovers (app, scripts, docs), rename/m3-pty-script | Sonnet | done | 06, 11b4 |
 | 11c | codename-other-crates | rename/graft-leftovers (other crates, **ops included**) | Sonnet | done | 06, 11b4 |
-| 12 | fixture-identity-rename | rename/graft-leftovers (identities; closes the row) | Sonnet; **runs alone, last** | done (`scouts/12-fixture-identity.md`) | 11a, 11c |
+| 11d | codename-last-names | rename/graft-leftovers (what 11c left on purpose; the `11c` allow rows) | Sonnet; alone | none (11c NOTES + allow-list) | 11a, 11b4, 11c; **user finished any app-started rebase** |
+| 12 | fixture-identity-rename | rename/graft-leftovers (identities + `graft.git` URL; closes the row) | Sonnet; **runs alone, last** | done (`scouts/12-fixture-identity.md`) | 11d |
 
-Coverage: 28 (01) · 17-fork-rows (02) · 19-100k (03) · 17-pane-focus, 17-preview-seeds (04) · 26-blame, 29-narrow (05) · 11b, 12b, 06i, 14-m3 (06) · graft-leftovers (11b1–4, 11a, 11c, 12) · m3-pty-script (11a). **over400-raised stays open** while 07–10 are cut.
+Coverage: 28 (01) · 17-fork-rows (02) · 19-100k (03) · 17-pane-focus, 17-preview-seeds (04) · 26-blame, 29-narrow (05) · 11b, 12b, 06i, 14-m3 (06) · graft-leftovers (11b1–4, 11a, 11c, 11d, 12) · m3-pty-script (11a). **over400-raised stays open** while 07–10 are cut.
 
 **Fable tier: none.** No ticket meets all three tests.
 - 11b's behavioural risks are fenced by tests written first: fresh repos write current names (11b2 D1); undo of old entries is unchanged (11b3 D3, parity). The `Migrate` kind is kept (11b3 D2).
+- 11d's on-disk label change is fenced by a round-trip test written first; its ghost seed by a no-persistence grep (a stop if anything stores ghost ids).
 - 12's bytes are judged by a script and a lane-slot probe, and what they flag goes to the user's eye.
 - Debuggers: 2 (02, 03), per the brief: a flake gets its root cause, never a retry.
 
@@ -76,12 +92,14 @@ Coverage: 28 (01) · 17-fork-rows (02) · 19-100k (03) · 17-pane-focus, 17-prev
    - 11b3 then deletes the uncalled move and ports ops off the handle's names;
    - 11b4 deletes the table and the git read once nothing calls them.
 5. 11a ‖ 11c. Disjoint files: 11a owns the app and capabilities crates, scripts and docs; 11c owns every other crate.
-6. 12 alone. It closes the guard over the full shipped set.
-7. Full audit (conductor).
+6. 11d alone. It spans ops, core, git, fixtures, ui, app and docs/capabilities.
+7. 12 alone. It closes the guard over the full shipped set.
+8. Full audit (conductor).
 
 Why this order:
 - The fixes (01–05) land before the sweeps, so no sweep moves code a fix is editing.
 - 11b goes before the renames: once the old-generation code is gone, nothing needs allow-listing (the user's ruling).
+- 11d goes before 12, so 12's baseline already has the new ghost ids and its diff isolates the identity change.
 - 12 goes last, after 06 deletes stale captures, because it rewrites nearly every capture.
 
 ## Every builder
