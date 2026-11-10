@@ -1,6 +1,6 @@
 # pre-publish: the last codename spellings 11c left on purpose (ghost seed, fork label, internal-ref fn, scratch prefix, cited test names), and the guard's `11c` exceptions removed
 
-Status: draft
+Status: ready
 Blocked by: 11a, 11b4, 11c (merged)
 Runs: alone, before 12 (it changes ghost ids and one capture's paths; 12 then regenerates on top)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: each rename is decided below, and each has a test written first that pins what must not change.
