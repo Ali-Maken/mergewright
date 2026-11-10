@@ -1,6 +1,6 @@
 # pre-publish: current-only name constants, and the name guards rewritten off the Generation table
 
-Status: draft
+Status: ready
 Blocked by: 06
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: this spec fixes the constant set; adding the constants and swapping each guard's data source is mechanical, and it's checked by a test written first.
 Needs: none

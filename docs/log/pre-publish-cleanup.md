@@ -17,3 +17,7 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates on main after 05: all ok; fast 6847/6847 578 s (beside builder 04); walks 463/0 217 s.
 - builder-sonnet 04 lane identity: Part B red→fixed (preview_seeds uses shared follows_of, one resolver two callers); Part A not a defect (spawns max 8, p50 100 ms); question: pane focus inside opened merge follows G4 rule roles.rs:36-52. Merged 1698420a. Scout used · 50 tools · skills: none.
 - conductor gates on main after 04: all ok; fast 6850/6850 533 s (gap ease/28); walks 463/0 180 s.
+- planner-fable spec pass: 11b1–4 (drop old-gen, journal Migrate kind kept), 11a ‖ 11c (ops added to 11c), 12 corrected to scout 12; 07–10 cut by user 2026-11-10 → KNOWN_GAPS post-publish · 40 tools.
+- scouts 11 (5660 hits, 316 old-gen) and 12 (ticket contradicted: signatures, emails, cache key digest.rs:57, differ=0 risk) · 10 + 17 tools.
+- builder-sonnet 06 stale sheets: split by conductor, m8 sheets + m8-accept step 3 dropped per user option A, 2 walk tests fixed by ruling (1 deleted: every_part_of_the_m8_sheet_opens_with_colour_unverified); merged 73eaaf02; 2 continuations · 41 tools · skills: none.
+- conductor gates on main after 06: all ok; fast 6850/6850 319.5 s (quiet machine, inside budget); walks 462/0 112.6 s.
