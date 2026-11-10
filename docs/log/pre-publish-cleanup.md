@@ -33,3 +33,5 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates main after 11b4: fast 6788/6788 628 s (cache rebuild guess), walks 459/0 217 s; all else clean. 11a ‖ 11c next.
 - builder-sonnet 11c codename out of non-app crates: comments, MAP, temp prefixes, 71 .snap source: headers (header-only diff), captures unchanged; left on purpose: graft-ghost hash seed, graft-fork- rebase label, graft.git fixture URL (→12), old-name guard inputs. Merged d3ed0fcc · 40 tools · skills: none.
 - conductor gates main after 11c: fast 6788/6788 537 s (beside 11a), walks 459/0 184 s; all else clean.
+- builder-sonnet 11a codename app+scripts+docs: guard codename_absent (red 324 → green), rename_docs.rs replaced, 11 captures word-only, CAPABILITIES regenerated; 5 allow-list rows '11c' (ops/core names) → ticket 11d; pty-walk-m3.py unrun (gap). Merged 15431376 · 104 tools · skills: none.
+- conductor gates main after 11a: fast 6789/6789 367 s (quiet), walks 459/0 129 s; all else clean.
