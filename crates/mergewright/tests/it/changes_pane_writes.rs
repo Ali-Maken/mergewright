@@ -21,7 +21,7 @@ use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
 use mergewright::repos::RepoStore;
 use mergewright::update::{AppEvent, AppState, Size, Status, update};
 use mergewright_core::event::{Event, KeyCode, KeyPress};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 const SIZE: Size = Size {
     columns: 120,
@@ -293,7 +293,7 @@ fn discarding_an_untracked_file_asks_first_and_leaves_a_way_back() {
         &[
             "for-each-ref",
             "--format=%(refname)",
-            &format!("refs/{CURRENT_DIR}/backup"),
+            &format!("refs/{DIR}/backup"),
         ],
     );
     assert_eq!(
@@ -301,9 +301,8 @@ fn discarding_an_untracked_file_asks_first_and_leaves_a_way_back() {
         1,
         "one backup ref holds what was discarded: {backups:?}"
     );
-    let journal =
-        std::fs::read_to_string(repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
-            .expect("the journal was written");
+    let journal = std::fs::read_to_string(repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal was written");
     assert_eq!(
         journal.lines().count(),
         2,

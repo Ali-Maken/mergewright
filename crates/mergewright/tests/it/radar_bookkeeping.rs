@@ -1,6 +1,6 @@
 //! m6-conflicts/66: the Mistake Radar ignores Mergewright's and git's own
 //! bookkeeping. After a pull that rebases, the pre-rebase commits live on in
-//! `<prefix in force>backup/**` (`Generation::ref_prefix`) (for `u`) and under a stash made on the old tip;
+//! `<prefix in force>backup/**` (`on_disk::REF_PREFIX`) (for `u`) and under a stash made on the old tip;
 //! neither makes the rebased commits "duplicates", and the stash commit is
 //! never called an evil merge.
 #![allow(
@@ -18,7 +18,7 @@ use crate::captures::{check_shot, frame, without_invented_id};
 use crate::remote_by_key::{
     confirm, finish, local, plain, ready, rejected_then_diverged, rev, run,
 };
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// The duplicate probe has answered for the repository as it is now.
 fn duplicates_landed(app: &App, state: AppState) -> AppState {
@@ -90,12 +90,11 @@ fn stash_then_rebase(remote: &LocalRemote) -> (App, AppState, String, String) {
     assert!(
         holders
             .lines()
-            .any(|name| name.starts_with(&format!("refs/{CURRENT_DIR}/backup/")))
+            .any(|name| name.starts_with(&format!("refs/{DIR}/backup/")))
             && holders.lines().any(|name| name == "refs/stash")
             && holders
                 .lines()
-                .all(|name| name.starts_with(&format!("refs/{CURRENT_DIR}/"))
-                    || name == "refs/stash"),
+                .all(|name| name.starts_with(&format!("refs/{DIR}/")) || name == "refs/stash"),
         "ours lives on only in Mergewright's backups and the stash: {holders}"
     );
     (app, state, stash, rebased)

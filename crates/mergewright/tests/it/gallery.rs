@@ -677,7 +677,7 @@ pub fn roots_with(workspace: &Path, var: impl Fn(&str) -> Option<std::ffi::OsStr
                 .map(PathBuf::from)
                 .or_else(|| var("HOME").map(|home| PathBuf::from(home).join(".cache")))
                 .unwrap_or_else(|| workspace.join(".cache"))
-                .join(mergewright_core::on_disk::Generation::CURRENT.dir())
+                .join(mergewright_core::on_disk::DIR)
                 .join("git-git.git")
         },
         PathBuf::from,

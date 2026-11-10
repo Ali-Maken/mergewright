@@ -17,8 +17,6 @@ use std::panic::{self, AssertUnwindSafe, PanicHookInfo};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use mergewright_core::on_disk::Generation;
-
 use crate::cli::COMMAND;
 use crate::terminal::TerminalRestorer;
 
@@ -170,10 +168,10 @@ fn report_dir() -> Option<PathBuf> {
 }
 
 /// The reports' folder inside a state home: the app's folder in force, one
-/// source with the config folder (`Generation::CURRENT`). Reports written under
+/// source with the config folder (`on_disk::DIR`). Reports written under
 /// the old name before the rename are left where they are.
 fn report_dir_under(state_home: &Path) -> PathBuf {
-    state_home.join(Generation::CURRENT.dir())
+    state_home.join(mergewright_core::on_disk::DIR)
 }
 
 fn non_empty(variable: &str) -> Option<String> {
@@ -339,7 +337,7 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mergewright_core::on_disk::CURRENT_DIR;
+    use mergewright_core::on_disk::DIR;
 
     use std::panic::AssertUnwindSafe;
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -398,7 +396,7 @@ mod tests {
 
     #[test]
     fn reports_go_to_the_current_folder_and_name_the_command() {
-        assert!(report_dir_under(Path::new("/state")).ends_with(CURRENT_DIR));
+        assert!(report_dir_under(Path::new("/state")).ends_with(DIR));
         let first = report("m", "l", "b", &Timestamp::from_unix_seconds(0));
         let expected = format!(
             "{} {} panicked\n",

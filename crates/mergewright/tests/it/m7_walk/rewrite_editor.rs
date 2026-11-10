@@ -13,7 +13,7 @@ use mergewright_core::event::{KeyCode, KeyPress, Modifiers};
 
 use super::rebase_line::{fork_repo, frame, git, open, within};
 use crate::app_harness::App;
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// `subject` (with `body`, if any) committed as a change to `file`.
 fn commit(repo: &Path, file: &str, subject: &str, body: &str, hour: u8) {
@@ -82,7 +82,7 @@ pub(super) fn subjects(repo: &Path, range: &str) -> Vec<String> {
 }
 
 /// Every branch and where it points. The engine's own safety refs
-/// (`<prefix in force>backup/…`, `Generation::ref_prefix`, written by each rewrite) are not his refs.
+/// (`<prefix in force>backup/…`, `on_disk::REF_PREFIX`, written by each rewrite) are not his refs.
 pub(super) fn every_ref(repo: &Path) -> String {
     git(
         repo,
@@ -310,7 +310,7 @@ fn rewrite_look_and_leave_writes_nothing() {
     // The app makes the journal file at some point after opening (empty);
     // what counts is that no entry was written.
     let journal = mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+        &repo.join(format!(".git/{DIR}/undo-journal.jsonl")),
     )
     .unwrap_or_else(|why| panic!("the journal is readable: {why}"));
     assert!(

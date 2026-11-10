@@ -75,7 +75,7 @@ pub enum RowKind {
 #[must_use]
 pub fn source_word(kind: RowKind) -> &'static str {
     match kind {
-        RowKind::Mergewright => mergewright_core::on_disk::Generation::CURRENT.title(),
+        RowKind::Mergewright => mergewright_core::on_disk::TITLE,
         RowKind::Outside => "outside",
         RowKind::Lost | RowKind::LostEdit | RowKind::Replaced | RowKind::Deleted => "",
     }

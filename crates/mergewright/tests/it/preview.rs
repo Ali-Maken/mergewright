@@ -19,7 +19,7 @@ use mergewright::update::AppState;
 use mergewright_core::event::KeyCode;
 
 use crate::app_harness::{App, git, git_as_mergewright};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 mod capture;
 
@@ -353,12 +353,10 @@ fn m_again_merges_through_the_real_path() {
 
 /// The journal, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal the writes just made is readable")
-    .entries()
-    .to_vec()
+    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal the writes just made is readable")
+        .entries()
+        .to_vec()
 }
 
 /// Stages `name` from inside the changes pane and waits for the write and

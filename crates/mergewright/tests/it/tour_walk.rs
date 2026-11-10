@@ -31,7 +31,7 @@ use crate::app_harness::git;
 use crate::outside_repo::quit_cleanly;
 use crate::pty::{Isolated, Pty, Screen};
 use crate::repo_truth::{RepoTruth, git_truth};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// `mergewright_fixtures::git::FIXED_DATE` (2021-01-01T00:00:00Z), the instant
 /// the fixtures' own commits carry.
@@ -625,7 +625,7 @@ impl Before {
         Self {
             truth: git_truth(repo).expect("his repo reads"),
             journal: journal_bytes(repo),
-            mergewright_dir: bytes_under(&repo.join(".git").join(CURRENT_DIR)),
+            mergewright_dir: bytes_under(&repo.join(".git").join(DIR)),
             state: bytes_under(&isolated.config()),
         }
     }
@@ -640,9 +640,9 @@ impl Before {
     /// of his `.git/<app>/`.
     fn state_dir_is_unchanged(&self, repo: &Path, isolated: &Isolated) {
         assert_eq!(
-            bytes_under(&repo.join(".git").join(CURRENT_DIR)),
+            bytes_under(&repo.join(".git").join(DIR)),
             self.mergewright_dir,
-            ".git/{CURRENT_DIR}"
+            ".git/{DIR}"
         );
         assert_eq!(bytes_under(&isolated.config()), self.state, "state folder");
     }

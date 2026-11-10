@@ -23,7 +23,7 @@ use crate::m6_stash_put_back::{main_and_fix, planned, rev};
 use crate::preview::{FORK_NOW, dated_commit, opened};
 use crate::remote_by_key::ready;
 use crate::repo_truth::blob_of;
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// The edit made after the checkout: the drift the box names.
 pub(crate) const EDIT: &str = "edited after the checkout\n";
@@ -222,7 +222,7 @@ fn undo_over_drift_then_undo_again() {
 
     // Where the edit went: the undo entry's own backup holds its blob.
     let entries = mergewright_ops::journal::Journal::open(
-        &path.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+        &path.join(format!(".git/{DIR}/undo-journal.jsonl")),
     )
     .expect("the journal the writes just made is readable")
     .entries()

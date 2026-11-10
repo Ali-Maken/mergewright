@@ -16,7 +16,7 @@ use mergewright_core::event::{Event, KeyCode, KeyPress, Modifiers};
 
 use crate::app_harness::App;
 use crate::m7_walk::journal::{drawn, lost_work, opened, selected_row, text};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// J's rows from the bottom: the bar, the legend, the status row.
 const BAR: usize = 1;
@@ -648,7 +648,7 @@ fn r_s_s_y(app: &App, state: &AppState, repo: &std::path::Path, before: &str) ->
             "--format=%(refname)",
             "--contains",
             before,
-            &format!("refs/{CURRENT_DIR}/backup/"),
+            &format!("refs/{DIR}/backup/"),
         ],
         0,
     );

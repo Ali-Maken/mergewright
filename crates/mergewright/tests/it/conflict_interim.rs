@@ -22,7 +22,7 @@ use mergewright_git::state::InProgress;
 
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame, frame_at};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// The instant [`about_to_conflict_over`]'s first commit is stamped at, Unix
 /// seconds; one minute per commit after it.
@@ -279,12 +279,10 @@ fn merge_stopped(app: &App, state: AppState) -> AppState {
 
 /// The journal on disk, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal the merge just wrote is readable")
-    .entries()
-    .to_vec()
+    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal the merge just wrote is readable")
+        .entries()
+        .to_vec()
 }
 
 /// What `update` alone answers for one key — the commands, not just the
@@ -996,7 +994,7 @@ fn killed_mid_rebase() -> mergewright_fixtures::Scratch {
     let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::StoppedRebase);
     let path = scratch.path();
     let mut journal = mergewright_ops::journal::Journal::open(
-        &path.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+        &path.join(format!(".git/{DIR}/undo-journal.jsonl")),
     )
     .expect("the journal file can be created");
     journal

@@ -21,7 +21,7 @@ use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
 use mergewright::repos::RepoStore;
 use mergewright::update::{AppEvent, AppState, Size, Status, update};
 use mergewright_core::event::{Event, KeyCode, KeyPress, Modifiers};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 const SIZE: Size = Size {
     columns: 120,
@@ -227,7 +227,7 @@ fn make_the_commit(app: &App, repo: &Path, state: &AppState) -> AppState {
     // The journal is `mergewright_ops`', and the undo group's business; what
     // matters here is that the write went through it, and that the entry
     // records the branch actually moving — which is what an undo will read.
-    let journal = repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let journal = repo.join(format!(".git/{DIR}/undo-journal.jsonl"));
     let entries = std::fs::read_to_string(&journal).expect("the commit was journalled");
     assert!(entries.contains(r#""kind":"commit""#), "{entries}");
     assert!(entries.contains(r#""status":"committed""#), "{entries}");

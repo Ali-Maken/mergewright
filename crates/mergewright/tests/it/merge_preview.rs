@@ -22,7 +22,7 @@ use mergewright_core::event::KeyCode;
 
 use crate::app_harness::{App, git, pin_identity};
 use crate::preview::{FORK_EPOCH, dated_commit, frame_at, opened};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// The clock: an hour past the fixture's start, so every age is a number.
 const NOW: i64 = FORK_EPOCH + 60 * 60;
@@ -163,7 +163,7 @@ fn graph_age(age: &str) -> bool {
 }
 
 fn journal_len(repo: &Path) -> usize {
-    let path = repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.join(format!(".git/{DIR}/undo-journal.jsonl"));
     if !path.exists() {
         return 0;
     }

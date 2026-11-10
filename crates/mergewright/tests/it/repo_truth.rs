@@ -7,14 +7,14 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use mergewright_core::event::{KeyCode, KeyPress};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// Repository truth, entirely from git and the file system.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RepoTruth {
     /// `HEAD`'s commit; `None` on an unborn branch.
     pub head: Option<String>,
-    /// Every ref but those under the prefix in force (`Generation::ref_prefix`), name → object.
+    /// Every ref but those under the prefix in force (`on_disk::REF_PREFIX`), name → object.
     pub refs: BTreeMap<String, String>,
     /// `ls-files -s` lines.
     pub index: Vec<String>,
@@ -128,7 +128,7 @@ pub fn git_truth(repo: &Path) -> Result<RepoTruth, String> {
         .map(|s| s.trim().to_owned());
     let refs = run_git(repo, &["for-each-ref", "--format=%(refname) %(objectname)"])?
         .lines()
-        .filter(|line| !line.starts_with(&format!("refs/{CURRENT_DIR}/")))
+        .filter(|line| !line.starts_with(&format!("refs/{DIR}/")))
         .filter_map(|line| {
             line.split_once(' ')
                 .map(|(name, oid)| (name.to_owned(), oid.to_owned()))

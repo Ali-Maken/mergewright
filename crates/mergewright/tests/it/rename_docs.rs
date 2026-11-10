@@ -9,7 +9,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::rename_opens::crates_dir;
+use crate::source_files::crates_dir;
 
 /// Whole files allowed to say `graft`, and why.
 const ALLOWED_FILES: &[(&str, &str)] = &[

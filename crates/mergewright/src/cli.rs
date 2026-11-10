@@ -51,7 +51,7 @@ pub use mergewright_core::on_disk::ASKPASS_SOCKET_VAR;
 /// command uses: usage, `--version`, the stderr prefix, the crash text, the
 /// man page's NAME. Where prose means the app, the name is `Mergewright`
 /// (`mergewright_ui`'s `APP_NAME`); this is the binary's name.
-pub const COMMAND: &str = mergewright_core::on_disk::Generation::CURRENT.command();
+pub const COMMAND: &str = mergewright_core::on_disk::COMMAND;
 
 /// What the arguments could not be made sense of.
 #[derive(Debug, thiserror::Error)]

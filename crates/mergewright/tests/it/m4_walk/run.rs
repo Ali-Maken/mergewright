@@ -16,7 +16,7 @@ use super::steps::{Scenario, Step, Wait};
 use super::truth::{Marks, truth};
 use crate::app_harness::{App, PATIENCE};
 use crate::repo_truth::{check, fsck_clean};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// Run one scenario start to finish: the fixture, its setup, the app, the
 /// verdict, `fsck`, and the proof that no password leaked.
@@ -81,7 +81,7 @@ pub fn askpass_helper() -> Result<PathBuf, String> {
 pub fn no_secret_leaked(fixture: &Fixture, seen: &Recorded) -> Result<(), String> {
     let journal_path = fixture
         .work()
-        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+        .join(format!(".git/{DIR}/undo-journal.jsonl"));
     let journal_bytes = match std::fs::read(&journal_path) {
         Ok(bytes) => bytes,
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => Vec::new(),

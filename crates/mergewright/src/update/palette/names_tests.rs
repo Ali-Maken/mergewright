@@ -2,13 +2,15 @@
 //! (m8-polish-and-ship/50).
 
 use mergewright_core::event::{Event, KeyCode, KeyPress};
-use mergewright_core::on_disk::Generation;
 use mergewright_git::state::InProgress;
 use mergewright_ui::keymap::defaults;
 
 use crate::update::banner::tests::stopped;
 use crate::update::palette::rows;
 use crate::update::{AppEvent, update};
+
+/// Every earlier product's title and command (pre-publish-cleanup/11b2).
+const EARLIER: [(&str, &str); 2] = [("Graft", "graft"), ("Tributary", "trib")];
 
 /// `text` names `word` as a whole word (`_` and alphanumerics bound it).
 fn names_word(text: &str, word: &str) -> bool {
@@ -47,9 +49,9 @@ fn no_action_names_an_old_product() {
     let named: Vec<&String> = words
         .iter()
         .filter(|text| {
-            Generation::CURRENT
-                .older()
-                .any(|old| names_word(text, old.title()) || names_word(text, old.command()))
+            EARLIER
+                .iter()
+                .any(|(title, command)| names_word(text, title) || names_word(text, command))
         })
         .collect();
     assert!(

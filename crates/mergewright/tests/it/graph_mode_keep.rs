@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 use crate::fold_by_default::wallet_release;
 use crate::pty::{Isolated, Pty, Screen};
@@ -18,7 +18,7 @@ const DOWN: &[u8] = b"\x1b[B";
 
 /// The file `load` reads under this run's `XDG_CONFIG_HOME`.
 fn config_file(isolated: &Isolated) -> PathBuf {
-    isolated.config().join(CURRENT_DIR).join("config.toml")
+    isolated.config().join(DIR).join("config.toml")
 }
 
 /// The journey's keys, each one step; a typed word is one step.

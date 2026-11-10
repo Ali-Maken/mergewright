@@ -10,8 +10,6 @@
 use mergewright_ui::keymap::{Binding, ContextId, KeyChord, KeyCode};
 use mergewright_ui::theme::Token;
 
-use mergewright_core::on_disk::Generation;
-
 use super::COMMAND;
 use super::config_keys::{ConfigKeyDoc, is_pattern};
 use super::flags::{Flag, spelled};
@@ -29,7 +27,7 @@ pub fn man_page(flags: &[Flag], keys: &[Binding], config: &[ConfigKeyDoc]) -> St
     // (usability walk m8, m7).
     out.push_str(&format!(
         "{COMMAND} \\- {}, a terminal Git client for the daily work\n",
-        Generation::CURRENT.title()
+        mergewright_core::on_disk::TITLE
     ));
     synopsis(&mut out, flags);
     section(&mut out, "DESCRIPTION");
@@ -131,7 +129,7 @@ const FILES: &[(&str, &str)] = &[
 fn fill(words: &str) -> String {
     words
         .replace("{cmd}", COMMAND)
-        .replace("{dir}", Generation::CURRENT.dir())
+        .replace("{dir}", mergewright_core::on_disk::DIR)
 }
 
 fn section(out: &mut String, name: &str) {

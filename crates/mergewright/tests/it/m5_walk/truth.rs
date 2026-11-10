@@ -13,7 +13,7 @@ pub use mergewright_ops::operation::Side;
 
 use super::fixture::Fixture;
 use crate::repo_truth::{RepoTruth, diff_truth as diff_repo, git_truth, run_git};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// Repository truth, entirely from git and the file system.
 #[derive(Clone, Debug, Default)]
@@ -98,7 +98,7 @@ fn in_progress(repo: &Path) -> Result<Option<String>, String> {
 
 /// The journal's entries, or none when no write has happened yet.
 pub fn journal(repo: &Path) -> Result<Vec<JournalEntry>, String> {
-    let path = repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.join(format!(".git/{DIR}/undo-journal.jsonl"));
     if !path.exists() {
         return Ok(Vec::new());
     }
@@ -156,7 +156,7 @@ pub fn operation_on_disk(repo: &Path) -> Result<bool, String> {
 /// agrees that the newest entry is still `Pending`. `false` for a journal
 /// that is missing or unreadable — the caller's check names that.
 pub fn last_journal_line_is_pending(repo: &Path) -> bool {
-    let path = repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.join(format!(".git/{DIR}/undo-journal.jsonl"));
     let Ok(raw) = std::fs::read_to_string(&path) else {
         // Missing or unreadable: there is no Pending line to find, which is
         // exactly the answer `false` gives; the caller's message says so.

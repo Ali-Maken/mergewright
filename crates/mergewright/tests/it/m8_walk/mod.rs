@@ -170,16 +170,6 @@ pub const WALKS: &[(&str, &str, &str)] = &[
         "whitespace_mode_shown",
     ),
     (
-        "open-older-names-repo",
-        "m8_walk/mergewright.rs",
-        "older_names_repo_opens_and_undoes",
-    ),
-    (
-        "undo-after-rename",
-        "m8_walk/mergewright.rs",
-        "older_names_repo_opens_and_undoes",
-    ),
-    (
         "journal-replaced",
         "m8_walk/mergewright.rs",
         "journal_replaced",

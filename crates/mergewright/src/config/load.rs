@@ -11,9 +11,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk;
 
-use super::folder::{ConfigDirMoved, config_names, decide, migrate_config_dir};
 use super::types::Config;
 
 /// What [`load`] found.
@@ -68,13 +67,6 @@ pub enum ConfigWarning {
         /// What he wrote: the text of a string, the TOML of anything else.
         value: String,
     },
-    /// The config folder's move to its new name (ticket 26) left something
-    /// to say: the old folder still beside the new one, or the move failed
-    /// and the old one is still in use.
-    ConfigFolder {
-        /// What happened, in words.
-        words: String,
-    },
 }
 
 /// A warning is not a failure — nothing was prevented, and nobody can `?` on
@@ -98,7 +90,6 @@ impl fmt::Display for ConfigWarning {
             ConfigWarning::BadColour { path, value } => {
                 write!(f, "{path}: \"{value}\" is not a #RRGGBB colour")
             }
-            ConfigWarning::ConfigFolder { words } => write!(f, "config folder: {words}"),
         }
     }
 }
@@ -138,16 +129,10 @@ pub enum ConfigError {
 ///
 /// Returns defaults if there is no file there. Tests use [`load_from`] with a
 /// path of their own; nothing here ever reads a real home directory in a test.
-///
-/// First moves the config folder to its new name, once (ticket 26,
-/// `config::folder`), so this read is already of the new folder; a move that
-/// could not finish keeps the old folder for this run and says why among the
-/// warnings. Called once, at startup: the names it settles on hold for the
-/// rest of the process (`recent`, `launches`).
+/// The folder is `<config home>/<on_disk::DIR>/` only; earlier folders are
+/// neither read nor touched.
 pub fn load() -> Result<Loaded, ConfigError> {
-    let (names, loaded) = load_settling(|name| env::var_os(name))?;
-    decide(names);
-    Ok(loaded)
+    load_at(path_in_environment(|name| env::var_os(name)))
 }
 
 /// Load a config file from an explicit path, for tests and for a future
@@ -172,8 +157,7 @@ pub fn load_from(path: &Path) -> Result<Loaded, ConfigError> {
 }
 
 /// Where `load` looks: `$XDG_CONFIG_HOME/mergewright/config.toml`, falling
-/// back to `$HOME/.config/mergewright/config.toml` — the old folder name when
-/// its move failed this run. `None` when neither is usable.
+/// back to `$HOME/.config/mergewright/config.toml`. `None` when neither is usable.
 pub fn default_path() -> Option<PathBuf> {
     path_in_environment(|name| env::var_os(name))
 }
@@ -197,7 +181,7 @@ pub(super) fn load_at(path: Option<PathBuf>) -> Result<Loaded, ConfigError> {
 /// resolving it against the current directory would put a user's config
 /// somewhere different every time they `cd`.
 pub(super) fn path_in_environment(read: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    config_home(read).map(|home| config_file(&home, config_names()))
+    config_home(read).map(|home| config_file(&home))
 }
 
 /// The config home the environment names: `$XDG_CONFIG_HOME`, else
@@ -214,98 +198,9 @@ pub(super) fn config_home(read: impl Fn(&str) -> Option<OsString>) -> Option<Pat
         })
 }
 
-/// `config.toml` in the app's folder under `config_home`, by `names`.
-fn config_file(config_home: &Path, names: Generation) -> PathBuf {
-    config_home.join(names.dir()).join("config.toml")
-}
-
-/// The config folder's move under `config_home`, the way [`load`] makes it
-/// (ticket 26): the names to use for the rest of the run, and what to say.
-/// No config home, nothing to move — the new names, unused.
-///
-/// Every earlier generation's folder, newest first (ADR-0057, 2026-10-11
-/// §8): the newest present is moved whole, since no new folder exists yet;
-/// each older one then meets the new folder and goes through the byte rule.
-pub(super) fn settle_folder(config_home: Option<&Path>) -> (Generation, Vec<ConfigWarning>) {
-    let Some(home) = config_home else {
-        return (Generation::CURRENT, Vec::new());
-    };
-    let warn = |words: String| ConfigWarning::ConfigFolder { words };
-    let mut warnings = Vec::new();
-    for from in Generation::CURRENT.older() {
-        let moved = migrate_config_dir(home, from);
-        if matches!(
-            moved,
-            Ok(ConfigDirMoved::Nothing
-                | ConfigDirMoved::Moved { .. }
-                | ConfigDirMoved::OlderWrote { .. })
-        ) {
-            warnings.extend(remove_earlier_lock(home, from).map(warn));
-        }
-        match moved {
-            Ok(ConfigDirMoved::Nothing | ConfigDirMoved::Moved { .. }) => {}
-            Ok(ConfigDirMoved::OlderWrote { old, kept_aside }) => {
-                warnings.push(warn(match kept_aside {
-                    Some(aside) => format!(
-                        "an older version wrote {} · close it; kept in {}",
-                        old.display(),
-                        aside.display()
-                    ),
-                    None => format!("an older version wrote {} · close it", old.display()),
-                }));
-            }
-            Ok(ConfigDirMoved::OldLeft { old, why }) => warnings.push(warn(format!(
-                "moved; {} could not be removed: {why}",
-                old.display()
-            ))),
-            // The new folder is not there: this was the move itself, and
-            // the old folder stays in use. Older folders wait for the move.
-            // A new folder that cannot even be looked at counts as not
-            // there: staying on the old names loses nothing.
-            Err(error)
-                if !matches!(home.join(Generation::CURRENT.dir()).try_exists(), Ok(true)) =>
-            {
-                warnings.push(warn(format!(
-                    "not moved to its new name, the old one stays in use: {error}"
-                )));
-                return (from, warnings);
-            }
-            // The new folder is in use; this older one is left for the
-            // next launch, which tries again.
-            Err(error) => warnings.push(warn(format!(
-                "{} not settled, left for the next launch: {error}",
-                home.join(from.dir()).display()
-            ))),
-        }
-    }
-    (Generation::CURRENT, warnings)
-}
-
-/// `<home>/<from>.lock`, the lock an earlier generation's build took to
-/// move its own folder, removed once `from`'s folder is settled (review
-/// m8-48 Minor 7). Never taken first: it guards that build's move, never
-/// this one's, and nothing is ever kept in it. Why it could not go, if it
-/// could not.
-fn remove_earlier_lock(home: &Path, from: Generation) -> Option<String> {
-    let lock = home.join(format!("{}.lock", from.dir()));
-    match fs::remove_file(&lock) {
-        Ok(()) => None,
-        // Safe to pass over: absent is the state this step makes.
-        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
-        Err(error) => Some(format!("{} could not be removed: {error}", lock.display())),
-    }
-}
-
-/// [`load`] against an arbitrary environment, the names it settled on
-/// returned rather than decided for the process — what a test drives.
-pub(super) fn load_settling(
-    read: impl Fn(&str) -> Option<OsString>,
-) -> Result<(Generation, Loaded), ConfigError> {
-    let home = config_home(read);
-    let (names, moved) = settle_folder(home.as_deref());
-    let mut loaded = load_at(home.map(|home| config_file(&home, names)))?;
-    loaded.warnings.extend(moved);
-    Ok((names, loaded))
+/// `config.toml` in the app's folder under `config_home`.
+fn config_file(config_home: &Path) -> PathBuf {
+    config_home.join(on_disk::DIR).join("config.toml")
 }
 
 /// The whole file, in two passes over the same text.

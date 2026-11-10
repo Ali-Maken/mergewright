@@ -10,7 +10,7 @@
 
 use std::path::Path;
 
-use mergewright_core::on_disk::Generation;
+use crate::old_names;
 
 use crate::pty::{Isolated, Pty, Screen};
 use crate::row_reads::{on_tip, tip_reads};
@@ -67,8 +67,8 @@ fn mergewright_now_pins_the_drawn_age() {
 /// come from the table so `rename_names::no_old_env_name` stays exact.
 #[test]
 fn the_old_now_name_is_not_read() {
-    for old in Generation::CURRENT.older() {
-        let name = format!("{}NOW", old.env_prefix());
+    for old in &old_names::EARLIER {
+        let name = format!("{}NOW", old.env_prefix);
         let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
         let isolated = Isolated::new();
         let repo = scratch.path();

@@ -30,26 +30,6 @@ fn edited(repo: TempRepo) -> TempRepo {
 }
 
 #[test]
-fn no_marker_writes_the_old_names() {
-    let repo = edited(TempRepo::init_on(Generation::Graft));
-    let entry = stage_a(&repo);
-
-    let backup = entry.backup_ref.expect("a stage takes a backup");
-    assert!(backup.starts_with("refs/graft/backup/main/"), "{backup}");
-    assert_eq!(
-        repo.git(&["rev-parse", "--verify", "-q", &backup]).len(),
-        40
-    );
-    let journal = journal_path(&repo.open()).expect("resolves");
-    assert!(
-        journal.ends_with(".git/graft/undo-journal.jsonl"),
-        "{}",
-        journal.display()
-    );
-    assert!(journal.is_file());
-}
-
-#[test]
 fn the_marker_writes_the_new_names_and_u_still_restores() {
     let repo = edited(TempRepo::init_on(Generation::Graft));
     let marker_dir = repo.path().join(".git").join(Generation::CURRENT.dir());

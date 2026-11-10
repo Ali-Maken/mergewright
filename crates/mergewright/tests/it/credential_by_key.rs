@@ -27,7 +27,7 @@ use mergewright_fixtures::Shape;
 use mergewright_fixtures::remote::{HttpRemote, LocalRemote};
 
 use crate::app_harness::{App, PATIENCE, git};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 const USER: &str = "tester";
 const PASSWORD: &str = "correct-horse-battery-staple";
@@ -86,12 +86,10 @@ fn rev(repo: &Path, name: &str) -> String {
 }
 
 fn journal(repo: &Path) -> Vec<JournalEntry> {
-    mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal the writes made is readable")
-    .entries()
-    .to_vec()
+    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal the writes made is readable")
+        .entries()
+        .to_vec()
 }
 
 fn plain(c: char) -> KeyPress {
@@ -294,7 +292,7 @@ fn push_answering(
 
 /// None of `secrets` is in the undo journal's bytes.
 fn assert_not_in_journal(work: &Path, secrets: &[&str]) {
-    let journal_bytes = std::fs::read(work.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")))
+    let journal_bytes = std::fs::read(work.join(format!(".git/{DIR}/undo-journal.jsonl")))
         .expect("the journal is readable");
     for secret in secrets {
         assert!(
