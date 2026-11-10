@@ -94,6 +94,8 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 - `ASKPASS_SOCKET_VAR` (const) — `MWR_ASKPASS_SOCKET`, its one definition: set on askpass children by mergewright-git, re-exported by `mergewright::cli`.
 - `MESSAGE_TAG` (const) — `Generation::CURRENT.dir()`: the tag every message this build writes into git starts with (stash, backup, index, absorb, forecast); earlier tags read by `of_message`.
 - `CURRENT_DIR` (const) — `Generation::CURRENT.dir()`, short enough to inline in a path (`.git/{CURRENT_DIR}/...`).
+- `DIR` / `TITLE` / `COMMAND` / `ENV_PREFIX` / `REF_PREFIX` / `LINK_TRAILER` / `BACKUP_EMAIL` (const) — the current names; use qualified (`on_disk::DIR`).
+- `Own::is_ref` / `is_message` / `is_trailer` (fn) — whether a ref, git message or trailer line is this app's own.
 - `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/<dir>/` of each generation with `has_marker`: the newest one present (up to `CURRENT`) is in force.
 
 ## raster

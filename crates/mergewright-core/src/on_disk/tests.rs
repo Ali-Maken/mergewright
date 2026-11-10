@@ -112,3 +112,61 @@ fn each_spelling_reads_back_its_generation() {
         assert_eq!(Generation::of_message(message), None, "{message:?}");
     }
 }
+
+// The current-only names (11b1). This test goes with the table in 11b4.
+#[test]
+fn consts_match_current_generation() {
+    let current = Generation::CURRENT;
+    assert_eq!(DIR, current.dir());
+    assert_eq!(TITLE, current.title());
+    assert_eq!(COMMAND, current.command());
+    assert_eq!(ENV_PREFIX, current.env_prefix());
+    assert_eq!(REF_PREFIX, current.ref_prefix());
+    assert_eq!(LINK_TRAILER, current.link_trailer());
+    assert_eq!(BACKUP_EMAIL, current.backup_email());
+    assert_eq!(MESSAGE_TAG, DIR);
+    assert_eq!(CURRENT_DIR, DIR);
+}
+
+#[test]
+fn is_own_ref() {
+    assert!(Own::is_ref(b"refs/mergewright/backup/main/01J0"));
+    for name in [
+        &b"refs/heads/mergewright"[..],
+        b"refs/mergewrightx/y",
+        b"refs/graft/backup/x",
+        b"refs/tributary/backup/x",
+        b"refs/mergewright\xff",
+    ] {
+        assert!(!Own::is_ref(name), "{name:?}");
+    }
+}
+
+#[test]
+fn is_own_message() {
+    assert!(Own::is_message("mergewright: your edits, set aside for x"));
+    assert!(Own::is_message("mergewright 01J0 stage"));
+    for message in [
+        "graft: x",
+        "tributary 01J0 stage",
+        "mergewrightx y",
+        "Fix mergewright: x",
+        "mergewright",
+        "",
+    ] {
+        assert!(!Own::is_message(message), "{message:?}");
+    }
+}
+
+#[test]
+fn is_own_trailer() {
+    assert!(Own::is_trailer("Mergewright-Link: step"));
+    for line in [
+        "Graft-Link: step",
+        "Tributary-Link: step",
+        "mergewright-link: step",
+        "Signed-off-by: a",
+    ] {
+        assert!(!Own::is_trailer(line), "{line}");
+    }
+}
