@@ -58,7 +58,7 @@ judged against the real app in `.scratch/m8-polish-and-ship/real-vs-mockup.md`):
 **Ease pass (ADR-0063; user approved 2026-10-17)** — supersedes the columns below at every width. Columns: `graph | branch | message | who | age`, then `│` and the branch pane (≥120 cols: branch 20, who 6, age 4, pane 36; 100–119: pane 30, branch 14; <100: no pane, branch 12, the cursor row's second line says who/when/branch/hash). No SHA column, no ref badges. Branch column written once where it changes, in its role colour; own rows `you` bold. Right pane: pushed? merged? behind its base? who/last. `⏎` opens the detail pane, which replaces the branch pane while open. Merged branches open folded (`▸ N commits from <branch>`). Per the mocks in `prototypes/ease-mocks/`, rows in `docs/design-notes/ease-pass.md` "Acceptance".
 
 ```
-╭─ ◆ graft ─ ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ─────────────────────────────────────── ⌃P Commands ─╮
+╭─ ◆ mwr ─── ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ─────────────────────────────────────── ⌃P Commands ─╮
 │ BRANCHES         ⌕ │ GRAPH   REF            SUBJECT                          AUTHOR  WHEN   SHA      │ COMMIT a1b2c3d                  │
 │ ● main       ↑2    │ ◌                      Uncommitted changes (3 staged)                           │ Rui M · 2 min ago              │
 │ ▾ feature/         │ ●a      [main]         Fix token refresh race            RM      2m     a1b2c3d │ parents 9f8e7d6                 │
@@ -92,7 +92,7 @@ Sidebar collapses to icons; detail pane moves under the graph instead of
 beside it.
 
 ```
-╭─ ◆ graft ─ ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ──────────────────────── ⌃P ─╮
+╭─ ◆ mwr ─── ~/code/api ─ ⎇ main ↑2 ↓0 ● 3 changes ──────────────────────── ⌃P ─╮
 │ ⌕│ GRAPH  REF            SUBJECT                         AUTHOR  WHEN   SHA  │
 │ ●│ ◌                     Uncommitted changes (3 staged)                     │
 │ ▾│ ●a     [main]         Fix token refresh race           RM      2m    a1b2c│
@@ -115,7 +115,7 @@ A single pane with a tab strip. `Tab`/`Shift-Tab` still switch panes; here
 that means switching tabs.
 
 ```
-╭◆ graft ~/code/api ⎇ main↑2↓0 ●3 ─────────────────────────────────── ⌃P ─╮
+╭◆ mwr   ~/code/api ⎇ main↑2↓0 ●3 ─────────────────────────────────── ⌃P ─╮
 │[Graph]  Changes  Detail                                                │
 │ GRAPH   SUBJECT                              WHEN   SHA                │
 │ ◌       Uncommitted changes (3 staged)                                 │
@@ -202,7 +202,7 @@ the user, on the M6 acceptance capture (CLAUDE.md rule 6).
 
 ```
 200x50 (≥180 columns: list column + three panes; list = clamp(longest row, 22, 32), panes a third of the rest)
- graft ~/code/api                                                                                       MERGING
+ mwr   ~/code/api                                                                                       MERGING
  FILES · 2 conflicted        │ ▸ notes.txt · 2 conflicts · 1 open
                              │   yours · main                 │   result                      │   theirs · feature
    gone.txt    done ✓        │    1 one                       │    1 one                      │    1 one
@@ -217,7 +217,7 @@ the user, on the M6 acceptance capture (CLAUDE.md rule 6).
 
 ```
 120x40 (<180 columns: list strip + card; sides paired at ≥100, stacked below)
- graft ~/code/api                                                              MERGING
+ mwr   ~/code/api                                                              MERGING
  files   gone.txt · done ✓    ▸ notes.txt · 1 of 2 open
  ────────────────────────────────────────────────────────────────────────────────────
  ▸ notes.txt · 2 conflicts · 1 open
@@ -438,7 +438,7 @@ with the printed relative age so it never depends on colour alone.
 **Ease pass (ADR-0063; user approved 2026-10-17)** — a merge's banner reads `merging <from> into <into>`.
 
 ```
-╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ───────────────────────────╮
+╭ ◆ mwr ─── ~/code/api ─ REBASING step 3 of 7 ───────────────────────────╮
 │ ●     cut release 1.0                                      3d  a82960b │
 ╰ c continue  s skip  a abort  M mergetool  e edit  ⇥ graph ─────────────╯
 ```

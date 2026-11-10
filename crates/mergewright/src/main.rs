@@ -1,5 +1,5 @@
 //! The Mergewright binary. Deliberately thin: everything it runs lives in the
-//! `graft` library (`lib.rs`) so the same code can be driven from tests and
+//! `mergewright` library (`lib.rs`) so the same code can be driven from tests and
 //! from the `terminal_probe` example.
 //!
 //! What it owns is the order of startup and the way the process dies. The
@@ -30,7 +30,7 @@ fn main() -> ExitCode {
         Ok(Invocation::Usage(usage) | Invocation::Version(usage)) => {
             return print_to_stdout(&format!("{usage}\n"));
         }
-        // For packagers and `docs/man/graft.1`: the page from the live
+        // For packagers and `docs/man/mwr.1`: the page from the live
         // tables, nothing else on stdout.
         Ok(Invocation::GenerateMan) => {
             return print_to_stdout(&cli::man_page(
@@ -133,7 +133,7 @@ fn start(
 }
 
 /// Write `text` to stdout for `--help`, `--version` or `--generate-man`.
-/// A reader that closed early (`graft --generate-man | head`) is a clean
+/// A reader that closed early (`mwr --generate-man | head`) is a clean
 /// exit: it asked for no more, and Rust ignores SIGPIPE so the write would
 /// otherwise panic. Safe to treat as success because nothing else is lost —
 /// this text is all the process does. Any other write failure is exit 1.

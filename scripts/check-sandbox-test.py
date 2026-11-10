@@ -58,7 +58,7 @@ def run(body, tmp, name):
 
 def main():
     misses = []
-    tmp = tempfile.mkdtemp(prefix="graft-check-sandbox-test-")
+    tmp = tempfile.mkdtemp(prefix="mwr-check-sandbox-test-")
     try:
         for name, body in BAD.items():
             code, err = run(body, tmp, name)

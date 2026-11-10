@@ -15,7 +15,7 @@
 #    puts the browser back on the same row.
 #  - The box says what reverting to before that entry would do, in the
 #    plan's own words — how many steps, and what the index and working
-#    tree would be. **No `git …` line:** a revert is `graft`'s own
+#    tree would be. **No `git …` line:** a revert is Mergewright's own
 #    restore, step by step, not a git command anyone could type, and
 #    `plan_revert_to` returns no commands (review 08 Minor 6 — this
 #    header used to ask the reader to look for one).

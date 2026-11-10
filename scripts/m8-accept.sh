@@ -27,10 +27,10 @@
 #   4. The release facts the install clause rests on, quoted from
 #      docs/release/*.txt (not re-run here: dist needs the network).
 #   5. The journey tally: fence ids against WALKS entries.
-#   6. Mergewright (m8-polish-and-ship/57): the rename's scenarios S1–S8,
+#   6. Mergewright (m8-polish-and-ship/57): the rename's scenarios S4–S8,
 #      their tests re-run with PASS lines kept, `mwr --version`/`--help` and
 #      the manual's NAME line, the release plan's artifact names. Prints
-#      `mergewright: 8 scenarios, N failed`.
+#      `mergewright: 5 scenarios, N failed`.
 #
 # CARGO_TARGET_DIR is honoured (default: target).
 set -u
@@ -91,16 +91,17 @@ missing=$(comm -23 <(echo "$fence") <(echo "$walked") | tr '\n' ' ')
 out "5 journeys: $(echo "$fence" | wc -l | tr -d ' ') in the fence · missing a walk: ${missing:-none}"
 [ -z "$missing" ] || failed=1
 
-# ── 6. Mergewright: the rename's eight scenarios (m8-polish-and-ship/57) ────
-# S1–S3, S5, S6 and S8 are tests: run again here with every PASS line kept
+# ── 6. Mergewright: the rename's scenarios (m8-polish-and-ship/57) ──────────
+# S1–S3 tested the earlier names' moves, removed with that code
+# (pre-publish-cleanup/11b). S5, S6 and S8 are tests: run again here with every PASS line kept
 # (the default profile prints failures only), each scenario passing when
 # every test it names reads PASS. S4 runs the built binary and reads the
 # manual's NAME line; S7 reads docs/release/plan.txt (dist is not re-run
 # here) and refuses an artifact under another name.
-MW_FILTER='test(/^m8_walk::mergewright::/) | test(/^rename_names::/) | test(/^rename_opens::no_old_dir_literal$/)'
+MW_FILTER='test(/^m8_walk::mergewright::/) | test(/^rename_names::/) | test(/^codename_absent::/)'
 env -u MWR_UPDATE_SHOTS cargo nextest run --ignore-default-filter -p mergewright --test it --no-fail-fast \
   --status-level pass -E "$MW_FILTER" > "$ACCEPT/mergewright.txt" 2>&1
-out "6 mergewright (S1–S8 · $ACCEPT/mergewright.txt):"
+out "6 mergewright (S4–S8 · $ACCEPT/mergewright.txt):"
 bin="${CARGO_TARGET_DIR:-target}/debug/mwr"
 s_failed=0
 scenario() { # <label> <test path>...
@@ -116,9 +117,6 @@ scenario() { # <label> <test path>...
     s_failed=$((s_failed + 1))
   fi
 }
-scenario "S1 older names open, u undoes" m8_walk::mergewright::older_names_repo_opens_and_undoes
-scenario "S2 second-generation names" m8_walk::mergewright::tributary_repo_opens
-scenario "S3 another window keeps old names" m8_walk::mergewright::another_window_keeps_old_names
 if [ -x "$bin" ] && version=$("$bin" --version) && help=$("$bin" --help | head -1) \
   && name=$(grep -A1 -m1 '^\.SH NAME' docs/man/mwr.1 | tail -1); then
   out "    S4 command and manual: ok · $version · $help · man: $name"
@@ -141,10 +139,9 @@ else
 fi
 scenario "S8 no old name live" rename_names::no_old_message_literal \
   rename_names::no_old_name_in_user_visible_strings \
-  rename_names::user_docs_and_scripts_name_the_command rename_names::scripts::no_old_env_name \
-  rename_names::scripts::scripts_run_the_command rename_names::scripts::no_old_package_spec \
-  rename_opens::no_old_dir_literal
-out "mergewright: 8 scenarios, $s_failed failed"
+  codename_absent::no_shipped_file_names_the_codename rename_names::scripts::no_old_env_name \
+  rename_names::scripts::scripts_run_the_command rename_names::scripts::no_old_package_spec
+out "mergewright: 5 scenarios, $s_failed failed"
 [ "$s_failed" -eq 0 ] || failed=1
 
 out "summary: $SUMMARY"

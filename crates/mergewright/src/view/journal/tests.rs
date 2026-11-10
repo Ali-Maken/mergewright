@@ -32,7 +32,7 @@ fn entry(id: i64, kind: OperationKind, description: &str) -> JournalEntry {
         worktree_before: None,
         worktree_after: None,
         worktree_raw_before: None,
-        backup_ref: Some("refs/graft/backup/main/x".to_owned()),
+        backup_ref: Some("refs/mergewright/backup/main/x".to_owned()),
         pins: Vec::new(),
         commands: vec!["git add -- src/a.rs".to_owned()],
         reverses: None,
@@ -695,12 +695,12 @@ fn migrate_row_words() {
 
 /// Ticket 48 Part B: a move written by an earlier build keeps the name it
 /// moved to. The words are stored in the journal line, not rebuilt from
-/// the generation in force, so a Tributary-era row still reads Tributary.
+/// the generation in force, so an older row still reads as it was written.
 /// The two lines are a golden in the journal's on-disk shape.
 #[test]
 fn an_old_migrate_row_keeps_its_target() {
     let lines = concat!(
-        r#"{"id":"01HF7YAT000000000000000000","status":"pending","at_unix_ms":1700000000000,"kind":"migrate","description":"rename to Tributary (3 refs, 12 files)","touches":{"refs":[],"index":false,"worktree":false},"head_before":{"branch":"refs/heads/main"},"refs_before":{},"index_before":null,"worktree_before":null,"backup_ref":null,"pins":[],"reverses":null}"#,
+        r#"{"id":"01HF7YAT000000000000000000","status":"pending","at_unix_ms":1700000000000,"kind":"migrate","description":"rename to Mergewright (3 refs, 12 files)","touches":{"refs":[],"index":false,"worktree":false},"head_before":{"branch":"refs/heads/main"},"refs_before":{},"index_before":null,"worktree_before":null,"backup_ref":null,"pins":[],"reverses":null}"#,
         "\n",
         r#"{"id":"01HF7YAT000000000000000000","status":"committed","head_after":{"branch":"refs/heads/main"},"refs_after":{},"index_after":null,"worktree_after":null,"commands":[]}"#,
         "\n",
@@ -714,7 +714,7 @@ fn an_old_migrate_row_keeps_its_target() {
     let view = journal_view(&state, 10);
     assert_eq!(
         view.rows[0].description.as_str(),
-        "rename to Tributary (3 refs, 12 files)"
+        "rename to Mergewright (3 refs, 12 files)"
     );
 }
 

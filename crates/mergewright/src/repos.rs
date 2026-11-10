@@ -209,7 +209,7 @@ impl RepoStore {
     /// Every path git's porcelain names is relative to this, so anything
     /// Mergewright hands to another program — `$EDITOR`, above all — is joined
     /// onto it first. Mergewright's own process directory is wherever the user
-    /// happened to be standing when they typed `graft ~/code/api`
+    /// happened to be standing when they typed `mwr ~/code/api`
     /// (m3/05 review, Major 2).
     ///
     /// # Errors

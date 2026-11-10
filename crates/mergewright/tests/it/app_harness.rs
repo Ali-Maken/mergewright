@@ -128,7 +128,7 @@ impl App {
         Self::open_with(repo, None)
     }
 
-    /// Open with `graft` itself as git's askpass helper (m4-remotes/06).
+    /// Open with `mwr` itself as git's askpass helper (m4-remotes/06).
     ///
     /// The runner defaults to `current_exe`, which under `cargo test` is the
     /// test binary and has no askpass mode; a test that means to answer a

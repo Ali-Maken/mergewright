@@ -24,7 +24,7 @@ use mergewright_core::on_disk::DIR;
 
 /// The second remote, which is not there: a fixed path, so the failure's
 /// words are the same on every machine.
-const GONE: &str = "file:///nonexistent/graft-21c.git";
+const GONE: &str = "file:///nonexistent/mwr-21c.git";
 
 fn tracking(remote: &LocalRemote) -> String {
     format!("refs/remotes/origin/{}", remote.default_branch())
@@ -174,7 +174,7 @@ fn capture_a_partial_fetch() {
         "{status}"
     );
     assert!(
-        status.contains("no repository at '/nonexistent/graft-21c.git'"),
+        status.contains("no repository at '/nonexistent/mwr-21c.git'"),
         "{status}"
     );
     let at_120 = frame(&state, 120, 40);
@@ -203,7 +203,7 @@ fn capture_j_at(app: &App, state: &AppState, (columns, rows): (u16, u16), tips: 
         "{row}"
     );
     // The failure leads and is kept whole where the row allows; at these
-    // widths `no repository at '…/graft-21c.git' …` takes the room and the
+    // widths `no repository at '…/mwr-21c.git' …` takes the room and the
     // moves clause after it is cut (NOTES, 21c Part B).
     assert!(row.contains("failed: no repository at"), "{row}");
     // …and J's status row, the failure line, says what moved.
@@ -270,7 +270,7 @@ const STATUS_HEADER: &str = "\
 # unverified (CLAUDE.md rule 5).
 #
 # What right looks like: the bottom line says the fetch failed (`no repository
-# at '/nonexistent/graft-21c.git' \u{2026}`) and ends `\u{b7} origin/main moved before
+# at '/nonexistent/mwr-21c.git' \u{2026}`) and ends `\u{b7} origin/main moved before
 # it stopped` \u{2014} origin's half of the fetch landed before gone's failed.
 ";
 
@@ -285,7 +285,7 @@ fn journal_header(columns: u16, rows: u16) -> String {
 # TestBackend, no colour recorded \u{2014} colour is unverified (CLAUDE.md rule 5).
 #
 # What right looks like: the \u{25cf} fetch row leads with `failed: no repository at
-# '/nonexistent/graft-21c.git' \u{2026}` and has no `nothing written` mark and no
+# '/nonexistent/mwr-21c.git' \u{2026}` and has no `nothing written` mark and no
 # `\u{2190} u`. Its summary goes on `\u{b7} origin/main moved before it stopped \u{b7} not
 # undoable`, but this failure is long: at this width the row is cut after it
 # (verdict first), so the moves show on J's status row above the legend (the

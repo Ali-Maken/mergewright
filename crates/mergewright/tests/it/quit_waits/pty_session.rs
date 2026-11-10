@@ -61,7 +61,7 @@ pub(super) enum Stderr {
     File(PathBuf),
 }
 
-/// `graft` as the session leader of a fresh pty.
+/// `mwr` as the session leader of a fresh pty.
 pub(super) struct Session {
     master: Option<File>,
     child: Child,
@@ -120,7 +120,7 @@ impl Session {
                 .stderr(Stdio::from(File::create(path).expect("a stderr file")))
                 .env(KEEP_STDERR_VAR, "1");
         }
-        let child = command.spawn().expect("graft starts");
+        let child = command.spawn().expect("mwr starts");
         let master = File::from(pty.master);
         let (output, reading, reader) = read_into_memory(&master);
         Self {
@@ -331,10 +331,10 @@ impl Drop for Session {
     fn drop(&mut self) {
         if matches!(self.child.try_wait(), Ok(None)) {
             if let Err(error) = self.child.kill() {
-                eprintln!("could not stop graft: {error}");
+                eprintln!("could not stop mwr: {error}");
             }
             if let Err(error) = self.child.wait() {
-                eprintln!("could not reap graft: {error}");
+                eprintln!("could not reap mwr: {error}");
             }
         }
     }
@@ -372,7 +372,10 @@ pub(super) fn wait_for_line(file: &Path, needle: &str) -> String {
 /// Mergewright's crash reports in its isolated state directory: none, or the
 /// panic is named.
 pub(super) fn assert_no_crash(isolated: &Isolated) {
-    let dir = isolated.home().join(".local/state/graft");
+    let dir = isolated
+        .home()
+        .join(".local/state")
+        .join(mergewright_core::on_disk::DIR);
     let reports: Vec<String> = std::fs::read_dir(&dir)
         .map(|entries| {
             entries
@@ -383,9 +386,5 @@ pub(super) fn assert_no_crash(isolated: &Isolated) {
                 .collect()
         })
         .unwrap_or_default();
-    assert!(
-        reports.is_empty(),
-        "graft panicked:\n{}",
-        reports.join("\n")
-    );
+    assert!(reports.is_empty(), "mwr panicked:\n{}", reports.join("\n"));
 }

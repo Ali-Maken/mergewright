@@ -278,7 +278,7 @@ whether the write can stop halfway:
 | `H` | Hide / show the stash in the graph (m1/15) |
 | `Enter` (on a graph row) | Open the detail pane on that commit (peek (M1) → open details (M2), ADR-0023, m2-details-and-diffs/10) |
 | `y` | Copy the selected commit's SHA to the clipboard (OSC 52) (ADR-0023, m1/45) |
-| `#` | **Decided (ADR-0063; user approved 2026-10-17)** — `graph.colours_off`: colours off / on for the whole screen until you quit; lines keep their shapes (ease pass Q3 a). Lands in the table with its handler (G): an unanswered row fails `graft`'s dead-key sweep |
+| `#` | **Decided (ADR-0063; user approved 2026-10-17)** — `graph.colours_off`: colours off / on for the whole screen until you quit; lines keep their shapes (ease pass Q3 a). Lands in the table with its handler (G): an unanswered row fails `mergewright`'s dead-key sweep |
 
 **Decided (ADR-0063; user approved 2026-10-17)** — fold default: merged branches open folded (`▸ N commits from <branch>`); `Space` on a merge opens it (`▾`), `Space` on an opened row closes it and puts the cursor on the merge (PROMPT §1.3 default changes; same key, same meaning as the `Space` row above). `C` stays the branch picker (Q1 a) and `x` stays mark/compare (Q2 a); only the bar's words change (`C switch to <branch>`, `x compare`).
 

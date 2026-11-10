@@ -214,13 +214,13 @@ mod tests {
 
     #[test]
     fn askpass_mode_needs_the_socket_and_exactly_one_argument() {
-        let socket = Some(OsString::from("/tmp/graft-askpass-1/ask.sock"));
+        let socket = Some(OsString::from("/tmp/mwr-askpass-1/ask.sock"));
         let prompt = [OsString::from("Password for 'http://u@h':")];
 
         assert_eq!(
             askpass(socket.clone(), &prompt),
             Some(Invocation::Askpass {
-                socket: PathBuf::from("/tmp/graft-askpass-1/ask.sock"),
+                socket: PathBuf::from("/tmp/mwr-askpass-1/ask.sock"),
                 prompt: "Password for 'http://u@h':".to_owned(),
             })
         );

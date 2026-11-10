@@ -159,7 +159,7 @@ fn announce(
     let _ = out.write_all(lines.as_bytes());
 }
 
-/// `${XDG_STATE_HOME:-~/.local/state}/tributary`.
+/// `${XDG_STATE_HOME:-~/.local/state}/mergewright`.
 fn report_dir() -> Option<PathBuf> {
     let state_home = non_empty("XDG_STATE_HOME")
         .map(PathBuf::from)
@@ -350,7 +350,7 @@ mod tests {
             static COUNTER: AtomicU32 = AtomicU32::new(0);
             let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
             let path = env::temp_dir().join(format!(
-                "graft-crash-test-{name}-{}-{unique}",
+                "mwr-crash-test-{name}-{}-{unique}",
                 std::process::id()
             ));
             fs::create_dir_all(&path).unwrap();
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn the_report_directory_is_created_if_it_is_missing() {
         let dir = TempDir::new("nested");
-        let nested = dir.0.join("state").join("graft");
+        let nested = dir.0.join("state").join("mergewright");
         let timestamp = Timestamp::from_unix_seconds(0);
 
         let path = write_report(&nested, &timestamp, "report").unwrap();

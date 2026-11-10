@@ -1,6 +1,6 @@
 # Capabilities — M3: working tree, undo and stash
 
-This milestone made Graft safe to use for real, daily git work, not just to
+This milestone made Mergewright safe to use for real, daily git work, not just to
 look at history. Every write the app makes to the working tree, the index or
 a ref — staging, discarding, committing, amending, stashing — goes through one
 seam that snapshots what it's about to touch and records what it did in a
@@ -9,7 +9,7 @@ again, file bytes included. A changes pane lets you stage or discard by file,
 by hunk, or by line; a commit editor with a real `$EDITOR` escape hatch lets
 you write the message; a stash overlay lets you save, list, apply, pop and
 drop stashes; a journal browser lets you see and act on the history of what
-Graft has done to your repo. The milestone's promise, proven end to end on a
+Mergewright has done to your repo. The milestone's promise, proven end to end on a
 real repository: **you cannot lose work**.
 
 ## Capabilities
@@ -24,7 +24,7 @@ status: works
 ```
 
 - **How:** Internal — every stage, unstage, discard, commit, amend, stash push/apply/pop/drop dispatches as an `Operation` through `mergewright_ops::apply`.
-- **Behaviour:** Before running, the seam reads current repo facts (`RepoFacts`) and takes a snapshot; the snapshot backs up whatever the operation is about to touch as a git commit under `refs/graft/backup/<worktree>/<ulid>` whose tree has exactly two sub-trees, `index` and `worktree` (`git ls-tree <commit>` shows only those two names). A worktree-touching operation's backup ref points at an after-commit whose parent is the before-commit. The operation only actually runs after the snapshot succeeds. Every apply is proven **parity**: applying through Graft's own code on one fixture copy and running the exact same `git` command line (from `Operation::plan`) on a second copy produce byte-identical `for-each-ref`, `ls-files -s` and `status --porcelain=v2` (excluding the backup refs themselves).
+- **Behaviour:** Before running, the seam reads current repo facts (`RepoFacts`) and takes a snapshot; the snapshot backs up whatever the operation is about to touch as a git commit under `refs/mergewright/backup/<worktree>/<ulid>` whose tree has exactly two sub-trees, `index` and `worktree` (`git ls-tree <commit>` shows only those two names). A worktree-touching operation's backup ref points at an after-commit whose parent is the before-commit. The operation only actually runs after the snapshot succeeds. Every apply is proven **parity**: applying through Mergewright's own code on one fixture copy and running the exact same `git` command line (from `Operation::plan`) on a second copy produce byte-identical `for-each-ref`, `ls-files -s` and `status --porcelain=v2` (excluding the backup refs themselves).
 - **Proven by:**
   ops-execution acceptance suite (ticket 03, all on `copy_into_temp` fixtures asserting repo state by reading git, never by trusting the return value) — parity-every-kind test, backup-commit-shape test
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §Interfaces and data shapes, §Hard-to-reverse choices; ADR-0010 (journal per worktree, backup refs namespaced); ADR-0031
@@ -40,7 +40,7 @@ status: works
 ```
 
 - **How:** `u` / `U`, anywhere in the app, not just inside a pane.
-- **Behaviour:** `u` emits `Command::Undo(_, force: false)`. On success, sets a status line (the entry's own description, e.g. `undo: stage src/a.rs` — not `undid: …`, since the description already carries the `undo:`/`redo:` prefix) and refreshes exactly the scope the undo touched (`Applied::refresh`: `WorkingTree` or `Everything`). `U` mirrors it with redo. `u`/`U` while a write is already in flight emit nothing (status stays `Busy`). For every operation kind, taking a full snapshot before the op, applying, then undoing reproduces byte-for-byte: `for-each-ref` (excluding `refs/graft`), `ls-files -s`, and every worktree file's bytes including untracked files. Redo then reproduces the post-op snapshot. Undo again reproduces the pre-op snapshot. Proven concretely on: an untracked binary file (bytes `[0, 255, 10, 13, ...]`) discarded then undone comes back byte-identical; an unstaged edit to a tracked file, same; a file both staged and unstaged, same, both index and worktree bytes. Discarding one file and then creating an unrelated new file: undo restores only the discarded file, leaves the new one alone (path scoping).
+- **Behaviour:** `u` emits `Command::Undo(_, force: false)`. On success, sets a status line (the entry's own description, e.g. `undo: stage src/a.rs` — not `undid: …`, since the description already carries the `undo:`/`redo:` prefix) and refreshes exactly the scope the undo touched (`Applied::refresh`: `WorkingTree` or `Everything`). `U` mirrors it with redo. `u`/`U` while a write is already in flight emit nothing (status stays `Busy`). For every operation kind, taking a full snapshot before the op, applying, then undoing reproduces byte-for-byte: `for-each-ref` (excluding `refs/mergewright`), `ls-files -s`, and every worktree file's bytes including untracked files. Redo then reproduces the post-op snapshot. Undo again reproduces the pre-op snapshot. Proven concretely on: an untracked binary file (bytes `[0, 255, 10, 13, ...]`) discarded then undone comes back byte-identical; an unstaged edit to a tracked file, same; a file both staged and unstaged, same, both index and worktree bytes. Discarding one file and then creating an unrelated new file: undo restores only the discarded file, leaves the new one alone (path scoping).
 - **Proven by:**
   `mergewright-ops` ops-execution undo/redo parity suite (ticket 03): "Undo restores exactly, every kind"; "The PROMPT §3 test verbatim"; "Path scoping"
   `mergewright::update::undo::tests::u_asks_for_an_undo_and_says_so`
@@ -80,7 +80,7 @@ status: works
 ```
 
 - **How:** Automatic — checked at every launch and on refresh.
-- **Behaviour:** If Graft (or the machine) dies between writing a journal's "pending" line and its outcome line, the next launch finds it in `Journal::unresolved()`. `recover_interrupted` (not a bare `Journal::mark_interrupted` — this is the actual recovery path, sealing the entry's before/after trees behind its backup ref) appends an `Aborted` outcome line and shows an "interrupted" notice in the UI until acknowledged with `J` (opening the journal). The notice survives every re-read in the meantime. An `Aborted` entry that has a backup can still be undone (`u` on it restores the backup); it's marked `← u` in the journal browser exactly when it's the next thing undo would act on. A `StashPop` that fails mid-way (e.g. because applying conflicts) similarly leaves an `Aborted` entry carrying `worktree_before`, and `undo` on it restores the pre-pop tree.
+- **Behaviour:** If Mergewright (or the machine) dies between writing a journal's "pending" line and its outcome line, the next launch finds it in `Journal::unresolved()`. `recover_interrupted` (not a bare `Journal::mark_interrupted` — this is the actual recovery path, sealing the entry's before/after trees behind its backup ref) appends an `Aborted` outcome line and shows an "interrupted" notice in the UI until acknowledged with `J` (opening the journal). The notice survives every re-read in the meantime. An `Aborted` entry that has a backup can still be undone (`u` on it restores the backup); it's marked `← u` in the journal browser exactly when it's the next thing undo would act on. A `StashPop` that fails mid-way (e.g. because applying conflicts) similarly leaves an `Aborted` entry carrying `worktree_before`, and `undo` on it restores the pre-pop tree.
 - **Proven by:**
   ops-execution acceptance: "Crash between Pending and outcome", "Failed midway is recoverable" (ticket 03)
   `mergewright::view::journal::tests::an_entry_recovery_closed_is_marked_interrupted_not_failed`
@@ -89,7 +89,7 @@ status: works
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §Journal entry; ADR-0031
 - **Status:** works
 
-### M3-05. The journal browser: every operation Graft has done, and what to do with it
+### M3-05. The journal browser: every operation Mergewright has done, and what to do with it
 
 ```meta
 id: M3-05
@@ -99,7 +99,7 @@ status: works
 ```
 
 - **How:** `J` opens it; `j`/`k` move; `Space` expands a row to show its exact git command(s); `Enter` on the next-undoable row runs `u`; `Enter` on the next-redoable row runs `U`; `Enter` on any other row sets a notice and does nothing; `Esc`/`q` closes.
-- **Behaviour:** Rows are journal entries, newest first. The row that `u` would act on next is marked `← u`; the one `U` would act on is marked `← U`. `Enter` acts only where a key already would (same rule as undo/redo, not a general jump-to-any-point) — pressing it on an older row shows a notice instead of doing anything ("multi-step revert comes with a later milestone's Ghost Preview," not built here). An `Aborted` entry with a backup reads `failed: <git's first error line> · backup saved`; an interrupted one reads `interrupted`. `j`/`k` clamp at the ends (no wraparound). A background focus event or `Ctrl+R` re-reads the journal (another Graft process on the same worktree could have appended to it); the browser opens with what it already has and swaps in the fresh read when it lands.
+- **Behaviour:** Rows are journal entries, newest first. The row that `u` would act on next is marked `← u`; the one `U` would act on is marked `← U`. `Enter` acts only where a key already would (same rule as undo/redo, not a general jump-to-any-point) — pressing it on an older row shows a notice instead of doing anything ("multi-step revert comes with a later milestone's Ghost Preview," not built here). An `Aborted` entry with a backup reads `failed: <git's first error line> · backup saved`; an interrupted one reads `interrupted`. `j`/`k` clamp at the ends (no wraparound). A background focus event or `Ctrl+R` re-reads the journal (another Mergewright process on the same worktree could have appended to it); the browser opens with what it already has and swaps in the fresh read when it lands.
 - **Proven by:**
   `mergewright::view::journal` tests: newest-first order and the `← u` mark, an undo entry as the `← U` target, an interrupted entry, an aborted entry leading with git's error and still marked `← u` (5 tests per ticket 06 notes)
   `mergewright::update::journal` tests: open+re-read, notice taken up, `Esc` cancels an in-flight read, `j`/`k` clamp, `Space` expands one row at a time, `Enter` on `← u` runs undo and closes, `Enter` on an older row sets the notice (8 tests per ticket 06 notes)
@@ -157,7 +157,7 @@ status: works
 ```
 
 - **How:** `d` on a file row, or in the diff body on a hunk/line, opens a confirm box; the box defaults to the safer choice under the cursor.
-- **Behaviour:** The box states the consequence in plain words specific to the target: an untracked file says it will be deleted; a file both staged and unstaged says both changes return to `HEAD`; otherwise it names which side (index or worktree) the content is restored from, with the affected line/file count. `→ Enter` confirms and emits `Operate(Discard(...))`; `Esc` or plain `Enter` on the default (safe) choice cancels with no command. While the box is open, keys never reach the pane underneath (e.g. `j` does not move anything). A real-runner test drives this to completion on an untracked file: `d` → `→` → `Enter` deletes the file, leaves exactly one `refs/graft/backup` ref, and a two-line journal (the discard, later its undo).
+- **Behaviour:** The box states the consequence in plain words specific to the target: an untracked file says it will be deleted; a file both staged and unstaged says both changes return to `HEAD`; otherwise it names which side (index or worktree) the content is restored from, with the affected line/file count. `→ Enter` confirms and emits `Operate(Discard(...))`; `Esc` or plain `Enter` on the default (safe) choice cancels with no command. While the box is open, keys never reach the pane underneath (e.g. `j` does not move anything). A real-runner test drives this to completion on an untracked file: `d` → `→` → `Enter` deletes the file, leaves exactly one `refs/mergewright/backup` ref, and a two-line journal (the discard, later its undo).
 - **Proven by:**
   `mergewright::update::detail` confirm-box tests: opens with `selected == Safe`, `Enter` closes with no command, `→ Enter` emits `Discard`, `Esc` closes, keys under the box are swallowed (ticket 04 acceptance)
   `mergewright::tests::it::changes_pane_writes` — real-runner discard-then-check test
@@ -198,7 +198,7 @@ unverified_aspect: a real $EDITOR leaving a real terminal usable afterward — n
 ```
 
 - **How:** From the commit editor.
-- **Behaviour:** Resolves the editor command per program name: `vim` → `vim +12 path` (jump to the current line), `code` → `code --goto path:12`, `zed` → `zed path:12`, anything unrecognised → `<editor> path` (no line jump); an editor string carrying its own arguments (e.g. `"emacs -nw"`) keeps them. Running it suspends Graft's own terminal handling cleanly: leaves the alternate screen, restores original terminal modes, runs the editor, restores Graft's modes, re-enters the alternate screen — and does this even if the editor process (or the code driving it) panics, via a guard. The same suspend/resume path also serves plain `Ctrl+Z` (ADR-0002), controlled by `[keys] suspend_on_ctrl_z` in config (reaches `AppState` the same way `[radar]` settings do; with it off, `Ctrl+Z` is left unclaimed here for undo/redo, not swallowed).
+- **Behaviour:** Resolves the editor command per program name: `vim` → `vim +12 path` (jump to the current line), `code` → `code --goto path:12`, `zed` → `zed path:12`, anything unrecognised → `<editor> path` (no line jump); an editor string carrying its own arguments (e.g. `"emacs -nw"`) keeps them. Running it suspends Mergewright's own terminal handling cleanly: leaves the alternate screen, restores original terminal modes, runs the editor, restores Mergewright's modes, re-enters the alternate screen — and does this even if the editor process (or the code driving it) panics, via a guard. The same suspend/resume path also serves plain `Ctrl+Z` (ADR-0002), controlled by `[keys] suspend_on_ctrl_z` in config (reaches `AppState` the same way `[radar]` settings do; with it off, `Ctrl+Z` is left unclaimed here for undo/redo, not swallowed).
 - **Proven by:**
   `mergewright::event_loop::outside::tests::the_vi_lineage_takes_a_plus_line`, `vs_code_wants_goto_and_zed_wants_a_suffix`, `an_editor_nobody_knows_gets_the_file_and_nothing_else`, `an_editor_with_arguments_keeps_them_in_front`
   `mergewright::event_loop::outside::tests::the_terminal_is_given_up_before_f_runs_and_taken_back_after`
@@ -240,7 +240,7 @@ status: works
 ```
 
 - **How:** Automatic — coming back to the terminal window (focus-gain).
-- **Behaviour:** A focus-gained event re-reads the working tree only — no history restart, no row-list rebuild. A second focus report within 500ms of the first is ignored (debounced); one more than 500ms later reads again. A focus report that arrives before the repository has finished opening asks for nothing. `Ctrl+R` (manual refresh) also re-reads the journal (in case another Graft process on the same worktree appended to it) and the stash list, keeping `Refresh::Everything` identical in scope to what `Ctrl+R` itself does.
+- **Behaviour:** A focus-gained event re-reads the working tree only — no history restart, no row-list rebuild. A second focus report within 500ms of the first is ignored (debounced); one more than 500ms later reads again. A focus report that arrives before the repository has finished opening asks for nothing. `Ctrl+R` (manual refresh) also re-reads the journal (in case another Mergewright process on the same worktree appended to it) and the stash list, keeping `Refresh::Everything` identical in scope to what `Ctrl+R` itself does.
 - **Proven by:**
   `mergewright::update::tests::coming_back_to_the_window_re_reads_the_working_tree_and_nothing_else`
   `mergewright::update::tests::a_second_focus_report_within_half_a_second_is_ignored`
@@ -248,7 +248,7 @@ status: works
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §New UI "Status line"
 - **Status:** works
 
-### M3-13. Graft's own bookkeeping refs never appear as history
+### M3-13. Mergewright's own bookkeeping refs never appear as history
 
 ```meta
 id: M3-13
@@ -259,7 +259,7 @@ unverified_aspect: whether stash-internals-in-graph was the original M2/M3 desig
 ```
 
 - **How:** Automatic.
-- **Behaviour:** Any ref under `refs/graft/**` (the journal's backup refs) is excluded before it ever reaches the graph, the ref badges, or the "contained in" computation — filtered once, at the read seam (`RefName::is_graft_internal`), not re-implemented at each call site. `refs/stash` is different: it's git's own namespace, the user already knows about it, and Graft draws stash entries on the graph on purpose.
+- **Behaviour:** Any ref under `refs/mergewright/**` (the journal's backup refs) is excluded before it ever reaches the graph, the ref badges, or the "contained in" computation — filtered once, at the read seam (`RefName::is_graft_internal`), not re-implemented at each call site. `refs/stash` is different: it's git's own namespace, the user already knows about it, and Mergewright draws stash entries on the graph on purpose.
 - **Proven by:**
   `mergewright-git::repo::tests::grafts_own_refs_are_not_drawn_but_are_still_readable`
   `no_bookkeeping_in_the_graph` (run after every scenario in the M3 acceptance walk)
@@ -306,11 +306,11 @@ unverified_aspect: everything judged only by eye: the captures themselves, the 1
 - **Cannot stash only selected files.** `S`'s save prompt only offers everything or staged-only, not an arbitrary file subset. Design-note deferral. Owner: M7.
 - **Cannot create a branch from a stash.** Design-note deferral. Owner: M5.
 - **No file watcher.** The working tree refreshes only on focus-gain and on demand (`Ctrl+R`) — an external edit made while the window has focus is invisible until you come back to it or refresh manually (`notify` crate not wired). Design-note deferral. Owner: M7.
-- **No action to clear undo backups.** The journal's `refs/graft/backup/**` refs accumulate forever with nothing in the UI to prune them. Design-note deferral. Owner: M8.
+- **No action to clear undo backups.** The journal's `refs/mergewright/backup/**` refs accumulate forever with nothing in the UI to prune them. Design-note deferral. Owner: M8.
 - **Commit/amend are not specially refused mid-merge/mid-rebase/mid-cherry-pick beyond what git itself does.** Full in-progress-state awareness (surfacing `--continue`/`--abort` guidance in the UI) belongs to conflict resolution, a later milestone. Owner: M5/M6.
-- **Rebase with a dirty working tree.** Whether Graft offers `--autostash` or just surfaces git's refusal is undecided — deferred to M5's design pass. Owner: M5.
+- **Rebase with a dirty working tree.** Whether Mergewright offers `--autostash` or just surfaces git's refusal is undecided — deferred to M5's design pass. Owner: M5.
 - **Redo of an undone conflicted `stash pop`** restores file content correctly but not git's own "mid-conflict" index flag — `git status` reads it as an ordinary modified file, not unmerged. Owner: M6 (conflict resolver owns unmerged-index state).
-- **A restored stash re-lists at `stash@{0}`, not its original position**, and **a multi-line stash message survives undo as only its first line** — both are limits of git's own stash reflog (no insert-at-index; single-line reflog subject), not something Graft chose. Not planned to fix (first is a real gap, revisit only if real use finds it confusing, M7; second is not planned).
+- **A restored stash re-lists at `stash@{0}`, not its original position**, and **a multi-line stash message survives undo as only its first line** — both are limits of git's own stash reflog (no insert-at-index; single-line reflog subject), not something Mergewright chose. Not planned to fix (first is a real gap, revisit only if real use finds it confusing, M7; second is not planned).
 - **A forced undo isn't pinned to the entry the drift box named** — a race window exists between the box drawing and the force keypress during which the journal tip could move. Needs a signature change (`undo(ctx, force, aim)`). Owner: M4.
 - **The journal browser draws no status line of its own** while it's open — a write or notice triggered from inside it has nowhere to show. Owner: M5.
 - **`Esc` doesn't clear a `Status::Failed` line** in the changes pane; it sits until the next status replaces it. Owner: unassigned, small fix.
@@ -319,7 +319,7 @@ unverified_aspect: everything judged only by eye: the captures themselves, the 1
 - **`m3_walk.rs` is ~2,042 lines against PROMPT §6.2's ~400-line guidance.** A pure split was deliberately not done in the same pass as the C1/M1 review fixes (a mechanical move alongside a behaviour change hides the change). Owner: M5, its own ticket.
 - **Capture headers embed the machine's own scratch temp-directory path** (e.g. `/var/folders/…`), which is machine-specific noise in a repo that may be published. The fix conflicts with TESTING.md's "a capture is exactly what pyte saw" contract, so it needs a decision, not a patch. Owner: M4.
 - **UNVERIFIED, standing: no capture in this repo proves any colour anywhere in M3.** The pty capture pipeline records character grids only, never colour attributes (CLAUDE.md rule 5) — every colour decision in the changes pane, commit editor, stash overlay and journal browser ships judged by the user's own eye only, never by a test.
-- **UNVERIFIED: two Graft processes open on the same worktree at once.** The journal is a plain file with no cross-process arbitration; untested, undesigned-against. Owner: M4 or the first field note that hits it.
+- **UNVERIFIED: two Mergewright processes open on the same worktree at once.** The journal is a plain file with no cross-process arbitration; untested, undesigned-against. Owner: M4 or the first field note that hits it.
 - **UNVERIFIED: every M3 git-behaviour claim is proven on git 2.54 only**, while the documented minimum is 2.38 (`restore --source=HEAD` on a staged rename, `stash store -m`, `clean -f` with a pathspec, and `update-ref` CAS are the pieces most likely to have moved between those versions). Owner: an M3 review re-run against 2.38, or raising the documented minimum.
 - **BROKEN: `strip_comments` hardcodes `#` as the comment character**, ignoring a user's own `core.commentChar` git config — such a user gets real commit-message lines stripped, or comment lines kept, incorrectly. Owner: M4, sooner if a field note reports it.
 - **GPG/SSH commit signing while the editor holds the terminal** (a pinentry program wanting the tty mid-commit) is untried. Owner: M4 or the first field note.

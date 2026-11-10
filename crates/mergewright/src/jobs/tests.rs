@@ -1230,7 +1230,7 @@ fn the_shutdown_grace_covers_a_git_childs_stop() {
 #[test]
 fn no_git_child_outlives_shutdown() {
     let (runner, events) = runner(1);
-    let scratch = tempfile::TempDir::with_prefix("graft-shutdown-").expect("a temp dir");
+    let scratch = tempfile::TempDir::with_prefix("mwr-shutdown-").expect("a temp dir");
     let pidfile = scratch.path().join("pid");
     let store = RepoStore::new(this_repository(), None);
     let handle = store.shared().expect("this repository opens").handle();
@@ -1240,9 +1240,9 @@ fn no_git_child_outlives_shutdown() {
         .args([
             mergewright_git::run::GitArg::Flag("-c"),
             mergewright_git::run::GitArg::Flag(
-                "alias.graftslow=!echo $$ > \"$MWR_TEST_PIDFILE\"; exec sleep 30",
+                "alias.mwrslow=!echo $$ > \"$MWR_TEST_PIDFILE\"; exec sleep 30",
             ),
-            mergewright_git::run::GitArg::Flag("graftslow"),
+            mergewright_git::run::GitArg::Flag("mwrslow"),
         ]);
     let id = runner.submit(move |cancel| {
         started.send(()).expect("the test is still listening");

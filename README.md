@@ -104,8 +104,7 @@ any of them by the name in the last column.
 
 ## Configuration
 
-`$XDG_CONFIG_HOME/mergewright/config.toml`, or `$HOME/.config/mergewright/config.toml`
-(an old `graft/` or old `tributary/` folder there is moved on first launch).
+`$XDG_CONFIG_HOME/mergewright/config.toml`, or `$HOME/.config/mergewright/config.toml`.
 No file is the normal case, and every key is optional. An unknown key is a
 warning, so a file written for a later version still starts this one; a value
 a key does not take stops Mergewright with the line and column — except

@@ -96,7 +96,7 @@ fn refs() -> crate::refs::RefBadges {
 /// cursor on graph row `at` (0 is `HEAD`).
 fn on_screen(at: usize) -> AppState {
     let (state, _) = crate::update::opening(
-        std::path::PathBuf::from("/tmp/graft-rewrite-editor-tests"),
+        std::path::PathBuf::from("/tmp/mwr-rewrite-editor-tests"),
         Size {
             columns: 187,
             rows: 50,

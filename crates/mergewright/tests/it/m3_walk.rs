@@ -207,7 +207,7 @@ fn drive_app(repo: &Path, steps: &[Step], marks: &mut Marks) -> Result<(), Strin
 /// Every undoable write leaves a backup chain under
 /// `<prefix in force>backup/<worktree>/<ulid>` (`on_disk::REF_PREFIX`), kept indefinitely by design. They
 /// used to seed the history walk, which put two commits titled
-/// `graft <ulid> …` **above `HEAD`** per operation, forever — so a day's
+/// `mergewright <ulid> …` **above `HEAD`** per operation, forever — so a day's
 /// staging buried the branch the graph is about, and
 /// `docs/shots/m3-09-undo-drift-box-80x24.txt` recorded it.
 ///

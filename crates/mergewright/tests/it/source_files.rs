@@ -1,4 +1,4 @@
-//! The source tree, for the tests that grep it (`rename_names`, `rename_docs`).
+//! The source tree, for the tests that grep it (`rename_names`, `codename_absent`).
 
 #![allow(clippy::expect_used, reason = "a failing test should panic")]
 

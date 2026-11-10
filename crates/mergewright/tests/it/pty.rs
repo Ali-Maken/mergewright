@@ -1,10 +1,10 @@
-//! The real `graft` binary on a pseudo-terminal (m8-polish-and-ship/08): the
+//! The real `mwr` binary on a pseudo-terminal (m8-polish-and-ship/08): the
 //! one way to see what only a tty gets — the empty state, the alternate
 //! screen entered once across a switch, the probe asked once.
 //!
 //! Every run is **isolated**: `XDG_CONFIG_HOME` and `HOME` point into a
 //! temporary directory the test owns, so neither the user's config nor his
-//! recent list (`~/.config/graft/recent`) is read or written. That isolation
+//! recent list (`~/.config/mergewright/recent`) is read or written. That isolation
 //! lives here, in [`Pty::spawn`], not in each test.
 //!
 //! [`Screen`] replays the bytes into a character grid — cursor moves, text,
@@ -53,7 +53,7 @@ pub(crate) fn as_the_test_terminal(command: &mut Command) -> &mut Command {
         .env_remove("NO_COLOR")
 }
 
-/// A running `graft` on a pty.
+/// A running `mwr` on a pty.
 pub struct Pty {
     master: File,
     child: Child,
@@ -135,7 +135,7 @@ impl Isolated {
 pub const PINNED_NOW: i64 = mergewright_fixtures::PINNED_NOW;
 
 impl Pty {
-    /// Start `graft <arg>` in `cwd` on a `columns`x`rows` pty, isolated by
+    /// Start `mwr <arg>` in `cwd` on a `columns`x`rows` pty, isolated by
     /// `isolated`. `GIT_CEILING_DIRECTORIES` stops git's search at `ceiling`
     /// so a repository above the temp dir never counts.
     pub fn spawn(isolated: &Isolated, arg: &Path, ceiling: &Path, size: (u16, u16)) -> Self {
@@ -249,7 +249,7 @@ impl Pty {
             .stdout(Stdio::from(slave))
             .stderr(stderr)
             .spawn()
-            .expect("graft starts");
+            .expect("mwr starts");
         let master = File::from(pty.master);
         let output = drain(master.try_clone().expect("master fd"));
         let stderr = Arc::new(Mutex::new(Vec::new()));
@@ -330,7 +330,7 @@ impl Pty {
             }
             if start.elapsed() > PATIENCE {
                 self.child.kill().expect("killed");
-                panic!("graft did not exit; the screen:\n{}", self.screen().text());
+                panic!("mwr did not exit; the screen:\n{}", self.screen().text());
             }
             std::thread::sleep(Duration::from_millis(20));
         }
@@ -339,14 +339,14 @@ impl Pty {
 
 impl Drop for Pty {
     fn drop(&mut self) {
-        // A test that failed before `wait_exit` leaves no graft behind. An
+        // A test that failed before `wait_exit` leaves no mwr behind. An
         // already-exited child makes `kill` fail, which is what we wanted.
         if matches!(self.child.try_wait(), Ok(None)) {
             if let Err(error) = self.child.kill() {
-                eprintln!("could not stop graft: {error}");
+                eprintln!("could not stop mwr: {error}");
             }
             if let Err(error) = self.child.wait() {
-                eprintln!("could not reap graft: {error}");
+                eprintln!("could not reap mwr: {error}");
             }
         }
     }
@@ -558,7 +558,7 @@ fn a_frame_not_yet_ended_is_not_on_the_screen() {
     assert_eq!(screen.lines()[0], "second, half", "{}", screen.text());
 }
 
-/// m8-polish-and-ship/30: whatever terminal ran the tests, a walk's graft
+/// m8-polish-and-ship/30: whatever terminal ran the tests, a walk's mwr
 /// sees the same one: the truecolor hint detection gives Unicode on, and
 /// none of the hints that would make it some other terminal.
 #[test]

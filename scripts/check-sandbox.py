@@ -195,7 +195,7 @@ def guard_failures():
     os.rmdir(first)
     # Review M1: a caller's config folder survives, and the override that used
     # to be silently replaced is refused.
-    home = tempfile.mkdtemp(prefix="graft-check-sandbox-")
+    home = tempfile.mkdtemp(prefix="mwr-check-sandbox-")
     if sandbox_env(home, TERM="dumb")["XDG_CONFIG_HOME"] != home:
         failures.append("sandbox_env dropped the caller's config folder")
     try:

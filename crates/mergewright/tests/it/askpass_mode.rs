@@ -1,5 +1,5 @@
 //! The binary's askpass mode (m4-remotes/06): with `MWR_ASKPASS_SOCKET`
-//! set and one argument, `graft` asks the running Mergewright over the socket,
+//! set and one argument, `mwr` asks the running Mergewright over the socket,
 //! prints the answer for git and exits — 0 answered, 1 cancelled, 2 anything
 //! else — without touching the terminal.
 #![allow(
@@ -31,14 +31,14 @@ impl AskPass for Scripted {
     }
 }
 
-fn graft() -> PathBuf {
+fn mwr() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_mwr"))
 }
 
 /// Runs the binary the way git would: the prompt as its one argument, the
 /// socket in the environment, no terminal on any of its streams.
 fn run_helper(socket: &std::path::Path, prompt: &str) -> Output {
-    Command::new(graft())
+    Command::new(mwr())
         .arg(prompt)
         .env(mergewright::cli::ASKPASS_SOCKET_VAR, socket)
         .env_remove("TERM")
@@ -46,7 +46,7 @@ fn run_helper(socket: &std::path::Path, prompt: &str) -> Output {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-        .expect("the graft binary runs")
+        .expect("the mwr binary runs")
 }
 
 fn serve(answer: Option<&'static str>) -> (AskPassServer, Arc<Scripted>) {
@@ -54,7 +54,7 @@ fn serve(answer: Option<&'static str>) -> (AskPassServer, Arc<Scripted>) {
         answer,
         asked: Mutex::new(Vec::new()),
     });
-    let server = AskPassServer::spawn(graft(), handler.clone()).expect("the askpass server starts");
+    let server = AskPassServer::spawn(mwr(), handler.clone()).expect("the askpass server starts");
     (server, handler)
 }
 

@@ -4,7 +4,7 @@
 //! bare repository over `file://` ([`LocalRemote`]), smart HTTP with Basic
 //! auth ([`HttpRemote`]) or a port that never answers ([`HungRemote`]). The
 //! real app is driven by keys over the real job pool and real `git`, with
-//! `graft` itself as git's askpass helper, and then **repository truth is
+//! `mwr` itself as git's askpass helper, and then **repository truth is
 //! read back by running git on both the work clone and the bare** — never
 //! from `AppState`. `examples/m4_walk.rs` includes this module by `#[path]`
 //! and prints one line per scenario; [`every_scenario`] runs the same list

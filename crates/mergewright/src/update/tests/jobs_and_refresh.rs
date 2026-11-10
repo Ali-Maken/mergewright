@@ -22,7 +22,7 @@ fn a_failed_job_reaches_the_status_line() {
 fn a_panicking_job_says_so_and_names_its_report() {
     let failure = JobFailure::Panicked {
         message: "lane 3 vanished".to_owned(),
-        report: Some("/state/graft/crash-1.log".to_owned()),
+        report: Some("/state/mergewright/crash-1.log".to_owned()),
     };
 
     let (next, _) = update(
@@ -33,7 +33,8 @@ fn a_panicking_job_says_so_and_names_its_report() {
     assert_eq!(
         next.status,
         Status::Failed(
-            "job 2 failed: panicked: lane 3 vanished — report: /state/graft/crash-1.log".to_owned()
+            "job 2 failed: panicked: lane 3 vanished — report: /state/mergewright/crash-1.log"
+                .to_owned()
         )
     );
 }

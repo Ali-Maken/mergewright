@@ -1183,7 +1183,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "graft-core"
+name = "mergewright-core"
 version = "0.1.0"
 dependencies = [
  "serde",
@@ -1191,19 +1191,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "graft-fuzz"
+name = "mergewright-fuzz"
 version = "0.0.0"
 dependencies = [
- "graft-git",
+ "mergewright-git",
  "libfuzzer-sys",
 ]
 
 [[package]]
-name = "graft-git"
+name = "mergewright-git"
 version = "0.1.0"
 dependencies = [
  "gix",
- "graft-core",
+ "mergewright-core",
  "sha1",
  "tempfile",
  "thiserror",

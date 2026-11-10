@@ -249,7 +249,7 @@ pub fn entries() -> Vec<Entry> {
         })
         .collect();
     all.push(Entry {
-        name: "graft-self",
+        name: "mwr-self",
         group: REAL,
         prelude: Vec::new(),
         source: Source::Workspace,
@@ -512,7 +512,7 @@ fn details() -> Vec<Entry> {
             "one column added to stop 3's graph; O again removes it",
         ),
         stop(
-            "graft-self",
+            "mwr-self",
             REAL,
             vec![ENTER],
             Source::Workspace,
@@ -1040,7 +1040,7 @@ mod tests {
         assert_eq!(all.len(), Shape::ALL.len() + 3);
         assert_eq!(
             &names[names.len() - 3..],
-            &["graft-self", "synthetic-100k", "git-git"]
+            &["mwr-self", "synthetic-100k", "git-git"]
         );
         concrete_and_fits(&all);
     }
@@ -1106,7 +1106,7 @@ mod tests {
                 "non-utf8-path",
                 "feature-branches",
                 "feature-branches",
-                "graft-self",
+                "mwr-self",
                 "git-git",
                 "git-git",
             ]
@@ -1234,7 +1234,7 @@ mod tests {
             resolve(trivial, &workspace, &roots),
             Availability::Ready(_)
         ));
-        let this = all.iter().find(|entry| entry.name == "graft-self").unwrap();
+        let this = all.iter().find(|entry| entry.name == "mwr-self").unwrap();
         assert_eq!(
             resolve(this, &workspace, &roots),
             Availability::Ready(workspace.clone())

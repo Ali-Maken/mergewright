@@ -79,7 +79,7 @@ pub fn run_git_with(repo: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<
 /// An identity is set for the same reason in reverse: a machine with *no*
 /// `user.email` would fail every commit here.
 pub fn neutralise_global_config(repo: &Path) -> Result<(), String> {
-    let empty = git_path(repo, "graft-walk-empty")?;
+    let empty = git_path(repo, "mwr-walk-empty")?;
     std::fs::create_dir_all(&empty).map_err(|why| format!("{}: {why}", empty.display()))?;
     let nothing = empty.join("nothing");
     std::fs::write(&nothing, b"").map_err(|why| format!("{}: {why}", nothing.display()))?;

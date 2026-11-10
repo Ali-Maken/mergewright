@@ -87,7 +87,7 @@ pub(super) fn excused_by_hangup(exit: &Exit, error: &io::Error) -> bool {
 /// `disable_raw_mode` opens `/dev/tty` instead, and with no controlling
 /// terminal left that open fails `ENXIO` — raw mode is the restore's first
 /// failure, before the escape sequences' `EIO` at the flush. The same
-/// number on macOS and Linux; `graft` has no `libc` to name it.
+/// number on macOS and Linux; `mwr` has no `libc` to name it.
 const ENXIO: i32 = 6;
 
 /// The loop's outcome, unless putting the terminal back failed: a terminal

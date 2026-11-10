@@ -428,11 +428,11 @@ fn a_on_a_merge_begun_in_mergewright_keeps_its_lines() {
         "everything goes back to before it started",
         "the journal keeps the entry",
     ];
-    let mut graft = merge_read(
+    let mut read = merge_read(
         vec![mergewright_core::journal::EntryId::new(7, [7; 10])],
         Some("main"),
     );
-    assert_eq!(abort_lines(&mut graft), today);
+    assert_eq!(abort_lines(&mut read), today);
     let mut unread = AppState {
         journal: crate::update::journal::JournalState::default(),
         ..merge_read(Vec::new(), Some("main"))

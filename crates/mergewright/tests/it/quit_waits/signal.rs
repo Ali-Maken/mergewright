@@ -83,7 +83,7 @@ fn reap(pid: u32) {
     }
 }
 
-/// `graft` on the fork, `j j m` (the preview), `m`: the merge runs, its
+/// `mwr` on the fork, `j j m` (the preview), `m`: the merge runs, its
 /// hook asleep. Returns the pty and the hook's and git's pids.
 fn merging(isolated: &Isolated, repo: &Path) -> (Pty, u32, u32) {
     hang(repo);

@@ -1,7 +1,7 @@
 //! Piped stdout is plain text, never escape soup (ticket m1-the-graph/19;
 //! acceptance criterion 4). Detection never probes a terminal that is not a
 //! tty, so a fixture opened with stdout piped away must render on the ASCII
-//! tier and print without a single escape byte — `graft <fixture> | cat`
+//! tier and print without a single escape byte — `mwr <fixture> | cat`
 //! must be safe to grep.
 
 use std::process::Command;
@@ -13,7 +13,7 @@ fn piped_stdout_never_contains_an_escape_byte() {
     let output = Command::new(env!("CARGO_BIN_EXE_mwr"))
         .arg(&dir)
         .output()
-        .expect("graft runs");
+        .expect("mwr runs");
 
     assert_eq!(
         output.status.code(),
@@ -50,7 +50,7 @@ fn piped_stdout_never_contains_an_escape_byte() {
 /// exits on its own, so a hang here would hang the test, not just Mergewright.
 #[test]
 fn a_repository_that_fails_to_open_exits_with_its_error_never_hangs() {
-    let dir = std::env::temp_dir().join(format!("graft-piped-not-a-repo-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mwr-piped-not-a-repo-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
 
     let output = Command::new(env!("CARGO_BIN_EXE_mwr"))
@@ -60,7 +60,7 @@ fn a_repository_that_fails_to_open_exits_with_its_error_never_hangs() {
             dir.parent().expect("temp has a parent"),
         )
         .output()
-        .expect("graft runs and exits");
+        .expect("mwr runs and exits");
     std::fs::remove_dir(&dir).expect("the scratch directory is empty");
 
     assert_eq!(output.status.code(), Some(1));

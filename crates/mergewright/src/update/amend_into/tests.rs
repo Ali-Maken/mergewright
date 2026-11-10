@@ -110,7 +110,7 @@ fn staged(paths: &[&str]) -> Arc<WorkingTreeStatus> {
 /// staged, the cursor on `row` (0 is `HEAD`).
 fn on_screen(at: usize, others: &[(&[u8], u8)]) -> AppState {
     let (state, _) = crate::update::opening(
-        std::path::PathBuf::from("/tmp/graft-amend-into-tests"),
+        std::path::PathBuf::from("/tmp/mwr-amend-into-tests"),
         Size {
             columns: 187,
             rows: 50,

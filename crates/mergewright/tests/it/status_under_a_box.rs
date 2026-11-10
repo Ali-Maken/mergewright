@@ -23,7 +23,7 @@ const SIZES: [(&str, u16, u16); 2] = [("120x40", 120, 40), ("80x24", 80, 24)];
 
 /// Where the first fetch goes: nowhere. Not a machine path — the failure
 /// line quotes it, and the capture may be published.
-const NOWHERE: &str = "file:///graft-no-such-remote";
+const NOWHERE: &str = "file:///mwr-no-such-remote";
 
 fn header(size: &str) -> String {
     format!(

@@ -204,7 +204,7 @@ fn answer_maps_staging_not_kept_alone_to_its_own_outcome() {
         unread: vec![
             staging_not_kept(),
             mergewright_ops::apply::AfterState::BackupGone {
-                name: "refs/graft/backup/x".to_owned(),
+                name: "refs/mergewright/backup/x".to_owned(),
             },
         ],
     }));

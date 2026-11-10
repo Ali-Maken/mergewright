@@ -74,12 +74,12 @@ status: works
   "Not yet built").
 - **Behaviour:** each of the eleven kinds is journaled with a before/after snapshot of every
   ref, HEAD position and index/worktree state it touches; `u` restores exactly that, and
-  redo re-applies it. Every one is verified against a real repository, not against Graft's
+  redo re-applies it. Every one is verified against a real repository, not against Mergewright's
   own model of what it did — after apply, undo and redo, the test reads git's refs and tree
   ids back directly. A ref move that was recorded is refused if the ref has moved since
   (`Refusal::Moved`); a rebase or a checkout-with-switch onto a dirty **tracked** tree is
   refused (`DirtyTree`) — untracked files never count toward that refusal, so an untracked
-  collision still reaches git and fails with git's own wording rather than Graft's.
+  collision still reaches git and fails with git's own wording rather than Mergewright's.
 - **Proven by:** `mergewright_ops::tests::it::history_ops::{merge,rebase,cherry_pick,revert,reset,checkout,branch_create,branch_delete,tag_create,tag_delete,branch_from_stash}_applies_undoes_redoes` (eleven kinds; branch-from-stash's redo leg was added in the fix round after review found it missing)
 - **Decided in:** `docs/design/06-undo-journal-design.md` §6.3–§6.4; `.scratch/m5-history-and-ghost-preview/as-built.md`
 - **Status:** works (ops layer only; not yet reachable through most app keys — see "Not yet built")
@@ -141,8 +141,8 @@ status: works
   has no `<<<<<<<` marker left) writes no journal line of its own — it folds into the live
   `Pending` entry's command list instead, so the whole span — the stop, every resolve step,
   and the finish — is one entry that `u` takes back as a unit once resume exists. This rule
-  also protects an operation started outside Graft (in a shell): such a step runs but is
-  never adopted into a Graft entry, because Graft has no entry to fold it onto.
+  also protects an operation started outside Mergewright (in a shell): such a step runs but is
+  never adopted into a Mergewright entry, because Mergewright has no entry to fold it onto.
 - **Proven by:** `mergewright_ops::tests::it::history_ops::conflict_span_is_one_entry_and_undoes_to_before_the_merge`, `mergewright_ops::tests::it::history_ops::resolving_each_file_in_turn_still_leaves_the_span_one_entry`, `mergewright_ops::tests::it::history_ops::a_resolve_step_joins_the_live_entrys_commands`, `mergewright_ops::tests::it::history_ops::a_shell_merge_is_not_adopted_as_grafts_own_entry`, `mergewright_ops::tests::it::history_ops::rebase_conflicts_twice_same_entry`
 - **Decided in:** `.scratch/m5-history-and-ghost-preview/as-built.md` §1; DESIGN §6.4, hard choice 2
 - **Status:** works (ops layer; fixed at the cause in the final review round after an earlier build made the merge unreachable by `u` — see `docs/reviews/m5-07-ops-history-operations.md` C1). Not yet exercised by a live user session: no key opens or resolves a conflict yet (group 09, unbuilt).
@@ -338,7 +338,7 @@ status: works
 
 - **How:** internal — `apply::guard_repush`, backing the (not-yet-wired) re-push confirm
   from ADR-0038 §4.
-- **Behaviour:** before the first write, Graft re-checks (`merge-base --is-ancestor`) that
+- **Behaviour:** before the first write, Mergewright re-checks (`merge-base --is-ancestor`) that
   the commit being re-pushed is still on the branch — the same check the preview already
   drew, now also enforced at the point that actually writes, so a caller cannot bypass the
   safety by skipping the preview.
@@ -555,5 +555,5 @@ ledger. What that means concretely:
 | `OperationKind::RevertTo` used for anything | The time machine journals one `Undo` entry per step (design §6.6's own decision), so a summary `RevertTo` entry is exactly what that decision rejected. The variant exists and is documented as unreachable; deleting or claiming it is left as a conductor decision. `KNOWN_GAPS.md` row 483. |
 | A resolve step's command lines surviving an app relaunch | They live on the in-memory journal entry only; the app opens a fresh journal per job, so the Command Log shows a conflict span's lines only within the session that resolved it. `KNOWN_GAPS.md` row 490, expiry M6. |
 | `UndoError::PartWay` carrying a `total` step count | Needs one field plus five app-side call sites in a crate this milestone's ops-layer builder didn't hold when the gap was found. `KNOWN_GAPS.md` row 489, carried to group 08. |
-| An untracked-file collision on checkout being pre-empted with Graft's own wording | `DirtyTree` counts tracked files only (a deliberate hard choice); an untracked collision reaches git and fails with git's own message instead. `KNOWN_GAPS.md` row 485, expiry M6. |
+| An untracked-file collision on checkout being pre-empted with Mergewright's own wording | `DirtyTree` counts tracked files only (a deliberate hard choice); an untracked collision reaches git and fails with git's own message instead. `KNOWN_GAPS.md` row 485, expiry M6. |
 | The Command Log gate proving anything via doctests | `cargo test --doc` passes with 2 doctests in the entire workspace, 0 in every crate this milestone touched — a standing gate reporting green while testing almost nothing. `KNOWN_GAPS.md` row 476, expiry "M5 checkpoint". |

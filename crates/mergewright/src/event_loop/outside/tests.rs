@@ -218,7 +218,7 @@ fn the_input_reader_is_reading_again_afterwards() {
     );
 }
 
-/// Major 2 of the m3/05 review. `graft ~/code/api` run from `~` used to open
+/// Major 2 of the m3/05 review. `mwr ~/code/api` run from `~` used to open
 /// `~/src/main.rs`: an empty new buffer in vim, "file not found" in code and
 /// zed, and a stray file the moment the user saved.
 #[test]
@@ -237,12 +237,12 @@ fn a_porcelain_path_is_joined_onto_the_worktree_not_mergewright_s_own_directory(
 fn an_absolute_path_is_left_alone() {
     let command = editor_command(
         "vim",
-        Path::new("/tmp/graft/COMMIT_EDITMSG"),
+        Path::new("/tmp/mwr/COMMIT_EDITMSG"),
         None,
         Some(Path::new("/code/api")),
     );
 
-    assert_eq!(spelled(&command), ["vim", "/tmp/graft/COMMIT_EDITMSG"]);
+    assert_eq!(spelled(&command), ["vim", "/tmp/mwr/COMMIT_EDITMSG"]);
 }
 
 /// Major 5. The common macOS `core.editor`: a quoted path with a space in
@@ -409,7 +409,7 @@ fn a_mergetool_that_exits_non_zero_still_puts_the_terminal_back() {
 fn a_mergetool_that_cannot_start_still_puts_the_terminal_back() {
     let scratch = tempfile::tempdir().expect("a scratch directory");
     let workdir = scratch.path();
-    repo_stopped_on_a_conflict(workdir, "nosuchtool", "graft-no-such-program-exists");
+    repo_stopped_on_a_conflict(workdir, "nosuchtool", "mwr-no-such-program-exists");
 
     let transcript = Transcript::default();
     let session =

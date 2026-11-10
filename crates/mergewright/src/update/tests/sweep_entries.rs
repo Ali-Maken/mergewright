@@ -67,7 +67,7 @@ pub(super) fn journal_entry() -> mergewright_core::journal::JournalEntry {
         worktree_before: None,
         worktree_after: None,
         worktree_raw_before: None,
-        backup_ref: Some("refs/graft/backup/main/x".to_owned()),
+        backup_ref: Some("refs/mergewright/backup/main/x".to_owned()),
         pins: Vec::new(),
         commands: vec!["git commit".to_owned()],
         reverses: None,

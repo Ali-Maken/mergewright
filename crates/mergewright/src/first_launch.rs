@@ -3,7 +3,7 @@
 //! palette, the graph's status row (when nothing else is there) and the
 //! empty state's row above the rule say where help is.
 //!
-//! One file, `<config_dir>/graft/launches`: `<n>\n` (launches counted so
+//! One file, `<config_dir>/mergewright/launches`: `<n>\n` (launches counted so
 //! far) or `done\n` (he opened the palette; never rewritten). Only
 //! `event_loop::places::drive` counts; headless `run`, the gallery and every
 //! `Harness` never read or write it.
@@ -256,11 +256,11 @@ mod tests {
 
         // A read-only app folder: nothing to read (0), nothing writable.
         let dir = tempfile::tempdir().expect("temp dir");
-        let graft = dir.path().join(mergewright_core::on_disk::DIR);
-        std::fs::create_dir(&graft).expect("mkdir");
-        std::fs::set_permissions(&graft, std::fs::Permissions::from_mode(0o555)).expect("chmod");
+        let folder = dir.path().join(mergewright_core::on_disk::DIR);
+        std::fs::create_dir(&folder).expect("mkdir");
+        std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o555)).expect("chmod");
         let error = count_launch(dir.path()).expect_err("unwritable");
-        std::fs::set_permissions(&graft, std::fs::Permissions::from_mode(0o755))
+        std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o755))
             .expect("chmod back");
         assert!(matches!(error, FirstRunError::Write { .. }), "{error:?}");
         assert!(

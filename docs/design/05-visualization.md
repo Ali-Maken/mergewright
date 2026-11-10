@@ -107,7 +107,7 @@ one column, independent of how much of it is currently laid out or on
 screen.
 
 ```
-╭─ ◆ graft ─ ⎇ main ↑2 ↓0 ────────────────────────────────────────── ⌃P ──╮
+╭─ ◆ mwr ─── ⎇ main ↑2 ↓0 ────────────────────────────────────────── ⌃P ──╮
 │ GRAPH   REF          SUBJECT                     AUTHOR  WHEN   SHA   ┆ │
 │ ●a      [main]       Fix token refresh race        RM    2m    a1b2c ┆ │
 │ │ ●b    [feature/..] Add OAuth provider            AK    1h    7f6e5 █ │ ← viewport

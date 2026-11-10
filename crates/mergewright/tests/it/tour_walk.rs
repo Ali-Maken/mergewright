@@ -15,7 +15,7 @@
 //! the commits he makes in the tour from `GIT_AUTHOR_DATE` /
 //! `GIT_COMMITTER_DATE` an hour after it (no Mergewright commit or merge sets
 //! those itself: grep, 19c-c NOTES). `TMPDIR` is a fresh folder under
-//! `/tmp/graft-capture/` (the capture convention, `FIXED_ROOT_VAR`); its
+//! `/tmp/mwr-capture/` (the capture convention, `FIXED_ROOT_VAR`); its
 //! random suffix is the one part of a drawn path that differs per run, and
 //! the captures write it as `XXXXXX`.
 #![allow(
@@ -75,11 +75,11 @@ const CARD: [(&str, &str); 8] = [
 /// per-user temp folder macOS sets, trailing `/` included.
 const MACOS_TMPDIR_LEN: usize = 49;
 
-/// A fresh `/tmp/graft-capture/<scenario>-<random>`, removed on drop.
+/// A fresh `/tmp/mwr-capture/<scenario>-<random>`, removed on drop.
 /// Random so two runs at once (two worktrees) never share one.
 fn capture_root(scenario: &str, random: usize) -> (tempfile::TempDir, PathBuf) {
-    let parent = Path::new("/tmp/graft-capture");
-    std::fs::create_dir_all(parent).expect("/tmp/graft-capture");
+    let parent = Path::new("/tmp/mwr-capture");
+    std::fs::create_dir_all(parent).expect("/tmp/mwr-capture");
     let dir = tempfile::Builder::new()
         .prefix(&format!("{scenario}-"))
         .rand_bytes(random)
@@ -856,9 +856,9 @@ fn step1_from_the_empty_state(
 /// `P` before git runs. The push lands and task 8 ticks.
 #[test]
 fn push_in_the_tour_fits_the_askpass_socket_under_a_default_length_tmpdir() {
-    // `/tmp/graft-capture/` + `sun-len-probe-` + 15 random = 48, and the
+    // `/tmp/mwr-capture/` + `sun-len-probe-` + 17 random = 48, and the
     // trailing `/` macOS's own value carries makes 49.
-    let (_root, tmp) = capture_root("sun-len-probe", 15);
+    let (_root, tmp) = capture_root("sun-len-probe", 17);
     let mut tmpdir = tmp.as_os_str().to_owned();
     tmpdir.push("/");
     assert_eq!(tmpdir.len(), MACOS_TMPDIR_LEN, "{tmpdir:?}");

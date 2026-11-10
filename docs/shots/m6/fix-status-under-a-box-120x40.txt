@@ -104,7 +104,7 @@
   ●                         Commit 167                                  Graft   7y│
   ●                         Commit 166                                  Graft   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⊗ fetch all remotes failed: no repository at '/graft-no-such-remote', or no access to it · esc dismiss
+ ⊗ fetch all remotes failed: no repository at '/mwr-no-such-remote', or no access to it · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                                                                   200 commits

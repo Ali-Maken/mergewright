@@ -66,11 +66,11 @@ pub fn prepare_capture(scenario: &Scenario) -> Result<(Fixture, PathBuf), String
     Ok((fixture, work))
 }
 
-/// The binary git runs as its askpass helper: `graft` itself under `cargo
+/// The binary git runs as its askpass helper: `mwr` itself under `cargo
 /// test`, or this very example, which answers askpass mode the same way.
 pub fn askpass_helper() -> Result<PathBuf, String> {
     match option_env!("CARGO_BIN_EXE_mwr") {
-        Some(graft) => Ok(PathBuf::from(graft)),
+        Some(mwr) => Ok(PathBuf::from(mwr)),
         None => std::env::current_exe().map_err(|why| format!("current_exe: {why}")),
     }
 }

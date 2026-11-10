@@ -345,7 +345,10 @@ fn capture_the_chrome_at_every_designed_size() {
                 "{columns}x{rows}: the `~` path and the branch: {header:?}"
             );
         }
-        assert!(!header.contains("graft"), "no product name: {header:?}");
+        assert!(
+            !header.contains(mergewright_core::on_disk::TITLE),
+            "no product name: {header:?}"
+        );
         // J22: read off the header, no key.
         crate::m8_walk::within_the_note::<&str>("which-repo-branch", &[]);
         let caption = format!(

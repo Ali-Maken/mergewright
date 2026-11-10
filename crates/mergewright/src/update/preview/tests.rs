@@ -68,7 +68,7 @@ fn on_screen() -> AppState {
 /// [`on_screen`] with `rows` resident instead.
 fn on_screen_with(rows: Vec<Row>) -> AppState {
     let (state, _) = crate::update::opening(
-        std::path::PathBuf::from("/tmp/graft-preview-tests"),
+        std::path::PathBuf::from("/tmp/mwr-preview-tests"),
         Size {
             columns: 100,
             rows: 40,

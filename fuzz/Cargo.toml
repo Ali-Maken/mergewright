@@ -1,5 +1,5 @@
 [package]
-name = "graft-fuzz"
+name = "mergewright-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2024"

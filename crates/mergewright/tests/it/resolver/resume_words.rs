@@ -120,7 +120,7 @@ fn commit(repo: &Path, message: &str) {
 /// files of their own. Rebasing `topic` onto `main` stops on the first and
 /// only the first.
 fn three_commits_one_stop() -> tempfile::TempDir {
-    let scratch = tempfile::TempDir::with_prefix("graft-first-skip-")
+    let scratch = tempfile::TempDir::with_prefix("mwr-first-skip-")
         .expect("a temp directory for the repository");
     let repo = scratch.path();
     git(

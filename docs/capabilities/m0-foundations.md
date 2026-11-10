@@ -31,7 +31,7 @@ status: works
 unverified_aspect: non-UTF-8 repo paths — fixture can't be built on this machine's filesystem
 ```
 
-- **How:** `graft [path]`, or `graft` with no argument (uses the current
+- **How:** `mwr [path]`, or `mwr` with no argument (uses the current
   directory).
 - **Behaviour:** Discovery (via `gix`) walks up from the given directory to
   find a repository, so running from a subdirectory works. Distinguishes: a
@@ -127,8 +127,8 @@ status: partial
 - **Proven by:** `mergewright::view::tests::every_graph_renderer_config_value_draws_as_it_says`
   (insta snapshots `renderer-{Auto,Pixel,Unicode,Ascii}.snap`, including a
   branch name carrying a raw ANSI escape, which renders inert). Manually
-  confirmed under a bare pty (not a real emulator): `graft .` shows the
-  right fields, `q` exits 0, `graft /tmp` errors and exits 1, `SIGINT`
+  confirmed under a bare pty (not a real emulator): `mwr .` shows the
+  right fields, `q` exits 0, `mwr /tmp` errors and exits 1, `SIGINT`
   restores cleanly, `NO_COLOR=1` produces no SGR colour at all.
 - **Decided in:** `docs/design/01-view-mockups.md`.
 - **Status:** partial. A known, named bug ships unfixed here: the tier line
@@ -231,7 +231,7 @@ milestone: m0-foundations
 status: works
 ```
 
-- **How:** `${XDG_CONFIG_HOME:-~/.config}/graft/config.toml`, read once at
+- **How:** `${XDG_CONFIG_HOME:-~/.config}/mergewright/config.toml`, read once at
   startup.
 - **Behaviour:** keys are `ui.theme` (`auto`/`dark`/`light`/
   `high-contrast`), `graph.renderer` (`auto`/`pixel`/`unicode`/`ascii`,
@@ -267,7 +267,7 @@ status: partial
 - **How:** automatic — any unrecoverable panic, in the UI thread or inside a
   background job.
 - **Behaviour:** the panic hook restores the terminal *first*, then writes a
-  crash report to `${XDG_STATE_HOME:-~/.local/state}/graft/crash-
+  crash report to `${XDG_STATE_HOME:-~/.local/state}/mergewright/crash-
   <timestamp>.log` (message, location, and a backtrace via
   `Backtrace::force_capture()`, independent of `RUST_BACKTRACE`), then
   prints exactly one plain stderr line naming the report's path. A second

@@ -654,7 +654,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-main-screen.html: 
 ================================================================================
 
 ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crates/mergewright/tests/it/branch_pane/shots.rs): `main ← wallet-release (HEAD) ← sara/fix-toc`, `ali/x` cut where sara cut hers, then a commit on wallet-release. Judge beside prototypes/ease-mocks/mergewright-main-screen.html. Not a pty capture; colour unverified (rule 5).
-120x30. What right looks like: the cursor on HEAD's row; right of a `│` rule the pane heads `wallet-release  (you're here)`, four answers each led by `!`, `✓` or `·`, the who line naming the author (`· Graft, …`: this fixture sets no `user.email`, so not `you`), then `built on` and its route `main ─◆ wallet-release`; no subject cut that would fit its column.
+120x30. What right looks like: the cursor on HEAD's row; right of a `│` rule the pane heads `wallet-release  (you're here)`, four answers each led by `!`, `✓` or `·`, the who line naming the author (`· <fixture author>, …`: this fixture sets no `user.email`, so not `you`), then `built on` and its route `main ─◆ wallet-release`; no subject cut that would fit its column.
 
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 

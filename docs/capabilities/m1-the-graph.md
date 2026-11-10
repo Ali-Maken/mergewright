@@ -219,7 +219,7 @@ status: works
   and 90 minutes both read "89 minutes ago" (git rounds `(seconds+30)/60`,
   truncating; "90 minutes ago" never actually appears in real git output;
   the boundary flips to "2 hours ago" only at 5,400 s). This was a genuine
-  bug, not a cosmetic one: Graft originally floor-divided each unit
+  bug, not a cosmetic one: Mergewright originally floor-divided each unit
   independently (46 hours showed "1d" where git shows "2 days ago"); fixed
   to match git's cascading rounding at every checked boundary, verified
   directly against real `git log --date=relative` output. The date read is
@@ -495,10 +495,10 @@ unverified_aspect: whether the OS clipboard actually received the copied SHA —
 - **Looks like:** `docs/shots/45-y-copies-sha.txt`, `docs/shots/45-notice-cleared.txt`
 - **Decided in:** ADR-0023 (added as the replacement for the tooltip's
   full-hash display, M1-12).
-- **Status:** partial. The send side — the exact bytes Graft writes — is
+- **Status:** partial. The send side — the exact bytes Mergewright writes — is
   proven; whether the terminal's clipboard actually received them is not
   something OSC 52 reports back, so it's genuinely unknowable from inside
-  Graft. Pasting in a real terminal to confirm is an explicit, still-open
+  Mergewright. Pasting in a real terminal to confirm is an explicit, still-open
   user check (`KNOWN_GAPS.md`).
 
 ### M1-14. Search jumps to a matching commit by message, author, committer, SHA or content, wrapping with `n`/`N`
@@ -648,7 +648,7 @@ status: works
   or 1×1 cells) never panics. A resize retransmits rows via a row-by-row
   clear rather than treating every resize as a full-screen clear (an
   earlier version's "clear everything on resize" behaviour turned out to
-  be the terminal library's own default behaviour, not something Graft
+  be the terminal library's own default behaviour, not something Mergewright
   asked for; fixed to a targeted clear, and the fix closed three related
   image-tier gaps at once).
 - **Looks like:** `docs/shots/21-redetect-resize-and-focus.txt`,
@@ -669,9 +669,9 @@ milestone: m1-the-graph
 status: works
 ```
 
-- **How:** automatic — any key pressed while Graft is mid-probe (startup,
+- **How:** automatic — any key pressed while Mergewright is mid-probe (startup,
   resize, focus regain) or during normal operation.
-- **Behaviour:** Graft owns its own input decoder (keys, SGR/X10 mouse
+- **Behaviour:** Mergewright owns its own input decoder (keys, SGR/X10 mouse
   reports, bracketed paste, focus events) rather than relying on a generic
   terminal-event library, so it can tell a terminal's own protocol reply
   apart from a real keystroke that happens to start with the same bytes. A
@@ -975,7 +975,7 @@ unverified_aspect: first paint at 1M commits right after clearing the OS page ca
   footprint (~140 bytes/commit, 155–158 MiB at 1M) is reported with a named
   floor but not enforced as pass/fail. The gap between reported RSS and
   footprint at that scale (roughly 290–350 MiB) is the repository's own
-  pack file on disk, not a Graft data structure. Getting from the original
+  pack file on disk, not a Mergewright data structure. Getting from the original
   881–949 MiB measurement to here took a chain of specific, named fixes:
   reading the commit-graph instead of the object database (M1-25); rows
   hydrating on demand (M1-26); one read per distinct target instead of a
@@ -1046,7 +1046,7 @@ status: works
   commands, at p99 ≈6–8 ms per frame at 1M commits, under the same 16 ms
   budget as smaller scales.
 
-### M1-29. Piping Graft's output, or opening a repository that fails, never hangs a script
+### M1-29. Piping Mergewright's output, or opening a repository that fails, never hangs a script
 
 ```meta
 id: M1-29
@@ -1055,8 +1055,8 @@ milestone: m1-the-graph
 status: works
 ```
 
-- **How:** running Graft with stdout redirected to a file or another
-  program (`graft <repo> | cat`, CI, scripts).
+- **How:** running Mergewright with stdout redirected to a file or another
+  program (`mwr <repo> | cat`, CI, scripts).
 - **Behaviour:** a piped run waits for history to actually finish loading
   before it's considered "settled" and prints its one frame — an earlier
   bug treated "no history loaded yet" as already settled, so a script

@@ -73,7 +73,7 @@ pub(crate) enum DiskLine {
 /// disk 20  below it; hunk adds +1  → Index(19)
 /// ```
 ///
-/// (Not a doctest: `graft` has no doctests and the item is crate-private;
+/// (Not a doctest: `mergewright` has no doctests and the item is crate-private;
 /// the same cases run in `landing/tests/disk.rs`.)
 pub(crate) fn disk_line_in(unstaged: &FileDiff, disk_line: u32) -> DiskLine {
     let mut shown_to = 0;

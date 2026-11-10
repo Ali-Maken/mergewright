@@ -8,13 +8,6 @@ newest name the app as it was called then.
 
 ## [Unreleased]
 
-### Unreleased: renamed to Mergewright (command `mwr`)
-
-The app, its command and its package are now Mergewright and `mwr`. On-disk
-names move on first launch, nothing lost: the config folder
-(`~/.config/mergewright/`), and in each repository `.git/mergewright/` and
-`refs/mergewright/` (ADR-0057).
-
 ### M5 — History and Ghost Preview
 
 You see the result before you confirm.
@@ -53,7 +46,7 @@ You see the result before you confirm.
 
 ### M4 — Remotes
 
-You never leave Graft to fetch, pull or push — not for a password, a
+You never leave Mergewright to fetch, pull or push — not for a password, a
 rejection or a hang.
 
 #### Added
@@ -71,7 +64,7 @@ rejection or a hang.
 - **The lease box** after a rejection: `Force-push main → origin/main?`,
   the remote tip it expects, `--force-with-lease=<branch>:<tip>`; a plain
   `--force` never runs; refused for any branch but `HEAD`'s upstream.
-- **Credential prompt in the app**: `graft` is git's askpass helper over a
+- **Credential prompt in the app**: `mwr` is git's askpass helper over a
   private socket; password questions are masked (`•`), username questions
   are not; `Esc` cancels the operation. Nothing typed is stored, logged,
   journaled or captured.
@@ -83,10 +76,10 @@ rejection or a hang.
 - **Push and fetch are journaled but transparent to undo**: `u` skips them
   and, after a push, says `· origin/main still has it`; the journal rows read
   `not undoable — origin has it · <old> → <new>` / `not undoable`.
-- **Real-remote test fixtures** (`graft-fixtures::remote`): a bare over
+- **Real-remote test fixtures** (`mergewright-fixtures::remote`): a bare over
   `file://`, smart HTTP with Basic auth on loopback, a port that never
   answers.
-- **The acceptance walk**: `cargo run -p graft --example m4_walk`, 21
+- **The acceptance walk**: `cargo run -p mergewright --example m4_walk`, 21
   scenarios judged by running git on both the work clone and the bare
   (`TESTING.md`, "Remotes").
 
@@ -124,13 +117,13 @@ byte for byte on `u`.
 - **Stash overlay** (`S`): `s` save with message and scope, `Enter` apply,
   `p` pop, `d` drop (confirmed).
 - **Undo journal**: every write records refs, `HEAD`, index tree and worktree
-  tree before and after behind a `refs/graft/backup/<worktree>/<id>` ref.
+  tree before and after behind a `refs/mergewright/backup/<worktree>/<id>` ref.
   `u` undoes, `U` redoes; a drift box asks first when the repository changed
   since. `J` browses the journal (`← u` / `← U` marks, `Space` shows the
   git commands). An interrupted operation is announced on the next launch and
   `u` restores it. Linked worktrees keep their own journal.
 - **Refresh on focus**: status re-read when the terminal regains focus.
-- **The acceptance walk**: `cargo run -p graft --example m3_walk`, 22
+- **The acceptance walk**: `cargo run -p mergewright --example m3_walk`, 22
   scenarios judged by running git (`TESTING.md`, "Working tree, undo and
   stash").
 
@@ -196,7 +189,7 @@ owned by M8 polish unless noted otherwise.
 
 ### M1 — The graph
 
-Graft draws its commit graph. Nothing here has been confirmed by eye in a
+Mergewright draws its commit graph. Nothing here has been confirmed by eye in a
 real terminal yet — see README's "What has actually been watched" and
 `TESTING.md`'s manual checklist, still **not run**.
 
@@ -236,7 +229,7 @@ real terminal yet — see README's "What has actually been watched" and
   repository for manual testing — 85,649 commits in 42 MB, because
   `--filter=tree:0` leaves the trees on the server. Run by hand; no test ever
   touches it.
-- **The Graph Gallery** (`cargo run -p graft --example gallery`): walks 24
+- **The Graph Gallery** (`cargo run -p mergewright --example gallery`): walks 24
   named fixture shapes with a banner describing what each shows or differs.
 - **`scripts/m1-checkpoint.sh`**: the milestone's manual checkpoint. Opens one
   named scenario (`git-git`, `criss-cross`, `foxtrot`, `octopus`) or lists
@@ -251,12 +244,12 @@ real terminal yet — see README's "What has actually been watched" and
 
 ### M0 — Foundations (2026-09-12)
 
-The first thing a user can run. Graft opens a repository, says what it found,
+The first thing a user can run. Mergewright opens a repository, says what it found,
 and gets out of the way cleanly. Nothing here writes to a repository.
 
 #### Added
 
-- **`graft [<path>]`** opens the repository at `<path>`, or the current
+- **`mwr [<path>]`** opens the repository at `<path>`, or the current
   directory when no path is given. Discovery works from a subdirectory, and
   handles bare repositories, linked worktrees and submodule working
   directories.
@@ -270,11 +263,11 @@ and gets out of the way cleanly. Nothing here writes to a repository.
 - **Clean exits on the ways a terminal program usually dies.** `SIGINT`,
   `SIGTERM` and `SIGHUP` restore the terminal first and then die of the signal,
   so `$?` stays 128 + N. A panic restores the terminal, writes a crash report
-  under `${XDG_STATE_HOME:-~/.local/state}/graft/`, and prints where it went.
+  under `${XDG_STATE_HOME:-~/.local/state}/mergewright/`, and prints where it went.
 - **Problems get a line instead of being hidden**: a system `git` older than
   2.38 or missing from `PATH`, an unknown key in the config file, and a `HEAD`
   that could not be read.
-- **A config file** at `${XDG_CONFIG_HOME:-~/.config}/graft/config.toml`, with
+- **A config file** at `${XDG_CONFIG_HOME:-~/.config}/mergewright/config.toml`, with
   `ui.theme` (`auto`, `dark`, `light`, `high-contrast`), `graph.renderer`
   (`auto`, `pixel`, `unicode`, `ascii`) and `ui.icons` (`plain`, `nerd`).
   Having no config file is normal and silent. An unknown key is a warning on
@@ -288,7 +281,7 @@ and gets out of the way cleanly. Nothing here writes to a repository.
   images, Sixel, cell size, background colour, colour depth and tmux status,
   each with a per-query fallback and a 200 ms budget (500 ms over SSH). Its
   full report is runnable on its own with
-  `cargo run -p graft --example capability_probe`.
+  `cargo run -p mergewright --example capability_probe`.
 - **Three themes** — dark, light and high-contrast — each mapped down to
   256-colour and 16-colour terminals, plus a fixed 12-hue lane palette chosen
   for colour-vision deficiency.

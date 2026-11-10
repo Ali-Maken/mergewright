@@ -309,7 +309,7 @@ pub struct DetailState {
     /// the diff region always mean the same thing (m7-power-tools/20b); only
     /// the changes pane writes from it.
     pub body_cursor: usize,
-    /// The pane's size, per orientation (ADR-0028); `<common_dir>/graft/layout`
+    /// The pane's size, per orientation (ADR-0028); `<common_dir>/mergewright/layout`
     /// at startup, written on every resize.
     pub pane_size: PaneSize,
     /// A divider drag is in progress: set by a `Down` on the seam, cleared by

@@ -1,4 +1,4 @@
-# Graft
+# Mergewright
 
 A terminal Git client whose centrepiece is a real graphical commit graph. This
 glossary fixes the words used across `PROMPT.md`, `DESIGN.md`, the ADRs and the
@@ -30,7 +30,7 @@ agree wherever the user-facing text speaks at all.
 
 A term that is deliberately never user-facing says so in its own entry.
 
-> "Graft" is a codename. The real name is chosen in M8.
+> "Mergewright" is a codename. The real name is chosen in M8.
 
 ## History and shape
 
@@ -110,7 +110,7 @@ _Avoid_: log, file log, timeline
 ## Operations and safety
 
 **Operation**:
-One user-initiated unit of Git work that Graft can record and undo as a whole,
+One user-initiated unit of Git work that Mergewright can record and undo as a whole,
 such as a commit, merge, rebase, reset, discard or stash drop.
 _Avoid_: action, command, task
 
@@ -120,9 +120,9 @@ operation, making every operation reversible. Browsable; each entry revertable.
 _Avoid_: history, undo stack, operation log
 
 **Command Log**:
-The visible, append-only list of the exact `git` commands Graft ran. A
-transparency feature for the user; not the undo mechanism. Graft's own
-commands are drawn `┆ git …`; `$` marks only what ran outside Graft (M7,
+The visible, append-only list of the exact `git` commands Mergewright ran. A
+transparency feature for the user; not the undo mechanism. Mergewright's own
+commands are drawn `┆ git …`; `$` marks only what ran outside Mergewright (M7,
 ADR-0048).
 _Avoid_: console, output pane, terminal log
 
