@@ -2355,12 +2355,6 @@ frame no longer shows all its ticket-07 words, and its caption says so:
 (m6-conflicts/45 NOTES). `m6-09`'s keys became `k ⏎ j j j j d` on
 2026-09-24 (m6-conflicts/46): the old second `⏎` was refused on the open
 file and its refusal took the bottom row; now the row is the box's keys.
-The contact sheet is
-`docs/shots/m6/m6-contact-sheet-<n>.txt`, in parts of at most 180 000 B (headroom under the 200 KB cap)
-(`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): every M6
-capture in ticket order — these nine, every fix ticket's `fix-*`, the
-journeys' `m6-10` to `m6-19` — then the four M5 hint captures and the M4
-credential capture M6 changed.
 **A capture carries no colour** — the user judges by eye.
 
 ### What the walk proves and what it does not
@@ -3317,8 +3311,7 @@ scripts/m8-accept.sh --perf   # and step 2, the release scroll run — from your
 
 Steps: (1) the fast tier workspace-wide — every walk below, `m8_walk::*`, the tour to `✓ practice done` with the
 `mwr` binary (`tour_walk`), every capture compared with what the code draws; (2) `--perf` only: held `j`/wheel, `G`
-after idle, RSS, release; (3) the contact sheet `docs/shots/m8-contact-sheet-{1,2,3}.txt` (parts at 180 000 B,
-colour unverified on each first line), from `docs/shots/m8-contact-sheet-captions.tsv`; (4) the install facts quoted
+after idle, RSS, release; (4) the install facts quoted
 from `docs/release/*.txt`; (5) `5 journeys: <n> in the fence · missing a walk: none`.
 
 One walk alone: `cargo nextest run --workspace -E 'test(/<test>$/)'`. Each reads its count from the note's fence
@@ -3391,7 +3384,7 @@ app's name, except the two throwaway prototypes `m8-proto-3a/3c` (records).
   element changes, nothing else (by eye, rule 5).
 - [ ] **J16 install** (2): `brew install <owner>/tap/mergewright` then `mwr` on a clean account — after publishing (see "M8: install it").
 - [ ] **J17 manual** (1): `man mwr` — see "M8: read the manual".
-- [ ] **Look** (by eye): `docs/shots/m8-contact-sheet-1.txt` onwards beside the mock-up's scenes at its top
+- [ ] **Look** (by eye): the captures `docs/shots/m8-*.txt` and `docs/shots/m8/*.txt` beside the mock-up's scenes at its top
   (`m8-proto-*`): same layout at 80×24, 120×36, 187×50.
 - [ ] **Scroll** (yours, release): `scripts/m8-accept.sh --perf` from your terminal; tails after release ≤ 100 ms
   (J1, J2), `G` ≤ 16 ms (J3), RSS ≤ budget, in `docs/perf/m8-accept.txt`.
