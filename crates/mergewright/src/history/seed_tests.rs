@@ -133,3 +133,71 @@ fn a_remote_seed_follows_the_branch_that_names_it_as_upstream() {
         Some(BranchIdentity::of_name(local.name.shorthand()))
     );
 }
+
+/// pre-publish-cleanup/04, Part B: a Ghost Preview names a remote lane the
+/// way the main graph behind it does, even when the branch's configured
+/// upstream has another name (`feat` tracking `origin/feat-remote`). The
+/// remote is ahead, so it opens its own lane in both.
+#[test]
+fn preview_seeds_follow_a_differently_named_upstream_like_the_graph() {
+    use std::collections::HashMap;
+
+    use mergewright_fixtures::git::run;
+
+    use super::seeds::{preview_seeds, seeds_with_upstreams};
+    use crate::refs::{AheadBehindCache, read};
+    use crate::repos::RepoStore;
+
+    let scratch = mergewright_fixtures::copy_into_temp(Shape::Linear);
+    let dir = scratch.path();
+    let git = |args: &[&str]| run(dir, args).expect("git runs on the scratch copy");
+    git(&["branch", "feat"]);
+    git(&["commit", "--allow-empty", "-m", "remote only"]);
+    git(&["update-ref", "refs/remotes/origin/feat-remote", "HEAD"]);
+    git(&["reset", "--hard", "HEAD~1"]);
+    git(&[
+        "remote",
+        "add",
+        "origin",
+        "https://example.invalid/repo.git",
+    ]);
+    git(&["config", "branch.feat.remote", "origin"]);
+    git(&["config", "branch.feat.merge", "refs/heads/feat-remote"]);
+
+    let handle = RepoHandle::open(dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let mut upstreams = HashMap::new();
+    for entry in refs
+        .iter()
+        .filter(|e| e.name.as_bytes().starts_with(b"refs/heads/"))
+    {
+        if let Some(up) = handle.upstream(&entry.name).expect("config reads") {
+            upstreams.insert(entry.name.clone(), up);
+        }
+    }
+    let graph = seeds_with_upstreams(&refs, &branches, &upstreams);
+    let store = RepoStore::new(dir.to_path_buf(), None);
+    let badges = read(&store, &AheadBehindCache::default()).expect("badges read");
+    let preview = preview_seeds(None, &badges);
+
+    let remote = BranchIdentity::of_name(b"origin/feat-remote");
+    let follows = |seeds: &mergewright_graph::Seeds| {
+        seeds
+            .known_branches
+            .iter()
+            .find(|seed| seed.identity == remote)
+            .map(|seed| seed.follows)
+            .expect("the remote ahead is a seed")
+    };
+    assert_eq!(
+        follows(&graph),
+        Some(BranchIdentity::of_name(b"feat")),
+        "the graph's resolver follows the configured upstream"
+    );
+    assert_eq!(
+        follows(&preview),
+        follows(&graph),
+        "preview names the lane as the graph does"
+    );
+}

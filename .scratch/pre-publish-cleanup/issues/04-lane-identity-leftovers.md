@@ -1,6 +1,6 @@
 # pre-publish: ticket 17's two unverified seams. Branch-pane focus across stacked rows, and preview lane names under a differently-named upstream
 
-Status: ready
+Status: done
 Blocked by: none
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: both parts are "prove it, fix it only if red", against rules already decided (ADR-0064, ticket 17 rulings). A test judges each one. Nothing structural.
 Scout: **yes**, first. It writes `.scratch/pre-publish-cleanup/scouts/04-lane-identity.md` (≤1 page). It finds:
@@ -49,12 +49,12 @@ Out: lane naming rules (ADR-0064), branch-pane layout and words, the 09p window 
 No new public API expected. If `Upstream` or `RefBadges` gains the upstream ref, it is one field, set where the refs read parses `%(upstream)`. Name it after the scout, add a MAP line, and list every constructor. If the main graph's resolver is private to its module, it becomes `pub(crate)` where both callers reach it. Don't copy it.
 
 ## Acceptance (tick each with its test, inline)
-- [ ] Part A: focus is right on every walked row, against the hand-written table ← test name
-- [ ] Part A: spawns per focus ≤ 60 through the app path, p50/p95 stated ← test or `docs/perf/pp-04-pane-focus.txt` SUMMARY
-- [ ] Part B: preview and main graph name the same lane the same, under a differently-named upstream; red seen, or green on arrival and reported as refuted ← test name
-- [ ] Part B (if red): one resolver, two callers (grep shown) ← NOTES + the same test
-- [ ] No graph snapshot or capture outside the preview changes ← `git diff --stat` of `*.snap` and `docs/shots`, in NOTES
-- [ ] If a preview capture changes, it's re-shot under `docs/shots/pre-publish/04-preview-upstream-*.txt` with a "what right looks like" line: the remote lane reads the same name as in the graph behind the preview ← the capture test by name
+- [x] Part A: focus is right on every walked row, against the hand-written table ← `graph_rows_tests::stacked_focus::the_pane_focuses_the_hand_expected_branch_on_every_stacked_row` + `…::inside_the_opened_merge_the_pane_keeps_the_merges_branch`
+- [x] Part A: spawns per focus ≤ 60 through the app path, p50/p95 stated ← `docs/perf/pp-04-pane-focus.txt` SUMMARY (spawns_max=8, p50 100 ms, p95 200 ms, debug build)
+- [x] Part B: preview and main graph name the same lane the same, under a differently-named upstream; red seen ← `history::seed_tests::preview_seeds_follow_a_differently_named_upstream_like_the_graph` (red: preview follows None, graph Some(feat))
+- [x] Part B (if red): one resolver, two callers (grep shown) ← NOTES + the same test
+- [x] No graph snapshot or capture outside the preview changes ← `git diff --stat` of `*.snap` and `docs/shots`, in NOTES
+- [x] (n/a: no preview capture changed, walks.sh run) If a preview capture changes, it's re-shot under `docs/shots/pre-publish/04-preview-upstream-*.txt` with a "what right looks like" line: the remote lane reads the same name as in the graph behind the preview ← the capture test by name
 
 ## Touches (check each, say how)
 - Main graph seeds (output unchanged: snapshots).
@@ -77,3 +77,11 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh` (a pr
 
 ## Size
 ~45k tokens: two tests, one fixture variant, at most one resolver shared.
+
+## NOTES (builder, 2026-11-10)
+- Scout used (`.scratch/pre-publish-cleanup/scouts/04-lane-identity.md`). Its corrections held: refs read takes upstreams from gix config (`handle.upstream`, `refs/mod.rs` read), not `%(upstream)`; no spawn added.
+- Part A: green on arrival — not a defect. Fixture: the main screen's stacked repo (`tests/it/graph_rows_tests.rs`), not the team fixture (no stack found there). Hand table: receipts→feature/receipts; merge, release start→wallet-release; cache→spike/cache; CI→ops/ci; readme→main. `toc: fix the anchors` is folded under the merge; my first table said sara/fix-toc for it once opened, the app says wallet-release — that is decided behaviour (G4, `view/entries/roles.rs:36-52 focus`: a row inside an opened merge focuses the merge's branch), so the test expects G4. Planner may want to confirm G4 is the wanted rule for the pane.
+- Spawn cost: no in-process counter; `scripts/pp-04-pane-focus.sh` runs the focus test under a `git` shim (env-gated markers in the test). Per-focus spawns 0/6/8/3/0, max 8 ≤ 60. Times are a debug test build on a loaded machine.
+- Part B red → fixed (cause): `RefBadges` gains one field `followed` (remote full ref → local short), set in `badges()` where the configured upstream is resolved (only constructor: `badges`; `Default` elsewhere). `preview_seeds` now passes it to the same `follows_of` the graph's `seeds_with_upstreams` uses. grep: `follows_of(` called in seeds.rs by `seeds_with_upstreams` (1) and `preview_seeds` (2), defined once.
+- `git diff --stat -- '*.snap' docs/shots`: empty.
+- Known limit: remotes level with a tracking local carry no badge, so `preview_seeds` lacks them (existing, unchanged).

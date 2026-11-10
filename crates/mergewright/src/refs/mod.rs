@@ -49,6 +49,11 @@ pub struct RefBadges {
     /// Every branch the branch pane may name, sorted, built once per read
     /// ([`Self::branch_list`]). Boxed, as `live` is.
     branch_list: Box<BranchList>,
+    /// Each configured upstream that is a remote-tracking ref, full name
+    /// (`refs/remotes/origin/x`) → the local branch's short name: the Ghost
+    /// Preview's seeds name remote lanes from it as the graph does
+    /// ([`Self::followed`]).
+    followed: HashMap<Vec<u8>, Vec<u8>>,
 }
 
 impl RefBadges {
@@ -112,6 +117,14 @@ impl RefBadges {
                 _ => None,
             })
         })
+    }
+
+    /// Each configured upstream that is a remote-tracking ref, as its full
+    /// name → the short name of the local branch that names it
+    /// (`branch.<n>.merge`). Built in the same refs read, no process spawned.
+    #[must_use]
+    pub fn followed(&self) -> &HashMap<Vec<u8>, Vec<u8>> {
+        &self.followed
     }
 
     /// Every remote-tracking branch that has a badge of its own, as its tip
@@ -264,6 +277,9 @@ pub fn badges<S: BuildHasher>(
                 Some((up, up_id)) => {
                     if let Some(short) = up.as_bytes().strip_prefix(REMOTES) {
                         result.live.tracks(short);
+                        result
+                            .followed
+                            .insert(up.as_bytes().to_vec(), full[HEADS.len()..].to_vec());
                     }
                     let counts = count(*id, up_id)?;
                     if counts.in_sync() {

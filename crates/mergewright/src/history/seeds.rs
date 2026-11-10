@@ -118,11 +118,18 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
         .filter(|(name, _)| name.starts_with(HEADS))
         .map(|(_, &tip)| tip)
         .collect();
+    // The same remote → local map the graph's seeds follow, from the badges'
+    // read of the configured upstreams.
+    let followed: HashMap<&[u8], &[u8]> = refs
+        .followed()
+        .iter()
+        .map(|(remote, local)| (remote.as_slice(), local.as_slice()))
+        .collect();
     let seed = |name: &RefName| {
         tips.get(name.as_bytes()).map(|&tip| BranchSeed {
             tip,
             identity: BranchIdentity::of_name(name.shorthand()),
-            follows: follows_of(name.as_bytes(), &HashMap::new(), |branch| {
+            follows: follows_of(name.as_bytes(), &followed, |branch| {
                 tips.contains_key([HEADS, branch].concat().as_slice())
             }),
         })
@@ -143,7 +150,7 @@ pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
             .map(|(name, &tip)| BranchSeed {
                 tip,
                 identity: BranchIdentity::of_name(shorthand_of(name)),
-                follows: follows_of(name, &HashMap::new(), |branch| {
+                follows: follows_of(name, &followed, |branch| {
                     tips.contains_key([HEADS, branch].concat().as_slice())
                 }),
             })
