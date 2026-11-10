@@ -59,7 +59,7 @@ Out: comments that spell the codename (11a/11c). Fixture identities (12). Undo b
 - [x] Fixture caches rebuilt, captures unchanged ← `rm -rf <fixture cache>` then `cargo nextest run` count; `scripts/walks.sh` SUMMARY; `git status --short docs/shots` empty — `rm -rf target/fixtures`, full run 6788 run / 6787 passed / 1 MAP-length fail, fixed and re-run green; walks SUMMARY tests=459 failed=0; `git status --short docs/shots` empty
 - [x] Fixtures still deterministic ← the corpus determinism test by name — `team::tests::build_is_deterministic` green
 - [x] Old-generation hits gone: `git grep -n -i -E 'graft|tributary' -- crates` count before and after quoted, with every remaining hit outside the old-generation class (spot-list 10) — 955 before, 899 after; remaining are codename comments, temp prefixes (`graft-reap-`), test literals, snapshot text (11a/11c/12 scope)
-- [ ] Fast and walk tiers green ← counts
+- [x] Fast and walk tiers green ← conductor, main @ e202acae: `cargo nextest run` 6788/6788 (628 s; fixture cache keys changed so caches rebuilt this run — unmeasured guess), `scripts/walks.sh` SUMMARY walks tests=459 failed=0; fmt, clippy, heavy clippy, doc tests clean
 
 ## Touches (check each, say how)
 - `commit_graph.rs` and its tests (git): its `Generation` use goes to `on_disk::DIR`. `history_reads/unreached.rs`. `remember_declined`'s folder.
