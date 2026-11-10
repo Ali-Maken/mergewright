@@ -25,6 +25,7 @@ mod error_rows;
 mod finish;
 mod finish_merge;
 mod fork_follows;
+mod fork_label;
 mod fork_pushed;
 mod fresh_repo_names;
 mod history_ops;
