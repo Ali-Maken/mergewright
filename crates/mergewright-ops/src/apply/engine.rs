@@ -40,7 +40,7 @@ use super::{AfterState, ApplyError, Context};
 
 /// A rewrite ready to run: what git is handed, and where its plan is saved.
 pub(super) struct Engine {
-    /// `<git dir>/graft/rewrite/<entry-id>/`.
+    /// `<git dir>/mergewright/rewrite/<entry-id>/`.
     dir: PathBuf,
     saved: SavedPlan,
     todo: GitTodo,

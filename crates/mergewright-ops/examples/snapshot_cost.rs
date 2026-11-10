@@ -161,13 +161,13 @@ fn percentile(sorted: &[Duration], p: usize) -> u128 {
 
 fn measure() -> Result<(), String> {
     let (runs, files) = sizes()?;
-    let root = std::env::temp_dir().join(format!("graft-30q-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("mwr-30q-{}", std::process::id()));
     std::fs::create_dir_all(&root).map_err(|why| format!("{}: {why}", root.display()))?;
     let _cleanup = TempDir(root.clone());
     for (k, case) in (1u8..).zip(CASES.iter()) {
         let dir = build(&root, k, files, case)?;
         let repo = RepoHandle::open(&dir).map_err(|why| format!("open case{k}: {why}"))?;
-        let scratch = dir.join(".git/graft");
+        let scratch = dir.join(".git/mergewright");
         std::fs::create_dir_all(&scratch).map_err(|why| format!("{}: {why}", scratch.display()))?;
         let head = Oid::from_hex(&git(&dir, &["rev-parse", "HEAD"])?)
             .map_err(|why| format!("HEAD of case{k}: {why}"))?;

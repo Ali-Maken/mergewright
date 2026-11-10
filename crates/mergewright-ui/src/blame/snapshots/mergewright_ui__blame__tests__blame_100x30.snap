@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/blame/tests.rs
+source: crates/mergewright-ui/src/blame/tests.rs
 description: "Right: 10-cell gutter: bracket, initials, age; the trailer shed to name and age, the room left."
 expression: "snapshot(&view(&rows, ON_22), 100, 30)"
 ---

@@ -1,6 +1,6 @@
 # pre-publish: the codename out of every crate but the app (ui, ops, git, core, fixtures, graph, term)
 
-Status: ready
+Status: done (fast/walk box for the conductor)
 Blocked by: 06, 11b4. 07–10 are no longer blockers (cut, pending the user).
 Runs concurrently with: 11a. Disjoint files: this ticket owns every `crates/*` except `mergewright` and `mergewright-capabilities`, plus the captures whose writers live in those crates.
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: comment, name and header renames under 11a's rules. Nothing new is decided here.
@@ -42,12 +42,12 @@ Out: the app and capabilities crates, scripts, docs (11a); identities and captur
 None (renames only).
 
 ## Acceptance (tick each with its test, inline)
-- [ ] Arrival recount by class and crate ← `git grep -c -i -E 'graft|tributary|trib_' -- <crates>`, in NOTES
-- [ ] Only D2 classes left ← `git grep -n -i -E 'graft|tributary|trib_' -- <crates>` output, each line tagged identity or git-word, in NOTES
-- [ ] Snapshot diffs header-only ← `git diff -- '<crates>/**/*.snap'` summary
-- [ ] Renamed captures keep their writers ← `scripts/shot-drift.py`; `git diff -M --stat docs/shots`
-- [ ] No `GRAFT_` left in these crates ← grep empty
-- [ ] No `over_400.txt` row raised ← `file_size` green
+- [x] Arrival recount by class and crate ← `git grep -c -i -E 'graft|tributary|trib_' -- <crates>`, in NOTES
+- [x] Only D2 classes left ← `git grep -n -i -E 'graft|tributary|trib_' -- <crates>` output, each line tagged identity or git-word, in NOTES
+- [x] Snapshot diffs header-only ← `git diff -- '<crates>/**/*.snap'` summary — 71 files, 71 +/71 −, every changed line `source:` (`git diff -- '*.snap' | grep '^[-+]' | grep -v source:` empty); edited by hand per 11a D4, paths checked to exist
+- [x] Renamed captures keep their writers ← `scripts/shot-drift.py`; `git diff -M --stat docs/shots` — empty: all `*graft-self*` writers are in the app crate (gallery.rs), 11a's; no capture renamed or regenerated here; `capture_a_partial_fetch` green
+- [x] No `GRAFT_` left in these crates ← `git grep 'GRAFT_' -- <crates>` empty (already none on arrival; no cross-boundary env pairs)
+- [x] No `over_400.txt` row raised ← `file_size::every_file_over_400_lines_is_listed_with_its_count` green in the full run
 - [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
 
 ## Touches (check each, say how)
@@ -64,3 +64,15 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`.
 
 ## Size
 ~70k tokens: about 600 lines pre-11b (ui 396 with most of the 71 `.snap` headers, ops ~100, git ~65, fixtures ~40 minus identities, graph 25, core ~10, term 2). Mostly comments. The arrival split rule above bounds it.
+
+## NOTES (11c build)
+- Recount on arrival (`git grep -c -i -E 'graft|tributary|trib_'`): ui 396, ops 104, git 77, fixtures 39, graph 25, core 16, term 2 = 659. Of these 71 `.snap` headers, ~250 snap body identity, 39 other identity, 151 code lines; under the split rule.
+- After: remaining lines, by tag (`git grep -n -I -i -E 'graft|tributary|trib_' -- <crates>`):
+  - identity (12): ui snapshot bodies (author `Graft` column), 39 `Graft Fixture/Test/Perf`/`graft.invalid` lines, testdata blobs, `fixtures/src/shapes/mod.rs:34` REMOTE_URL `graft.git` (part of a fixture commit message: renaming changed oids + 2 snapshots, reverted), the graph/ui `accidental-pull-merge` snaps holding it.
+  - old-name guard inputs (kept on purpose): `core/src/on_disk/tests.rs`, `core/src/ref_name/tests.rs`, `ui/.../source_column.rs:25,34` (asserts old name never drawn), `ops/tests/it/conflict_set.rs:353,360` (old message shape), `ops/src/journal_list/tests/words.rs:148` (foreign reflog subject), `ops/tests/it/goldens/m5-journal.jsonl` (stored-format golden).
+  - behaviour, left (stop rule): `graft-ghost` hash seed (ops preview/ghost.rs:23, effects.rs, MAP:309) changes every ghost id; `graft-fork-` rebase label (ops rewrite/todo.rs:317 + readers/tests) is written into git's rebase todo on disk. Question for conductor.
+  - scratch prefix `graft-{prefix}` (fixtures/src/scratch.rs) left: the shorter `mwr-` changed truncation in docs/shots/m8/21c-journal-partial-fetch-120x40.txt beyond the word (stop rule).
+  - test fn names cited by docs/capabilities (11a's files): `grafts_own_refs_are_not_drawn_but_are_still_readable` (git repo/tests.rs:603), `a_shell_merge_is_not_adopted_as_grafts_own_entry` (ops history_ops.rs:1440). Rename needs the citation changed in the same commit → 11a/12.
+- Renamed: comments/MAP (`graft` crate → `mergewright`), temp prefixes (`.graft-`, `.graft-tmp`, `$1.graft`, askpass dir/thread, `graft-input` thread, diff3/editor/test temps), test strings, `refs/graft/` test data → `refs/mergewright/`. Stale `Graft-Link`/`tributary/lock` comments reworded to current (`Mergewright-Link:`, journal writer's lock).
+- Cross-boundary: no env pairs. App's `rename_names.rs` ALLOWED list still names `graft-input`, `graft-askpass`, `graft-marker-`, `.graft-tmp` (11a's file; now stale).
+- Gates: fmt, clippy -D warnings, heavy clippy (`--features heavy-tests`), doc tests green. Full `cargo nextest run --no-fail-fast`: 6788/6788 passed. `scripts/walks.sh`: SUMMARY walks tests=459 failed=0.

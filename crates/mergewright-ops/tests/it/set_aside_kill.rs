@@ -4,7 +4,7 @@
 //! puts everything back as it was before the switch, the stash list
 //! included.
 //!
-//! The seam is a `git` first on the child's `PATH` (`git_shim.sh`): graft
+//! The seam is a `git` first on the child's `PATH` (`git_shim.sh`): mergewright
 //! spawns `git` through the inherited `PATH` (`mergewright-git` `run.rs`). The
 //! child is this test binary running [`child_runs_the_switch`], so the
 //! parent's own environment is never changed.
@@ -29,7 +29,7 @@ use crate::put_back_index::{staged_near_their_change, staged_then_edited_forked}
 use crate::set_aside::{journal_entries, set_aside_of, stash_commits, whole};
 use crate::support::{NOW, Never, TempRepo, context, journal_for, run_undo};
 
-/// The shim, shared with graft's K4.
+/// The shim, shared with mergewright's K4.
 const SHIM: &str = include_str!("git_shim.sh");
 
 const CHILD_REPO: &str = "MWR_KILL_CHILD_REPO";

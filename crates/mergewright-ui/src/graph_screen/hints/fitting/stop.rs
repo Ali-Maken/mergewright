@@ -5,7 +5,7 @@ use super::{Hint, Keymap, SanitizedText, Words, fit, fits, hints_text, text_widt
 /// Why the live operation stopped, as wordings from fullest to shortest
 /// (m6-conflicts/24, review m6-amend-11-12 M1).
 ///
-/// `graft` writes the ladder because only it knows which parts matter
+/// `mergewright` writes the ladder because only it knows which parts matter
 /// least: each shorter wording drops whole parts (`begun outside Mergewright`,
 /// then `from a previous run`, then the step, then the count), so a number
 /// is drawn whole or not at all. [`stopped_row`] takes the first that fits

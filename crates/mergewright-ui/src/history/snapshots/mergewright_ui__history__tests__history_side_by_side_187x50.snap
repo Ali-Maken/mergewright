@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 assertion_line: 437
 description: "Right: the detail pane's side-by-side body in the file pane, no ┃; the title still names the range."
 expression: text

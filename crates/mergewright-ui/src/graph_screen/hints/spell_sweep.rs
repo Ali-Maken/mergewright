@@ -112,8 +112,8 @@ fn every_menu_suffix_spells_the_remapped_chord() {
                 "Pull" => Some(suffix("graph.pull")),
                 "Push" => Some(suffix("graph.push")),
                 "Undo" => Some(suffix("app.undo")),
-                // The caller's own label (graft's verbs spell theirs, held
-                // by graft's menu tests), Explain and absorb: no key here.
+                // The caller's own label (mergewright's verbs spell theirs, held
+                // by mergewright's menu tests), Explain and absorb: no key here.
                 _ => None,
             };
             if let Some(want) = want {

@@ -333,7 +333,7 @@ fn drawn_rows(view: &GraphView<'_>, body_rows: u16) -> usize {
 /// Where the commit rows land in `area`, and the columns each of them is
 /// drawn to.
 ///
-/// The one reading of that geometry outside the widget. `graft`'s mouse
+/// The one reading of that geometry outside the widget. `mergewright`'s mouse
 /// hit-test needs it to say which badge a cell belongs to, and the rule
 /// ADR-0040 already learned — two copies of a layout with nothing testing
 /// one against the other — is why it is handed out rather than mirrored.

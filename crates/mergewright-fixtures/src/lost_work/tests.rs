@@ -56,12 +56,12 @@ fn start_is_10_12_and_end_is_10_44_utc() {
 
 #[test]
 fn mergewright_discards_and_undoes_before_the_spike_and_fetches_last() {
-    let mut graft = StandIn::default();
+    let mut app = StandIn::default();
 
-    LostWork::build(&mut graft).expect("the fixture builds");
+    LostWork::build(&mut app).expect("the fixture builds");
 
     assert_eq!(
-        graft.calls,
+        app.calls,
         [
             ("discard", at(10, 16, 0) * 1000),
             ("undo", at(10, 16, 40) * 1000),

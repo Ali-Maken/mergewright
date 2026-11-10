@@ -434,7 +434,7 @@ fn extra_config(root: &Path) -> String {
 /// `expected` is `None` where the answer rests on his global or system config
 /// (unset), so only agreement with git is asserted there.
 fn autocrlf_agrees(name: &str, setup: &dyn Fn(&Path, &Path), expected: Option<bool>) {
-    let (root, dir) = fresh("graft-30r-repo");
+    let (root, dir) = fresh("mwr-30r-repo");
     setup(&dir, root.path());
     let read = autocrlf_converts(&open(&dir)).unwrap_or_else(|why| panic!("{name}: {why}"));
     assert_eq!(read, git_reads_autocrlf(&dir), "{name}: agrees with git");
@@ -484,7 +484,7 @@ fn autocrlf_agrees_with_git_config_through_includes_and_worktree_config() {
     };
     autocrlf_agrees("include.path outside .git", &include, Some(true));
     let matching = |dir: &Path, root: &Path| {
-        let key = "includeIf.gitdir:graft-30r-repo/.path";
+        let key = "includeIf.gitdir:mwr-30r-repo/.path";
         git_ok(dir, &["config", key, &extra_config(root)]);
     };
     autocrlf_agrees("includeIf gitdir: that matches", &matching, Some(true));
@@ -551,18 +551,18 @@ fn a_config_change_after_the_handle_opened_is_seen() {
 const CHILD_REPO: &str = "MWR_AUTOCRLF_CHILD_REPO";
 const CHILD_OUT: &str = "MWR_AUTOCRLF_CHILD_OUT";
 
-/// The child half: Mergewright's read and git's, `graft git` in `CHILD_OUT`.
+/// The child half: Mergewright's read and git's, `mwr git` in `CHILD_OUT`.
 #[test]
 #[ignore = "run by autocrlf_in(), in an environment it controls"]
 fn child_reads_autocrlf() {
     let repo = PathBuf::from(std::env::var_os(CHILD_REPO).expect("the parent names the repo"));
     let out = PathBuf::from(std::env::var_os(CHILD_OUT).expect("the parent names the output"));
-    let graft = autocrlf_converts(&open(&repo)).expect("the config reads");
+    let mwr = autocrlf_converts(&open(&repo)).expect("the config reads");
     let git = git_reads_autocrlf(&repo);
-    std::fs::write(out, format!("{graft} {git}")).expect("the answer is written");
+    std::fs::write(out, format!("{mwr} {git}")).expect("the answer is written");
 }
 
-/// `(graft, git)` for a repository with no `core.autocrlf` of its own, in a
+/// `(mwr, git)` for a repository with no `core.autocrlf` of its own, in a
 /// process whose only config outside the repository comes from `env`:
 /// `HOME` and `XDG_CONFIG_HOME` point at an empty directory, the global file
 /// is `/dev/null` and the system file is off, unless `env` says otherwise.
@@ -603,10 +603,10 @@ fn autocrlf_in(env: &[(&str, String)]) -> (bool, bool) {
     );
     let answer = std::fs::read_to_string(&out)
         .unwrap_or_else(|why| panic!("the child wrote its answer: {why}"));
-    let (graft, git) = answer
+    let (mwr, git) = answer
         .split_once(' ')
         .unwrap_or_else(|| panic!("two answers: {answer:?}"));
-    (graft == "true", git == "true")
+    (mwr == "true", git == "true")
 }
 
 /// A config file holding `core.autocrlf = <value>`, kept alive with the
@@ -627,7 +627,7 @@ fn autocrlf_from_the_global_config_is_read_isolated() {
     for (value, expected) in [("true", true), ("false", false)] {
         let (_keep, global) = config_file(value);
         let read = autocrlf_in(&[("GIT_CONFIG_GLOBAL", global)]);
-        assert_eq!(read, (expected, expected), "global {value}: (graft, git)");
+        assert_eq!(read, (expected, expected), "global {value}: (mwr, git)");
     }
 }
 
@@ -641,7 +641,7 @@ fn autocrlf_from_the_system_config_is_read_isolated() {
             ("GIT_CONFIG_NOSYSTEM", "0".to_owned()),
             ("GIT_CONFIG_SYSTEM", system),
         ]);
-        assert_eq!(read, (expected, expected), "system {value}: (graft, git)");
+        assert_eq!(read, (expected, expected), "system {value}: (mwr, git)");
     }
 }
 

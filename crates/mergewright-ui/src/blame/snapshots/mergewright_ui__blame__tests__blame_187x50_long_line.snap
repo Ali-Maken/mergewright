@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/blame/tests.rs
+source: crates/mergewright-ui/src/blame/tests.rs
 description: "Right: cursor on the long line 27, its block's last row: no trailer; the gutter prints Tom beside ▸."
 expression: "snapshot(&view(&rows, ON_27), 187, 50)"
 ---

@@ -3,7 +3,7 @@
 //! groups (`IN PROGRESS`, `HERE`, `EVERYWHERE`, `YOUR CONFIG` first when
 //! his config had problems); `⌃P`/`:` lists every action.
 //!
-//! Pure drawing. `graft` owns the state, builds the groups from the live
+//! Pure drawing. `mergewright` owns the state, builds the groups from the live
 //! key table, filters them and hands over a [`PaletteView`] with every
 //! string worded and sanitized. The scroll is worked out here from the
 //! cursor, never stored, so it cannot go stale behind a resize (the

@@ -1,5 +1,5 @@
 ---
-source: crates/graft-graph/tests/it/corpus.rs
+source: crates/mergewright-graph/tests/it/corpus.rs
 expression: text
 ---
 shape: trivial

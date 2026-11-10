@@ -72,7 +72,7 @@ pub struct StashView<'a> {
     /// preview (review 86, M2).
     pub box_open: bool,
     /// A write is running and `Esc` stops it before the list sees the key
-    /// (graft's `update::remote::esc_stops_write`): the bar reads `esc
+    /// (mergewright's `update::remote::esc_stops_write`): the bar reads `esc
     /// cancels` … `S close`, never `S/esc close` (m8/59 Major A).
     pub esc_cancels: bool,
     /// The ASCII tier: a failure's mark is `(x)`.

@@ -120,7 +120,7 @@ impl AskPassServer {
         let thread = {
             let shared = Arc::clone(&shared);
             thread::Builder::new()
-                .name("graft-askpass".to_owned())
+                .name("mwr-askpass".to_owned())
                 .spawn(move || listen(&listener, &handler, &shared, owner))?
         };
         Ok(AskPassServer {
@@ -246,7 +246,7 @@ impl Drop for AskPassServer {
     }
 }
 
-/// `temp_dir()/graft-askpass-<pid>-<n>`, created `0700`. `create` (not
+/// `temp_dir()/mwr-askpass-<pid>-<n>`, created `0700`. `create` (not
 /// `create_all`) fails if the name exists, so a planted directory or symlink
 /// is never used; a clash just tries the next name.
 fn private_dir() -> io::Result<PathBuf> {
@@ -261,7 +261,7 @@ fn private_dir() -> io::Result<PathBuf> {
             ^ NEXT
                 .fetch_add(1, Ordering::Relaxed)
                 .wrapping_mul(0x9E37_79B9);
-        let dir = base.join(format!("graft-askpass-{}-{n:08x}", std::process::id()));
+        let dir = base.join(format!("mwr-askpass-{}-{n:08x}", std::process::id()));
         match std::fs::DirBuilder::new().mode(0o700).create(&dir) {
             Ok(()) => return Ok(dir),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => last = Some(error),
@@ -340,7 +340,7 @@ fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, shared: &Shared) ->
     // Detached, not scoped: a scope would make shutdown wait for a handler
     // that may be blocked on a user who has gone.
     let spawned = thread::Builder::new()
-        .name("graft-askpass-ask".to_owned())
+        .name("mwr-askpass-ask".to_owned())
         .spawn(move || {
             let answer = handler.ask(&prompt);
             reply.send(answer);

@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/status_screen/tests.rs
+source: crates/mergewright-ui/src/status_screen/tests.rs
 expression: "draw(&healthy(), 60, 10)"
 ---
 "Mergewright                                                 "

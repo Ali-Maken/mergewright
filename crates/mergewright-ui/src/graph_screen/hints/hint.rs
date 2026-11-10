@@ -87,7 +87,7 @@ pub struct Hint {
     pub state: HintState,
     /// The rung [`hints_for`] drew it at. Every table entry is [`Rung::Full`];
     /// only the width rule steps one down, so `verb` always names the whole
-    /// verb whatever the rung (which is what `graft`'s
+    /// verb whatever the rung (which is what `mergewright`'s
     /// `update::tests::every_key_the_bar_draws_is_answered` compares against the
     /// keymap).
     pub rung: Rung,

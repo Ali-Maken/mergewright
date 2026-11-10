@@ -112,7 +112,7 @@ mod tests {
         // A broken patch is git's exit 128, not the "does not apply" exit
         // 1: read as a stay, a bug in the patch would hide as a verdict
         // (review m7-06 M8).
-        let dir = std::env::temp_dir().join(format!("graft-judge-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("mwr-judge-{}", std::process::id()));
         let scratch = Scratch(dir.clone());
         std::fs::create_dir_all(&scratch.0).expect("the scratch directory");
         let status = std::process::Command::new("git")

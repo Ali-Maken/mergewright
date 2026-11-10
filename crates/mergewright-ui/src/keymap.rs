@@ -199,7 +199,7 @@ impl ContextId {
             // The one confirm key (§2.3b), each place's own `y`:
             // `update/preview/keys.rs:78` `confirm_key`, `update/finish/
             // keys.rs:98` `files_key`, `update/rewrite_editor/keys.rs:171`.
-            // The start screen's init box is a confirm box: graft translates
+            // The start screen's init box is a confirm box: mergewright translates
             // its keys in `Confirm` while it is open (m8/09d D6).
             C::Preview | C::Finish | C::Rewrite => &[ActionId("confirm.yes")],
             C::Global
@@ -221,7 +221,7 @@ impl ContextId {
     /// so `?` never lists them there and a line taking their key there
     /// takes nothing; [`Keymap::translate`] is unchanged for them (the place
     /// swallows the key whatever it is translated to). Each list is
-    /// commented with the line in graft that swallows them. Empty for every
+    /// commented with the line in mergewright that swallows them. Empty for every
     /// other place.
     #[must_use]
     pub fn stands_down(self) -> &'static [ActionId] {

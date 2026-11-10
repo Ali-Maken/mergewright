@@ -211,7 +211,7 @@ fn back_of(repo: &RepoHandle, record: &ReflogRecord) -> Result<Option<usize>, Fa
 /// finished rebase's in-between commits (`scratch::rebase_scratch`, m7/38:
 /// in the result or melded into it, not his lost work); the first `cap` are
 /// checked (`mergewright_git::history_reads::unreached`, which never counts
-/// Mergewright's own `refs/graft/**` as holding anything).
+/// Mergewright's own `refs/mergewright/**` as holding anything).
 ///
 /// # Errors
 /// [`FactsError::History`] when git's walk fails; [`FactsError::Stopped`]

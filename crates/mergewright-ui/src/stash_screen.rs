@@ -3,7 +3,7 @@
 //! (m3-working-tree-undo-and-stash/06).
 //!
 //! An overlay over the graph area, like `journal_screen`: it owns no state
-//! and no I/O, and `view::stash::stash_view` (crate `graft`) builds its
+//! and no I/O, and `view::stash::stash_view` (crate `mergewright`) builds its
 //! input. Every fact is in the text — `stash@{0}`, `3 files`, the chosen
 //! scope's `(•)` — because a capture carries no colour and neither does a
 //! `NO_COLOR` terminal.

@@ -299,7 +299,7 @@ fn sanitized_text_reads_as_a_string_slice() {
 // siblings) is its only constructor, so no crate outside `mergewright-term` can make
 // a `SanitizedText` that skipped the cleaning — that is the whole point of the
 // type (ARCHITECTURE.md, DESIGN.md §8.2). Confirmed by hand: adding
-// `let t = mergewright_term::SanitizedText("raw".to_owned());` to `graft`'s
+// `let t = mergewright_term::SanitizedText("raw".to_owned());` to `mergewright`'s
 // integration test fails to compile with E0423, "cannot initialize a tuple
 // struct which contains private fields". Left out of the suite because a `trybuild`
 // compile-fail harness is a second test binary to build and link, which

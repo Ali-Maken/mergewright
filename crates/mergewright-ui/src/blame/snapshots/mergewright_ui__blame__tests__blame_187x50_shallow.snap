@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/blame/tests.rs
+source: crates/mergewright-ui/src/blame/tests.rs
 description: "Right: row 18 reads `▸ ^0a2762 shallow clone · can't say who`, its trailer `◂ can't say who · this clone starts at 0a27627`; 17 opens the block with the same words, 19 closes it bare; Priya nowhere."
 expression: "snapshot(&view(&rows, SHALLOW_18), 187, 50)"
 ---

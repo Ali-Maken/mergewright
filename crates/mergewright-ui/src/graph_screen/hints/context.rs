@@ -18,7 +18,7 @@ pub use row_bar::{RowBar, bar_name};
 pub use tab_word::TabWord;
 
 /// Which of a commit row's own verbs act on the cursor's row
-/// (m7-power-tools/40). `graft` works each out from the check its key runs
+/// (m7-power-tools/40). `mergewright` works each out from the check its key runs
 /// (`update::context_menu::verbs::can_take`, `update::amend_into::amend_blocked`);
 /// the bar only places them. Default: neither — what a row gets while an
 /// operation is live.
@@ -79,7 +79,7 @@ pub enum HintContext {
     Marked(Box<HintContext>),
     /// A search stands and its `/` prompt is closed (m8-polish-and-ship/15b,
     /// 15 A2): the inner graph row's own list led by `n next  N prev`. The
-    /// search's own line has moved to the header's tail. `graft` wraps the
+    /// search's own line has moved to the header's tail. `mergewright` wraps the
     /// graph-row forms — a row, marked or under `R` — and puts this
     /// **inside** [`HintContext::OperationLive`], so at a stop the stop's
     /// keys still lead. Never a pane's, an overlay's or a box's bar.
@@ -120,7 +120,7 @@ pub enum HintContext {
     /// The live operation's banner after `esc pause` left the clash screen
     /// (ticket ease-pass/03b, Q7 a; Q17 a: every clash stop lands there, so
     /// a rebase, cherry-pick or revert pauses too): the conflicted banner,
-    /// its `⏎` leading `back to the clashes`. `graft` picks it once `esc
+    /// its `⏎` leading `back to the clashes`. `mergewright` picks it once `esc
     /// pause` is live (ticket 05b).
     BannerPaused {
         /// As [`HintContext::Banner`]'s `merge`: `c finish` or `c continue`.
@@ -145,7 +145,7 @@ pub enum HintContext {
         /// (m8/09e, 11b row 553): the bar is the pane's list minus what the
         /// overlay swallows — `c` falls through to the graph, which the
         /// overlay's `shown_key` takes, so no `c` hint in any form. Set only
-        /// by `graft`'s `view::rows::overlay_context`.
+        /// by `mergewright`'s `view::rows::overlay_context`.
         over_overlay: bool,
     },
     // No `Journal`, `Stash` or `Map`: their overlays draw their own footers,
@@ -163,7 +163,7 @@ pub enum HintContext {
     /// list each swallow every key their own `shown_key` does not use, so
     /// `b`, `t`, `c`, `m`, `r`, `y`, `q`, `x`, `+`, `.` and the rest of the
     /// graph's vocabulary reach nothing at all. Borrowing the row's list
-    /// here drew a bar on which every verb was dead (`graft`'s
+    /// here drew a bar on which every verb was dead (`mergewright`'s
     /// `update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
     ///
     /// What is left is this list: the pane's own `⏎` and `j`/`k`, and the
@@ -285,7 +285,7 @@ pub enum HintContext {
     /// is (m5/29), and beside the graph above 100 (m5 review Q2, m5/31).
     ///
     /// `space` (m7-power-tools/20h): with the files list focused
-    /// (`opens`), `graft`'s `files_key` takes `space` on every row — it
+    /// (`opens`), `mergewright`'s `files_key` takes `space` on every row — it
     /// folds a directory and does nothing on a file — so the graph's merge
     /// fold (`TAIL`'s `space fold`) is dropped there and `folds` puts the
     /// pane's own fold back on a directory row. With the diff focused the
@@ -351,7 +351,7 @@ pub enum HintContext {
     /// `⇥ banner` leading while the banner is one `⇥` away (m6-conflicts/12,
     /// P9).
     ///
-    /// `graft` wraps every graph-row context in this while an operation is
+    /// `mergewright` wraps every graph-row context in this while an operation is
     /// live — a bisect, and the detail pane open over a focused graph,
     /// included — so no row bar says `c commit` while `c` does otherwise.
     ///

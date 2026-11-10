@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 description: "Right: the file pane reads binary · couldn't read sizes: git was stopped (dim, colour unverified); no line rows."
 expression: "snapshot(&v, 140, 40)"
 ---

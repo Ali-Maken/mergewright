@@ -9,7 +9,7 @@ use super::*;
 /// acts. Those are the fields `mergewright::update::state::AppState::text_field_open`
 /// names (state.rs: the name prompt, the credential box, the picker, the
 /// rewrite editor's `r` field, and the finish summary while its focus is
-/// not `Files`); `graft`'s `x_typed_into_every_field_is_an_x_with_merge_on_x`
+/// not `Files`); `mergewright`'s `x_typed_into_every_field_is_an_x_with_merge_on_x`
 /// holds each of them to it. Everywhere else a key follows his remap.
 ///
 /// Not R4's letter: R4 has the finish Subject/Body follow a `Finish` row,

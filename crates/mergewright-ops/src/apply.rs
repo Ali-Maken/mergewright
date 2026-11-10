@@ -137,7 +137,7 @@ pub struct Context<'a> {
     pub git: GitVersion,
     /// This worktree's name, for the backup ref's namespace (ADR-0010).
     pub worktree: String,
-    /// `<git-path graft>`: the journal, and the temporary index copies.
+    /// `<git-path mergewright>`: the journal, and the temporary index copies.
     pub scratch: PathBuf,
     /// The open journal.
     pub journal: &'a mut Journal,

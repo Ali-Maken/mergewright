@@ -10,7 +10,7 @@
 #                              `apply`), then exit without running git
 #                        fail: exit 1 with a line on stderr, git not run
 #
-# Shared by mergewright-ops (`tests/it/set_aside_kill.rs`) and graft
+# Shared by mergewright-ops (`tests/it/set_aside_kill.rs`) and mergewright
 # (`tests/it/m6_stash_put_back/set_aside.rs`), both through `include_str!`.
 
 args=" $* "

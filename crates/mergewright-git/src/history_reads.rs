@@ -119,12 +119,12 @@ pub fn commits_between(
 /// the box promises commits git will not write (m5/43):
 ///
 /// - `--no-merges`: without `--rebase-merges`, git drops merge commits from
-///   the range instead of recreating them. graft never passes
+///   the range instead of recreating them. mergewright never passes
 ///   `--rebase-merges` (`operation::history::plan_rebase`).
 /// - `--cherry-pick --right-only`: git skips a commit whose change is
 ///   already on `onto` under a different id — the "skipped previously
 ///   applied commit" hint. That is git's default; only
-///   `--reapply-cherry-picks` turns it off, and graft never passes it.
+///   `--reapply-cherry-picks` turns it off, and mergewright never passes it.
 /// - `--topo-order`: git walks the todo list in graph order, not in commit
 ///   date order, so a clock skew cannot reorder the ghosts.
 ///

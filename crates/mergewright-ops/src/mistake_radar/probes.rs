@@ -386,7 +386,7 @@ fn parse_oid(bytes: &[u8]) -> Option<Oid> {
 
 /// What the duplicate probe walks: every ref the user can merge (PROMPT.md
 /// §1.4, "only across visible refs"). An allowlist, not `--all`: `--all`
-/// also walks Mergewright's own `refs/graft/**` backups (every pre-rebase commit,
+/// also walks Mergewright's own `refs/mergewright/**` backups (every pre-rebase commit,
 /// kept for `u`), `refs/stash` (whose base is the pre-rebase tip) and other
 /// tools' bookkeeping such as `refs/prefetch/**` — so every rebased commit's
 /// old self read as a copy. A copy reachable only from some other namespace
@@ -814,7 +814,7 @@ mod tests {
         let (scratch, a) = scratch_with_a();
         move_ref(
             &scratch,
-            "refs/graft/backup/main/01J0000000000000000000000",
+            "refs/mergewright/backup/main/01J0000000000000000000000",
             a,
         );
         let a2 = rebase_a_away(&scratch, a);

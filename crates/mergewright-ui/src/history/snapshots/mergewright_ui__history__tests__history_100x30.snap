@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 assertion_line: 395
 description: "Right: one pane, the file (focused): the header, ┃ on 18–29, removed rows unnumbered."
 expression: "snapshot(&view(&rows, &hunks, &theme, HistoryFocus::File), 100, 30)"

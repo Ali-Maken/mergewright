@@ -10,7 +10,7 @@
 //! layer owns `CredentialPrompt` state and must add it to
 //! `AppState::text_field_open()` (M3 06's C1: an unregistered text field
 //! leaks `u`/`U`/`Ctrl+Z` straight through to the graph screen's global
-//! keys) — that wiring is out of this ticket's crate (`graft`, not
+//! keys) — that wiring is out of this ticket's crate (`mergewright`, not
 //! `mergewright-ui`) and belongs to group 06.
 
 use mergewright_term::SanitizedText;

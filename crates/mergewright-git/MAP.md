@@ -11,7 +11,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `contained` (mod) — which branches, remotes and tags contain a commit.
 - `diff` (mod) — diff reads and pure parsers: unified patches, file lists, hunk pairing, partial patches.
 - `editor` (mod) — the user's editor as git resolves it.
-- `file_lock` (mod) — advisory whole-file locks (`flock`, nix `fs`): alone or shared; the on-disk rename's lock.
+- `file_lock` (mod) — advisory whole-file locks (`flock`, nix `fs`): alone or shared; the journal writer's lock.
 - `history` (mod) — rev-walks: chunked, ordered, resumable; the commit id table; reflog-based reads.
 - `history_reads` (mod) — reads history operations plan against: ranges, merge bases, merge forecasts, changed paths.
 - `mailmap` (mod) — `.mailmap` resolution via gix's parser.

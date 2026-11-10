@@ -18,7 +18,7 @@
 //! - `dependents` — the line of branches built on his ([`dependents`]) and
 //!   the refusals over it.
 //! - `reads` — the raw history reads both plan from (reads only).
-//! - `saved` — the plan saved under `<git-path graft>/rewrite/<entry-id>/`
+//! - `saved` — the plan saved under `<git-path mergewright>/rewrite/<entry-id>/`
 //!   before the `Pending` line, and the message helper git calls.
 //! - `progress` — where a stopped rewrite is, for the banner.
 //!

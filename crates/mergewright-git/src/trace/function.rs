@@ -223,7 +223,7 @@ fn write_pair(
         plain.push(b'\n');
         marked.extend_from_slice(text);
         marked.push(b'\n');
-        marked.extend_from_slice(format!("\u{1}graft-marker-{index}\n").as_bytes());
+        marked.extend_from_slice(format!("\u{1}mwr-marker-{index}\n").as_bytes());
     }
     for (dir, file, bytes) in [(&old, &old_file, &plain), (&new, &new_file, &marked)] {
         std::fs::create_dir_all(dir).map_err(RunError::Spawn)?;

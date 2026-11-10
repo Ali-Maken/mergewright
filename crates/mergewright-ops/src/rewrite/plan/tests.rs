@@ -36,7 +36,7 @@ impl Drop for Scratch {
 impl Scratch {
     fn new(name: &str) -> Self {
         let dir =
-            std::env::temp_dir().join(format!("graft-from-rebase-{name}-{}", std::process::id()));
+            std::env::temp_dir().join(format!("mwr-from-rebase-{name}-{}", std::process::id()));
         // A directory left by an earlier run of this very test: start
         // clean; absent is the usual case.
         let _stale = std::fs::remove_dir_all(&dir);

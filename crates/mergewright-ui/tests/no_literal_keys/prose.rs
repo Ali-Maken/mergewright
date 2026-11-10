@@ -1,4 +1,4 @@
-//! `no_literal_keys` rows (ticket m8/10b). graft and mergewright-ops literals that read like a hint but hold no key: an article, a count, a
+//! `no_literal_keys` rows (ticket m8/10b). mergewright and mergewright-ops literals that read like a hint but hold no key: an article, a count, a
 //! description, or a message he never sees. Permanent rows.
 
 pub const ROWS: &[(&str, &str, &str)] = &[

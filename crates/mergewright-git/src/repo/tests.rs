@@ -559,12 +559,12 @@ fn git_path_resolves_under_the_git_directory_in_the_main_worktree() {
     let fixture = Fixture::with_two_commits();
     let repo = RepoHandle::open(fixture.root()).expect("a fixture repository opens");
     let resolved = repo
-        .git_path(Path::new("graft/undo-journal.jsonl"))
+        .git_path(Path::new("mergewright/undo-journal.jsonl"))
         .expect("git rev-parse --git-path runs");
     assert!(resolved.is_absolute(), "{}", resolved.display());
     assert_eq!(resolved.file_name().unwrap(), "undo-journal.jsonl");
     let mergewright_dir = resolved.parent().expect("a parent directory");
-    assert_eq!(mergewright_dir.file_name().unwrap(), "graft");
+    assert_eq!(mergewright_dir.file_name().unwrap(), "mergewright");
     assert_same_path(
         mergewright_dir.parent().expect("the git directory"),
         repo.git_dir(),
@@ -579,14 +579,14 @@ fn git_path_resolves_under_the_linked_worktrees_own_directory() {
     let repo = RepoHandle::open(&worktree).expect("a linked worktree opens");
 
     let resolved = repo
-        .git_path(Path::new("graft/undo-journal.jsonl"))
+        .git_path(Path::new("mergewright/undo-journal.jsonl"))
         .expect("git rev-parse --git-path runs");
 
     assert!(resolved.is_absolute(), "{}", resolved.display());
     assert_eq!(resolved.file_name().unwrap(), "undo-journal.jsonl");
     let mergewright_dir = resolved.parent().expect("a parent directory");
-    assert_eq!(mergewright_dir.file_name().unwrap(), "graft");
-    // A linked worktree's own git dir, not the common one: `graft/` under it
+    assert_eq!(mergewright_dir.file_name().unwrap(), "mergewright");
+    // A linked worktree's own git dir, not the common one: `mergewright/` under it
     // is per-worktree, exactly like `worktree_name`'s own split.
     assert_same_path(
         mergewright_dir.parent().expect("the git directory"),

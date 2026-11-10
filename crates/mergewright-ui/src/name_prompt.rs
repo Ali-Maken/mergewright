@@ -6,7 +6,7 @@
 //! toggle (`(•) check out after creating`) and a refusal line for a name
 //! git would reject.
 //!
-//! Pure state and rendering — no I/O, no key handling. `graft` (not
+//! Pure state and rendering — no I/O, no key handling. `mergewright` (not
 //! `mergewright-ui`) owns the prompt's `AppState` and must register it with
 //! `text_field_open()`, the same wiring `credential_prompt` needed
 //! (m4-remotes ticket 03) — out of this ticket's crate.

@@ -296,7 +296,7 @@ pub struct JournalEntry {
     /// the field existed; absent from its JSON either way.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub worktree_raw_before: Option<Oid>,
-    /// `refs/graft/backup/<worktree>/<id>`: the commit keeping the before
+    /// `refs/mergewright/backup/<worktree>/<id>`: the commit keeping the before
     /// trees and `pins` reachable (ADR-0010).
     pub backup_ref: Option<String>,
     /// Commits the inverse needs alive: a dropped or popped stash.
@@ -339,7 +339,7 @@ pub struct JournalEntry {
     /// to tell a stash clash from any other unmerged index.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub put_back: Option<PutBack>,
-    /// Every ref under `refs/` (Mergewright's own `refs/graft/` aside) whose value
+    /// Every ref under `refs/` (Mergewright's own `refs/mergewright/` aside) whose value
     /// a fetch changed — a fetch's, or a pull's fetch line — read before git
     /// ran and again after it exited, success, failure or stop (ADR-0062).
     /// Written on the outcome line. **Outside the undo record**: nothing `u`

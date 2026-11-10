@@ -33,7 +33,7 @@ use mergewright_core::on_disk::DIR;
 
 /// A remote that is configured but has nothing behind it: git's fetch of it
 /// fails with `does not appear to be a git repository`.
-const GONE: &str = "file:///nonexistent/graft-21c.git";
+const GONE: &str = "file:///nonexistent/mwr-21c.git";
 
 fn local() -> LocalRemote {
     LocalRemote::new(Shape::Linear).expect("the Linear shape clones into a local remote")

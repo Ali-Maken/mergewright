@@ -300,7 +300,7 @@ fn write_back_keeps_mode_and_leaves_no_temp() {
                 .to_string_lossy()
                 .into_owned()
         })
-        .filter(|name| name.starts_with(".graft-"))
+        .filter(|name| name.starts_with(".mwr-"))
         .collect();
     assert!(
         leftovers.is_empty(),

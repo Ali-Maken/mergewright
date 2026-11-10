@@ -285,7 +285,7 @@ fn nothing_to_say(why: &NotInvertible) -> String {
             )
         }
         // The app words this through `update::undo::live_refusal`, and a
-        // graft test pins the two texts equal (`operation_live_words_match_ops`).
+        // mergewright test pins the two texts equal (`operation_live_words_match_ops`).
         NotInvertible::OperationLive { kind } => super::operation_live_words(*kind),
     }
 }

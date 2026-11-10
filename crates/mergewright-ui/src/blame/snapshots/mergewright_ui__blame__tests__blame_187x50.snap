@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/blame/tests.rs
+source: crates/mergewright-ui/src/blame/tests.rs
 description: "Right: 46-cell gutter with subjects; ▸ on 22; the trailer 4 cells after { names Lina, 7 months ago, the subject and a1b2c3d; no other row trails."
 expression: "snapshot(&view(&rows, ON_22), 187, 50)"
 ---

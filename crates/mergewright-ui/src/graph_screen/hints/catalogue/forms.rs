@@ -4,7 +4,7 @@
 use super::super::{HintContext, LiveC, RowVerbs, WayToBanner};
 use super::LIVE_C;
 
-/// `context` wrapped in [`HintContext::OperationLive`] every way `graft`
+/// `context` wrapped in [`HintContext::OperationLive`] every way `mergewright`
 /// can wrap it — each [`LiveC`], one `⇥` from the banner or not — for the
 /// contexts `mergewright::view::rows::footer_context` wraps: a graph row, marked
 /// or not, and a pane focused on a commit (its `c` passes through to the
@@ -16,7 +16,7 @@ pub(super) fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         // `R rewrite` is drawn only while nothing is live (08, ruling 10).
         HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
-        // A live operation hides `o` and `a` (graft `view::rows::live_wrapped`
+        // A live operation hides `o` and `a` (mergewright `view::rows::live_wrapped`
         // passes `RowVerbs::NONE`): a row with either never reaches the bar.
         _ if has_row_verbs(context) => Vec::new(),
         // `R` is never live, so neither is a search over it.

@@ -274,7 +274,7 @@ fn merge_head_as_git_sees_it(
 /// Write `bytes` to `path` through a temporary file beside it and a rename.
 fn replace(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut temporary = path.as_os_str().to_owned();
-    temporary.push(".graft-tmp");
+    temporary.push(".mwr-tmp");
     let temporary = PathBuf::from(temporary);
     std::fs::write(&temporary, bytes)?;
     std::fs::rename(&temporary, path)

@@ -31,7 +31,7 @@ pub fn non_utf8_names(dir: &Path) -> Result<Support, io::Error> {
     use std::os::unix::ffi::OsStrExt;
 
     // `\xff` is not a valid UTF-8 byte in any position.
-    let path = dir.join(OsStr::from_bytes(b"graft-probe-\xff"));
+    let path = dir.join(OsStr::from_bytes(b"mwr-probe-\xff"));
     match fs::File::create(&path) {
         Ok(_) => {
             fs::remove_file(&path)?;

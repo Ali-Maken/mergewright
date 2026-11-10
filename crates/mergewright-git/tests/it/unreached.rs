@@ -239,7 +239,11 @@ fn a_commit_only_refs_mergewright_holds_is_lost() {
     let backed_up = commit(&dir, "backed up");
     git_ok(
         &dir,
-        &["update-ref", "refs/graft/backup/1", &backed_up.to_string()],
+        &[
+            "update-ref",
+            "refs/mergewright/backup/1",
+            &backed_up.to_string(),
+        ],
     );
     git_ok(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
 

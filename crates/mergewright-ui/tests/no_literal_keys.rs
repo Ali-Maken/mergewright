@@ -15,11 +15,11 @@
 //! Test code is not scanned: `tests.rs`, `*_tests.rs`, `tests/` folders,
 //! the sweep helpers, and everything after a file's `#[cfg(test)]`.
 //!
-//! Scanned: mergewright-ui, graft and mergewright-ops (ticket m8/10b). This is a
+//! Scanned: mergewright-ui, mergewright and mergewright-ops (ticket m8/10b). This is a
 //! ratchet: a new literal key anywhere in the three crates fails at once;
 //! a fixed literal still listed fails as stale, so each area ticket
 //! (10e–10i) deletes its own rows from its `no_literal_keys/known_*.rs`
-//! file. `prose.rs` holds the permanent not-a-key rows of graft and
+//! file. `prose.rs` holds the permanent not-a-key rows of mergewright and
 //! mergewright-ops; mergewright-ui's stay in `ALLOWED` below.
 
 use std::collections::BTreeSet;
@@ -41,7 +41,7 @@ mod known_undo;
 #[path = "no_literal_keys/prose.rs"]
 mod prose;
 
-/// Every allow-list row: mergewright-ui's `ALLOWED`, then graft's and mergewright-ops'
+/// Every allow-list row: mergewright-ui's `ALLOWED`, then mergewright's and mergewright-ops'
 /// prose and the `KNOWN` rows each area ticket removes.
 fn allowed() -> impl Iterator<Item = &'static (&'static str, &'static str, &'static str)> {
     ALLOWED
@@ -160,11 +160,11 @@ fn no_user_facing_literal_spells_a_default_key() {
 }
 
 /// The trees scanned, each with the prefix its allow-list paths carry:
-/// mergewright-ui's own (none), then graft's and mergewright-ops' status, refusal and
+/// mergewright-ui's own (none), then mergewright's and mergewright-ops' status, refusal and
 /// error words (ticket m8/10b). Read by path — no crate dependency added.
 fn roots() -> Vec<(&'static str, PathBuf)> {
     let ui = Path::new(env!("CARGO_MANIFEST_DIR"));
-    // mergewright-ui sits in `crates/`, beside graft and mergewright-ops.
+    // mergewright-ui sits in `crates/`, beside mergewright and mergewright-ops.
     let crates = ui.join("..");
     vec![
         ("", ui.join("src")),

@@ -136,7 +136,7 @@ impl Window {
 }
 
 /// The selection's paint over `range` as the app gives it
-/// (`graft/src/view/strips.rs` `Painter::row`): every row carries the
+/// (`mergewright/src/view/strips.rs` `Painter::row`): every row carries the
 /// thread's lit columns; Focus (the `Faded` backdrop) also dims the rows
 /// unrelated to the cursor, which the thread then overrides.
 pub(crate) fn lits(thread: &Ancestry, range: Range<usize>, backdrop: Backdrop) -> Vec<Lit<'_>> {

@@ -931,7 +931,7 @@ fn a_local_operation_with_hooks_runs_as_before() {
     let hooks = RemoteHooks {
         progress: Box::new(|_| panic!("a local operation reported progress")),
         askpass: Arc::new(Panics),
-        helper: PathBuf::from("/nonexistent/graft"),
+        helper: PathBuf::from("/nonexistent/mergewright"),
     };
     let commit = Operation::Commit(CommitParams {
         message: "a".to_owned(),

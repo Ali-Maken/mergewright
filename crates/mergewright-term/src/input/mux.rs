@@ -124,7 +124,7 @@ impl InputMux {
         };
         let gate = Arc::clone(&mux.gate);
         thread::Builder::new()
-            .name("graft-input".to_owned())
+            .name("mwr-input".to_owned())
             .spawn(move || read_until_done(File::from(input), &routes, &gate, &wake))?;
         Ok((mux, inputs))
     }

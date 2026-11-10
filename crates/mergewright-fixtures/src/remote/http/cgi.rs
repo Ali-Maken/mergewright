@@ -65,7 +65,7 @@ impl Backend {
             let mut reply = Reply::text(401, "authentication required\n");
             reply.headers.push((
                 "WWW-Authenticate".to_owned(),
-                "Basic realm=\"graft\"".to_owned(),
+                "Basic realm=\"mergewright\"".to_owned(),
             ));
             return reply;
         }

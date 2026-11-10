@@ -178,7 +178,7 @@ fn an_aborted_rows_reason_is_shown_in_full_when_it_is_expanded() {
 
 /// ADR-0062: an expanded fetch row lists the refs its fetch moved, between
 /// its failure and its Command Log, under a heading that says `u` leaves
-/// them where they are — every line the caller gives (`graft` caps them at
+/// them where they are — every line the caller gives (`mergewright` caps them at
 /// twenty and a `+N more`), `┆ `-led like the commands. Collapsed, none.
 #[test]
 fn an_expanded_fetch_row_lists_its_moves() {
@@ -640,15 +640,15 @@ fn footer_ends_with_the_keys_doorway() {
 fn footer_cases() -> Vec<(&'static str, JournalView, Vec<&'static str>)> {
     let mut cases: Vec<(&str, JournalView, Vec<&str>)> = Vec::new();
     // A Mergewright row: `⏎` worded, its command log.
-    let mut graft = view(
+    let mut mergewright = view(
         vec![row("2m ago", "commit \"x\"", RowMark::NextUndo)],
         JournalStatus::Ready,
     );
-    graft.enter_words = Some("undo this".to_owned());
-    graft.branch_here = true;
+    mergewright.enter_words = Some("undo this".to_owned());
+    mergewright.branch_here = true;
     cases.push((
-        "graft row",
-        graft,
+        "mergewright row",
+        mergewright,
         vec![
             "⏎ undo this",
             "b new branch here",
@@ -706,7 +706,7 @@ mod replaced;
 mod source_column;
 
 /// m8/59 Major A: while a write runs, `Esc` stops it before J sees the key
-/// (graft's `update/keys.rs`, design note choice 4). The bar must say so:
+/// (mergewright's `update/keys.rs`, design note choice 4). The bar must say so:
 /// `J close` and `esc cancels`, never `J/esc close` — on a ready list and
 /// while the read is out alike.
 #[test]

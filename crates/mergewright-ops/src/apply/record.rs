@@ -470,7 +470,7 @@ fn backup_name(ctx: &Context<'_>, id: &EntryId) -> String {
 }
 
 /// The kind as it reads in a backup commit's message — and, in the app,
-/// what a set-aside's `u` takes back with the edits (graft
+/// what a set-aside's `u` takes back with the edits (mergewright
 /// `update::clash::undone_with_edits`, m8-polish-and-ship/19d-a2).
 #[must_use]
 pub fn kind_name(kind: OperationKind) -> &'static str {
