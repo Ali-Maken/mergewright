@@ -1,6 +1,6 @@
 # pre-publish: ops forgets earlier names (the move, the journal ref mapping and the old-tag readers go)
 
-Status: ready
+Status: stopped (stop condition 1 hit, before any port)
 Blocked by: 11b2 (nothing outside ops calls `settle_names`; `names_in_force` always says `CURRENT`; the move tests are deleted)
 Runs: alone (it changes pub ops signatures and updates their app call sites)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: the one behavioural risk (journals in his repos) is fenced by a test written first and a stop condition. The rest is deletion and ports that, after 11b2, are behaviour-neutral.
@@ -84,3 +84,18 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`.
 
 ## Size
 ~55k tokens: the `rename` src deleted (cheap), ~13 files ported, one new test.
+
+## NOTES (builder, 2026-11-10) — STOPPED at stop condition 1
+
+Nothing ported or deleted. Only the fence test exists:
+`crates/mergewright-ops/tests/it/journal_unmapped.rs` (`journal_reads_unmapped_ref_entry`), committed **unregistered** (no `mod` line in `tests/it/main.rs`) so gates stay green without disabling a test. Register it to reproduce.
+
+Observed (with the ref mapping still in place — `refs/elsewhere/` is never mapped, so this is today's behaviour, not a port's):
+1. **Spec premise wrong** for ops whose undo needs no backup bytes: entry = Stage, backup ref deleted → `u` **succeeds** (restores from the oids the entry records; objects still in the odb). Undo reads oids, not the backup ref.
+2. Changed to Discard + `update-ref -d` + `reflog expire --expire=now --all` + `gc --prune=now` (objects gone, as a later gc leaves them). Journal loads, entry lists with `backup_ref` = `refs/elsewhere/…`. `u` returns `Err`, words:
+   > `git diff-tree -r --name-only -z 46b1a65… b3e09f5…` failed (128): fatal: bad object b3e09f5… · rolled back part-way · the working tree, the index still changed: … · U restores the backup
+3. **But `u` writes**: appends a `pending` undo line to the journal (`"kind":"undo","status":"pending","backup_ref":"refs/mergewright/backup/main/01HF7YAT01…"`) and takes a new backup ref. Fails assertion "journal bytes unchanged" (line `assert_eq!(std::fs::read(&path)…, journal_before)`).
+
+Question for conductor/user: is a pending line + fresh backup on a failed undo "writes nothing"-violating, or the designed undo protocol (pending-then-resolve)? If designed, the acceptance wording and the test's journal/ref asserts change; if not, undo needs a pre-flight object check (`cat-file -e` of every oid the entry restores) before it records — an undo change, likely `builder-opus-xhigh`. Also the "rolled back part-way" wording on a pre-flight-detectable failure is worth a look.
+
+Next step after the ruling: register the test, fix per ruling, then D1–D5 as specced (grep list of every `Generation`/`on_disk_names`/`map_entr` site in ops + app is in the builder report; ~25 sites).
