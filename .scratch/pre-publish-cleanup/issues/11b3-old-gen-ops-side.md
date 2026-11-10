@@ -81,7 +81,7 @@ pub fn practice_prefix() -> String;                           // was (Generation
 - [x] A `migrate` entry still parses and `u` passes over it ← `journal::tests::migrate_is_transparent_to_undo` (ops; `undoable_kind` false, `u` passes over it); parsing a stored migrate line: app `view::journal::tests::an_old_migrate_row_keeps_its_target`, and `migrate_row_words` (now uses the stored literal)
 - [x] Fresh repos still write under the current names ← `fresh_repo_names::journal_and_backups_use_current_names` (11b2's), green, unedited
 - [x] No `Generation`, `on_disk_names`, `settle_names` or `map_entr` left in ops ← `git grep -n -E 'Generation|on_disk_names|settle_names|map_entr' -- crates/mergewright-ops` → no output, exit 1
-- [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
+- [x] Fast and walk tiers green ← conductor, main @ 89c0c209: `cargo nextest run` 6795/6795 (550 s, slower than the ~320 s of quiet runs, cause not found), `scripts/walks.sh` SUMMARY walks tests=459 failed=0; fmt, clippy, heavy clippy, doc tests clean
 
 ## Touches (check each, say how)
 - Journal: reader and writer path; the time machine (`plan_revert_to`) over the same two entries (same parity file, if it reaches them with no new fixture).
