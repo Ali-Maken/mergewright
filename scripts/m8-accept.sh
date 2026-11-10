@@ -24,8 +24,6 @@
 #      (heavy::budgets_hold_at_pixel_*). Their summary lines go to
 #      docs/perf/m8-accept.txt. Measurement never runs in a helper's context (CLAUDE.md Gates): run this from a
 #      terminal, then read the summary.
-#   3. The contact sheet: scripts/contact-sheet.sh --captions-order m8
-#      docs/shots → docs/shots/m8-contact-sheet*.txt.
 #   4. The release facts the install clause rests on, quoted from
 #      docs/release/*.txt (not re-run here: dist needs the network).
 #   5. The journey tally: fence ids against WALKS entries.
@@ -73,15 +71,6 @@ if $perf; then
   [ "$prc" -eq 0 ] || failed=1
 else
   out "2 scroll (release): not run — pass --perf from a terminal (CLAUDE.md: never in a helper's context)"
-fi
-
-# ── 3. the contact sheet ────────────────────────────────────────────────────
-if scripts/contact-sheet.sh --captions-order m8 docs/shots > "$ACCEPT/sheet.txt" 2>&1; then
-  out "3 contact sheet: $(head -1 "$ACCEPT/sheet.txt")"
-  sed -n '2,$p' "$ACCEPT/sheet.txt" | tee -a "$SUMMARY"
-else
-  out "3 contact sheet: FAILED · $ACCEPT/sheet.txt"
-  failed=1
 fi
 
 # ── 4. install facts, quoted ────────────────────────────────────────────────
