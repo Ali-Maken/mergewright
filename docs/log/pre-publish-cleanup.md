@@ -15,3 +15,5 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates on main after 03: all ok; fast 6845/6845 538 s (over 360 s budget, gap ease/28); walks 463/0 181.5 s.
 - builder-sonnet 05 small-ui: blame ⊗ inked from theme (cause), narrow-graph text capture; colour UNVERIFIED; 2 questions (Warning ink on failure words; override_cells layout.rs:51). Merged 69b325cf. Scout used · 56 tools · skills: none.
 - conductor gates on main after 05: all ok; fast 6847/6847 578 s (beside builder 04); walks 463/0 217 s.
+- builder-sonnet 04 lane identity: Part B red→fixed (preview_seeds uses shared follows_of, one resolver two callers); Part A not a defect (spawns max 8, p50 100 ms); question: pane focus inside opened merge follows G4 rule roles.rs:36-52. Merged 1698420a. Scout used · 50 tools · skills: none.
+- conductor gates on main after 04: all ok; fast 6850/6850 533 s (gap ease/28); walks 463/0 180 s.
