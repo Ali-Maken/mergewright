@@ -54,7 +54,7 @@ fn capture_the_branch_pane_own_teammate_and_narrow() {
         120,
         "the cursor on HEAD's row; right of a `│` rule the pane heads `wallet-release  \
          (you're here)`, four answers each led by `!`, `✓` or `·`, the who line naming the \
-         author (`· Graft, …`: this fixture sets no `user.email`, so not `you`), then `built \
+         author (`· <fixture author>, …`: this fixture sets no `user.email`, so not `you`), then `built \
          on` and its route `main ─◆ wallet-release`; no subject cut that would fit its column.",
     );
     shot(

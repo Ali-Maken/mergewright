@@ -16,7 +16,7 @@ use crate::app_harness::App;
 /// Run by `scripts/m7-09-perf.sh` in release; lines start `m7-09b`.
 /// A measurement: it prints, and gates nothing yet.
 ///
-/// Phase 1: `a` to the amend editor open, as graft runs it, 3 rounds × 7,
+/// Phase 1: `a` to the amend editor open, as Mergewright runs it, 3 rounds × 7,
 /// with the check (HEAD on `feature-a`, `main`, and `spike` — a branch that
 /// is not the default and not built on his) and without it (`feature-a`
 /// alone: today's amend at once). Phase 2: each call the plan job makes on

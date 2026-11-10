@@ -1,4 +1,4 @@
-# graft — map (package `mergewright`, lib `graft`, bin `mwr`)
+# mergewright — map (package `mergewright`, lib `mergewright`, bin `mwr`)
 The application (ARCHITECTURE.md `app` layer), the only crate that may see every other one: event loop, `AppState`, the pure `update`, the job runner, config, and the view models `ui` draws.
 A map of modules: one `##` heading per module to depth 2, path from the crate root; a purpose line; the items other top-level modules enter through. `main.rs` is the thin binary over `lib.rs`.
 Tests: `tests/it` (one binary, with the pty harness); `examples/` holds the terminal probes, the gallery, the budgets and the milestone walks.

@@ -2,7 +2,7 @@
 
 Written for an agent that has never seen this repository.
 
-`docs/capabilities/*.md` — one file per milestone — is Graft's feature
+`docs/capabilities/*.md` — one file per milestone — is Mergewright's feature
 database: a hand-written, hand-verified entry for every distinct,
 user-visible thing the application can do. It has two readers with equal
 standing: the user, scanning it to see what he's built, and an agent handed
@@ -126,7 +126,7 @@ page has a "has unverified aspect" filter checkbox for the same query:
 3. Write the `meta` block: pick the next free `id` in that milestone, the
    right `area`, the milestone slug, and the honest `status`.
 4. Write `How` / `Behaviour` exactly as you'd explain it to someone who has
-   never used Graft.
+   never used Mergewright.
 5. Cite real, current test names under `Proven by` — copy them from the
    test file, don't reconstruct them from memory.
 6. If it's visual, capture it under `docs/shots/` (200 KB cap, `CLAUDE.md`)
@@ -185,5 +185,5 @@ remembers to run it would have missed that again.
 `mergewright-capabilities` (`crates/mergewright-capabilities/`) is repo metadata
 tooling, not product code — see `ARCHITECTURE.md`, "`capabilities`: repo
 metadata tooling, outside the table". It has no dependency on any other
-Graft crate, and nothing may depend on it, `crates/mergewright` and
+Mergewright crate, and nothing may depend on it, `crates/mergewright` and
 `crates/mergewright-ops` included.

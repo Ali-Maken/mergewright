@@ -1,6 +1,6 @@
 m8-polish-and-ship/19c-c: what right looks like — the eighth task done: back in his repo (header `◆ his`), no card, the cursor on the commit he left (two rows under where he landed), the status `✓ practice done  ⌃P tour goes again`. Every age on his graph in years. Colour unverified (rule 5).
 
- ◆ his  /tmp/graft-capture/tour-walk-XXXXXX/his · main                              6 commits  2 merged branches folded
+ ◆ his  /tmp/mwr-capture/tour-walk-XXXXXX/his · main                                6 commits  2 merged branches folded
 
     ●    feature/three        three: in progress  not pushed yet        Graft   7y│ main  (you're here)
   ◆ ┊    main (you)           Merge branch 'feature/two'  ▸ 2 commits   Graft   7y│ ! not pushed yet

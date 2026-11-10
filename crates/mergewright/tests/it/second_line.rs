@@ -92,9 +92,13 @@ fn only_the_cursor_row_has_a_second_line_and_it_reads_the_mock_words() {
     let at = seconds[0];
     let text = frame[at].trim_end();
     let words = text.trim_start_matches(|c: char| !c.is_alphabetic());
-    // The fixture's commits are made by `Graft`, not by the reader.
+    // The fixture's commits are made by its identity's first name, not by the reader.
+    let who = mergewright_fixtures::git::IDENTITY_NAME
+        .split(' ')
+        .next()
+        .expect("a name");
     assert!(
-        words.starts_with("Graft \u{b7} "),
+        words.starts_with(&format!("{who} \u{b7} ")),
         "starts with who: {text:?}"
     );
     assert!(text.contains(" ago \u{b7} made on "), "{text:?}");

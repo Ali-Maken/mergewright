@@ -950,7 +950,7 @@ Judge stop 8 by running the walk, not by that file.
 The fixture facts come from `crates/mergewright-fixtures/src/shapes/`: subjects,
 branch names, parent order. "Row" counts from the top of the graph, after
 any `Uncommitted changes` row (the fixtures' trees are clean, so none has
-one; `graft-self` might).
+one; `mwr-self` might).
 
 **Node glyphs, Unicode tier:** `●` commit, `◉` merge, `◇` root (no
 parent), `◆` HEAD's commit, `■` the newest stash, `◌` uncommitted changes.
@@ -1094,7 +1094,7 @@ Press `F3` at any stop: the text right of the graph must not move.
     with: …`. Where it builds: `Work under a Latin-1 branch name` carries a
     badge reading `caf�` (one replacement character), `Add a readme` carries
     `[◆ main]`, and nothing else on the row is disturbed.
-22. **graft-self** — this checkout, ~100 commits at M1's end. One column the
+22. **mwr-self** — this checkout, ~100 commits at M1's end. One column the
     whole way, every node `●` except `◆` at HEAD and `◇` at the bottom; no
     curve anywhere. An `Uncommitted changes` row appears at the top only if
     the tree is dirty.
@@ -1332,7 +1332,7 @@ ASCII: `! i + * o # :`.
     to 40: `█` over the rows on screen, `◉` twice (the two merges), `●` for
     HEAD near the top, `ⓘ` where a no-upstream tip sits. The graph is
     unchanged but one column narrower. `O` again removes it.
-17. **graft-self · Enter** — this checkout's HEAD: `COMMIT <sha>`, your name
+17. **mwr-self · Enter** — this checkout's HEAD: `COMMIT <sha>`, your name
     and email, `parents <sha> · diff vs first parent`, `Contained in: main`
     (more branches if any contain it); no `✉` row unless HEAD's message has
     a body. Files are real paths with `M`; the body carries syntax colours
@@ -1930,9 +1930,9 @@ in m5/32:
   (`tip_holds`, `Refusal::Moved`) was right and is untouched; the record
   was wrong. While the line is on screen the tip is now re-read from the
   refs at the tail of every `update`
-  (`graft/src/update/remote.rs`, `forget_stale_divergence`), so both halves
+  (`crates/mergewright/src/update/remote.rs`, `forget_stale_divergence`), so both halves
   of the pair `r` pins come from one reading of the refs. Test:
-  `graft update::remote::tests::
+  `mergewright update::remote::tests::
   the_diverged_line_aims_at_where_the_fetch_left_the_tracking_ref`.
 
 Captures: `docs/shots/m5-<nn>-<what>-<WxH>.txt`, eight visual results at
@@ -2339,7 +2339,7 @@ mergewright-fixtures` first; `MWR_TARGET` names the target directory;
 the **real `mwr` binary** relaunched after the script sends the capture
 run `SIGKILL` and checks it died on signal 9. All nine captures exist at
 both sizes, and every one shows the text it is for: the script's second
-run, without `GRAFT_UPDATE_SHOTS`, is green on all 18 (2026-09-23, after
+run, without `MWR_UPDATE_SHOTS`, is green on all 18 (2026-09-23, after
 fixes F9 — the status line on the sub-100-column Detail tab — and F10 —
 the start-over box drawn over the resolver). The resolver then changed
 under them (side names, ticket 10; the file list and identity row, 13; a
@@ -2347,7 +2347,7 @@ take moves the cursor on, 15; `j`/`k` between files, 17; a stop opens the
 resolver, 18; the resolver stays open after the last file, 31; the stop
 line's shorter wordings, 12 and 24), and on 2026-09-24 **all eighteen were
 re-taken** (m6-conflicts/45): each diff read and named to those tickets,
-then a second run without `GRAFT_UPDATE_SHOTS` green on all 18.
+then a second run without `MWR_UPDATE_SHOTS` green on all 18.
 `m6-06`'s kill point had moved because `o` in a rebase now reads `took
 upstream`, not `took ours` (the script waits for the new word). One
 frame no longer shows all its ticket-07 words, and its caption says so:
@@ -3392,9 +3392,9 @@ app's name, except the two throwaway prototypes `m8-proto-3a/3c` (records).
 ## M8 · Mergewright (the rename, m8-polish-and-ship/57)
 
 Promise: **your repositories open under the new name with nothing lost.** A repository an older build used (its names
-`.git/graft/` and `refs/graft/`, or `.git/tributary/` and `refs/tributary/`) opens in `mwr`, every backup and journal
+`.git/mergewright/` and `refs/mergewright/`) opens in `mwr`, every backup and journal
 row comes along, and `u` still takes back your last real operation. `scripts/m8-accept.sh` step 6 prints one line per
-scenario and `mergewright: 8 scenarios, 0 failed`. The fence gains 4 ids (`open-older-names-repo` 1,
+scenario and `mergewright: 5 scenarios, 0 failed`. The fence gains 4 ids (`open-older-names-repo` 1,
 `undo-after-rename` 1, `journal-replaced` 1, `picker-enter-current` 3), each in `WALKS`; the fence now holds 35.
 **colour: unverified (rule 5)** for every row.
 
@@ -3403,7 +3403,7 @@ scenario and `mergewright: 8 scenarios, 0 failed`. The fence gains 4 ids (`open-
 | S4 command and manual | 1 | step 6 runs the built binary | `mwr --version` → `mwr 0.1.0`; `mwr --help` line 1 → `usage: mwr [<path>]`; `man docs/man/mwr.1` → `MWR(1)  User Commands  MWR(1)`, `NAME`, `mwr - Mergewright, a terminal Git client for the daily work` (roff: `mwr \- Mergewright, a terminal Git client for the daily work`; m8/59 m7) |
 | S5 Q1 replaced | 1 (`J`) | `m8_walk::mergewright::journal_replaced` | after `g`, `r`, `y` (rebase `feature` onto `main` in the app), `J`: `▸` on the newest `●` rebase row; under it `└ ⇢ replaced <sha> "work on feature" · was feature's tip · undo brings it back`; under the shell's `$` reset `└ ✗ lost`; the legend ends `⇢ undo brings it back`. Same at 80×24, cut at a word. Captures `docs/shots/m8-q1-journal-replaced-{187x30,80x24}.txt` |
 | S6 Q2 picker on his branch | 3 (`C`, `main`, `⏎`) | `m8_walk::mergewright::picker_enter_current` | on `main`, cursor elsewhere: the picker closes, `▸` on HEAD's row (`◆ main`), the bottom row the graph's own bar (no status line); `git reflog -1` unchanged. Capture `docs/shots/m8-q2-picker-enter-current-120x36.txt` |
-| S7 what ships | 0 | step 6 reads `docs/release/plan.txt` | artifacts `mergewright-installer.sh`, `mergewright-{aarch64,x86_64}-apple-darwin.tar.xz`, `mergewright-{aarch64,x86_64}-unknown-linux-gnu.tar.xz`, each holding `[bin] mwr` and `[misc] CHANGELOG.md, README.md, mwr.1`; none named `graft` or `trib`. `build.txt`: `brew style mergewright.rb: ok (1 file inspected, no offenses detected)`. Dated 2026-10-12 (ticket 53's run; not re-run by 57: `dist` is not installed here) |
+| S7 what ships | 0 | step 6 reads `docs/release/plan.txt` | artifacts `mergewright-installer.sh`, `mergewright-{aarch64,x86_64}-apple-darwin.tar.xz`, `mergewright-{aarch64,x86_64}-unknown-linux-gnu.tar.xz`, each holding `[bin] mwr` and `[misc] CHANGELOG.md, README.md, mwr.1`; none named after an earlier name. `build.txt`: `brew style mergewright.rb: ok (1 file inspected, no offenses detected)`. Dated 2026-10-12 (ticket 53's run; not re-run by 57: `dist` is not installed here) |
 | S8 no old name live | 0 | `rename_names::{no_old_message_literal, no_old_name_in_user_visible_strings, user_docs_and_scripts_name_the_command}`, `rename_names::scripts::{no_old_env_name, scripts_run_the_command, no_old_package_spec}`, `rename_opens::no_old_dir_literal` | all seven green |
 
 ## Ease pass acceptance (ease-pass/14, 14b, 14c)

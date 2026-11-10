@@ -169,7 +169,7 @@ fn a_stop_inside_a_fork_names_it_on_the_banner() {
         id("feature-a~1"),
         id("feature-a"),
     );
-    let todo_path = repo.join(".git").join("graft-test-todo");
+    let todo_path = repo.join(".git").join("mwr-test-todo");
     std::fs::write(&todo_path, todo).unwrap_or_else(|why| panic!("write the todo: {why}"));
     let editor = format!("sequence.editor=cp {}", todo_path.display());
     git(repo, &["-c", &editor, "rebase", "-i", "main"], 7);

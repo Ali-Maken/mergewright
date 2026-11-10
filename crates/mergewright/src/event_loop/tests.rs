@@ -713,7 +713,7 @@ fn losing_every_producer_ends_the_loop_rather_than_spinning() {
 
 /// The state Mergewright starts in, before `Task::ReadHistory`'s `Started`
 /// event arrives: `history` is `None`. `headless_settled` must not count
-/// this as settled, or `graft repo | cat` prints an "opening…" frame with
+/// this as settled, or `mwr repo | cat` prints an "opening…" frame with
 /// no rows and exits 0 before the walk has said anything (M1 review,
 /// M4, `KNOWN_GAPS.md:181`).
 #[test]

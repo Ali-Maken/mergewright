@@ -5,7 +5,7 @@
 # unverified (CLAUDE.md rule 5).
 #
 # What right looks like: the bottom line says the fetch failed (`no repository
-# at '/nonexistent/graft-21c.git' …`) and ends `· origin/main moved before
+# at '/nonexistent/mwr-21c.git' …`) and ends `· origin/main moved before
 # it stopped` — origin's half of the fetch landed before gone's failed.
 
  ◆ api  ~/code/api · main                                                                                   200 commits
@@ -47,4 +47,4 @@
   ●                         Commit 167                                  Graft   7y│
   ●                         Commit 166                                  Graft   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ⊗ fetch all remotes failed: no repository at '/nonexistent/graft-21c.git', or n… · origin/main moved before it stopped
+ ⊗ fetch all remotes failed: no repository at '/nonexistent/mwr-21c.git', or no … · origin/main moved before it stopped

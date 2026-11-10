@@ -67,7 +67,7 @@ pub fn spawn_reader(
 }
 
 /// `EIO`: what a read of a terminal that has hung up fails with. The same
-/// number on macOS and Linux; `graft` has no `libc` to name it.
+/// number on macOS and Linux; `mwr` has no `libc` to name it.
 const EIO: i32 = 5;
 
 /// Whether a failed terminal read is the terminal hanging up (m8/13g): the

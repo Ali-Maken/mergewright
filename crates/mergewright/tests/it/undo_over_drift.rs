@@ -90,7 +90,7 @@ fn drift_box(app: &App, state: AppState) -> AppState {
     })
 }
 
-/// The box's message as one line of words: graft wraps it, the words are
+/// The box's message as one line of words: Mergewright wraps it, the words are
 /// what the tests read.
 fn box_words(state: &AppState) -> String {
     state

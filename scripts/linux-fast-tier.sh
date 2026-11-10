@@ -19,7 +19,7 @@
 # in Docker's cache until `docker image rm` removes it.
 #
 # Where it goes:
-#   full log:      ${XDG_CACHE_HOME:-~/.cache}/graft-linux/fast-tier.log
+#   full log:      ${XDG_CACHE_HOME:-~/.cache}/mwr-linux/fast-tier.log
 #   summary lines: docs/release/linux.txt (committed)
 #
 # Usage: scripts/linux-fast-tier.sh [image]     # default rust:1-trixie
@@ -29,7 +29,7 @@ cd "$(dirname "$0")/.." || exit 1
 # The newest stable at the time of writing, not the MSRV: the lock file and
 # the fast tier are what is under test here, not the MSRV promise.
 image="${1:-rust:1-trixie}"
-cache="${XDG_CACHE_HOME:-$HOME/.cache}/graft-linux"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/mwr-linux"
 log="$cache/fast-tier.log"
 out="docs/release/linux.txt"
 mkdir -p "$cache" docs/release

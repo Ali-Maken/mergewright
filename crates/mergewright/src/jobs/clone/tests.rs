@@ -159,13 +159,13 @@ fn mergewright_binary() -> PathBuf {
         .parent()
         .and_then(Path::parent)
         .expect("a test binary lives in <target>/<profile>/deps");
-    let graft = profile.join(crate::cli::COMMAND);
+    let mwr = profile.join(crate::cli::COMMAND);
     assert!(
-        graft.is_file(),
+        mwr.is_file(),
         "{} is not built: run the workspace's tests (cargo nextest run), which build it",
-        graft.display()
+        mwr.display()
     );
-    graft
+    mwr
 }
 
 /// Over HTTP Basic auth: git asks through the pool, the question arrives as

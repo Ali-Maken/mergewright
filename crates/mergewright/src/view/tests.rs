@@ -204,7 +204,7 @@ fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
     // The header names the repository, never the product (ADR-0058 §4);
     // with none open here, its walk state is what shows it is the header.
     assert!(lines[0].contains("5 commits"), "{screen}");
-    assert!(!lines[0].contains("graft"), "{screen}");
+    assert!(!lines[0].contains("Mergewright"), "{screen}");
     assert!(
         lines[1].contains("gallery 6/23 · foxtrot-merge · ] next · unicode"),
         "the title carries the tier in force: {screen}"
@@ -2781,7 +2781,7 @@ fn journal_entry(
         worktree_before: Some(oid(3)),
         worktree_after: Some(oid(4)),
         worktree_raw_before: None,
-        backup_ref: Some("refs/graft/backup/main/01HF".to_owned()),
+        backup_ref: Some("refs/mergewright/backup/main/01HF".to_owned()),
         pins: Vec::new(),
         commands: commands.iter().map(|line| (*line).to_owned()).collect(),
         reverses: None,
@@ -3318,7 +3318,7 @@ fn capture_m3_undo_drift() {
 }
 
 /// The undo drift box over `description`, with one uncommitted edit to
-/// `path` in the way: the lines graft built for its message, and the screen
+/// `path` in the way: the lines Mergewright built for its message, and the screen
 /// drawn at `columns`×`rows`.
 fn drift_box_drawn(
     columns: u16,
@@ -3367,7 +3367,7 @@ fn drift_box_drawn(
 }
 
 /// m6-conflicts/77, the fit rule: a 60-character path under a long title.
-/// graft cuts the path from the left (`…/fix.txt`), and drops `a backup
+/// Mergewright cuts the path from the left (`…/fix.txt`), and drops `a backup
 /// keeps it, and ` when the drift line above takes three lines, so the key
 /// sentence reaches `brings it back.` whole and mergewright-ui's four-line cap
 /// never cuts it. At 80×24 and 160×48.
@@ -3399,9 +3399,9 @@ fn the_drift_box_line_is_never_cut() {
                 words.contains("your edit to \u{2026}/") && words.contains("/fix.txt;"),
                 "{at}: the path is cut from the left: {words}"
             );
-            assert!(!words.contains(&path), "{at}: the path is cut by graft");
+            assert!(!words.contains(&path), "{at}: the path is cut");
             assert_eq!(words.contains("a backup keeps it"), long, "{at}: {words}");
-            // Drawn, not only built: every line graft made is on screen as
+            // Drawn, not only built: every line Mergewright made is on screen as
             // it was made — mergewright-ui neither re-wrapped nor cut one.
             for line in &message {
                 assert!(screen.contains(line.as_str()), "{at}: {line:?}\n{screen}");

@@ -1,7 +1,7 @@
 //! The repositories Mergewright opened lately, for the empty state's RECENT list
 //! (m8-polish-and-ship/08, mock-ups §1.15).
 //!
-//! One file, `<config_dir>/graft/recent`: one line per repository,
+//! One file, `<config_dir>/mergewright/recent`: one line per repository,
 //! `<unix_secs>\t<canonical path>`, newest first, at most [`MAX_RECENT`],
 //! never the same path twice. Written whole to a temporary file beside it
 //! and renamed over it, so a crash leaves the old list or the new one, never

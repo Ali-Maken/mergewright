@@ -24,7 +24,7 @@
 //! This binary is also git's **askpass helper** while it runs: the job pool
 //! names `current_exe` as the helper, so when git asks for a password it
 //! runs this example with `MWR_ASKPASS_SOCKET` set, and the process
-//! answers the way `graft` itself does — never touching the terminal.
+//! answers the way `mwr` itself does — never touching the terminal.
 
 use std::ffi::OsString;
 use std::io::Write;
@@ -107,7 +107,7 @@ fn main() -> ExitCode {
     }
 }
 
-/// Askpass mode, as `graft`'s own `main` does it: pass git's `prompt` to
+/// Askpass mode, as `mwr`'s own `main` does it: pass git's `prompt` to
 /// the running walk over `socket`, print its answer for git, exit. 0
 /// answered, 1 cancelled, 2 anything else.
 fn askpass(socket: &Path, prompt: &str) -> ExitCode {

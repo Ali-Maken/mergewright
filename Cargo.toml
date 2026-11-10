@@ -32,7 +32,7 @@ serde_json = "1.0.151"
 # (`mergewright_ui::text_input::SecretField`, M5 secret-field ticket): a plain
 # assignment can be optimised away as a dead store, so zeroing needs the
 # volatile-write + compiler-barrier pair this crate provides. Shared between
-# `mergewright-ui` (where the field lives) and `graft` (where the answer is built
+# `mergewright-ui` (where the field lives) and `mergewright` (where the answer is built
 # and handed to `mergewright-git`'s own `Secret`), at one version. `alloc` only.
 zeroize = { version = "1.9.0", default-features = false, features = ["alloc"] }
 

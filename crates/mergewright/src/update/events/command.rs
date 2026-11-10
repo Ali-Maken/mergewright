@@ -88,11 +88,11 @@ pub enum Command {
     /// transport: it is output, not a job, and never reaches the job runner.
     CopyToClipboard(String),
     /// Persist the detail pane's split (ADR-0028: `<`/`>` or a divider drag),
-    /// by the loop, to `<common_dir>/graft/layout` (`layout::save_split`);
+    /// by the loop, to `<common_dir>/mergewright/layout` (`layout::save_split`);
     /// a failure is expected and non-fatal, never dispatched to jobs.
     SaveLayout(PaneSize),
     /// The first palette open of the process (m8/18d): end the shell's
-    /// first-launch switch (18e) and write `done` to `<config dir>/graft/
+    /// first-launch switch (18e) and write `done` to `<config dir>/mergewright/
     /// launches` (`first_launch::first_launch_done`). Carried by the loop,
     /// as `SaveLayout` is; a failure is said once on the status row.
     FirstLaunchDone(std::path::PathBuf),
@@ -331,7 +331,7 @@ pub enum Command {
         /// The line to put the cursor on, where the editor takes one.
         line: Option<u32>,
     },
-    /// Write this message to the repository's `graft/COMMIT_EDITMSG`, hand
+    /// Write this message to the repository's `mergewright/COMMIT_EDITMSG`, hand
     /// the terminal to `$EDITOR` on it, and bring back what was saved
     /// (`Ctrl+E`, m3-working-tree-undo-and-stash/05). The path is the
     /// loop's: `update` knows no repository directory.

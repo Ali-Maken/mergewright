@@ -29,7 +29,7 @@ these by eye.
 Usage: python3 pty-walk-m3.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build first:
     cargo build -q -p mergewright --example m3_walk
-    cargo build -q -p graft-fixtures --bin graft-fixtures
+    cargo build -q -p mergewright-fixtures --bin mergewright-fixtures
     MWR_TARGET=target python3 .scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py 80x24
 """
 import fcntl, os, pty, select, signal, struct, subprocess, sys, tempfile, termios, time
@@ -40,7 +40,7 @@ SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 TARGET = os.environ.get("MWR_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m3_walk"
-FIXTURES = os.environ.get("MWR_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+FIXTURES = os.environ.get("MWR_FIXTURES_BIN", f"{TARGET}/debug/mergewright-fixtures")
 # A commit the capture run makes is dated at a fixed instant, as
 # pty-walk-m6.py does (m6-conflicts/43), so its id is the same every run and
 # the capture can be asserted, not just rewritten (m6-conflicts/63).
@@ -54,9 +54,9 @@ STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
 from mwr_sandbox import sandbox_env, scratch_root  # noqa: E402
-config_home = tempfile.mkdtemp(prefix="graft-walk-m3-")
-os.makedirs(os.path.join(config_home, "graft"))
-with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
+config_home = tempfile.mkdtemp(prefix="mwr-walk-m3-")
+os.makedirs(os.path.join(config_home, "mergewright"))
+with open(os.path.join(config_home, "mergewright", "config.toml"), "w") as f:
     f.write('[graph]\nrenderer = "unicode"\n')
 os.makedirs("target/pty-walk-m3", exist_ok=True)
 

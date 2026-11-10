@@ -329,7 +329,7 @@ fn nothing_staged_makes_no_commit() {
 /// forever; here every commit is made now, so every age reads `now` under
 /// the wall clock.
 fn fresh_staged_repo() -> tempfile::TempDir {
-    let scratch = tempfile::TempDir::with_prefix("graft-subject-enter-")
+    let scratch = tempfile::TempDir::with_prefix("mwr-subject-enter-")
         .expect("a temp directory for the repository");
     let repo = scratch.path();
     git(

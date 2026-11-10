@@ -1,6 +1,6 @@
 # Capabilities — M4, Remotes
 
-This milestone took Graft off the shell for the three things a daily Git user
+This milestone took Mergewright off the shell for the three things a daily Git user
 reaches for a remote to do: fetch, pull and push. Credentials are asked for
 and typed inside the app — never in a separate terminal prompt, never stored.
 A rejected push explains itself in plain words and offers a safe way forward
@@ -173,8 +173,8 @@ status: works
 ```
 
 - **How:** Any fetch/pull/push that needs a username or password.
-- **Behaviour:** Graft's own binary doubles as git's `askpass`/`SSH_ASKPASS`
-  helper (invoked as `graft` with `GRAFT_ASKPASS_SOCKET` set and the prompt
+- **Behaviour:** Mergewright's own binary doubles as git's `askpass`/`SSH_ASKPASS`
+  helper (invoked as `mwr` with `MWR_ASKPASS_SOCKET` set and the prompt
   text as its one argument); it answers over a Unix-socket connection back
   to the running app rather than opening a second terminal prompt. Nothing
   is printed anywhere but the reply channel, and the mode is entered before
@@ -496,7 +496,7 @@ status: works
 
 - **How:** Always — applies to every credential prompt line and every
   remote failure message, since both come from git/the remote and are
-  outside Graft's control.
+  outside Mergewright's control.
 - **Behaviour:** Every such string is passed through the app's sanitiser
   before being drawn; no ESC or BEL byte from git ever reaches a rendered
   cell.
@@ -568,9 +568,9 @@ status: broken
 
 ## Deliberately not built
 
-- **Cloning a repository from inside Graft.** You still `git clone` in a
+- **Cloning a repository from inside Mergewright.** You still `git clone` in a
   shell and open the result. Expiry: M8. (`KNOWN_GAPS.md`, "M4")
-- **Adding, renaming or removing a remote from inside Graft.** Shell-only
+- **Adding, renaming or removing a remote from inside Mergewright.** Shell-only
   for now. Expiry: M7.
 - **Pulling with a merge commit or a rebase.** M4's pull is fast-forward
   only; a diverged branch is refused with an explanation, never
@@ -592,7 +592,7 @@ status: broken
   HTTPS, which is unverified here. Expiry: not stated beyond "M4, sooner on
   a field note."
 - **A real credential helper (macOS Keychain, `git-credential-manager`,
-  etc.) in the loop.** Graft's askpass path bypasses stored-credential
+  etc.) in the loop.** Mergewright's askpass path bypasses stored-credential
   helpers entirely for the operations it drives itself; interplay with a
   configured `credential.helper` is untested.
 - **An askpass socket with peer-credential verification.** The 0700

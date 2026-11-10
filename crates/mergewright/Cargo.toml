@@ -18,7 +18,7 @@ homepage = "https://github.com/<owner>/mergewright"
 default-run = "mwr"
 
 # The package is `mergewright`, the command `mwr` (ADR-0057 amendment
-# 2026-10-11). The library stays `graft` (code uses `mergewright::…`) and the dir
+# 2026-10-11). The library is `mergewright` (code uses `mergewright::…`) and the dir
 # stays `crates/mergewright`; an explicit bin target on `src/main.rs` stops Cargo
 # inferring a `mergewright` binary as well.
 [lib]

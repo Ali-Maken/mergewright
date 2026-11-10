@@ -7,7 +7,7 @@
 //! status line it drew, and asserts the typed bytes are in none of them, nor
 //! in the undo journal on disk.
 //!
-//! `graft`'s own `git` keeps the user's config, so the work clone blanks
+//! `mwr`'s own `git` keeps the user's config, so the work clone blanks
 //! `credential.helper`: a keychain helper must neither answer for the test
 //! nor store its password.
 #![allow(

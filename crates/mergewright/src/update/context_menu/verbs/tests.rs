@@ -572,7 +572,7 @@ enum Behind {
 /// `mergewright-ui`'s `every_label_names_its_key` cannot reach these: it builds
 /// the menu with `Vec::new()` for the verbs, so the rule it exists to
 /// enforce was unenforced on exactly the labels that broke it (review 08
-/// Major 3). `mergewright-ui` cannot depend on `graft`, so the reach belongs
+/// Major 3). `mergewright-ui` cannot depend on `mergewright`, so the reach belongs
 /// here, next to the labels themselves.
 fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
     let keys = mergewright_ui::keymap::Keymap::shipped();

@@ -11,7 +11,7 @@ use crate::pty::{Isolated, Pty};
 /// not even for the length of the capability probe — and says why on stderr.
 #[test]
 fn off_a_terminal_a_path_that_is_not_a_repository_is_one_plain_line() {
-    let dir = std::env::temp_dir().join(format!("graft-not-a-repo-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mwr-not-a-repo-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let isolated = Isolated::new();
 
@@ -25,7 +25,7 @@ fn off_a_terminal_a_path_that_is_not_a_repository_is_one_plain_line() {
         .env("XDG_CONFIG_HOME", isolated.config())
         .env("HOME", isolated.home())
         .output()
-        .expect("graft runs");
+        .expect("mwr runs");
     std::fs::remove_dir(&dir).expect("the scratch directory is empty");
 
     assert_eq!(output.status.code(), Some(1));

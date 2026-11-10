@@ -19,7 +19,7 @@ fn headless_never_counts() {
         .env("XDG_CONFIG_HOME", isolated.config())
         .env("HOME", isolated.home())
         .output()
-        .expect("graft runs");
+        .expect("mwr runs");
     assert_eq!(
         output.status.code(),
         Some(0),

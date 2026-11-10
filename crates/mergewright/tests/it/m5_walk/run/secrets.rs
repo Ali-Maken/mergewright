@@ -21,7 +21,7 @@ pub(super) fn askpass_log(fixture: &Fixture) -> Result<Vec<u8>, String> {
     }
 }
 
-/// The binary git runs as its askpass helper — `graft` itself under `cargo
+/// The binary git runs as its askpass helper — `mwr` itself under `cargo
 /// test`, or this very example — wrapped in a script that records its own
 /// arguments and environment before handing over.
 ///
@@ -31,7 +31,7 @@ pub(super) fn askpass_log(fixture: &Fixture) -> Result<Vec<u8>, String> {
 /// one.
 pub(super) fn askpass_wrapper(fixture: &Fixture) -> Result<PathBuf, String> {
     let real = match option_env!("CARGO_BIN_EXE_mwr") {
-        Some(graft) => PathBuf::from(graft),
+        Some(mwr) => PathBuf::from(mwr),
         None => std::env::current_exe().map_err(|why| format!("current_exe: {why}"))?,
     };
     let wrapper = fixture.root().join("askpass-wrapper.sh");

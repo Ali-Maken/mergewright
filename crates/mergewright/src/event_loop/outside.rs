@@ -76,7 +76,7 @@ pub struct Handover<'a> {
     ///
     /// Two jobs, both about `e`. It is the directory the editor is started
     /// in, the way git starts one, and it is what a porcelain path is joined
-    /// onto to make it absolute. Without it `graft ~/code/api` run from `~`
+    /// onto to make it absolute. Without it `mwr ~/code/api` run from `~`
     /// opened `~/src/main.rs` — a new empty buffer in vim, "file not found"
     /// in code and zed, and a stray file if the user saved
     /// (m3/05 review, Major 2).
@@ -269,7 +269,7 @@ impl Handover<'_> {
         }
     }
 
-    /// The message file's path, its `graft/` directory made.
+    /// The message file's path, its `mergewright/` directory made.
     /// The editor git itself would run: `GIT_EDITOR`, then `core.editor`,
     /// then `VISUAL`, then `EDITOR`, then git's built-in default — in one
     /// spawn, rather than four lookups Mergewright would have to keep in step with
@@ -434,7 +434,7 @@ impl Drop for Reenter<'_> {
 /// command's directory. Every path Mergewright has to offer comes out of git's
 /// porcelain and is relative to the top of the working tree; Mergewright's own
 /// process directory is wherever the user was standing when they typed
-/// `graft ~/code/api`. Handing the editor a path relative to *that* opened
+/// `mwr ~/code/api`. Handing the editor a path relative to *that* opened
 /// an empty new buffer in vim and "file not found" in code and zed, and
 /// created a stray file if the user saved (m3/05 review, Major 2).
 ///

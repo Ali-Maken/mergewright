@@ -569,7 +569,7 @@ fn capture_time_machine_for_docs_shots() {
              #    puts the browser back on the same row.\n\
              #  - The box says what reverting to before that entry would do, in the\n\
              #    plan's own words \u{2014} how many steps, and what the index and working\n\
-             #    tree would be. **No `git \u{2026}` line:** a revert is `graft`'s own\n\
+             #    tree would be. **No `git \u{2026}` line:** a revert is Mergewright's own\n\
              #    restore, step by step, not a git command anyone could type, and\n\
              #    `plan_revert_to` returns no commands (review 08 Minor 6 \u{2014} this\n\
              #    header used to ask the reader to look for one).\n\

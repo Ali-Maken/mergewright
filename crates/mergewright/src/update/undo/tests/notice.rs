@@ -57,7 +57,7 @@ pub(super) fn torn_entry(
         worktree_before: Some(oid(3)),
         worktree_after: None,
         worktree_raw_before: None,
-        backup_ref: Some("refs/graft/backup/main/x".to_owned()),
+        backup_ref: Some("refs/mergewright/backup/main/x".to_owned()),
         pins: Vec::new(),
         commands: Vec::new(),
         reverses: None,

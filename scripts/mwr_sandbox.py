@@ -43,10 +43,10 @@ def scratch_root(scenario):
     """The fixed folder a walk's fixtures are copied into (m8/22 item 9).
 
     Passed as MWR_SCRATCH_ROOT (mergewright-fixtures `FIXED_ROOT_VAR`): the
-    capture shows the repository path, and `/tmp/graft-capture/<scenario>` is
+    capture shows the repository path, and `/tmp/mwr-capture/<scenario>` is
     the same on every macOS machine, unlike a per-user $TMPDIR.
     """
-    return f"/tmp/graft-capture/{scenario}"
+    return f"/tmp/mwr-capture/{scenario}"
 
 
 def seed_first_launch_done(config_home):
@@ -74,7 +74,7 @@ def sandbox_env(config_home=None, base=None, first_launch=False, **overrides):
     if "XDG_CONFIG_HOME" in overrides:
         raise ValueError("mwr_sandbox: pass the config folder as config_home, not XDG_CONFIG_HOME=")
     if config_home is None:
-        config_home = tempfile.mkdtemp(prefix="graft-script-config-")
+        config_home = tempfile.mkdtemp(prefix="mwr-script-config-")
     env = dict(os.environ if base is None else base)
     env.update(overrides)
     env["XDG_CONFIG_HOME"] = config_home

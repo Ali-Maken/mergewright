@@ -12,7 +12,7 @@ too-many-lines-threshold = 60
 # Detection's `detect` — a sequence of small decisions — sits at 5.
 cognitive-complexity-threshold = 15
 
-# Proper nouns and filenames that Graft's prose uses as words, not as code.
+# Proper nouns and filenames that Mergewright's prose uses as words, not as code.
 # Backticking `OKLab` or `WezTerm` would be wrong; `..` keeps Clippy's own
 # default list as well.
 doc-valid-idents = [

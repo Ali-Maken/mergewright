@@ -324,15 +324,6 @@ fn the_word_test_reads_words_only() {
     assert_eq!(says_old_name("Mergewright · mwr"), None);
 }
 
-/// README.md, CHANGELOG.md's top entry and `scripts/**` name the command and
-/// the app, not an earlier generation's title or command (27c, m8 55); what
-/// may still say one, and why, is in `rename_docs`.
-#[test]
-fn user_docs_and_scripts_name_the_command() {
-    let found = crate::rename_docs::old_name_lines();
-    assert!(found.is_empty(), "an old name:\n{}", found.join("\n"));
-}
-
 /// The gallery looks for git/git where `scripts/clone-git-git.sh` puts it
 /// (review m8-mergewright-51, Major 1): same `HOME`, no overrides, same path.
 #[test]

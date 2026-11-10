@@ -69,7 +69,7 @@ fn committed_man_page_is_the_generated_one() {
 }
 
 /// The FILES and ENVIRONMENT paths name the folder the app uses today
-/// (`on_disk::DIR`), never the old `graft/` one.
+/// (`on_disk::DIR`).
 #[test]
 fn man_page_names_the_config_folder_in_force() {
     let page = man_page(FLAGS, defaults(), CONFIG_KEYS);
@@ -82,8 +82,6 @@ fn man_page_names_the_config_folder_in_force() {
     ] {
         assert!(page.contains(&path), "missing {path}");
     }
-    assert!(!page.contains("/graft/"), "old folder named");
-    assert!(!page.contains("/graft\n") && !page.contains("/graft."));
     assert!(page.starts_with(".TH MWR 1"));
 }
 

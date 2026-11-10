@@ -14,12 +14,12 @@ only place allowed to run a write operation.
 ### 6.1 Storage and data model
 
 - **Append-only log**, one JSON record per line, at the path
-  `git rev-parse --git-path graft/undo-journal.jsonl` resolves to — never a
+  `git rev-parse --git-path mergewright/undo-journal.jsonl` resolves to — never a
   literal `.git/` join, because at the root of a linked worktree `.git` is
   a *file* pointing at the real git dir, not a directory. Every other path
   Mergewright keeps under the git dir resolves the same way. `--git-path` puts
-  the journal in the **per-worktree** git dir: `.git/graft/…` for the main
-  worktree, `.git/worktrees/<name>/graft/…` for a linked one. The journal
+  the journal in the **per-worktree** git dir: `.git/mergewright/…` for the main
+  worktree, `.git/worktrees/<name>/mergewright/…` for a linked one. The journal
   is deliberately per-worktree (ADR-0010): every entry's index and
   working-tree state belongs to exactly the worktree the operation ran in,
   so an entry can never be replayed against the wrong working tree — and
@@ -28,7 +28,7 @@ only place allowed to run a write operation.
   to the repo's own history, human-readable enough to inspect by hand if
   something goes wrong.
 - **Backup content:** real git objects under
-  `refs/graft/backup/<worktree>/<ulid>`, created before any operation
+  `refs/mergewright/backup/<worktree>/<ulid>`, created before any operation
   that touches the working tree (§6.3). Refs, unlike the journal, are
   shared across every worktree of a repo, so the `<worktree>` segment —
   `main` for the main worktree, the directory name under
@@ -55,7 +55,7 @@ JournalEntry {
     index_before: Option<Oid>,       // pre-op index tree
     index_after: Option<Oid>,        // post-op index tree, recorded with the Committed record
     worktree_after: Option<Oid>,     // post-op combined tree (§6.3 hashing), for §6.7's comparison
-    backup_ref: Option<RefName>,     // refs/graft/backup/<worktree>/<ulid>, set for any op
+    backup_ref: Option<RefName>,     // refs/mergewright/backup/<worktree>/<ulid>, set for any op
                                      //  that touched the working tree (§6.3)
     reverses: Option<Ulid>,          // set on an undo/redo entry: which entry it reverses
     fetched_refs: Option<Map<RefName, { before: Option<Oid>, after: Option<Oid> }>>,
@@ -99,7 +99,7 @@ and clean — and before any undo whose inverse rewrites the working tree
    a blob and add it to that tree at its path. Ignored files are not
    backed up: an operation that would write over one is refused before it
    starts, naming the file (ADR-0049, 2026-09-26).
-3. Commit that combined tree under `refs/graft/backup/<worktree>/<ulid>`
+3. Commit that combined tree under `refs/mergewright/backup/<worktree>/<ulid>`
    (the `<ulid>` being the owning journal entry's `id`, §6.1) — one
    object graph that represents tracked *and* untracked content as it stood
    immediately before the operation.

@@ -13,7 +13,7 @@ fn stdout_of(flag: &str) -> String {
     let output = Command::new(env!("CARGO_BIN_EXE_mwr"))
         .arg(flag)
         .output()
-        .expect("graft runs");
+        .expect("mwr runs");
     assert_eq!(
         output.status.code(),
         Some(0),
@@ -35,7 +35,7 @@ fn generate_man_prints_the_man_page_and_nothing_else() {
     assert_eq!(stdout_of("--generate-man"), page);
 }
 
-/// `graft --generate-man | head -0`: the reader is gone before the first
+/// `mwr --generate-man | head -0`: the reader is gone before the first
 /// write. Rust ignores SIGPIPE, so the write fails with `BrokenPipe`; that is
 /// a clean exit 0, never a panic (review m8-hygiene-release m6).
 fn into_closed_pipe(flag: &str) -> std::process::Output {
@@ -46,7 +46,7 @@ fn into_closed_pipe(flag: &str) -> std::process::Output {
         .stdout(writer)
         .stderr(std::process::Stdio::piped())
         .output()
-        .expect("graft runs")
+        .expect("mwr runs")
 }
 
 #[test]

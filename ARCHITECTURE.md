@@ -50,7 +50,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   rule: `ops` decides, `app` wires.** `app` never builds a `GitInvocation` for
   a write, never touches the journal file, never chooses a snapshot; a key
   becomes an `Operation` and `ops` does the rest. Guarded by
-  `crates/mergewright/tests/it/seam_rule.rs`: `GitInvocation` under `graft/src/`
+  `crates/mergewright/tests/it/seam_rule.rs`: `GitInvocation` under `crates/mergewright/src/`
   only inside `jobs/` (reads); the journal's `render_*` and the inverse's
   `Step::`/`PathScope::` constructors nowhere in `app`. The seam is
   visibility where it can be (`snapshot::{chain_backup, commit_trees,
@@ -58,11 +58,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   seam clauses for the enum constructors and for the internals kept `pub`
   for examples and cross-crate tests (`snapshot::take`, `raw_record`,
   `append_pending`, `restore::execute`, `render_*`).
-- **Changing fetch, pull or push** → `graft/src/update/remote.rs` for the
+- **Changing fetch, pull or push** → `crates/mergewright/src/update/remote.rs` for the
   `f`/`p` keys and the facts; `update/remote/push_box.rs` for `P` and its
   box, `after_push.rs` for `u` on pushed work, `in_flight.rs` for `Esc`,
   progress and the status-line words;
-  `graft/src/jobs/remote.rs` for the remote facts read; `ops::operation` for
+  `crates/mergewright/src/jobs/remote.rs` for the remote facts read; `ops::operation` for
   what actually runs.
 - **Changing terminal detection or an image protocol** → `term`. Start at
   `DESIGN.md` §4, then `mergewright-term/src/detect/`: `environment` reads the env
@@ -72,7 +72,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   terminal and reads replies through the input mux, so everything above it
   is tested against scripted replies.
 - **Changing what `y` sends to the clipboard** → `mergewright-term/src/clipboard.rs`
-  builds the OSC 52 request; `graft/src/event_loop` writes it through the
+  builds the OSC 52 request; `crates/mergewright/src/event_loop` writes it through the
   session's `Transport` (ADR-0023).
 - **Changing how keys, mouse or terminal replies are read** →
   `mergewright-term/src/input/`. `mux` is the one thread that owns stdin for the
@@ -99,7 +99,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   (`Keymap::spell_*`, `key_verb`, `after`, `HintKey`); inside a text field,
   `Keymap::shipped()` (ADR-0055, ADR-0058). mergewright-ops names keys only as
   `OpKey` through `KeyNames` (`mergewright-ops/src/keys.rs`), answered by
-  `graft/src/update/op_keys.rs`; jobs carry an `Arc<Keymap>`. Kept honest by
+  `crates/mergewright/src/update/op_keys.rs`; jobs carry an `Arc<Keymap>`. Kept honest by
   the behavioural sweep (`mergewright::update::tests::keymap_edge::sweep`) and the
   `mergewright-ui/tests/no_literal_keys.rs` ratchet, which fails a literal key.
 - **Changing the detail pane, a diff view or the Explain panel** →
@@ -228,11 +228,11 @@ on the frame thread.
 
 ## The crates
 
-Every package is named with a `graft-` prefix — `mergewright-core`, `mergewright-graph`,
+Every package is named with a `mergewright-` prefix — `mergewright-core`, `mergewright-graph`,
 `mergewright-git`, `mergewright-ops`, `mergewright-term`, `mergewright-ui` — because a bare package
 called `core` collides with Rust's built-in `core`. `app` is the binary, and
-its package is `mergewright` (dir `crates/mergewright`, lib `graft`, bin `mwr`;
-ADR-0057 §9); the crates keep `graft-*`. This page uses the short names throughout; the
+its package is `mergewright` (dir `crates/mergewright`, lib `mergewright`, bin `mwr`;
+ADR-0057 §9); the crates keep `mergewright-*`. This page uses the short names throughout; the
 prefix exists only in `Cargo.toml` and in `use` paths (`mergewright_core::…`).
 
 `app` is a library (`crates/mergewright/src/lib.rs`) with a thin binary

@@ -69,7 +69,7 @@ pub fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
 ///
 /// A capture drawn from a live repository is drawn from a scratch copy in the
 /// system temp directory, and the header shows where you are — so the frame
-/// carried `/var/folders/…/T/graft-remote-idICFn/wor…`, a name the fixture
+/// carried `/var/folders/…/T/mwr-remote-idICFn/wor…`, a name the fixture
 /// invents afresh every run. That made the file impossible to reproduce and
 /// so impossible to check, and it shipped one machine's directory layout in a
 /// repository that may be published (m5-history-and-ghost-preview/40).
@@ -82,7 +82,7 @@ pub fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
 ///
 /// It is set **before** the frame is drawn, never substituted into the text
 /// afterwards. The header *fits* itself to the width it has, so substituting
-/// left the 80-column captures showing `graft /code/api  8…` — a truncation
+/// left the 80-column captures showing `mwr /code/api  8…` — a truncation
 /// caused by a path that is not in the picture — and tied every capture to
 /// this machine's temp-path length, so the same file could not be drawn on
 /// Linux (M5 groups 12/13 review, m2). Two captures were fixed that way, one

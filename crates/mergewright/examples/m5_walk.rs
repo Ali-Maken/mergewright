@@ -26,7 +26,7 @@
 //! This binary is also git's **askpass helper** while it runs, exactly as
 //! `examples/m4_walk.rs` is: the job pool starts it with
 //! `MWR_ASKPASS_SOCKET` set and the question as its one argument, and the
-//! process answers the way `graft` itself does, never touching the terminal.
+//! process answers the way `mwr` itself does, never touching the terminal.
 //! Without this the one HTTP scenario, `password-field-is-secret`, never
 //! sees a credential question at all — git gets nothing from the helper and
 //! fails the push outright with `authentication failed`.
@@ -118,7 +118,7 @@ fn main() -> ExitCode {
     }
 }
 
-/// Askpass mode, as `graft`'s own `main` does it: pass git's `prompt` to the
+/// Askpass mode, as `mwr`'s own `main` does it: pass git's `prompt` to the
 /// running walk over `socket`, print its answer for git, exit. 0 answered,
 /// 1 cancelled, 2 anything else.
 fn askpass(socket: &Path, prompt: &str) -> ExitCode {
@@ -195,7 +195,7 @@ fn show(
     // remote scenario, the bare.
     let (_fixture, repo) = prepare_capture(scenario)?;
     // The pty script's `kill -9` capture (m6-conflicts/07) relaunches the
-    // real `graft` on this scratch after the process died, so it has to
+    // real `mwr` on this scratch after the process died, so it has to
     // know where the scratch is: a SIGKILL runs no destructor, and the
     // scratch outlives us for the script to remove.
     if let Some(out) = std::env::var_os("MWR_CAPTURE_REPO_OUT") {
