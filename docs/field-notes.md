@@ -124,3 +124,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-10-19 · Don't spend work on files that will be deleted (old contact sheets, past-milestone docs).
 - 2026-10-19 · Skip regenerating docs/AUTHORSHIP.md; keep log lines short.
 - 2026-10-19 · Public repo is one fresh commit; this private repo keeps its history (no squash here).
+- 2026-11-10 · Commit view file tree: with 10 files across different folders the folder tree "could get messy"; wants to see which files and how many at a glance, plus where each lives. One file here costs 3 rows (libnew/, rpm_training_report/, the file) and the name truncates. Post-publish, through the feature pipeline (research, step count, prototype).
