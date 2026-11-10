@@ -35,3 +35,4 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates main after 11c: fast 6788/6788 537 s (beside 11a), walks 459/0 184 s; all else clean.
 - builder-sonnet 11a codename app+scripts+docs: guard codename_absent (red 324 → green), rename_docs.rs replaced, 11 captures word-only, CAPABILITIES regenerated; 5 allow-list rows '11c' (ops/core names) → ticket 11d; pty-walk-m3.py unrun (gap). Merged 15431376 · 104 tools · skills: none.
 - conductor gates main after 11a: fast 6789/6789 367 s (quiet), walks 459/0 129 s; all else clean.
+- audit: usability walk dispatched early on main @ 5f0784401 (read-only, beside 11d); perf run, gates and walks follow after 12 on the final code; one fix round covers both.
