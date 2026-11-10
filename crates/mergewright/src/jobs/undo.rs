@@ -8,6 +8,7 @@
 use std::sync::Arc;
 
 use mergewright_core::journal::{EntryId, JournalEntry};
+use mergewright_core::on_disk::Generation;
 use mergewright_git::version::system_git;
 use mergewright_ops::apply::{Applied, Context, Refresh};
 use mergewright_ops::journal::{Journal, journal_path};
@@ -329,9 +330,8 @@ fn nothing_ran(error: &dyn std::fmt::Display) -> Undone {
     }
 }
 
-/// Everything an operation on this repository needs, opened fresh.
-///
-/// The journal is opened here and handed out by reference, because
+/// Everything an operation on this repository needs, opened fresh. The
+/// journal is opened here and handed out by reference, because
 /// [`Context`] borrows it for as long as the operation runs.
 fn with_context<T>(
     repos: &RepoStore,
@@ -353,7 +353,7 @@ fn with_context<T>(
         Ok(path) => path,
         Err(error) => return failed(&error),
     };
-    let mut journal = match Journal::open_as(&path, handle.on_disk_names()) {
+    let mut journal = match Journal::open_as(&path, Generation::CURRENT) {
         Ok(journal) => journal,
         Err(error) => return failed(&error),
     };

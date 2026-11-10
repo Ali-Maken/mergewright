@@ -202,7 +202,7 @@ The focused branch's heading, four marked answers and route, right of the rows. 
 - `SearchLine` (enum) — `Prompt(text)`: the footer's ` /text_` while search is open.
 - `SearchTail` (struct) — `text`, `failed`: a running or finished search in the header's tail.
 - `CommitGraphLine` (enum) — `Offered { keys }`, …: the commit-graph offer's footer line.
-- `APP_NAME` (const, from `header.rs`) — the product's name where the app names itself: `Generation::CURRENT.title()` (`Mergewright`).
+- `APP_NAME` (const, from `header.rs`) — the product's name where the app names itself: `on_disk::TITLE` (`Mergewright`).
 - `HeaderView` (struct), `header_line`, `tail_room` (fns) — the header row's words; drawn at a width; cells left for the tail.
 - `BannerView` (struct, from `banner.rs`) — `kind`, `step`, `conflict`, `names` (a merge's `(from, into)`): the operation banner.
 - `RewriteBannerView` (struct), `BannerChain` (enum) — what a rewrite stop adds to the banner, and its chain words.
@@ -424,7 +424,7 @@ The commits a merge brings in (ease-pass 10), `⏎` from the merge preview; dock
 - `cut_at_word` (fn) — `(text, width) -> String`: cut at the last whole word that fits, then `…`; a hard cut only when no word fits. Keeps the text's own spacing.
 - `RowMark` (enum) — What a row is to `u` and `U`, in words rather than colour: `None` (default), `NextUndo`, `NextRedo`, `Interrupted`, `Undone`, `NothingWritten`; `label(keys)` draws them as `← u`, `← U` (spelled from `keys`).
 - `label` (fn) — The mark as it is drawn, at the right of the row: `← u`, `← U`, the keys spelled from `keys` (`← next undo` when he left it unbound).
-- `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Mergewright` rows `Generation::CURRENT.title()` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
+- `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Mergewright` rows `on_disk::TITLE` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
 - `RowKind` (enum) — `Mergewright` (`●`), `Outside` (`$`), `Lost` (`└ ✗ lost`, a commit), `LostEdit` (`└ ✗ lost`, an edit in an undo's backup), `Replaced` (`└ ⇢ replaced`) / `Deleted` (`└ ⇢ deleted`), muted: a commit `u` brings back.
 - `JournalRowView` (struct) — `age`, `description`, `summary`, `mark`, `commands` (the Command Log, drawn while expanded), `failure` (the whole reason, same), `moved`, ADR-0062: the refs a fetch or a pull's fetch moved, one line each
 - `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
@@ -523,7 +523,7 @@ The merge review's read-only look (ease-pass/12b, mock `mergewright-merge-screen
 - `WIDE_FROM` (const) — Below this many frame columns the box takes the frame's full width and rows drop their config id (§1.16).
 - `NOTHING_MATCHES` (const) — The one line drawn when the query keeps no row; the key that closes is spelled after it (`nothing matches · esc close`).
 - `PaletteMode` (enum) — Which way the palette was opened.
-- `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Mergewright` rows `Generation::CURRENT.title()` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
+- `source_word` (fn) — `RowKind -> &'static str`: the source column's word, `Mergewright` rows `on_disk::TITLE` (`Mergewright`), `Outside` rows `outside`, the `✗`/`⇢` rows `""` (ADR-0057 §10).
 - `RowKind` (enum) — What a row stands for: `Action`, `App`, `Branch`, `Tag`, `File`, `Commit`, `Recent`, `More` (a find group's muted line), `Setting { on }` (a setting's choice: `●`/`○` by kind, `(on)` after the chosen one).
 - `ConfigId` (enum) — What the id column shows: `Action(ActionId)` or a setting's config `Key(&str)`; `as_str` spells it.
 - `PaletteRow` (struct) — One row, worded: label, key, `config: Option<ConfigId>`, muted `detail` (setting rows; cut before the label is), kind.

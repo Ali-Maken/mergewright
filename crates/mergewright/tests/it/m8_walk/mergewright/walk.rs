@@ -2,40 +2,17 @@
 //! and quit over the pty, the capture with its "what right looks like"
 //! line, and the truth checks read from git.
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use mergewright_core::journal::OperationKind;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::journal::JournalEntry;
+use mergewright_ops::journal::Journal;
 
-use super::older::{journal, refs_of};
-use crate::pty::{Isolated, Pty, Screen};
+use crate::pty::{Isolated, PINNED_NOW, Pty, Screen};
 
 /// His repository under the isolated home, drawn `~/code/api`.
 pub fn his_repo(isolated: &Isolated) -> PathBuf {
     isolated.home().join("code").join("api")
-}
-
-/// The files under `.git/<generation's dir>/` the move carries: the
-/// move's `M`. A generation's lock and marker are its own, not his, and
-/// are not carried.
-pub fn files_in(repo: &Path, generation: Generation) -> usize {
-    fn count(dir: &Path) -> usize {
-        match std::fs::read_dir(dir) {
-            Ok(entries) => entries
-                .map(|entry| entry.unwrap_or_else(|why| panic!("{why}")).path())
-                .filter(|path| {
-                    path.file_name().is_none_or(|name| {
-                        name != mergewright_ops::rename::LOCK_FILE
-                            && name != mergewright_core::on_disk::MIGRATED_MARKER
-                    })
-                })
-                .map(|path| if path.is_dir() { count(&path) } else { 1 })
-                .sum(),
-            Err(why) => panic!("{}: {why}", dir.display()),
-        }
-    }
-    count(&repo.join(".git").join(generation.dir()))
 }
 
 /// `mwr <repo>` at `size`: the graph drawn, the cursor `▸` on a row,
@@ -96,47 +73,55 @@ pub fn shot(name: &str, right: &str, screen: &Screen) {
     );
 }
 
-/// No ref is left under an earlier generation's prefix, and every backup
-/// the older build made is under the new names: the ref is there and holds
-/// the very commit or one built on it (recovering an interrupted entry
-/// adds an `interrupted, recovered` commit whose parent is the old backup).
-pub fn every_backup_kept(repo: &Path, old: &BTreeMap<String, String>) {
-    for older in Generation::CURRENT.older() {
-        assert_eq!(refs_of(repo, older), BTreeMap::new(), "{older:?}");
-    }
-    let expected = super::older::moved(old, Generation::CURRENT);
-    let now = refs_of(repo, Generation::CURRENT);
-    assert_eq!(
-        now.keys().collect::<Vec<_>>(),
-        expected.keys().collect::<Vec<_>>()
-    );
-    for (name, oid) in &expected {
-        let status = std::process::Command::new("git")
-            .arg("-C")
-            .arg(repo)
-            .args(["merge-base", "--is-ancestor", oid, &now[name]])
-            .status()
-            .unwrap_or_else(|why| panic!("{why}"));
-        assert!(status.success(), "{name}: {oid} is not in {}", now[name]);
-    }
-    println!(
-        "truth: refs under {}: {} · under {}: {now:?}",
-        Generation::Graft.ref_prefix(),
-        refs_of(repo, Generation::Graft).len(),
-        Generation::CURRENT.ref_prefix()
-    );
+/// `git` in `repo` dated two days before the pinned clock; stdout, trimmed.
+pub fn git(repo: &Path, args: &[&str]) -> String {
+    git_at(repo, PINNED_NOW - 2 * 86_400, args)
 }
 
-/// The journal's `Migrate` rows, oldest first, after `entries` entries in
-/// all: what J's rename rows are read from.
-pub fn renames(repo: &Path, entries: usize) -> Vec<String> {
-    let read = journal(repo);
-    assert_eq!(read.len(), entries, "{read:#?}");
-    let rows: Vec<String> = read
-        .iter()
-        .filter(|entry| entry.kind == OperationKind::Migrate)
-        .map(|entry| entry.description.clone())
-        .collect();
-    println!("truth: journal {} entries, renames {rows:?}", read.len());
-    rows
+/// `git` in `repo` with its dates at `secs`; stdout, trimmed.
+pub fn git_at(repo: &Path, secs: i64, args: &[&str]) -> String {
+    let date = format!("{secs} +0000");
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .args(args)
+        .env("GIT_AUTHOR_DATE", &date)
+        .env("GIT_COMMITTER_DATE", &date)
+        .output()
+        .unwrap_or_else(|why| panic!("git {args:?}: {why}"));
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).trim().to_owned()
+}
+
+/// `git init` in a new folder `repo` on `main`, with an identity and the
+/// local settings the machine's global config would otherwise reach into.
+pub fn init(repo: &Path) {
+    std::fs::create_dir_all(repo).unwrap_or_else(|why| panic!("{}: {why}", repo.display()));
+    git(repo, &["init", "-q", "-b", "main", "."]);
+    for (key, value) in [
+        ("user.name", "Graft Test"),
+        ("user.email", "test@example.invalid"),
+        ("commit.gpgsign", "false"),
+        ("tag.gpgsign", "false"),
+        ("core.autocrlf", "false"),
+        ("core.hooksPath", "/dev/null"),
+    ] {
+        git(repo, &["config", key, value]);
+    }
+}
+
+/// The journal as the app reads it, under the current names.
+pub fn journal(repo: &Path) -> Vec<JournalEntry> {
+    let handle = mergewright_git::repo::RepoHandle::open(repo)
+        .unwrap_or_else(|why| panic!("the repo opens: {why:?}"));
+    let path = mergewright_ops::journal::journal_path(&handle)
+        .unwrap_or_else(|why| panic!("the journal path: {why:?}"));
+    Journal::open(&path)
+        .unwrap_or_else(|why| panic!("the journal opens: {why:?}"))
+        .entries()
+        .to_vec()
 }

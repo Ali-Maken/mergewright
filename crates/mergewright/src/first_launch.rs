@@ -47,7 +47,7 @@ impl FirstRunError {
 /// The file the count lives in.
 pub(crate) fn launches_file(config_dir: &Path) -> PathBuf {
     config_dir
-        .join(crate::config::config_names().dir())
+        .join(mergewright_core::on_disk::DIR)
         .join("launches")
 }
 
@@ -256,7 +256,7 @@ mod tests {
 
         // A read-only app folder: nothing to read (0), nothing writable.
         let dir = tempfile::tempdir().expect("temp dir");
-        let graft = dir.path().join(crate::config::config_names().dir());
+        let graft = dir.path().join(mergewright_core::on_disk::DIR);
         std::fs::create_dir(&graft).expect("mkdir");
         std::fs::set_permissions(&graft, std::fs::Permissions::from_mode(0o555)).expect("chmod");
         let error = count_launch(dir.path()).expect_err("unwritable");

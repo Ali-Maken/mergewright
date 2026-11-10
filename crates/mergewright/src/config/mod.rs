@@ -36,7 +36,6 @@
 //! DESIGN.md §2.2) is the next one due, and until it exists it loads as a
 //! warning rather than an error.
 
-mod folder;
 mod keys;
 mod load;
 #[cfg(test)]
@@ -58,9 +57,8 @@ pub use types::{
     RawValue, RendererChoice, ThemeChoice, Ui,
 };
 
-pub(crate) use folder::config_names;
 #[cfg(test)]
-use load::{load_at, load_settling, path_in_environment};
+use load::{load_at, path_in_environment};
 pub use write::{KeepError, keep_in, keep_merged_branches};
 // The loader's own key lists, for `cli::docs_tests` to pair with
 // `cli::CONFIG_KEYS` both ways.

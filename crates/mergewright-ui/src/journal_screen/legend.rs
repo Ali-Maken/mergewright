@@ -8,7 +8,7 @@ use crate::keymap::{ActionId, Keymap};
 use super::cut_at_word;
 
 /// The product word the legend names (ADR-0057 §10), from the names table.
-const APP: &str = mergewright_core::on_disk::Generation::CURRENT.title();
+const APP: &str = mergewright_core::on_disk::TITLE;
 
 /// What each glyph means, on screen for as long as the rows are (J1), with
 /// `app.undo`'s key spelled from `keys` (`u`, or `u/⌃Z`'s first — the bar's

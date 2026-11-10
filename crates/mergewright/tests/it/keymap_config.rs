@@ -3,7 +3,7 @@
 //! says how many problems it had on the bottom row, until the first key.
 
 use crate::pty::{Isolated, Pty};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// `[keys.graph] merge = "M"` beside `suspend_on_ctrl_z`: `M` was the Map's,
 /// so the file has one problem. The first repository screen says so on its
@@ -15,7 +15,7 @@ fn a_keys_table_in_the_config_file_reaches_the_first_screen() {
         mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::FeatureBranches);
     let repo = scratch.path().canonicalize().expect("canonical");
     let isolated = Isolated::new();
-    let dir = isolated.config().join(CURRENT_DIR);
+    let dir = isolated.config().join(DIR);
     std::fs::create_dir_all(&dir).expect("config dir");
     std::fs::write(
         dir.join("config.toml"),

@@ -17,7 +17,7 @@ use mergewright_core::journal::{EntryStatus, OperationKind};
 
 use crate::app_harness::{App, git, press_for_commands};
 use crate::preview::{forked, on_main, opened};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// `feature` checked out, the cursor on `main`, `m m`: the merge is queued
 /// and running, its answer not yet pumped.
@@ -73,7 +73,7 @@ fn assert_merged_and_journaled(repo: &std::path::Path) {
         "a whole merge: {parents}"
     );
     let entries = mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
+        &repo.join(format!(".git/{DIR}/undo-journal.jsonl")),
     )
     .expect("the journal the merge wrote is readable")
     .entries()
@@ -185,7 +185,7 @@ fn capture_quit_waits() {
             "=== `m m` then `q` while the merge runs ===\n{}\n\
              === then `y`: {} waits for git ===\n{}\n",
             first.join("\n"),
-            mergewright_core::on_disk::Generation::CURRENT.title(),
+            mergewright_core::on_disk::TITLE,
             second.join("\n")
         ),
     );

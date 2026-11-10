@@ -44,7 +44,7 @@ use mergewright_git::status::UnmergedHow;
 use mergewright_ops::operation::{Operation, ResolveWholeParams, Side};
 
 use crate::app_harness::{App, changes_pane, cursor_to, press_for_commands};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// A repository stopped mid-operation, its first status read landed.
 fn stopped(shape: Shape) -> (Scratch, App, AppState) {
@@ -388,10 +388,8 @@ fn take_all_and_mark(app: &App, state: AppState) -> AppState {
 
 /// The journal on disk, as the app's own reader sees it.
 fn journal_entries(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal the merge just wrote is readable")
-    .entries()
-    .to_vec()
+    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal the merge just wrote is readable")
+        .entries()
+        .to_vec()
 }

@@ -15,7 +15,7 @@
 use mergewright_core::event::{KeyCode, KeyPress};
 
 use crate::app_harness::{App, changes_pane, cursor_to, git, git_as_mergewright};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// Bytes no editor would write and no diff would survive: a NUL and a byte
 /// that is not valid UTF-8. If undo reconstructs the file through any text
@@ -47,7 +47,7 @@ fn journal(repo: &std::path::Path) -> Vec<mergewright_core::journal::JournalEntr
 
 /// Where a repository's journal lives.
 fn journal_path(repo: &std::path::Path) -> std::path::PathBuf {
-    repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"))
+    repo.join(format!(".git/{DIR}/undo-journal.jsonl"))
 }
 
 /// Discard an untracked file, then `u`: the file comes back byte for byte,

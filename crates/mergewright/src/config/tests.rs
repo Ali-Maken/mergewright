@@ -13,7 +13,7 @@ use mergewright_ui::theme::ThemeKind;
 use tempfile::TempDir;
 
 use super::*;
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// A config file in a fresh temporary directory, and the directory that keeps
 /// it alive for the length of the test.
@@ -290,7 +290,7 @@ fn xdg_config_home_wins_over_home() {
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new(&format!("/xdg/{CURRENT_DIR}/config.toml")))
+        Some(Path::new(&format!("/xdg/{DIR}/config.toml")))
     );
 }
 
@@ -300,9 +300,7 @@ fn home_supplies_dot_config_when_xdg_is_unset() {
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new(&format!(
-            "/code/.config/{CURRENT_DIR}/config.toml"
-        )))
+        Some(Path::new(&format!("/code/.config/{DIR}/config.toml")))
     );
 }
 
@@ -317,9 +315,7 @@ fn a_relative_xdg_config_home_is_ignored() {
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new(&format!(
-            "/code/.config/{CURRENT_DIR}/config.toml"
-        )))
+        Some(Path::new(&format!("/code/.config/{DIR}/config.toml")))
     );
 }
 

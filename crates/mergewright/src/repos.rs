@@ -52,9 +52,6 @@ pub struct RepoStore {
     /// signature can promise — only a count can — and a test asserts it stays
     /// at one across two jobs.
     opens: AtomicUsize,
-    /// What settling the on-disk names did at open (ticket 26), and the
-    /// lock a run on the old names keeps for the store's life.
-    settled: Mutex<Option<crate::rename::Settlement>>,
 }
 
 impl RepoStore {
@@ -72,17 +69,7 @@ impl RepoStore {
             generation: AtomicU64::new(0),
             table: Mutex::new(None),
             opens: AtomicUsize::new(0),
-            settled: Mutex::new(None),
         }
-    }
-
-    /// The status row's words for what settling the names at open could
-    /// not finish; `None` before the first open and when all is well.
-    #[must_use]
-    pub fn rename_words(&self) -> Option<String> {
-        lock(&self.settled)
-            .as_ref()
-            .and_then(|settled| crate::rename::words(&settled.outcome, &settled.root))
     }
 
     /// The path Mergewright was pointed at.
@@ -93,10 +80,8 @@ impl RepoStore {
 
     /// The open repository, opening it if this is the first time.
     ///
-    /// Opening settles the repository's on-disk names first
-    /// (`crate::rename::open_settled`): no job gets a handle before the
-    /// one-time move has run or been ruled out. A reopen the move needs is
-    /// part of the one open, not counted twice.
+    /// The repository is opened as it is: nothing on disk is moved or
+    /// written by opening it.
     ///
     /// # Errors
     /// [`OpenError`] if the path is not a repository, or is one that cannot be
@@ -107,9 +92,7 @@ impl RepoStore {
         if let Some(repo) = open.as_ref() {
             return Ok(Arc::clone(repo));
         }
-        let (repo, settled) = crate::rename::open_settled(&self.path)?;
-        let repo = Arc::new(repo);
-        *lock(&self.settled) = Some(settled);
+        let repo = Arc::new(SharedRepo::open(&self.path)?);
         self.opens.fetch_add(1, Ordering::Release);
         *open = Some(Arc::clone(&repo));
         Ok(repo)
@@ -212,16 +195,13 @@ impl RepoStore {
     }
 
     /// The app's own directory in the common directory:
-    /// `<common_dir>/<dir>`, `<dir>` the repository's on-disk names in force
-    /// (ADR-0057, Amendment §4). Where `crate::layout`'s split and `Ctrl+E`'s
+    /// `<common_dir>/<on_disk::DIR>` (ADR-0057, Amendment §4). Where `crate::layout`'s split and `Ctrl+E`'s
     /// message file live. Not created here; a writer makes it.
     ///
     /// # Errors
     /// As [`common_dir`](Self::common_dir).
     pub fn app_dir(&self) -> Result<PathBuf, OpenError> {
-        let repo = self.shared()?;
-        let handle = repo.handle();
-        Ok(handle.common_dir().join(repo.on_disk_names().dir()))
+        Ok(self.common_dir()?.join(mergewright_core::on_disk::DIR))
     }
 
     /// The root of the working tree, or `None` for a bare repository.
@@ -339,7 +319,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 #[cfg(test)]
 mod tests {
-    use mergewright_core::on_disk::CURRENT_DIR;
+    use mergewright_core::on_disk::DIR;
     use mergewright_fixtures::Shape;
 
     use super::*;
@@ -526,25 +506,30 @@ mod tests {
         assert!(Arc::ptr_eq(&before, &after), "the same table is kept");
     }
 
-    /// The app's own dir is the names in force under the common dir
-    /// (ADR-0057, Amendment §4) — and the store settles them on its first
-    /// open (ticket 26 Part B): a repository with nothing under the old
-    /// names is marked moved and opened on `tributary`, counted as one open.
+    /// A repository opens as it is (pre-publish-cleanup/11b2): one open, the
+    /// app's dir is `<common>/mergewright`, and opening writes nothing — no
+    /// move marker, no `Migrate` entry in a journal.
     #[test]
-    fn the_app_dir_follows_the_names_in_force() {
-        use mergewright_core::on_disk::MIGRATED_MARKER;
-
+    fn opens_without_settling() {
         let copy = mergewright_fixtures::copy_into_temp(Shape::Linear);
+        // The corpus carries a marker from when opening wrote one; it goes,
+        // so a marker after the open could only be the open's.
+        let marker = copy.path().join(".git").join(DIR).join("migrated");
+        std::fs::remove_file(&marker).expect("the fixture's marker goes");
         let store = RepoStore::new(copy.path().to_path_buf(), None);
         let common = store.common_dir().expect("opens");
-        assert_eq!(store.app_dir().expect("opens"), common.join(CURRENT_DIR));
-        assert_eq!(store.opens(), 1, "the settle's reopen is not a second open");
-        assert_eq!(store.rename_words(), None, "nothing to say");
-        assert_eq!(
-            std::fs::read_to_string(common.join(CURRENT_DIR).join(MIGRATED_MARKER))
-                .expect("the marker is written"),
-            "clean\n"
+        assert_eq!(store.app_dir().expect("opens"), common.join(DIR));
+        assert_eq!(store.opens(), 1, "opened once");
+        assert!(!marker.exists(), "no move marker written");
+        let journal = common.join(DIR).join("undo-journal.jsonl");
+        let entries = match std::fs::read_to_string(&journal) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+            Err(error) => panic!("journal unreadable: {error}"),
+        };
+        assert!(
+            !entries.to_lowercase().contains("migrate"),
+            "no Migrate entry: {entries}"
         );
-        assert!(!common.join("graft").exists());
     }
 }

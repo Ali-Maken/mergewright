@@ -4,7 +4,7 @@ A map of modules: one `##` heading per module to depth 2, path from the crate ro
 Tests: `tests/it` (one binary, with the pty harness); `examples/` holds the terminal probes, the gallery, the budgets and the milestone walks.
 ## cli
 The command line: one optional path and the flags; askpass mode when git asks for a credential. Hand-parsed.
-- `COMMAND` (const) — `Generation::CURRENT.command()` (`"mwr"`), the binary's name: usage, `--version`, stderr prefix, crash text, man page.
+- `COMMAND` (const) — `on_disk::COMMAND` (`"mwr"`), the binary's name: usage, `--version`, stderr prefix, crash text, man page.
 ## cli::config_keys
 Every config key as the man page and README describe it, paired both ways with the loader's own list.
 ## cli::flags
@@ -12,12 +12,10 @@ The one table of flags that `--help`, the man page and the README's flag list ar
 ## cli::man
 `--generate-man`: the roff man page, written from the flag, key and config tables the program runs on.
 ## config
-The config file under `${XDG_CONFIG_HOME:-~/.config}/<Generation::CURRENT.dir()>/` (`mergewright/`): `load` turns what is on disk into a typed `Config` plus warnings.
+The config file under `${XDG_CONFIG_HOME:-~/.config}/<on_disk::DIR>/` (`mergewright/`) only; earlier folders are not read: `load` turns what is on disk into a typed `Config` plus warnings.
 - `Config` (struct) — the typed file: `[ui]`, `[graph]`, `[diff]`, `[radar]`, `[keys]`, `[theme]`; read once at startup.
 - `Loaded` (struct) — a load's result: the `Config`, its path and the warnings worth telling the user.
 - `keymap_from` (fn) — `(&Loaded) -> (Keymap, Vec<String>)`: the keymap and every config problem as words.
-## config::folder
-The config folder's one-time move from each earlier generation's folder (`graft/`, `tributary/`) to the current one, newest first, under a lock, before the first load reads it; an older folder meeting the new one takes the byte rule.
 ## config::keys
 `[keys]`: the suspend switch and the per-context remap sub-tables, read off the raw table.
 ## config::load
@@ -208,11 +206,6 @@ What a local branch has to push, read off its label: `RefLabel::ahead_of_upstrea
 Every branch the branch pane may name, sorted, built once per read (ease-pass/18): `RefBadges::branch_list()` — first entry per lane identity or local name, the tips hash; `identity_of_name`.
 ## refs::live
 Which live branch a name means (index built once per read): `RefBadges::live_branch(label)` — local, else remote shorthand, else `<remote>/<label>`; `None` if deleted. `RefBadges::remote_only()` — remotes no local tracks.
-## rename
-Where the app meets the one-time move to the new on-disk names: every repository is settled the moment it opens.
-- `open_settled` (fn) — opens a path with its names settled first.
-- `Settlement` (struct) — the move's outcome, kept for the store's life.
-- `words` (fn) — the status line for what the move could not finish; `None` on a clean move.
 ## repos
 The repository kept open for the run, lent to jobs one at a time: a handle is not `Send` and `AppState` must stay pure.
 - `RepoStore` (struct) — the shared open handle, its common dir, workdir and app folder, and `refresh`.

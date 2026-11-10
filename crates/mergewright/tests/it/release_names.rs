@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use mergewright_core::on_disk::Generation;
+use crate::old_names::EARLIER;
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -42,8 +42,8 @@ fn template_archives(template: &str) -> Vec<&str> {
 #[test]
 fn formula_template_names_the_table() {
     let template = read("packaging/homebrew/mergewright.rb.in");
-    let dir = Generation::CURRENT.dir();
-    let command = Generation::CURRENT.command();
+    let dir = mergewright_core::on_disk::DIR;
+    let command = mergewright_core::on_disk::COMMAND;
 
     let class = format!("class {} < Formula", class_name(dir));
     assert!(
@@ -98,8 +98,8 @@ fn formula_template_names_the_table() {
         .lines()
         .filter(|line| !line.trim_start().starts_with('#'))
         .collect();
-    for old in Generation::CURRENT.older() {
-        for name in [old.dir(), old.command(), old.title()] {
+    for old in &EARLIER {
+        for name in [old.dir, old.command, old.title] {
             let quoted = [format!("\"{name}"), format!("{name}-"), format!("/{name}")];
             for line in &code {
                 assert!(
@@ -126,7 +126,7 @@ fn readme_install() -> String {
 fn readme_install_lines_match_the_plan() {
     let plan = read("docs/release/plan.txt");
     let install = readme_install();
-    let dir = Generation::CURRENT.dir();
+    let dir = mergewright_core::on_disk::DIR;
 
     // The package dist announces (`  mergewright 0.1.0`) is the table's.
     let package = plan
@@ -168,19 +168,19 @@ fn readme_install_lines_match_the_plan() {
         install.contains("cargo install --locked --path crates/mergewright"),
         "README's Install keeps the checkout line"
     );
-    let command = Generation::CURRENT.command();
+    let command = mergewright_core::on_disk::COMMAND;
     assert!(
         install.contains(&format!("docs/man/{command}.1")),
         "README's Install names the man page `{command}.1`"
     );
 
-    for old in Generation::CURRENT.older() {
+    for old in &EARLIER {
         for line in [curl, brew] {
             assert!(
-                !line.contains(&format!("/{}", old.command()))
-                    && !line.contains(&format!("/{}", old.dir())),
+                !line.contains(&format!("/{}", old.command))
+                    && !line.contains(&format!("/{}", old.dir)),
                 "`{line}` names the earlier `{}`",
-                old.dir()
+                old.dir
             );
         }
     }

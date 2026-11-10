@@ -21,7 +21,7 @@ use mergewright_core::event::{KeyCode, MouseButton, MouseKind};
 use crate::app_harness::{App, git, git_as_mergewright};
 use crate::context_menu::{on_mains_row, settled};
 use crate::preview::{FORK_NOW, forked, frame_at, opened, rows_drawn};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 // ---------------------------------------------------------------------------
 // The name prompt, against git
@@ -44,7 +44,7 @@ fn head_ref(repo: &Path) -> String {
 /// that journals twice, or not at all, breaks `u` — and neither shows up in
 /// `for-each-ref`.
 fn journal(repo: &Path) -> Vec<mergewright_core::journal::JournalEntry> {
-    let path = repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.join(format!(".git/{DIR}/undo-journal.jsonl"));
     if !path.exists() {
         return Vec::new();
     }

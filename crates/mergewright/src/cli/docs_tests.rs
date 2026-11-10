@@ -13,7 +13,7 @@ use super::flags::FlagAction;
 use super::man::chord_text;
 use super::{CONFIG_KEYS, FLAGS, Invocation, man_page, parse, usage, version};
 use crate::config::{self, Config, KEYS_SUSPEND, SCHEMA};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 const MAN_PAGE: &str = include_str!("../../../../docs/man/mwr.1");
 const README: &str = include_str!("../../../../README.md");
@@ -69,11 +69,11 @@ fn committed_man_page_is_the_generated_one() {
 }
 
 /// The FILES and ENVIRONMENT paths name the folder the app uses today
-/// (`Generation::CURRENT`), never the old `graft/` one.
+/// (`on_disk::DIR`), never the old `graft/` one.
 #[test]
 fn man_page_names_the_config_folder_in_force() {
     let page = man_page(FLAGS, defaults(), CONFIG_KEYS);
-    let dir = CURRENT_DIR;
+    let dir = DIR;
     for path in [
         format!("$XDG_CONFIG_HOME/{dir}/config.toml"),
         format!("$XDG_CONFIG_HOME/{dir}/recent"),

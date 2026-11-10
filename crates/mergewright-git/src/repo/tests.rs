@@ -666,20 +666,6 @@ fn write_marker(common_dir: &Path) {
 }
 
 #[test]
-fn no_marker_reads_old_names_from_every_opener() {
-    let fixture = Fixture::with_two_commits();
-    let shared = SharedRepo::open(fixture.root()).expect("opens");
-    assert_eq!(shared.on_disk_names(), Generation::Graft);
-    assert_eq!(shared.handle().on_disk_names(), Generation::Graft);
-    assert_eq!(
-        shared.handle_with_object_cache(0).on_disk_names(),
-        Generation::Graft
-    );
-    let handle = RepoHandle::open(fixture.root()).expect("opens");
-    assert_eq!(handle.on_disk_names(), Generation::Graft);
-}
-
-#[test]
 fn the_marker_in_the_common_dir_reads_new_names_in_every_worktree() {
     let fixture = Fixture::with_two_commits();
     fixture.git(&["worktree", "add", "-b", "side", "linked"]);
@@ -707,17 +693,4 @@ fn the_marker_in_the_common_dir_reads_new_names_in_every_worktree() {
             path.display()
         );
     }
-}
-
-#[test]
-fn a_marker_in_a_linked_worktrees_own_dir_does_not_count() {
-    // The marker is per repository: refs are shared, so one worktree's
-    // private dir cannot switch the names (ADR-0057, Amendment §1).
-    let fixture = Fixture::with_two_commits();
-    fixture.git(&["worktree", "add", "-b", "side", "linked"]);
-    let linked = RepoHandle::open(&fixture.root().join("linked")).expect("opens");
-    write_marker(linked.git_dir());
-
-    let reopened = RepoHandle::open(&fixture.root().join("linked")).expect("opens");
-    assert_eq!(reopened.on_disk_names(), Generation::Graft);
 }

@@ -5,9 +5,9 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use mergewright_core::on_disk::Generation;
+use crate::old_names::EARLIER;
 
-use crate::rename_opens::crates_dir;
+use crate::source_files::crates_dir;
 
 /// Every file under `dir`, recursively. A missing `dir` fails the test, so
 /// a moved folder never leaves a guard reading nothing.
@@ -36,8 +36,8 @@ fn read_text(file: &Path) -> Option<String> {
 /// `text` starts with an earlier generation's command as a whole word
 /// (`graft`, `trib`), not a longer name such as `mergewright-fixtures`.
 fn names_old_binary(text: &str) -> bool {
-    Generation::CURRENT.older().any(|earlier| {
-        text.strip_prefix(earlier.command()).is_some_and(|rest| {
+    EARLIER.iter().any(|earlier| {
+        text.strip_prefix(earlier.command).is_some_and(|rest| {
             !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_' || c == '-')
         })
     })
@@ -55,8 +55,8 @@ fn names_old_segment(line: &str) -> bool {
                     .map(str::trim_start)
                     .and_then(|rest| rest.strip_prefix(quote))
                     .is_some_and(|name| {
-                        Generation::CURRENT.older().any(|earlier| {
-                            name.strip_prefix(earlier.command())
+                        EARLIER.iter().any(|earlier| {
+                            name.strip_prefix(earlier.command)
                                 .is_some_and(|end| end.starts_with(quote))
                         })
                     })
@@ -67,8 +67,8 @@ fn names_old_segment(line: &str) -> bool {
 
 #[test]
 fn the_segment_test_reads_joined_paths() {
-    let old = Generation::Graft.command();
-    let now = Generation::CURRENT.command();
+    let old = EARLIER[0].command;
+    let now = mergewright_core::on_disk::COMMAND;
     assert!(names_old_segment(&format!(
         r#"os.path.join(r, "target", "release", "{old}")"#
     )));
@@ -136,9 +136,9 @@ fn no_old_env_name() {
         .iter()
         .flat_map(|file| {
             let bytes = fs::read(file).unwrap_or_else(|e| panic!("{} reads: {e}", file.display()));
-            Generation::CURRENT
-                .older()
-                .map(Generation::env_prefix)
+            EARLIER
+                .iter()
+                .map(|earlier| earlier.env_prefix)
                 .filter(|old| bytes.windows(old.len()).any(|w| w == old.as_bytes()))
                 .map(|old| format!("{} ({old})", file.display()))
                 .collect::<Vec<_>>()
@@ -219,7 +219,7 @@ fn no_old_package_spec() {
         files.push(path);
     }
     // Built at run time so this file does not match itself.
-    let pkg = Generation::Graft.dir();
+    let pkg = EARLIER[0].dir;
     let whole = [
         format!("-p {pkg}"),
         format!("-p{pkg}"),

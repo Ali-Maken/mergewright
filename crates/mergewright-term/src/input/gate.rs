@@ -130,7 +130,7 @@ impl Gate {
             // the first one after resume stays in the buffer a moment longer.
             eprintln!(
                 "{}: could not wake the input reader: {error}",
-                mergewright_core::on_disk::Generation::CURRENT.command()
+                mergewright_core::on_disk::COMMAND
             );
         }
     }

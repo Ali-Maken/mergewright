@@ -370,6 +370,3 @@ fn copy_everything(repo: &RepoHandle) -> Result<Copied, MigrateError> {
         command,
     })
 }
-
-#[cfg(test)]
-mod tests;

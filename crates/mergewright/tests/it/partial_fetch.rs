@@ -20,7 +20,7 @@ use mergewright_fixtures::remote::{HungRemote, LocalRemote};
 use crate::app_harness::App;
 use crate::captures::{check_shot, frame};
 use crate::remote_by_key::{finish, local, plain, ready, run};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// The second remote, which is not there: a fixed path, so the failure's
 /// words are the same on every machine.
@@ -31,12 +31,10 @@ fn tracking(remote: &LocalRemote) -> String {
 }
 
 fn journal(repo: &std::path::Path) -> Vec<JournalEntry> {
-    mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal the writes made is readable")
-    .entries()
-    .to_vec()
+    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal the writes made is readable")
+        .entries()
+        .to_vec()
 }
 
 /// The status line's words, whatever its kind.

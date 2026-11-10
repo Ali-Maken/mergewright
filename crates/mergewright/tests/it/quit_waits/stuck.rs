@@ -30,7 +30,7 @@ use mergewright_ops::apply::StoppedAt;
 use super::{assert_no_cancel, merging, press};
 use crate::app_harness::{App, git};
 use crate::preview::{forked, on_main, opened};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// Fails when the walk took more keys than the note's fence allows for `id`.
 fn within_the_note(id: &str, keys: usize) {
@@ -107,12 +107,10 @@ pub(super) fn locks(dir: &Path) -> Vec<PathBuf> {
 }
 
 pub(super) fn entries(repo: &Path) -> Vec<JournalEntry> {
-    mergewright_ops::journal::Journal::open(
-        &repo.join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal is readable")
-    .entries()
-    .to_vec()
+    mergewright_ops::journal::Journal::open(&repo.join(format!(".git/{DIR}/undo-journal.jsonl")))
+        .expect("the journal is readable")
+        .entries()
+        .to_vec()
 }
 
 /// `q y` → waiting; the clock calls the wait long; `q` → the stop box;

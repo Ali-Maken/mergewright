@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use mergewright_core::on_disk;
 
-use crate::rename_opens::{crates_dir, production_files};
+use crate::source_files::{crates_dir, production_files};
 
 /// The package is the current generation's dir name and the binary its
 /// command: `mergewright` and `mwr` (49).

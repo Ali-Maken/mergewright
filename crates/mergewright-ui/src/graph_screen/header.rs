@@ -15,9 +15,8 @@ use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
 /// The product's name, said where the app names itself (the empty state, the
-/// status screen) and never in a repository's header. Read from the names
-/// table, so a rename is a flip of `Generation::CURRENT` (ADR-0057).
-pub const APP_NAME: &str = mergewright_core::on_disk::Generation::CURRENT.title();
+/// status screen) and never in a repository's header. Read from `on_disk::TITLE` (ADR-0057).
+pub const APP_NAME: &str = mergewright_core::on_disk::TITLE;
 
 /// Everything the header row says, as plain text the caller has already
 /// sanitised.
