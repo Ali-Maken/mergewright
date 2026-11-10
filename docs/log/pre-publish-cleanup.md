@@ -11,3 +11,5 @@ One line per helper, ending with its tool count (harness figure).
 - user 2026-10-25 U1: drop old-name folder code ("code contains nothing but current state of code") → ticket 11b after 11.
 - debugger 02 fork-rows flake: cause = fixture git left auto-maintenance on (fixtures/src/git.rs:293); fixed 726db948, merged. before 3/300 → after 0/300; red test 3/3. 06h same cause unproven (open); ~90 bare-git test sites exposed · 35 tools · skills: diagnosing-bugs.
 - conductor gates on main after 02: fmt/clippy/heavy/doc ok; fast 6845/6845 697 s (beside debugger 03 — not valid timing); walks 463/0 240 s.
+- debugger 03 100k-unicode: (a) harness read rows after undrawn keys (readings.rs, turn.rs:156) fixed, red test; (b) real blank frames on E-cores remain 30/30, before-19 also 30/30 → 19 not cause; box 5 unticked, stop → user ruling (verdict.rs:62 vs query.rs:214-216). Merged ba0e05eb. Gap ease/19 stays open, BROKEN · 92 tools · skills: diagnosing-bugs.
+- conductor gates on main after 03: all ok; fast 6845/6845 538 s (over 360 s budget, gap ease/28); walks 463/0 181.5 s.
