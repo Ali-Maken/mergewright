@@ -39,7 +39,8 @@ pub(super) struct Run {
     pub(super) latencies: Vec<Duration>,
     /// Per key, in [`keys`] order: where its latency went.
     pub(super) breakdown: Vec<String>,
-    /// Keys whose own frame lacked the cursor's row or part of the viewport.
+    /// Keys whose turn's frame lacked the cursor's row or part of the
+    /// viewport: per drawn frame, the newest key it showed.
     pub(super) waited: Vec<String>,
     /// Kitty graphics commands written (`ESC _ G`): images at the pixel tier.
     pub(super) kitty_commands: usize,

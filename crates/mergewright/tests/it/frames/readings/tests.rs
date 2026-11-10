@@ -1,17 +1,26 @@
-//! `Paced`'s readings with no fixture and no loop: which wakes nothing asked
-//! for (ADR-0065 D1), and what a batched key's latency reads.
+//! `Paced`'s readings with no loop: which wakes nothing asked for (ADR-0065
+//! D1), what a batched key's latency reads, and (on a small fixture) where
+//! rows on hand are read.
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use mergewright_core::event::KeyCode;
+use mergewright::event_loop::Wake;
+use mergewright::history::HistoryUpdate;
+use mergewright::jobs::{Dispatch, JobRunner, Shutdown};
+use mergewright::update::{AppEvent, AppState, Progress, update};
+use mergewright_core::capabilities::RenderingTier;
+use mergewright_core::event::{Event, KeyCode, KeyPress};
 use mergewright_core::job::JobId;
+use mergewright_fixtures::synthetic::{self, Scale};
 
 use super::super::paced::{Handed, Kind, Paced, Watching};
+use super::super::run::ready_to_scroll_at;
 use super::super::sink::Sink;
 use super::super::unasked::{Ask, AskedFrom, Role, unasked};
+use super::super::{PATIENCE, Refs};
 use super::LAID_OUT;
-use crate::frame_trace::{KeyFeed, Posted};
+use crate::frame_trace::{KeyFeed, Post, Posted};
 
 const WINDOW: &str = "Progress::History::Window";
 
@@ -172,4 +181,148 @@ fn a_batched_key_reads_its_batch_frame() {
         ]
     );
     feed.finish().expect("the input thread ends");
+}
+
+/// Opens a small fixture at a 12-row terminal and takes every wake until the
+/// walk has said `LaidOut`, as at key 262 of the 100k scroll: history laid
+/// out, the worker answering windows only.
+fn laid_out_small() -> (
+    JobRunner<Post>,
+    mpsc::Receiver<Posted>,
+    mpsc::Sender<Posted>,
+    AppState,
+) {
+    let repo = synthetic::borrow(Scale::of(2_000).with_commit_graph())
+        .unwrap_or_else(|why| panic!("{why}"));
+    let (post, events) = mpsc::channel::<Posted>();
+    let (jobs, mut state, _) = ready_to_scroll_at(
+        &repo,
+        RenderingTier::Unicode,
+        Refs::Fixture,
+        Post(post.clone()),
+        &events,
+        (80, 12),
+    )
+    .unwrap_or_else(|why| panic!("{why}"));
+    while state.history.as_ref().is_none_or(|h| h.laid_out.is_none()) {
+        let posted = events
+            .recv_timeout(PATIENCE)
+            .unwrap_or_else(|why| panic!("waiting for `LaidOut`: {why}"));
+        let Wake::Event(event) = posted.wake else {
+            panic!("a wake no job sends");
+        };
+        let (next, commands) = update(&state, event);
+        state = next;
+        for command in commands {
+            jobs.dispatch(command);
+        }
+    }
+    (jobs, events, post, state)
+}
+
+/// `PageDown` from `state` until a key's viewport is off the rows on hand,
+/// sending each key's `ShowRows`: the keys pressed, the state after the last,
+/// and the window answering its newest request, as the worker sent it.
+fn page_down_past_the_rows(
+    jobs: &JobRunner<Post>,
+    events: &mpsc::Receiver<Posted>,
+    mut state: AppState,
+) -> (Vec<AppEvent>, AppEvent) {
+    let press = AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::PageDown)));
+    let mut pressed = Vec::new();
+    loop {
+        assert!(
+            pressed.len() < 40,
+            "40 pages and the rows were still on hand"
+        );
+        let (next, commands) = update(&state, press.clone());
+        state = next;
+        pressed.push(press.clone());
+        for command in commands {
+            jobs.dispatch(command);
+        }
+        let height = state.graph_rows();
+        let history = state.history.as_ref().expect("a walk");
+        if history.visible(height).len() < height {
+            break;
+        }
+    }
+    let newest = state.history.as_ref().expect("a walk").asked;
+    loop {
+        let posted = events
+            .recv_timeout(PATIENCE)
+            .unwrap_or_else(|why| panic!("waiting for window {newest}: {why}"));
+        let Wake::Event(event) = posted.wake else {
+            continue;
+        };
+        if let AppEvent::Progress(_, Progress::History(HistoryUpdate::Window(window))) = &event
+            && window.request == newest
+        {
+            return (pressed, event);
+        }
+    }
+}
+
+/// Rows on hand are read where a frame was drawn: at the end of each turn.
+/// A key that joined its window's turn (m7-power-tools/43) was never drawn
+/// without its rows — the turn's one frame had them — so it is not named;
+/// the same key drawn on its own, before the window, is. Pumps a 2,000-commit
+/// fixture to `LaidOut`; no timing in it: the turns are written by hand.
+#[test]
+fn rows_on_hand_are_read_at_the_frame_each_turn_drew() {
+    let (jobs, events, _post, initial) = laid_out_small();
+    let (pressed, window) = page_down_past_the_rows(&jobs, &events, initial.clone());
+    let last = pressed.len() - 1;
+
+    let (feed_post, feed_events) = mpsc::channel::<Posted>();
+    let feed = KeyFeed::start(Vec::new(), feed_post).expect("an input thread with no keys");
+    let watching = Watching::new(&(), Vec::new());
+    let keys = vec![(KeyCode::PageDown, Duration::ZERO); pressed.len()];
+    let mut wakes = Paced::new(
+        &feed_events,
+        keys,
+        &watching,
+        Sink::timed(false),
+        feed.log(),
+    );
+    let drawn = Some(Instant::now());
+    let turns = |last_drawn: bool| {
+        let mut handed: Vec<Handed> = (0..pressed.len())
+            .map(|index| {
+                let mut handed = key(index);
+                handed.marks[3] = if index < last || last_drawn {
+                    drawn
+                } else {
+                    None
+                };
+                handed
+            })
+            .collect();
+        let mut answer = wake(Kind::Window(0), WINDOW, None);
+        answer.marks[3] = drawn;
+        handed.push(answer);
+        handed
+    };
+    wakes.replay = pressed.iter().cloned().chain([window]).collect();
+
+    // The last key and its window in one turn: one frame, with the rows.
+    wakes.handed = turns(false);
+    assert_eq!(wakes.waited(initial.clone()), Vec::<String>::new());
+
+    // The last key drawn on its own: a frame with none of its rows.
+    wakes.handed = turns(true);
+    let waited = wakes.waited(initial);
+    assert_eq!(waited.len(), 1, "{waited:?}");
+    assert!(
+        waited[0].starts_with(&format!("key {last} (PageDown)")),
+        "{waited:?}"
+    );
+
+    feed.finish().expect("the input thread ends");
+    let shutdown = jobs.shutdown(
+        Duration::from_secs(10),
+        mergewright::jobs::EXIT_WRITE_WAIT,
+        &(),
+    );
+    assert_eq!(shutdown, Shutdown::CLEAN, "the job pool stops cleanly");
 }

@@ -278,18 +278,30 @@ impl<D> Paced<'_, D> {
             .collect()
     }
 
-    /// The keys whose own frame was drawn before their rows arrived: replays every
-    /// wake through `update` from the state the loop started with, and after
-    /// each key checks that the cursor's row and the whole viewport were
-    /// already on hand. `update` is pure, so this is the state each key's
-    /// frame was drawn from. The text tiers draw exactly those rows; the
-    /// pixel tier's strips widen them (`History::drawn`), not checked here.
+    /// The keys whose frame was drawn before their rows arrived: replays every
+    /// wake through `update` from the state the loop started with, and at
+    /// the end of each turn that applied a key checks that the cursor's row
+    /// and the whole viewport were on hand. `update` is pure, so this is the
+    /// state the turn's one frame was drawn from. A key that joined a later
+    /// wake's turn (m7-power-tools/43, `event_loop/running/turn.rs`) was
+    /// never drawn on its own: the turn's frame showed it, and the turn's
+    /// last key is the one named. The text tiers draw exactly those rows;
+    /// the pixel tier's strips widen them (`History::drawn`), not checked
+    /// here.
     pub(super) fn waited(&self, mut state: AppState) -> Vec<String> {
         let keys = &self.keys;
         let mut waited = Vec::new();
+        // The newest key applied in the turn not yet drawn.
+        let mut shown = None;
         for (handed, event) in self.handed.iter().zip(&self.replay) {
             state = update(&state, event.clone()).0;
-            let Kind::Key(key, _) = handed.kind else {
+            if let Kind::Key(key, _) = handed.kind {
+                shown = Some(key);
+            }
+            if handed.drawn_at().is_none() {
+                continue;
+            }
+            let Some(key) = shown.take() else {
                 continue;
             };
             let height = state.graph_rows();
