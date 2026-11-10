@@ -338,13 +338,7 @@ fn a_link_without_a_kind_reads_as_step() {
     let written = repo.git(&["log", "-1", "--format=%B", &name]);
     assert_eq!(
         written.lines().last(),
-        Some(
-            format!(
-                "{} step",
-                mergewright_core::on_disk::Generation::CURRENT.link_trailer()
-            )
-            .as_str()
-        ),
+        Some(format!("{} step", mergewright_core::on_disk::LINK_TRAILER).as_str()),
         "{written}"
     );
 

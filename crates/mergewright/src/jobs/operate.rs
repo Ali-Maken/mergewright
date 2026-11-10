@@ -17,7 +17,7 @@ use mergewright_ops::apply::{
 use mergewright_ops::journal::{Journal, journal_path};
 use mergewright_ops::operation::Operation;
 
-use mergewright_core::{job::JobId, on_disk::Generation};
+use mergewright_core::job::JobId;
 
 use super::Cancel;
 use crate::repos::RepoStore;
@@ -401,7 +401,7 @@ fn in_context(
         Ok(path) => path,
         Err(error) => return nothing_ran(&error),
     };
-    let mut journal = match Journal::open_as(&path, Generation::CURRENT) {
+    let mut journal = match Journal::open(&path) {
         Ok(journal) => journal,
         Err(error) => return nothing_ran(&error),
     };

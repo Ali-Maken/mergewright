@@ -672,11 +672,8 @@ fn migrate_row_words() {
     let mut migrate = entry(
         2,
         OperationKind::Migrate,
-        &mergewright_ops::rename::description(
-            mergewright_core::on_disk::Generation::CURRENT,
-            3,
-            12,
-        ),
+        // The words a move's line stored (journal lines are read as written).
+        "rename to Mergewright (3 refs, 12 files)",
     );
     migrate.touches.index = false;
     migrate.index_before = None;

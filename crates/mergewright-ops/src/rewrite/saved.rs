@@ -90,11 +90,10 @@ impl SavedPlan {
     }
 }
 
-/// Where every rewrite's plan lives: `<git_dir>/<dir>/rewrite`, `<dir>` the
-/// repository's names in force (ADR-0057, Amendment §4).
+/// Where every rewrite's plan lives: `<git_dir>/<DIR>/rewrite`.
 pub(crate) fn root(repo: &RepoHandle) -> PathBuf {
     repo.git_dir()
-        .join(repo.on_disk_names().dir())
+        .join(mergewright_core::on_disk::DIR)
         .join("rewrite")
 }
 

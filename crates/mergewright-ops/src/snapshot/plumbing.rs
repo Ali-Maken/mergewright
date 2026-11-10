@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::IndexState;
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -201,10 +201,10 @@ pub(super) fn mktree(
 /// The author and committer every backup commit carries: the app, not the
 /// user, so a backup never passes for the user's own work. Nothing reads it
 /// back; it is only what `git log` shows on a backup ref.
-/// The current generation's dir (ADR-0057, 2026-10-11 §1).
-pub const BACKUP_AUTHOR_NAME: &str = Generation::CURRENT.dir();
+/// [`on_disk::DIR`].
+pub const BACKUP_AUTHOR_NAME: &str = on_disk::DIR;
 /// See [`BACKUP_AUTHOR_NAME`]: `<dir>@backup`.
-pub const BACKUP_AUTHOR_EMAIL: &str = Generation::CURRENT.backup_email();
+pub const BACKUP_AUTHOR_EMAIL: &str = on_disk::BACKUP_EMAIL;
 
 pub(super) fn commit_tree(
     repo: &RepoHandle,

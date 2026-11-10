@@ -4,7 +4,7 @@
 
 use mergewright_core::journal::{IndexState, JournalEntry};
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk::LINK_TRAILER;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, Stop};
 
@@ -31,11 +31,9 @@ pub enum LinkKind {
 }
 
 impl LinkKind {
-    /// The line a new link is written with. Always the new key, whatever
-    /// names the repository is using: the reader takes both, forever, so
-    /// nothing depends on which one a commit carries (ADR-0057, Amendment).
+    /// The line a new link is written with, keyed [`LINK_TRAILER`].
     pub(super) fn trailer(self) -> String {
-        let key = Generation::CURRENT.link_trailer();
+        let key = LINK_TRAILER;
         match self {
             LinkKind::Step => format!("{key} step"),
             LinkKind::Resume => format!("{key} resume"),
@@ -249,17 +247,14 @@ fn parent_and_link(
 }
 
 /// The kind a backup commit's message records: its last non-empty line, when
-/// that is any generation's `<Title>-Link:` line (every key, whatever names
-/// are in force: backup commits are immutable); [`LinkKind::Step`]
+/// that is a [`LINK_TRAILER`] line; [`LinkKind::Step`]
 /// when there is none (a link written before the kind was, or the
 /// pre-operation snapshot).
 pub(super) fn link_of(commit: Oid, message: &str) -> Result<LinkKind, SnapshotError> {
     let last = message.lines().rev().find(|line| !line.trim().is_empty());
-    let Some((line, value)) = last.and_then(|line| {
-        Generation::of_trailer(line)
-            .and_then(|written| line.strip_prefix(written.link_trailer()))
-            .map(|value| (line, value))
-    }) else {
+    let Some((line, value)) =
+        last.and_then(|line| line.strip_prefix(LINK_TRAILER).map(|value| (line, value)))
+    else {
         return Ok(LinkKind::Step);
     };
     match value.trim() {

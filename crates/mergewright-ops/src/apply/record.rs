@@ -463,10 +463,10 @@ pub(super) fn put_back_for(op: &Operation) -> Option<PutBack> {
     Some(PutBack { stash, why })
 }
 
-/// The backup ref this context's entry `id` is kept under, in the
-/// repository's names in force — the same name `snapshot::take` writes.
+/// The backup ref this context's entry `id` is kept under — the same name
+/// `snapshot::take` writes.
 fn backup_name(ctx: &Context<'_>, id: &EntryId) -> String {
-    snapshot::backup_ref_name(ctx.repo.on_disk_names(), &ctx.worktree, id)
+    snapshot::backup_ref_name(&ctx.worktree, id)
 }
 
 /// The kind as it reads in a backup commit's message — and, in the app,

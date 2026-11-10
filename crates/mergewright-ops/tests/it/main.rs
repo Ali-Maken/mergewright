@@ -31,7 +31,6 @@ mod history_ops;
 mod in_the_way;
 mod journal_fate;
 mod journal_list_oracle;
-mod journal_names;
 mod journal_tie;
 mod journal_two_writers;
 mod journal_unmapped;
@@ -61,7 +60,6 @@ mod rewrite_preview;
 mod rewrite_run;
 mod set_aside;
 #[cfg(unix)]
-mod set_aside_generations;
 #[cfg(unix)]
 mod set_aside_kill;
 mod shell_begun_merge;

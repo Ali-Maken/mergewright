@@ -1,8 +1,8 @@
 # pre-publish: ops forgets earlier names (the move, the journal ref mapping and the old-tag readers go)
 
-Status: draft (amended twice 2026-11-10: after 11b2, names in force are always `CURRENT` and the move tests are gone. Pass 3: the D3 fence is a parity test, not "writes nothing")
+Status: done (fast/walk box left for the conductor)
 Blocked by: 11b2
-Runs: alone (it changes pub ops signatures and updates their app call sites). **Continue on branch `ppc-11b3`** (worktree `/Users/devuser/dev/sandbox/gitter/.claude/worktrees/ppc-11b3`, commit c9ce6cea). Read the NOTES in the worktree's copy of this ticket first.
+Runs: alone (it changes pub ops signatures and updates their app call sites). **Continue on branch `ppc-11b3`** (worktree `<home>/dev/sandbox/gitter/.claude/worktrees/ppc-11b3`, commit c9ce6cea). Read the NOTES in the worktree's copy of this ticket first.
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: the one behavioural risk (journals in his repos) is fenced by a parity test pinned before the change. The rest is deletion and ports that, after 11b2, are behaviour-neutral.
 Needs: 11b1's `on_disk` consts and predicates; 11b2's `names_in_force` → `CURRENT`.
 Crate set: `mergewright-ops` (src, tests). Plus the **call sites only** in `mergewright` of the ops signatures changed below.
@@ -76,11 +76,11 @@ pub fn practice_prefix() -> String;                           // was (Generation
 ```
 
 ## Acceptance (tick each with its test, inline)
-- [ ] Parity test green on the code before the change; its commit hash in NOTES ← `journal_unmapped::ref_gone_entry_undoes_as_today`, `pruned_entry_fails_as_today`
-- [ ] The same tests green after the change, with expected values unchanged ← same tests; `git diff <parity commit> -- crates/mergewright-ops/tests/it/journal_unmapped.rs` empty
-- [ ] A `migrate` entry still parses and `u` passes over it ← existing undo test by name (grep `Migrate` in ops tests; if none, add `journal_keeps_migrate_entries`)
-- [ ] Fresh repos still write under the current names ← `fresh_repo_names::journal_and_backups_use_current_names` (11b2's)
-- [ ] No `Generation`, `on_disk_names`, `settle_names` or `map_entr` left in ops ← `git grep -n -E 'Generation|on_disk_names|settle_names|map_entr' -- crates/mergewright-ops` quoted, empty
+- [x] Parity test green on the code before the change; its commit hash in NOTES ← `journal_unmapped::ref_gone_entry_undoes_as_today`, `pruned_entry_fails_as_today` (green at 9f228db0, before any port)
+- [x] The same tests green after the change, with expected values unchanged ← same tests, green in the final fast run; `git diff 9f228db0 -- crates/mergewright-ops/tests/it/journal_unmapped.rs` empty
+- [x] A `migrate` entry still parses and `u` passes over it ← `journal::tests::migrate_is_transparent_to_undo` (ops; `undoable_kind` false, `u` passes over it); parsing a stored migrate line: app `view::journal::tests::an_old_migrate_row_keeps_its_target`, and `migrate_row_words` (now uses the stored literal)
+- [x] Fresh repos still write under the current names ← `fresh_repo_names::journal_and_backups_use_current_names` (11b2's), green, unedited
+- [x] No `Generation`, `on_disk_names`, `settle_names` or `map_entr` left in ops ← `git grep -n -E 'Generation|on_disk_names|settle_names|map_entr' -- crates/mergewright-ops` → no output, exit 1
 - [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
 
 ## Touches (check each, say how)
@@ -98,3 +98,13 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`.
 
 ## Size
 ~50k tokens remaining: the parity test (exists, red → pin), the `rename` src deleted (cheap), ~13 files ported.
+
+## NOTES (builder, pass 3, 2026-11-10)
+- Parity commit **9f228db0**. Observed values pinned: case 1 (Stage, ref gone) `Ok`, index back to HEAD's and `a.rs` kept; case 2 (Discard, gc-pruned) `Err(UndoError::Restore(FailedPartway))`, words contain "fatal: bad object", "rolled back part-way", "U restores the backup"; journal gains 2 lines (pending undo, then `aborted` for the same id); +1 ref under `REF_PREFIX`.
+- D1: `src/rename*` deleted. Pre-delete grep `rename::|LOCK_FILE|KEPT_ASIDE|OldNamesHold|MigrateError|SettleOutcome|Settled` outside rename: only map_entries callers (ported) and app `view/journal/tests.rs` `rename::description` (now the stored literal). No other taker of `LOCK_FILE`.
+- D3: `Journal::open_as` and `journal_path_in` removed (app: `jobs/operate.rs`, `jobs/undo.rs` → `Journal::open`). Mapping calls gone from `apply/restart.rs`, `conflict/set.rs`, `tour.rs`.
+- D4: consts in record/snapshot/chain/plumbing/raw/temp_index/saved/tour/build. `LinkKind` reads only `LINK_TRAILER`. `apply/fetched.rs` uses `Own::is_ref` (was `RefName::is_mergewright_internal`, every prefix).
+- Cost: practice-repo removal accepts only `mergewright-practice-`; his older practice folders stay in the temp dir until the OS clears them. A backup commit with an older link key now reads as `Step`.
+- Tests removed (subject: earlier names): `journal_names.rs`, `set_aside_generations.rs`, tour `removal_accepts_every_earlier_generations_folder`, snapshot `every_generations_trailer_reads` → `the_trailer_reads`; `aborted_fetch::old_prefix_ref_not_fetched` → `own_prefix_ref_not_fetched` (old-prefix half dropped). `TempRepo::init_on` folded into `init`.
+- over_400: two rows removed, six lowered, none raised.
+- Gates in the worktree: fmt, clippy -D warnings, heavy clippy, doc tests clean; nextest 3146 run / 0 failed (after fixing a home path in this ticket's line 5 copied from main); walks `SUMMARY walks tests=459 failed=0`.

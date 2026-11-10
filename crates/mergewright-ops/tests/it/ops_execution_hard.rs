@@ -793,7 +793,7 @@ fn a_linked_worktree_keeps_its_own_journal_and_namespaced_backup_refs() {
         Some(
             format!(
                 "{}backup/linked/{}",
-                mergewright_core::on_disk::Generation::CURRENT.ref_prefix(),
+                mergewright_core::on_disk::REF_PREFIX,
                 entry.id
             )
             .as_str()

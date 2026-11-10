@@ -136,14 +136,12 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `PointInTime` (struct) — `head`, `refs`, `index`, `worktree`.
 - `state_at` (fn) — ADR-0031's query: the tracked state at an entry, from the journal alone.
 - `Journal` (struct) — the open journal file and its entries; `open` (cuts a torn tail, only with the journal alone), `path`, `entries`, `torn_tail`, `append_pending`, `append_outcome`.
-- `Journal::open_as` (fn) — `open`, then every entry's ref names read under `names`; the bytes never rewritten.
 - `Journal::unresolved` (fn) — entries with no outcome line: a process that died between the two.
 - `Journal::hold_commands` (fn) — keep a stopped operation's command lines on the held entry until its outcome line.
 - `Journal::mark_interrupted` (fn) — close a `Pending` entry as interrupted, recording the state read now.
 - `Journal::claim` (fn) — take the writer's shared lock (`flock` on the journal file) and re-read; `append_pending` and `resume` take it; held until drop.
 - `Journal::alone` / `Alone` (fn, struct) — the journal held exclusively and re-read (a torn tail cut), or `None` while a writer holds it: recovery's gate; `StillWriting` when asked of a `Journal` holding the writer's lock.
 - `journal_path` (fn) — `git rev-parse --git-path <dir>/undo-journal.jsonl`: per worktree (ADR-0010).
-- `journal_path_in` (fn) — `journal_path` under names given rather than the handle's.
 
 ## journal_list
 - `RECORDS_CAP`, `LOST_CAP`, `PAIR_WINDOW_SECS`, `BACK_LIMIT` (consts) — 2000, 500, 2, 100: the list's read bounds.
@@ -313,17 +311,6 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `plan_as_run` (fn) — `(repo, git, op, facts, stop) -> (Operation, PreviewPlan)`: the op as `y` will run it, and its picture.
 - `plan_revert_to` (fn) — `(entries, target)`: the time machine's picture, from the same `InversePlan`s `revert_to` runs.
 
-## rename
-- `settle_names` (fn) — `(&RepoHandle) -> Settled`: moves the names in force to `CURRENT`'s; marker `switched <source dir>`; scratch (newer than the source, no marker) removed; one stray pass over the rest; every open.
-- `Settled` (struct) — `names` in force, `outcome`, `hold: Option<OldNamesHold>`.
-- `SettleOutcome` (enum) — `Done`, `Migrated`, `CleanedUp`, `OlderWrote`, `KeptOld(MigrateError)`, `LeftOld(MigrateError)`.
-- `KEPT_ASIDE_DIR` (const) — `"older-version"`: where differing strays are kept — files at `<common>/<current>/older-version/<n>/<path>`, refs at `refs/<current>/older-version/<n>/<generation dir>/<rest>`.
-- `OldNamesHold` (struct) — a shared lock a run on the old names keeps for its life.
-- `MigrateError` (enum) — `Busy` (`another <CURRENT.title()> window is open on this repository`; any generation's lock held), `Refs`, `Files`, `ReadBack`; `Display` is the status row's words.
-- `LOCK_FILE` (const) — `"lock"`; the move takes `CURRENT`'s and each earlier marker generation's (made if missing), and removes the earlier ones' only after releasing them.
-- `map_ref` / `map_entry` / `map_entries` (fn) — `(…, in_force: Generation)`: a journal's ref names from every generation older than `in_force` read under `in_force`'s prefix; newer ones as written.
-- `description(to, refs, files)` (fn) — the `Migrate` entry's words, `rename to <to.title()> (N refs, M files)`; stored in the entry at write.
-
 ## restore
 - `RestoreError` (enum) — `RefMoved`, `StashGone`, `Run`, `Facts`, `Snapshot`, `Journal`, `AfterState`, `Cancelled`, `MergeState`, `WriteRaw { path, source, tried }`, …; `explain`.
 - `restore_stages` (fn) — one path's recorded stages put back, nothing else; only `d` calls it, inside its own operation.
@@ -354,17 +341,17 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `scope` (fn) — `Full` whenever the operation touches the index or the working tree.
 - `Snapshot` (struct) — `index: IndexState`, `worktree_tree`, `worktree_raw`, `commit`.
 - `index_state` (fn) — the staged state as a tree, from a copy of the index: `Merged`, or the stage tree when unmerged.
-- `LinkKind` (enum) — `Step` or `Resume`, the backup commit's last line `<CURRENT title>-Link: step|resume`; every generation's key read; no line reads as `Step`.
+- `LinkKind` (enum) — `Step` or `Resume`, the backup commit's last line `on_disk::LINK_TRAILER step|resume`; only that key reads; no line reads as `Step`.
 - `StageEntry` (struct) / `stage_entries` (fn) — one path's `(mode, oid, stage)` triples in an `IndexState`, in stage order.
 - `recorded_index_state` (fn) — the `IndexState` a backup commit records, from its subtree name; `None` past the backups.
 - `backup_chain` (fn) — a backup ref's recorded states with their `LinkKind`, newest first.
 - `current_step_chain` (fn) — `backup_chain` cut at the first `Resume` link: the current step only.
 - `index_paths_changed` (fn) — `(repo, from, to, stop, commands)`: paths whose index entries differ between two recorded states.
 - `worktree_tree` (fn) — tracked and untracked working-tree content as one tree, from the index copy.
-- `BACKUP_AUTHOR_NAME` / `BACKUP_AUTHOR_EMAIL` (consts) — `Generation::CURRENT.dir()` / `.backup_email()`: author and committer of every backup commit.
+- `BACKUP_AUTHOR_NAME` / `BACKUP_AUTHOR_EMAIL` (consts) — `on_disk::DIR` / `on_disk::BACKUP_EMAIL`: author and committer of every backup commit.
 - `raw_record` (fn) — the bytes git would not give back, as a `raw/` tree (ADR-0052). Kept public for an example; forbidden to app.
 - `take` (fn) — a full backup commit: index and worktree trees, `raw/`, parents. Kept public for an example and a test; forbidden to app.
-- `backup_ref_name` (fn) — `(Generation, worktree, id)` → `<ref_prefix>backup/<worktree>/<ulid>`.
+- `backup_ref_name` (fn) — `(worktree, id)` → `<on_disk::REF_PREFIX>backup/<worktree>/<ulid>`.
 - `SnapshotError` (enum) — `Run`, `Io`, `Read`, `NotAnOid`, `UnknownLink { commit, printed }` (a link value this build does not know), `CheckOut`, `Stopped`, …
 
 ## submodule
@@ -382,7 +369,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 ## tour
 - `PracticeRepo` (struct) — only `build_practice_repo` makes one; `root()`, `work()` (what the app opens).
 - `PRACTICE_MARKER` (const) — `.practice`.
-- `practice_prefix(Generation)` (fn) — `<dir>-practice-`; new roots use CURRENT (`mergewright-practice-`), removal accepts every generation's.
+- `practice_prefix()` (fn) — `<on_disk::DIR>-practice-` (`mergewright-practice-`); new roots and removal use only this.
 - `TourError` (enum) — `TempDir`, `Git`, `NotPractice`, `Outside`, `Remove`, `Journal`, `Left`; `explain`.
 - `PracticeAt` (enum) — `Now { now_unix_secs }` or `Fixed { first_unix_secs }` (reproducible oids and path).
 - `build_practice_repo` (fn) — `(under, at)`: seven commits, a remote, `feature`, `clash`; created fresh, marker first.

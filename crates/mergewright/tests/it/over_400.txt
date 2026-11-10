@@ -40,9 +40,7 @@
 512 crates/mergewright-ops/src/apply/record.rs
 412 crates/mergewright-ops/src/apply/remote.rs
 432 crates/mergewright-ops/src/apply/remote/tests.rs
-403 crates/mergewright-ops/src/apply/restart.rs
 410 crates/mergewright-ops/src/journal.rs
-404 crates/mergewright-ops/src/journal/file.rs
 807 crates/mergewright-ops/src/journal/tests.rs
 1084 crates/mergewright-ops/src/mistake_radar/probes.rs
 709 crates/mergewright-ops/src/mistake_radar/rules.rs
@@ -54,10 +52,10 @@
 407 crates/mergewright-ops/src/restore.rs
 750 crates/mergewright-ops/src/restore/steps.rs
 477 crates/mergewright-ops/src/rewrite/progress.rs
-883 crates/mergewright-ops/src/tour/tests.rs
+866 crates/mergewright-ops/src/tour/tests.rs
 833 crates/mergewright-ops/src/undo.rs
 745 crates/mergewright-ops/src/undo/tests.rs
-467 crates/mergewright-ops/tests/it/aborted_fetch.rs
+465 crates/mergewright-ops/tests/it/aborted_fetch.rs
 609 crates/mergewright-ops/tests/it/absorb_staged.rs
 544 crates/mergewright-ops/tests/it/chained_backup.rs
 449 crates/mergewright-ops/tests/it/cherry_pick.rs
@@ -81,11 +79,11 @@
 1087 crates/mergewright-ops/tests/it/rewrite_preview.rs
 744 crates/mergewright-ops/tests/it/rewrite_run.rs
 1329 crates/mergewright-ops/tests/it/set_aside.rs
-629 crates/mergewright-ops/tests/it/snapshot_raw.rs
+626 crates/mergewright-ops/tests/it/snapshot_raw.rs
 436 crates/mergewright-ops/tests/it/stash_clash.rs
 592 crates/mergewright-ops/tests/it/stash_preview.rs
 857 crates/mergewright-ops/tests/it/stop_hooks.rs
-465 crates/mergewright-ops/tests/it/support.rs
+447 crates/mergewright-ops/tests/it/support.rs
 762 crates/mergewright-ops/tests/it/undo_bytes.rs
 942 crates/mergewright-ops/tests/it/undo_cancel.rs
 492 crates/mergewright-ops/tests/it/undo_replaced.rs
@@ -131,7 +129,7 @@
 1410 crates/mergewright/src/history/tests.rs
 560 crates/mergewright/src/jobs/operate.rs
 1291 crates/mergewright/src/jobs/tests.rs
-817 crates/mergewright/src/jobs/undo.rs
+816 crates/mergewright/src/jobs/undo.rs
 420 crates/mergewright/src/map.rs
 535 crates/mergewright/src/repos.rs
 726 crates/mergewright/src/terminal.rs
@@ -192,7 +190,7 @@
 482 crates/mergewright/src/update/undo/tests/set_aside.rs
 430 crates/mergewright/src/view/frame/boxes.rs
 700 crates/mergewright/src/view/frame/tests.rs
-724 crates/mergewright/src/view/journal/tests.rs
+721 crates/mergewright/src/view/journal/tests.rs
 458 crates/mergewright/src/view/strips/tests.rs
 5134 crates/mergewright/src/view/tests.rs
 459 crates/mergewright/src/view/tests/bottom_row.rs

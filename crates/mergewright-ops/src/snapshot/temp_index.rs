@@ -148,7 +148,7 @@ impl Drop for TempIndex {
         {
             eprintln!(
                 "{}: temp index {} survived: {why}",
-                mergewright_core::on_disk::Generation::CURRENT.command(),
+                mergewright_core::on_disk::COMMAND,
                 self.path.display()
             );
         }

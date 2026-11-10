@@ -370,7 +370,7 @@ impl Drop for ScratchDir {
         {
             eprintln!(
                 "{}: scratch {} survived: {why}",
-                mergewright_core::on_disk::Generation::CURRENT.command(),
+                mergewright_core::on_disk::COMMAND,
                 self.path.display()
             );
         }

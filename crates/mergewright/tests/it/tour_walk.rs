@@ -235,7 +235,7 @@ fn practice_folders(tmp: &Path) -> Vec<String> {
 
 /// The practice-folder prefix this build writes, from the names table.
 fn current_prefix() -> String {
-    mergewright_ops::tour::practice_prefix(mergewright_core::on_disk::Generation::CURRENT)
+    mergewright_ops::tour::practice_prefix()
 }
 
 fn practice_folder_is_gone(tmp: &Path) {
