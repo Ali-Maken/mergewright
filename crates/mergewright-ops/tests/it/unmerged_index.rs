@@ -23,7 +23,7 @@ use mergewright_ops::undo::{self, IndexPaths, InversePlan, Step};
 use crate::support::{
     NOW, Never, TempRepo, context, journal_for, run, run_redo, run_undo, state_of, try_run,
 };
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// A merge that stopped on one conflicted file, built in-test with plain
 /// `git` so the shapes are git's own and not a fixture's transcription.
@@ -67,7 +67,7 @@ fn stage_listing(repo: &TempRepo) -> String {
 
 fn take_backup(repo: &TempRepo) -> snapshot::Snapshot {
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [3; 10]);
     let head = Some(Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("HEAD is an id"));
@@ -224,7 +224,7 @@ fn conflicted_pop_undo_is_clean_without_force() {
     // Nothing has been touched since, so §6.7's comparison must come up
     // clean — the whole point of recording the shape rather than a gap.
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     let refs: Vec<String> = entry.refs_after.keys().cloned().collect();
     let now = mergewright_ops::facts::read_state_now(&handle, &scratch, &refs, &Never)
         .expect("the state reads");

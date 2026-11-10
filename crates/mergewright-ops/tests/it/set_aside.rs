@@ -34,7 +34,7 @@ use crate::support::{
     NOW, Never, RepoState, TempRepo, context, git_version, journal_for, run_redo, run_undo,
     run_with_stop, state_of, try_run,
 };
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 // ── repositories and operations ─────────────────────────────────────────
 
@@ -584,7 +584,7 @@ fn a_clashing_put_back_is_clashed_and_keeps_the_stash() {
 
     let entries = journal_entries(&repo);
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     let index_now =
         mergewright_ops::snapshot::index_state(&handle, &scratch, &Never).expect("the index reads");
     let found = live_clash(&entries, None, &index_now, &[(stash, 0)]).expect("the clash is live");
@@ -672,7 +672,7 @@ fn a_journal_failure_after_a_clash_names_the_stash() {
     post_checkout(
         &repo,
         &format!(
-            "j=$(git rev-parse --git-path {CURRENT_DIR}/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\""
+            "j=$(git rev-parse --git-path {DIR}/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\""
         ),
     );
     let error = match try_run(&repo, &op, NOW) {
@@ -697,7 +697,7 @@ fn a_journal_failure_after_a_clean_put_back_names_what_came_back() {
     post_checkout(
         &repo,
         &format!(
-            "j=$(git rev-parse --git-path {CURRENT_DIR}/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\""
+            "j=$(git rev-parse --git-path {DIR}/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\""
         ),
     );
     let op = checkout_to(&repo, "refs/heads/feature");

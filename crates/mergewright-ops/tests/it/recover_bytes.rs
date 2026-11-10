@@ -24,7 +24,7 @@ use mergewright_ops::operation::{Operation, RecoverParams, RecoverTarget, Target
 use mergewright_ops::restore::RestoreError;
 
 use crate::support::{NOW, Never, TempRepo, journal_for, run, run_redo, run_undo, try_run};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 const PATH: &str = "src/a.rs";
 const COMMITTED: &[u8] = b"pub fn a() -> u32 {\n    1\n}\n";
@@ -380,7 +380,7 @@ fn a_journal_failure_after_a_failed_raw_step_keeps_its_words() {
         "config",
         "filter.breaks-journal.smudge",
         &format!(
-            "j=$(git rev-parse --git-path {CURRENT_DIR}/undo-journal.jsonl); \
+            "j=$(git rev-parse --git-path {DIR}/undo-journal.jsonl); \
              if grep -q 'put back your edit' \"$j\" 2>/dev/null; then rm -f \"$j\" && mkdir \"$j\"; fi; cat"
         ),
     ]);

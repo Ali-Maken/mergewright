@@ -178,7 +178,6 @@ pub fn borrow(spec: &TeamSpec) -> Result<PathBuf, TeamError> {
     std::fs::create_dir_all(&base)?;
     let staging = cache::staging_in(&base, PREFIX)?;
     build(spec, staging.path())?;
-    crate::settled::names_settled(staging.path())?;
     std::fs::write(
         staging.path().join(cache::MARKER),
         format!("{spec:?}\n{}\n", git::version()?),

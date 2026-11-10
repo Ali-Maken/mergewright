@@ -254,3 +254,11 @@ copied. Comparing it would only produce a false "an older version wrote" warning
   - `mergewright-docs-sweep`: README, TESTING.md, CHANGELOG, design-doc UI quotes;
   - `mergewright-recaptures`: M8/27d-shots-old-name;
   - `mergewright-protected-lines`: the list for the user (no edits).
+
+## Amendment (2026-10-25): earlier names dropped
+
+- **Ruling (the user):** before publishing, the app reads and writes only its current names; earlier generations' names are not recognised.
+- **Went:** the §2–§8 machinery — the generation table (`Generation`, `GENERATIONS`, `CURRENT_DIR`), the rename marker (`MIGRATED_MARKER`) and the move, `names_in_force` / `on_disk_names`, the journal ref mapping, the fixtures' marker.
+- **Stays:** the `Migrate` operation kind (read-only, never written, never undone) and the current-name consts in `mergewright_core::on_disk`.
+- **Cost:** a repository not opened since the rename keeps its history in the old folder, unread; old stashes, backup refs and practice folders under earlier names aren't recognised (old backup refs are no longer hidden from the graph).
+- **Pre-rename journal entries** behave on `u` exactly as before the drop, as 11b3's parity tests (`journal_unmapped.rs`) pin. Open question, not decided here: undo of a gc-pruned entry leaves a pending line and a backup ref before failing.

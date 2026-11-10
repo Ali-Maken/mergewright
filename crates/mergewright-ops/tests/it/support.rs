@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use mergewright_core::journal::JournalEntry;
-use mergewright_core::on_disk::{DIR, MIGRATED_MARKER, REF_PREFIX};
+use mergewright_core::on_disk::{DIR, REF_PREFIX};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::Stop;
 use mergewright_git::version::GitVersion;
@@ -40,16 +40,12 @@ impl TempRepo {
     /// A fresh `git init` with a hermetic local config: identity set, and the
     /// global-config knobs that would otherwise reach in (signing, CRLF
     /// translation) turned off locally, where local wins.
-    ///
-    /// With the names marker (`clean`) an earlier build's move left; nothing
-    /// reads it since 11b2, and 11b4 drops it with the fixtures marker.
     pub fn init() -> TempRepo {
         let repo = TempRepo::scratch();
         repo.git(&["init", "-q", "-b", "main", "."]);
         repo.harden(Path::new("."));
-        let dir = repo.path.join(".git").join(DIR);
-        std::fs::create_dir_all(&dir).expect("the names dir is made");
-        std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker writes");
+        // The app's folder, empty: the scratch tests write into it first.
+        std::fs::create_dir_all(repo.path.join(".git").join(DIR)).expect("the app dir is made");
         repo
     }
 

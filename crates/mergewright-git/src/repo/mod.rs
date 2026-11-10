@@ -19,7 +19,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::Generation;
 use mergewright_core::ref_name::RefName;
 
 use crate::run::{GitArg, GitInvocation, RunError};
@@ -27,14 +26,11 @@ use crate::run::{GitArg, GitInvocation, RunError};
 pub use head_error::HeadError;
 
 mod head_error;
-mod names;
 mod peel;
 mod refs;
 mod shared;
 mod types;
 
-use names::names_in;
-pub use names::names_in_force;
 pub use shared::SharedRepo;
 pub use types::{RefEntry, RefSnapshot, RefTarget, RefsError, TipStats, TipsError};
 
@@ -74,8 +70,6 @@ impl KnownCommits for () {
 /// repository's configuration, so open it once and keep it.
 pub struct RepoHandle {
     repo: gix::Repository,
-    /// Which on-disk names this repository uses, read once at open.
-    names: Generation,
 }
 
 impl RepoHandle {
@@ -95,26 +89,11 @@ impl RepoHandle {
     /// cannot be read ([`Inaccessible`](OpenError::Inaccessible),
     /// [`Io`](OpenError::Io)), or a repository git itself would refuse
     /// ([`Unusable`](OpenError::Unusable)).
-    ///
-    /// Also [`OpenError::Io`] when whether the rename's marker exists cannot
-    /// be told (see [`on_disk_names`](Self::on_disk_names)).
     pub fn open(path: &Path) -> Result<Self, OpenError> {
         match gix::discover(path) {
-            Ok(repo) => {
-                let names = names_in(repo.common_dir(), path)?;
-                Ok(RepoHandle { repo, names })
-            }
+            Ok(repo) => Ok(RepoHandle { repo }),
             Err(error) => Err(OpenError::classify(path, error)),
         }
-    }
-
-    /// Which generation's names this repository uses — the ref prefix, the
-    /// dir under `.git` (ADR-0057, Amendments §4 and 2026-10-11 §3). Read
-    /// once at open from the markers in the common dir; every reader of
-    /// those names in force takes them from here.
-    #[must_use]
-    pub fn on_disk_names(&self) -> Generation {
-        self.names
     }
 
     /// The repository's own directory: `<worktree>/.git` for an ordinary

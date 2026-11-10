@@ -56,7 +56,7 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 ## journal
 - `EntryId` (struct) — a journal entry's id, a ULID ordered by time; also the backup ref's last segment; serde as text.
 - `EntryId::new` (fn) — `(unix_ms: i64, random: [u8; 10]) -> Self`; `parse` and `as_str` read and write the text.
-- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo; `Recover`: refs or files put back; `Migrate`: the one-time rename move, never undone); serde snake_case.
+- `OperationKind` (enum) — every journaled operation kind (stage … push, merge, rebase, rewrite, conflicts, undo, redo; `Recover`: refs or files put back; `Migrate`: old rename move, read only, never undone); serde snake_case.
 - `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }`.
 - `INTERRUPTED` (const) — `&str` reason recovery records on an entry a dead process left open.
 - `Touches` (struct) — what an operation changes: `refs`, `index`, `worktree`.
@@ -85,18 +85,10 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 - `Oid::from_sha1` (fn) — `([u8; 20]) -> Self`: infallible wrap of a SHA-1 digest.
 
 ## on_disk
-- `Generation` (enum) — `Mergewright` / `Tributary` / `Mergewright`, oldest first (derived `Ord`): one row per name the app shipped under (ADR-0057, Amendment 2026-10-11 §2).
-- `Generation::CURRENT` / `GENERATIONS` (const) — the names this build writes (`Mergewright`); every generation, oldest first.
-- `Generation::dir` / `title` / `command` / `env_prefix` / `ref_prefix` / `link_trailer` / `backup_email` (const fn) — the row's spellings: `mergewright`, `Mergewright`, `mwr`, `MWR_`, `refs/mergewright/`, …
-- `Generation::has_marker` (const fn) — false for `Mergewright` only: with no marker present, Mergewright is in force.
-- `Generation::older` (fn) — the generations released before this one, newest first.
-- `Generation::of_ref` / `of_trailer` / `of_message` (fn) — which generation spelled a ref (by prefix), a trailer line (by key) or a git message (`<dir>:` or `<dir> `); `None` for anyone else's.
 - `ASKPASS_SOCKET_VAR` (const) — `MWR_ASKPASS_SOCKET`, its one definition: set on askpass children by mergewright-git, re-exported by `mergewright::cli`.
-- `MESSAGE_TAG` (const) — `Generation::CURRENT.dir()`: the tag every message this build writes into git starts with (stash, backup, index, absorb, forecast); earlier tags read by `of_message`.
-- `CURRENT_DIR` (const) — `Generation::CURRENT.dir()`, short enough to inline in a path (`.git/{CURRENT_DIR}/...`).
-- `DIR` / `TITLE` / `COMMAND` / `ENV_PREFIX` / `REF_PREFIX` / `LINK_TRAILER` / `BACKUP_EMAIL` (const) — the current names; use qualified (`on_disk::DIR`).
+- `MESSAGE_TAG` (const) — `DIR`: the tag every message this build writes into git starts with (stash, backup, index, absorb, forecast).
+- `DIR` / `TITLE` / `COMMAND` / `ENV_PREFIX` / `REF_PREFIX` / `LINK_TRAILER` / `BACKUP_EMAIL` (const) — the current names, the only ones read or written (ADR-0057, Amendment 2026-10-25); use qualified (`on_disk::DIR`).
 - `Own::is_ref` / `is_message` / `is_trailer` (fn) — whether a ref, git message or trailer line is this app's own.
-- `MIGRATED_MARKER` (const) — `migrated`, in `<common_dir>/<dir>/` of each generation with `has_marker`: the newest one present (up to `CURRENT`) is in force.
 
 ## raster
 - `RasterFrame` (struct) — the pixel renderer's strip: size in pixels and cells, premultiplied RGBA `pixels`.
@@ -104,4 +96,4 @@ May depend on: nothing internal (ARCHITECTURE.md crate table). One line per publ
 
 ## ref_name
 - `RefName` (struct) — a git ref's full name, validated.
-- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_mergewright_internal` (true under any `Generation::ref_prefix`, whichever is in force).
+- `RefName::new` (fn) — `(impl Into<Vec<u8>>) -> Result<Self, Error>`; also `as_bytes`, `shorthand`, `is_mergewright_internal` (true only under `on_disk::REF_PREFIX`).

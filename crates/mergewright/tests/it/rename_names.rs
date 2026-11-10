@@ -40,11 +40,6 @@ fn the_binary_file_is_the_command() {
 /// screen.
 const ALLOWED: &[(&str, &str, &str)] = &[
     (
-        "mergewright-core/src/on_disk.rs",
-        "",
-        "the on-disk names table: every generation's names (26, 48)",
-    ),
-    (
         "mergewright-fixtures/",
         "",
         "test-fixture crate: identities, temp prefixes, its usage",
@@ -243,8 +238,7 @@ fn every_production_file(crates: &Path) -> Vec<PathBuf> {
 }
 
 /// No production string literal starts with an earlier generation's
-/// message tag (`graft:`, `graft `, `tributary:` …) outside the names
-/// table: every message written into git takes its tag from
+/// message tag (`graft:`, `graft `, `tributary:` …): every message written into git takes its tag from
 /// `on_disk::MESSAGE_TAG`, and every reader goes through
 /// `on_disk::Own::is_message` (ticket m8/52).
 #[test]
@@ -257,9 +251,6 @@ fn no_old_message_literal() {
             .unwrap_or(&file)
             .display()
             .to_string();
-        if shown == "mergewright-core/src/on_disk.rs" {
-            continue;
-        }
         for (line, literal) in literals(&file) {
             if old_name_in(&literal).is_some() {
                 found.push(format!("{shown}:{line}: \"{literal}\""));

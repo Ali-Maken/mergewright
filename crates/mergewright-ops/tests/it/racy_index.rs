@@ -30,7 +30,7 @@ use mergewright_ops::preview::{self, ConflictForecast};
 use mergewright_ops::snapshot;
 
 use crate::support::{Never, TempRepo, git_version};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// 2001-09-09: any fixed instant in the past.
 fn instant() -> SystemTime {
@@ -76,7 +76,7 @@ fn the_worktree_snapshot_keeps_a_racily_clean_edit() {
     racily_clean(&repo, "x.txt", b"feature\n", b"my edit\n");
 
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
 

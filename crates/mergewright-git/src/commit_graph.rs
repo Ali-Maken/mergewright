@@ -17,7 +17,8 @@
 //! is a cache, not history; there is nothing to undo.
 //!
 //! **The decline lives in the common directory**, `<common_dir>/<dir>/
-//! commit-graph-offer` (`<dir>` from `RepoHandle::on_disk_names`), not under `git rev-parse --git-path` (which is per
+//! commit-graph-offer` (`<dir>` is `on_disk::DIR`), not under `git rev-parse
+//! --git-path` (which is per
 //! worktree): the commit-graph belongs to the shared object store, so one
 //! decline covers every worktree.
 
@@ -219,11 +220,10 @@ pub enum Offer {
 }
 
 /// Where the decline is remembered: `<common_dir>/<dir>/commit-graph-offer`,
-/// `<dir>` being the repository's on-disk names in force (ADR-0057,
-/// Amendment §4).
+/// `<dir>` being [`on_disk::DIR`](mergewright_core::on_disk::DIR).
 fn offer_file(repo: &RepoHandle) -> PathBuf {
     repo.common_dir()
-        .join(repo.on_disk_names().dir())
+        .join(mergewright_core::on_disk::DIR)
         .join("commit-graph-offer")
 }
 

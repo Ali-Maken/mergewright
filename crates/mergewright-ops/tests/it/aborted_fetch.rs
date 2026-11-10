@@ -29,7 +29,7 @@ use mergewright_ops::operation::{CommitParams, FetchParams, Operation, PullParam
 use mergewright_ops::undo::{Step, plan_revert_to, plan_undo};
 
 use crate::support::{NOW, Never, context, journal_for};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// A remote that is configured but has nothing behind it: git's fetch of it
 /// fails with `does not appear to be a git repository`.
@@ -182,7 +182,7 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
             "config",
             "--add",
             "remote.origin.fetch",
-            &format!("+refs/heads/*:refs/{CURRENT_DIR}/fetched/*"),
+            &format!("+refs/heads/*:refs/{DIR}/fetched/*"),
         ],
     );
     let old_main = ref_value(&remote, &main).expect("the tracking ref");
@@ -213,7 +213,7 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
         .ends_with(remote.default_branch())
     );
     assert_eq!(
-        ref_value(&remote, &format!("refs/{CURRENT_DIR}/fetched/feat")),
+        ref_value(&remote, &format!("refs/{DIR}/fetched/feat")),
         Some(tip)
     );
 

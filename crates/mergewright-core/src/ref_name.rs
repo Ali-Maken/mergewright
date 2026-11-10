@@ -7,7 +7,7 @@
 use std::fmt;
 
 use crate::error::{Error, RefNameRule};
-use crate::on_disk::Generation;
+use crate::on_disk::Own;
 
 /// A git ref's **full** name — `refs/heads/main`, `refs/tags/v1.0`,
 /// `refs/remotes/origin/main`, or a root ref such as `HEAD`.
@@ -71,10 +71,9 @@ impl RefName {
 
     /// Mergewright's own bookkeeping, not the user's history.
     ///
-    /// Everything under any generation's [`Generation::ref_prefix`] —
-    /// `refs/graft/`, `refs/tributary/` or `refs/mergewright/` (ADR-0057,
-    /// Amendments) — is written by the app for itself: today the undo
-    /// journal's backup chains,
+    /// Everything under [`on_disk::REF_PREFIX`](crate::on_disk::REF_PREFIX)
+    /// is written by the app for itself: today the undo journal's backup
+    /// chains,
     /// `<prefix>backup/<worktree>/<ulid>` (ADR-0009, ADR-0010), kept
     /// indefinitely so that a write can always be put back. The user never
     /// made them and must never be shown them — a backup is two commits
@@ -88,13 +87,7 @@ impl RefName {
     /// knows about it, and Mergewright draws stash entries on purpose.
     #[must_use]
     pub fn is_mergewright_internal(&self) -> bool {
-        // Every generation, whichever is in force: a repository half-way
-        // through a rename must never show any namespace in the graph. This
-        // is `Generation::of_ref(..).is_some()` on bytes, so a name that is
-        // not UTF-8 is judged by its prefix like any other.
-        Generation::GENERATIONS
-            .iter()
-            .any(|generation| self.0.starts_with(generation.ref_prefix().as_bytes()))
+        Own::is_ref(&self.0)
     }
 }
 

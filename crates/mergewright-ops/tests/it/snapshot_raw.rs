@@ -21,7 +21,7 @@ use mergewright_ops::operation::{Operation, Target};
 use mergewright_ops::snapshot;
 
 use crate::support::{NOW, Never, TempRepo, run};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// `HEAD`'s commit, `None` while unborn.
 fn head_of(repo: &TempRepo) -> Option<Oid> {
@@ -41,7 +41,7 @@ fn raw_of(repo: &TempRepo) -> Option<Oid> {
 /// (m7-power-tools/30r: each one is a spawn, about 6 ms on the perf machine).
 fn recorded(repo: &TempRepo) -> (Option<Oid>, Vec<String>) {
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let mut commands = Vec::new();
@@ -54,12 +54,9 @@ fn recorded(repo: &TempRepo) -> (Option<Oid>, Vec<String>) {
         &mut commands,
     )
     .expect("the raw record is taken");
-    // The rename's marker lives in this folder too (the fixture is on the
-    // new names); it is not the snapshot's.
     let left: Vec<PathBuf> = std::fs::read_dir(&scratch)
         .expect("the scratch reads")
         .map(|entry| entry.expect("the entry reads").path())
-        .filter(|path| !path.ends_with(mergewright_core::on_disk::MIGRATED_MARKER))
         .collect();
     assert!(left.is_empty(), "the scratch is left empty: {left:?}");
     (raw, subcommands(&commands))
@@ -80,7 +77,7 @@ fn subcommands(commands: &[String]) -> Vec<String> {
 /// The before-snapshot, as `begin` takes it.
 fn taken(repo: &TempRepo) -> snapshot::Snapshot {
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [7; 10]);
     let head = head_of(repo);
@@ -104,11 +101,9 @@ fn staged(repo: &TempRepo, path: &str) -> (JournalEntry, String) {
         &Operation::Stage(Target::Paths(vec![PathBuf::from(path)])),
         NOW,
     );
-    let journal = std::fs::read_to_string(
-        repo.path()
-            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl")),
-    )
-    .expect("the journal reads");
+    let journal =
+        std::fs::read_to_string(repo.path().join(format!(".git/{DIR}/undo-journal.jsonl")))
+            .expect("the journal reads");
     let pending = journal.lines().next().expect("a pending line").to_owned();
     assert!(pending.contains("\"status\":\"pending\""), "{pending}");
     (entry, pending)
@@ -207,7 +202,7 @@ fn a_backup_commit_carries_the_app_identity() {
     assert_eq!(who.trim(), format!("{name} <{email}> {name} <{email}>"));
     assert_eq!(
         (name, email),
-        (CURRENT_DIR, mergewright_core::on_disk::BACKUP_EMAIL)
+        (DIR, mergewright_core::on_disk::BACKUP_EMAIL)
     );
 }
 
@@ -371,7 +366,7 @@ fn a_handle_opened_in_a_subdirectory_keeps_the_same_path() {
     repo.write("src/deep/a.rs", b"a\nchanged\n");
 
     let handle = repo.open_at("src");
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let head = Oid::from_hex(&repo.git(&["rev-parse", "HEAD"])).expect("HEAD is an id");
@@ -467,7 +462,7 @@ fn autocrlf_set_after_the_handle_opened_is_honoured() {
     let handle = repo.open();
     repo.git(&["config", "core.autocrlf", "true"]);
 
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let id = EntryId::new(NOW, [9; 10]);
     let head = head_of(&repo);
@@ -502,7 +497,7 @@ fn a_large_kept_set_is_hashed_from_stdin_not_the_command_line() {
     }
 
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let tree = snapshot::worktree_tree(&handle, &scratch, &Never).expect("the worktree tree");
     let mut commands = Vec::new();
@@ -539,7 +534,7 @@ fn an_unreadable_tree_is_a_read_error_in_one_line() {
     repo.write("a.rs", b"a\n");
     repo.commit_all("first");
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     let missing = Oid::from_hex(&"2".repeat(40)).expect("an id");
 
@@ -598,7 +593,7 @@ fn a_lone_checkout_failure_without_a_filter_is_not_blamed_on_one() {
     repo.commit_all("first");
     repo.write("a.txt", b"two\n");
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     // The worktree tree names a blob the object store does not hold.
     let missing = "3".repeat(40);

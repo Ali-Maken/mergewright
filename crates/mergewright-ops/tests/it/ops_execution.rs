@@ -19,7 +19,7 @@ use mergewright_ops::undo::UndoError;
 use crate::support::{
     NOW, Never, TempRepo, context, journal_for, round_trip, run, run_redo, run_undo,
 };
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 fn paths(of: &[&str]) -> Target {
     Target::Paths(of.iter().map(PathBuf::from).collect())
@@ -44,9 +44,7 @@ fn the_journal_lands_under_the_git_dir_and_holds_two_lines_per_entry() {
     let repo = mixed();
     run(&repo, &Operation::Stage(paths(&["a.rs"])), NOW);
 
-    let path = repo
-        .path()
-        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.path().join(format!(".git/{DIR}/undo-journal.jsonl"));
     let text =
         String::from_utf8(std::fs::read(&path).expect("the journal is there")).expect("it is text");
     let lines: Vec<&str> = text.lines().collect();
@@ -64,9 +62,7 @@ fn the_journal_lands_under_the_git_dir_and_holds_two_lines_per_entry() {
 fn a_torn_last_line_is_cut_off_so_the_next_append_is_not_spliced_onto_it() {
     let repo = mixed();
     run(&repo, &Operation::Stage(paths(&["a.rs"])), NOW);
-    let path = repo
-        .path()
-        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.path().join(format!(".git/{DIR}/undo-journal.jsonl"));
     let mut bytes = std::fs::read(&path).expect("the journal reads");
     bytes.extend_from_slice(br#"{"id":"01","stat"#);
     std::fs::write(&path, &bytes).expect("the torn tail is written");
@@ -87,9 +83,7 @@ fn a_pending_entry_with_no_outcome_is_found_and_closed_as_interrupted() {
     let repo = mixed();
     // A crash between the two lines: keep only the pending line.
     run(&repo, &Operation::Discard(paths(&["a.rs"])), NOW);
-    let path = repo
-        .path()
-        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.path().join(format!(".git/{DIR}/undo-journal.jsonl"));
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("there is a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the truncated journal is written");
@@ -192,7 +186,7 @@ fn reading_the_repository_never_rewrites_the_real_index() {
 
     let handle = repo.open();
     let never = Never;
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
     snapshot::index_state(&handle, &scratch, &never).expect("the index state is read");
     snapshot::worktree_tree(&handle, &scratch, &never).expect("the worktree tree is written");
@@ -399,7 +393,7 @@ fn a_refused_operation_writes_nothing_at_all() {
         repo.git(&[
             "for-each-ref",
             "--format=%(refname)",
-            &format!("refs/{CURRENT_DIR}")
+            &format!("refs/{DIR}")
         ]),
         "",
         "no backup ref was made"
