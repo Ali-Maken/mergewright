@@ -1,6 +1,6 @@
 # pre-publish: delete the Generation table, the names-in-force read and the fixtures' rename marker
 
-Status: draft (amended 2026-11-10: `names_in_force` already answers `CURRENT` since 11b2; ops no longer calls `on_disk_names` since 11b3. Pass 3: the D5 cost wording follows 11b3's parity finding)
+Status: ready
 Blocked by: 11b3
 Runs: alone (core and git signatures change; call sites in every crate)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: once 11b2/11b3 have landed, nothing behavioural is left. This is deletion, with the compiler finding each call site.
