@@ -5,6 +5,7 @@ Started 2026-10-25 (user "yes"). Inputs: the 14 KNOWN_GAPS rows whose expiry say
 No design note: this is no user-facing feature. The one visible change (04 Part B: a preview lane name) follows ticket 17's decided rule (ADR-0064, mock :99).
 
 Spec-only pass 2026-11-10: 11 split into 11b1–11b4 (old-generation code dropped), 11a and 11c. 12 rewritten to its scout. 07–10 cut from this pass.
+Spec-only pass 2, same day: 11b2's first build stopped. With no marker, `names_in_force` answered the oldest names (`mergewright-git/src/repo/names.rs:37`), so settling was what kept new repos on the current names. 11b2 now also makes `names_in_force` always answer `CURRENT` (test-first) and deletes every move test, in all crates, in the same commit. It continues in its existing worktree. 11b3/11b4 are amended to match. No new ticket: the names change and the end of settling are only safe together.
 
 ## For the user
 
@@ -44,7 +45,7 @@ Spec-only pass 2026-11-10: 11 split into 11b1–11b4 (old-generation code droppe
 | ~~07–10~~ | ~~ratchet-*~~ | rename/over400-raised: **cut from this pass, pending the user** | — | — | — |
 | ~~11~~ | ~~codename-leftovers~~ | superseded by 11b1–11b4, 11a, 11c | — | — | — |
 | 11b1 | current-names-and-guards | (step toward rename/graft-leftovers) | Sonnet | done (`scouts/11-codename-hits.md`) | 06 |
-| 11b2 | old-gen-app-side | — | Sonnet | done | 11b1, **user opened each repo** |
+| 11b2 | old-gen-app-side (+ git `names_in_force` → `CURRENT`, + every move test deleted) | — | Sonnet; **continue in `.claude/worktrees/ppc-11b2`** | done | 11b1, **user opened each repo** |
 | 11b3 | old-gen-ops-side | — | Sonnet | done | 11b2 |
 | 11b4 | old-gen-delete-table | — | Sonnet | done | 11b3 |
 | 11a | codename-app-scripts-docs | rename/graft-leftovers (app, scripts, docs), rename/m3-pty-script | Sonnet | done | 06, 11b4 |
@@ -54,7 +55,7 @@ Spec-only pass 2026-11-10: 11 split into 11b1–11b4 (old-generation code droppe
 Coverage: 28 (01) · 17-fork-rows (02) · 19-100k (03) · 17-pane-focus, 17-preview-seeds (04) · 26-blame, 29-narrow (05) · 11b, 12b, 06i, 14-m3 (06) · graft-leftovers (11b1–4, 11a, 11c, 12) · m3-pty-script (11a). **over400-raised stays open** while 07–10 are cut.
 
 **Fable tier: none.** No ticket meets all three tests.
-- 11b's one behavioural risk (his journals) is fenced by a test written first (11b3 D3) and by keeping the `Migrate` kind (D2).
+- 11b's behavioural risks are fenced by tests written first: fresh repos write current names (11b2 D1); an old journal entry refuses cleanly (11b3 D3). The `Migrate` kind is kept (11b3 D2).
 - 12's bytes are judged by a script and a lane-slot probe, and what they flag goes to the user's eye.
 - Debuggers: 2 (02, 03), per the brief: a flake gets its root cause, never a retry.
 
@@ -63,7 +64,10 @@ Coverage: 28 (01) · 17-fork-rows (02) · 19-100k (03) · 17-pane-focus, 17-prev
 1. **01 alone.** Its numbers are wall times.
 2. 02 ‖ 03. Both reproduce under load on purpose; neither times the fast tier.
 3. 04 ‖ 05, then 06.
-4. 11b1 → 11b2 (after the user's "done") → 11b3 → 11b4. Strictly in sequence: each deletes something the previous one stopped calling, so no two can share a base.
+4. 11b1 → 11b2 (resumed in its worktree; merged after the user's "done") → 11b3 → 11b4. Strictly in sequence:
+   - 11b2 makes the names fixed and stops settling, together;
+   - 11b3 then deletes the uncalled move and ports ops off the handle's names;
+   - 11b4 deletes the table and the git read once nothing calls them.
 5. 11a ‖ 11c. Disjoint files: 11a owns the app and capabilities crates, scripts and docs; 11c owns every other crate.
 6. 12 alone. It closes the guard over the full shipped set.
 7. Full audit (conductor).
@@ -76,7 +80,7 @@ Why this order:
 ## Every builder
 
 - Read CLAUDE.md first. Don't read PROGRESS.md or KNOWN_GAPS.md: each ticket quotes its rows.
-- Worktree from **local main** (memory: agent worktrees base on origin/main), own `CARGO_TARGET_DIR` inside the worktree.
+- Worktree from **local main** (memory: agent worktrees base on origin/main), own `CARGO_TARGET_DIR` inside the worktree. Exception: 11b2 continues in its existing worktree.
 - Gates workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo clippy --all-targets --features heavy-tests -- -D warnings`, `cargo nextest run`, `cargo test --doc`, plus `scripts/walks.sh` when the ticket says so.
 - **Split, never raise** an `over_400.txt` row (user, 2026-10-18).
 - No AI-attribution wording anywhere.
