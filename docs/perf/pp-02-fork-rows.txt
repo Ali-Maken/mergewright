@@ -1,0 +1,75 @@
+== before m7_walk x36 (4 threads) ==
+filter: test(/^m7_walk::/)
+load: load averages: 11.01 9.96 8.77
+SUMMARY before m7_walk x36 (4 threads) runs=36 fails=0 tests_run=2520 first_fail_run=none canary_lost=0 wall_s=926
+== before full walk tier x1 ==
+filter: all()
+load: load averages: 10.54 21.58 16.64
+SUMMARY before full walk tier x1 runs=1 fails=0 tests_run=463 first_fail_run=none canary_lost=0 wall_s=160
+== before full walk tier x40 (4 threads) ==
+filter: all()
+load: load averages: 33.73 23.48 18.01
+run 2: FAIL (401/463) mergewright::it outside_repo::launch_and_open_land_alike 
+-- first failure (run 2), stderr tail --
+    thread 'outside_repo::launch_and_open_land_alike' (2056717546) panicked at crates/mergewright/tests/it/app_harness.rs:86:5:
+    git ["commit", "--quiet", "--allow-empty", "-m", "side 27"] failed: fatal: could not parse HEAD
+    thread 'outside_repo::launch_and_open_land_alike' (2056717546) panicked at crates/mergewright/tests/it/app_harness.rs:86:5:
+    git ["commit", "--quiet", "--allow-empty", "-m", "side 27"] failed: fatal: could not parse HEAD
+error: test run failed
+--
+SUMMARY before full walk tier stopped by hand at 08:35 after ~10 min (~3 runs); fails seen: 1 (run 2, outside_repo::launch_and_open_land_alike, 'could not parse HEAD'); fork_rows fails: 0
+== before fork_rows x300 beside a load generator ==
+filter: test(/^m7_walk::fork_rows::/) 
+load: load averages: 14.09 24.34 21.97
+== maintenance A/B, first pass (scratch copy of scripts/pp-02-maintenance-ab.sh, 08:25-08:33) ==
+SUMMARY maintenance-ab arm=on fixtures=600 fails=1 (b1: `git commit` "unable to create temporary file: Invalid argument")
+SUMMARY maintenance-ab arm=on fixtures=2400 fails=7 (all at b.txt: `git add -A` "unable to create temporary file: Invalid argument / b.txt: failed to insert into database")
+SUMMARY maintenance-ab arm=off fixtures=2400 fails=0
+trace2 of the 3 failures inspected: each time the detached `git maintenance run --auto` started by `commit p3` ran task geometric-repack -> `git repack -d -l --cruft ...`, which was still running when `add -A` (b.txt) failed.
+run 91: FAIL (1/3) mergewright::it m7_walk::fork_rows::the_rewrite_editor_names_each_fork 
+-- first failure (run 91), stderr tail --
+    thread 'm7_walk::fork_rows::the_rewrite_editor_names_each_fork' (2057796238) panicked at crates/mergewright/tests/it/m7_walk/rebase_line.rs:23:31:
+    git ["add", "-A"]: `git add -A` in <tmp>/.tmpETeYs3 failed (exit status: 128):
+    error: unable to create temporary file: No such file or directory
+    error: b.txt: failed to insert into database
+    error: unable to index file 'b.txt'
+    fatal: adding files failed
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/ exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/objects exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/refs exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/HEAD exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/index exists=true
+    [DEBUG-pp02] objects: ["pack", "info"]
+    thread 'm7_walk::fork_rows::the_rewrite_editor_names_each_fork' (2057796238) panicked at crates/mergewright/tests/it/m7_walk/rebase_line.rs:23:31:
+    git ["add", "-A"]: `git add -A` in <tmp>/.tmpETeYs3 failed (exit status: 128):
+    error: unable to create temporary file: No such file or directory
+    error: b.txt: failed to insert into database
+    error: unable to index file 'b.txt'
+    fatal: adding files failed
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/ exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/objects exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/refs exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/HEAD exists=true
+    [DEBUG-pp02] <tmp>/.tmpETeYs3/.git/index exists=true
+    [DEBUG-pp02] objects: ["pack", "info"]
+error: test run failed
+--
+run 171: FAIL (1/3) mergewright::it m7_walk::fork_rows::the_rewrite_editor_names_each_fork 
+run 211: FAIL (1/3) mergewright::it m7_walk::fork_rows::a_stop_inside_a_fork_names_it_on_the_banner 
+SUMMARY before fork_rows x300 beside a load generator runs=300 fails=3 tests_run=900 first_fail_run=91 canary_lost=0 wall_s=525
+== after fork_rows x300 beside a load generator ==
+filter: test(/^m7_walk::fork_rows::/) 
+load: load averages: 10.75 12.89 16.66
+SUMMARY after fork_rows x300 beside a load generator runs=300 fails=0 tests_run=900 first_fail_run=none canary_lost=0 wall_s=565
+== cause, deterministic (2026-11-10) ==
+fork_rows' fixture dates are fixed, so its object ids are too. After commit p3 one object sits in objects/17/; git's
+auto check samples that folder (count x 256 >= maintenance.geometric-repack.auto = 100), so the detached
+`git maintenance run --auto` started by p3 runs `git repack -d -l --cruft --write-midx` every time.
+Traced (GIT_TRACE2_EVENT): after p3 objects = "5b 6f 7a 15 17 20 63 bc c0 ef fd info pack"; 3 s later = "info pack".
+The next fixture `git add -A` (b.txt) writes into a fan-out folder that repack's prune is removing: ENOENT/EINVAL on
+the temp object file. The DEBUG probe at the failure saw the same: tempdir, .git, index all present, objects = [pack, info].
+The tempdir never vanished. Race timing is load-dependent; the trigger is not.
+Red test: mergewright-fixtures maintenance::a_commit_through_the_fixture_runner_starts_no_background_maintenance,
+3/3 FAIL with git.rs at HEAD (child_start argv ["git","maintenance","run","--auto","--quiet","--detach"]); PASS with the fix.

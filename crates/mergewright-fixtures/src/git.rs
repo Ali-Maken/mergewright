@@ -275,8 +275,8 @@ pub(crate) fn hermetic(cwd: &Path, args: &[&str]) -> Command {
     command
 }
 
-/// A `git` command that cannot see the machine's configuration — and nothing
-/// more.
+/// A `git` command that cannot see the machine's configuration and starts
+/// no background maintenance — and nothing more.
 ///
 /// The isolation half of [`hermetic`], without its fixed clock and identity.
 /// A test that needs commits dated *now* (the acceptance walk, whose graph
@@ -293,6 +293,13 @@ pub(crate) fn hermetic(cwd: &Path, args: &[&str]) -> Command {
 pub fn isolated(cwd: &Path, args: &[&str]) -> Command {
     let mut command = Command::new("git");
     command
+        // No git left working in the background. A commit, merge, rebase or
+        // fetch ends by starting `git maintenance run --auto --detach`, and
+        // git 2.54's geometric repack can then delete the loose objects and
+        // their fan-out folders while the fixture's next command writes into
+        // one: `unable to create temporary file`, now and then, under load
+        // (pre-publish-cleanup/02). `-c` reaches the child git starts too.
+        .args(["-c", "maintenance.auto=false"])
         .args(args)
         .current_dir(cwd)
         // No prompt, no global or system config, no ambient repository: the

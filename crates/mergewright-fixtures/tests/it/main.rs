@@ -3,5 +3,6 @@
 mod corpus;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
+mod maintenance;
 #[cfg(feature = "heavy-tests")]
 mod team;
