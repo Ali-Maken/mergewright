@@ -2,11 +2,7 @@
 
 Status: draft (amended 2026-11-10 after the first build stopped: see "Prior attempt")
 Blocked by: 11b1. **And the user's prerequisite:** he has opened each of his repos once with today's `mwr` (00-index, "Before 11b2 merges"). The conductor confirms it before merging; the builder doesn't wait on it.
-<<<<<<< HEAD
-Runs: alone, before 11b3. **Continue in the existing worktree** `/Users/devuser/dev/sandbox/gitter/.claude/worktrees/ppc-11b2`: its WIP is uncommitted. Don't start a fresh one, and don't discard it.
-=======
 Runs: alone, before 11b3. **Continue in the existing worktree** `<home>/dev/sandbox/gitter/.claude/worktrees/ppc-11b2`: its WIP is uncommitted. Don't start a fresh one, and don't discard it.
->>>>>>> ppc-11b2
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: one fn changes its answer behind a test written first; the rest is deletion and mechanical ports.
 Needs: 11b1's `on_disk` consts and predicates (as merged; the WIP uses them).
 Crate set:
@@ -79,16 +75,6 @@ pub fn names_in_force(common_dir: &Path) -> io::Result<Generation>; // always Ok
 ```
 
 ## Acceptance (tick each with its test, inline)
-<<<<<<< HEAD
-- [ ] No marker or an old marker → current names ← `names::tests::no_marker_is_current`, `old_marker_is_still_current`
-- [ ] A fresh repo's journal and backups land under the current names only ← `fresh_repo_names::journal_and_backups_use_current_names`
-- [ ] A repo opens without settling; no `Migrate` entry ← `repos::tests::opens_without_settling`
-- [ ] Config read from `<config home>/mergewright/` ← `config::load` test by name
-- [ ] No `settle_names` / `open_settled` caller outside ops `src/rename` ← `git grep -n -E 'settle_names|open_settled' -- crates` quoted
-- [ ] `Generation` in the app/ui/term crates only in calls 11b3/11b4 change ← `git grep -n Generation -- crates/mergewright crates/mergewright-ui crates/mergewright-term` quoted, each line tagged
-- [ ] Deleted tests listed with reasons; deleted captures writerless ← NOTES; `scripts/shot-drift.py`
-- [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
-=======
 - [x] No marker or an old marker → current names ← `repo::names::tests::no_marker_is_current`, `old_marker_is_still_current` (red before fix, green after)
 - [x] A fresh repo's journal and backups land under the current names only ← `fresh_repo_names::journal_and_backups_use_current_names` (red on old names.rs, green after)
 - [x] A repo opens without settling; no `Migrate` entry ← `repos::tests::opens_without_settling`
@@ -99,8 +85,7 @@ pub fn names_in_force(common_dir: &Path) -> io::Result<Generation>; // always Ok
   - `src/view/journal/tests.rs:676` `ops::rename::description(Generation::CURRENT, …)` — 11b3
   - `tests/it/tour_walk.rs:238` `ops::tour::practice_prefix(Generation::CURRENT)` — 11b3
 - [x] Deleted tests listed with reasons; deleted captures writerless ← NOTES (Deleted tests / Captures); `scripts/shot-drift.py --base c0db33dd` quoted there
-- [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY — conductor runs gates
->>>>>>> ppc-11b2
+- [x] Fast and walk tiers green ← conductor, ppc-11b2 worktree: `cargo nextest run` 6800/6800 (310 s), `scripts/walks.sh` SUMMARY walks tests=459 failed=0; fmt, clippy, heavy clippy, doc tests clean
 
 ## Touches (check each, say how)
 - Every ops write path through `on_disk_names()` (covered by the new ops test).
@@ -118,8 +103,6 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`.
 
 ## Size
 ~55k tokens remaining: one fn plus two tests in git, one ops test, test deletions (cheap), the helper moves, the guard-test ports, compiling the WIP.
-<<<<<<< HEAD
-=======
 ## NOTES (builder)
 - First pass stopped: with no marker, `names_in_force` returned the oldest generation (`mergewright-git/src/repo/names.rs:37`, now replaced). The spec was amended to put the git change in this ticket.
 
@@ -160,4 +143,3 @@ Beyond the spec:
 - `tour/tests.rs` setup ported to `on_disk::DIR`, per the conductor's ruling;
 - `over_400.txt` rows lowered for files that shrank; `jobs/undo.rs` held at 817 by merging two doc-comment lines.
 - `tests/it/old_names.rs` and `update/palette/names_tests.rs` spell the old names on purpose. 11a should allow-list them as `guard`.
->>>>>>> ppc-11b2
