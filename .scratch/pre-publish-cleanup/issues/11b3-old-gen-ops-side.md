@@ -1,6 +1,6 @@
 # pre-publish: ops forgets earlier names (the move, the journal ref mapping and the old-tag readers go)
 
-Status: draft (amended 2026-11-10: after 11b2, names in force are always `CURRENT`, and the move tests are already gone)
+Status: ready
 Blocked by: 11b2 (nothing outside ops calls `settle_names`; `names_in_force` always says `CURRENT`; the move tests are deleted)
 Runs: alone (it changes pub ops signatures and updates their app call sites)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: the one behavioural risk (journals in his repos) is fenced by a test written first and a stop condition. The rest is deletion and ports that, after 11b2, are behaviour-neutral.
