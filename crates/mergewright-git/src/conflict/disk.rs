@@ -88,7 +88,7 @@ pub fn write_back(path: &Path, file: &ConflictFile, expected: Oid) -> Result<Oid
     })?;
     let rendered = file.render();
     let mut temporary = tempfile::Builder::new()
-        .prefix(".graft-")
+        .prefix(".mwr-")
         .tempfile_in(directory)?;
     temporary.write_all(&rendered)?;
     temporary.as_file().sync_all()?;
@@ -252,7 +252,7 @@ pub fn diff3_file(repo: &RepoHandle, path: &Path) -> Result<Option<ConflictFile>
     let [Some(base), Some(ours), Some(theirs)] = stages(repo, path)? else {
         return Ok(None);
     };
-    let scratch = tempfile::Builder::new().prefix("graft-diff3-").tempdir()?;
+    let scratch = tempfile::Builder::new().prefix("mwr-diff3-").tempdir()?;
     for (name, stage) in [("ours", ours), ("base", base), ("theirs", theirs)] {
         // Filtered, not raw: the sides have to equal the working tree's
         // lines byte for byte for `attach_base` to match them.

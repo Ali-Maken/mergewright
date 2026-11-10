@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 assertion_line: 383
 description: "Right: list 40 wide, authors as initials (PR for Priya Raman); the file pane as at 187."
 expression: "snapshot(&view(&rows, &hunks, &theme, HistoryFocus::List), 140, 40)"

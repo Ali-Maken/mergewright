@@ -656,7 +656,7 @@ fn a_stop_resumed_after_relaunch_finishes_the_section() {
 
 /// A linked worktree's place, inside `.git` so the main worktree's status
 /// never lists it.
-const WT: &str = ".git/graft-wt";
+const WT: &str = ".git/mwr-wt";
 
 /// `forked()` with x2 on `feature-x` and `feature-w` at x1: `feature-x`
 /// carries `feature-w`.
@@ -738,7 +738,7 @@ fn a_fork_carrying_a_branch_checked_out_elsewhere_stays() {
     assert!(matches!(inner, WhyStays::Elsewhere { .. }), "{inner:?}");
     let words = why.words();
     assert!(
-        words.starts_with("feature-w is checked out in ") && words.ends_with("graft-wt"),
+        words.starts_with("feature-w is checked out in ") && words.ends_with("mwr-wt"),
         "{words}"
     );
     no_move_of(&drawn, &["feature-x", "feature-w"]);

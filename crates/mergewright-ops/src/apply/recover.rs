@@ -215,7 +215,7 @@ pub struct Recovered {
     /// Empty whenever the read held the journal alone. Never holds a `live`
     /// entry.
     pub held: Vec<EntryId>,
-    /// Closed entries whose rewrite plan (`graft/rewrite/<id>/` under the
+    /// Closed entries whose rewrite plan (`mergewright/rewrite/<id>/` under the
     /// git dir) could not be removed, and why (rewrite-engine-b).
     pub plans_left: Vec<(EntryId, std::io::Error)>,
     /// Commits' index copies a dead run left in the names dir that could not

@@ -62,7 +62,7 @@ fn wait_until_ready(child: &mut Child) {
 /// so its own handler runs, rather than being shot where it stands.
 #[test]
 fn a_stopped_child_is_asked_first_so_its_cleanup_can_run() {
-    let temp = tempfile::TempDir::with_prefix("graft-kill-").expect("a temp dir");
+    let temp = tempfile::TempDir::with_prefix("mwr-kill-").expect("a temp dir");
     let marker = temp.path().join("caught-term");
     let mut child = trapping_child(&marker, "touch \"$MARKER\"; exit 0");
     wait_until_ready(&mut child);
@@ -80,7 +80,7 @@ fn a_stopped_child_is_asked_first_so_its_cleanup_can_run() {
 /// the user asked for cannot hang on a hook that ignores the signal.
 #[test]
 fn a_child_that_ignores_the_ask_is_killed_anyway() {
-    let temp = tempfile::TempDir::with_prefix("graft-kill-").expect("a temp dir");
+    let temp = tempfile::TempDir::with_prefix("mwr-kill-").expect("a temp dir");
     let marker = temp.path().join("never-written");
     let mut child = trapping_child(&marker, "");
     wait_until_ready(&mut child);
@@ -111,7 +111,7 @@ fn a_child_that_ignores_the_ask_is_killed_anyway() {
 /// whole hooks grace.
 #[test]
 fn a_slow_read_of_the_group_does_not_spend_gits_grace() {
-    let temp = tempfile::TempDir::with_prefix("graft-slow-read-").expect("a temp dir");
+    let temp = tempfile::TempDir::with_prefix("mwr-slow-read-").expect("a temp dir");
     let pidfile = temp.path().join("pid");
     let mut child = Command::new("sh")
         .arg("-c")

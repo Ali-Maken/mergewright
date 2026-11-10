@@ -2,7 +2,7 @@
 //! both rank with it (m8-polish-and-ship/11, decision 1).
 //!
 //! It lives in `ops`, not `core` (ADR-0007: core holds shapes, not
-//! behaviour; m8/12e D4): `mergewright-ops` ranks the picker with it and `graft`
+//! behaviour; m8/12e D4): `mergewright-ops` ranks the picker with it and `mergewright`
 //! (the palette) already depends on `mergewright-ops`, so no new edge.
 
 /// How far a query matches `text`; **lower ranks first**, `None` when it

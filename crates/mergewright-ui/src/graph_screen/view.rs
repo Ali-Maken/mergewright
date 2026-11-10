@@ -17,7 +17,7 @@ pub struct GraphView<'a> {
     /// Where the screen is, once the repository is open.
     pub location: Option<Location>,
     /// The terminal is tall enough for the blank row and the rule
-    /// ([`spaced`] of the terminal's rows, which `graft`'s geometry mirrors
+    /// ([`spaced`] of the terminal's rows, which `mergewright`'s geometry mirrors
     /// read too — not of this widget's area, which a tab strip or a pane
     /// below can shorten).
     pub spaced: bool,
@@ -63,7 +63,7 @@ pub struct GraphView<'a> {
     /// footer's place under [`GraphView::problem`], above the hints.
     pub notice: Option<SanitizedText>,
     /// Where [`GraphView::notice`] stands: in the bar's row, or — a done
-    /// line over a landing bar, `graft`'s [`hints::status_row`] answer — on
+    /// line over a landing bar, `mergewright`'s [`hints::status_row`] answer — on
     /// its own row directly above the bar, the graph a row shorter
     /// (ease-pass/08s M4).
     pub status_row: hints::StatusRow,
@@ -81,7 +81,7 @@ pub struct GraphView<'a> {
     /// both, above the revealed subject and the key hints. `None` while no
     /// base is pinned.
     pub compare_footer: Option<SanitizedText>,
-    /// Why the live operation stopped, worded by `graft` each frame
+    /// Why the live operation stopped, worded by `mergewright` each frame
     /// (`merge stopped · 1 file conflicted`, m6-conflicts/12). Drawn ahead
     /// of the key hints on their row ([`stopped_row`]) — the last rung of
     /// the footer, so a problem, a search, a notice, the compare base and a

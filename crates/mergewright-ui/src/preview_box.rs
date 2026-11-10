@@ -86,7 +86,7 @@ pub struct PreviewBox {
     pub keep: bool,
     /// **No longer read** (m7-power-tools/36): the footer is `esc back`
     /// whenever the box has one choice. Still set for the stash put-back's
-    /// closing boxes only because `graft/src/update/stash/tests.rs` reads it
+    /// closing boxes only because `mergewright/src/update/stash/tests.rs` reads it
     /// and that file is another ticket's this wave; removed with that read.
     pub back_only: bool,
     /// A merge's own box (ease-pass 10): `lines`, `commands` and choices

@@ -1,5 +1,5 @@
 ---
-source: crates/graft-graph/tests/it/corpus.rs
+source: crates/mergewright-graph/tests/it/corpus.rs
 expression: "picture(shape, &dir)"
 ---
 shape: many-lanes

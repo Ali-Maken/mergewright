@@ -25,7 +25,7 @@
 //! [`HintState`]: the table stays as the design wrote it, but
 //! [`HintState::Planned`] hints are dropped before the width rule
 //! runs, so the bar never teaches a key that does nothing (m5-03 review,
-//! Critical 2). `graft` proves both halves —
+//! Critical 2). `mergewright` proves both halves —
 //! `update::tests::every_key_the_bar_draws_is_answered` (Live ⇒ bound, key
 //! *and* verb, **and answered in the state the bar is drawn in**)
 //! and `update::tests::every_planned_hint_is_still_unbound` (Planned ⇒ not

@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/map_screen.rs
+source: crates/mergewright-ui/src/map_screen.rs
 expression: "draw(&sample_view(true), 80, 24)"
 ---
 "MAP · main · last 40 days                                                       "

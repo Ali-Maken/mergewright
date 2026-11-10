@@ -18,7 +18,7 @@ use forms::{marked_form, operation_live_form, pane_focused_form, searching_form}
 /// **Every context the footer can be put in**, every field combination, each
 /// row context also wrapped in [`HintContext::Marked`]. The one enumeration
 /// every sweep reads — `mergewright-ui`'s own hint tests, [`every_hint`] and
-/// `graft`'s key sweeps.
+/// `mergewright`'s key sweeps.
 ///
 /// It exists because three hand-written copies of this list drifted:
 /// [`HintContext::Dragging`] was added in m5/10 and only *one* of them
@@ -360,7 +360,7 @@ const ALL_ROLES: [SideRoles; 6] = [
 ];
 
 /// Every hint in every context's table, planned ones included, deduped by
-/// `(keys, verb, state)` — what `graft`'s guard tests walk so that neither
+/// `(keys, verb, state)` — what `mergewright`'s guard tests walk so that neither
 /// half of the table can drift from what the app binds.
 #[must_use]
 pub fn every_hint() -> Vec<Hint> {

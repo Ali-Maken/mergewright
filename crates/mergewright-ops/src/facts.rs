@@ -83,7 +83,7 @@ pub enum FactsError {
     /// has no base to stop at.
     #[error("the default branch: {0}")]
     Branches(#[from] mergewright_git::branches::BranchError),
-    /// A rewrite's saved plan (`graft/rewrite/<entry>/`) could not be read,
+    /// A rewrite's saved plan (`mergewright/rewrite/<entry>/`) could not be read,
     /// written or removed.
     #[error("the rewrite's saved plan: {0}")]
     SavedPlan(std::io::Error),

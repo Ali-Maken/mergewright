@@ -213,7 +213,7 @@ pub enum NotInvertible {
 /// [`NotInvertible::OperationLive`]'s words, `finish or abort the <kind>
 /// first`: the one source for the executor's `explain` and the preview's
 /// refusal (m6-conflicts/64, review m2). The app words its own refusal to
-/// match (`graft`'s `operation_live_words_match_ops`).
+/// match (`mergewright`'s `operation_live_words_match_ops`).
 #[must_use]
 pub fn operation_live_words(kind: InProgress) -> String {
     format!("finish or abort the {} first", kind.name())

@@ -363,7 +363,7 @@ fn published_names_branches_on_their_upstream() {
         "remote",
         "add",
         "origin",
-        "https://example.invalid/graft.git",
+        "https://example.invalid/mergewright.git",
     ]);
     for (branch, at) in [
         ("feature-a", "main~1"),

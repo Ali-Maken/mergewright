@@ -221,7 +221,7 @@ pub struct JournalView {
     /// keymap), or `None` when the row alone cannot name it.
     pub enter_words: Option<String>,
     /// `b` has a commit to name on the selected row: the bar offers
-    /// `b new branch here` only then (graft's `row_commit`, the function
+    /// `b new branch here` only then (mergewright's `row_commit`, the function
     /// `b` itself reads).
     pub branch_here: bool,
     /// A box is docked over the browser and names the keys: the bar is
@@ -232,7 +232,7 @@ pub struct JournalView {
     /// The `/` prompt while he types, drawn in place of the bar (blame's).
     pub find_prompt: Option<SanitizedText>,
     /// A write is running and `Esc` stops it before J sees the key
-    /// (graft's `update::remote::esc_stops_write`): the bar then reads
+    /// (mergewright's `update::remote::esc_stops_write`): the bar then reads
     /// `J close` and `esc cancels`, never `J/esc close` (m8/59 Major A).
     pub esc_cancels: bool,
     /// The ASCII tier: a failure's mark is `(x)`.

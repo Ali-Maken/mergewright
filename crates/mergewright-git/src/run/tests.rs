@@ -127,7 +127,7 @@ impl askpass::AskPass for Counting {
 fn askpass_server() -> (Arc<Counting>, askpass::AskPassServer) {
     let handler = Arc::new(Counting(AtomicUsize::new(0)));
     let server = askpass::AskPassServer::spawn(
-        std::path::PathBuf::from("/opt/graft helper"),
+        std::path::PathBuf::from("/opt/mergewright helper"),
         handler.clone(),
     )
     .expect("the askpass server starts");
@@ -152,8 +152,8 @@ fn askpass_env_is_set() {
     let env = String::from_utf8(output.stdout).expect("UTF-8 env");
     let socket = server.socket_path().to_str().expect("UTF-8 socket path");
     for line in [
-        "GIT_ASKPASS=/opt/graft helper".to_owned(),
-        "SSH_ASKPASS=/opt/graft helper".to_owned(),
+        "GIT_ASKPASS=/opt/mergewright helper".to_owned(),
+        "SSH_ASKPASS=/opt/mergewright helper".to_owned(),
         "SSH_ASKPASS_REQUIRE=force".to_owned(),
         format!("{}={socket}", mergewright_core::on_disk::ASKPASS_SOCKET_VAR),
         "GIT_TERMINAL_PROMPT=0".to_owned(),
@@ -182,7 +182,7 @@ impl askpass::AskPass for Answers {
 fn the_password_never_reaches_the_invocation() {
     const PASSWORD: &str = "hunter2-do-not-leak";
     let server = askpass::AskPassServer::spawn(
-        std::path::PathBuf::from("/opt/graft"),
+        std::path::PathBuf::from("/opt/mergewright"),
         Arc::new(Answers(PASSWORD.as_bytes())),
     )
     .expect("the askpass server starts");

@@ -1,6 +1,6 @@
 //! The journal file: open it, append to it, recover from a crash.
 //!
-//! Append-only JSONL under `<git-path graft>/undo-journal.jsonl`, which is
+//! Append-only JSONL under `<git-path mergewright>/undo-journal.jsonl`, which is
 //! per-worktree by git's own layout rules (ADR-0010). Two lines per entry:
 //! the `Pending` line goes down *before* the operation runs, the outcome
 //! line after it, so a crash between them leaves a `Pending` entry that

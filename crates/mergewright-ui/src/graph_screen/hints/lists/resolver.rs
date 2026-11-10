@@ -143,7 +143,7 @@ fn resolver_done_list(restart: bool) -> Vec<Hint> {
 /// named like `^O/^T all`) is drawn only on a row git combined, the only rows whose
 /// change he has not seen.
 ///
-/// Bound by `graft`'s `update::finish::finish_key` (m6-conflicts/34, the
+/// Bound by `mergewright`'s `update::finish::finish_key` (m6-conflicts/34, the
 /// app half of ticket 19).
 pub(super) fn finish_list(focus: SummaryFocus, expandable: bool) -> Vec<Hint> {
     match focus {

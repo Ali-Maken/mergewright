@@ -30,7 +30,7 @@ pub enum StripMark {
     Head,
 }
 
-/// What [`strip_marks`] (the `graft` crate) hands the widget: every mark it
+/// What [`strip_marks`] (the `mergewright` crate) hands the widget: every mark it
 /// found on rows currently on hand, plus how the app understands its own
 /// size.
 #[derive(Clone, Debug, PartialEq, Eq)]

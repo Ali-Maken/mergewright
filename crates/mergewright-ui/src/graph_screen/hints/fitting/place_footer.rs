@@ -104,7 +104,7 @@ impl PlaceFooter {
 /// A place's close clause and, while a write runs, the clause that says what
 /// `Esc` does instead (m8/59 Major A). Normally one clause, both keys
 /// (`J/esc close`). While `Esc` stops a running write before the place sees
-/// it (graft's `update/keys.rs`, design note choice 4), the place's own key
+/// it (mergewright's `update/keys.rs`, design note choice 4), the place's own key
 /// closes alone (`J close`) and `esc cancels` is drawn apart, to go first:
 /// the first and last clauses are the ones [`shed_footer`] keeps longest.
 /// Returns `(cancels, close)`; either is `None` when its key is unbound.

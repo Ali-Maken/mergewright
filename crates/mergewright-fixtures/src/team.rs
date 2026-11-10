@@ -44,7 +44,7 @@ const SCRATCH_REF: &str = "refs/team-scratch";
 
 /// The generator's one tally that cannot be read back from git, written
 /// beside the repository's own files so [`stats`] can report it.
-const MOST_OPEN_FILE: &str = "graft-team-most-open";
+const MOST_OPEN_FILE: &str = "mwr-team-most-open";
 
 /// Directory prefix in the fixture cache; distinct from `synthetic-`.
 const PREFIX: &str = "team-";

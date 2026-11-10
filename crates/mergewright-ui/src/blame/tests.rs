@@ -657,7 +657,7 @@ fn blame_title_names_whitespace_only_when_counted() {
 }
 
 /// 21b-2 item 2: the title's tail follows the default the view is given,
-/// not a literal of blame's own (graft fills it from mergewright-git).
+/// not a literal of blame's own (mergewright fills it from mergewright-git).
 #[test]
 fn the_title_tail_follows_the_default_it_is_given() {
     let rows = mockup();

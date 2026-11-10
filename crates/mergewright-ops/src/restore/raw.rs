@@ -273,7 +273,7 @@ mod tests {
         assert_eq!(c_quoted("é".as_bytes()), b"\"\\303\\251\"");
     }
 
-    /// A 250-byte file name: the old `<name>.graft-raw-<pid>` temporary
+    /// A 250-byte file name: the old `<name>.mwr-raw-<pid>` temporary
     /// passed `NAME_MAX` (255) and failed every time; the short `.~<hex>` name
     /// beside it does not. His bytes and the exec bit land, no temporary is
     /// left behind.

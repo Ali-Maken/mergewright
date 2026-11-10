@@ -482,8 +482,8 @@ mod tests {
     fn the_same_frame_from_two_different_homes_is_one_file() {
         let temp = tempfile::tempdir().expect("a temp dir");
         let path = temp.path().join("shot.txt");
-        let ada = format!("graft {}ada/code/api  3 commits\n", concat!("/Us", "ers/"));
-        let bo = format!("graft {}abby/code/api  3 commits\n", concat!("/ho", "me/"));
+        let ada = format!("mwr {}ada/code/api  3 commits\n", concat!("/Us", "ers/"));
+        let bo = format!("mwr {}abby/code/api  3 commits\n", concat!("/ho", "me/"));
         std::fs::write(&path, machine::redacted(&ada)).expect("writable");
 
         assert_eq!(

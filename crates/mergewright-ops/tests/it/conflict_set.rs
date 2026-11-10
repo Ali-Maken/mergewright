@@ -349,7 +349,7 @@ fn a_link_without_a_kind_reads_as_step() {
             .map(|(_, link)| link)
             .collect()
     };
-    // The link as m6-conflicts/09 wrote it: no `Graft-Link:` line.
+    // The link as m6-conflicts/09 wrote it: no `Mergewright-Link:` line.
     relabel_newest(&repo, &name, "graft x step within: merge feature");
     assert_eq!(kinds(&repo), [LinkKind::Step, LinkKind::Step]);
     // ...and so it bounds nothing: the set is 09's.

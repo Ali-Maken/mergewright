@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 assertion_line: 419
 description: "Right: the title ends tracing… · esc stops; both panes blank but the rule."
 expression: "snapshot(&v, 140, 40)"

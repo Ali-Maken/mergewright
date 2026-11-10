@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 assertion_line: 371
 description: "Right: list 56 wide, ▸ on Lina's row, ↳ was under Priya's; the file pane: ┃ on 18–29, 19 +, the old 22 − with no number, signs in one column."
 expression: "snapshot(&view(&rows, &hunks, &theme, HistoryFocus::List), 187, 50)"

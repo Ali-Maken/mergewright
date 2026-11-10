@@ -419,7 +419,7 @@ fn clone_prompt_fits_every_width() {
 /// pasted) and the cursor after it stay in view, the start behind `…`.
 #[test]
 fn a_long_url_keeps_its_end_and_the_cursor_in_view() {
-    let url = "file:///var/folders/z4/tqdvc9557mv3f1pqcnw0/T/graft-remote-o3U7fu/remote.git";
+    let url = "file:///var/folders/z4/tqdvc9557mv3f1pqcnw0/T/mwr-remote-o3U7fu/remote.git";
     let (_, lines) = draw(
         &clone_view(url, "~/code/remote", CloneShown::Typing),
         60,

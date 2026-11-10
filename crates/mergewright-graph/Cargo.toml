@@ -18,7 +18,7 @@ thiserror.workspace = true
 tiny-skia = { version = "0.12", default-features = false, features = ["std"] }
 
 # Every crate below is test-only. Dev-dependencies are not internal
-# dependency edges (ADR-0006; `graft/tests/it/dependency_edges.rs` skips
+# dependency edges (ADR-0006; `mergewright/tests/it/dependency_edges.rs` skips
 # them), so `graph -> core` stays the crate's only real edge.
 [dev-dependencies]
 # PROMPT.md §6.3 / §7.1: the hot paths benchmarked with `criterion`, run

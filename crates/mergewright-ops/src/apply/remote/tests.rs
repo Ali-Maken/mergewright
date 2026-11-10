@@ -224,7 +224,7 @@ fn a_failed_fetch_that_moved_refs_ends_with_them() {
     });
     let (mut entry, names) = journaled(&op);
     let failure = RemoteFailure::NoSuchRemote {
-        name: "/nonexistent/graft-21c.git".to_owned(),
+        name: "/nonexistent/mwr-21c.git".to_owned(),
     };
     let today = explain(&entry, &failure, &[], &names, None, &crate::keys::Letters);
     let oid = |byte: u8| Oid::from_bytes(&[byte; 20]).unwrap();
@@ -357,7 +357,7 @@ fn only_a_remote_invocation_with_hooks_gets_them() {
     let hooks = RemoteHooks {
         progress: Box::new(|_| {}),
         askpass: Arc::new(Panics),
-        helper: PathBuf::from("/nonexistent/graft"),
+        helper: PathBuf::from("/nonexistent/mergewright"),
     };
     let invocation = |remote| Invocation {
         args: Vec::new(),

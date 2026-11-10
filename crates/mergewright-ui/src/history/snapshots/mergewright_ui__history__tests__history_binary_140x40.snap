@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/history/tests.rs
+source: crates/mergewright-ui/src/history/tests.rs
 description: "Right: the file pane reads binary · 700 B → 2 KB under the header; no line rows."
 expression: "snapshot(&v, 140, 40)"
 ---

@@ -16,13 +16,12 @@ use super::{SnapshotError, both_trees, commit_trees, move_backup_ref};
 
 /// Why a link of the backup chain was written (m6-conflicts/22). Recorded in
 /// the backup commit's message as its last line, `Mergewright-Link: step` or
-/// `Mergewright-Link: resume` (`Graft-Link:` before the rename, still read), so
-/// the chain is readable without the journal.
+/// `Mergewright-Link: resume`, so the chain is readable without the journal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinkKind {
     /// Before a step folded into the live operation (a resolver write).
     /// Also what a link written before m6-conflicts/22, with no
-    /// `Graft-Link:` line, reads as.
+    /// `Mergewright-Link:` line, reads as.
     Step,
     /// Before `resume` hands the operation back to git (`--continue`,
     /// `--skip`, `--abort`, `commit`). For a multi-step operation it marks
@@ -142,7 +141,7 @@ pub fn recorded_index_state(
 /// ([`recorded_index_state`] gives `None`), which is where the pre-operation
 /// snapshot's parents hand over to the user's own history. An absent ref is
 /// an empty chain, not a failure. The pre-operation snapshot and any link
-/// written before m6-conflicts/22 carry no `Graft-Link:` line and read as
+/// written before m6-conflicts/22 carry no `Mergewright-Link:` line and read as
 /// [`LinkKind::Step`].
 ///
 /// This is what `d` reads after `⏎`: the stages git dropped when it staged
@@ -150,7 +149,7 @@ pub fn recorded_index_state(
 ///
 /// # Errors
 /// [`SnapshotError`] — the stop, a `git` that would not run, or a
-/// `Graft-Link:` line naming a kind this build does not know.
+/// `Mergewright-Link:` line naming a kind this build does not know.
 pub fn backup_chain(
     repo: &RepoHandle,
     name: &str,

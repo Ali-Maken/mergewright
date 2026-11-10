@@ -1847,7 +1847,7 @@ fn capture_the_ladder_for_docs_shots() {
 /// that says so: draw a row, then read every cell of it back and check that
 /// each one belongs to the label [`ref_spans`] names (ease-pass 07).
 ///
-/// `graft`'s mouse hit-test asks `ref_spans` which badge a column is on
+/// `mergewright`'s mouse hit-test asks `ref_spans` which badge a column is on
 /// (`mergewright::view::hit::badge_index_at`). If that ever stopped agreeing with
 /// what was drawn, a drag would pick up the badge next to the one under the
 /// pointer — silently, because both are branches and both look plausible.

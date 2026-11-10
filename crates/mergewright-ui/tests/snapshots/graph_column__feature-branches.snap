@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/tests/graph_column.rs
+source: crates/mergewright-ui/tests/graph_column.rs
 expression: text
 ---
 shape: feature-branches (dark = light, asserted), truecolor

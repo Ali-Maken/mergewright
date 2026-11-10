@@ -128,7 +128,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
 /// A commit row's list with the verbs that act on this row
 /// (m7-power-tools/40): `o take` right after `⏎ open`, `a amend` right after
 /// the last of `c`/`P`/`p`/`f` (after `⏎ open` where the list has none). Both are
-/// worked out by `graft` (`view::rows::row_verbs`), from the same checks the
+/// worked out by `mergewright` (`view::rows::row_verbs`), from the same checks the
 /// keys run, so the bar never hints a row the key refuses.
 pub(super) fn with_verbs(mut list: Vec<Hint>, verbs: RowVerbs) -> Vec<Hint> {
     let after = |list: &[Hint], keys| list.iter().position(|h| h.is(keys)).map(|i| i + 1);

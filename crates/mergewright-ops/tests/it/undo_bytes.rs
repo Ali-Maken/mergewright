@@ -310,7 +310,7 @@ fn a_failing_required_smudge_filter_refuses_the_operation_before_it_writes() {
 }
 
 /// m8-polish-and-ship/21 item 3: a file whose name is 250 bytes (`NAME_MAX` is
-/// 255). The raw write's old temporary, `<name>.graft-raw-<pid>`, passed the
+/// 255). The raw write's old temporary, `<name>.mwr-raw-<pid>`, passed the
 /// limit and made `u` fail every time; now `u` brings his LF bytes back.
 #[test]
 fn u_brings_back_a_file_with_a_250_byte_name() {

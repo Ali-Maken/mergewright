@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 
 /// A journal entry's id: a ULID, sortable by creation time and safe inside a
-/// ref name, which is where it also appears (`refs/graft/backup/<worktree>/
+/// ref name, which is where it also appears (`refs/mergewright/backup/<worktree>/
 /// <id>`, ADR-0010).
 ///
 /// Twenty-six Crockford base32 characters: 48 bits of Unix milliseconds, then

@@ -332,7 +332,7 @@ fn the_next_read_waits_a_full_interval_after_a_slow_read() {
 /// m8/13e (review Minor 8): the guard every sleeping hook's test holds.
 #[test]
 fn the_hook_guard_kills_its_pid_on_drop() {
-    let temp = tempfile::TempDir::with_prefix("graft-reap-").expect("a temp dir");
+    let temp = tempfile::TempDir::with_prefix("mwr-reap-").expect("a temp dir");
     let pidfile = temp.path().join("pid");
     let mut sleeper = std::process::Command::new("sleep")
         .arg("600")

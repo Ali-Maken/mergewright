@@ -6,7 +6,7 @@
 //! have opened, including the `[core] editor` a user set years ago and has
 //! forgotten about.
 //!
-//! **Why it lives here and not in `graft`.** The app runs this on the frame
+//! **Why it lives here and not in `mergewright`.** The app runs this on the frame
 //! thread, because only the thread holding the terminal can hand it over, and
 //! `crates/mergewright/tests/it/seam_rule.rs` forbids a [`GitInvocation`] anywhere
 //! in `crates/mergewright/src` outside `jobs/`. Left as a bare
@@ -62,7 +62,7 @@ mod tests {
     /// that the fixed environment `run` sets does not stop it.
     #[test]
     fn git_names_an_editor_for_any_directory_it_will_run_in() {
-        let temp = tempfile::TempDir::with_prefix("graft-editor-").expect("a temp dir");
+        let temp = tempfile::TempDir::with_prefix("mwr-editor-").expect("a temp dir");
 
         let editor = git_editor(temp.path()).expect("git answers");
 
@@ -73,7 +73,7 @@ mod tests {
     /// in it, not a guess.
     #[test]
     fn a_directory_that_is_not_there_is_reported_not_guessed_at() {
-        let missing = Path::new("/graft-no-such-directory-ever");
+        let missing = Path::new("/mwr-no-such-directory-ever");
 
         let error = git_editor(missing).expect_err("git cannot run there");
 

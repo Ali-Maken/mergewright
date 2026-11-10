@@ -34,7 +34,7 @@ impl AskPass for Fixed {
 }
 
 fn server(handler: Arc<dyn AskPass>) -> AskPassServer {
-    AskPassServer::spawn(PathBuf::from("/nonexistent/graft"), handler).expect("server starts")
+    AskPassServer::spawn(PathBuf::from("/nonexistent/mergewright"), handler).expect("server starts")
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn socket_dir_is_private_and_removed() {
     assert!(
         dir.file_name()
             .and_then(|name| name.to_str())
-            .is_some_and(|name| name.starts_with("graft-askpass-")),
+            .is_some_and(|name| name.starts_with("mwr-askpass-")),
         "{dir:?}"
     );
 
@@ -409,7 +409,7 @@ fn peer_uid_of_a_real_connection_is_ours() {
 fn a_refusal_survives_a_failed_cleanup() {
     let stranger = nix::unistd::geteuid().as_raw().wrapping_add(1);
     let server = AskPassServer::spawn_owned_by(
-        PathBuf::from("/nonexistent/graft"),
+        PathBuf::from("/nonexistent/mergewright"),
         Fixed::new(Some(b"s3c")),
         stranger,
     )
@@ -441,7 +441,7 @@ fn a_refusal_is_typed() {
     let handler = Fixed::new(Some(b"s3c"));
     let stranger = nix::unistd::geteuid().as_raw().wrapping_add(1);
     let server = AskPassServer::spawn_owned_by(
-        PathBuf::from("/nonexistent/graft"),
+        PathBuf::from("/nonexistent/mergewright"),
         handler.clone(),
         stranger,
     )

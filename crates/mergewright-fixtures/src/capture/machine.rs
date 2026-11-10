@@ -196,7 +196,7 @@ fn matched(bytes: &[u8], at: usize) -> Option<Found> {
 ///
 /// The root must start a path — `left/right/home/end` is a list of key names,
 /// not a directory — and the account name is taken as far as a path segment
-/// runs. The tail is left alone: `…/dev/sandbox/graft` is the repository, and
+/// runs. The tail is left alone: `…/dev/sandbox/mwr` is the repository, and
 /// keeping it is what makes the redacted capture still say where it was
 /// taken.
 fn home_at(bytes: &[u8], at: usize) -> Option<usize> {
@@ -310,16 +310,16 @@ mod tests {
 
     #[test]
     fn a_home_directory_is_found_and_its_tail_is_kept() {
-        let line = format!("graft {}/dev/sandbox/graft  73 commits", home("ada"));
+        let line = format!("mwr {}/dev/sandbox/mwr  73 commits", home("ada"));
         let out = redacted(&line);
-        assert_eq!(out, "graft <home____>/dev/sandbox/graft  73 commits");
+        assert_eq!(out, "mwr <home____>/dev/sandbox/mwr  73 commits");
         assert!(found(out.as_bytes()).is_empty(), "{out}");
     }
 
     #[test]
     fn a_placeholder_is_as_wide_as_what_it_replaces() {
         for name in ["a", "ada", "devuser", "a-very-long-account-name"] {
-            let line = format!("graft {}/dev  x", home(name));
+            let line = format!("mwr {}/dev  x", home(name));
             let out = redacted(&line);
             assert_eq!(
                 out.chars().count(),
@@ -364,8 +364,8 @@ mod tests {
     #[test]
     fn a_scratch_path_is_replaced_whole() {
         let line = format!(
-            "graft {}  47 commits",
-            scratch("z4/tqdvc9557mv3f1/T/graft-remote-idICFn/work")
+            "mwr {}  47 commits",
+            scratch("z4/tqdvc9557mv3f1/T/mwr-remote-idICFn/work")
         );
         let out = redacted(&line);
         assert!(out.contains("<scratch"), "{out}");
@@ -383,7 +383,7 @@ mod tests {
 
     #[test]
     fn an_elided_scratch_root_is_prose_about_the_rule_not_a_leak() {
-        let line = format!("headers carry {MACOS_SCRATCH}…/graft-remote");
+        let line = format!("headers carry {MACOS_SCRATCH}…/mwr-remote");
         assert_eq!(found(line.as_bytes()), vec![]);
     }
 

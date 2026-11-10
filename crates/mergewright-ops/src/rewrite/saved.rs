@@ -1,4 +1,4 @@
-//! The plan a rewrite runs, saved under `<git dir>/graft/rewrite/<entry-id>/`
+//! The plan a rewrite runs, saved under `<git dir>/mergewright/rewrite/<entry-id>/`
 //! **before** the journal's `Pending` line and removed when the entry closes
 //! (ADR-0047 §1). A relaunch mid-rewrite reads it to continue, to name the
 //! branch of the step in the banner, and to go home after an abort.
@@ -183,7 +183,7 @@ fn helper(repo: &RepoHandle, dir: &Path) -> String {
          if [ -n \"$id\" ] && [ -f \"$messages/$id\" ]; then\n\
          \tcat \"$messages/$id\" > \"$1\"\n\
          else\n\
-         \tgit stripspace --strip-comments < \"$1\" > \"$1.graft\" && mv \"$1.graft\" \"$1\"\n\
+         \tgit stripspace --strip-comments < \"$1\" > \"$1.mwr\" && mv \"$1.mwr\" \"$1\"\n\
          fi\n",
         done = quoted(&done),
         messages = quoted(&dir.join("messages")),

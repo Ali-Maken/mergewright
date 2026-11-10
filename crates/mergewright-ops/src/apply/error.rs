@@ -274,7 +274,7 @@ pub enum AfterState {
     AskPass(std::io::Error),
     /// The entry names a backup ref that no longer exists, so the after-state
     /// read by `resume` has nothing to hang off and is not sealed: something
-    /// deleted `refs/graft/backup/…` while the operation was stopped. `u`
+    /// deleted `refs/mergewright/backup/…` while the operation was stopped. `u`
     /// of this entry has no backup to restore from either (m5/07).
     #[error("the backup ref {name} is gone; the after-state is not kept reachable")]
     BackupGone {
@@ -291,7 +291,7 @@ pub enum AfterState {
     /// added (review m7-16b..21b, Major 1).
     #[error("the branch's config after the operation: {0}")]
     BranchConfig(FactsError),
-    /// A rewrite's saved plan (`<git dir>/graft/rewrite/<entry-id>/`) could
+    /// A rewrite's saved plan (`<git dir>/mergewright/rewrite/<entry-id>/`) could
     /// not be removed when its entry closed (ADR-0047 §1). The entry is
     /// closed all the same; the files are Mergewright's, not the user's, and a
     /// banner may name the wrong branch for a later rebase on the same top

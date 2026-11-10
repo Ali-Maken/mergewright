@@ -113,13 +113,13 @@ mod tests {
         };
         let with = JobFailure::Panicked {
             message: "lane 3 vanished".to_owned(),
-            report: Some("/state/graft/crash-1.log".to_owned()),
+            report: Some("/state/mergewright/crash-1.log".to_owned()),
         };
 
         assert_eq!(without.to_string(), "panicked: lane 3 vanished");
         assert_eq!(
             with.to_string(),
-            "panicked: lane 3 vanished — report: /state/graft/crash-1.log"
+            "panicked: lane 3 vanished — report: /state/mergewright/crash-1.log"
         );
     }
 }

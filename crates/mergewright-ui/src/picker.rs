@@ -2,7 +2,7 @@
 //! lower part of the graph listing his branches and the remote's, a typed
 //! query above them.
 //!
-//! Pure drawing. `graft` owns the state, the filter and the keys, and hands
+//! Pure drawing. `mergewright` owns the state, the filter and the keys, and hands
 //! over a [`PickerView`] with every string already worded and sanitized.
 //!
 //! Different kinds of row look different without colour: a glyph and a word

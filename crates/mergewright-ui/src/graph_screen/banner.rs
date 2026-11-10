@@ -1,5 +1,5 @@
 //! The operation banner's text (moved out of `mod.rs` by m7-power-tools/07b):
-//! [`BannerView`], the plain data `graft` fills each frame, and
+//! [`BannerView`], the plain data `mergewright` fills each frame, and
 //! [`banner_line`], the words the header draws for it.
 
 use mergewright_term::SanitizedText;
@@ -56,7 +56,7 @@ pub struct RewriteBannerView {
     pub action: String,
     /// The stopped row's commit, short.
     pub sha7: String,
-    /// The stopped row's subject, sanitised by `graft`.
+    /// The stopped row's subject, sanitised by `mergewright`.
     pub subject: String,
     /// Whose step this is: a branch of the line, or a fork replayed with it.
     /// `None` for a single branch outside a fork, and for a rebase begun in

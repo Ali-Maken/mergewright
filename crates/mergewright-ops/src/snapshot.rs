@@ -10,14 +10,14 @@
 //!   commonest thing a discard destroys).
 //!
 //! Both come from a **copy** of the real index at
-//! `<git-path graft>/tmp-index-*`. The copy carries git's stat cache, so
+//! `<git-path mergewright>/tmp-index-*`. The copy carries git's stat cache, so
 //! `add -A` re-hashes only the files whose stat data moved: 15 ms against
 //! 236 ms for a fresh `read-tree` on a 5,000-file tree (git 2.54). Nothing
 //! here ever writes the real `.git/index` — a read that rewrote the index
 //! would fight the user's own git (M2 review round 2).
 //!
 //! The two trees are joined by `mktree` into `{ index/, worktree/ }` and
-//! committed under `refs/graft/backup/<worktree>/<ulid>` (ADR-0010's
+//! committed under `refs/mergewright/backup/<worktree>/<ulid>` (ADR-0010's
 //! namespacing, its Correction's `<ulid>`), so both stay reachable and a
 //! restore reads each by name. A before-snapshot adds `raw/` beside them when
 //! it keeps bytes git would not give back (ADR-0052).
@@ -127,7 +127,7 @@ pub enum SnapshotError {
         /// What it printed, first line, lossy.
         printed: String,
     },
-    /// A backup commit's `Graft-Link:` line names a kind this build does
+    /// A backup commit's `Mergewright-Link:` line names a kind this build does
     /// not know (m6-conflicts/22) — written by a later Mergewright, so guessing
     /// would bound a conflict set wrongly.
     #[error("backup commit {commit} has an unknown link kind: {printed}")]

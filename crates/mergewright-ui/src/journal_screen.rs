@@ -5,7 +5,7 @@
 //! m7-power-tools/24).
 //!
 //! An overlay over the graph area, like `map_screen`: it owns no state and
-//! no I/O, and `view::journal::journal_view` (crate `graft`) builds its
+//! no I/O, and `view::journal::journal_view` (crate `mergewright`) builds its
 //! input. Every field-relevant fact is in the text — the glyphs, the source
 //! word, the `← u` mark, the `interrupted` word — because a capture carries
 //! no colour and neither does a `NO_COLOR` terminal.

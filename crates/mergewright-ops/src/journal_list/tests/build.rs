@@ -20,7 +20,7 @@ fn kinds(list: &JournalList) -> Vec<String> {
     list.rows
         .iter()
         .map(|row| match row {
-            ListRow::Mergewright(id) => format!("graft {}", id.as_str()),
+            ListRow::Mergewright(id) => format!("mergewright {}", id.as_str()),
             ListRow::Outside(step) => format!("outside {}", step.words),
             ListRow::Lost { event, commit } => {
                 format!("lost {} under {event}", commit.run.tip.as_bytes()[0])
@@ -266,12 +266,12 @@ fn rows_are_newest_first_and_lost_rows_follow_their_event() {
     assert_eq!(
         kinds(&built),
         vec![
-            format!("graft {}", fetch.id.as_str()),
+            format!("mergewright {}", fetch.id.as_str()),
             "outside moved main to 0303030".to_owned(),
             "lost 4 under 1".to_owned(),
             r#"outside committed "D" on main"#.to_owned(),
             // Mergewright's commit C is its entry, not a `$` row.
-            format!("graft {}", commit.id.as_str()),
+            format!("mergewright {}", commit.id.as_str()),
         ]
     );
 }
@@ -292,9 +292,9 @@ fn a_lost_edit_sits_under_its_undo() {
     assert_eq!(
         kinds(&built),
         vec![
-            format!("graft {}", undo.id.as_str()),
+            format!("mergewright {}", undo.id.as_str()),
             "edit src/a.rs under 0".to_owned(),
-            format!("graft {}", discard.id.as_str()),
+            format!("mergewright {}", discard.id.as_str()),
         ]
     );
 }

@@ -68,7 +68,7 @@ pub(crate) fn said_live_on_the_graph(list: Vec<Hint>, c: LiveC, space_stages: bo
 
 /// The graph's write keys that refuse while an operation is live
 /// (m8-polish-and-ship/15 A1, keymap §2.1 mode rule: a key that can only
-/// say "no" is not offered). Each member's refusing line, in `graft`:
+/// say "no" is not offered). Each member's refusing line, in `mergewright`:
 /// - `app.undo` — `update::undo::start_undo` → `in_progress_refusal`
 ///   (`update/undo.rs:344`, words from `live_refusal_words`). The one
 ///   exception, a merge begun in the shell (keymap §2.6a), is not told
@@ -82,7 +82,7 @@ pub(crate) fn said_live_on_the_graph(list: Vec<Hint>, c: LiveC, space_stages: bo
 /// - `graph.rewrite` — `rewrite_editor::open_rewrite` → `preview_refusal`
 ///   (`update/rewrite_editor/open.rs:48`).
 ///
-/// Held against the app by `graft`'s
+/// Held against the app by `mergewright`'s
 /// `no_key_a_live_operation_bar_draws_refuses_while_live`.
 const REFUSED_WHILE_LIVE: &[ActionId] = &[
     ActionId("app.undo"),

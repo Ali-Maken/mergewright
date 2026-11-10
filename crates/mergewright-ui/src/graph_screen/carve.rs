@@ -1,5 +1,5 @@
 //! The graph screen's row carve in plain numbers (m8-polish-and-ship/40):
-//! the one body [`super::screen_rows`] wraps, and the one `graft`'s
+//! the one body [`super::screen_rows`] wraps, and the one `mergewright`'s
 //! hit-tests read, so the rows a click lands on are the rows drawn.
 
 use ratatui::layout::Rect;
@@ -93,7 +93,7 @@ pub struct RowCarve {
 
 /// The one carve of the graph screen's rows: `area` cut into the bands of
 /// [`RowCarve`] for what `inputs` asks. [`screen_rows`](super::screen_rows) is this over a
-/// [`GraphView`]; `graft`'s hit-tests read it over plain state.
+/// [`GraphView`]; `mergewright`'s hit-tests read it over plain state.
 #[must_use]
 pub fn row_carve(area: Cells, inputs: CarveInputs) -> RowCarve {
     let area = rect_of(area);

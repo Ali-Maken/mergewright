@@ -121,7 +121,7 @@ pub(super) fn assemble(
         let in_force = crate::journal::in_force_all(entries);
         for run in &found.lost {
             if let Some((event, hint)) = place(&olds, run.tip) {
-                let graft = match &events[event] {
+                let mergewright = match &events[event] {
                     Event::Mergewright { entry, .. } => Some(judged_by(entries, &in_force, *entry)),
                     Event::Outside { .. } => None,
                 };
@@ -129,7 +129,7 @@ pub(super) fn assemble(
                     run: *run,
                     subject: (lost.subject_of)(run.tip),
                     held_by: held_by(hint, run.tip, outside, lost.branch_exists),
-                    fate: fate_of(graft, run.tip),
+                    fate: fate_of(mergewright, run.tip),
                 });
             }
             // A tip no event had as an old value cannot be placed. Every

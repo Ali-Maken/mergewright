@@ -138,13 +138,13 @@ pub struct LostWork {
 }
 
 impl LostWork {
-    /// Builds the fixture, calling `graft` at its three Mergewright points.
+    /// Builds the fixture, calling `app` at its three Mergewright points.
     ///
     /// # Errors
     /// [`LostWorkError`] if a directory cannot be made, a `git` step fails,
     /// or a Mergewright operation does.
-    pub fn build(graft: &mut dyn Mergewright) -> Result<LostWork, LostWorkError> {
-        LostWork::build_with(graft, &[])
+    pub fn build(app: &mut dyn Mergewright) -> Result<LostWork, LostWorkError> {
+        LostWork::build_with(app, &[])
     }
 
     /// [`LostWork::build`], with each `(key, value)` set by `git config` in
@@ -157,7 +157,7 @@ impl LostWork {
     /// # Errors
     /// As [`LostWork::build`]; a `git config` that fails is a `git` step.
     pub fn build_with(
-        graft: &mut dyn Mergewright,
+        app: &mut dyn Mergewright,
         config: &[(&str, &str)],
     ) -> Result<LostWork, LostWorkError> {
         let scratch = Scratch::empty("lost-work").map_err(|source| LostWorkError::Io {
@@ -169,9 +169,8 @@ impl LostWork {
         let origin = root.join("origin.git");
         let shell = Shell { work: &work };
 
-        let commits = shell_steps(&shell, graft, &root, &origin, config)?;
-        graft
-            .fetch(shell.work, ms(END))
+        let commits = shell_steps(&shell, app, &root, &origin, config)?;
+        app.fetch(shell.work, ms(END))
             .map_err(|why| LostWorkError::Mergewright { step: "fetch", why })?;
 
         Ok(LostWork {
@@ -202,7 +201,7 @@ impl LostWork {
 /// discard and undo at 10:16. `config` is set after the fixture's own.
 fn shell_steps(
     shell: &Shell<'_>,
-    graft: &mut dyn Mergewright,
+    app: &mut dyn Mergewright,
     root: &Path,
     origin: &Path,
     config: &[(&str, &str)],
@@ -233,7 +232,7 @@ fn shell_steps(
     )?;
     shell.remote_at_c(root, origin)?;
     let limiter = shell.commit(at(10, 15, 0), "src/limit.rs", b"// limit\n", LOST_ON_MAIN)?;
-    app_edit_steps(shell, graft)?;
+    app_edit_steps(shell, app)?;
 
     shell.git(at(10, 18, 0), &["switch", "-q", "-c", "spike", "HEAD~1"])?;
     let cache = shell.commit(at(10, 21, 0), "src/cache.rs", b"// redis\n", LOST_ON_SPIKE)?;
@@ -270,15 +269,13 @@ fn shell_steps(
 }
 
 /// 10:16: Mergewright's discard, his edit, Mergewright's forced undo over it.
-fn app_edit_steps(shell: &Shell<'_>, graft: &mut dyn Mergewright) -> Result<(), LostWorkError> {
+fn app_edit_steps(shell: &Shell<'_>, app: &mut dyn Mergewright) -> Result<(), LostWorkError> {
     let failed = |step| move |why| LostWorkError::Mergewright { step, why };
     shell.write(EDITED, DISCARDED_EDIT)?;
-    graft
-        .discard(shell.work, EDITED, ms(at(10, 16, 0)))
+    app.discard(shell.work, EDITED, ms(at(10, 16, 0)))
         .map_err(failed("discard"))?;
     shell.write(EDITED, LOST_EDIT)?;
-    graft
-        .undo_forced(shell.work, ms(at(10, 16, 40)))
+    app.undo_forced(shell.work, ms(at(10, 16, 40)))
         .map_err(failed("undo"))
 }
 

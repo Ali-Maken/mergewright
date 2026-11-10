@@ -1701,7 +1701,7 @@ fn a_finishable_done_file_offers_c() {
 /// `context_list`, before the `Live` filter, since both entries stay
 /// `Planned` in this build (`ChangesPane`'s `M mergetool`/`space resolved`,
 /// `Banner`'s new `⏎ resolve`) and so draw nothing for `hints_for` to check
-/// (`every_planned_hint_is_still_unbound`, `graft`'s
+/// (`every_planned_hint_is_still_unbound`, `mergewright`'s
 /// `every_key_the_bar_draws_is_answered`, cover that half).
 ///
 /// Wording is what the code emits, not a re-derivation from the design
@@ -2367,7 +2367,7 @@ mod pane_space {
         }
     }
 
-    /// With the files list focused, `graft`'s `files_key` takes `space`
+    /// With the files list focused, `mergewright`'s `files_key` takes `space`
     /// whatever the row, so the graph's merge fold is not live there; off a
     /// directory the bar draws no `space` at all.
     #[test]
@@ -2387,7 +2387,7 @@ mod pane_space {
     // Replaced `pane_focused_on_the_diff_keeps_the_graphs_space_fold`: spec
     // change M7/20h-diff-space (ticket 20l).
 
-    /// With the diff focused the pane claims `space` (`graft`'s
+    /// With the diff focused the pane claims `space` (`mergewright`'s
     /// `diff_option_key`), so the graph's merge fold is not live and not
     /// offered, on any row.
     #[test]

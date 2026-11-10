@@ -21,7 +21,7 @@ impl RepoHandle {
     /// points at: peeling costs an object read per tag, and the caller that
     /// needs the commit is the one that should pay for it.
     ///
-    /// *Every* ref means Mergewright's own too — `refs/graft/**` is in here. That
+    /// *Every* ref means Mergewright's own too — `refs/mergewright/**` is in here. That
     /// is what this method is for, and it is why nothing drawn on screen
     /// should be built from it: use [`ref_snapshot`](Self::ref_snapshot),
     /// which leaves Mergewright's bookkeeping out.
@@ -137,7 +137,7 @@ impl RepoHandle {
     /// before (m1-the-graph/58).
     ///
     /// **Mergewright's own refs are left out.** This is the repository as Mergewright
-    /// *draws* it, and `refs/graft/**` — the undo journal's backup chains —
+    /// *draws* it, and `refs/mergewright/**` — the undo journal's backup chains —
     /// is bookkeeping the user never made
     /// ([`RefName::is_mergewright_internal`]). Seeding the walk from them put two
     /// synthetic commits above `HEAD` per undoable write, forever

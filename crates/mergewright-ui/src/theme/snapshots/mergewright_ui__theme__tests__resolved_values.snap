@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/theme/tests.rs
+source: crates/mergewright-ui/src/theme/tests.rs
 expression: rendered
 ---
 theme dark

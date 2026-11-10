@@ -101,7 +101,7 @@ fn set(params: &mut RewriteParams, subject: &str, action: TodoAction) {
 
 /// Mergewright's route to the end: apply, and — when it stops on an `edit` —
 /// `between` at the stop, then resume, until the entry closes.
-fn graft(repo: &TempRepo, params: RewriteParams, between: &dyn Fn(&TempRepo)) {
+fn mergewright(repo: &TempRepo, params: RewriteParams, between: &dyn Fn(&TempRepo)) {
     let mut result = try_run(repo, &Operation::Rewrite(params), NOW);
     let mut at = NOW;
     loop {
@@ -204,13 +204,13 @@ fn outcome(repo: &TempRepo) -> Outcome {
 /// Both routes agree, and the rewrite changed something (a row that moved
 /// nothing would agree trivially).
 fn agree(mergewright_side: &TempRepo, hand_side: &TempRepo, before: &Outcome) {
-    let graft = outcome(mergewright_side);
+    let mergewright = outcome(mergewright_side);
     assert_eq!(
-        graft,
+        mergewright,
         outcome(hand_side),
         "Mergewright's route against the hand's"
     );
-    assert_ne!(&graft, before, "the rewrite changed nothing");
+    assert_ne!(&mergewright, before, "the rewrite changed nothing");
 }
 
 /// A commit's full id, as a todo line names it.
@@ -233,7 +233,7 @@ fn squash_three() {
         .messages
         .insert(row(&params, "f1"), message.to_owned());
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "pick {}\nsquash {}\nsquash {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -254,7 +254,7 @@ fn fixup() {
     let mut params = open(&repo, "feature~3");
     set(&mut params, "f3", TodoAction::Fixup);
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "pick {}\npick {}\nfixup {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -281,7 +281,7 @@ fn reword_keeps_a_hash_line() {
         .messages
         .insert(row(&params, "f2"), message.to_owned());
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "pick {}\nreword {}\npick {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -313,7 +313,7 @@ fn reorder() {
     let mut params = open(&repo, "feature~3");
     params.todo.swap(0, 1);
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "pick {}\npick {}\npick {}\npick {}\n",
         full(&hand, "feature~2"),
@@ -334,7 +334,7 @@ fn drop() {
     let mut params = open(&repo, "feature~3");
     set(&mut params, "f3", TodoAction::Drop);
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "pick {}\npick {}\ndrop {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -361,7 +361,7 @@ fn edit_then_continue() {
     let mut params = open(&repo, "feature~3");
     set(&mut params, "f2", TodoAction::Edit);
 
-    graft(&repo, params, &amend_f2);
+    mergewright(&repo, params, &amend_f2);
     let todo = format!(
         "pick {}\nedit {}\npick {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -389,7 +389,7 @@ fn a_squash_group_after_an_edit() {
         .messages
         .insert(row(&params, "f2"), message.to_owned());
 
-    graft(&repo, params, &amend_f2);
+    mergewright(&repo, params, &amend_f2);
     let todo = format!(
         "pick {}\nedit {}\nsquash {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -416,7 +416,7 @@ fn a_three_branch_line() {
         .messages
         .insert(row(&params, "a1"), message.to_owned());
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "reword {}\npick {}\nupdate-ref refs/heads/feature-a\npick {}\n\
          update-ref refs/heads/feature-b\npick {}\n",
@@ -447,7 +447,7 @@ fn amend_into_three_back() {
         },
     );
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     hand.git(&["commit", "-q", "-m", "fixup! f1"]);
     let todo = format!(
         "pick {}\nfixup {}\npick {}\npick {}\npick {}\n",
@@ -476,7 +476,7 @@ fn amend_into_head_with_a_dependent() {
         },
     );
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     // By hand: the staged change rides to the top of the line, is committed
     // there, and the todo moves it down under `a2`.
     hand.git(&["switch", "-q", "feature-b"]);
@@ -505,7 +505,7 @@ fn an_unsaved_edit_is_set_aside_and_put_back() {
     let mut params = open(&repo, "feature~3");
     set(&mut params, "f3", TodoAction::Drop);
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "pick {}\npick {}\ndrop {}\npick {}\n",
         full(&hand, "feature~3"),
@@ -566,7 +566,7 @@ fn a_fork_follows_in_the_same_rebase() {
     let params = as_run(&repo, params);
     assert_eq!(params.forks.len(), 1, "{:?}", params.forks);
 
-    graft(&repo, params, &nothing);
+    mergewright(&repo, params, &nothing);
     let todo = format!(
         "reword {}\npick {}\nlabel graft-fork-1\npick {}\nupdate-ref refs/heads/feature-x-wip\n\
          pick {}\nupdate-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\npick {}\n",

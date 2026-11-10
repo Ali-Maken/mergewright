@@ -1,5 +1,5 @@
 ---
-source: crates/graft-ui/src/map_screen.rs
+source: crates/mergewright-ui/src/map_screen.rs
 assertion_line: 298
 expression: "draw(&view, 80, 24)"
 ---
