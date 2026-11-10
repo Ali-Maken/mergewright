@@ -48,7 +48,7 @@ None (renames only).
 - [x] Renamed captures keep their writers ← `scripts/shot-drift.py`; `git diff -M --stat docs/shots` — empty: all `*graft-self*` writers are in the app crate (gallery.rs), 11a's; no capture renamed or regenerated here; `capture_a_partial_fetch` green
 - [x] No `GRAFT_` left in these crates ← `git grep 'GRAFT_' -- <crates>` empty (already none on arrival; no cross-boundary env pairs)
 - [x] No `over_400.txt` row raised ← `file_size::every_file_over_400_lines_is_listed_with_its_count` green in the full run
-- [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
+- [x] Fast and walk tiers green ← conductor, main @ 98846487: `cargo nextest run` 6788/6788 (537 s, beside builder 11a), `scripts/walks.sh` SUMMARY walks tests=459 failed=0; fmt, clippy, heavy clippy, doc tests clean
 
 ## Touches (check each, say how)
 - insta snapshots (mostly ui); capture writers and the drift script.
