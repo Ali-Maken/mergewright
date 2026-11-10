@@ -31,3 +31,5 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates main after 11b3: fast 6795/6795 550 s (slow, unexplained), walks 459/0 183 s; all else clean. Slip: first merge command chained past a conflict (ticket file only), resolved.
 - builder-sonnet 11b4 delete old-names table + fixtures marker: Generation/names_in_force/on_disk_names gone; behaviour change: old refs/graft|tributary now visible in graph (checked: 0 such refs in user's 5 repos). Merged 834c628b · 42 tools · skills: none.
 - conductor gates main after 11b4: fast 6788/6788 628 s (cache rebuild guess), walks 459/0 217 s; all else clean. 11a ‖ 11c next.
+- builder-sonnet 11c codename out of non-app crates: comments, MAP, temp prefixes, 71 .snap source: headers (header-only diff), captures unchanged; left on purpose: graft-ghost hash seed, graft-fork- rebase label, graft.git fixture URL (→12), old-name guard inputs. Merged d3ed0fcc · 40 tools · skills: none.
+- conductor gates main after 11c: fast 6788/6788 537 s (beside 11a), walks 459/0 184 s; all else clean.
