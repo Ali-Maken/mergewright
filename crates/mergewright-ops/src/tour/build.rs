@@ -19,7 +19,6 @@
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use mergewright_core::on_disk::Generation;
 use mergewright_git::run::{GitArg, GitInvocation};
 
 use super::{
@@ -51,17 +50,12 @@ pub fn build_practice_repo(under: &Path, at: PracticeAt) -> Result<PracticeRepo,
     let under = under.canonicalize().map_err(TourError::TempDir)?;
     let (name, first) = match at {
         PracticeAt::Now { now_unix_secs } => (
-            format!(
-                "{}{}-{}",
-                practice_prefix(Generation::CURRENT),
-                std::process::id(),
-                unix_ms()
-            ),
+            format!("{}{}-{}", practice_prefix(), std::process::id(), unix_ms()),
             // The last of `COMMITS` minutes ends one minute before now.
             now_unix_secs.saturating_sub(COMMITS * 60),
         ),
         PracticeAt::Fixed { first_unix_secs } => (
-            format!("{}{first_unix_secs}", practice_prefix(Generation::CURRENT)),
+            format!("{}{first_unix_secs}", practice_prefix()),
             first_unix_secs,
         ),
     };

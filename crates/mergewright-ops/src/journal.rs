@@ -21,7 +21,7 @@ use mergewright_core::journal::{
 use mergewright_core::oid::Oid;
 
 pub use fetched::{moved_lines, moved_words, wrote_anything};
-pub use file::{Alone, Journal, journal_path, journal_path_in};
+pub use file::{Alone, Journal, journal_path};
 pub use lines::{Line, OutcomeLine, PendingLine};
 
 /// Why the journal's bytes could not be read as entries.

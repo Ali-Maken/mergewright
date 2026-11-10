@@ -202,11 +202,7 @@ fn chained_conflicts(
 fn journal_entries(repo: &RepoHandle) -> Result<Vec<JournalEntry>, ConflictSetError> {
     let path = journal::journal_path(repo)?;
     match std::fs::read(path) {
-        Ok(bytes) => {
-            let mut entries = journal::parse(&bytes)?.entries;
-            crate::rename::map_entries(&mut entries, repo.on_disk_names());
-            Ok(entries)
-        }
+        Ok(bytes) => Ok(journal::parse(&bytes)?.entries),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
         Err(error) => Err(error.into()),
     }

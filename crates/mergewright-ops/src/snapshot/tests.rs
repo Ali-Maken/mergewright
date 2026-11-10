@@ -2,7 +2,7 @@
 //! that spawns `git` is in `tests/it/`.
 
 use super::*;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk::{LINK_TRAILER, REF_PREFIX};
 
 fn touches(refs: &[&str], index: bool, worktree: bool) -> Touches {
     Touches {
@@ -36,38 +36,38 @@ fn a_ref_only_operation_takes_no_snapshot() {
 fn the_backup_ref_is_namespaced_by_worktree_and_named_by_entry() {
     let id = EntryId::new(1_700_000_000_000, [7; 10]);
     assert_eq!(
-        backup_ref_name(Generation::Graft, "main", &id),
-        format!("refs/graft/backup/main/{id}")
+        backup_ref_name("main", &id),
+        format!("refs/mergewright/backup/main/{id}")
     );
     assert_eq!(
-        backup_ref_name(Generation::Graft, "feature", &id),
-        format!("refs/graft/backup/feature/{id}")
+        backup_ref_name("feature", &id),
+        format!("refs/mergewright/backup/feature/{id}")
+    );
+    assert_eq!(
+        backup_ref_name("main", &id),
+        format!("{REF_PREFIX}backup/main/{id}")
     );
 }
 
-/// Backup commits are immutable: a chain written under any generation's
-/// names keeps its `<Title>-Link:` lines forever, so every generation's key
-/// reads; only `CURRENT`'s is written (ADR-0057, Amendment 2026-10-11 §1).
+/// Only [`LINK_TRAILER`] reads as a link (pre-publish-cleanup/11b3).
 #[test]
-fn every_generations_trailer_reads() {
+fn the_trailer_reads() {
     let commit = Oid::from_hex("0123456789abcdef0123456789abcdef01234567").expect("an oid");
-    for generation in Generation::GENERATIONS {
-        let key = generation.link_trailer();
-        for (message, kind) in [
-            (format!("x\n\n{key} resume"), LinkKind::Resume),
-            (format!("x\n\n{key} step\n"), LinkKind::Step),
-        ] {
-            assert_eq!(
-                chain::link_of(commit, &message).expect("reads"),
-                kind,
-                "{message:?}"
-            );
-        }
-        assert!(matches!(
-            chain::link_of(commit, &format!("x\n\n{key} sideways")),
-            Err(SnapshotError::UnknownLink { .. })
-        ));
+    let key = LINK_TRAILER;
+    for (message, kind) in [
+        (format!("x\n\n{key} resume"), LinkKind::Resume),
+        (format!("x\n\n{key} step\n"), LinkKind::Step),
+    ] {
+        assert_eq!(
+            chain::link_of(commit, &message).expect("reads"),
+            kind,
+            "{message:?}"
+        );
     }
+    assert!(matches!(
+        chain::link_of(commit, &format!("x\n\n{key} sideways")),
+        Err(SnapshotError::UnknownLink { .. })
+    ));
     assert_eq!(
         chain::link_of(commit, "x step within: merge feature").expect("reads"),
         LinkKind::Step,
@@ -79,14 +79,5 @@ fn every_generations_trailer_reads() {
     assert_eq!(
         (BACKUP_AUTHOR_NAME, BACKUP_AUTHOR_EMAIL),
         ("mergewright", "mergewright@backup")
-    );
-}
-
-#[test]
-fn the_backup_ref_takes_the_prefix_in_force() {
-    let id = EntryId::new(1_700_000_000_000, [7; 10]);
-    assert_eq!(
-        backup_ref_name(Generation::CURRENT, "main", &id),
-        format!("{}backup/main/{id}", Generation::CURRENT.ref_prefix())
     );
 }

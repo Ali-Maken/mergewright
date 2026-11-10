@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use mergewright_core::journal::JournalEntry;
-use mergewright_core::on_disk::{Generation, MIGRATED_MARKER};
+use mergewright_core::on_disk::{DIR, MIGRATED_MARKER, REF_PREFIX};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::Stop;
 use mergewright_git::version::GitVersion;
@@ -41,23 +41,15 @@ impl TempRepo {
     /// global-config knobs that would otherwise reach in (signing, CRLF
     /// translation) turned off locally, where local wins.
     ///
-    /// On `CURRENT`'s names (marker `clean`, ticket 26), where the app
-    /// leaves every repository it settles.
+    /// With the names marker (`clean`) an earlier build's move left; nothing
+    /// reads it since 11b2, and 11b4 drops it with the fixtures marker.
     pub fn init() -> TempRepo {
-        TempRepo::init_on(Generation::CURRENT)
-    }
-
-    /// [`init`](Self::init) as a build of `generation` left it: its marker
-    /// (`clean`) when it [has one](Generation::has_marker); refs are the caller's.
-    pub fn init_on(generation: Generation) -> TempRepo {
         let repo = TempRepo::scratch();
         repo.git(&["init", "-q", "-b", "main", "."]);
         repo.harden(Path::new("."));
-        if generation.has_marker() {
-            let dir = repo.path.join(".git").join(generation.dir());
-            std::fs::create_dir_all(&dir).expect("the names dir is made");
-            std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker writes");
-        }
+        let dir = repo.path.join(".git").join(DIR);
+        std::fs::create_dir_all(&dir).expect("the names dir is made");
+        std::fs::write(dir.join(MIGRATED_MARKER), "clean\n").expect("the marker writes");
         repo
     }
 
@@ -241,11 +233,7 @@ impl Stop for StopWhenGone {
 
 /// Open a journal for a repository.
 pub fn journal_for(repo: &RepoHandle) -> Journal {
-    Journal::open_as(
-        &journal_path(repo).expect("the journal path resolves"),
-        repo.on_disk_names(),
-    )
-    .expect("it opens")
+    Journal::open(&journal_path(repo).expect("the journal path resolves")).expect("it opens")
 }
 
 /// A `Context` over a repository and its journal.
@@ -284,13 +272,7 @@ pub fn state_of(repo: &TempRepo) -> RepoState {
     let refs = repo
         .git(&["for-each-ref", "--format=%(refname) %(objectname)"])
         .lines()
-        // Under any generation's name: a repository on earlier names
-        // (tickets 26, 48) has its backups under their prefix until moved.
-        .filter(|line| {
-            !mergewright_core::on_disk::Generation::GENERATIONS
-                .iter()
-                .any(|generation| line.starts_with(generation.ref_prefix()))
-        })
+        .filter(|line| !line.starts_with(REF_PREFIX))
         .collect::<Vec<_>>()
         .join("\n");
     let index = repo.git(&["ls-files", "-s"]);

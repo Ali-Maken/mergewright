@@ -131,7 +131,7 @@ fn the_backup_commit_holds_exactly_an_index_tree_and_a_worktree_tree() {
         name,
         format!(
             "{}backup/main/{}",
-            mergewright_core::on_disk::Generation::CURRENT.ref_prefix(),
+            mergewright_core::on_disk::REF_PREFIX,
             entry.id
         )
     );

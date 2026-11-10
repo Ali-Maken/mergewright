@@ -110,9 +110,8 @@ fn a_journal_read_mid_rebase_leaves_the_running_entry_one_outcome() {
     );
     assert!(recovered.live.is_empty(), "git had finished: nothing live");
     let handle = repo.open();
-    let journal = mergewright_ops::journal::Journal::open_as(
+    let journal = mergewright_ops::journal::Journal::open(
         &mergewright_ops::journal::journal_path(&handle).expect("the journal path resolves"),
-        handle.on_disk_names(),
     )
     .expect("the journal still reads after a read raced the rebase");
     let statuses: Vec<&EntryStatus> = journal.entries().iter().map(|e| &e.status).collect();
@@ -175,9 +174,8 @@ fn a_journal_read_mid_resume_leaves_the_resumed_entry_one_outcome() {
         recovered.closed
     );
     assert_eq!(recovered.held, vec![stopped.id.clone()], "held, not judged");
-    let journal = mergewright_ops::journal::Journal::open_as(
+    let journal = mergewright_ops::journal::Journal::open(
         &mergewright_ops::journal::journal_path(&handle).expect("the journal path resolves"),
-        handle.on_disk_names(),
     )
     .expect("the journal still reads after a read raced the resume");
     let statuses: Vec<&EntryStatus> = journal.entries().iter().map(|e| &e.status).collect();

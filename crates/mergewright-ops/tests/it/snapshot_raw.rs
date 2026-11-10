@@ -207,10 +207,7 @@ fn a_backup_commit_carries_the_app_identity() {
     assert_eq!(who.trim(), format!("{name} <{email}> {name} <{email}>"));
     assert_eq!(
         (name, email),
-        (
-            CURRENT_DIR,
-            mergewright_core::on_disk::Generation::CURRENT.backup_email()
-        )
+        (CURRENT_DIR, mergewright_core::on_disk::BACKUP_EMAIL)
     );
 }
 

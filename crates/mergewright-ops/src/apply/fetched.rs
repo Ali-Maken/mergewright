@@ -13,7 +13,6 @@ use std::collections::BTreeMap;
 
 use mergewright_core::journal::{JournalEntry, RefMove};
 use mergewright_core::oid::Oid;
-use mergewright_core::ref_name::RefName;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -23,8 +22,8 @@ use crate::journal::moved_words;
 use super::run::PlanRun;
 use super::{AfterState, ApplyError};
 
-/// Every ref under `refs/` by full name, the app's own refs aside (either
-/// prefix, `RefName::is_mergewright_internal`).
+/// Every ref under `refs/` by full name, the app's own refs aside
+/// (`on_disk::Own::is_ref`).
 pub(crate) type RefStore = BTreeMap<String, Oid>;
 
 /// What a fetch moved, by full ref name.
@@ -57,12 +56,9 @@ pub(crate) fn ref_store(repo: &RepoHandle, stop: &dyn Stop) -> Result<RefStore, 
         if !symref.is_empty() {
             continue;
         }
-        // The app's own refs (backups), under either prefix: never a
-        // fetch's doing. One rule, mergewright-core's (ADR-0057, Amendment).
-        let internal = RefName::new(name)
-            .map_err(|why| RunError::Unparsable(format!("for-each-ref ref name: {why}")))?
-            .is_mergewright_internal();
-        if internal {
+        // The app's own refs (backups): never a fetch's doing. One rule,
+        // mergewright-core's.
+        if mergewright_core::on_disk::Own::is_ref(name.as_bytes()) {
             continue;
         }
         let oid = Oid::from_hex(hex)

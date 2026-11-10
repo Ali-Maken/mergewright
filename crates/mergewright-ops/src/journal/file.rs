@@ -25,7 +25,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::{EntryId, EntryStatus, JournalEntry};
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk::DIR;
 use mergewright_git::file_lock::FileLock;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::RunError;
@@ -33,7 +33,7 @@ use mergewright_git::run::RunError;
 use super::{JournalError, Parsed, parse, render_outcome, render_pending};
 use crate::undo::RepoStateNow;
 
-/// The journal file's name under the per-worktree names-in-force directory
+/// The journal file's name under the per-worktree `DIR` directory
 /// ([`journal_path`]).
 const FILE_NAME: &str = "undo-journal.jsonl";
 
@@ -55,9 +55,6 @@ pub struct Journal {
     path: PathBuf,
     entries: Vec<JournalEntry>,
     torn_tail: Option<usize>,
-    /// The names in force the entries were read under ([`Journal::open_as`]),
-    /// so a re-read maps them the same way.
-    names: Option<Generation>,
     /// The writer's shared lock, held from [`Journal::claim`] until drop.
     writing: Option<FileLock>,
 }
@@ -106,22 +103,8 @@ impl Journal {
             path: path.to_path_buf(),
             entries: parsed.entries,
             torn_tail: parsed.torn_tail,
-            names: None,
             writing: None,
         })
-    }
-
-    /// [`open`](Journal::open), with every entry's ref names read as
-    /// `names` spells them (`crate::rename::map_entry`): a journal written
-    /// before the rename names its backups under the old prefix, and the
-    /// refs are now under the new one. The file's bytes are never rewritten.
-    /// Every production reader opens through here, with the repository's
-    /// names in force.
-    pub fn open_as(path: &Path, names: Generation) -> Result<Journal, JournalError> {
-        let mut journal = Journal::open(path)?;
-        crate::rename::map_entries(&mut journal.entries, names);
-        journal.names = Some(names);
-        Ok(journal)
     }
 
     /// Take the writer's lock, shared with other writers, before this
@@ -186,11 +169,8 @@ impl Journal {
         Ok(())
     }
 
-    /// Keep `entries` as the held copy, mapped under the same names as at open.
-    fn hold(&mut self, mut entries: Vec<JournalEntry>) {
-        if let Some(names) = self.names {
-            crate::rename::map_entries(&mut entries, names);
-        }
+    /// Keep `entries` as the held copy, read as written.
+    fn hold(&mut self, entries: Vec<JournalEntry>) {
         self.entries = entries;
     }
 
@@ -386,18 +366,9 @@ fn read_cutting_torn_tail(path: &Path) -> Result<Parsed, JournalError> {
 /// The journal's path for a repository: `<dir>/undo-journal.jsonl` resolved
 /// through `git rev-parse --git-path`, which is `.git/<dir>/…` in the main
 /// worktree and `.git/worktrees/<name>/<dir>/…` in a linked one (ADR-0010).
-/// `<dir>` is the repository's names in force, `graft` or `tributary`
-/// (ADR-0057, Amendment §4).
+/// `<dir>` is [`DIR`].
 pub fn journal_path(repo: &RepoHandle) -> Result<PathBuf, RunError> {
-    journal_path_in(repo, repo.on_disk_names())
-}
-
-/// [`journal_path`] under `names` rather than the handle's: the rename
-/// writes its entry into the new journal while its handle still reads the
-/// old names (`crate::rename`).
-pub fn journal_path_in(repo: &RepoHandle, names: Generation) -> Result<PathBuf, RunError> {
-    let dir = names.dir();
-    repo.git_path(Path::new(&format!("{dir}/{FILE_NAME}")))
+    repo.git_path(Path::new(&format!("{DIR}/{FILE_NAME}")))
 }
 
 #[cfg(test)]

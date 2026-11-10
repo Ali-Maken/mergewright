@@ -298,7 +298,7 @@ fn a_stash_held_commit_is_not_lost() {
     );
 }
 
-/// Mergewright's own backup refs (under the prefix in force, `Generation::ref_prefix`) keep the reset's before-state,
+/// Mergewright's own backup refs (under `on_disk::REF_PREFIX`) keep the reset's before-state,
 /// but hold nothing for this list: D is lost, under the Mergewright row.
 #[test]
 fn a_mergewright_backup_ref_does_not_hold() {

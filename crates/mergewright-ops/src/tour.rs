@@ -27,7 +27,7 @@ pub use tasks::{TourTask, tasks_done};
 
 use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk::DIR;
 use mergewright_git::history_reads::{Forecast, forecast_merge};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation};
@@ -58,15 +58,13 @@ pub enum PracticeAt {
 /// folder without it (as a regular file, not a link).
 pub const PRACTICE_MARKER: &str = ".practice";
 
-/// `<dir>-practice-`: a new practice root's name starts with this for
-/// [`Generation::CURRENT`] (`mergewright-practice-`), then `<pid>-<unix_ms>`
-/// ([`PracticeAt::Now`]) or `<first_unix_secs>` ([`PracticeAt::Fixed`]).
-/// Removal accepts every generation's prefix, so a rename never makes the
-/// guard refuse a root this build recorded. Nothing scans for older
-/// folders: one an earlier build left ages out of the temp dir.
+/// `<DIR>-practice-` (`mergewright-practice-`): a practice root's name
+/// starts with this, then `<pid>-<unix_ms>` ([`PracticeAt::Now`]) or
+/// `<first_unix_secs>` ([`PracticeAt::Fixed`]). Removal accepts only this
+/// prefix. Nothing scans for older folders: they age out of the temp dir.
 #[must_use]
-pub fn practice_prefix(generation: Generation) -> String {
-    format!("{}-practice-", generation.dir())
+pub fn practice_prefix() -> String {
+    format!("{DIR}-practice-")
 }
 
 /// A built practice repo. Only [`build_practice_repo`] makes one, so holding
@@ -220,11 +218,7 @@ fn check_practice(repo: &PracticeRepo) -> Result<(), TourError> {
     let named = canonical
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| {
-            Generation::GENERATIONS
-                .iter()
-                .any(|generation| name.starts_with(&practice_prefix(*generation)))
-        });
+        .is_some_and(|name| name.starts_with(&practice_prefix()));
     if !named {
         return Err(not_practice());
     }
@@ -257,8 +251,7 @@ pub fn tour_progress(work: &Path) -> Result<[bool; 8], TourError> {
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => return Ok([false; 8]),
         Err(why) => return Err(TourError::Journal(why.into())),
     };
-    let mut entries = parse(&bytes).map_err(TourError::Journal)?.entries;
-    crate::rename::map_entries(&mut entries, repo.on_disk_names());
+    let entries = parse(&bytes).map_err(TourError::Journal)?.entries;
     let conflicted = conflicted_merges(&repo, &entries)?;
     Ok(tasks_done(&entries, &conflicted))
 }

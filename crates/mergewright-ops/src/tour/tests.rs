@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::{DIR, Generation};
+use mergewright_core::on_disk::DIR;
 use mergewright_git::history_reads::{Forecast, forecast_merge};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation};
@@ -152,10 +152,7 @@ fn building_writes_nothing_outside_its_root() {
     let made = names(&under);
     assert_eq!(made.len(), 1, "{made:?}");
     let name = made.iter().next().unwrap();
-    assert!(
-        name.starts_with(&practice_prefix(Generation::CURRENT)),
-        "{name}"
-    );
+    assert!(name.starts_with(&practice_prefix()), "{name}");
     assert_eq!(repo.root(), under.canonicalize().unwrap().join(name));
     assert_eq!(repo.work(), repo.root().join("work"));
     assert_eq!(
@@ -323,7 +320,7 @@ fn removing_a_built_repo_removes_its_folder_and_nothing_else() {
 
 /// A practice root name for this build: the current prefix, then `rest`.
 fn current_name(rest: &str) -> String {
-    format!("{}{rest}", practice_prefix(Generation::CURRENT))
+    format!("{}{rest}", practice_prefix())
 }
 
 /// The folder the tour header shows is named from the names table (51).
@@ -338,21 +335,9 @@ fn a_new_practice_folder_takes_the_current_name() {
         .to_str()
         .unwrap()
         .to_owned();
-    let current = format!("{}-practice-", Generation::CURRENT.dir());
+    let current = format!("{DIR}-practice-");
     assert!(name.starts_with(&current), "{name}");
-    assert_eq!(practice_prefix(Generation::CURRENT), current);
-}
-
-/// The removal guard accepts a root named with an earlier generation's prefix.
-#[test]
-fn removal_accepts_every_earlier_generations_folder() {
-    let (_top, under) = scratch();
-    for (n, old) in Generation::CURRENT.older().enumerate() {
-        let root = fake_practice(&under, &format!("{}-practice-{n}-{n}", old.dir()));
-        let repo = claimed(&root, &under.canonicalize().unwrap());
-        remove_practice_repo(&repo).expect("an old practice folder removes");
-        assert!(!root.exists(), "{}", old.dir());
-    }
+    assert_eq!(practice_prefix(), current);
 }
 
 #[test]
@@ -720,9 +705,7 @@ fn now_dates_end_a_minute_before_now() {
     assert_eq!(rows.last().unwrap().1, now - 60);
     assert_eq!(rows.first().unwrap().0, now - 60 * 7);
     let name = repo.root().file_name().unwrap().to_str().unwrap();
-    let rest = name
-        .strip_prefix(&practice_prefix(Generation::CURRENT))
-        .unwrap();
+    let rest = name.strip_prefix(&practice_prefix()).unwrap();
     assert!(
         rest.starts_with(&format!("{}-", std::process::id())),
         "{name}"

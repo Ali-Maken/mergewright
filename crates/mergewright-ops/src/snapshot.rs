@@ -50,7 +50,7 @@ use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::{EntryId, IndexState, Touches};
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk::REF_PREFIX;
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{RunError, Stop};
 
@@ -170,10 +170,9 @@ pub fn scope(touches: &Touches) -> SnapshotScope {
 }
 
 /// `<prefix>backup/<worktree>/<ulid>` — shared across worktrees by git,
-/// namespaced per worktree by us (ADR-0010). `<prefix>` is the repository's
-/// names in force, its `Generation::ref_prefix` (ADR-0057, Amendment).
-pub fn backup_ref_name(names: Generation, worktree: &str, id: &EntryId) -> String {
-    format!("{}backup/{worktree}/{id}", names.ref_prefix())
+/// namespaced per worktree by us (ADR-0010). `<prefix>` is [`REF_PREFIX`].
+pub fn backup_ref_name(worktree: &str, id: &EntryId) -> String {
+    format!("{REF_PREFIX}backup/{worktree}/{id}")
 }
 
 /// The staged state, read without touching the real index.
@@ -277,7 +276,7 @@ pub fn take(
     let worktree_raw = raw_record(repo, scratch, stop, head, worktree_tree, &mut commands)?;
     let joined = mktree(repo, Some(index), Some(worktree_tree), worktree_raw, stop)?;
     let commit = commit_joined(repo, joined, id, label, parents, stop)?;
-    let name = backup_ref_name(repo.on_disk_names(), worktree, id);
+    let name = backup_ref_name(worktree, id);
     update_ref(repo, &name, commit, stop)?;
     Ok(Snapshot {
         index,
