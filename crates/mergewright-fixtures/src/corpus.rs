@@ -20,7 +20,6 @@ use crate::filesystem::{self, Support};
 use crate::git::{self, GitError};
 use crate::permissions;
 use crate::scratch::Scratch;
-use crate::settled;
 use crate::shape::Shape;
 use crate::shapes::{self, BuildError};
 
@@ -168,8 +167,6 @@ fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
             skip(&dir, reason)?;
         } else {
             shapes::build(shape, &dir, streams.path())?;
-            settled::names_settled(&dir)
-                .map_err(io_error(format!("marking {} settled", dir.display())))?;
         }
     }
 

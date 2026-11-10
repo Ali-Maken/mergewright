@@ -512,10 +512,9 @@ mod tests {
     #[test]
     fn opens_without_settling() {
         let copy = mergewright_fixtures::copy_into_temp(Shape::Linear);
-        // The corpus carries a marker from when opening wrote one; it goes,
-        // so a marker after the open could only be the open's.
+        // The corpus carries no marker, so one after the open is the open's.
         let marker = copy.path().join(".git").join(DIR).join("migrated");
-        std::fs::remove_file(&marker).expect("the fixture's marker goes");
+        assert!(!marker.exists(), "the fixture carries no marker");
         let store = RepoStore::new(copy.path().to_path_buf(), None);
         let common = store.common_dir().expect("opens");
         assert_eq!(store.app_dir().expect("opens"), common.join(DIR));

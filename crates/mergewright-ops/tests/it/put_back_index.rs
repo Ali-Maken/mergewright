@@ -33,7 +33,7 @@ use crate::set_aside::{
 use crate::support::{
     NOW, Never, TempRepo, git_version, run_redo, run_undo, run_with_stop, state_of, try_run,
 };
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 // ── repositories ────────────────────────────────────────────────────────
 
@@ -594,7 +594,7 @@ fn a_clash_with_staging_is_the_same_clash() {
     );
 
     let handle = repo.open();
-    let scratch = repo.path().join(format!(".git/{CURRENT_DIR}"));
+    let scratch = repo.path().join(format!(".git/{DIR}"));
     let index_now =
         mergewright_ops::snapshot::index_state(&handle, &scratch, &Never).expect("the index reads");
     let found = live_clash(&journal_entries(&repo), None, &index_now, &[(stash, 0)])

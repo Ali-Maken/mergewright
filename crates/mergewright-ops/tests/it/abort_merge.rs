@@ -22,7 +22,7 @@ use mergewright_ops::apply::Resume;
 use crate::conflict_fixtures::run_resume;
 use crate::conflict_ops::journal_ids;
 use crate::support::{NOW, TempRepo, journal_for, run_undo};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// A hand edit to `notes.txt`, made over git's markers before the abort.
 const HAND_EDIT: &[u8] = b"one\nmy own two\nthree\nfour\nfive\nsix\nmy own seven\neight\n";
@@ -301,7 +301,7 @@ fn redo_of_an_undone_abort_is_allowed_while_the_merge_is_back() {
 /// and its abort leave or take away, and what `u` does or does not put back.
 fn git_state_files(repo: &TempRepo) -> std::collections::BTreeMap<String, Vec<u8>> {
     const SKIP: [&str; 9] = [
-        CURRENT_DIR,
+        DIR,
         "objects",
         "refs",
         "logs",

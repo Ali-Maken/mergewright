@@ -1,6 +1,6 @@
 # pre-publish: delete the Generation table, the names-in-force read and the fixtures' rename marker
 
-Status: ready
+Status: done
 Blocked by: 11b3
 Runs: alone (core and git signatures change; call sites in every crate)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: once 11b2/11b3 have landed, nothing behavioural is left. This is deletion, with the compiler finding each call site.
@@ -53,12 +53,12 @@ Out: comments that spell the codename (11a/11c). Fixture identities (12). Undo b
 ```
 
 ## Acceptance (tick each with its test, inline)
-- [ ] No `Generation`, `names_in_force`, `on_disk_names`, `MIGRATED_MARKER` or `CURRENT_DIR` anywhere in `crates/` ← `git grep -n -E '…'` quoted, empty
-- [ ] Guard with no skip, green ← `rename_names::no_old_message_literal`
-- [ ] Fresh repos still write under the current names; parity unchanged ← `fresh_repo_names::journal_and_backups_use_current_names`; `journal_unmapped::*`, with that file's diff since 11b3 empty
-- [ ] Fixture caches rebuilt, captures unchanged ← `rm -rf <fixture cache>` then `cargo nextest run` count; `scripts/walks.sh` SUMMARY; `git status --short docs/shots` empty
-- [ ] Fixtures still deterministic ← the corpus determinism test by name
-- [ ] Old-generation hits gone: `git grep -n -i -E 'graft|tributary' -- crates` count before and after quoted, with every remaining hit outside the old-generation class (spot-list 10)
+- [x] No `Generation`, `names_in_force`, `on_disk_names`, `MIGRATED_MARKER` or `CURRENT_DIR` anywhere in `crates/` ← `git grep -n -E '…'` quoted, empty — `git grep -n -E '\bGeneration\b|names_in_force|on_disk_names|MIGRATED_MARKER|CURRENT_DIR' -- crates` → 0 lines
+- [x] Guard with no skip, green ← `rename_names::no_old_message_literal` — skip and ALLOWED row removed; passes in full run
+- [x] Fresh repos still write under the current names; parity unchanged ← `fresh_repo_names::journal_and_backups_use_current_names`; `journal_unmapped::*`, with that file's diff since 11b3 empty — both green in full run; `git diff 89c0c209 -- crates/mergewright-ops/tests/it/journal_unmapped.rs` empty
+- [x] Fixture caches rebuilt, captures unchanged ← `rm -rf <fixture cache>` then `cargo nextest run` count; `scripts/walks.sh` SUMMARY; `git status --short docs/shots` empty — `rm -rf target/fixtures`, full run 6788 run / 6787 passed / 1 MAP-length fail, fixed and re-run green; walks SUMMARY tests=459 failed=0; `git status --short docs/shots` empty
+- [x] Fixtures still deterministic ← the corpus determinism test by name — `team::tests::build_is_deterministic` green
+- [x] Old-generation hits gone: `git grep -n -i -E 'graft|tributary' -- crates` count before and after quoted, with every remaining hit outside the old-generation class (spot-list 10) — 955 before, 899 after; remaining are codename comments, temp prefixes (`graft-reap-`), test literals, snapshot text (11a/11c/12 scope)
 - [ ] Fast and walk tiers green ← counts
 
 ## Touches (check each, say how)
@@ -76,3 +76,10 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`.
 
 ## Size
 ~40k tokens.
+
+## NOTES (11b4 build)
+- `support::init` (ops tests) still makes the empty `.git/mergewright` folder, marker gone: keeps `fresh_repo_names` and `commit_chosen_scratch` unchanged.
+- D1 behaviour change: `is_mergewright_internal` now false for `refs/graft/` and `refs/tributary/`; old backup refs in a pre-rename repo now show in the graph. Tests `only_current_prefix_internal`, `grafts_own_refs_are_not_drawn_but_are_still_readable` (now uses `refs/mergewright/`).
+- D4 MAP line shortened to fit the 240-char MAP limit: "`Migrate`: old rename move, read only, never undone". Source doc carries the full wording.
+- `OpenError::Io` stays (used by `classify`).
+- over_400 rows only lowered.

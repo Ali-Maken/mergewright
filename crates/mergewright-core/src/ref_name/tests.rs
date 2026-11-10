@@ -140,19 +140,14 @@ fn debug_escapes_what_it_prints() {
 }
 
 #[test]
-fn every_prefix_internal() {
-    // Every generation's namespace is the app's own: a repository mid-way
-    // through a rename (ADR-0057, Amendments) must show none in the graph.
-    // Literals, not the table: the known-good spelling of each generation.
+fn only_current_prefix_internal() {
+    // Only the current namespace is the app's own; earlier names are not
+    // read (ADR-0057, Amendment 2026-10-25).
+    let name = RefName::new("refs/mergewright/backup/main/01J0").expect("valid");
+    assert!(name.is_mergewright_internal(), "{name:?} is the app's own");
     for name in [
         "refs/graft/backup/main/01J0",
         "refs/tributary/backup/main/01J0",
-        "refs/mergewright/backup/main/01J0",
-    ] {
-        let name = RefName::new(name).expect("valid");
-        assert!(name.is_mergewright_internal(), "{name:?} is the app's own");
-    }
-    for name in [
         "refs/heads/graft",
         "refs/heads/tributary/x",
         "refs/heads/mergewright",

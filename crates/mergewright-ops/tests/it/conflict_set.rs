@@ -23,7 +23,7 @@ use crate::conflict_fixtures::{
     mergewright_stage, paths, run_resume, two_file_conflict, two_stop_history,
 };
 use crate::support::{NOW, Never, TempRepo, try_run};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 #[test]
 fn a_merge_lists_resolved_files_too() {
@@ -313,7 +313,7 @@ fn backup_ref(repo: &TempRepo) -> String {
     let name = repo.git(&[
         "for-each-ref",
         "--format=%(refname)",
-        &format!("refs/{CURRENT_DIR}/backup/"),
+        &format!("refs/{DIR}/backup/"),
     ]);
     assert_eq!(name.lines().count(), 1, "one backup ref: {name}");
     name

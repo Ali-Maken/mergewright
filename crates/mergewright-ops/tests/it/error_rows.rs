@@ -24,7 +24,7 @@ use mergewright_ops::undo::{self, InversePlan, Step};
 
 use crate::conflict_fixtures::two_file_conflict;
 use crate::support::{NOW, Never, TempRepo, context, git_version, journal_for, run};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 // ── helpers ─────────────────────────────────────────────────────────────
 
@@ -315,7 +315,7 @@ fn chain_states_maps_each_error_kind() {
 fn break_backup_refs() -> String {
     format!(
         "#!/bin/sh
-for f in $(find \"$(git rev-parse --git-dir)/refs/{CURRENT_DIR}\" -type f); do
+for f in $(find \"$(git rev-parse --git-dir)/refs/{DIR}\" -type f); do
   echo 'not an object id' > \"$f\"
 done
 "

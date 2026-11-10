@@ -14,7 +14,7 @@ use mergewright_core::oid::Oid;
 use mergewright_ops::rewrite::{Follower, progress};
 
 use crate::support::{Never, TempRepo};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 fn oid(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a commit id")
@@ -55,7 +55,7 @@ fn three_branch_line() -> TempRepo {
 fn save_plan(repo: &TempRepo) {
     let dir = repo
         .path()
-        .join(format!(".git/{CURRENT_DIR}/rewrite/1700000000000-0000"));
+        .join(format!(".git/{DIR}/rewrite/1700000000000-0000"));
     std::fs::create_dir_all(&dir).expect("the plan dir is made");
     let plan_json = format!(
         r#"{{"home":"refs/heads/feature-a","line":[["refs/heads/feature-a","{}"],["refs/heads/feature-b","{}"],["refs/heads/feature-c","{}"]],"onto":"{}"}}"#,

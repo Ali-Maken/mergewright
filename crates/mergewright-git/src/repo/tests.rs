@@ -604,7 +604,7 @@ fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
     let fixture = Fixture::with_two_commits();
     let head = fixture.rev_parse("HEAD");
     let parent = fixture.rev_parse("HEAD~1");
-    let backup = "refs/graft/backup/main/01M2XA1AWED99JDS7KERF0V5X1";
+    let backup = "refs/mergewright/backup/main/01M2XA1AWED99JDS7KERF0V5X1";
     // A backup chain's commits are reachable from nothing else: `parent` here
     // stands in for the before-commit that only the backup ref holds.
     fixture.git(&["update-ref", backup, &parent]);
@@ -619,8 +619,10 @@ fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
         .map(|entry| String::from_utf8_lossy(entry.name.as_bytes()).into_owned())
         .collect();
     assert!(
-        !drawn.iter().any(|name| name.starts_with("refs/graft/")),
-        "a graft ref reached the drawn snapshot: {drawn:?}"
+        !drawn
+            .iter()
+            .any(|name| name.starts_with("refs/mergewright/")),
+        "an app ref reached the drawn snapshot: {drawn:?}"
     );
     assert!(
         drawn.iter().any(|name| name == "refs/heads/kept"),
@@ -629,7 +631,7 @@ fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
     let peeled: Vec<&RefName> = snapshot.peeled.iter().map(|(name, _)| name).collect();
     assert!(
         !peeled.iter().any(|name| name.is_mergewright_internal()),
-        "a graft ref reached the peeled pairs"
+        "an app ref reached the peeled pairs"
     );
     // The before-commit is reachable only from the backup ref, so if the
     // walk were still seeded from it, this tip would be here.
@@ -655,42 +657,4 @@ fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
         every.iter().any(|found| found == backup),
         "`references` is the one that still says everything: {every:?}"
     );
-}
-
-/// Puts the rename's marker where every open looks for it.
-fn write_marker(common_dir: &Path) {
-    let dir = common_dir.join(Generation::CURRENT.dir());
-    std::fs::create_dir_all(&dir).expect("the marker's dir can be made");
-    let marker = dir.join(mergewright_core::on_disk::MIGRATED_MARKER);
-    std::fs::write(marker, "clean\n").expect("the marker can be written");
-}
-
-#[test]
-fn the_marker_in_the_common_dir_reads_new_names_in_every_worktree() {
-    let fixture = Fixture::with_two_commits();
-    fixture.git(&["worktree", "add", "-b", "side", "linked"]);
-    let main = RepoHandle::open(fixture.root()).expect("opens");
-    write_marker(main.common_dir());
-
-    for path in [fixture.root().to_path_buf(), fixture.root().join("linked")] {
-        let shared = SharedRepo::open(&path).expect("opens");
-        assert_eq!(
-            shared.on_disk_names(),
-            Generation::CURRENT,
-            "{}",
-            path.display()
-        );
-        assert_eq!(shared.handle().on_disk_names(), Generation::CURRENT);
-        assert_eq!(
-            shared.handle_with_object_cache(0).on_disk_names(),
-            Generation::CURRENT
-        );
-        let handle = RepoHandle::open(&path).expect("opens");
-        assert_eq!(
-            handle.on_disk_names(),
-            Generation::CURRENT,
-            "{}",
-            path.display()
-        );
-    }
 }

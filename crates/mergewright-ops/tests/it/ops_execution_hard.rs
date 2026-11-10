@@ -25,7 +25,7 @@ use crate::support::{
     NOW, Never, StopWhenGone, TempRepo, context, expire_and_prune, holds, journal_for, round_trip,
     run, run_undo, run_with_stop, stash_list, state_of, try_run,
 };
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 fn paths(of: &[&str]) -> Target {
     Target::Paths(of.iter().map(PathBuf::from).collect())
@@ -106,7 +106,7 @@ fn parity(build: fn(&TempRepo), make: fn(&TempRepo) -> Operation) {
         let from_mergewright = a
             .git(&what)
             .lines()
-            .filter(|line| !line.contains(&format!("refs/{CURRENT_DIR}/")))
+            .filter(|line| !line.contains(&format!("refs/{DIR}/")))
             .collect::<Vec<_>>()
             .join("\n");
         assert_eq!(
@@ -598,9 +598,7 @@ fn an_entry_with_no_after_state_restores_the_whole_tree_after_asking() {
     // The operation runs and the process dies before the outcome line: only
     // the pending line is on disk.
     run(&repo, &Operation::Discard(paths(&["a.rs"])), NOW);
-    let path = repo
-        .path()
-        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.path().join(format!(".git/{DIR}/undo-journal.jsonl"));
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the journal is truncated");
@@ -663,9 +661,7 @@ fn recovery_that_can_read_the_repository_keeps_the_restore_narrow() {
     repo.write("a.rs", b"work\n");
 
     run(&repo, &Operation::Discard(paths(&["a.rs"])), NOW);
-    let path = repo
-        .path()
-        .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"));
+    let path = repo.path().join(format!(".git/{DIR}/undo-journal.jsonl"));
     let text = std::fs::read_to_string(&path).expect("the journal reads");
     let pending = text.lines().next().expect("a pending line");
     std::fs::write(&path, format!("{pending}\n")).expect("the journal is truncated");
@@ -775,16 +771,14 @@ fn a_linked_worktree_keeps_its_own_journal_and_namespaced_backup_refs() {
 
     assert!(
         repo.path()
-            .join(format!(
-                ".git/worktrees/linked/{CURRENT_DIR}/undo-journal.jsonl"
-            ))
+            .join(format!(".git/worktrees/linked/{DIR}/undo-journal.jsonl"))
             .exists(),
         "the journal is the linked worktree's own"
     );
     assert!(
         !repo
             .path()
-            .join(format!(".git/{CURRENT_DIR}/undo-journal.jsonl"))
+            .join(format!(".git/{DIR}/undo-journal.jsonl"))
             .exists(),
         "the main worktree's journal never saw it"
     );
@@ -804,7 +798,7 @@ fn a_linked_worktree_keeps_its_own_journal_and_namespaced_backup_refs() {
         repo.git(&[
             "for-each-ref",
             "--format=%(refname)",
-            &format!("refs/{CURRENT_DIR}")
+            &format!("refs/{DIR}")
         ])
         .lines()
         .count(),

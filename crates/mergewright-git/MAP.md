@@ -61,7 +61,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `CommitGraphError` (enum) — `GitNotFound`, `Exited`, `Signalled`, `Io`, `Graph`, `Shallow`; why status or write failed.
 - `Offer` (enum) — `Undecided` or `Declined`; the build offer's remembered answer.
 - `offer_state` (fn) — `(repo) -> Result<Offer, io::Error>`; reads the remembered decline.
-- `remember_declined` (fn) — `(repo) -> Result<(), io::Error>`; records a decline under `<common_dir>/<on_disk_names().dir()>/`.
+- `remember_declined` (fn) — `(repo) -> Result<(), io::Error>`; records a decline under `<common_dir>/<on_disk::DIR>/`.
 
 ## conflict
 - `Line` (struct) — one line's bytes, terminator included.
@@ -225,8 +225,6 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `RepoHandle` (struct) — an open repository, cheap to hold within a thread.
 - `RepoHandle::open` (fn) — open the repository at `path`.
 - `RepoHandle::git_dir` / `common_dir` / `workdir` / `is_bare` (fn) — repository locations and bareness.
-- `names_in_force` (fn) — `(common_dir) -> io::Result<Generation>`: always `Ok(CURRENT)`; no marker is read. Removed in 11b4.
-- `RepoHandle::on_disk_names` (fn) — `-> Generation`: always `CURRENT`. Removed in 11b4.
 - `RepoHandle::mailmap` / `head` (fn) — the resolved `.mailmap`; where `HEAD` points.
 - `RepoHandle::head_commit` (fn) — `-> Result<Option<Oid>, HeadError>`; the commit `HEAD` resolves to, `None` while unborn.
 - `RepoHandle::git_path` (fn) — `git rev-parse --git-path`, made absolute.
@@ -240,7 +238,6 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `SharedRepo` (struct) — the `Send` expensive half of a repository; hands out `RepoHandle`s.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size handles open with.
 - `SharedRepo::open` / `handle` / `handle_with_object_cache` / `git_dir` (fn) — open; per-thread handles; the `.git` dir.
-- `SharedRepo::on_disk_names` (fn) — always `CURRENT`. Removed in 11b4.
 - `TipsError` (enum) — why reading commit tips failed.
 - `RefSnapshot` (struct) — `refs`, `tips`, `peeled`; one consistent read of the ref store.
 - `TipStats` (struct) — counters for one ref-store pass; read only by tests and budgets.

@@ -27,7 +27,7 @@ use mergewright_ops::journal_list::{
 use mergewright_ops::operation::{Operation, ResetMode, ResetParams, ResetTarget, Tip};
 
 use crate::support::{Never, TempRepo, git_version, journal_for, run};
-use mergewright_core::on_disk::CURRENT_DIR;
+use mergewright_core::on_disk::DIR;
 
 /// The shell's clock for a scenario: fixed seconds, well before now, so
 /// every step has its own second and Mergewright's steps (stamped now) come after.
@@ -307,7 +307,7 @@ fn a_mergewright_backup_ref_does_not_hold() {
     let mergewright_refs = repo.git(&[
         "for-each-ref",
         "--format=%(refname)",
-        &format!("refs/{CURRENT_DIR}/"),
+        &format!("refs/{DIR}/"),
     ]);
     assert!(!mergewright_refs.is_empty(), "the reset made a backup ref");
 
