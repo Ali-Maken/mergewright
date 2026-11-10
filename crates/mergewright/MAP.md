@@ -197,7 +197,7 @@ The repositories opened lately, for the start screen's RECENT list: one line eac
 - `Recent` (struct) — the list as read, and the write after an open.
 ## refs
 Which refs sit on which commit and how far each branch is from its upstream: everything a ref badge needs.
-- `RefBadges` (struct) — refs per commit, `HEAD`, upstreams, stashes, tags.
+- `RefBadges` (struct) — refs per commit, `HEAD`, upstreams, stashes, tags; `followed()`: remote ref → local branch naming it upstream.
 - `RefLabel` (enum) — one ref before sanitising: detached `HEAD`, branch, remote, tag, stash entry.
 - `badges` (fn) — the pure half of `read`: refs, `HEAD`, upstreams, stashes → `RefBadges`.
 - `Upstream` (enum) — where a local branch stands against its upstream.

@@ -1,0 +1,12 @@
+# pre-publish-cleanup/04 pane focus cost — 2026-11-10T10:58:57Z
+# HEAD e81f8739 +uncommitted
+# Apple M5, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# debug test build, stacked repo (7 rows); spawns between focus markers, step 0 = open
+focus-step 0 12
+focus-step 1 0
+focus-step 2 6
+focus-step 3 8
+focus-step 4 3
+focus-step 5 0
+settle-ms 0.0 199.6 0.1 100.1 135.6 48.3 
+SUMMARY pane-focus changes=5 spawns_max=8 spawns_p50=3 p50_ms=100.1 p95_ms=199.6 budget ok
