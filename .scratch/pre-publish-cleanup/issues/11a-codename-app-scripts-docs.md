@@ -92,7 +92,7 @@ const PENDING_IDENTITY: &[&str] = &["Graft Fixture", "Graft Test", "Graft Perf",
 - [x] Env pairs complete ← `git grep -n 'GRAFT_' -- crates/mergewright scripts` empty; cross-boundary list in NOTES
 - [x] m3 script per D7 ← grep in NOTES
 - [x] No `over_400.txt` row raised ← `file_size` green; diff of `over_400.txt`
-- [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
+- [x] Fast and walk tiers green ← conductor, main @ aedf0607: `cargo nextest run` 6789/6789 (367 s, quiet), `scripts/walks.sh` SUMMARY walks tests=459 failed=0; fmt, clippy, heavy clippy, doc tests clean
 
 ## Touches (check each, say how)
 - `rename_names.rs` (`OLD_NAMES` → `guard` rows), `rename_docs.rs` (D3), `rename_names/scripts.rs`, `release_names.rs`.
