@@ -138,3 +138,12 @@ Beyond the spec, forced by tests:
 - `rename_docs.rs` (11a's file) only had its import changed;
 - `over_400.txt` rows lowered; `jobs/undo.rs` raised 817→818 by the `Generation` import.
 - `old_names.rs` and `update/palette/names_tests.rs` spell the old names on purpose. 11a should allow-list them as `guard`.
+
+## NOTES (builder, third pass, after the conductor's ruling): DONE
+- ops src, as ruled:
+  - deleted `rewrite/saved.rs::plans_live_under_the_names_in_force` (its subject is the old names);
+  - `tour/tests.rs` setup now uses `on_disk::DIR` instead of `.git/graft/`; the 3 tour tests pass, no expectation changed.
+- `jobs/undo.rs` held at 817 by merging two doc-comment lines; `over_400.txt` row unchanged.
+- Beyond the spec: removed the fence rows `open-older-names-repo` and `undo-after-rename` from `docs/design-notes/m8-polish-and-ship.md` and from `m8_walk/mod.rs` WALKS.
+- [x] Fast tier green ← full `cargo nextest run`: 6799/6800. The 1 failure was the size ratchet. I fixed it and reran the ratchet tests and every tour test, 63/63; I did not rerun the full suite after that last test-only edit.
+- Walks: `SUMMARY walks tests=459 failed=0`. Doc tests: 0 failures.

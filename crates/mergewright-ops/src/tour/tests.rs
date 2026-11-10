@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use mergewright_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
 use mergewright_core::oid::Oid;
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk::{DIR, Generation};
 use mergewright_git::history_reads::{Forecast, forecast_merge};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation};
@@ -768,7 +768,7 @@ fn merge_entry(at: i64, result: Oid) -> JournalEntry {
 }
 
 fn write_journal(work: &Path, entries: &[JournalEntry]) {
-    let journal = work.join(".git/graft/undo-journal.jsonl");
+    let journal = work.join(".git").join(DIR).join("undo-journal.jsonl");
     std::fs::create_dir_all(journal.parent().unwrap()).unwrap();
     let mut bytes = Vec::new();
     for entry in entries {
@@ -863,7 +863,7 @@ fn a_fresh_practice_repo_has_nothing_done() {
 fn progress_reads_the_practice_repos_journal() {
     let (_top, under) = scratch();
     let repo = build_practice_repo(&under, NOW).expect("builds");
-    let journal = repo.work().join(".git/graft/undo-journal.jsonl");
+    let journal = repo.work().join(format!(".git/{DIR}/undo-journal.jsonl"));
     std::fs::create_dir_all(journal.parent().unwrap()).unwrap();
     let push = committed(1, OperationKind::Push, 1, 2);
     let mut bytes = render_pending(&push).unwrap();

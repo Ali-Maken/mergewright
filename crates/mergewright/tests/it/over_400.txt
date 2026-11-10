@@ -131,7 +131,7 @@
 1410 crates/mergewright/src/history/tests.rs
 560 crates/mergewright/src/jobs/operate.rs
 1291 crates/mergewright/src/jobs/tests.rs
-818 crates/mergewright/src/jobs/undo.rs
+817 crates/mergewright/src/jobs/undo.rs
 420 crates/mergewright/src/map.rs
 535 crates/mergewright/src/repos.rs
 726 crates/mergewright/src/terminal.rs

@@ -330,9 +330,8 @@ fn nothing_ran(error: &dyn std::fmt::Display) -> Undone {
     }
 }
 
-/// Everything an operation on this repository needs, opened fresh.
-///
-/// The journal is opened here and handed out by reference, because
+/// Everything an operation on this repository needs, opened fresh. The
+/// journal is opened here and handed out by reference, because
 /// [`Context`] borrows it for as long as the operation runs.
 fn with_context<T>(
     repos: &RepoStore,
