@@ -1,6 +1,6 @@
 # pre-publish: the app stops moving old-name folders; app, ui, term ported to the current-only names
 
-Status: draft
+Status: ready
 Blocked by: 11b1. **And the user's prerequisite:** he has opened each of his repos once with today's `mwr` (00-index, "Before 11b2 merges"). The conductor confirms it before merging; the builder doesn't wait on it.
 Runs: alone, before 11b3. 11b3 deletes `settle_names`, which this crate calls until this ticket lands.
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: deletions plus mechanical ports to 11b1's consts. What to delete and what to keep is decided below.

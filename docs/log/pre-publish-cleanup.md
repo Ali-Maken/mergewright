@@ -21,3 +21,5 @@ One line per helper, ending with its tool count (harness figure).
 - scouts 11 (5660 hits, 316 old-gen) and 12 (ticket contradicted: signatures, emails, cache key digest.rs:57, differ=0 risk) · 10 + 17 tools.
 - builder-sonnet 06 stale sheets: split by conductor, m8 sheets + m8-accept step 3 dropped per user option A, 2 walk tests fixed by ruling (1 deleted: every_part_of_the_m8_sheet_opens_with_colour_unverified); merged 73eaaf02; 2 continuations · 41 tools · skills: none.
 - conductor gates on main after 06: all ok; fast 6850/6850 319.5 s (quiet machine, inside budget); walks 462/0 112.6 s.
+- builder-sonnet 11b1 current-only names + guards: Own::is_ref/is_message/is_trailer (free fns would break ADR-0007), guards read OLD_NAMES not Generation; merged dec86554. No new scout (used scout 11) · 24 tools · skills: none.
+- conductor gates on main after 11b1: all ok; fast 6855/6855 327 s; walks 462/0 112 s. 11b2 prerequisite (user opened repos): checked, no .git/graft or tributary in any repo under ~ (6 levels), reports + rms-backend have .git/mergewright.
