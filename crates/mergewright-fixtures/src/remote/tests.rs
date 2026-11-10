@@ -169,11 +169,11 @@ fn hermetic_env_blocks_user_config() {
         .git(remote.work(), &["config", "--show-origin", "--list"])
         .unwrap();
     for line in listing.lines() {
-        assert!(
-            !line.contains(&real_home),
-            "config from the user's home leaked in: {line}"
-        );
-        assert!(line.starts_with("file:"), "unexpected origin: {line}");
+        let leaked = line.contains(&real_home);
+        assert!(!leaked, "config from the user's home leaked in: {line}");
+        // All from files but `git::isolated`'s own `-c maintenance.auto=false`.
+        let own = line == "command line:\tmaintenance.auto=false";
+        assert!(own || line.starts_with("file:"), "unknown origin: {line}");
     }
     assert!(listing.contains("remote.origin.url"), "{listing}");
 }
