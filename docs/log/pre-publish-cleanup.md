@@ -13,3 +13,5 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates on main after 02: fmt/clippy/heavy/doc ok; fast 6845/6845 697 s (beside debugger 03 — not valid timing); walks 463/0 240 s.
 - debugger 03 100k-unicode: (a) harness read rows after undrawn keys (readings.rs, turn.rs:156) fixed, red test; (b) real blank frames on E-cores remain 30/30, before-19 also 30/30 → 19 not cause; box 5 unticked, stop → user ruling (verdict.rs:62 vs query.rs:214-216). Merged ba0e05eb. Gap ease/19 stays open, BROKEN · 92 tools · skills: diagnosing-bugs.
 - conductor gates on main after 03: all ok; fast 6845/6845 538 s (over 360 s budget, gap ease/28); walks 463/0 181.5 s.
+- builder-sonnet 05 small-ui: blame ⊗ inked from theme (cause), narrow-graph text capture; colour UNVERIFIED; 2 questions (Warning ink on failure words; override_cells layout.rs:51). Merged 69b325cf. Scout used · 56 tools · skills: none.
+- conductor gates on main after 05: all ok; fast 6847/6847 578 s (beside builder 04); walks 463/0 217 s.
