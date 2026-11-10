@@ -1,6 +1,6 @@
 # pre-publish: the codename out of the app crate, the shipped scripts and the shipped docs, behind a guard written first
 
-Status: draft
+Status: ready
 Blocked by: 06, 11b4 (old-generation code is gone, so nothing needs allow-listing for it). 07–10 are no longer blockers (cut, pending the user).
 Runs concurrently with: 11c (disjoint files: this ticket takes no file under any crate but `mergewright` and `mergewright-capabilities`)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: renames behind a guard written first; every choice is made below.

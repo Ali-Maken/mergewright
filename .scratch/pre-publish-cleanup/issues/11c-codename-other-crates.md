@@ -1,6 +1,6 @@
 # pre-publish: the codename out of every crate but the app (ui, ops, git, core, fixtures, graph, term)
 
-Status: draft
+Status: ready
 Blocked by: 06, 11b4. 07–10 are no longer blockers (cut, pending the user).
 Runs concurrently with: 11a. Disjoint files: this ticket owns every `crates/*` except `mergewright` and `mergewright-capabilities`, plus the captures whose writers live in those crates.
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: comment, name and header renames under 11a's rules. Nothing new is decided here.
