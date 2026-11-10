@@ -60,8 +60,14 @@ impl BlameState {
     }
 
     /// The picture's view of this place, handed to `draw`; `path` is the
-    /// sanitised path, which the view borrows.
-    pub fn view<R>(&self, path: &str, now: i64, draw: impl FnOnce(&BlameView) -> R) -> R {
+    /// sanitised path, which the view borrows; `theme` inks a failure's mark.
+    pub fn view<R>(
+        &self,
+        path: &str,
+        now: i64,
+        theme: &mergewright_ui::theme::Theme,
+        draw: impl FnOnce(&BlameView) -> R,
+    ) -> R {
         let matches = self.matches();
         let find = self.find.as_deref().map(|query| FindTitle {
             query,
@@ -87,6 +93,7 @@ impl BlameState {
             },
         };
         let view = BlameView {
+            theme,
             path,
             rev: self.title.clone(),
             body,
@@ -127,7 +134,11 @@ mod tests {
             heatmap: false,
             last_click: None,
         };
-        let default_ignored = place.view("a.rs", 0, |view| view.default_ignored);
+        let theme = mergewright_ui::theme::Theme::new(
+            mergewright_ui::theme::ThemeKind::Dark,
+            &crate::session::for_tests::capabilities(),
+        );
+        let default_ignored = place.view("a.rs", 0, &theme, |view| view.default_ignored);
         assert_eq!(default_ignored, BlameOptions::default().ignore_whitespace);
     }
 }

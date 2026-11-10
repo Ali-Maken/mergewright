@@ -128,8 +128,10 @@ pub struct FindTitle<'a> {
 }
 
 /// Everything the blame place draws.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct BlameView<'a> {
+    /// The theme: a failed body's mark takes its ink from it, as history's does.
+    pub theme: &'a crate::theme::Theme,
     /// The file's path, sanitised.
     pub path: &'a str,
     /// Which revision.
@@ -166,6 +168,7 @@ pub fn draw_blame_in_tier(
     ascii: bool,
 ) {
     draw_into(frame.buffer_mut(), area, view, keys, ascii);
+    crate::failure::ink_marks(frame.buffer_mut(), area, view.theme, ascii);
 }
 
 /// Which row of `rows` sits at screen row `y`, for a click; `None` on the

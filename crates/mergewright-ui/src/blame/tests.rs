@@ -79,6 +79,7 @@ const ON_27: usize = 9;
 
 pub(crate) fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
     BlameView {
+        theme: Box::leak(Box::new(crate::history::tests::theme())),
         path: "src/auth/session.rs",
         rev: BlameRev::Now,
         body: BlameBody::Lines {
@@ -90,8 +91,7 @@ pub(crate) fn view(rows: &[BlameRowView], cursor: usize) -> BlameView<'_> {
         find: None,
         heatmap: false,
         now: NOW,
-        // Blame's default (mergewright-git `blame.rs`): the title says nothing.
-        whitespace_ignored: true,
+        whitespace_ignored: true, // blame's default (git `blame.rs`): title silent
         default_ignored: true,
     }
 }

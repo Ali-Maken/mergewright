@@ -127,6 +127,27 @@ pub(super) fn draw_stash(
 
 /// The history place (m7-power-tools/21) in `body`, and its bar on the
 /// frame's bottom row.
+/// The blame place's body: everything above the bar, in the session's theme.
+fn draw_blame_body(
+    session: &Session,
+    state: &AppState,
+    blame: &crate::update::place::BlameState,
+    frame: &mut Frame,
+    body: Rect,
+) {
+    let path = mergewright_term::sanitize::sanitize_path(&blame.path);
+    let now = state.harness.clock.now_seconds();
+    blame.view(path.as_str(), now, &session.theme, |view| {
+        mergewright_ui::blame::draw_blame_in_tier(
+            frame,
+            body,
+            view,
+            &state.keymap,
+            tier_in_force(session, state) == RenderingTier::Ascii,
+        );
+    });
+}
+
 fn draw_history_place(
     session: &Session,
     state: &AppState,
@@ -196,16 +217,7 @@ pub(super) fn draw_place(
         return None;
     }
     let blame = state.trail.on_screen()?;
-    let path = mergewright_term::sanitize::sanitize_path(&blame.path);
-    blame.view(path.as_str(), state.harness.clock.now_seconds(), |view| {
-        mergewright_ui::blame::draw_blame_in_tier(
-            frame,
-            body,
-            view,
-            &state.keymap,
-            tier_in_force(session, state) == RenderingTier::Ascii,
-        );
-    });
+    draw_blame_body(session, state, blame, frame, body);
     if area.height == 0 {
         return None;
     }

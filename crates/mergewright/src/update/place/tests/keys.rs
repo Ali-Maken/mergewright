@@ -305,7 +305,11 @@ fn blame_failure_words_are_sanitised() {
         blame.body = BlameLoad::Failed(raw.to_owned());
     }
     let blame = state.trail.on_screen().expect("the place");
-    let shown = blame.view("a.rs", 0, |view| match view.body {
+    let theme = mergewright_ui::theme::Theme::new(
+        mergewright_ui::theme::ThemeKind::Dark,
+        &crate::session::for_tests::capabilities(),
+    );
+    let shown = blame.view("a.rs", 0, &theme, |view| match view.body {
         mergewright_ui::blame::BlameBody::Failed(words) => words.to_owned(),
         _ => panic!("not failed"),
     });
