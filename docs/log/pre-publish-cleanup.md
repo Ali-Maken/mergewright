@@ -9,3 +9,5 @@ One line per helper, ending with its tool count (harness figure).
 - builder-sonnet (sonnet) 01 merged partial (17af5032): A/B script + perf file; noise (A/A 135 s) > delta (54 s); new tests +1.8 s; 3 boxes open (fixes, ≤360 s twice) — not measurable on this load; gap ease/28 → unverified · skills: none.
 - conductor gates on main after 01: fmt/clippy/heavy/doc ok; fast 6844/6844 628.8 s (beside debugger 02 — not valid timing); walks 463/0 169.7 s. User killed dasd + fseventsd (both respawned; fseventsd 109%→<7% once tests stopped).
 - user 2026-10-25 U1: drop old-name folder code ("code contains nothing but current state of code") → ticket 11b after 11.
+- debugger 02 fork-rows flake: cause = fixture git left auto-maintenance on (fixtures/src/git.rs:293); fixed 726db948, merged. before 3/300 → after 0/300; red test 3/3. 06h same cause unproven (open); ~90 bare-git test sites exposed · 35 tools · skills: diagnosing-bugs.
+- conductor gates on main after 02: fmt/clippy/heavy/doc ok; fast 6845/6845 697 s (beside debugger 03 — not valid timing); walks 463/0 240 s.
