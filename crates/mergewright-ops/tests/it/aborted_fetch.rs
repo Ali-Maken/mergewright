@@ -157,8 +157,8 @@ fn a_fetch_that_brought_nothing_records_an_empty_map() {
 /// One fetch with `--prune`: a tracking ref moved, one new, one pruned, and a
 /// tag git followed — each recorded once, with its two values as the
 /// repositories hold them. `origin/HEAD` (a symbolic ref) is not a move of
-/// its own, and Mergewright's `refs/graft/` is never recorded, even when a refspec
-/// makes the fetch write there.
+/// its own, and a ref under the app's own `on_disk::REF_PREFIX` is never
+/// recorded, even when a refspec makes the fetch write there.
 #[test]
 fn a_fetch_records_new_moved_pruned_and_tag_refs() {
     let remote = local();
@@ -182,7 +182,7 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
             "config",
             "--add",
             "remote.origin.fetch",
-            "+refs/heads/*:refs/graft/fetched/*",
+            &format!("+refs/heads/*:refs/{CURRENT_DIR}/fetched/*"),
         ],
     );
     let old_main = ref_value(&remote, &main).expect("the tracking ref");
@@ -199,7 +199,7 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
         .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
 
     // What git did, read back: the four moves happened, the symbolic ref is
-    // there, and the refspec wrote under `refs/graft/`.
+    // there, and the refspec wrote under the app's own prefix.
     assert_eq!(ref_value(&remote, &main), Some(tip));
     assert_eq!(ref_value(&remote, "refs/remotes/origin/feat"), Some(tip));
     assert_eq!(ref_value(&remote, "refs/remotes/origin/old"), None);
@@ -212,7 +212,10 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
         )
         .ends_with(remote.default_branch())
     );
-    assert_eq!(ref_value(&remote, "refs/graft/fetched/feat"), Some(tip));
+    assert_eq!(
+        ref_value(&remote, &format!("refs/{CURRENT_DIR}/fetched/feat")),
+        Some(tip)
+    );
 
     let change = |before, after| RefMove { before, after };
     let expected = BTreeMap::from([
@@ -230,54 +233,6 @@ fn a_fetch_records_new_moved_pruned_and_tag_refs() {
     assert_eq!(applied.entry.status, EntryStatus::Committed);
     assert_eq!(applied.entry.fetched_refs, Some(expected));
     assert_eq!(entries(&remote).last(), Some(&applied.entry));
-}
-
-/// A ref under `on_disk::REF_PREFIX` is the app's own, never counted as
-/// fetched, even when a refspec makes the fetch write there.
-#[test]
-fn own_prefix_ref_not_fetched() {
-    let remote = local();
-    git(&remote, remote.work(), &["fetch", "-q", "origin"]);
-    git(
-        &remote,
-        remote.work(),
-        &[
-            "config",
-            "--add",
-            "remote.origin.fetch",
-            &format!("+refs/heads/*:refs/{CURRENT_DIR}/fetched/*"),
-        ],
-    );
-    let tip = oid(&remote.commit_on_remote("from a teammate").unwrap());
-    git(
-        &remote,
-        remote.bare(),
-        &["branch", "feat", &tip.to_string()],
-    );
-
-    let applied = run_in(&remote, &fetch_all(false), NOW)
-        .unwrap_or_else(|why| panic!("{}", why.explain(&crate::support::Letters)));
-
-    // git wrote there...
-    assert_eq!(
-        ref_value(&remote, &format!("refs/{CURRENT_DIR}/fetched/feat")),
-        Some(tip)
-    );
-    // ...and it is not a fetch's doing to the journal.
-    let fetched = applied
-        .entry
-        .fetched_refs
-        .expect("a fetch records its moves");
-    assert!(
-        fetched
-            .keys()
-            .all(|name| !name.starts_with(&format!("refs/{CURRENT_DIR}/"))),
-        "{fetched:?}"
-    );
-    assert!(
-        fetched.contains_key("refs/remotes/origin/feat"),
-        "{fetched:?}"
-    );
 }
 
 /// `u` is unchanged by a fetch that moved refs before it failed: it still

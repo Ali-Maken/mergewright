@@ -55,7 +55,7 @@
 866 crates/mergewright-ops/src/tour/tests.rs
 833 crates/mergewright-ops/src/undo.rs
 745 crates/mergewright-ops/src/undo/tests.rs
-465 crates/mergewright-ops/tests/it/aborted_fetch.rs
+420 crates/mergewright-ops/tests/it/aborted_fetch.rs
 609 crates/mergewright-ops/tests/it/absorb_staged.rs
 544 crates/mergewright-ops/tests/it/chained_backup.rs
 449 crates/mergewright-ops/tests/it/cherry_pick.rs
