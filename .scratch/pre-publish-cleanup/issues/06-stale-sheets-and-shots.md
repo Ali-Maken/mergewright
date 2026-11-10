@@ -1,6 +1,6 @@
 # pre-publish: delete the stale contact sheets and the three-pane captures
 
-Status: ready
+Status: blocked (stop condition)
 Blocked by: none
 Build with: Sonnet (`builder-sonnet`, model sonnet). Why: deletions of named files. A drift script and grep are the check; no code.
 Scout: no. Why: there's no code to scout. The files are named below, and `scripts/shot-drift.py` plus `git grep` are the brownfield check (ADR-0035's purpose: know what reads them before touching).
@@ -58,3 +58,15 @@ Workspace-wide: `cargo nextest run`, `cargo test --doc`, `scripts/walks.sh`. fmt
 
 ## Size
 ~15k tokens.
+
+## NOTES (builder, 2026-11-10) — stopped at a stop condition, nothing deleted
+Sheet names (`git ls-files docs/shots | grep -i -E 'sheet|contact'`, the in-scope ones):
+`docs/shots/m3-contact-sheet.txt`; `docs/shots/m6/m6-contact-sheet-{1..5}.txt`; `docs/shots/m8-contact-sheet-{1,2,3}.txt`. Plus `docs/shots/m6/fix-three-panes-{180x50,187x50,200x50}.txt`.
+
+**Stop condition hit (both):** a shipped script regenerates a listed file.
+- `scripts/m8-accept.sh:79`: `if scripts/contact-sheet.sh --captions-order m8 docs/shots > "$ACCEPT/sheet.txt" 2>&1; then` — `contact-sheet.sh` (SHIP, export-inventory §3 line 59) writes `docs/shots/m8-contact-sheet-<n>.txt` (`scripts/contact-sheet.sh:29-31`); `m8-accept.sh` is on the §3 SHIP list as "current acceptance walk". Running it re-creates the m8 sheets.
+- Same pattern, not on the list but worth knowing: `scripts/ease-accept.sh:116`, `scripts/m7-accept.sh:102`.
+Readers found, not blockers: `crates/mergewright/tests/it/m8_walk/contact_sheet.rs:11` reads only `m8-contact-sheet-captions.tsv` (line 88), not a sheet; `m5_walk/every_scenario.rs:302` names `m6-contact-sheet-captions.tsv` (not on list). Shipping-doc links that would need removing: `TESTING.md:2359` (m6 sheet), `TESTING.md:3320-3321`, `:3394` (m8 sheet).
+No test writes `fix-three-panes-*` or `m3-`/`m6-contact-sheet*` (`git grep -l` over crates/scripts: only the above). shot-drift.py not run: it diffs changes since a rev, and nothing was changed.
+
+Decision needed (conductor): delete m8 sheets anyway and drop step 3 from `m8-accept.sh` (or accept that it regenerates them), or take m8 off the list. The m3/m6/three-panes deletions have no blocker and can proceed as-is.
