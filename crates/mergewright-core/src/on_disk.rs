@@ -191,5 +191,57 @@ pub const MESSAGE_TAG: &str = Generation::CURRENT.dir();
 /// short enough to spell inline (`.git/{CURRENT_DIR}/...`).
 pub const CURRENT_DIR: &str = Generation::CURRENT.dir();
 
+// The current-only names (ticket pre-publish-cleanup/11b1). Plain consts:
+// a later rename edits these lines. They sit beside the `Generation` table
+// until 11b4 deletes it; `tests::consts_match_current_generation` pins them
+// equal to its `CURRENT` row meanwhile. Write them qualified
+// (`on_disk::DIR`), never glob-imported.
+
+/// The folder the app keeps its files under, inside `.git` and the config
+/// root; also the tag on its git messages and the backup author's name.
+pub const DIR: &str = "mergewright";
+/// The product word, as the user reads it.
+pub const TITLE: &str = "Mergewright";
+/// The command the user types.
+pub const COMMAND: &str = "mwr";
+/// The prefix of the app's environment variables, underscore included.
+pub const ENV_PREFIX: &str = "MWR_";
+/// The ref namespace the app writes its own refs under, trailing slash.
+pub const REF_PREFIX: &str = "refs/mergewright/";
+/// The key a backup commit's last line starts with, colon included.
+pub const LINK_TRAILER: &str = "Mergewright-Link:";
+/// The email of the identity backup commits carry.
+pub const BACKUP_EMAIL: &str = "mergewright@backup";
+
+/// Tests whether a name, message or trailer is this app's own. A unit
+/// struct, not free fns: mergewright-core exports no free functions
+/// (ADR-0007, `tests::core_has_no_free_functions`).
+#[derive(Debug, Clone, Copy)]
+pub struct Own;
+
+impl Own {
+    /// Whether ref `name` lies under [`REF_PREFIX`]. Bytes, so a name that
+    /// is not UTF-8 is judged by its prefix like any other.
+    #[must_use]
+    pub fn is_ref(name: &[u8]) -> bool {
+        name.starts_with(REF_PREFIX.as_bytes())
+    }
+
+    /// Whether a message in git was written by this app: it starts
+    /// `<DIR>:` or `<DIR> `.
+    #[must_use]
+    pub fn is_message(message: &str) -> bool {
+        message
+            .strip_prefix(DIR)
+            .is_some_and(|rest| rest.starts_with([':', ' ']))
+    }
+
+    /// Whether `line` starts with [`LINK_TRAILER`].
+    #[must_use]
+    pub fn is_trailer(line: &str) -> bool {
+        line.starts_with(LINK_TRAILER)
+    }
+}
+
 #[cfg(test)]
 mod tests;

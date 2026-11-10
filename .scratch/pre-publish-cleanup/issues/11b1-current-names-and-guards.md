@@ -1,6 +1,6 @@
 # pre-publish: current-only name constants, and the name guards rewritten off the Generation table
 
-Status: ready
+Status: done
 Blocked by: 06
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: this spec fixes the constant set; adding the constants and swapping each guard's data source is mechanical, and it's checked by a test written first.
 Needs: none
@@ -51,11 +51,11 @@ fn old_name_in(line: &str) -> Option<&'static str>; // the factored check; unit-
 ```
 
 ## Acceptance (tick each with its test, inline)
-- [ ] Each const equals the table's `CURRENT` spelling ← `on_disk::tests::consts_match_current_generation`
-- [ ] Predicates: own ref, message and trailer true; another tool's false ← `on_disk::tests::is_own_*`
-- [ ] Factored check red on an old tag, quiet on the current one ← `rename_names::old_name_in_flags_old_tags`
-- [ ] Guards green on the tree with no `Generation` use left in `rename_names.rs` ← `rename_names::no_old_message_literal` + name check; `grep -c Generation crates/mergewright/tests/it/rename_names.rs` = 0 in NOTES
-- [ ] Gates green ← `cargo nextest run` count
+- [x] Each const equals the table's `CURRENT` spelling ← `on_disk::tests::consts_match_current_generation`
+- [x] Predicates: own ref, message and trailer true; another tool's false ← `on_disk::tests::is_own_ref`, `is_own_message`, `is_own_trailer`
+- [x] Factored check red on an old tag, quiet on the current one ← `rename_names::old_name_in_flags_old_tags`
+- [x] Guards green on the tree with no `Generation` use left in `rename_names.rs` ← `rename_names::no_old_message_literal` + name check; `grep -c Generation crates/mergewright/tests/it/rename_names.rs` = 0 in NOTES
+- [x] Gates green ← `cargo nextest run` 6855/6855; doc tests ok; clippy + heavy clippy clean; walks 462/0
 
 ## Touches (check each, say how)
 - `rename_names.rs` only, in the app crate. `rename_names/scripts.rs`, `release_names.rs` and `rename_docs.rs` are not touched here (11b2, 11a).
@@ -70,3 +70,11 @@ Workspace-wide: the four CLAUDE.md gates and heavy clippy. No walks (nothing dra
 
 ## Size
 ~25k tokens.
+
+## NOTES (builder)
+- Deviation: predicates are `on_disk::Own::is_ref/is_message/is_trailer` (unit struct), not free fns — spec's free fns would fail `tests::core_has_no_free_functions` (ADR-0007). `is_trailer` kept: `mergewright-ops/src/snapshot/chain.rs:259` uses `of_trailer`.
+- `grep -c Generation crates/mergewright/tests/it/rename_names.rs` = 0.
+- `old_name_in` reads tags as the dirs inside `OLD_NAMES`' `refs/<dir>/` entries, so it matches exactly what `of_message` did (titles/commands as tags would flag "Graft Fixture" literals).
+- `GRAFT_`/`TRIB_` written as `concat!` so `rename_names::scripts::no_old_env_name` (out of scope) doesn't flag the list.
+- Name check now also scans env/ref/trailer/email spellings as words; tree stays green.
+- No compaction.

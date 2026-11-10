@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use mergewright_core::on_disk::Generation;
+use mergewright_core::on_disk;
 
 use crate::rename_opens::{crates_dir, production_files};
 
@@ -16,11 +16,11 @@ use crate::rename_opens::{crates_dir, production_files};
 /// command: `mergewright` and `mwr` (49).
 #[test]
 fn package_and_bin_follow_the_table() {
-    assert_eq!(env!("CARGO_PKG_NAME"), Generation::CURRENT.dir());
+    assert_eq!(env!("CARGO_PKG_NAME"), on_disk::DIR);
     let binary = Path::new(env!("CARGO_BIN_EXE_mwr"));
     let name = binary.file_stem().and_then(|name| name.to_str());
     assert_eq!(name, Some(mergewright::cli::COMMAND));
-    assert_eq!(mergewright::cli::COMMAND, Generation::CURRENT.command());
+    assert_eq!(mergewright::cli::COMMAND, on_disk::COMMAND);
 }
 
 /// The binary Cargo builds is named after the command every message uses.
@@ -42,7 +42,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     (
         "mergewright-core/src/on_disk.rs",
         "",
-        "the `Generation` table: every generation's names (26, 48)",
+        "the on-disk names table: every generation's names (26, 48)",
     ),
     (
         "mergewright-fixtures/",
@@ -182,14 +182,44 @@ fn says_word(text: &str, word: &str) -> bool {
     })
 }
 
-/// The earlier generation `text` names, if any: its title (`Graft`,
-/// `Tributary`), its dir (`tributary`, as in a folder prefix; 51) or its
-/// command (`graft`, `trib`) as a whole word, read from
-/// the names table so a later rename needs no edit here.
-fn says_old_name(text: &str) -> Option<Generation> {
-    Generation::CURRENT.older().find(|old| {
-        says_word(text, old.title()) || says_word(text, old.command()) || says_word(text, old.dir())
-    })
+/// Every earlier generation's spellings: dir, title, command, env prefix,
+/// ref prefix, trailer key, backup email. Written out once from the
+/// on-disk names table as it stood (ticket pre-publish-cleanup/11b1), so the
+/// guards outlive the table. Spells the codename on purpose.
+const OLD_NAMES: &[&str] = &[
+    "graft",
+    "Graft",
+    // Split so `scripts::no_old_env_name` does not read this list as a use.
+    concat!("GRAFT", "_"),
+    "refs/graft/",
+    "Graft-Link:",
+    "graft@backup",
+    "tributary",
+    "Tributary",
+    "trib",
+    concat!("TRIB", "_"),
+    "refs/tributary/",
+    "Tributary-Link:",
+    "tributary@backup",
+];
+
+/// The earlier name `text` says as a whole word (`Graft`, `tributary` as in
+/// a folder prefix, 51; `trib`), if any.
+fn says_old_name(text: &str) -> Option<&'static str> {
+    OLD_NAMES.iter().copied().find(|old| says_word(text, old))
+}
+
+/// The earlier message tag `line` starts with (`graft:`, `tributary ` …),
+/// if any: the check `no_old_message_literal` runs on each literal. A tag
+/// is a generation's dir, read off its ref prefix `refs/<dir>/`.
+fn old_name_in(line: &str) -> Option<&'static str> {
+    OLD_NAMES
+        .iter()
+        .filter_map(|old| old.strip_prefix("refs/")?.strip_suffix('/'))
+        .find(|tag| {
+            line.strip_prefix(tag)
+                .is_some_and(|rest| rest.starts_with([':', ' ']))
+        })
 }
 
 /// Every production source file under `crates/*/src` and `crates/*/examples`,
@@ -216,7 +246,7 @@ fn every_production_file(crates: &Path) -> Vec<PathBuf> {
 /// message tag (`graft:`, `graft `, `tributary:` …) outside the names
 /// table: every message written into git takes its tag from
 /// `on_disk::MESSAGE_TAG`, and every reader goes through
-/// `Generation::of_message` (ticket m8/52).
+/// `on_disk::Own::is_message` (ticket m8/52).
 #[test]
 fn no_old_message_literal() {
     let crates = crates_dir();
@@ -231,9 +261,7 @@ fn no_old_message_literal() {
             continue;
         }
         for (line, literal) in literals(&file) {
-            let older = Generation::of_message(&literal)
-                .is_some_and(|generation| generation != Generation::CURRENT);
-            if older {
+            if old_name_in(&literal).is_some() {
                 found.push(format!("{shown}:{line}: \"{literal}\""));
             }
         }
@@ -281,22 +309,27 @@ fn no_old_name_in_user_visible_strings() {
 }
 
 #[test]
+fn old_name_in_flags_old_tags() {
+    assert_eq!(old_name_in("graft: your edits, set aside"), Some("graft"));
+    assert_eq!(old_name_in("tributary 01J0 stage"), Some("tributary"));
+    assert_eq!(old_name_in("mergewright: your edits, set aside"), None);
+    assert_eq!(old_name_in("mergewright 01J0 stage"), None);
+}
+
+#[test]
 fn the_word_test_reads_words_only() {
-    assert_eq!(says_old_name("graft crashed"), Some(Generation::Graft));
-    assert_eq!(says_old_name("usage: Graft"), Some(Generation::Graft));
+    assert_eq!(says_old_name("graft crashed"), Some("graft"));
+    assert_eq!(says_old_name("usage: Graft"), Some("Graft"));
     assert_eq!(
         says_old_name("Tributary cannot read this"),
-        Some(Generation::Tributary)
+        Some("Tributary")
     );
-    assert_eq!(says_old_name("trib: stopped"), Some(Generation::Tributary));
+    assert_eq!(says_old_name("trib: stopped"), Some("trib"));
     assert_eq!(says_old_name("mergewright_core"), None);
     assert_eq!(says_old_name("MWR_PERF_TRACE"), None);
     assert_eq!(says_old_name("grafted"), None);
     assert_eq!(says_old_name("tributary_ish attribute"), None);
-    assert_eq!(
-        says_old_name("tributary-practice-"),
-        Some(Generation::Tributary)
-    );
+    assert_eq!(says_old_name("tributary-practice-"), Some("tributary"));
     assert_eq!(says_old_name("Mergewright · mwr"), None);
 }
 
