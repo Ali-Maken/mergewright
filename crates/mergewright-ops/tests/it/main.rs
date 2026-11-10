@@ -34,6 +34,7 @@ mod journal_list_oracle;
 mod journal_names;
 mod journal_tie;
 mod journal_two_writers;
+mod journal_unmapped;
 mod lost_work;
 mod merge_look;
 #[cfg(unix)]
