@@ -30,6 +30,58 @@ mod blame_failed {
             crate::failure::assert_marked(&text, "git blame stopped: no such path", ascii);
         }
     }
+
+    /// pre-publish-cleanup/05: blame's mark takes `FAILED_INK` from its theme,
+    /// as history's does: dark, light and high contrast, both tiers; under a
+    /// colourless theme the mark keeps no colour. The words keep the default
+    /// ink, as history's failed list does.
+    #[test]
+    fn a_failed_blame_inks_its_mark_in_every_theme() {
+        use crate::theme::{Theme, ThemeKind};
+        let caps = crate::test_support::terminal(
+            mergewright_core::capabilities::ColorDepth::TrueColor,
+            false,
+        );
+        for kind in [ThemeKind::Dark, ThemeKind::Light, ThemeKind::HighContrast] {
+            let coloured = Theme::new(kind, &caps);
+            for theme in [coloured.clone(), coloured.colourless()] {
+                for ascii in [false, true] {
+                    let mut failed = view(&[], 0);
+                    failed.theme = &theme;
+                    failed.body = BlameBody::Failed("no such path");
+                    let mut terminal =
+                        ratatui::Terminal::new(ratatui::backend::TestBackend::new(80, 6)).unwrap();
+                    terminal
+                        .draw(|frame| {
+                            draw_blame_in_tier(
+                                frame,
+                                frame.area(),
+                                &failed,
+                                crate::keymap::Keymap::shipped(),
+                                ascii,
+                            );
+                        })
+                        .expect("a test backend draws");
+                    let buf = terminal.backend().buffer();
+                    let ink = crate::paint::foreground(&theme, crate::failure::FAILED_INK).fg;
+                    let row: Vec<_> = (0..80).map(|x| &buf[(x, 1)]).collect();
+                    let mark_cells = if ascii { 3 } else { 1 };
+                    let mark: String = row[..mark_cells].iter().map(|c| c.symbol()).collect();
+                    assert_eq!(mark, if ascii { "(x)" } else { "⊗" }, "{kind:?}");
+                    for cell in &row[..mark_cells] {
+                        assert_eq!(cell.fg, ink.unwrap_or_default(), "{kind:?} ascii={ascii}");
+                    }
+                    let word = row[mark_cells + 1];
+                    assert_eq!(word.symbol(), "g");
+                    assert_eq!(
+                        word.fg,
+                        ratatui::style::Color::Reset,
+                        "{kind:?}: words keep default"
+                    );
+                }
+            }
+        }
+    }
 }
 
 mod detail_pane_failed {

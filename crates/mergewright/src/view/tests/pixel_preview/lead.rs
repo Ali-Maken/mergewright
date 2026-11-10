@@ -203,3 +203,40 @@ fn no_strip_without_a_gutter() {
         "a strip with a gutter"
     );
 }
+
+/// pre-publish-cleanup/05 (ease-pass/29 test half): the capture his check
+/// compares against. A pixel session on a 3x30 screen, the only graph area
+/// ≤3 columns a layout reaches (no detail or branch pane narrows it; scout
+/// 05). No pixel rectangle comes back, and with none `Graphics::frame`
+/// places no image (`event_loop/graphics.rs:209-219`): the frame's bytes
+/// carry no Kitty or iTerm2 placement. The column draws Unicode glyphs.
+#[test]
+fn capture_the_narrow_graph_as_text() {
+    let pixel = pixel_session();
+    let mut state = closed(&previewing());
+    state.size = crate::update::Size {
+        columns: 3,
+        rows: 30,
+    };
+    let (buffer, graph) = buffer_at(&pixel, &state, &GraphicsStatus::Ok);
+    assert_eq!(graph, None, "no image placement at 3 columns");
+    let lines: Vec<String> = (0..state.size.rows)
+        .map(|y| (0..3).map(|x| buffer[(x, y)].symbol()).collect())
+        .collect();
+    // Rows 0-1 are the head, the last two the divider and bar; every row
+    // between is a commit's (or a tall row's second line) and holds a glyph.
+    for (y, line) in lines.iter().enumerate().take(lines.len() - 2).skip(2) {
+        assert!(
+            line.chars()
+                .any(|c| matches!(c, '●' | '│' | '┃' | '○' | '◆')),
+            "row {y} has no graph glyph: {line:?}"
+        );
+    }
+    mergewright_fixtures::capture(
+        format!(
+            "{}/../../docs/shots/pre-publish/29-narrow-graph-text-3x30.txt",
+            env!("CARGO_MANIFEST_DIR")
+        ),
+        lines.join("\n"),
+    );
+}

@@ -55,8 +55,8 @@ The blame place's picture; pure draw, no state.
 - `BlameBody<'a>` (enum) — `Reading` / `Failed(&str)` / `Lines { rows, cursor, top }`.
 - `IgnoreLine` (struct) — `count`, `applied`: the `.git-blame-ignore-revs` line, drawn only when `Some`.
 - `FindTitle<'a>` (struct) — `query`, `at` (1-based), `of` (0 = no match): the title's find tail.
-- `BlameView<'a>` (struct) — `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, whitespace flags: everything the place draws.
-- `draw_blame` (fn) — `(frame, area, view, keys: &Keymap)`; `draw_blame_in_tier(.., ascii)` is the same at a tier (a failed body's mark is `(x)` at ASCII): title, ignore line, then gutter · number · code rows.
+- `BlameView<'a>` (struct) — `theme` (inks a failure's mark, as `HistoryView`'s), `path`, `rev`, `body`, `ignore`, `find`, `heatmap`, `now`, whitespace flags: everything the place draws.
+- `draw_blame` (fn) — `(frame, area, view, keys: &Keymap)`; `draw_blame_in_tier(.., ascii)` is the same at a tier (failed mark `(x)` at ASCII, inked by `failure::ink_marks`): title, ignore line, then gutter · number · code rows.
 - `blame_row_at` (fn) — `(area, view, y) -> Option<usize>`: mouse hit-test into rows; `None` off the rows.
 
 ## history
