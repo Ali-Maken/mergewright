@@ -1,84 +1,140 @@
-# pre-publish: neutral fixture authors. Every fixture oid changes, and a script proves nothing else did
+# pre-publish: neutral fixture authors, the synthetic cache key made whole, and the guard closed over the full shipped set
 
-Status: ready
-Blocked by: 11 (its guard lists the `fixture-identity` entries this ticket removes; and transitively 01–10, so it re-shoots captures once, last)
-Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: one constant set changes, then everything regenerates. A normalisation script, not the eye, judges the thousands of changed bytes, so correctness doesn't rest on reading the diff. **Runs alone**: it rewrites nearly every capture and snapshot.
-Scout: **yes**, first. It writes `.scratch/pre-publish-cleanup/scouts/12-fixture-identity.md` (≤1 page):
-- the exact identity strings and emails (`Graft Fixture`, `Graft Test`, `Graft Perf`, …) and where each is set (fixtures generator, test helpers, `user.email` config for "you");
-- the count of hard-coded oids and sha7s in test source, by file;
-- what the fixture cache key covers (git version per M1 row; does it cover generator constants?);
-- any code that orders or hashes by oid where equal dates tie (topo walk tie-breaks; anything keyed `oid % n`);
-- whether captures draw author initials.
+Status: draft (rewritten 2026-11-10 to `scouts/12-fixture-identity.md`)
+Blocked by: 11a, 11c (and through them 06 and 11b). 07–10 are no longer blockers (cut, pending the user).
+Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: one identity source changes, then everything regenerates. A normalisation script and a lane-slot probe judge the changed bytes; the user judges what they flag. **Runs alone, last**: it rewrites nearly every capture and snapshot.
+Needs: 11a's guard (`codename_absent.rs`: `PENDING`, `PENDING_IDENTITY`, allow-list).
+Scout: done: `scouts/12-fixture-identity.md`. Its file:line refs are at main @ 121c167c, and 11b/11c moved lines since, so re-find each by grep before editing.
 
 ## Closes
-- `rename/graft-leftovers` (**broken**), the fixture-identity part: "fixture identities `Graft Fixture/Test/Perf` (seed fixture oids; renaming needs hard-coded oids + snapshots redone)". With 11, the row closes.
+- `rename/graft-leftovers` (**broken**), the fixture-identity part. With 11a and 11c, the row closes.
 
 ## Decisions
-**D1. Neutral names of the same length, no product name.** A later rename (the trademark search is still open) then can't touch them.
-- `Graft Fixture` → `Fixture Maker`; `Graft Test` → `Test Maker`; `Graft Perf` → `Perf Maker`. Each pair is equal in length.
-- Email local parts: `graft` → `maker` (same length), domains unchanged.
-- Any other `Graft …` identity the scout finds follows the same pattern, at the same length.
-- Why the same length: every column, truncation and `…` cut stays where it was, so captures differ only in letters and hex. D3 depends on that.
+**D1. Neutral names, same length, no product name.**
 
-**D2. Change once, regenerate everything.**
-- Constants and every `user.email` / mailmap that names them change in lockstep ("you" is found through `user.email` and mailmap, 07c). Otherwise the `you` label vanishes.
-- The fixture cache key must change. Prove the key covers the identity, or bump it. A stale cache passing on this machine and failing in a clean checkout is the failure to prevent.
-- Hard-coded oids and sha7s in tests are updated.
-- insta snapshots accepted; captures regenerated across both tiers (`MWR_UPDATE_SHOTS=1 cargo nextest run --ignore-default-filter`); PNG goldens and the pinned-row golden regenerated.
+| Was | Becomes | Initials |
+|---|---|---|
+| `Graft Fixture` | `Fixture Maker` | `GF` → `FM` |
+| `Graft Test` | `Test Maker` | `GT` → `TM` |
+| `Graft Perf` | `Perf Maker` | `GP` → `PM` |
+| `test@graft.invalid` | `test@maker.invalid` | — |
 
-**D3. Proof by normalisation.** New `scripts/pp-12-identity-diff.py` (run with `python3 -I`):
-- For every file changed under `docs/shots/`, every `*.snap` and every `*.golden` text file, compare the old version (start hash) with the new one after masking: hex runs of 7–40 characters (oids, sha7), the old and new names, emails and initials.
-- It writes `docs/perf/pp-12-identity-diff.txt`: files compared, files equal after masking, and the list of files **not** equal, each with its first differing line.
-- It prints `SUMMARY compared=N equal=M differ=K`.
-- PNGs: compare decoded dimensions only, and list them for his eye. A PNG shows no author text or sha, so a changed PNG means something moved.
+- Each pair is equal in length, so every column, truncation and `…` stays put.
+- Emails `fixture@example.invalid` and `test@example.invalid` are unchanged. So the "you" email (`ease_walk/fixture.rs` `ME` = `IDENTITY_EMAIL`) and every mailmap stay as they are.
+- No other `"Graft <Word>"` identity exists (scout).
+
+**D2. One source for the fixture identity.**
+- Today it is spelled three times:
+  - `mergewright-fixtures/src/git.rs` `IDENTITY_NAME` / `IDENTITY_EMAIL`;
+  - `stream.rs` `IDENTITY` (separate literal);
+  - `synthetic/reflog.rs` (inline literal).
+- `git.rs` gains `IDENTITY` (`"<name> <email>"`), pinned to the other two by a unit test. `stream.rs` and `reflog.rs` use it. Keep today's visibility.
+- `Graft Test` (44 lines, 30 files) and `Graft Perf` (3 lines, 2 files) are inline test literals in crates that may not depend on fixtures. Replace them literally; no new shared constant.
+
+**D3. The synthetic cache key covers its sources. Fix it first, in its own commit.**
+- `digest.rs`'s SYNTHETIC list names only `synthetic.rs`. It misses `synthetic/reflog.rs`, `synthetic/history.rs`, `scale.rs` and any other file under `src/synthetic/`.
+- Add them all. Add `digest::tests::every_synthetic_source_is_keyed`, which lists `src/synthetic/` at test time and fails on any file missing from the list.
+- **Question to verify, not a premise:** is `lost_work` cached, and if so under which key? Answer it from the code, by grep. If it is cached and outside every key, add it with the same kind of test. If it isn't, NOTES says so, with the grep.
+- Only then change the identity, so the change itself invalidates the caches.
+
+**D4. Hard-coded oids: find them by failure, not by reading.**
+- The scout found 180 hex literals in 68 files. It could **not** tell fixture-derived oids from invented ones (every sample was invented).
+- After D2, run the fast tier. Only tests that fail on an oid or sha7 get their literal updated, each to the value the new fixture produces. Invented ids are never touched.
+- Count the sites in NOTES. Over ~150 → stop and report; the conductor splits by crate (12a fixtures + app, 12b the rest), with the script run last.
+
+**D5. Regenerate.**
+- insta snapshots accepted.
+- Captures across both tiers: `MWR_UPDATE_SHOTS=1 cargo nextest run --ignore-default-filter`.
+- PNG goldens and the pinned-row golden.
+
+**D6. Proof by normalisation, and the oid tie-breaks named.**
+- The scout found three places where an oid decides layout. Changing every oid can legitimately move them:
+  - `mergewright-git/src/history/node.rs` topo key, where equal time ties on oid → row order;
+  - `mergewright/src/map/walk.rs` branch tie-break on oid → branch order;
+  - `mergewright-graph/src/identity.rs` `BranchIdentity::of_short_sha` (used in `fold.rs`, `row.rs`) for unnamed lanes → lane colour, and possibly slot.
+- So `differ=0` is **not** expected. The script sorts every change, and the user judges what it flags.
+- New `scripts/pp-12-identity-diff.py` (run `python3 -I`):
+  - Takes every file changed under `docs/shots/`, every `*.snap` and every text `*.golden`, old (start hash) vs new.
+  - In the old version, substitute D1's strings and whole-word initials old→new. Then mask hex runs of 7–40 chars in both.
+  - Classes:
+    - `equal`;
+    - `reordered`: the same multiset of lines in a different order;
+    - `other`.
+  - Writes `docs/perf/pp-12-identity-diff.txt` (each non-equal file with its first differing line) and prints `SUMMARY compared=N equal=E reordered=R other=O`.
+  - PNGs: compare dimensions and bytes, and list every changed one.
+- Lane-slot probe:
+  - A test-scoped example run once at the start hash and once after: `docs/perf/pp-12-lane-slots-before.txt` / `-after.txt`.
+  - For each corpus fixture, each row keyed by (subject, nth occurrence) → `BranchIdentity::slot(<palette len>)` of every lane drawn on it.
+  - The script diffs the two by key and adds `lane-slot changes=K` to SUMMARY.
+  - This is the colour check that captures can't make (rule 5).
+- What the human judges: `reordered` files, lane-slot changes and changed PNGs go into one list, `docs/shots/pp-12-identity-review.md`. Each entry has its capture path and its cause: which of the three sites, plus the fixture commits with equal times (for row order) or the unnamed lane (for slot).
+- The builder doesn't tick these "right". The conductor puts the list to the user.
+
+**D7. Close the guard.**
+- Remove from 11a's `codename_absent.rs`:
+  - `PENDING_IDENTITY`;
+  - both `PENDING` globs (`11c`, `docs/shots/**`), deleting the `PENDING` const if it ends up empty;
+  - the allow-list rows that held the identity strings.
+- The guard is then green over the full shipped set.
+- Any capture body still holding a word after regeneration is a stop. List it: the capture has no live writer, or the word is from another class.
 
 ## Stop conditions (report, don't work around)
-- `differ > 0`. Rows reordered (an oid tie-break), a hash-derived slot or colour changed, or a width changed: stop with the list and the cause per file. The conductor decides; don't accept them in bulk.
-- Any PNG's dimensions or bytes change: list it, and stop before accepting it.
-- Heavy tier: run it once from a script into `docs/perf/pp-12-heavy.txt`. Its red set must equal the last recorded heavy red set (ticket 16's `docs/perf/16-heavy.txt`, by name). A new red is a stop.
-- The cache key can't be shown to cover the identity, and bumping it isn't possible without touching its design: report it.
+- `other > 0`. List each file with its cause. Don't accept them in bulk.
+- A `reordered` or lane-slot change you can't attribute to one of the D6 sites.
+- A PNG's dimensions change.
+- The heavy tier: run it once from a script into `docs/perf/pp-12-heavy.txt`. Its red set must equal `docs/perf/16-heavy.txt`'s, by name. A new red is a stop.
+- Hard-coded oid sites over ~150 (D4).
 
 ## Scope
-In: `mergewright-fixtures` identity constants and cache key; test sources holding hard-coded oids, names or emails (any crate); regenerated snapshots, captures and goldens; the script and its perf file; 11's allow-list (remove the `fixture-identity` rows).
-Out: product code; any other string; capture layout.
+In:
+- fixtures identity source and cache keys (D2, D3);
+- test literals of the three names and `test@graft.invalid` (any crate);
+- oid literals that fail (D4);
+- regenerated snapshots, captures and goldens;
+- the script, probe, perf files and review list;
+- the guard closure (D7).
+
+Out: product code; capture layout; any other string.
 
 ## Signatures
 ```rust
-// crates/mergewright-fixtures (names per the scout; constants, not new API)
-pub const FIXTURE_AUTHOR: &str = "Fixture Maker";   // was "Graft Fixture"
-pub const TEST_AUTHOR: &str = "Test Maker";         // was "Graft Test"
-pub const PERF_AUTHOR: &str = "Perf Maker";         // was "Graft Perf"
+// crates/mergewright-fixtures/src/git.rs (today's visibility kept)
+const IDENTITY_NAME: &str = "Fixture Maker";                            // was "Graft Fixture"
+const IDENTITY_EMAIL: &str = "fixture@example.invalid";                 // unchanged
+const IDENTITY: &str = "Fixture Maker <fixture@example.invalid>";       // new; stream.rs and synthetic/reflog.rs use it
+// crates/mergewright-fixtures/src/digest.rs
+#[test] fn every_synthetic_source_is_keyed();
 ```
-If the identities are inline literals today, they become these constants, with one MAP line in `crates/mergewright-fixtures/MAP.md`.
+Add one MAP line in `crates/mergewright-fixtures/MAP.md` for `IDENTITY` and the key's coverage.
 
 ## Acceptance (tick each with its test or script, inline)
-- [ ] 11's guard green with no `fixture-identity` rows left ← `codename_absent::no_shipped_file_names_the_codename`, `every_allowed_codename_occurrence_still_exists`
-- [ ] Normalised diff empty: `differ=0` ← `scripts/pp-12-identity-diff.py`, SUMMARY quoted
-- [ ] PNGs: none changed, or each listed with dimensions for his eye ← same script's PNG section
-- [ ] Cache can't go stale: delete the fixture cache dir, then a full fast run is green ← `cargo nextest run` after `rm -rf <fixture cache>`, count quoted
-- [ ] Fast and walk tiers green ← `cargo nextest run` count, `scripts/walks.sh` SUMMARY
-- [ ] Heavy red set unchanged ← `docs/perf/pp-12-heavy.txt` vs `docs/perf/16-heavy.txt`, by name
-- [ ] Fixture determinism holds (built twice, same oids) ← the fixtures determinism test by name
-- [ ] No `over_400.txt` row raised ← `file_size` green
+- [ ] The synthetic key covers every synthetic source ← `digest::tests::every_synthetic_source_is_keyed`; `lost_work` answer in NOTES with its grep
+- [ ] One identity source ← `git::tests::identity_is_name_and_email`; `git grep -n 'Graft Fixture'` empty
+- [ ] Guard green over the full shipped set, with no `PENDING` or identity rows ← `codename_absent::no_shipped_file_names_the_codename`, `every_allowed_codename_occurrence_still_exists`
+- [ ] No `GRAFT_` anywhere shipped (closes 11a/11c's env pairs) ← `git grep -n GRAFT_` over the shipped set, empty
+- [ ] `other=0`; `reordered` and lane-slot changes listed and attributed ← `scripts/pp-12-identity-diff.py` SUMMARY quoted; `docs/shots/pp-12-identity-review.md`
+- [ ] PNGs: none changed, or each listed for his eye ← same script's PNG section
+- [ ] Cache can't go stale: delete the fixture cache dir, then a full fast run is green ← `cargo nextest run` count
+- [ ] Fixtures deterministic (built twice, same oids) ← the corpus determinism test by name
+- [ ] Heavy red set unchanged ← `docs/perf/pp-12-heavy.txt` vs `docs/perf/16-heavy.txt`
+- [ ] Fast and walk tiers green; no `over_400.txt` row raised ← counts, `file_size`
 
 ## Touches (check each, say how)
 - Every capture and snapshot (the script).
-- The `you` label (team fixture captures: the script catches a vanished label).
-- Mailmap tests (`mergewright-git` mailmap; "Rui M" there is the licence step's neutral-name ruling, not this one).
-- Fixture cache key, and the corpus determinism test.
-- Heavy fixtures (100k: regeneration time, not context).
+- Author initials in the graph's who column (`mergewright-ui` `graph_screen/columns.rs` `initials()`; 69 capture files hold `GF`).
+- The "you" label (unchanged email; the script catches a vanished label as `other`).
+- Mailmap tests (unchanged).
+- Fixture cache keys and the determinism test.
+- Heavy fixtures (regeneration time).
 - `published_repo`.
-- The contact sheet for the ease pass, if it embeds captures: regenerate only if a test asserts it; otherwise list it (user rule: old sheets are not rebuilt).
+- Old contact sheets: list them, don't rebuild (user rule).
 - Keymap, journal, undo: none.
 
 ## Read first
-- This ticket, then the scout file.
-- `crates/mergewright-fixtures/MAP.md` (generator, cache, `Captures`).
-- TESTING.md: the Captures paragraph and its regeneration command.
-- 11's allow-list file.
+This ticket. `scouts/12-fixture-identity.md`. `crates/mergewright-fixtures/MAP.md` (generator, cache, `Captures`). `crates/mergewright-graph/MAP.md` `BranchIdentity` lines. TESTING.md's Captures paragraph. 11a's Signatures and the allow-list file.
 
 ## Gates
 Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`, and the heavy run from its script.
 
 ## Size
-~50k tokens: a few constants, the oid edits the scout counts, one script. Regeneration is machine time. If the hard-coded oid count is over ~150 sites, the conductor splits oid edits by crate (12a fixtures + app, 12b the rest) with the script run last.
+~60k tokens: the key fix, one identity source, literal swaps, the oid sites found by failure, one script and one probe. Regeneration is machine time.
