@@ -64,7 +64,20 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
         // dropped keys still work, and a verb that cannot say which branch it
         // moves is one this menu is better off not offering.
         if let Some(refs) = next.refs.as_deref() {
-            slots = slots::history_slots(id, &parents, &subject, refs, &findings, &next.keymap);
+            let on_branch = verbs::head_tip(refs).is_some_and(|head| {
+                next.history
+                    .as_ref()
+                    .is_some_and(|history| history.reaches(head.oid, id))
+            });
+            slots = slots::history_slots(
+                id,
+                &parents,
+                &subject,
+                refs,
+                &findings,
+                &next.keymap,
+                on_branch,
+            );
         }
     }
     let items = slots.menu_items();

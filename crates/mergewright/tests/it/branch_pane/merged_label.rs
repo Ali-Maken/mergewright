@@ -33,14 +33,14 @@ fn before_the_read_lands_saras_row_has_no_label() {
 #[test]
 fn once_saras_read_lands_her_tip_row_says_not_merged() {
     // 160 wide: at 120 beside the pane her message column holds the subject
-    // and `not pushed yet` only, and labels give way first (09 ruling W).
+    // and `no upstream set` only, and labels give way first (09 ruling W).
     let repo = with_sibling();
     let (app, state) = opened(repo.path(), WIDE);
     let state = cursor_on(&app, state, TOC);
     let state = read(&app, state, WIDE);
     let row = row_of(&drawn(&state, WIDE), TOC);
     assert!(
-        row.contains("not pushed yet  not merged"),
+        row.contains("no upstream set  not merged"),
         "after her label: {row}"
     );
     app.close();

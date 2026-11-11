@@ -2,7 +2,7 @@
 
 ▸ ◌                         Uncommitted changes (1 unstaged)
   ┃                         not committed yet · 1 file · on main
-  ◆    main (you)           add parser  not pushed yet                                                       Maker  24h
+  ◆    main (you)           add parser  no upstream set                                                      Maker  24h
   ●                         Correct the note                                                                 Maker   2d
   ●                         Add the first note                                                               Maker   2d
   ◇                         Add a readme                                                                     Maker   2d

@@ -8,7 +8,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊                   you · 28 hours ago · made on wallet-release · merged 1 from fi…
     ┃ ●      fix-toc      toc: fix the anchors                                  Sara  28h
     ●┄╯                   Start the wallet release                               you  28h
-    ┃ ●      spike/cache  Try a read cache  not pushed yet                       you  28h
+    ┃ ●      spike/cache  Try a read cache  no upstream set                      you  28h
     ┃ ┊ ●    ops/ci       Pin the CI image                                      Omar  28h
   ◇━┴┄┴┄╯    main         Add the readme  tag v1.2                               you  28h
 

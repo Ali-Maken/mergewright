@@ -376,13 +376,13 @@ fn bar_by(state: &AppState, marker: &str) -> Result<String, String> {
 /// **leads** them rather than ending the row). Three teaching hints and the
 /// doorway is the claim; what follows the doorway is a different one, made
 /// by `hint_bar`'s own tests.
-/// HEAD's parent: an ancestor, where the `.` menu's Cherry-pick is live, so
-/// `o take` follows `⏎ open` (m7-power-tools/40) — checked, not assumed.
+/// HEAD's parent: an ancestor, which `o` refuses, so the bar has no
+/// `o take` (ppc/13 M1) — checked, not assumed.
 fn take_live_plain_row(state: &AppState) -> Result<(), String> {
-    check(mergewright::update::can_take(state), || {
-        "the parent row is not take-live".to_owned()
+    check(!mergewright::update::can_take(state), || {
+        "the parent row is take-live".to_owned()
     })?;
-    bar_is(state, "⏎ open · o take · P push")
+    bar_is(state, "⏎ open · P push · c commit")
 }
 
 fn bar_is(state: &AppState, three: &str) -> Result<(), String> {

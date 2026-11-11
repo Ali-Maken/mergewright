@@ -26,6 +26,35 @@ impl History {
         window.rows.get(at.checked_sub(window.first)?)
     }
 
+    /// Whether `target` is `from` or reachable from it by parents, read from
+    /// the rows on hand only. Rows come children-first, so every commit
+    /// between the two is in the window when both are; a chain leaving the
+    /// window, or a parent folded out of the view, reads as "not reached".
+    /// What `o take` asks with `from` = `HEAD` (a commit already on the
+    /// branch is not taken).
+    #[must_use]
+    pub fn reaches(&self, from: Oid, target: Oid) -> bool {
+        let Some(window) = self.window.as_ref() else {
+            return false;
+        };
+        let index: std::collections::HashMap<Oid, &Row> =
+            window.rows.iter().map(|row| (row.commit.id, row)).collect();
+        let mut seen = std::collections::HashSet::new();
+        let mut todo = vec![from];
+        while let Some(id) = todo.pop() {
+            if id == target {
+                return true;
+            }
+            if !seen.insert(id) {
+                continue;
+            }
+            if let Some(row) = index.get(&id) {
+                todo.extend(row.commit.parents.iter().copied());
+            }
+        }
+        false
+    }
+
     /// What the fold says about row `at` (ease-pass 06), if it is in the
     /// window on hand and the view folds merged branches.
     #[must_use]

@@ -3,7 +3,7 @@
  ◆ api  ~/code/api · main                                                                                   200 commits
 
   ●    main (you)           Commit 035                                  Maker   2d│ main  (you're here)
-  ●                         Commit 034                                  Maker   2d│ ! not pushed yet
+  ●                         Commit 034                                  Maker   2d│ ! no upstream set
   ●                         Commit 033                                  Maker   2d│ · the main line: branches merge into
   ●                         Commit 032                                  Maker   2d│   it
   ●                         Commit 031                                  Maker   2d│ · no upstream to compare with

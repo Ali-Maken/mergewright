@@ -56,7 +56,7 @@ pub(super) fn view<'a>(subject: &str, focus: CommitFocus) -> CommitScreenView<'a
             location: None,
             branch: sanitize_line("wallet-release"),
             amending: None,
-            push: Some(sanitize_line("not pushed yet")),
+            push: Some(sanitize_line("no upstream set")),
             options: Vec::new(),
         },
         subject: FieldView {

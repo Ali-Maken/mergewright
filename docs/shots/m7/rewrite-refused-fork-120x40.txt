@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · feature-a                                                                                5 commits
 
-    ●      feature-c            c1  not pushed yet  not merged          Maker   2d│ feature-a  (you're here)
-  ● ┊      main                 m2  not pushed yet                      Maker   2d│ ! not pushed yet
-  ║ ┊ ●    feature-b            b1  not pushed yet  not merged          Maker   2d│ · not merged
-▸ ║ ◆┄╯    feature-a (you)      a1  not pushed yet  not merged          Maker   2d│ ! main has 1 new commit since it
+    ●      feature-c            c1  no upstream set  not merged         Maker   2d│ feature-a  (you're here)
+  ● ┊      main                 m2  no upstream set                     Maker   2d│ ! no upstream set
+  ║ ┊ ●    feature-b            b1  no upstream set  not merged         Maker   2d│ · not merged
+▸ ║ ◆┄╯    feature-a (you)      a1  no upstream set  not merged         Maker   2d│ ! main has 1 new commit since it
   ║ ┃                           Maker · 2 days ago · made on feature-a · a7650db  │   left
   ◇━╯      main                 m1                                      Maker   2d│ · Maker, last commit 2d ago
                                                                                   │

@@ -67,7 +67,7 @@ pub fn history_verbs(
     findings: &[Finding],
     keys: &Keymap,
 ) -> Vec<HistoryVerb> {
-    history_slots(id, parents, subject, refs, findings, keys).verbs
+    history_slots(id, parents, subject, refs, findings, keys, false).verbs
 }
 
 /// `Checkout <b>` for each local branch on the row that `HEAD` is not
@@ -147,8 +147,9 @@ pub(super) fn pick_verb(id: Oid, subject: &str, head: &Tip, here: &str) -> Histo
 /// Decided from facts the app already holds, no git read on menu open:
 /// `HEAD`'s own row is already on the branch, and 2+ parents is a merge,
 /// both through [`PickParams::check_commit`] so mergewright-ops decides and this
-/// only words it. An ancestor of `HEAD` stays live here; its preview's plan
-/// refuses it in the same words.
+/// only words it. An ancestor of `HEAD` is `on_branch`, read from the rows
+/// on hand (`History::reaches`); one the window cannot show is still
+/// refused by the preview's plan in the same words.
 pub(super) fn pick_slot(
     id: Oid,
     parents: &[Oid],
@@ -156,9 +157,10 @@ pub(super) fn pick_slot(
     head: &Tip,
     here: &str,
     keys: &Keymap,
+    on_branch: bool,
 ) -> (HistoryVerb, Option<SanitizedText>) {
     let params = pick_params(id, subject, head);
-    let dim = take_check(id, parents, head)
+    let dim = take_check(id, parents, head, on_branch)
         .err()
         .and_then(|refusal| pick_dim_reason(&refusal));
     let label = if dim.is_some() {
@@ -174,8 +176,13 @@ pub(super) fn pick_slot(
 /// held. [`pick_slot`] reads its `Err` for the dim words; [`can_take`] reads
 /// it for the bar's `o take`. `o` itself runs the same `check_commit`
 /// (`update::preview::take`).
-pub(crate) fn take_check(id: Oid, parents: &[Oid], head: &Tip) -> Result<(), Refusal> {
-    pick_params(id, "", head).check_commit(id, id == head.oid, parents.len())
+pub(crate) fn take_check(
+    id: Oid,
+    parents: &[Oid],
+    head: &Tip,
+    on_branch: bool,
+) -> Result<(), Refusal> {
+    pick_params(id, "", head).check_commit(id, on_branch || id == head.oid, parents.len())
 }
 
 /// The bar's `o take` on the cursor's row: a history commit (not a stash —
@@ -203,7 +210,11 @@ pub fn can_take(state: &crate::update::state::AppState) -> bool {
     {
         return false;
     }
-    head_tip(refs).is_some_and(|head| take_check(id, &row.commit.parents, &head).is_ok())
+    let history = state.history.as_ref();
+    head_tip(refs).is_some_and(|head| {
+        let on_branch = history.is_some_and(|h| h.reaches(head.oid, id));
+        take_check(id, &row.commit.parents, &head, on_branch).is_ok()
+    })
 }
 
 /// Slot 2's dim reason for `o`'s refusal: `already on <b>`, or the merge

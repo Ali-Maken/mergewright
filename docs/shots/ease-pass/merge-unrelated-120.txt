@@ -6,7 +6,7 @@
  ◆ api  ~/code/api · wallet-release                                                                           9 commits
 
       │                         after merge                                       │ stray
-    ◎┈╮                         Merge branch 'stray' into wallet-rele…    you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'stray' into wallet-rele…    you    —│ ! no upstream set
 ▸   │ ◇                         Start over                              Maker  54m│ · not merged
     │ ●                         Check every link                         Sara  55m│ · shares no history with main
     │ ●                         Link the contents                        Omar  56m│ · Maker, last commit 54m ago

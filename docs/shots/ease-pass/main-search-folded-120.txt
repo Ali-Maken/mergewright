@@ -4,10 +4,10 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
  ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
 
     ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Maker  28h│ wallet-release  (you're here)
-▸   ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ ! not pushed yet
+▸   ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ ! no upstream set
     ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ · not merged
     ●                         Start the wallet release                  Maker  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet            Maker  28h│ · Maker, last commit 28h ago
+  ◇━╯    main                 Add the readme  no upstream set           Maker  28h│ · Maker, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main

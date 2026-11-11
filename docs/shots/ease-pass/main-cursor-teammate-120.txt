@@ -8,7 +8,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
 ▸   ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ · not merged
     ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · 7c…│ ✓ up to date with main
     ●┄╯                           Start the wallet release                you  28h│ · you and Sara, last commit 28h ago
-    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
+    ┃ ●      spike/cache          Try a read cache  no upstream set       you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
                                                                                   │    ─◆ wallet-release
@@ -30,4 +30,4 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
                                                                                   │
                                                                                   │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge fix-toc into yours · ⏎ open · o take · C switch to fix-toc · x compare · u undo · . actions · ? keys
+ m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys

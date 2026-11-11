@@ -24,6 +24,7 @@ mod edit_stop;
 mod error_rows;
 mod finish;
 mod finish_merge;
+mod force_push_probe;
 mod fork_follows;
 mod fork_label;
 mod fork_pushed;

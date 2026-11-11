@@ -5,7 +5,7 @@
     ■                       On main: tune metrics  stash@{0}                                       you   3m
     ┃ ●      origin/main    Add an ops runbook  origin/main is here                                you  14m  STAGED (1)
     ┃ ●                     Document the api                                                       you  15m    ▾ src/
-    ┃ ┊ ●    spike          Try redis cache  not pushed yet                                        you  24m      M a.rs                                                               +3 −1
+    ┃ ┊ ●    spike          Try redis cache  no upstream set                                       you  24m      M a.rs                                                               +3 −1
   ◆ ┃ ┊ ┊  ⓘ main (you)     Add rate limiter  ↑1 to push                                           you  30m  UNSTAGED (1)
   ●━┴┄┴┄╯                   Add metrics endpoint                                                   you  31m    ▾ src/
   ●                         Add request logging                                                    you  32m      M a.rs                                                               +1 −1

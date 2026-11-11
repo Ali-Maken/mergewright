@@ -5,15 +5,15 @@
 │ pick 18333b9 a4                                                                                                                                                                         │
 │ feature-b (Sara): 2 commits follow, on top                                                                                                                                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●    feature-b            b2  not pushed yet                                                                                            Sara   2d│ feature-a
+    ●    feature-b            b2  no upstream set                                                                                           Sara   2d│ feature-a
     ●                         b1                                                                                                            Sara   2d│ reading…
-    ●    feature-a            a5  not pushed yet                                                                                           Maker   2d│ reading…
+    ●    feature-a            a5  no upstream set                                                                                          Maker   2d│ reading…
     ●                         a4                                                                                                           Maker   2d│ reading…
 ▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                        Maker   2d│ reading…
     ┃                         Maker · 2 days ago · made on feature-a · deb7843                                                                       │
     ●                         a2                                                                                                           Maker   2d│
     ●                         a1                                                                                                           Maker   2d│
-  ◇━╯    main                 m1  not pushed yet                                                                                           Maker   2d│
+  ◇━╯    main                 m1  no upstream set                                                                                          Maker   2d│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

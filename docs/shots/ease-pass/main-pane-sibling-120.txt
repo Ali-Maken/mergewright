@@ -4,15 +4,15 @@ What right looks like: the pane on sara reads `sara/fix-toc`, then four lines ma
  ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
 
       ◆          wallet-release (you) Bump the wallet version             you  27h│ sara/fix-toc
-      ┊ ◉━╮      bob/x                Merge branch 'sara/fix-toc' int…    Bob  27h│ ! not pushed yet
+      ┊ ◉━╮      bob/x                Merge branch 'sara/fix-toc' int…    Bob  27h│ ! no upstream set
       ┊ ● ┃                           x1: Bob's first try                 Bob  27h│ · not merged
       ┊ ┊ ┃ ●    ali/x                x: try the other layout             you  27h│ ✓ up to date with develop
 ▸     ┊ ┊ ● ┊    sara/fix-toc         toc: number the headings           Sara  28h│ · Sara and you, last commit 28h ago
       ┊ ┊ ┃ ┊                         Sara · 28 hours ago · made on sara/fix-toc …│
       ┊ ●━╯ ┊    bob/x                toc: fix the anchors               Sara  28h│ built on
       ●┄┴┄┄┄╯    wallet-release (you) Start the wallet release            you  28h│   main
-    ●┄╯          develop              Start develop  not pushed yet       you  28h│    ─◆ develop
-  ◇─╯            main                 Add the readme  not pushed yet      you  28h│    ─◆ sara/fix-toc
+    ●┄╯          develop              Start develop  no upstream set      you  28h│    ─◆ develop
+  ◇─╯            main                 Add the readme  no upstream set     you  28h│    ─◆ sara/fix-toc
                                                                                   │
                                                                                   │
                                                                                   │

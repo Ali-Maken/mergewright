@@ -207,6 +207,34 @@ pub fn previous_tips(
     Ok(tips)
 }
 
+/// Whether `refname` has a reflog with at least one entry. `previous_tips`
+/// cannot say: a ref with no reflog and one with only its creation entry
+/// both have no previous tip.
+///
+/// # Errors
+/// [`ReflogError`] if the ref exists but its reflog cannot be read.
+pub fn has_reflog(repo: &RepoHandle, refname: &RefName) -> Result<bool, ReflogError> {
+    let gix_repo = repo.gix();
+    let reference = match gix_repo.find_reference(BStr::new(refname.as_bytes())) {
+        Ok(reference) => reference,
+        Err(gix::reference::find::existing::Error::NotFound { .. }) => return Ok(false),
+        Err(source) => return Err(ReflogError::Unreadable(source.to_string())),
+    };
+    let mut platform = reference.log_iter();
+    let Some(mut entries) = platform
+        .rev()
+        .map_err(|source| ReflogError::Unreadable(source.to_string()))?
+    else {
+        return Ok(false);
+    };
+    match entries.next() {
+        None => Ok(false),
+        Some(line) => line
+            .map(|_| true)
+            .map_err(|source| ReflogError::Unreadable(source.to_string())),
+    }
+}
+
 /// Why a ref's reflog could not be read.
 #[derive(Debug, thiserror::Error)]
 pub enum ReflogError {

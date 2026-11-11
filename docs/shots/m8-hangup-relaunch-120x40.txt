@@ -5,9 +5,9 @@
 ▸ ◌                           Uncommitted changes (2 staged)
                               not committed yet · 2 files · on feature
     ■                         On feature: mergewright: your edits, set aside for merge main into feature       you  now
-    ◆    feature (you)        finish the feature  not pushed yet                                             Maker  now
+    ◆    feature (you)        finish the feature  no upstream set                                            Maker  now
     ●                         start the feature                                                              Maker   2m
-  ● ┊    main                 main moves again  not pushed yet                                               Maker   3m
+  ● ┊    main                 main moves again  no upstream set                                              Maker   3m
   ● ┊                         main moves on                                                                  Maker   4m
   ●┄╯                         add the base                                                                   Maker   5m
   ●                           Correct the note                                                               Maker   1y

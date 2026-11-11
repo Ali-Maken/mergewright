@@ -1,16 +1,16 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
-    ●                             c1  feature-c is here  not pushed yet                                                                    Maker   2d│ feature-c
-    │ ●                           b1                                                                                                       Maker   2d│ ! not pushed yet
+    ●                             c1  feature-c is here  no upstream set                                                                   Maker   2d│ feature-c
+    │ ●                           b1                                                                                                       Maker   2d│ ! no upstream set
     │ │ ●                         feature a: part 3                                                                                        Maker   2d│ · not merged
     ●─│─╯                         feature a: part 2                                                                                        Maker   2d│ ✓ up to date with main
 ▸   ●─╯                           feature a: part 1                                                                                        Maker   2d│ · Maker, last commit 2d ago
     │                             the result                                                                                                         │
-    │ ○                           b1  feature-b is here  not pushed yet                                                                    Maker    —│ built on
-    │ │ ○                         feature a: part 3  feature-a is here  not pushed yet                                                     Maker    —│   main
+    │ ○                           b1  feature-b is here  no upstream set                                                                   Maker    —│ built on
+    │ │ ○                         feature a: part 3  feature-a is here  no upstream set                                                    Maker    —│   main
     │ │ ○                         feature a: part 2                                                                                        Maker    —│    ─◆ feature-c
     │ ○┈╯                         feature a: part 1                                                                                        Maker    —│
-  ◇─┴─╯                           m1  main is here  not pushed yet                                                                         Maker   2d│
+  ◇─┴─╯                           m1  main is here  no upstream set                                                                        Maker   2d│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

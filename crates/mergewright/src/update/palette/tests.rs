@@ -352,3 +352,47 @@ fn answer(state: &AppState, (id, req): &(JobId, NamesRequest)) -> AppState {
 
 mod placeholder;
 mod seek;
+
+// ── pre-publish-cleanup/13, review M4: the clash screen's `?` ────────────
+
+/// The clash screen answers every key itself (keymap §2.6, modal): the
+/// banner's `c`/`a`/`M`/`e` are not live there, and the place's own `c`,
+/// `e` and `M` mean something else. `?` there has no `IN PROGRESS` group, so `c`, `e` and `M`
+/// each have the one meaning the screen gives them.
+#[test]
+fn the_clash_screens_help_has_no_in_progress_group() {
+    let mut state = crate::update::tests::resolver_on_screen(JobId::new(1));
+    state.in_progress = stopped(InProgress::Merge, &["conflicted.rs"]).in_progress;
+    assert!(
+        crate::update::banner::live(&state).is_some(),
+        "the merge is live under the resolver"
+    );
+    let (open, _) = press(&state, plain(KeyCode::Char('?')));
+    let rows = shown(&open);
+    assert!(
+        !rows.iter().any(|(header, _, _)| header == "IN PROGRESS"),
+        "no banner keys on a modal screen: {rows:?}"
+    );
+}
+
+/// Abort is still reachable from the clash screen without `?`: `Esc` closes
+/// it (never aborts, keymap §2.6), `⇥` reaches the banner within two presses,
+/// and `a` there asks to abort (pre-publish-cleanup/13, M4 follow-up).
+#[test]
+fn abort_is_one_esc_and_a_from_the_clash_screen() {
+    let mut state = crate::update::tests::resolver_on_screen(JobId::new(1));
+    state.in_progress = stopped(InProgress::Merge, &["conflicted.rs"]).in_progress;
+    let (mut paused, _) = press(&state, plain(KeyCode::Escape));
+    assert!(paused.resolver.is_none(), "esc closes the clash screen");
+    let mut tabs = 0;
+    while !paused.banner_focus {
+        assert!(tabs < 2, "`⇥` does not reach the banner within 2 presses");
+        paused = press(&paused, plain(KeyCode::Tab)).0;
+        tabs += 1;
+    }
+    let (asked, _) = press(&paused, plain(KeyCode::Char('a')));
+    assert!(
+        asked.confirm.is_some(),
+        "`a` on the banner opens the abort box"
+    );
+}

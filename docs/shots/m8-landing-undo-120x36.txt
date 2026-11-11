@@ -1,10 +1,10 @@
 === frame 1: `j` `u` — lands on HEAD ===
  ◆ api  ~/code/api · feature                                                                                  8 commits
 
-▸   ◆    feature (you)        finish the feature  not pushed yet          you  now│ feature  (you're here)
-    ┃                         you · just now · made on feature · 0000000          │ ! not pushed yet
+▸   ◆    feature (you)        finish the feature  no upstream set         you  now│ feature  (you're here)
+    ┃                         you · just now · made on feature · 0000000          │ ! no upstream set
     ●                         start the feature                           you   2m│ · not merged
-  ● ┃    main                 main moves again  not pushed yet            you   3m│ ! main has 2 new commits since it
+  ● ┃    main                 main moves again  no upstream set           you   3m│ ! main has 2 new commits since it
   ● ┃                         main moves on                               you   4m│   left
   ●━╯                         add the base                                you   5m│ · you, last commit just now
   ●                           Correct the note                            you   1y│
@@ -40,10 +40,10 @@
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
 ▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature          you fut…│ feature  (you're here)
-    ┃ ║                         you · in the future · made on feature · 0000000   │ ! not pushed yet
+    ┃ ║                         you · in the future · made on feature · 0000000   │ ! no upstream set
     ● ║                         finish the feature                        you  now│ · not merged
     ● ║                         start the feature                         you   2m│ ✓ up to date with main
-  ●═┃═╯    main                 main moves again  not pushed yet          you   3m│ · you, last commit in the future
+  ●═┃═╯    main                 main moves again  no upstream set         you   3m│ · you, last commit in the future
   ● ┃                           main moves on                             you   4m│
   ●━╯                           add the base                              you   5m│ built on
   ●                             Correct the note                          you   1y│   main

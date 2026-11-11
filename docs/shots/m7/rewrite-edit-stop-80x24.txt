@@ -9,9 +9,9 @@
 │ +1 more                                                                      │
 │ feature-b (Sara): 2 commits follow, on top                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-  ●    feature-b    b2  not pushed yet                                Sara   2d
+  ●    feature-b    b2  no upstream set                               Sara   2d
   ●                 b1                                                Sara   2d
-  ●    feature-a    a10  not pushed yet                              Maker   2d
+  ●    feature-a    a10  no upstream set                             Maker   2d
   ●                 a9                                               Maker   2d
   ●                 a8                                               Maker   2d
   ●                 a7                                               Maker   2d

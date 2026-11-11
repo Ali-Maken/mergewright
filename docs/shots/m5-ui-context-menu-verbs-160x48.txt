@@ -56,9 +56,9 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ◆    feature (you)        finish the feature  not pushed yet  not merged                                    Maker  now│ main
+    ◆    feature (you)        finish the feature  no upstream set  not merged                                   Maker  now│ main
     ●                         start the feature                                                                 Maker   2m│ reading…
-▸ ● ┊    main                 main moves again  not pushed yet                                                  Maker   3m│ reading…
+▸ ● ┊    main                 main moves again  no upstream set                                                 Maker   3m│ reading…
  Checkout main
  Cherry-pick bb26169 (o)
  Copy SHA (y)

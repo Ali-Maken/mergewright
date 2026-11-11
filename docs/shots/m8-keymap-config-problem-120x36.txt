@@ -1,6 +1,6 @@
 "                                                                                  2 rows so far  1 merged branch folded "
 "                                                                                                                        "
-"  ◆                         a commit  main is here  not pushed yet       Test  57y│                                     "
+"  ◆                         a commit  main is here  no upstream set      Test  57y│                                     "
 "▸ ◉                         a commit  ▸ 1 commit                         Test  57y│ reading…                            "
 "                            Test · 57 years ago · 0202020                         │ reading…                            "
 "                                                                                  │ reading…                            "

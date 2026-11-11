@@ -14,7 +14,7 @@
 #   rule 5), so the words carry it here.
 #
 === 120x40 ===
- ◆ api  ~/code/api  committing to main · not pushed yet
+ ◆ api  ~/code/api  committing to main · no upstream set
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ ▸What did you change? (one line)                                                                                     │
 │  More detail, if it needs it (optional)                                                                              │

@@ -1,8 +1,8 @@
  ◆ api  ~/code/api · feature-a                                                                                7 commits
 
     ●                           b1                                      Maker   2d│ main
-    │                           after rebase                                      │ ! not pushed yet
-    │ ○                         b1  feature-b is here  not pushed yet   Maker    —│ · the main line: branches merge into
+    │                           after rebase                                      │ ! no upstream set
+    │ ○                         b1  feature-b is here  no upstream set  Maker    —│ · the main line: branches merge into
 ▸ ◆─│─╯                         Add OAuth (#42)                         Maker   2d│   it
   │ ●                           a3                                      Maker   2d│ · no upstream to compare with
   │ ●                           a2                                      Maker   2d│ · everyone, last commit 2d ago

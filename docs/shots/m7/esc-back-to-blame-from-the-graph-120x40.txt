@@ -2,7 +2,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
  ◆ api  ~/code/api · main                                                                                     6 commits
 
   ◌                         Uncommitted changes (1 untracked)
-  ◆    main (you)           Handle expired tokens  not pushed yet                                            Maker  60m
+  ◆    main (you)           Handle expired tokens  no upstream set                                           Maker  60m
   ●                         Move session TTL to config                                                       Priya  4mo
   ●                         rustfmt                                                                         Rustf…  5mo
 ▸ ●                         Retry refresh once on 401                                                         Lina  7mo
@@ -22,7 +22,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- esc back to blame · ⏎ open · o take · P push · c commit · u undo · </> resize · . actions · ? keys
+ esc back to blame · ⏎ open · P push · c commit · u undo · </> resize · . actions · ? keys
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {

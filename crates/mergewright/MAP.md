@@ -90,6 +90,7 @@ Reading history for the screen: `mergewright-git`'s walk meets `mergewright-grap
 - `HistoryUpdate` (enum) — what the history worker reports back to `update`; `FoldedHits` counts asked hits hidden by the default fold.
 - `RowRequest` (struct) — the rows a move needs, sent to the worker; `RowRequest::new` (fn) with nothing riding along; `folded` carries a `FoldedAsk`; `keep` the view change's cursor commit.
 - `History::started(MergedBranches)` (fn) — a walk asked for, in that graph mode; `History::merged_branches` (fn) the mode, read from the view's fold.
+- `History::reaches(from, target)` (fn) — whether `target` is `from` or reachable by parents through the rows on hand; what `o take` asks with `from` = `HEAD`.
 - `History::take_reveal` (fn) — the merge a find's answer left to open, once (ease-pass 06c).
 - `History::ask_folded` / `folded_ask_out` / `ask_again` (fn) — put a `FoldedAsk` on every request until answered; is one out; the request to carry it when none is due.
 - `Phase` (enum) — where the walk is: streaming, complete, and so on.

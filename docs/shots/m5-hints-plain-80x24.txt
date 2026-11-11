@@ -51,7 +51,7 @@
 
  ◆ api  ~/code/api · main                       5 commits  date order, sorting…
   ◌                 Uncommitted changes (1 unstaged)
-  ◆    main (you)   add second  not pushed yet                       Maker   8m
+  ◆    main (you)   add second  no upstream set                      Maker   8m
 ▸ ●                 add first                                        Maker   9m
   ┃                 Maker · 9 minutes ago · made on main · fe84819
   ●                 Correct the note                                 Maker   1y
@@ -72,4 +72,4 @@
 
 
 
- ⏎ open · o take · P push · c commit · u undo · . actions · ? keys
+ ⏎ open · P push · c commit · u undo · . actions · ? keys

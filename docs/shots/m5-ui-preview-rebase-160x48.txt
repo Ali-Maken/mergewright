@@ -28,11 +28,11 @@
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
     ●                           finish the feature                                                              Maker  now│ main
-    ●                           start the feature                                                               Maker   2m│ ! not pushed yet
+    ●                           start the feature                                                               Maker   2m│ ! no upstream set
     │                           after rebase                                                                              │ · the main line: branches merge into
-    │ ○                         finish the feature  feature is here  not pushed yet                             Maker    —│   it
+    │ ○                         finish the feature  feature is here  no upstream set                            Maker    —│   it
     │ ○                         start the feature                                                               Maker    —│ · no upstream to compare with
-▸ ●─│─╯                         main moves again  main is here  not pushed yet                                  Maker   3m│ · everyone, last commit 3m ago
+▸ ●─│─╯                         main moves again  main is here  no upstream set                                 Maker   3m│ · everyone, last commit 3m ago
   ● │                           main moves on                                                                   Maker   4m│
   ●─╯                           add the base                                                                    Maker   5m│ built on
   ●                             Correct the note                                                                Maker   1y│   main

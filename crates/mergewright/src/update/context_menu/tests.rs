@@ -1150,24 +1150,15 @@ fn o_on_a_merge_is_refused_without_a_preview() {
     );
 }
 
-/// An ancestor of `HEAD` is not known from the row: `o` opens the preview,
-/// the plan refuses it (11a), and the box closes in the same words.
+/// An ancestor of `HEAD` is read from the rows on hand (the walk's parents):
+/// `o` refuses it at once, in the words the plan would use, and opens no
+/// preview (pre-publish-cleanup/13, review M1).
 #[test]
 fn o_on_an_ancestor_is_refused_in_words() {
     let mut state = on_row(2);
-    press_o(&mut state);
-    let job = state.preview.as_ref().expect("a preview opened").job;
-    crate::update::preview::preview_produced(
-        &mut state,
-        job,
-        Err(crate::update::preview::PreviewFailure::Refused(
-            mergewright_ops::operation::Refusal::AlreadyOnBranch {
-                commit: oid(1),
-                branch: "main".to_owned(),
-            },
-        )),
-    );
-    assert!(state.preview.is_none(), "the box closed");
+    let commands = press_o(&mut state);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none(), "no preview opened");
     assert_eq!(state.status, sticky("0101010 is already on main"));
 }
 
@@ -1426,9 +1417,9 @@ fn a_merge_row_has_no_o() {
 }
 
 #[test]
-fn an_ancestor_of_head_hints_o_like_the_menu() {
+fn an_ancestor_of_head_has_no_o() {
     let state = on_row(2);
-    assert!(draws(&state, "o take"), "{:?}", bar_words(&state));
+    assert!(!draws(&state, "o take"), "{:?}", bar_words(&state));
 }
 
 #[test]
@@ -1537,5 +1528,5 @@ fn the_menu_and_the_bar_agree_on_o() {
         assert_eq!((live, drawn), (can, can), "row {row}");
         seen.push(can);
     }
-    assert_eq!(seen, [true, false, true, false]);
+    assert_eq!(seen, [true, false, false, false]);
 }

@@ -7,8 +7,8 @@
 
  ◆ api  ~/code/api · main                                                                                 3 commits  1 merged branch folded
 
-▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  not pushed yet     Maker   1y│ main  (you're here)
-  ┃                         Maker · 1 year ago · made on main · merged 1 from alpha · 7f4da52         │ ! not pushed yet
+▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  no upstream set    Maker   1y│ main  (you're here)
+  ┃                         Maker · 1 year ago · made on main · merged 1 from alpha · 7f4da52         │ ! no upstream set
   ●                         Advance main                                                    Maker   1y│ · the main line: branches merge into
   ◇                         Add the base                                                    Maker   1y│   it
                                                                                                       │ · no upstream to compare with

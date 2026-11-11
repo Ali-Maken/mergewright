@@ -4,14 +4,14 @@ What right looks like: the merge's four commits appear under it on one lane of t
  ◆ api  ~/code/api · wallet-release                                                   8 commits  1 merged branch folded
 
     ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Maker  28h│ wallet-release  (you're here)
-▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Maker  28h│ ! not pushed yet
+▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Maker  28h│ ! no upstream set
     ┃ ┊                         Maker · 28 hours ago · made on wallet-release · m…│ · not merged
     ┃ ●    PR 16021             totals: test the sum                    Maker  28h│ ✓ up to date with main
     ┃ ●    PR 16021             totals: drop the cache                  Maker  28h│ · Maker, last commit 28h ago
     ┃ ●    PR 16021             totals: round once                      Maker  28h│
     ┃ ●    PR 16021             totals: read the ledger                 Maker  28h│ built on
     ●┄╯                         Start the wallet release                Maker  28h│   main
-  ◇━╯      main                 Add the readme  not pushed yet          Maker  28h│    ─◆ wallet-release
+  ◇━╯      main                 Add the readme  no upstream set         Maker  28h│    ─◆ wallet-release
                                                                                   │
                                                                                   │
                                                                                   │

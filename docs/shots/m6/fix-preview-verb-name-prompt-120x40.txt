@@ -13,7 +13,7 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
 ▸   ●                         On main: wip  stash@{0}                   Maker   2m│ dfcb5a2 · not on a branch
-  ◆─╯                         add sample  main is here  not pushed yet  Maker   2m│
+  ◆─╯                         add sample                                Maker   2m│
   ●                           Correct the note                          Maker   1y│
   ●                           Add the first note                        Maker   1y│
   ◇                           Add a readme                              Maker   1y│

@@ -238,7 +238,7 @@ fn labels(entry: &GraphEntry<'_>, icons: Icons, keys: &Keymap) -> Vec<(usize, St
 }
 
 /// One ref's label (ease-pass G7): `<branch> is here`, a local branch's
-/// push state after its name (`↑2 to push`, `not pushed yet`), `tag v1.2`.
+/// push state after its name (`↑2 to push`, `no upstream set`), `tag v1.2`.
 /// `in_column`: the branch column already names this branch on this row,
 /// so only its push state is said — `None` when it has none to say. With
 /// [`Icons::Nerd`] a ref's label leads with its kind's icon.
@@ -258,7 +258,7 @@ fn plain_words(badge: &Badge, keys: &Keymap, in_column: bool) -> Option<String> 
     Some(match &badge.kind {
         BadgeKind::Branch { tracking, .. } => {
             let push = match tracking {
-                Tracking::Untracked => Some("not pushed yet".to_owned()),
+                Tracking::Untracked => Some("no upstream set".to_owned()),
                 Tracking::Apart { ahead, .. } if *ahead > 0 => {
                     Some(format!("\u{2191}{ahead} to push"))
                 }

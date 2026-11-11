@@ -20,9 +20,9 @@
 #    column shows beside it.
 #
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆    featu… (you) finish the feature  not pushed yet             Maker  now
+    ◆    featu… (you) finish the feature  no upstream set            Maker  now
     ●                 start the feature                              Maker   2m
-▸ ● ┊    main         main moves again  not pushed yet               Maker   3m
+▸ ● ┊    main         main moves again  no upstream set              Maker   3m
   ┃ ┊                 Maker · 3 minutes ago · made on main · bb26169
   ● ┊                 main moves on                                  Maker   4m
   ●┄╯                 add the base                                   Maker   5m

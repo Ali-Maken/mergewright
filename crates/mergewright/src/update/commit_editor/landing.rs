@@ -134,7 +134,7 @@ fn after(entry: &JournalEntry, name: &str) -> Option<Oid> {
 }
 
 /// `N commit(s) to push` while `HEAD`'s branch is ahead of its upstream;
-/// `not pushed yet` when it has none (`None` with `with_unpushed` off: the
+/// `no upstream set` when it has none (`None` with `with_unpushed` off: the
 /// graph's top line says only the count). `None` when level, or before
 /// the first refs read.
 #[must_use]
@@ -150,7 +150,7 @@ pub fn push_words(state: &AppState, with_unpushed: bool) -> Option<String> {
             };
             Some(format!("{} {noun} to push", counts.ahead))
         }
-        Upstream::None if with_unpushed => Some("not pushed yet".to_owned()),
+        Upstream::None if with_unpushed => Some("no upstream set".to_owned()),
         Upstream::Apart(_) | Upstream::InSync { .. } | Upstream::None => None,
     }
 }

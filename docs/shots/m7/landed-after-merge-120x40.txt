@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · feature                                                                                  9 commits
 
-▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  not pushed yet  not merged                   you fut…
+▸   ◆═╮  ⓘ feature (you)        Merge branch 'main' into feature  no upstream set  not merged                  you fut…
     ┃ ║                         you · in the future · made on feature · 0000000
     ● ║                         finish the feature                                                             you  now
     ● ║                         start the feature                                                              you   2m
-  ●═┃═╯    main                 main moves again  not pushed yet                                               you   3m
+  ●═┃═╯    main                 main moves again  no upstream set                                              you   3m
   ● ┃                           main moves on                                                                  you   4m
   ●━╯                           add the base                                                                   you   5m
   ●                             Correct the note                                                               you   1y

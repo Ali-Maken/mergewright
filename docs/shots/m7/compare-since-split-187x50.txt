@@ -1,7 +1,7 @@
  ◆ api  ~/code/api · main                                                                         6 commits  changes on feature-a since it left main · 3 commits · 2 files +2 −0
 
-  ◆   ▏  main (you)     Readme  x base  not pushed yet                                           Maker   2d
-▸ ║ ●    feature-a      Use token  not pushed yet                                                Maker   2d
+  ◆   ▏  main (you)     Readme  x base  no upstream set                                          Maker   2d
+▸ ║ ●    feature-a      Use token  no upstream set                                               Maker   2d
   ║ ┃                   Maker · 2 days ago · made on feature-a · bfb5c0b
   ● ┃    main (you)     Changelog                                                                Maker   2d  ▾ src/
   ║ ●    feature-a      Add token                                                                Maker   2d    A login.rs                                                             +1 −0

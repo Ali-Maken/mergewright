@@ -295,7 +295,7 @@ fn a_remote_only_branch_reads_as_pushed_under_its_own_name() {
     );
     let all = lines.join("\n");
     assert!(
-        !all.contains("not on a branch") && !all.contains("not pushed yet"),
+        !all.contains("not on a branch") && !all.contains("no upstream set"),
         "{all}"
     );
     app.close();

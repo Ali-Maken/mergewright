@@ -218,7 +218,7 @@ pub(crate) fn pane_words(
 
 fn pushed(pushed: Pushed) -> (Mark, String) {
     match pushed {
-        Pushed::NoUpstream => (Mark::Attention, "not pushed yet".into()),
+        Pushed::NoUpstream => (Mark::Attention, "no upstream set".into()),
         Pushed::InSync => (Mark::Fine, "pushed".into()),
         Pushed::ToPush(n) => (Mark::Attention, format!("{n} {} to push", commits(n))),
         Pushed::ToPull(n) => (Mark::Attention, format!("{n} new {} to pull", commits(n))),

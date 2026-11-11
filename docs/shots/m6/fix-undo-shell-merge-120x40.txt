@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
   ◌                           Uncommitted changes (2 staged)
-▸ ◆      main (you)           main's take  not pushed yet                                                      you   2h
+▸ ◆      main (you)           main's take  no upstream set                                                     you   2h
   ┃                           you · 2 hours ago · made on main · e13eab7
-  ┃ ●    feature              the feature's take  not pushed yet                                               you   2h
+  ┃ ●    feature              the feature's take  no upstream set                                              you   2h
   ●┄╯    main (you)           the shared files                                                                 you   2h
   ●                           Correct the note                                                                 you   1y
   ●                           Add the first note                                                               you   1y

@@ -2,8 +2,8 @@ m8-polish-and-ship/19c-c: what right looks like — the eighth task done: back i
 
  ◆ his  /tmp/mwr-capture/tour-walk-XXXXXX/his · main                                6 commits  2 merged branches folded
 
-    ●    feature/three        three: in progress  not pushed yet        Maker   7y│ main  (you're here)
-  ◆ ┊    main (you)           Merge branch 'feature/two'  ▸ 2 commits   Maker   7y│ ! not pushed yet
+    ●    feature/three        three: in progress  no upstream set       Maker   7y│ main  (you're here)
+  ◆ ┊    main (you)           Merge branch 'feature/two'  ▸ 2 commits   Maker   7y│ ! no upstream set
   ◉ ┊                         Merge branch 'feature/one'  ▸ 2 commits   Maker   7y│ · the main line: branches merge into
 ▸ ●┄╯                         Add b.txt                                 Maker   7y│   it
   ┃                           Maker · 7 years ago · made on main · 04ae5dd        │ · no upstream to compare with

@@ -11,7 +11,7 @@
 #  - No `subject empty` anywhere (m7-power-tools/15); the bar's `⏎` slot
 #    says `type a message first` instead, as the commit mock does.
 
- ◆ api  ~/code/api  committing to main · not pushed yet
+ ◆ api  ~/code/api  committing to main · no upstream set
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ ▸What did you change? (one line)                                                                                     │
 │  More detail, if it needs it (optional)                                                                              │

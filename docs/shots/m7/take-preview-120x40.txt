@@ -10,7 +10,7 @@
  ◆ api  ~/code/api · main                                                                                     6 commits
 
 ▸   ●                           fix the bug                             Maker   3m│ login-page
-    │                           after cherry-pick                                 │ ! not pushed yet
+    │                           after cherry-pick                                 │ ! no upstream set
     │ ○                         fix the bug  main is here               Maker    —│ · not merged
   ●─│─╯                         main moves on                           Maker   4m│ ! main has 1 new commit since it
   ●─╯                           add the base                            Maker   5m│   left

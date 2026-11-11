@@ -53,7 +53,7 @@
 
 ▸ ◌                         Uncommitted changes (1 unstaged)
   ┃                         not committed yet · 1 file · on main
-  ◆    main (you)           add second  not pushed yet                                                       Maker   8m
+  ◆    main (you)           add second  no upstream set                                                      Maker   8m
   ●                         add first                                                                        Maker   9m
   ●                         Correct the note                                                                 Maker   1y
   ●                         Add the first note                                                               Maker   1y

@@ -213,7 +213,7 @@ fn every_local_branch_says_where_it_stands_and_who_made_each_row() {
     assert!(release.contains(" wallet-release "), "{release:?}");
     assert!(release.contains("\u{2191}2 to push"), "{release:?}");
     let spike = line_with(&frame, "Try a read cache");
-    assert!(spike.contains("not pushed yet"), "{spike:?}");
+    assert!(spike.contains("no upstream set"), "{spike:?}");
     let ci = line_with(&frame, "Pin the CI image");
     assert!(
         !ci.contains("to push") && !ci.contains("not pushed"),

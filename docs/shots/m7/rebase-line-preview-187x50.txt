@@ -1,12 +1,12 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
     ●                           c1                                                                                                         Maker   2d│ main
-    │                           after rebase                                                                                                         │ ! not pushed yet
-    │ ○                         c1  feature-c is here  not pushed yet                                                                      Maker    —│ · the main line: branches merge into
-    │ ○                         b1  feature-b is here  not pushed yet                                                                      Maker    —│   it
-    │ ○                         a2  feature-a is here  not pushed yet                                                                      Maker    —│ · no upstream to compare with
+    │                           after rebase                                                                                                         │ ! no upstream set
+    │ ○                         c1  feature-c is here  no upstream set                                                                     Maker    —│ · the main line: branches merge into
+    │ ○                         b1  feature-b is here  no upstream set                                                                     Maker    —│   it
+    │ ○                         a2  feature-a is here  no upstream set                                                                     Maker    —│ · no upstream to compare with
     │ ○                         a1                                                                                                         Maker    —│ · everyone, last commit 2d ago
-▸ ●─│─╯                         m2  main is here  not pushed yet                                                                           Maker   2d│
+▸ ●─│─╯                         m2  main is here  no upstream set                                                                          Maker   2d│
   │ ●                           b1                                                                                                         Maker   2d│ built on
   │ ●                           a2                                                                                                         Maker   2d│   main
   │ ●                           a1                                                                                                         Maker   2d│

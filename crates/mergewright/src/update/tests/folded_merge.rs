@@ -155,9 +155,11 @@ fn a_folded_merge_row_draws_its_radar_marker() {
     );
 }
 
-/// `o` on a folded merge is refused as a merge, not offered as a pick.
+/// `o` on a folded merge is refused, not offered as a pick. The merge sits
+/// under the tip, so it is already on the branch: that reason wins over
+/// "a merge" (`PickParams::check_commit`).
 #[test]
-fn o_on_a_folded_merge_is_refused_as_a_merge() {
+fn o_on_a_folded_merge_under_the_tip_is_refused_as_already_on_the_branch() {
     let (mut state, merge) = folded_merge_on_screen(JobId::new(67), 1);
     let tip = plain(&state);
     refs_at(&mut state, tip, None);
@@ -166,7 +168,7 @@ fn o_on_a_folded_merge_is_refused_as_a_merge() {
     let short = merge.to_string()[..7].to_owned();
     assert!(
         matches!(&next.status, Status::Sticky { reason, .. }
-            if reason.starts_with(&format!("{short} is a merge"))),
+            if reason.starts_with(&format!("{short} is already on"))),
         "{:?}",
         next.status
     );

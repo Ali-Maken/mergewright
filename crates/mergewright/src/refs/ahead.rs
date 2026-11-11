@@ -31,7 +31,7 @@ impl RefLabel {
 }
 
 /// How far a local branch is ahead of its upstream: what `↑N to push` and
-/// `not pushed yet` draw from.
+/// `no upstream set` draw from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AheadOfUpstream {
     /// No upstream configured, or the ref it names does not exist.

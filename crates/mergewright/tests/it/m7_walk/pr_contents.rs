@@ -196,7 +196,7 @@ fn the_base_row_carries_x_base() {
         .find("x base")
         .unwrap_or_else(|| panic!("no x base on main's row: {line}"));
     assert!(
-        base < line.find("not pushed yet").unwrap_or(usize::MAX),
+        base < line.find("no upstream set").unwrap_or(usize::MAX),
         "x base first: {line}"
     );
     assert!(line.contains('\u{258f}'), "the rule stays: {line}");

@@ -20,8 +20,8 @@
 
 ▸ ◌                           Uncommitted changes (2 unmerged)
   ┃                           not committed yet · 2 files · on main
-  ◆      main (you)           main's take  not pushed yet                                                    Maker   2h
-  ┃ ●    feature              the feature's take  not pushed yet                                             Maker   2h
+  ◆      main (you)           main's take  no upstream set                                                   Maker   2h
+  ┃ ●    feature              the feature's take  no upstream set                                            Maker   2h
   ●┄╯    main (you)           the shared files                                                               Maker   2h
   ●                           Correct the note                                                               Maker   1y
   ●                           Add the first note                                                             Maker   1y
@@ -59,9 +59,9 @@ CONFLICTS (2)                 ▎
 === 2. → ⏎: aborted ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸ ◆      main (you)           main's take  not pushed yet                                                    Maker   2h
+▸ ◆      main (you)           main's take  no upstream set                                                   Maker   2h
   ┃                           Maker · 2 hours ago · made on main · e13eab7
-  ┃ ●    feature              the feature's take  not pushed yet                                             Maker   2h
+  ┃ ●    feature              the feature's take  no upstream set                                            Maker   2h
   ●┄╯    main (you)           the shared files                                                               Maker   2h
   ●                           Correct the note                                                               Maker   1y
   ●                           Add the first note                                                             Maker   1y
@@ -101,9 +101,9 @@ M shared.rs             +1 −1   1     - the plan
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
   ◌                           Uncommitted changes (2 unmerged)
-▸ ◆      main (you)           main's take  not pushed yet                                                    Maker   2h
+▸ ◆      main (you)           main's take  no upstream set                                                   Maker   2h
   ┃                           Maker · 2 hours ago · made on main · e13eab7
-  ┃ ●    feature              the feature's take  not pushed yet                                             Maker   2h
+  ┃ ●    feature              the feature's take  no upstream set                                            Maker   2h
   ●┄╯    main (you)           the shared files                                                               Maker   2h
   ●                           Correct the note                                                               Maker   1y
   ●                           Add the first note                                                             Maker   1y

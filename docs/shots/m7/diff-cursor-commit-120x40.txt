@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸ ◆    main (you)           edit notes  not pushed yet                                                       Maker   4m
+▸ ◆    main (you)           edit notes  no upstream set                                                      Maker   4m
   ┃                         Maker · 4 minutes ago · made on main · 3de4a6b
   ●                         add notes                                                                        Maker   5m
   ●                         Correct the note                                                                 Maker   1y

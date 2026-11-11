@@ -26,9 +26,9 @@
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
     ◌                         Uncommitted changes (1 unstaged)                    │ fix  (you're here)
-▸   ◆    fix (you)            fix the bug  not pushed yet  not merged   Maker   3m│ ! not pushed yet
+▸   ◆    fix (you)            fix the bug  no upstream set  not merged  Maker   3m│ ! no upstream set
     ┃                         Maker · 3 minutes ago · made on fix · 75ce583       │ · not merged
-  ● ┃    main                 main moves on  not pushed yet             Maker   4m│ ! main has 1 new commit since it
+  ● ┃    main                 main moves on  no upstream set            Maker   4m│ ! main has 1 new commit since it
   ●━╯                         add the base                              Maker   5m│   left
   ●                           Correct the note                          Maker   1y│ · Maker, last commit 3m ago
   ●                           Add the first note                        Maker   1y│
@@ -67,8 +67,8 @@
 === frame 2: `y`, the landing ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    fix                  fix the bug  not pushed yet               Maker   3m│ main  (you're here)
-▸ ◆ ┊    main (you)           main moves on  not pushed yet             Maker   4m│ ! not pushed yet
+    ●    fix                  fix the bug  no upstream set              Maker   3m│ main  (you're here)
+▸ ◆ ┊    main (you)           main moves on  no upstream set            Maker   4m│ ! no upstream set
   ┃ ┊                         Maker · 4 minutes ago · made on main · d128e01      │ · the main line: branches merge into
   ●┄╯                         add the base                              Maker   5m│   it
   ●                           Correct the note                          Maker   1y│ · no upstream to compare with
@@ -110,9 +110,9 @@
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
     ◌                         Uncommitted changes (1 unstaged)                    │ fix  (you're here)
-▸   ◆    fix (you)            fix the bug  not pushed yet  not merged   Maker   3m│ ! not pushed yet
+▸   ◆    fix (you)            fix the bug  no upstream set  not merged  Maker   3m│ ! no upstream set
     ┃                         Maker · 3 minutes ago · made on fix · 75ce583       │ · not merged
-  ● ┃    main                 main moves on  not pushed yet             Maker   4m│ ! main has 1 new commit since it
+  ● ┃    main                 main moves on  no upstream set            Maker   4m│ ! main has 1 new commit since it
   ●━╯                         add the base                              Maker   5m│   left
   ●                           Correct the note                          Maker   1y│ · Maker, last commit 3m ago
   ●                           Add the first note                        Maker   1y│
@@ -151,10 +151,10 @@
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                                                                     7 commits
 
-▸   ●    fix2                 fix it again  not pushed yet  not merged  Maker   2m│ fix2
-    ┃                         Maker · 2 minutes ago · made on fix2 · 30a87ba      │ ! not pushed yet
-    ●    fix                  fix the bug  not pushed yet               Maker   3m│ · not merged
-  ◆ │    main (you)           main moves on  not pushed yet             Maker   4m│ ✓ up to date with fix
+▸   ●    fix2                 fix it again  no upstream set             Maker   2m│ fix2
+    ┃                         Maker · 2 minutes ago · made on fix2 · 30a87ba      │ ! no upstream set
+    ●    fix                  fix the bug  no upstream set              Maker   3m│ · not merged
+  ◆ │    main (you)           main moves on  no upstream set            Maker   4m│ ✓ up to date with fix
   ●─╯                         add the base                              Maker   5m│ · Maker, last commit 2m ago
   ●                           Correct the note                          Maker   1y│
   ●                           Add the first note                        Maker   1y│ built on

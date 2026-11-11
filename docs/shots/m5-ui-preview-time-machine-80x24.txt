@@ -24,7 +24,7 @@
 #
 
  ◆ api  ~/code/api · main                                             4 commits
-▸ ◆                 add the base  main is here  not pushed yet       Maker  now
+▸ ◆                 add the base  main is here  no upstream set      Maker  now
   ●                 Correct the note                                 Maker   7y
   ●                 Add the first note                               Maker   7y
   ◇                 Add a readme                                     Maker   7y
