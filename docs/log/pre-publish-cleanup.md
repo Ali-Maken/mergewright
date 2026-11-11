@@ -37,3 +37,4 @@ One line per helper, ending with its tool count (harness figure).
 - conductor gates main after 11a: fast 6789/6789 367 s (quiet), walks 459/0 129 s; all else clean.
 - audit: usability walk dispatched early on main @ 5f0784401 (read-only, beside 11d); perf run, gates and walks follow after 12 on the final code; one fix round covers both.
 - usability walk done (reviewer, main @ 5f56668c): 0 Critical · 4 Major · 7 Minor · 3 questions → docs/reviews/pre-publish-usability.md; folds into the one fix round · skills: none
+- 11d merged (main): fast 6791/6791 in 655 s (over the 6-min budget; other helper was running, unmeasured — release perf run to check), walks 459/0, fmt/clippy/heavy/doc clean · builder 10 tool calls · skills: none

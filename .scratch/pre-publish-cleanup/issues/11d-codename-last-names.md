@@ -84,7 +84,7 @@ impl RefName { pub fn is_mergewright_internal(&self) -> bool; } // was is_graft_
 - [x] Capability citations resolve ← `mergewright-capabilities::checker::every_capability_citation_checks_out`
 - [x] Allow-list: zero `11c` rows; every row `guard` or `git-word` ← `codename_absent::every_allowed_codename_occurrence_still_exists`, `no_shipped_file_names_the_codename`; `cut -f3 codename_allowed.txt | sort | uniq -c` in NOTES
 - [x] Remaining codename lines in crates are identity only, plus `guard` rows ← `git grep -n -I -i -E 'graft|tributary|trib_' -- crates` tagged in NOTES
-- [ ] Fast and walk tiers green; no `over_400.txt` row raised ← counts, `file_size`
+- [x] Fast and walk tiers green; no `over_400.txt` row raised ← main: fast 6791/6791, walks 459/0, `file_size` in fast tier; progress.rs 477→472
 
 ## Touches (check each, say how)
 - The ghost preview (m5) and rewrite previews (m7): captures, and contact sheets (list; don't rebuild).
