@@ -39,3 +39,4 @@ One line per helper, ending with its tool count (harness figure).
 - usability walk done (reviewer, main @ 5f56668c): 0 Critical · 4 Major · 7 Minor · 3 questions → docs/reviews/pre-publish-usability.md; folds into the one fix round · skills: none
 - 11d merged (main): fast 6791/6791 in 655 s (over the 6-min budget; other helper was running, unmeasured — release perf run to check), walks 459/0, fmt/clippy/heavy/doc clean · builder 10 tool calls · skills: none
 - 12 merged (main): fast 6792/6792 in 676 s (over budget, 2nd run in a row), walks 459/0, gates clean. Three boxes NOT MET and logged as gaps (other=8, shots 266 stale, heavy 3 red on main) · builder 142 tool calls, partial then redo · skills: none
+- 13 merged (main, tree = branch tested 6796/6796 fast, walks 459/0, gates clean; M3 reworded 'no upstream set' by conductor decision, M4 Abort on review screen unverified) · builder 233 tool calls over 2 passes · skills: none
