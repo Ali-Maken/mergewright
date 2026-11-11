@@ -72,25 +72,25 @@
 
  ◆ api  ~/code/api · main                             merging feature into main
   ◌                   Uncommitted changes (16 unmerged)
-  ◆      main (you)   main's take  not pushed yet                   Fixtu…  87m
-▸ ║ ●    feature      the feature's take  not pushed yet            Fixtu…  88m
-  ║ ┃                 Fixture · 88 minutes ago · made on feature · 589c243
-  ●━╯    main (you)   the shared files                              Fixtu…  89m
-  ●                   Ship release 29                               Fixtu…   2h
-  ●                   Ship release 28                               Fixtu…   2h
-  ●                   Ship release 27                               Fixtu…   2h
-  ●                   Ship release 26                               Fixtu…   2h
-  ●                   Ship release 25                               Fixtu…   2h
-  ●                   Ship release 24                               Fixtu…   2h
-  ●                   Ship release 23                               Fixtu…   2h
-  ●                   Ship release 22                               Fixtu…   2h
-  ●                   Ship release 21                               Fixtu…   2h
-  ●                   Ship release 20                               Fixtu…   2h
-  ●                   Ship release 19                               Fixtu…   2h
-  ●                   Ship release 18                               Fixtu…   2h
-  ●                   Ship release 17                               Fixtu…   2h
-  ●                   Ship release 16                               Fixtu…   2h
-  ●                   Ship release 15                               Fixtu…   2h
-  ●                   Ship release 14                               Fixtu…   2h
-  ●                   Ship release 13                               Fixtu…   2h
+  ◆      main (you)   main's take  not pushed yet                    Maker  87m
+▸ ║ ●    feature      the feature's take  not pushed yet             Maker  88m
+  ║ ┃                 Maker · 88 minutes ago · made on feature · 15bd029
+  ●━╯    main (you)   the shared files                               Maker  89m
+  ●                   Ship release 29                                Maker   2h
+  ●                   Ship release 28                                Maker   2h
+  ●                   Ship release 27                                Maker   2h
+  ●                   Ship release 26                                Maker   2h
+  ●                   Ship release 25                                Maker   2h
+  ●                   Ship release 24                                Maker   2h
+  ●                   Ship release 23                                Maker   2h
+  ●                   Ship release 22                                Maker   2h
+  ●                   Ship release 21                                Maker   2h
+  ●                   Ship release 20                                Maker   2h
+  ●                   Ship release 19                                Maker   2h
+  ●                   Ship release 18                                Maker   2h
+  ●                   Ship release 17                                Maker   2h
+  ●                   Ship release 16                                Maker   2h
+  ●                   Ship release 15                                Maker   2h
+  ●                   Ship release 14                                Maker   2h
+  ●                   Ship release 13                                Maker   2h
  ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit

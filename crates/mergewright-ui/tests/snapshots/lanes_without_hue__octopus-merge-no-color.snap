@@ -5,11 +5,11 @@ expression: text
 shape: octopus-merge, no-color, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                                             5 commits
-  ◆╌┬─┬╌╮                 Merge branches 'topic-1', 'topic-2' and … Fixtu…   4y
-▸ │ ╎ │ ●                 topic 3                                   Fixtu…   4y
-  │ ╎ ● ╎                 topic 2                                   Fixtu…   4y
-  │ ● │ ╎                 topic 1                                   Fixtu…   4y
-  ◇╌┴─┴╌╯                 Add the base                              Fixtu…   4y
+  ◆╌┬─┬╌╮                 Merge branches 'topic-1', 'topic-2' and …  Maker   4y
+▸ │ ╎ │ ●                 topic 3                                    Maker   4y
+  │ ╎ ● ╎                 topic 2                                    Maker   4y
+  │ ● │ ╎                 topic 1                                    Maker   4y
+  ◇╌┴─┴╌╯                 Add the base                               Maker   4y
 
 
 

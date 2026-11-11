@@ -12,34 +12,34 @@
 
  ◆ api  ~/code/api · main                                                                 202 commits  1 commit to push
 
-                              after rebase                                        │ main  (you're here)
-    ○                         ours  main is here  ↑1 to push           Fixtu…    —│ ! 1 to push, 1 to pull
-    ●                         theirs  origin/main is here              Fixtu…   6m│ · the main line: branches merge into
-▸ ● │                         ours                                     Fixtu…   6m│   it
-  ●─╯                         Commit 200                               Fixtu…   1y│ ! origin/main has 1 new commit since
-  ●                           Commit 199                               Fixtu…   1y│   it left
-  ●                           Commit 198                               Fixtu…   1y│ · everyone, last commit 6m ago
-  ●                           Commit 197                               Fixtu…   1y│
-  ●                           Commit 196                               Fixtu…   1y│ built on
-  ●                           Commit 195                               Fixtu…   1y│   main
-  ●                           Commit 194                               Fixtu…   1y│
-  ●                           Commit 193                               Fixtu…   1y│
-  ●                           Commit 192                               Fixtu…   1y│
-  ●                           Commit 191                               Fixtu…   1y│
-  ●                           Commit 190                               Fixtu…   1y│
-  ●                           Commit 189                               Fixtu…   1y│
-  ●                           Commit 188                               Fixtu…   1y│
-  ●                           Commit 187                               Fixtu…   1y│
-  ●                           Commit 186                               Fixtu…   1y│
-  ●                           Commit 185                               Fixtu…   1y│
-  ●                           Commit 184                               Fixtu…   1y│
-  ●                           Commit 183                               Fixtu…   1y│
-  ●                           Commit 182                               Fixtu…   1y│
-  ●                           Commit 181                               Fixtu…   1y│
-  ●                           Commit 180                               Fixtu…   1y│
+▸ ●                           ours                                      Maker   6m│ main  (you're here)
+  │                           after rebase                                        │ ! 1 to push, 1 to pull
+  │ ○                         ours  main is here  ↑1 to push            Maker    —│ · the main line: branches merge into
+  │ ●                         theirs  origin/main is here               Maker   6m│   it
+  ●─╯                         Commit 200                                Maker   1y│ ! origin/main has 1 new commit since
+  ●                           Commit 199                                Maker   1y│   it left
+  ●                           Commit 198                                Maker   1y│ · everyone, last commit 6m ago
+  ●                           Commit 197                                Maker   1y│
+  ●                           Commit 196                                Maker   1y│ built on
+  ●                           Commit 195                                Maker   1y│   main
+  ●                           Commit 194                                Maker   1y│
+  ●                           Commit 193                                Maker   1y│
+  ●                           Commit 192                                Maker   1y│
+  ●                           Commit 191                                Maker   1y│
+  ●                           Commit 190                                Maker   1y│
+  ●                           Commit 189                                Maker   1y│
+  ●                           Commit 188                                Maker   1y│
+  ●                           Commit 187                                Maker   1y│
+  ●                           Commit 186                                Maker   1y│
+  ●                           Commit 185                                Maker   1y│
+  ●                           Commit 184                                Maker   1y│
+  ●                           Commit 183                                Maker   1y│
+  ●                           Commit 182                                Maker   1y│
+  ●                           Commit 181                                Maker   1y│
+  ●                           Commit 180                                Maker   1y│
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
-│ main de678dd → 1 new commit                                                                                          │
+│ main b9fa9c9 → 1 new commit                                                                                          │
 │ working tree: 1 file updated                                                                                         │
 │ your edits: 3 files set aside, put back after                                                                        │
 │ no conflicts expected                                                                                                │

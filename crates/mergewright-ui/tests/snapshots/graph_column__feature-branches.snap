@@ -4,13 +4,13 @@ expression: text
 ---
 shape: feature-branches (dark = light, asserted), truecolor
 
-  ●       ..c.....  f3039e5  three: in progress
-◆─│─╮     ccccc...  2a3134b  Merge branch 'feature/two'
-│ │ ●     c.c.c...  cdca323  two: finish
-│ │ ●     c.c.c...  9ac0f8b  two: start
-◉─│─│─╮   cbcbcbb.  f1e8743  Merge branch 'feature/one'
-│ │ │ ●   c.c.c.b.  a9e27db  one: finish
-│ │ │ ●   c.c.c.b.  aa07e3b  one: start
-●─┴─╯ │   ccccc.b.  7b40e06  Add b.txt
-●─────╯   cbbbbbb.  204fa11  Add a.txt
-◇         c.......  2b04c57  Add a readme
+  ●       ..c.....  4e2f3b3  three: in progress
+◆─│─╮     ccccc...  fea9d20  Merge branch 'feature/two'
+│ │ ●     c.c.c...  95f854f  two: finish
+│ │ ●     c.c.c...  bbd8f36  two: start
+◉─│─│─╮   cbcbcbb.  56e8b72  Merge branch 'feature/one'
+│ │ │ ●   c.c.c.b.  2bceba3  one: finish
+│ │ │ ●   c.c.c.b.  e32b033  one: start
+●─┴─╯ │   ccccc.b.  04ae5dd  Add b.txt
+●─────╯   cbbbbbb.  9e8aca0  Add a.txt
+◇         c.......  5c7ce97  Add a readme

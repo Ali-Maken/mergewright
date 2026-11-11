@@ -15,7 +15,7 @@
 merging feature into main
 Graph  [Detail]
 UNCOMMITTED · 2 staged
-diff vs HEAD a7e48d4
+diff vs HEAD e13eab7
 
 STAGED (2)
   M notes.md                                                               +1 −1

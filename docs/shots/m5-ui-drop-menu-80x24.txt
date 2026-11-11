@@ -23,16 +23,16 @@
 #    on, which is still readable above it.
 #
  ◆ api  ~/code/api · feature                                          8 commits
-▸   ◆    featu… (you) finish the feature  not pushed yet            Fixtu…  now
-    ┃                 Fixture · just now · made on feature · df9a198
-    ●                 start the feature                             Fixtu…   2m
-  ● ┃    main         main moves again  not pushed yet              Fixtu…   3m
+▸   ◆    featu… (you) finish the feature  not pushed yet             Maker  now
+    ┃                 Maker · just now · made on feature · 300a4d7
+    ●                 start the feature                              Maker   2m
+  ● ┃    main         main moves again  not pushed yet               Maker   3m
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
  Reset feature to here, mixed
  Reset feature to here, hard
- Cherry-pick 2f30cf4 onto feature
+ Cherry-pick bb26169 onto feature
 
 
 

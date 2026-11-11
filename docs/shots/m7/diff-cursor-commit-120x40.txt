@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸ ◆    main (you)           edit notes  not pushed yet                                                      Fixtu…   4m
-  ┃                         Fixture · 4 minutes ago · made on main · e1c9d91
-  ●                         add notes                                                                       Fixtu…   5m
-  ●                         Correct the note                                                                Fixtu…   1y
-  ●                         Add the first note                                                              Fixtu…   1y
-  ◇                         Add a readme                                                                    Fixtu…   1y
+▸ ◆    main (you)           edit notes  not pushed yet                                                       Maker   4m
+  ┃                         Maker · 4 minutes ago · made on main · 3de4a6b
+  ●                         add notes                                                                        Maker   5m
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT e1c9d91 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 201a2f7 · diff vs firs…
+COMMIT 3de4a6b · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 4628ad3 · diff vs firs…
 edit notes
 M notes.txt             +2 −1
                                 1   1   a

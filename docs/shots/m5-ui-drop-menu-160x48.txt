@@ -24,16 +24,16 @@
 #
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-▸   ◆    feature (you)        finish the feature  not pushed yet  not merged                                   Fixtu…  now│ feature  (you're here)
-    ┃                         Fixture · just now · made on feature · df9a198                                              │ ! not pushed yet
-    ●                         start the feature                                                                Fixtu…   2m│ · not merged
-  ● ┃    main                 main moves again  not pushed yet                                                 Fixtu…   3m│ ! main has 2 new commits since it
+▸   ◆    feature (you)        finish the feature  not pushed yet  not merged                                    Maker  now│ feature  (you're here)
+    ┃                         Maker · just now · made on feature · 300a4d7                                                │ ! not pushed yet
+    ●                         start the feature                                                                 Maker   2m│ · not merged
+  ● ┃    main                 main moves again  not pushed yet                                                  Maker   3m│ ! main has 2 new commits since it
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
  Reset feature to here, mixed
  Reset feature to here, hard
- Cherry-pick 2f30cf4 onto feature
+ Cherry-pick bb26169 onto feature
                                                                                                                           │
                                                                                                                           │
                                                                                                                           │

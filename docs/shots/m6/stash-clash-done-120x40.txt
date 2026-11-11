@@ -11,12 +11,12 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸ ◆    main (you)           commit over the notes  not pushed yet                                           Fixtu…   3m
-  ┃                         Fixture · 3 minutes ago · made on main · c00325a
-  ●                         add the notes                                                                   Fixtu…   5m
-  ●                         Correct the note                                                                Fixtu…   1y
-  ●                         Add the first note                                                              Fixtu…   1y
-  ◇                         Add a readme                                                                    Fixtu…   1y
+▸ ◆    main (you)           commit over the notes  not pushed yet                                            Maker   3m
+  ┃                         Maker · 3 minutes ago · made on main · ac25b75
+  ●                         add the notes                                                                    Maker   5m
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -33,7 +33,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ every file done · stash@{0} dropped  u brings it back
-COMMIT c00325a · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents da1a1ab · diff vs firs…
+COMMIT ac25b75 · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents 2b03193 · diff vs firs…
 commit over the notes
 M notes.md              +1 −1 ▎
                                 1     - base

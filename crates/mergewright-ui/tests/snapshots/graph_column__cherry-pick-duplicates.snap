@@ -4,7 +4,7 @@ expression: text
 ---
 shape: cherry-pick-duplicates (dark = light, asserted), truecolor
 
-  ●   ..f.  878454b  topic: unrelated work
-  ●   ..f.  c93084d  Fix the greeting (cherry picked)
-◆ │   c.f.  6e0c248  Fix the greeting
-◇─╯   cff.  346ab6b  Add the greeting
+  ●   ..f.  07ac387  topic: unrelated work
+  ●   ..f.  d3e9671  Fix the greeting (cherry picked)
+◆ │   c.f.  5d05325  Fix the greeting
+◇─╯   cff.  63de9f0  Add the greeting

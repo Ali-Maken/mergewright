@@ -1,19 +1,19 @@
- ◆ api  ~/code/api · detached 016a15e                 REBASING  step 3 of 7 · edit 016a15e a3 · feature-a, branch 1 of 2 · change files, space stages, a amends it, c continues · ⇥ banner
+ ◆ api  ~/code/api · detached deb7843                 REBASING  step 3 of 7 · edit deb7843 a3 · feature-a, branch 1 of 2 · change files, space stages, a amends it, c continues · ⇥ banner
 
 ╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ pick 9038000 a5                                                                                                                                                                         │
-│ pick 059aebf a4                                                                                                                                                                         │
+│ pick 3bbd1c1 a5                                                                                                                                                                         │
+│ pick 18333b9 a4                                                                                                                                                                         │
 │ feature-b (Sara): 2 commits follow, on top                                                                                                                                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
     ●    feature-b            b2  not pushed yet                                                                                            Sara   2d│ feature-a
     ●                         b1                                                                                                            Sara   2d│ reading…
-    ●    feature-a            a5  not pushed yet                                                                                          Fixtu…   2d│ reading…
-    ●                         a4                                                                                                          Fixtu…   2d│ reading…
-▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                       Fixtu…   2d│ reading…
-    ┃                         Fixture · 2 days ago · made on feature-a · 016a15e                                                                     │
-    ●                         a2                                                                                                          Fixtu…   2d│
-    ●                         a1                                                                                                          Fixtu…   2d│
-  ◇━╯    main                 m1  not pushed yet                                                                                          Fixtu…   2d│
+    ●    feature-a            a5  not pushed yet                                                                                           Maker   2d│ reading…
+    ●                         a4                                                                                                           Maker   2d│ reading…
+▸   ◆                         a3  HEAD · stopped here  HEAD is here                                                                        Maker   2d│ reading…
+    ┃                         Maker · 2 days ago · made on feature-a · deb7843                                                                       │
+    ●                         a2                                                                                                           Maker   2d│
+    ●                         a1                                                                                                           Maker   2d│
+  ◇━╯    main                 m1  not pushed yet                                                                                           Maker   2d│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

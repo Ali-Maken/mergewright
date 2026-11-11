@@ -24,7 +24,7 @@ const REPORT: &str = "# Report\n\nintro\n\n## Contents\nold toc\n\nmiddle\nmiddl
 fn wallet_and_sara() -> mergewright_fixtures::Scratch {
     let scratch = mergewright_fixtures::copy_into_temp(mergewright_fixtures::Shape::Trivial);
     let repo = scratch.path();
-    git(repo, &["config", "user.name", "Fixture Maker"]);
+    git(repo, &["config", "user.name", "Maker Fixture"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     git(repo, &["switch", "--quiet", "-c", "wallet-release"]);
     write(repo, "report.md", REPORT);

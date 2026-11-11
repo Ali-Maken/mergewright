@@ -41,7 +41,7 @@ pub(crate) fn local() -> LocalRemote {
     run(
         &remote,
         remote.work(),
-        &["config", "user.name", "Test Maker"],
+        &["config", "user.name", "Maker Test"],
     );
     run(
         &remote,

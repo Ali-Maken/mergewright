@@ -49,24 +49,24 @@
 
  ◆ api  ~/code/api · main                                                                                                         200 commits  1 commit to push
 
-▸ ◆  ⓘ main (you)           Commit 200  ↑1 to push                                                             Fixtu…   2d│ main  (you're here)
-  ┃                         Fixture · 2 days ago · made on main · a3eba73                                                 │ ! 1 commit to push
-  ●                         Commit 199  origin/main is here                                                    Fixtu…   2d│ · the main line: branches merge into
-  ●                         Commit 198                                                                         Fixtu…   2d│   it
-  ●                         Commit 197                                                                         Fixtu…   2d│ ✓ up to date with origin/main
-  ●                         Commit 196                                                                         Fixtu…   2d│ · everyone, last commit 2d ago
-  ●                         Commit 195                                                                         Fixtu…   2d│
-  ●                         Commit 194                                                                         Fixtu…   2d│ built on
-  ●                         Commit 193                                                                         Fixtu…   2d│   main
-  ●                         Commit 192                                                                         Fixtu…   2d│
-  ●                         Commit 191                                                                         Fixtu…   2d│
-  ●                         Commit 190                                                                         Fixtu…   2d│
-  ●                         Commit 189                                                                         Fixtu…   2d│
-  ●                         Commit 188                                                                         Fixtu…   2d│
-  ●                         Commit 187                                                                         Fixtu…   2d│
-  ●                         Commit 186                                                                         Fixtu…   2d│
-  ●                         Commit 185                                                                         Fixtu…   2d│
-  ●                         Commit 184                                                                         Fixtu…   2d│
+▸ ◆  ⓘ main (you)           Commit 200  ↑1 to push                                                              Maker   2d│ main  (you're here)
+  ┃                         Maker · 2 days ago · made on main · 38e090d                                                   │ ! 1 commit to push
+  ●                         Commit 199  origin/main is here                                                     Maker   2d│ · the main line: branches merge into
+  ●                         Commit 198                                                                          Maker   2d│   it
+  ●                         Commit 197                                                                          Maker   2d│ ✓ up to date with origin/main
+  ●                         Commit 196                                                                          Maker   2d│ · everyone, last commit 2d ago
+  ●                         Commit 195                                                                          Maker   2d│
+  ●                         Commit 194                                                                          Maker   2d│ built on
+  ●                         Commit 193                                                                          Maker   2d│   main
+  ●                         Commit 192                                                                          Maker   2d│
+  ●                         Commit 191                                                                          Maker   2d│
+  ●                         Commit 190                                                                          Maker   2d│
+  ●                         Commit 189                                                                          Maker   2d│
+  ●                         Commit 188                                                                          Maker   2d│
+  ●                         Commit 187                                                                          Maker   2d│
+  ●                         Commit 186                                                                          Maker   2d│
+  ●                         Commit 185                                                                          Maker   2d│
+  ●                         Commit 184                                                                          Maker   2d│
   ●                         ╭ Push main → origin/main ──────────────────────────────────────────────────────────────╮   2d│
   ●                         │ 1 commit · can't be undone from here — origin keeps what you send                     │   2d│
   ●                         │                                                                                       │   2d│
@@ -74,25 +74,25 @@
   ●                         │                                                                                       │   2d│
   ●                         │ ▸[ Cancel ]   [ Push ]                                                                │   2d│
   ●                         ╰───────────────────────────────────────────────────────────────────────────────────────╯   2d│
-  ●                         Commit 176                                                                         Fixtu…   2d│
-  ●                         Commit 175                                                                         Fixtu…   2d│
-  ●                         Commit 174                                                                         Fixtu…   2d│
-  ●                         Commit 173                                                                         Fixtu…   2d│
-  ●                         Commit 172                                                                         Fixtu…   2d│
-  ●                         Commit 171                                                                         Fixtu…   2d│
-  ●                         Commit 170                                                                         Fixtu…   2d│
-  ●                         Commit 169                                                                         Fixtu…   2d│
-  ●                         Commit 168                                                                         Fixtu…   2d│
-  ●                         Commit 167                                                                         Fixtu…   2d│
-  ●                         Commit 166                                                                         Fixtu…   2d│
-  ●                         Commit 165                                                                         Fixtu…   2d│
-  ●                         Commit 164                                                                         Fixtu…   2d│
-  ●                         Commit 163                                                                         Fixtu…   2d│
-  ●                         Commit 162                                                                         Fixtu…   2d│
-  ●                         Commit 161                                                                         Fixtu…   2d│
-  ●                         Commit 160                                                                         Fixtu…   2d│
-  ●                         Commit 159                                                                         Fixtu…   2d│
-  ●                         Commit 158                                                                         Fixtu…   2d│
+  ●                         Commit 176                                                                          Maker   2d│
+  ●                         Commit 175                                                                          Maker   2d│
+  ●                         Commit 174                                                                          Maker   2d│
+  ●                         Commit 173                                                                          Maker   2d│
+  ●                         Commit 172                                                                          Maker   2d│
+  ●                         Commit 171                                                                          Maker   2d│
+  ●                         Commit 170                                                                          Maker   2d│
+  ●                         Commit 169                                                                          Maker   2d│
+  ●                         Commit 168                                                                          Maker   2d│
+  ●                         Commit 167                                                                          Maker   2d│
+  ●                         Commit 166                                                                          Maker   2d│
+  ●                         Commit 165                                                                          Maker   2d│
+  ●                         Commit 164                                                                          Maker   2d│
+  ●                         Commit 163                                                                          Maker   2d│
+  ●                         Commit 162                                                                          Maker   2d│
+  ●                         Commit 161                                                                          Maker   2d│
+  ●                         Commit 160                                                                          Maker   2d│
+  ●                         Commit 159                                                                          Maker   2d│
+  ●                         Commit 158                                                                          Maker   2d│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel
 

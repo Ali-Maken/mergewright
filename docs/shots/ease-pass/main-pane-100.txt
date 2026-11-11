@@ -3,12 +3,12 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
 
  ◆ api  ~/code/api · wallet-release                                                       5 commits
 
-    ◆        wallet-… (you) Bump the wallet version      Fixtu…  28h│ sara/fix-toc
-    ┊ ●      ali/x          x: try the other layout      Fixtu…  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc   toc: fix the anchors         Fixtu…  28h│ · not merged
-    ┊ ┊ ┃                   Fixture · 28 hours ago · made on sara/f…│ ✓ up to date with main
-    ●┄┴━╯    wallet-… (you) Start the wallet release     Fixtu…  28h│ · Fixture, last commit 28h ago
-  ◇┄╯        main           Add the readme               Fixtu…  28h│
+    ◆        wallet-… (you) Bump the wallet version       Maker  28h│ sara/fix-toc
+    ┊ ●      ali/x          x: try the other layout       Maker  28h│ ! not pushed yet
+▸   ┊ ┊ ●    sara/fix-toc   toc: fix the anchors          Maker  28h│ · not merged
+    ┊ ┊ ┃                   Maker · 28 hours ago · made on sara/fix…│ ✓ up to date with main
+    ●┄┴━╯    wallet-… (you) Start the wallet release      Maker  28h│ · Maker, last commit 28h ago
+  ◇┄╯        main           Add the readme                Maker  28h│
                                                                     │ built on
                                                                     │   main
                                                                     │    ─◆ sara/fix-toc

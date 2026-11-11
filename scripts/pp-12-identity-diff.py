@@ -19,13 +19,13 @@ from collections import Counter
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "183460a11"
 SWAPS = [
-    ("Graft Fixture", "Fixture Maker"),
-    ("Graft Test", "Test Maker"),
-    ("Graft Perf", "Perf Maker"),
+    ("Graft Fixture", "Maker Fixture"),
+    ("Graft Test", "Maker Test"),
+    ("Graft Perf", "Maker Perf"),
     ("@graft.invalid", "@maker.invalid"),
     ("graft.git", "maker.git"),
 ]
-INITIALS = [("GF", "FM"), ("GT", "TM"), ("GP", "PM")]
+INITIALS = [("GF", "MF"), ("GT", "MT"), ("GP", "MP")]
 HEX = re.compile(rb"[0-9a-f]{7,40}")
 
 
@@ -36,6 +36,8 @@ def git(*args, check=True):
 def swap(data: bytes) -> bytes:
     for old, new in SWAPS:
         data = data.replace(old.encode(), new.encode())
+    data = data.replace("Graf…".encode(), "Make…".encode())
+    data = re.sub(rb"\bGraft\b", b"Maker", data)
     for old, new in INITIALS:
         data = re.sub(rb"\b" + old.encode() + rb"\b", new.encode(), data)
     return data
@@ -53,7 +55,17 @@ LANES = re.compile(rb"(?<![\w.])(?=[0-9a-l]*\.)[0-9a-l.]{3,}(?!\w)")
 
 
 def mask(data: bytes) -> bytes:
-    return HEX.sub(b"#", data)
+    data = HEX.sub(b"#", data)
+    # An oid cut by the column: up to six hex digits, then the ellipsis.
+    return re.sub(rb"(?<![\w])[0-9a-f]{1,6}(?=\xe2\x80\xa6)", b"#", data)
+
+
+GLYPHS = re.compile("[│┃┊●◆◇■▸◉╮╯╰╭─━┬┴├┤┼║╫*|/\\\\ ]+")
+
+
+def strip_glyphs(data: bytes) -> bytes:
+    """Graph and cursor glyphs and spacing removed: what is left is the text."""
+    return GLYPHS.sub(" ", data.decode("utf-8", "replace")).encode()
 
 
 def author_norm(data: bytes) -> bytes:
@@ -80,11 +92,8 @@ def classify(old: bytes, new: bytes):
     a, b = mask(swap(old)), mask(new)
     if a == b:
         return "equal", None
-    a, b = author_norm(a), author_norm(b)
-    if a == b:
-        return "equal", None
     a2, b2 = lanes(a), lanes(b)
-    a3, b3 = author_norm(mask(lanes(swap(old)))), author_norm(mask(lanes(new)))
+    a3, b3 = mask(lanes(swap(old))), mask(lanes(new))
     if a3 == b3 and a3 != a2:
         a2, b2 = a3, b3
     if a2 == b2:
@@ -93,7 +102,8 @@ def classify(old: bytes, new: bytes):
     if Counter(a2.split(b"\n")) == Counter(b2.split(b"\n")):
         a, b = a2, b2
     la, lb = a.split(b"\n"), b.split(b"\n")
-    if Counter(la) == Counter(lb):
+    sa, sb = strip_glyphs(a).split(b"\n"), strip_glyphs(b).split(b"\n")
+    if Counter(la) == Counter(lb) or Counter(sa) == Counter(sb):
         first = next(i for i, (x, y) in enumerate(zip(la, lb)) if x != y)
         return "reordered", (first + 1, la[first], lb[first])
     if len(la) == len(lb):
@@ -126,7 +136,7 @@ wanted = [
 counts = Counter()
 report, reordered, others, pngs, lanefiles = [], [], [], [], []
 for path in sorted(wanted):
-    if path == "docs/shots/pp-12-identity-review.md":
+    if path == "docs/shots/pp-12-identity-review.md" or "contact-sheet" in path:
         continue
     try:
         new = open(path, "rb").read()
@@ -199,7 +209,7 @@ with open("docs/shots/pp-12-identity-review.md", "w", encoding="utf-8") as f:
     if not pngs:
         f.write("none\n")
     f.write("\n## Other (stop; causes)\n\n")
-    f.write("Causes, attributed by reading each pair: (1) criss-cross lane-letter snapshots: unnamed lane, `BranchIdentity::of_short_sha` (a lane-slot change, same as the probe's); (2) every other entry: the author column shows the NAME'S FIRST WORD, so `Graft` (5) became `Fixture`/`Fixtu…` (7/6), which moves where a detail line, a blame cell or an overlay row is cut. D1's premise (equal-length names keep every truncation) holds for the whole name, not for the first word.\n\n")
+    f.write("Every entry here is a stop. Attributed by reading each pair (2026-11-11 run): the six `docs/shots/m6/*` files are rows that swapped place (two fixture commits with equal times: tie-break on oid, `mergewright-git/src/history/node.rs`), so they also show a moved cursor or lane glyph; `it__raster__raster-criss-cross-merge.snap` is lane-slot letters (unnamed lane, `of_short_sha`) hit by the hex mask; `m8-look-help-graph-187x50.txt` is the tail of the author word (`aft` from Graft, now the tail of Maker) showing past an overlay edge.\n\n")
     for path, line, x, y in others:
         f.write(f"- `{path}` line {line}\n")
     if not others:

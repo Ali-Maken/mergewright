@@ -103,7 +103,7 @@ pub fn init(repo: &Path) {
     std::fs::create_dir_all(repo).unwrap_or_else(|why| panic!("{}: {why}", repo.display()));
     git(repo, &["init", "-q", "-b", "main", "."]);
     for (key, value) in [
-        ("user.name", "Test Maker"),
+        ("user.name", "Maker Test"),
         ("user.email", "test@example.invalid"),
         ("commit.gpgsign", "false"),
         ("tag.gpgsign", "false"),

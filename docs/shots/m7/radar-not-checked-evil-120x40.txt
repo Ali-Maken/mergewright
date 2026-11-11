@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · main                                                             3 commits  1 merged branch folded
 
-▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  not pushed yet                     Fixtu…   1y
-  ┃                         Fixture · 1 year ago · made on main · merged 1 from alpha · 7eb7a61
-  ●                         Advance main                                                                    Fixtu…   1y
-  ◇                         Add the base                                                                    Fixtu…   1y
+▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  not pushed yet                      Maker   1y
+  ┃                         Maker · 1 year ago · made on main · merged 1 from alpha · 7f4da52
+  ●                         Advance main                                                                     Maker   1y
+  ◇                         Add the base                                                                     Maker   1y
 
 
 
@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  B blame · F history · . explain · space show the 1 commit inside · ⏎ open · x compare · u undo · </> resize · ? keys
-COMMIT 7eb7a61 · Fixture Maker <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 1y · parents bcea953, 94f182b · dif…
+COMMIT 7f4da52 · Maker Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 1y · parents 9deed9b, e0eea22 · dif…
 Merge branch 'alpha' · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again · evil merge
 A alpha.txt             +1 −0 ▎
 A evil.txt              +1 −0       1 + a

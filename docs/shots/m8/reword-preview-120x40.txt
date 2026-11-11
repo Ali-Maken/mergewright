@@ -10,13 +10,13 @@
 
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
-    ●                           Show the login page                    Fixtu…   2d│ feature-a  (you're here)
-▸   ●                           Handle expired tokens                  Fixtu…   2d│ ! not pushed yet
+    ●                           Show the login page                     Maker   2d│ feature-a  (you're here)
+▸   ●                           Handle expired tokens                   Maker   2d│ ! not pushed yet
     │                           the result                                        │ · not merged
-    │ ○                         Show the login page                    Fixtu…    —│ ✓ up to date with main
-    │ ○                         Handle expired tokens on refresh       Fixtu…    —│ · Fixture, last commit 2d ago
-    ●─╯                         Add OAuth callback                     Fixtu…   2d│
-  ◇─╯                           m1  main is here  not pushed yet       Fixtu…   2d│ built on
+    │ ○                         Show the login page                     Maker    —│ ✓ up to date with main
+    │ ○                         Handle expired tokens on refresh        Maker    —│ · Maker, last commit 2d ago
+    ●─╯                         Add OAuth callback                      Maker   2d│
+  ◇─╯                           m1  main is here  not pushed yet        Maker   2d│ built on
                                                                                   │   main
                                                                                   │    ─◆ feature-a
                                                                                   │
@@ -34,16 +34,16 @@
                                                                                   │
                                                                                   │
                                                                                   │
-╭ Preview: reword 6628e69 "Handle expired tokens" ─────────────────────────────────────────────────────────────────────╮
-│ 6628e69  new message  Handle expired tokens on refresh                                                               │
+╭ Preview: reword 3aa4152 "Handle expired tokens" ─────────────────────────────────────────────────────────────────────╮
+│ 3aa4152  new message  Handle expired tokens on refresh                                                               │
 │ 2 commits replayed                                                                                                   │
-│ branches: feature-a 6628e69 → 1 new commit                                                                           │
-│           feature-b adb8a76 → 1 new commit · built on yours · follows                                                │
+│ branches: feature-a 3aa4152 → 1 new commit                                                                           │
+│           feature-b 093bae7 → 1 new commit · built on yours · follows                                                │
 │ HEAD → feature-a                                                                                                     │
 │ working tree: 0 files updated                                                                                        │
 │ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │
-│ git rebase -i --no-update-refs --no-autostash --empty=drop be59290550a3ceda42f5380069bc7349cdd8a99b feature-b        │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop 29b326ac43f95a6f6e6e1c69342d2c0de76affbc feature-b        │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y reword  ←/→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -91,17 +91,6 @@ fn shot(
     );
 }
 
-/// The status row and the title row are drawn whole: the author column's own
-/// `…` (a name wider than the column) is not a truncated status row.
-fn status_rows_whole(s: &crate::pty::Screen) -> bool {
-    s.has("first time?")
-        && s.has(" commits")
-        && s.lines()
-            .iter()
-            .filter(|line| line.contains("first time?") || line.contains(" commits"))
-            .all(|line| !line.contains('…'))
-}
-
 /// The two first-launch captures: the graph's status row and the empty
 /// state's row above the rule, both at 120x36 on a first launch.
 #[test]
@@ -121,7 +110,9 @@ fn first_launch_captures() {
         .expect("cp runs");
     assert!(copied.success(), "copied");
     let mut pty = Pty::spawn(&isolated, &repo, isolated.root.path(), (120, 36));
-    let screen = pty.wait_for("the first-launch line", status_rows_whole);
+    let screen = pty.wait_for("the first-launch line", |s| {
+        s.has("first time?") && s.has(" commits") && !s.has("…")
+    });
     shot(
         &mut shots,
         "first-launch-120x36.txt",

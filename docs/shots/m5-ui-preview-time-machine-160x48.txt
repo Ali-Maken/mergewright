@@ -25,10 +25,10 @@
 
  ◆ api  ~/code/api · main                                                                                                                             4 commits
 
-▸ ◆                         add the base  main is here  not pushed yet                                           Test  now│ main  (you're here)
-  ●                         Correct the note                                                                   Fixtu…   7y│ ! not pushed yet
-  ●                         Add the first note                                                                 Fixtu…   7y│ · the main line: branches merge into
-  ◇                         Add a readme                                                                       Fixtu…   7y│   it
+▸ ◆                         add the base  main is here  not pushed yet                                          Maker  now│ main  (you're here)
+  ●                         Correct the note                                                                    Maker   7y│ ! not pushed yet
+  ●                         Add the first note                                                                  Maker   7y│ · the main line: branches merge into
+  ◇                         Add a readme                                                                        Maker   7y│   it
                                                                                                                           │ · no upstream to compare with
                                                                                                                           │ · everyone, last commit just now
                                                                                                                           │

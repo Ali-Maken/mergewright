@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · main                                             4 commits
-▸   ●    feature/sar… two on the branch  not pushed yet  not merged Fixtu…  now
-    ┃                 Fixture · just now · made on feature/sara-long-running-o…
-  ◆━╯    main (you)   Correct the note  not pushed yet              Fixtu…   1y
-  ●                   Add the first note                            Fixtu…   1y
-  ◇                   Add a readme                                  Fixtu…   1y
+▸   ●    feature/sar… two on the branch  not pushed yet  not merged  Maker  now
+    ┃                 Maker · just now · made on feature/sara-long-running-oau…
+  ◆━╯    main (you)   Correct the note  not pushed yet               Maker   1y
+  ●                   Add the first note                             Maker   1y
+  ◇                   Add a readme                                   Maker   1y
 
 
 

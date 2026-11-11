@@ -20,42 +20,42 @@
 
  ◆ api  ~/code/api · main                                                                                   204 commits
 
-▸ ◆      main (you)           ours                                     Fixtu…  now│ main  (you're here)
-  ┃                           Fixture · 6 years ago · made on main · 0000000      │ ✓ pushed
-  ●                           theirs                                   Fixtu…   6y│ · the main line: branches merge into
-  ┃ ■                         On main: wip  stash@{0}                  Fixtu…   6y│   it
-  ┃ □                         ours  only in stash@{0}                  Fixtu…   6y│ ✓ up to date with origin/main
-  ●┄╯    main (you)           Commit 200                               Fixtu…   7y│ · everyone, last commit 6y ago
-  ●                           Commit 199                               Fixtu…   7y│
-  ●                           Commit 198                               Fixtu…   7y│ built on
-  ●                           Commit 197                               Fixtu…   7y│   main
-  ●                           Commit 196                               Fixtu…   7y│
-  ●                           Commit 195                               Fixtu…   7y│
-  ●                           Commit 194                               Fixtu…   7y│
-  ●                           Commit 193                               Fixtu…   7y│
-  ●                           Commit 192                               Fixtu…   7y│
-  ●                           Commit 191                               Fixtu…   7y│
-  ●                           Commit 190                               Fixtu…   7y│
-  ●                           Commit 189                               Fixtu…   7y│
-  ●                           Commit 188                               Fixtu…   7y│
-  ●                           Commit 187                               Fixtu…   7y│
-  ●                           Commit 186                               Fixtu…   7y│
-  ●                           Commit 185                               Fixtu…   7y│
-  ●                           Commit 184                               Fixtu…   7y│
-  ●                           Commit 183                               Fixtu…   7y│
-  ●                           Commit 182                               Fixtu…   7y│
-  ●                           Commit 181                               Fixtu…   7y│
-  ●                           Commit 180                               Fixtu…   7y│
-  ●                           Commit 179                               Fixtu…   7y│
-  ●                           Commit 178                               Fixtu…   7y│
-  ●                           Commit 177                               Fixtu…   7y│
-  ●                           Commit 176                               Fixtu…   7y│
-  ●                           Commit 175                               Fixtu…   7y│
-  ●                           Commit 174                               Fixtu…   7y│
-  ●                           Commit 173                               Fixtu…   7y│
-  ●                           Commit 172                               Fixtu…   7y│
-  ●                           Commit 171                               Fixtu…   7y│
-  ●                           Commit 170                               Fixtu…   7y│
+▸ ◆      main (you)           ours                                      Maker  now│ main  (you're here)
+  ┃                           Maker · 6 years ago · made on main · 0000000        │ ✓ pushed
+  ┃ ■                         On main: wip  stash@{0}                   Maker   6y│ · the main line: branches merge into
+  ┃ □                         ours  only in stash@{0}                   Maker   6y│   it
+  ● ┊    main (you)           theirs                                    Maker   6y│ ✓ up to date with origin/main
+  ●┄╯                         Commit 200                                Maker   7y│ · everyone, last commit 6y ago
+  ●                           Commit 199                                Maker   7y│
+  ●                           Commit 198                                Maker   7y│ built on
+  ●                           Commit 197                                Maker   7y│   main
+  ●                           Commit 196                                Maker   7y│
+  ●                           Commit 195                                Maker   7y│
+  ●                           Commit 194                                Maker   7y│
+  ●                           Commit 193                                Maker   7y│
+  ●                           Commit 192                                Maker   7y│
+  ●                           Commit 191                                Maker   7y│
+  ●                           Commit 190                                Maker   7y│
+  ●                           Commit 189                                Maker   7y│
+  ●                           Commit 188                                Maker   7y│
+  ●                           Commit 187                                Maker   7y│
+  ●                           Commit 186                                Maker   7y│
+  ●                           Commit 185                                Maker   7y│
+  ●                           Commit 184                                Maker   7y│
+  ●                           Commit 183                                Maker   7y│
+  ●                           Commit 182                                Maker   7y│
+  ●                           Commit 181                                Maker   7y│
+  ●                           Commit 180                                Maker   7y│
+  ●                           Commit 179                                Maker   7y│
+  ●                           Commit 178                                Maker   7y│
+  ●                           Commit 177                                Maker   7y│
+  ●                           Commit 176                                Maker   7y│
+  ●                           Commit 175                                Maker   7y│
+  ●                           Commit 174                                Maker   7y│
+  ●                           Commit 173                                Maker   7y│
+  ●                           Commit 172                                Maker   7y│
+  ●                           Commit 171                                Maker   7y│
+  ●                           Commit 170                                Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ pushed main → origin/main
 
@@ -63,42 +63,42 @@
 
  ◆ api  ~/code/api · main                                                                                   204 commits
 
-  ◆      main (you)           ours                                     Fixtu…  now│ 95eb9f7 · not on a branch
-  ●                           theirs                                   Fixtu…   6y│
-▸ ║ ■                         On main: wip  stash@{0}                  Fixtu…   6y│
-  ║ ┃                         Fixture · 6 years ago · 95eb9f7                     │
-  ║ □                         ours  only in stash@{0}                  Fixtu…   6y│
-  ●━╯    main (you)           Commit 200                               Fixtu…   7y│
-  ●                           Commit 199                               Fixtu…   7y│
-  ●                           Commit 198                               Fixtu…   7y│
-  ●                           Commit 197                               Fixtu…   7y│
-  ●                           Commit 196                               Fixtu…   7y│
-  ●                           Commit 195                               Fixtu…   7y│
-  ●                           Commit 194                               Fixtu…   7y│
-  ●                           Commit 193                               Fixtu…   7y│
-  ●                           Commit 192                               Fixtu…   7y│
-  ●                           Commit 191                               Fixtu…   7y│
-  ●                           Commit 190                               Fixtu…   7y│
-  ●                           Commit 189                               Fixtu…   7y│
-  ●                           Commit 188                               Fixtu…   7y│
-  ●                           Commit 187                               Fixtu…   7y│
-  ●                           Commit 186                               Fixtu…   7y│
-  ●                           Commit 185                               Fixtu…   7y│
-  ●                           Commit 184                               Fixtu…   7y│
-  ●                           Commit 183                               Fixtu…   7y│
-  ●                           Commit 182                               Fixtu…   7y│
-  ●                           Commit 181                               Fixtu…   7y│
-  ●                           Commit 180                               Fixtu…   7y│
-  ●                           Commit 179                               Fixtu…   7y│
-  ●                           Commit 178                               Fixtu…   7y│
-  ●                           Commit 177                               Fixtu…   7y│
-  ●                           Commit 176                               Fixtu…   7y│
-  ●                           Commit 175                               Fixtu…   7y│
-  ●                           Commit 174                               Fixtu…   7y│
-  ●                           Commit 173                               Fixtu…   7y│
-  ●                           Commit 172                               Fixtu…   7y│
-  ●                           Commit 171                               Fixtu…   7y│
-  ●                           Commit 170                               Fixtu…   7y│
+  ◆      main (you)           ours                                      Maker  now│ 91154af · not on a branch
+▸ ║ ■                         On main: wip  stash@{0}                   Maker   6y│
+  ║ ┃                         Maker · 6 years ago · 91154af                       │
+  ║ □                         ours  only in stash@{0}                   Maker   6y│
+  ● ┃    main (you)           theirs                                    Maker   6y│
+  ●━╯                         Commit 200                                Maker   7y│
+  ●                           Commit 199                                Maker   7y│
+  ●                           Commit 198                                Maker   7y│
+  ●                           Commit 197                                Maker   7y│
+  ●                           Commit 196                                Maker   7y│
+  ●                           Commit 195                                Maker   7y│
+  ●                           Commit 194                                Maker   7y│
+  ●                           Commit 193                                Maker   7y│
+  ●                           Commit 192                                Maker   7y│
+  ●                           Commit 191                                Maker   7y│
+  ●                           Commit 190                                Maker   7y│
+  ●                           Commit 189                                Maker   7y│
+  ●                           Commit 188                                Maker   7y│
+  ●                           Commit 187                                Maker   7y│
+  ●                           Commit 186                                Maker   7y│
+  ●                           Commit 185                                Maker   7y│
+  ●                           Commit 184                                Maker   7y│
+  ●                           Commit 183                                Maker   7y│
+  ●                           Commit 182                                Maker   7y│
+  ●                           Commit 181                                Maker   7y│
+  ●                           Commit 180                                Maker   7y│
+  ●                           Commit 179                                Maker   7y│
+  ●                           Commit 178                                Maker   7y│
+  ●                           Commit 177                                Maker   7y│
+  ●                           Commit 176                                Maker   7y│
+  ●                           Commit 175                                Maker   7y│
+  ●                           Commit 174                                Maker   7y│
+  ●                           Commit 173                                Maker   7y│
+  ●                           Commit 172                                Maker   7y│
+  ●                           Commit 171                                Maker   7y│
+  ●                           Commit 170                                Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · S stash · b branch · t tag · c commit · y sha · u undo · J journal · / search · q quit · F2 stat · ? keys
 
@@ -106,7 +106,7 @@
 
  ◆ api  ~/code/api · main                                                                                   204 commits
 
-▸ ◆      main (you)           ours                                     Fixtu…  now│ main  (you're here)
+▸ ◆      main (you)           ours                                      Maker  now│ main  (you're here)
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
@@ -119,28 +119,28 @@
  Pull (p)
  Push (P)
  Undo (u)
-  ●                           Commit 192                               Fixtu…   7y│
-  ●                           Commit 191                               Fixtu…   7y│
-  ●                           Commit 190                               Fixtu…   7y│
-  ●                           Commit 189                               Fixtu…   7y│
-  ●                           Commit 188                               Fixtu…   7y│
-  ●                           Commit 187                               Fixtu…   7y│
-  ●                           Commit 186                               Fixtu…   7y│
-  ●                           Commit 185                               Fixtu…   7y│
-  ●                           Commit 184                               Fixtu…   7y│
-  ●                           Commit 183                               Fixtu…   7y│
-  ●                           Commit 182                               Fixtu…   7y│
-  ●                           Commit 181                               Fixtu…   7y│
-  ●                           Commit 180                               Fixtu…   7y│
-  ●                           Commit 179                               Fixtu…   7y│
-  ●                           Commit 178                               Fixtu…   7y│
-  ●                           Commit 177                               Fixtu…   7y│
-  ●                           Commit 176                               Fixtu…   7y│
-  ●                           Commit 175                               Fixtu…   7y│
-  ●                           Commit 174                               Fixtu…   7y│
-  ●                           Commit 173                               Fixtu…   7y│
-  ●                           Commit 172                               Fixtu…   7y│
-  ●                           Commit 171                               Fixtu…   7y│
-  ●                           Commit 170                               Fixtu…   7y│
+  ●                           Commit 192                                Maker   7y│
+  ●                           Commit 191                                Maker   7y│
+  ●                           Commit 190                                Maker   7y│
+  ●                           Commit 189                                Maker   7y│
+  ●                           Commit 188                                Maker   7y│
+  ●                           Commit 187                                Maker   7y│
+  ●                           Commit 186                                Maker   7y│
+  ●                           Commit 185                                Maker   7y│
+  ●                           Commit 184                                Maker   7y│
+  ●                           Commit 183                                Maker   7y│
+  ●                           Commit 182                                Maker   7y│
+  ●                           Commit 181                                Maker   7y│
+  ●                           Commit 180                                Maker   7y│
+  ●                           Commit 179                                Maker   7y│
+  ●                           Commit 178                                Maker   7y│
+  ●                           Commit 177                                Maker   7y│
+  ●                           Commit 176                                Maker   7y│
+  ●                           Commit 175                                Maker   7y│
+  ●                           Commit 174                                Maker   7y│
+  ●                           Commit 173                                Maker   7y│
+  ●                           Commit 172                                Maker   7y│
+  ●                           Commit 171                                Maker   7y│
+  ●                           Commit 170                                Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · P push · c commit · a amend · u undo · . actions · ? keys

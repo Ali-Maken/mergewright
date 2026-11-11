@@ -2,11 +2,11 @@
 
 ▸ ◌                         Uncommitted changes (1 unstaged)
   ┃                         not committed yet · 1 file · on main
-  ◆    main (you)           pin the side commit  not pushed yet                                               Test  24h
-  ●                         add parser                                                                        Test  24h
-  ●                         Correct the note                                                                Fixtu…   2d
-  ●                         Add the first note                                                              Fixtu…   2d
-  ◇                         Add a readme                                                                    Fixtu…   2d
+  ◆    main (you)           pin the side commit  not pushed yet                                              Maker  24h
+  ●                         add parser                                                                       Maker  24h
+  ●                         Correct the note                                                                 Maker   2d
+  ●                         Add the first note                                                               Maker   2d
+  ◇                         Add a readme                                                                     Maker   2d
 
 
 
@@ -23,11 +23,11 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED · 1 unstaged
-diff vs HEAD 28f23a9
-UNSTAGED (1)                  libs/parser · submodule · c05a6f1 → 5412345
-  ▣ libs/parser             → + 5412345 parser 3
-                              + 912f8da parser 2
-                              − c05a6f1 side 1
+diff vs HEAD c7a5d85
+UNSTAGED (1)                  libs/parser · submodule · 45bab86 → 3170e0a
+  ▣ libs/parser             → + 3170e0a parser 3
+                              + cffc458 parser 2
+                              − 45bab86 side 1
 
 
 

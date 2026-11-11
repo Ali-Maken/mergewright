@@ -8,8 +8,8 @@ default: main
 integration: []
 commits: 5, columns: 4
 
-| * \ \  7523984  7523984            On main: wip: with an untracked file
-| | * |  75d5fc6  75d5fc6            index on main: de6923a Add a.txt
-| | | *  79bec76  79bec76            untracked files on main: de6923a Add a.txt
-* / /    de6923a  main               Add a.txt
-*        4f8a0a0  main               Add a readme
+| * \ \  17f358b  17f358b            On main: wip: with an untracked file
+| | * |  8db2815  8db2815            index on main: 923159b Add a.txt
+| | | *  92d0d87  92d0d87            untracked files on main: 923159b Add a.txt
+* / /    923159b  main               Add a.txt
+*        bcf8338  main               Add a readme

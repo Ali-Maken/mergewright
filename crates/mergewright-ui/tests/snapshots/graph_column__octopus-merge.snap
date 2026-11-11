@@ -4,8 +4,8 @@ expression: text
 ---
 shape: octopus-merge (dark = light, asserted), truecolor
 
-◆─┬─┬─╮   ciihhll.  d223b6f  Merge branches 'topic-1', 'topic-2' and 'topic-3'
-│ │ │ ●   c.i.h.l.  042e31f  topic 3
-│ │ ● │   c.i.h.l.  2beb760  topic 2
-│ ● │ │   c.i.h.l.  06c1c16  topic 1
-◇─┴─┴─╯   ciihhll.  6fbb9d9  Add the base
+◆─┬─┬─╮   ciihhll.  cdfc44a  Merge branches 'topic-1', 'topic-2' and 'topic-3'
+│ │ │ ●   c.i.h.l.  b722ae5  topic 3
+│ │ ● │   c.i.h.l.  d847847  topic 2
+│ ● │ │   c.i.h.l.  855bafc  topic 1
+◇─┴─┴─╯   ciihhll.  1bbdd6b  Add the base

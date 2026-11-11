@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-▸ ◆    main (you)           add notes  not pushed yet                                                       Fixtu…   5m
-  ┃                         Fixture · 5 minutes ago · made on main · e5c1257
-  ●                         Correct the note                                                                Fixtu…   1y
-  ●                         Add the first note                                                              Fixtu…   1y
-  ◇                         Add a readme                                                                    Fixtu…   1y
+▸ ◆    main (you)           add notes  not pushed yet                                                        Maker   5m
+  ┃                         Maker · 5 minutes ago · made on main · 267b5a7
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT e5c1257 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents 8a02d10 · diff vs firs…
+COMMIT 267b5a7 · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents c28ba91 · diff vs firs…
 add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
 M notes.txt             +1 −1 ▎
                                 1     - one, corrected

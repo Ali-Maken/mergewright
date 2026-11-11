@@ -1,24 +1,24 @@
- ◆ api      REBASING  step 3 of 12 · edit 016a15e a3 · feature-a, branch 1 of 2
+ ◆ api      REBASING  step 3 of 12 · edit deb7843 a3 · feature-a, branch 1 of 2
 ╭ still to apply · not commits yet ────────────────────────────────────────────╮
-│ pick a424cd4 a10                                                             │
-│ pick 4a47ee1 a9                                                              │
-│ pick e96a3c4 a8                                                              │
-│ pick a8f7938 a7                                                              │
-│ pick dd34920 a6                                                              │
-│ pick 9038000 a5                                                              │
+│ pick 33589f3 a10                                                             │
+│ pick 70ba893 a9                                                              │
+│ pick 0feb188 a8                                                              │
+│ pick daff425 a7                                                              │
+│ pick c91d64f a6                                                              │
+│ pick 3bbd1c1 a5                                                              │
 │ +1 more                                                                      │
 │ feature-b (Sara): 2 commits follow, on top                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
   ●    feature-b    b2  not pushed yet                                Sara   2d
   ●                 b1                                                Sara   2d
-  ●    feature-a    a10  not pushed yet                             Fixtu…   2d
-  ●                 a9                                              Fixtu…   2d
-  ●                 a8                                              Fixtu…   2d
-  ●                 a7                                              Fixtu…   2d
-  ●                 a6                                              Fixtu…   2d
-  ●                 a5                                              Fixtu…   2d
-  ●                 a4                                              Fixtu…   2d
-▸ ◆                 a3  HEAD · stopped here  HEAD is here           Fixtu…   2d
-  ┃                 Fixture · 2 days ago · made on feature-a · 016a15e
-  ●                 a2                                              Fixtu…   2d
+  ●    feature-a    a10  not pushed yet                              Maker   2d
+  ●                 a9                                               Maker   2d
+  ●                 a8                                               Maker   2d
+  ●                 a7                                               Maker   2d
+  ●                 a6                                               Maker   2d
+  ●                 a5                                               Maker   2d
+  ●                 a4                                               Maker   2d
+▸ ◆                 a3  HEAD · stopped here  HEAD is here            Maker   2d
+  ┃                 Maker · 2 days ago · made on feature-a · deb7843
+  ●                 a2                                               Maker   2d
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys

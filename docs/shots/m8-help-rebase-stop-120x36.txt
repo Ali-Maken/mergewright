@@ -1,13 +1,13 @@
- ◆ api  ~/code/api · detached 934552a                         REBASING  step 1 of 1 · pick 9861ccb feature edits shared
+ ◆ api  ~/code/api · detached ab22cb1                         REBASING  step 1 of 1 · pick 8eaa665 feature edits shared
             ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
 ▸ ◌         │ ›                                                                                            │
             │ IN PROGRESS                                                                                  │
-    ●    fea│▸c     Continue                                                           operation.continue  │Fixtu…   6y
-  ◆ ┃  ⓘ mai│ s     Skip this commit                                                       operation.skip  │Fixtu…   6y
-  ●━╯       │ a     Abort                                                                 operation.abort  │Fixtu…   6y
-  ●         │ M     Launch the mergetool on the first conflicted file                 operation.mergetool  │Fixtu…   7y
-  ●         │ e     Open the first conflicted file in $EDITOR                              operation.edit  │Fixtu…   7y
-  ◇         │ EVERYWHERE                                                                                   │Fixtu…   7y
+    ●    fea│▸c     Continue                                                           operation.continue  │ Maker   6y
+  ◆ ┃  ⓘ mai│ s     Skip this commit                                                       operation.skip  │ Maker   6y
+  ●━╯       │ a     Abort                                                                 operation.abort  │ Maker   6y
+  ●         │ M     Launch the mergetool on the first conflicted file                 operation.mergetool  │ Maker   7y
+  ●         │ e     Open the first conflicted file in $EDITOR                              operation.edit  │ Maker   7y
+  ◇         │ EVERYWHERE                                                                                   │ Maker   7y
             │ ⌃P    Command palette                                                           app.palette  │
             │ ?     Help for this place                                                          app.help  │
             │ ⇥     Next pane                                                               app.next_pane  │
@@ -21,7 +21,7 @@
 ────────────╰──────────────────────────────────────────────────────────────────────────────────────────────╯────────────
  ↑↓ move  ⏎ run  esc close
 UNCOMMITTED · 1 staged
-diff vs HEAD 934552a
+diff vs HEAD ab22cb1
 STAGED (1)                    ▎
   M shared.txt          +1 −1   1     - main's line
                                     1 + both lines

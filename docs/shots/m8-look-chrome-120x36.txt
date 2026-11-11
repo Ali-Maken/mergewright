@@ -2,13 +2,13 @@ m8-polish-and-ship/06 at 120x36: what right looks like — the first row is ` �
 
  ◆ api  ~/code/api · main                                                           6 commits  2 merged branches folded
 
-▸   ●    feature/three        three: in progress  not pushed yet       Fixtu…   7y│ feature/three
-    ┃                         Fixture · 7 years ago · made on feature/three · f30…│ ! not pushed yet
-  ◆ ┃    main (you)           Merge branch 'feature/two'  ▸ 2 commits  Fixtu…   7y│ · not merged
-  ◉ ┃                         Merge branch 'feature/one'  ▸ 2 commits  Fixtu…   7y│ ! main has 6 new commits since it
-  ●━╯                         Add b.txt                                Fixtu…   7y│   left
-  ●                           Add a.txt                                Fixtu…   7y│ · Fixture, last commit 7y ago
-  ◇                           Add a readme                             Fixtu…   7y│
+▸   ●    feature/three        three: in progress  not pushed yet        Maker   7y│ feature/three
+    ┃                         Maker · 7 years ago · made on feature/three · 4e2f3…│ ! not pushed yet
+  ◆ ┃    main (you)           Merge branch 'feature/two'  ▸ 2 commits   Maker   7y│ · not merged
+  ◉ ┃                         Merge branch 'feature/one'  ▸ 2 commits   Maker   7y│ ! main has 6 new commits since it
+  ●━╯                         Add b.txt                                 Maker   7y│   left
+  ●                           Add a.txt                                 Maker   7y│ · Maker, last commit 7y ago
+  ◇                           Add a readme                              Maker   7y│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ feature/three

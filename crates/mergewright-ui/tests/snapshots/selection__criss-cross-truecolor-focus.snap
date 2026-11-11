@@ -5,13 +5,13 @@ expression: text
 shape: criss-cross-merge, truecolor, focus, 80x24, row 4 selected
 
  ◆ api  ~/code/api · main                          7 commits  focus (F/esc off)
-    ●                       beta: carry on                          Fixtu…   4y
-  ◆─│─╮                     Merge branch 'alpha'                    Fixtu…   4y
-  │ ◉─│─╮                   beta: merge alpha                       Fixtu…   4y
-  │ │ ◉─│─╮                 alpha: merge beta                       Fixtu…   4y
-▸ │ ●─│─│─╯                 beta: work                              Fixtu…   4y
-  │ │ ●─╯                   alpha: work                             Fixtu…   4y
-  ◇─┴─╯                     Add the base                            Fixtu…   4y
+    ●                       beta: carry on                           Maker   4y
+  ◆─│─╮                     Merge branch 'alpha'                     Maker   4y
+  │ ◉─│─╮                   beta: merge alpha                        Maker   4y
+  │ │ ◉─│─╮                 alpha: merge beta                        Maker   4y
+▸ │ ●─│─│─╯                 beta: work                               Maker   4y
+  │ │ ●─╯                   alpha: work                              Maker   4y
+  ◇─┴─╯                     Add the base                             Maker   4y
 
 
 

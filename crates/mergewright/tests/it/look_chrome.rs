@@ -58,7 +58,7 @@ pub(crate) fn with_feature_two_kept() -> mergewright_fixtures::Scratch {
         .arg(path)
         .args([
             "-c",
-            "user.name=Test Maker",
+            "user.name=Maker Test",
             "-c",
             "user.email=test@example.invalid",
             "commit-tree",

@@ -51,7 +51,7 @@
 
 Graph  [Detail]
 UNCOMMITTED · 1 unstaged
-diff vs HEAD 52900f9
+diff vs HEAD 66e26de
 
 UNSTAGED (1)
   M first.txt                                                              +1 −0

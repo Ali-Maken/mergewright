@@ -8,14 +8,14 @@
 # unverified: a capture carries no attributes), in places 1 and 2.
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    login-page           fix the bug  not pushed yet  not merged  Fixtu…   3m│ main  (you're here)
-▸ ◆ ┊    main (you)           main moves on                            Fixtu…   4m│ reading…
+    ●    login-page           fix the bug  not pushed yet  not merged   Maker   3m│ main  (you're here)
+▸ ◆ ┊    main (you)           main moves on                             Maker   4m│ reading…
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
- Revert 7de2fb0
+ Revert d128e01
  Reset main to here, mixed
  Reset main to here, hard
  Fetch (f)

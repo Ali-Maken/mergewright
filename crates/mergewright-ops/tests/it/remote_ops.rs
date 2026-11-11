@@ -392,7 +392,7 @@ fn commit_through_apply(remote: &LocalRemote, name: &str, at: i64) -> JournalEnt
     git(
         remote,
         remote.work(),
-        &["config", "user.name", "Test Maker"],
+        &["config", "user.name", "Maker Test"],
     );
     git(
         remote,
@@ -919,7 +919,7 @@ fn a_local_operation_with_hooks_runs_as_before() {
     git(
         &remote,
         remote.work(),
-        &["config", "user.name", "Test Maker"],
+        &["config", "user.name", "Maker Test"],
     );
     git(
         &remote,

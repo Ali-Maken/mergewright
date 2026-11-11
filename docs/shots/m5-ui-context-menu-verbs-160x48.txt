@@ -56,17 +56,17 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ◆    feature (you)        finish the feature  not pushed yet  not merged                                   Fixtu…  now│ main
-    ●                         start the feature                                                                Fixtu…   2m│ reading…
-▸ ● ┊    main                 main moves again  not pushed yet                                                 Fixtu…   3m│ reading…
+    ◆    feature (you)        finish the feature  not pushed yet  not merged                                    Maker  now│ main
+    ●                         start the feature                                                                 Maker   2m│ reading…
+▸ ● ┊    main                 main moves again  not pushed yet                                                  Maker   3m│ reading…
  Checkout main
- Cherry-pick 2f30cf4 (o)
+ Cherry-pick bb26169 (o)
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
  Merge main into feature (m)
  Rebase feature onto main (r)
- Revert 2f30cf4
+ Revert bb26169
  Reset feature to here, mixed
  Reset feature to here, hard
  Delete branch main

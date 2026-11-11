@@ -25,11 +25,11 @@ previous b32274b37e6ce919315f41103f3f30078e9a3487 src/session.rs
 filename src/auth/session.rs
 	use crate::config::Config;
 74f9a9eac1946466a6892c0196b3d05c58971204 3 3 1
-author Fixture Maker
+author Maker Fixture
 author-mail <fixture@example.invalid>
 author-time 1578006000
 author-tz +0000
-committer Fixture Maker
+committer Maker Fixture
 committer-mail <fixture@example.invalid>
 committer-time 1578006000
 committer-tz +0000

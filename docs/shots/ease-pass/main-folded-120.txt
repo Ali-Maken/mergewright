@@ -3,11 +3,11 @@ What right looks like: no row of a merged branch; beside the branch pane the mes
 
  ◆ api  ~/code/api · wallet-release                                                 4 commits  2 merged branches folded
 
-▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet… Fixtu…  28h│ wallet-release  (you're here)
-    ┃                         Fixture · 28 hours ago · made on wallet-release · m…│ ! not pushed yet
-    ◉                         Merged PR 16021: Fix the wallet totals   Fixtu…  28h│ · not merged
-    ●                         Start the wallet release                 Fixtu…  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet           Fixtu…  28h│ · Fixture, last commit 28h ago
+▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Maker  28h│ wallet-release  (you're here)
+    ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ ! not pushed yet
+    ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ · not merged
+    ●                         Start the wallet release                  Maker  28h│ ✓ up to date with main
+  ◇━╯    main                 Add the readme  not pushed yet            Maker  28h│ · Maker, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main

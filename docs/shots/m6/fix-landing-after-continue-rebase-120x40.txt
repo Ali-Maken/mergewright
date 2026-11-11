@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ rebase feature onto main
-COMMIT 0000000 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 4dfca1e · diff vs firs…
+COMMIT 0000000 · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 55e59f0 · diff vs firs…
 Change every file on feature
 A added-by-them.txt     +1 −0 ▎
 M both-added.txt        +4 −0       1 + renamed to a different name by each side

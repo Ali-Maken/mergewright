@@ -8,13 +8,13 @@ default: main
 integration: []
 commits: 10, columns: 4
 
-| *      f3039e5  feature/three      three: in progress
-* | \    2a3134b  main               Merge branch 'feature/two'
-| | *    cdca323  feature/two        two: finish
-| | *    9ac0f8b  feature/two        two: start
-* | | \  f1e8743  main               Merge branch 'feature/one'
-| | | *  a9e27db  feature/one        one: finish
-| | | *  aa07e3b  feature/one        one: start
-* / / |  7b40e06  main               Add b.txt
-*     /  204fa11  main               Add a.txt
-*        2b04c57  main               Add a readme
+| *      4e2f3b3  feature/three      three: in progress
+* | \    fea9d20  main               Merge branch 'feature/two'
+| | *    95f854f  feature/two        two: finish
+| | *    bbd8f36  feature/two        two: start
+* | | \  56e8b72  main               Merge branch 'feature/one'
+| | | *  2bceba3  feature/one        one: finish
+| | | *  e32b033  feature/one        one: start
+* / / |  04ae5dd  main               Add b.txt
+*     /  9e8aca0  main               Add a.txt
+*        5c7ce97  main               Add a readme

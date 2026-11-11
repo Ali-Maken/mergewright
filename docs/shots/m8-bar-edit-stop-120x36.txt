@@ -1,17 +1,17 @@
- ◆ api  ~/code/api · detached ad69d7d                REBASING  step 1 of 4 · edit ad69d7d a1 · feature-a, branch 1 of 3
+ ◆ api  ~/code/api · detached a7650db                REBASING  step 1 of 4 · edit a7650db a1 · feature-a, branch 1 of 3
 
 ╭ still to apply · not commits yet ────────────────────────────────────────────────────────────────────────────────────╮
-│ pick f596375 a2                                                                                                      │
-│ feature-b (Fixture Maker): 1 commit follow, on top                                                                   │
-│ feature-c (Fixture Maker): 1 commit follow, on top                                                                   │
+│ pick 5929f1b a2                                                                                                      │
+│ feature-b (Maker Fixture): 1 commit follow, on top                                                                   │
+│ feature-c (Maker Fixture): 1 commit follow, on top                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●    feature-c            c1  not pushed yet                       Fixtu…   2d│ feature-a
-  ● ┊    main                 m2  not pushed yet                       Fixtu…   2d│ reading…
-  ║ ●    feature-b            b1  not pushed yet                       Fixtu…   2d│ reading…
-  ║ ●    feature-a            a2  not pushed yet                       Fixtu…   2d│ reading…
-▸ ║ ◆                         a1  HEAD · stopped here  HEAD is here    Fixtu…   2d│ reading…
-  ║ ┃                         Fixture · 2 days ago · made on feature-a · ad69d7d  │
-  ◇━╯    main                 m1                                       Fixtu…   2d│
+    ●    feature-c            c1  not pushed yet                        Maker   2d│ feature-a
+  ● ┊    main                 m2  not pushed yet                        Maker   2d│ reading…
+  ║ ●    feature-b            b1  not pushed yet                        Maker   2d│ reading…
+  ║ ●    feature-a            a2  not pushed yet                        Maker   2d│ reading…
+▸ ║ ◆                         a1  HEAD · stopped here  HEAD is here     Maker   2d│ reading…
+  ║ ┃                         Maker · 2 days ago · made on feature-a · a7650db    │
+  ◇━╯    main                 m1                                        Maker   2d│
                                                                                   │
                                                                                   │
                                                                                   │

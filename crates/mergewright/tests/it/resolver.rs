@@ -244,7 +244,7 @@ fn git_stops(repo: &Path, args: &[&str]) {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Test Maker",
+            "user.name=Maker Test",
             "-c",
             "user.email=test@example.invalid",
         ])

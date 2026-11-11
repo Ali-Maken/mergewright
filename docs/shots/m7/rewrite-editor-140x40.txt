@@ -1,20 +1,20 @@
 REWRITE feature-a · 5 commits since it left main · newest first · nothing written until y
 
-   squash ↓  0fc87c6  wip                        melds into the row below
-   squash ↓  ae2f160  wip: tests                 melds into the row below
- ▸ pick      bde9c78  Handle expired tokens
-   fixup ↓   3cd8285  fixup! Add OAuth callback  melds into the row below · marked by its name
-   pick      19cab67  Add OAuth callback
- ─ main      5d33ef7  m1                         stays
+   squash ↓  02ed774  wip                        melds into the row below
+   squash ↓  b18c343  wip: tests                 melds into the row below
+ ▸ pick      62a3638  Handle expired tokens
+   fixup ↓   0b815e6  fixup! Add OAuth callback  melds into the row below · marked by its name
+   pick      c4b4fe3  Add OAuth callback
+ ─ main      443c4a9  m1                         stays
 
  AFTER y · not written yet
 
  feature-b  ○ new    b1                     built on yours · follows
  feature-a  ● new    Handle expired tokens  3 in one
             ○ new    Add OAuth callback     fixup melded in
- main       5d33ef7  m1                     unchanged
+ main       443c4a9  m1                     unchanged
 
- built on yours: feature-b (Fixture Maker, 1 commit) follows
+ built on yours: feature-b (Maker Fixture, 1 commit) follows
  no conflicts expected
 
  MESSAGE of the squashed commit · r on "Handle expired tokens" changes it

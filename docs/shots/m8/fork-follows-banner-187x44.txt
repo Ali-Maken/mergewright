@@ -1,16 +1,16 @@
- ◆ api  ~/code/api · detached 106767e             REBASING  step 2 of 4 · edit 106767e b1 · feature-b, forked at 27ebc54 · change files, space stages, a amends it, c continues · ⇥ banner
+ ◆ api  ~/code/api · detached 7d8fe30             REBASING  step 2 of 4 · edit 7d8fe30 b1 · feature-b, forked at 9bf718b · change files, space stages, a amends it, c continues · ⇥ banner
 
 ╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ pick 5c64228 feature a: part 3                                                                                                                                                          │
-│ pick a3ca321 feature a: part 2                                                                                                                                                          │
+│ pick 70017a1 feature a: part 3                                                                                                                                                          │
+│ pick d98db95 feature a: part 2                                                                                                                                                          │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-    ●        feature-c            c1  not pushed yet                                                                                      Fixtu…   2d│ feature-b
-▸   ┊ ◆      feature-b            b1  HEAD · stopped here  not pushed yet  HEAD is here                                                   Fixtu…   2d│ reading…
-    ┊ ┃                           Fixture · 2 days ago · made on feature-b · 106767e                                                                 │ reading…
-    ┊ ┃ ●    feature-a            feature a: part 3  not pushed yet                                                                       Fixtu…   2d│ reading…
-    ●┄┃┄╯    feature-c            feature a: part 2                                                                                       Fixtu…   2d│ reading…
-    ●━╯                           feature a: part 1                                                                                       Fixtu…   2d│
-  ◇┄╯        main                 m1  not pushed yet                                                                                      Fixtu…   2d│
+    ●        feature-c            c1  not pushed yet                                                                                       Maker   2d│ feature-b
+▸   ┊ ◆      feature-b            b1  HEAD · stopped here  not pushed yet  HEAD is here                                                    Maker   2d│ reading…
+    ┊ ┃                           Maker · 2 days ago · made on feature-b · 7d8fe30                                                                   │ reading…
+    ┊ ┃ ●    feature-a            feature a: part 3  not pushed yet                                                                        Maker   2d│ reading…
+    ●┄┃┄╯    feature-c            feature a: part 2                                                                                        Maker   2d│ reading…
+    ●━╯                           feature a: part 1                                                                                        Maker   2d│
+  ◇┄╯        main                 m1  not pushed yet                                                                                       Maker   2d│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

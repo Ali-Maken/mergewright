@@ -2,6 +2,6 @@
 source: crates/mergewright-graph/tests/it/corpus.rs
 expression: text
 ---
-● f366706 Merge branch 'main' into feature
-● 8f0a255 feature: work
-● 6fbb9d9 Add the base
+● b714ab2 Merge branch 'main' into feature
+● 9fa7e4e feature: work
+● 1bbdd6b Add the base

@@ -1,7 +1,7 @@
  HISTORY · logo.bin · 2 changes
- ▸ 5384058 Grow logo      TM   3h       │ 5384058 · Test Maker · 3 hours ago · Grow logo
-   a6247dc Add logo       TM   3h       │ binary · 600 B → 2 KB
-   the file starts here (a6247dc added  │
+ ▸ 519a8b3 Grow logo      MT   3h       │ 519a8b3 · Maker Test · 3 hours ago · Grow logo
+   78bf849 Add logo       MT   3h       │ binary · 600 B → 2 KB
+   the file starts here (78bf849 added  │
    it)                                  │
                                         │
                                         │

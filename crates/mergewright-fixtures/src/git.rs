@@ -320,12 +320,12 @@ pub fn isolated(cwd: &Path, args: &[&str]) -> Command {
 }
 
 /// The name on every object plain `git` writes here.
-pub const IDENTITY_NAME: &str = "Fixture Maker";
+pub const IDENTITY_NAME: &str = "Maker Fixture";
 /// The address on every object plain `git` writes here.
 pub const IDENTITY_EMAIL: &str = "fixture@example.invalid";
 /// `IDENTITY_NAME <IDENTITY_EMAIL>`, as `fast-import` and reflog lines spell
 /// it. Pinned to the two above by `tests::identity_is_name_and_email`.
-pub const IDENTITY: &str = "Fixture Maker <fixture@example.invalid>";
+pub const IDENTITY: &str = "Maker Fixture <fixture@example.invalid>";
 /// The clock every object plain `git` writes here is stamped with.
 ///
 /// Deliberately later than the newest `fast-import` timestamp, so a stash

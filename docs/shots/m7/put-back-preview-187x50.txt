@@ -1,7 +1,7 @@
 JOURNAL · what happened in this repo, newest first
   $  outside        future    fast-import                                        git: "fast-import"
   $  outside        now       reset main 1 commit back                           git: "reset: moving to HEAD~1"
-▸    └ ✗ lost       e07a365 "Add rate limiter" · was main's tip · no branch holds it
+▸    └ ✗ lost       cb48c11 "Add rate limiter" · was main's tip · no branch holds it
   $  outside        2m ago    committed "Add rate limiter" on main               git: "commit: Add rate limiter"
   a branch deleted outside Mergewright and never checked out leaves no trace
 
@@ -38,12 +38,12 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-╭ Preview: put main back to e07a365 "Add rate limiter" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ now       main → 8a02d10  Correct the note                                                                                                                                              │
-│ after y   main → e07a365  Add rate limiter                                                                                                                                              │
+╭ Preview: put main back to cb48c11 "Add rate limiter" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ now       main → c28ba91  Correct the note                                                                                                                                              │
+│ after y   main → cb48c11  Add rate limiter                                                                                                                                              │
 │ your files: limits.txt comes back                                                                                                                                                       │
 │ u undoes it                                                                                                                                                                             │
-│ git reset --hard e07a365c55c98e011b27b9e1ddcf152bba982766                                                                                                                               │
+│ git reset --hard cb48c1129f4d7285f476e0b5c7315315be34d872                                                                                                                               │
 │ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
 ╰ y put it back  ←/→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ● done in Mergewright: u can undo it · $ done outside Mergewright: u never touches it · ✗ a commit no branch holds · ⇢ undo brings it back

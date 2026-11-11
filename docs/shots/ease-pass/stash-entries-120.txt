@@ -3,10 +3,10 @@ What right looks like: `stash@{0}` (newest, with an untracked file) draws `■`,
 
  ◆ api  ~/code/api · main                                                                                     3 commits
 
-▸   ■                         On main: newest, with an untracked file  Fixtu…  28h│ 198d2f2 · not on a branch
-    ┃                         Fixture · 28 hours ago · 198d2f2                    │
-  ◆━╯    main (you)           Write the second note  not pushed yet    Fixtu…  28h│
-  ◇                           Add the notes                            Fixtu…  28h│
+▸   ■                         On main: newest, with an untracked file   Maker  28h│ eb95559 · not on a branch
+    ┃                         Maker · 28 hours ago · eb95559                      │
+  ◆━╯    main (you)           Write the second note  not pushed yet     Maker  28h│
+  ◇                           Add the notes                             Maker  28h│
                                                                                   │
                                                                                   │
                                                                                   │

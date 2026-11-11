@@ -1,12 +1,12 @@
  ◆ api  ~/code/api · main                                                                         6 commits  changes on feature-a since it left main · 3 commits · 2 files +2 −0
 
-  ◆   ▏  main (you)     Readme  x base  not pushed yet                                          Fixtu…   2d
-▸ ║ ●    feature-a      Use token  not pushed yet                                               Fixtu…   2d
-  ║ ┃                   Fixture · 2 days ago · made on feature-a · b4d700e
-  ● ┃    main (you)     Changelog                                                               Fixtu…   2d  ▾ src/
-  ║ ●    feature-a      Add token                                                               Fixtu…   2d    A login.rs                                                             +1 −0
-  ║ ●                   Add login                                                               Fixtu…   2d    A token.rs                                                             +1 −0
-  ◇━╯    main (you)     root                                                                    Fixtu…   2d  select a file
+  ◆   ▏  main (you)     Readme  x base  not pushed yet                                           Maker   2d
+▸ ║ ●    feature-a      Use token  not pushed yet                                                Maker   2d
+  ║ ┃                   Maker · 2 days ago · made on feature-a · bfb5c0b
+  ● ┃    main (you)     Changelog                                                                Maker   2d  ▾ src/
+  ║ ●    feature-a      Add token                                                                Maker   2d    A login.rs                                                             +1 −0
+  ║ ●                   Add login                                                                Maker   2d    A token.rs                                                             +1 −0
+  ◇━╯    main (you)     root                                                                     Maker   2d  select a file
 
 
 
@@ -47,4 +47,4 @@
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
- compare base d0860db — move, x again clears
+ compare base 106135f — move, x again clears

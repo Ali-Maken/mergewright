@@ -1,12 +1,12 @@
 REWRITE feature-a · 3 commits since it left main · newest first · nothing written until y       │ AFTER y · not written yet
                                                                                                 │
-   pick      5c64228  feature a: part 3                                                         │ feature-b  ○ new    b1                 follows
-   drop ✗    a3ca321  feature a: part 2  left out                                               │ feature-a  ● new    feature a: part 3
- ▸ pick      27ebc54  feature a: part 1                                                         │            ○ new    feature a: part 1
- ─ main      5d33ef7  m1                 stays                                                  │ main       5d33ef7  m1                 unchanged
+   pick      70017a1  feature a: part 3                                                         │ feature-b  ○ new    b1                 follows
+   drop ✗    d98db95  feature a: part 2  left out                                               │ feature-a  ● new    feature a: part 3
+ ▸ pick      9bf718b  feature a: part 1                                                         │            ○ new    feature a: part 1
+ ─ main      443c4a9  m1                 stays                                                  │ main       443c4a9  m1                 unchanged
                                                                                                 │
-                                                                                                │ feature-b follows · 1 commit from 27ebc54
-                                                                                                │ feature-c stays on a3ca321 · would lose a3ca321
+                                                                                                │ feature-b follows · 1 commit from 9bf718b
+                                                                                                │ feature-c stays on d98db95 · would lose d98db95
                                                                                                 │ no conflicts expected
                                                                                                 │
                                                                                                 │

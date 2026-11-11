@@ -8,7 +8,7 @@ default: main
 integration: []
 commits: 4, columns: 2
 
-* \  4907da4  main               Merge branch 'main' of https://example.invalid/maker.git into main
-* |  e9c069c  main               My commit
-| *  66df357  main               Their commit
-* /  6fbb9d9  main               Add the base
+* \  9f267b5  main               Merge branch 'main' of https://example.invalid/maker.git into main
+* |  4767997  main               My commit
+| *  86ea7fb  main               Their commit
+* /  1bbdd6b  main               Add the base

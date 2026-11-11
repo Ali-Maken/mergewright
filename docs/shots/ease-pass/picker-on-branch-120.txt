@@ -3,12 +3,12 @@ ease-pass 09b, drawn by `view::view` from a real AppState over the job pool (cra
 
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
-    ◆        wallet-release (you) Bump the wallet version              Fixtu…  28h│ sara/fix-toc
-    ┊ ●      ali/x                x: try the other layout              Fixtu…  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet Fixtu…  28h│ · not merged
-    ┊ ┊ ┃                         Fixture · 28 hours ago · made on sara/fix-toc ·…│ ✓ up to date with main
-    ●┄┴━╯    wallet-release (you) Start the wallet release             Fixtu…  28h│ · Fixture, last commit 28h ago
-  ◇┄╯        main                 Add the readme  not pushed yet       Fixtu…  28h│
+    ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
+    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! not pushed yet
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ ✓ up to date with main
+    ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
+  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ sara/fix-toc
@@ -16,10 +16,10 @@ ease-pass 09b, drawn by `view::view` from a real AppState over the job pool (cra
                                                                                   │
   ┌ SWITCH BRANCH · yours and the remote's · type to find ───────────────────────────────────────────────────────────┐
   │ > ▏                                                                                                              │
-  │   ↩ before  ali/x           Fixture  28h  x: try the other layout                                                │
-  │ ▸ ● local   sara/fix-toc    Fixture  28h  toc: fix the anchors                                                   │
-  │   ● local   main            Fixture  28h  Add the readme                                                         │
-  │   · here    wallet-release  Fixture  28h  you're on it                                                           │
+  │   ↩ before  ali/x           Maker  28h  x: try the other layout                                                  │
+  │ ▸ ● local   sara/fix-toc    Maker  28h  toc: fix the anchors                                                     │
+  │   ● local   main            Maker  28h  Add the readme                                                           │
+  │   · here    wallet-release  Maker  28h  you're on it                                                             │
   │                                                                                                                  │
   │                                                                                                                  │
   │                                                                                                                  │

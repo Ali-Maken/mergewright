@@ -102,7 +102,7 @@ fn commit(repo: &Path, message: &str) {
         repo,
         &[
             "-c",
-            "user.name=Test Maker",
+            "user.name=Maker Test",
             "-c",
             "user.email=test@example.invalid",
             "-c",

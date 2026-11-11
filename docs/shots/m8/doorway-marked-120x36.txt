@@ -9,10 +9,10 @@
 
  ◆ api  ~/code/api · main                                                             3 commits  1 merged branch folded
 
-▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit           Fixtu…   1y│ main  (you're here)
-  ┃                         Fixture · 1 year ago · made on main · merged 1 from a…│ ! not pushed yet
-  ●                         Advance main                               Fixtu…   1y│ · the main line: branches merge into
-  ◇                         Add the base                               Fixtu…   1y│   it
+▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit            Maker   1y│ main  (you're here)
+  ┃                         Maker · 1 year ago · made on main · merged 1 from alp…│ ! not pushed yet
+  ●                         Advance main                                Maker   1y│ · the main line: branches merge into
+  ◇                         Add the base                                Maker   1y│   it
                                                                                   │ · no upstream to compare with
                                                                                   │ · everyone, last commit 1y ago
                                                                                   │

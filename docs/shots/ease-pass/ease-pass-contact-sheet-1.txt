@@ -25,11 +25,11 @@ What right looks like: no row of a merged branch; beside the branch pane the mes
 
  ◆ api  ~/code/api · wallet-release                                                 4 commits  2 merged branches folded
 
-▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Graft  28h│ wallet-release  (you're here)
-    ┃                         Graft · 28 hours ago · made on wallet-release · mer…│ ! not pushed yet
-    ◉                         Merged PR 16021: Fix the wallet totals    Graft  28h│ · not merged
-    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet            Graft  28h│ · Graft, last commit 28h ago
+▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Maker  28h│ wallet-release  (you're here)
+    ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ ! not pushed yet
+    ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ · not merged
+    ●                         Start the wallet release                  Maker  28h│ ✓ up to date with main
+  ◇━╯    main                 Add the readme  not pushed yet            Maker  28h│ · Maker, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
@@ -70,11 +70,11 @@ What right looks like: the PR's merge reads its whole subject, then `▸ 4 commi
 
  ◆ api  ~/code/api · wallet-release                            4 commits  2 merged branches folded
 
-▸   ◆    walle… (you) Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit       Graft  28h
-    ┃                 Graft · 28 hours ago · made on wallet-release · merged 1 from fix-toc · ea2…
-    ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits               Graft  28h
-    ●                 Start the wallet release                                          Graft  28h
-  ◇━╯    main         Add the readme  not pushed yet                                    Graft  28h
+▸   ◆    walle… (you) Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit       Maker  28h
+    ┃                 Maker · 28 hours ago · made on wallet-release · merged 1 from fix-toc · 745…
+    ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits               Maker  28h
+    ●                 Start the wallet release                                          Maker  28h
+  ◇━╯    main         Add the readme  not pushed yet                                    Maker  28h
 
 
 
@@ -115,15 +115,15 @@ What right looks like: the merge's four commits appear under it on one lane of t
 
  ◆ api  ~/code/api · wallet-release                                                   8 commits  1 merged branch folded
 
-    ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Graft  28h│ wallet-release  (you're here)
-▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Graft  28h│ ! not pushed yet
-    ┃ ┊                         Graft · 28 hours ago · made on wallet-release · m…│ · not merged
-    ┃ ●    PR 16021             totals: test the sum                    Graft  28h│ ✓ up to date with main
-    ┃ ●    PR 16021             totals: drop the cache                  Graft  28h│ · Graft, last commit 28h ago
-    ┃ ●    PR 16021             totals: round once                      Graft  28h│
-    ┃ ●    PR 16021             totals: read the ledger                 Graft  28h│ built on
-    ●┄╯                         Start the wallet release                Graft  28h│   main
-  ◇━╯      main                 Add the readme  not pushed yet          Graft  28h│    ─◆ wallet-release
+    ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Maker  28h│ wallet-release  (you're here)
+▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Maker  28h│ ! not pushed yet
+    ┃ ┊                         Maker · 28 hours ago · made on wallet-release · m…│ · not merged
+    ┃ ●    PR 16021             totals: test the sum                    Maker  28h│ ✓ up to date with main
+    ┃ ●    PR 16021             totals: drop the cache                  Maker  28h│ · Maker, last commit 28h ago
+    ┃ ●    PR 16021             totals: round once                      Maker  28h│
+    ┃ ●    PR 16021             totals: read the ledger                 Maker  28h│ built on
+    ●┄╯                         Start the wallet release                Maker  28h│   main
+  ◇━╯      main                 Add the readme  not pushed yet          Maker  28h│    ─◆ wallet-release
                                                                                   │
                                                                                   │
                                                                                   │
@@ -160,16 +160,16 @@ What right looks like: every commit of PR 16021 and `sara/fix-toc` drawn on its 
 
  ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
 
-▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft  28h│ wallet-release  (you're here)
-    ┃ ┊                           Graft · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
-    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ · not merged
-    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft  28h│ ✓ up to date with main
-    ┃   ●    PR 16021             totals: test the sum                  Graft  28h│ · Graft, last commit 28h ago
-    ┃   ●                         totals: drop the cache                Graft  28h│
-    ┃   ●                         totals: round once                    Graft  28h│ built on
-    ┃   ●                         totals: read the ledger               Graft  28h│   main
-    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft  28h│    ─◆ wallet-release
-  ◇━╯        main                 Add the readme  not pushed yet        Graft  28h│
+▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Maker  28h│ wallet-release  (you're here)
+    ┃ ┊                           Maker · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
+    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Maker  28h│ ✓ up to date with main
+    ┃   ●    PR 16021             totals: test the sum                  Maker  28h│ · Maker, last commit 28h ago
+    ┃   ●                         totals: drop the cache                Maker  28h│
+    ┃   ●                         totals: round once                    Maker  28h│ built on
+    ┃   ●                         totals: read the ledger               Maker  28h│   main
+    ●┄┄┄╯    wallet-release (you) Start the wallet release              Maker  28h│    ─◆ wallet-release
+  ◇━╯        main                 Add the readme  not pushed yet        Maker  28h│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -205,11 +205,11 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
 
  ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
 
-    ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Graft  28h│ wallet-release  (you're here)
-▸   ◉                         Merged PR 16021: Fix the wallet totals    Graft  28h│ ! not pushed yet
-    ┃                         Graft · 28 hours ago · made on wallet-release · mer…│ · not merged
-    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet            Graft  28h│ · Graft, last commit 28h ago
+    ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Maker  28h│ wallet-release  (you're here)
+▸   ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ ! not pushed yet
+    ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ · not merged
+    ●                         Start the wallet release                  Maker  28h│ ✓ up to date with main
+  ◇━╯    main                 Add the readme  not pushed yet            Maker  28h│ · Maker, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
@@ -250,38 +250,38 @@ What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branch
 
  ◆ api  ~/code/api · wallet-release                          47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
-  ●    wallet-release (you) release: note 29                            Graft  27h│ wallet-release  (you're here)
-  ●                         release: note 28                            Graft  27h│ ! not pushed yet
-  ●                         release: note 27                            Graft  27h│ · not merged
-  ●                         release: note 26                            Graft  27h│ ✓ up to date with main
-  ●                         release: note 25                            Graft  27h│ · Graft, last commit 27h ago
-  ●                         release: note 24                            Graft  27h│
-  ●                         release: note 23                            Graft  27h│ built on
-  ●                         release: note 22                            Graft  27h│   main
-  ●                         release: note 21                            Graft  27h│    ─◆ wallet-release
-  ●                         release: note 20                            Graft  27h│
-  ●                         release: note 19                            Graft  27h│
-  ●                         release: note 18                            Graft  27h│
-  ●                         release: note 17                            Graft  27h│
-  ●                         release: note 16                            Graft  27h│
-  ●                         release: note 15                            Graft  27h│
-  ●                         release: note 14                            Graft  27h│
-  ●                         release: note 13                            Graft  27h│
-  ●                         release: note 12                            Graft  27h│
-  ●                         release: note 11                            Graft  27h│
-  ●                         release: note 10                            Graft  27h│
-  ●                         release: note 09                            Graft  27h│
-  ●                         release: note 08                            Graft  27h│
-  ●                         release: note 07                            Graft  27h│
-  ●                         release: note 06                            Graft  27h│
-  ●                         release: note 05                            Graft  27h│
-  ●                         release: note 04                            Graft  27h│
-  ●                         release: note 03                            Graft  27h│
-  ●                         release: note 02                            Graft  27h│
-  ●                         release: note 01                            Graft  27h│
-  ◉                         Merge branch 'sara/fix-toc' into wallet-r…  Graft  28h│
-▸ ◉                         Merged PR 16021: Fix the wallet totals  ▸   Graft  28h│
-  ┃                         Graft · 28 hours ago · made on wallet-release · merge…│
+  ●    wallet-release (you) release: note 29                            Maker  27h│ wallet-release  (you're here)
+  ●                         release: note 28                            Maker  27h│ ! not pushed yet
+  ●                         release: note 27                            Maker  27h│ · not merged
+  ●                         release: note 26                            Maker  27h│ ✓ up to date with main
+  ●                         release: note 25                            Maker  27h│ · Maker, last commit 27h ago
+  ●                         release: note 24                            Maker  27h│
+  ●                         release: note 23                            Maker  27h│ built on
+  ●                         release: note 22                            Maker  27h│   main
+  ●                         release: note 21                            Maker  27h│    ─◆ wallet-release
+  ●                         release: note 20                            Maker  27h│
+  ●                         release: note 19                            Maker  27h│
+  ●                         release: note 18                            Maker  27h│
+  ●                         release: note 17                            Maker  27h│
+  ●                         release: note 16                            Maker  27h│
+  ●                         release: note 15                            Maker  27h│
+  ●                         release: note 14                            Maker  27h│
+  ●                         release: note 13                            Maker  27h│
+  ●                         release: note 12                            Maker  27h│
+  ●                         release: note 11                            Maker  27h│
+  ●                         release: note 10                            Maker  27h│
+  ●                         release: note 09                            Maker  27h│
+  ●                         release: note 08                            Maker  27h│
+  ●                         release: note 07                            Maker  27h│
+  ●                         release: note 06                            Maker  27h│
+  ●                         release: note 05                            Maker  27h│
+  ●                         release: note 04                            Maker  27h│
+  ●                         release: note 03                            Maker  27h│
+  ●                         release: note 02                            Maker  27h│
+  ●                         release: note 01                            Maker  27h│
+  ◉                         Merge branch 'sara/fix-toc' into wallet-r…  Maker  28h│
+▸ ◉                         Merged PR 16021: Fix the wallet totals  ▸   Maker  28h│
+  ┃                         Maker · 28 hours ago · made on wallet-release · merge…│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys
 
@@ -295,38 +295,38 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
 
  ◆ api  …api · wallet-release  47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
-  ●    walle… (you) release: note 29                                           Graft  27h
-  ●                 release: note 28                                           Graft  27h
-  ●                 release: note 27                                           Graft  27h
-  ●                 release: note 26                                           Graft  27h
-  ●                 release: note 25                                           Graft  27h
-  ●                 release: note 24                                           Graft  27h
-  ●                 release: note 23                                           Graft  27h
-  ●                 release: note 22                                           Graft  27h
-  ●                 release: note 21                                           Graft  27h
-  ●                 release: note 20                                           Graft  27h
-  ●                 release: note 19                                           Graft  27h
-  ●                 release: note 18                                           Graft  27h
-  ●                 release: note 17                                           Graft  27h
-  ●                 release: note 16                                           Graft  27h
-  ●                 release: note 15                                           Graft  27h
-  ●                 release: note 14                                           Graft  27h
-  ●                 release: note 13                                           Graft  27h
-  ●                 release: note 12                                           Graft  27h
-  ●                 release: note 11                                           Graft  27h
-  ●                 release: note 10                                           Graft  27h
-  ●                 release: note 09                                           Graft  27h
-  ●                 release: note 08                                           Graft  27h
-  ●                 release: note 07                                           Graft  27h
-  ●                 release: note 06                                           Graft  27h
-  ●                 release: note 05                                           Graft  27h
-  ●                 release: note 04                                           Graft  27h
-  ●                 release: note 03                                           Graft  27h
-  ●                 release: note 02                                           Graft  27h
-  ●                 release: note 01                                           Graft  27h
-  ◉                 Merge branch 'sara/fix-toc' into wallet-release  ▸         Graft  28h
-▸ ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits        Graft  28h
-  ┃                 Graft · 28 hours ago · made on wallet-release · merged 4 from PR 160…
+  ●    walle… (you) release: note 29                                           Maker  27h
+  ●                 release: note 28                                           Maker  27h
+  ●                 release: note 27                                           Maker  27h
+  ●                 release: note 26                                           Maker  27h
+  ●                 release: note 25                                           Maker  27h
+  ●                 release: note 24                                           Maker  27h
+  ●                 release: note 23                                           Maker  27h
+  ●                 release: note 22                                           Maker  27h
+  ●                 release: note 21                                           Maker  27h
+  ●                 release: note 20                                           Maker  27h
+  ●                 release: note 19                                           Maker  27h
+  ●                 release: note 18                                           Maker  27h
+  ●                 release: note 17                                           Maker  27h
+  ●                 release: note 16                                           Maker  27h
+  ●                 release: note 15                                           Maker  27h
+  ●                 release: note 14                                           Maker  27h
+  ●                 release: note 13                                           Maker  27h
+  ●                 release: note 12                                           Maker  27h
+  ●                 release: note 11                                           Maker  27h
+  ●                 release: note 10                                           Maker  27h
+  ●                 release: note 09                                           Maker  27h
+  ●                 release: note 08                                           Maker  27h
+  ●                 release: note 07                                           Maker  27h
+  ●                 release: note 06                                           Maker  27h
+  ●                 release: note 05                                           Maker  27h
+  ●                 release: note 04                                           Maker  27h
+  ●                 release: note 03                                           Maker  27h
+  ●                 release: note 02                                           Maker  27h
+  ●                 release: note 01                                           Maker  27h
+  ◉                 Merge branch 'sara/fix-toc' into wallet-release  ▸         Maker  28h
+▸ ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits        Maker  28h
+  ┃                 Maker · 28 hours ago · made on wallet-release · merged 4 from PR 160…
 ──────────────────────────────────────────────────────────────────────────────────────────
  space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys
 
@@ -340,10 +340,10 @@ What right looks like: `stash@{0}` (newest, with an untracked file) draws `■`,
 
  ◆ api  ~/code/api · main                                                                                     3 commits
 
-▸   ■                         On main: newest, with an untracked file   Graft  28h│ c7e3010 · not on a branch
-    ┃                         Graft · 28 hours ago · c7e3010                      │
-  ◆━╯    main (you)           Write the second note  not pushed yet     Graft  28h│
-  ◇                           Add the notes                             Graft  28h│
+▸   ■                         On main: newest, with an untracked file   Maker  28h│ eb95559 · not on a branch
+    ┃                         Maker · 28 hours ago · eb95559                      │
+  ◆━╯    main (you)           Write the second note  not pushed yet     Maker  28h│
+  ◇                           Add the notes                             Maker  28h│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -583,7 +583,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ◆        feature/recei… (you) Draw the receipts list  ↑1 to push      you  28h│ wallet-release
     ◉┄╮      wallet-release       Merge branch 'sara/fix-toc' into wa…    you  28h│ ! 2 commits to push
 ▸   ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ · not merged
-    ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · b8…│ ✓ up to date with main
+    ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · 7c…│ ✓ up to date with main
     ●┄╯                           Start the wallet release                you  28h│ · you and Sara, last commit 28h ago
     ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
@@ -658,12 +658,12 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
 
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
-▸   ◆        wallet-release (you) Bump the wallet version               Graft  28h│ wallet-release  (you're here)
-    ┃                             Graft · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
-    ┃ ●      ali/x                x: try the other layout               Graft  28h│ · not merged
-    ┃ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ ✓ up to date with main
-    ●┄┴┄╯    wallet-release (you) Start the wallet release              Graft  28h│ · Graft, last commit 28h ago
-  ◇━╯        main                 Add the readme  not pushed yet        Graft  28h│
+▸   ◆        wallet-release (you) Bump the wallet version               Maker  28h│ wallet-release  (you're here)
+    ┃                             Maker · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
+    ┃ ●      ali/x                x: try the other layout               Maker  28h│ · not merged
+    ┃ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ ✓ up to date with main
+    ●┄┴┄╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
+  ◇━╯        main                 Add the readme  not pushed yet        Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ wallet-release
@@ -697,12 +697,12 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
 
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
-    ◆        wallet-release (you) Bump the wallet version               Graft  28h│ sara/fix-toc
-    ┊ ●      ali/x                x: try the other layout               Graft  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ · not merged
-    ┊ ┊ ┃                         Graft · 28 hours ago · made on sara/fix-toc · c…│ ✓ up to date with main
-    ●┄┴━╯    wallet-release (you) Start the wallet release              Graft  28h│ · Graft, last commit 28h ago
-  ◇┄╯        main                 Add the readme  not pushed yet        Graft  28h│
+    ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
+    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! not pushed yet
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ ✓ up to date with main
+    ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
+  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ sara/fix-toc
@@ -736,12 +736,12 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
 
  ◆ api  ~/code/api · wallet-release                                                       5 commits
 
-    ◆        wallet-… (you) Bump the wallet version       Graft  28h│ sara/fix-toc
-    ┊ ●      ali/x          x: try the other layout       Graft  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc   toc: fix the anchors          Graft  28h│ · not merged
-    ┊ ┊ ┃                   Graft · 28 hours ago · made on sara/fix…│ ✓ up to date with main
-    ●┄┴━╯    wallet-… (you) Start the wallet release      Graft  28h│ · Graft, last commit 28h ago
-  ◇┄╯        main           Add the readme                Graft  28h│
+    ◆        wallet-… (you) Bump the wallet version       Maker  28h│ sara/fix-toc
+    ┊ ●      ali/x          x: try the other layout       Maker  28h│ ! not pushed yet
+▸   ┊ ┊ ●    sara/fix-toc   toc: fix the anchors          Maker  28h│ · not merged
+    ┊ ┊ ┃                   Maker · 28 hours ago · made on sara/fix…│ ✓ up to date with main
+    ●┄┴━╯    wallet-… (you) Start the wallet release      Maker  28h│ · Maker, last commit 28h ago
+  ◇┄╯        main           Add the readme                Maker  28h│
                                                                     │ built on
                                                                     │   main
                                                                     │    ─◆ sara/fix-toc
@@ -775,12 +775,12 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
 
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
-    ◆        wallet-release (you) Bump the wallet version               Graft  28h│ sara/fix-toc
-    ┊ ●      ali/x                x: try the other layout               Graft  28h│ reading…
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ reading…
-    ┊ ┊ ┃                         Graft · 28 hours ago · made on sara/fix-toc · c…│ reading…
-    ●┄┴━╯    wallet-release (you) Start the wallet release              Graft  28h│ reading…
-  ◇┄╯        main                 Add the readme  not pushed yet        Graft  28h│
+    ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
+    ┊ ●      ali/x                x: try the other layout               Maker  28h│ reading…
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ reading…
+    ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ reading…
+    ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ reading…
+  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -912,12 +912,12 @@ ease-pass 09b, drawn by `view::view` from a real AppState over the job pool (cra
 
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
-    ◆        wallet-release (you) Bump the wallet version               Graft  28h│ sara/fix-toc
-    ┊ ●      ali/x                x: try the other layout               Graft  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ · not merged
-    ┊ ┊ ┃                         Graft · 28 hours ago · made on sara/fix-toc · c…│ ✓ up to date with main
-    ●┄┴━╯    wallet-release (you) Start the wallet release              Graft  28h│ · Graft, last commit 28h ago
-  ◇┄╯        main                 Add the readme  not pushed yet        Graft  28h│
+    ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
+    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! not pushed yet
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ ✓ up to date with main
+    ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
+  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ sara/fix-toc
@@ -925,10 +925,10 @@ ease-pass 09b, drawn by `view::view` from a real AppState over the job pool (cra
                                                                                   │
   ┌ SWITCH BRANCH · yours and the remote's · type to find ───────────────────────────────────────────────────────────┐
   │ > ▏                                                                                                              │
-  │   ↩ before  ali/x           Graft  28h  x: try the other layout                                                  │
-  │ ▸ ● local   sara/fix-toc    Graft  28h  toc: fix the anchors                                                     │
-  │   ● local   main            Graft  28h  Add the readme                                                           │
-  │   · here    wallet-release  Graft  28h  you're on it                                                             │
+  │   ↩ before  ali/x           Maker  28h  x: try the other layout                                                  │
+  │ ▸ ● local   sara/fix-toc    Maker  28h  toc: fix the anchors                                                     │
+  │   ● local   main            Maker  28h  Add the readme                                                           │
+  │   · here    wallet-release  Maker  28h  you're on it                                                             │
   │                                                                                                                  │
   │                                                                                                                  │
   │                                                                                                                  │
@@ -1218,16 +1218,16 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
 
  ◆ wallet  ~/code/wallet · wallet-release                                                 9 commits  every branch shown
 
-▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft   3y│ wallet-release  (you're here)
-    ┃ ┊                           Graft · 3 years ago · made on wallet-release · …│ ! not pushed yet
-    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Graft   3y│ · not merged
-    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft   3y│ ✓ up to date with main
-    ┃   ●    PR 16021             totals: test the sum                  Graft   3y│ · Graft, last commit 3y ago
-    ┃   ●                         totals: drop the cache                Graft   3y│
-    ┃   ●                         totals: round once                    Graft   3y│ built on
-    ┃   ●                         totals: read the ledger               Graft   3y│   main
-    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft   3y│    ─◆ wallet-release
-  ◇━╯        main                 Add the readme  not pushed yet        Graft   3y│
+▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Maker   3y│ wallet-release  (you're here)
+    ┃ ┊                           Maker · 3 years ago · made on wallet-release · …│ ! not pushed yet
+    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Maker   3y│ · not merged
+    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Maker   3y│ ✓ up to date with main
+    ┃   ●    PR 16021             totals: test the sum                  Maker   3y│ · Maker, last commit 3y ago
+    ┃   ●                         totals: drop the cache                Maker   3y│
+    ┃   ●                         totals: round once                    Maker   3y│ built on
+    ┃   ●                         totals: read the ledger               Maker   3y│   main
+    ●┄┄┄╯    wallet-release (you) Start the wallet release              Maker   3y│    ─◆ wallet-release
+  ◇━╯        main                 Add the readme  not pushed yet        Maker   3y│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -1802,11 +1802,11 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
 ▸   │ ●                         Check every link                         Sara  55m│ · not merged
     │ ●                         Link the contents                        Omar  56m│ ✓ up to date with main
     │ ●                         Add a table of contents                  Sara  57m│ · Sara, Omar and 1 other, last
-    ● │                         Number the report                       Graft  58m│   commit 55m ago
-    ●─╯                         Add the report                          Graft  59m│
-  ●─╯                           Correct the note                        Graft   1y│ built on
-  ●                             Add the first note                      Graft   1y│   main
-  ◇                             Add a readme                            Graft   1y│    ─◆ sara/fix-toc
+    ● │                         Number the report                       Maker  58m│   commit 55m ago
+    ●─╯                         Add the report                          Maker  59m│
+  ●─╯                           Correct the note                        Maker   1y│ built on
+  ●                             Add the first note                      Maker   1y│   main
+  ◇                             Add a readme                            Maker   1y│    ─◆ sara/fix-toc
                                                                                   │
                                                                                   │
                                                                                   │

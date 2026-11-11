@@ -10,11 +10,11 @@
 ▸   │ ●                         Check every link                         Sara  55m│ · not merged
     │ ●                         Link the contents                        Omar  56m│ ✓ up to date with main
     │ ●                         Add a table of contents                  Sara  57m│ · Sara, Omar and 1 other, last
-    ● │                         Number the report                      Fixtu…  58m│   commit 55m ago
-    ●─╯                         Add the report                         Fixtu…  59m│
-  ●─╯                           Correct the note                       Fixtu…   1y│ built on
-  ●                             Add the first note                     Fixtu…   1y│   main
-  ◇                             Add a readme                           Fixtu…   1y│    ─◆ sara/fix-toc
+    ● │                         Number the report                       Maker  58m│   commit 55m ago
+    ●─╯                         Add the report                          Maker  59m│
+  ●─╯                           Correct the note                        Maker   1y│ built on
+  ●                             Add the first note                      Maker   1y│   main
+  ◇                             Add a readme                            Maker   1y│    ─◆ sara/fix-toc
                                                                                   │
                                                                                   │
                                                                                   │

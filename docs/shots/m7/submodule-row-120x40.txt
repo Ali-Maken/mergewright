@@ -2,10 +2,10 @@
 
 ▸ ◌                         Uncommitted changes (1 unstaged)
   ┃                         not committed yet · 1 file · on main
-  ◆    main (you)           add parser  not pushed yet                                                        Test  24h
-  ●                         Correct the note                                                                Fixtu…   2d
-  ●                         Add the first note                                                              Fixtu…   2d
-  ◇                         Add a readme                                                                    Fixtu…   2d
+  ◆    main (you)           add parser  not pushed yet                                                       Maker  24h
+  ●                         Correct the note                                                                 Maker   2d
+  ●                         Add the first note                                                               Maker   2d
+  ◇                         Add a readme                                                                     Maker   2d
 
 
 
@@ -23,11 +23,11 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space stage · d discard · c commit · ⌃A all · e edit · ⇥ diff · </> resize · . actions · ? keys
 UNCOMMITTED · 1 unstaged
-diff vs HEAD 9e4904b
-UNSTAGED (1)                  libs/parser · submodule · 77f3d9c → 5412345
+diff vs HEAD 9a1235a
+UNSTAGED (1)                  libs/parser · submodule · d433d5f → 3170e0a
   ▣ libs/parser           → ± changed inside
-                              + 5412345 parser 3
-                              + 912f8da parser 2
+                              + 3170e0a parser 3
+                              + cffc458 parser 2
 
 
 

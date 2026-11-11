@@ -35,9 +35,9 @@
  ◆ api  ~/code/api · main                                           201 commits
 ▸ ◆    main (you)   to push                                            you  now
   ┃                 you · just now · made on main · 0000000
-  ●                 Commit 200                                      Fixtu…   7y
-  ●                 Commit 199                                      Fixtu…   7y
-  ●                 Commit 198                                      Fixtu…   7y
+  ●                 Commit 200                                       Maker   7y
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
   ●    ╭ Undo after a push ──────────────────────────────────────────────╮   7y
   ●    │ commit "to push" is on origin/main                              │   7y
   ●    │ undo works on your local branch only                            │   7y
@@ -48,13 +48,13 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]            │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 187                                      Fixtu…   7y
-  ●                 Commit 186                                      Fixtu…   7y
-  ●                 Commit 185                                      Fixtu…   7y
-  ●                 Commit 184                                      Fixtu…   7y
-  ●                 Commit 183                                      Fixtu…   7y
-  ●                 Commit 182                                      Fixtu…   7y
-  ●                 Commit 181                                      Fixtu…   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
  ←/→ move  ⏎ choose  esc cancel
 
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
@@ -62,11 +62,11 @@
  ◆ api  ~/code/api · main                                           201 commits
 ▸ ◆    main (you)   to push                                            you  now
   ┃                 you · just now · made on main · 0000000
-  ●                 Commit 200                                      Fixtu…   7y
-  ●                 Commit 199                                      Fixtu…   7y
-  ●                 Commit 198                                      Fixtu…   7y
-  ●    ╭ Re-push old tip a3eba73 → origin/main? ─────────────────────────╮   7y
-  ●    │ origin/main 0000000 → a3eba73 · refused if origin moved since   │   7y
+  ●                 Commit 200                                       Maker   7y
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●    ╭ Re-push old tip 38e090d → origin/main? ─────────────────────────╮   7y
+  ●    │ origin/main 0000000 → 38e090d · refused if origin moved since   │   7y
   ●    │ your fetch (lease)                                              │   7y
   ●    │ rewrites history for everyone who has 0000000                   │   7y
   ●    │ your local branch keeps every commit it has                     │   7y
@@ -75,11 +75,11 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Re-push ]                                       │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 187                                      Fixtu…   7y
-  ●                 Commit 186                                      Fixtu…   7y
-  ●                 Commit 185                                      Fixtu…   7y
-  ●                 Commit 184                                      Fixtu…   7y
-  ●                 Commit 183                                      Fixtu…   7y
-  ●                 Commit 182                                      Fixtu…   7y
-  ●                 Commit 181                                      Fixtu…   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
  ←/→ move  ⏎ choose  esc cancel

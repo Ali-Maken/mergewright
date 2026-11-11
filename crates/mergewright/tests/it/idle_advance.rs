@@ -39,7 +39,7 @@ pub(crate) fn long_line(dir: &Path) {
         writeln!(stream, "mark :{i}").expect("a string");
         writeln!(
             stream,
-            "committer Test Maker <test@example.invalid> {at} +0000"
+            "committer Maker Test <test@example.invalid> {at} +0000"
         )
         .expect("a string");
         write!(stream, "data {}\n{message}", message.len()).expect("a string");

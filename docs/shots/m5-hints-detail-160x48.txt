@@ -49,15 +49,15 @@
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- ◆ api  ~/code/api · main                                   5 commits  date order, sorting…  COMMIT 52900f9
-                                                                                             Fixture Maker <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
-  ◌                 Uncommitted changes (1 unstaged)                                         parents 62d42d6 · diff vs first parent
-▸ ◆    main (you)   add second  not pushed yet                                  Fixtu…   8m  Contained in: checking…
-  ┃                 Fixture · 8 minutes ago · made on main · 52900f9
-  ●                 add first                                                   Fixtu…   9m  reading…
-  ●                 Correct the note                                            Fixtu…   1y
-  ●                 Add the first note                                          Fixtu…   1y
-  ◇                 Add a readme                                                Fixtu…   1y
+ ◆ api  ~/code/api · main                                   5 commits  date order, sorting…  COMMIT 66e26de
+                                                                                             Maker Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
+  ◌                 Uncommitted changes (1 unstaged)                                         parents fe84819 · diff vs first parent
+▸ ◆    main (you)   add second  not pushed yet                                   Maker   8m  Contained in: checking…
+  ┃                 Maker · 8 minutes ago · made on main · 66e26de
+  ●                 add first                                                    Maker   9m  reading…
+  ●                 Correct the note                                             Maker   1y
+  ●                 Add the first note                                           Maker   1y
+  ◇                 Add a readme                                                 Maker   1y
 
 
 

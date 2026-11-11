@@ -7,12 +7,12 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸ ◆    main (you)           reflow notes  not pushed yet                                                    Fixtu…   8m
-  ┃                         Fixture · 8 minutes ago · made on main · 181a2a8
-  ●                         add notes                                                                       Fixtu…   9m
-  ●                         Correct the note                                                                Fixtu…   1y
-  ●                         Add the first note                                                              Fixtu…   1y
-  ◇                         Add a readme                                                                    Fixtu…   1y
+▸ ◆    main (you)           reflow notes  not pushed yet                                                     Maker   8m
+  ┃                         Maker · 8 minutes ago · made on main · 73bfbde
+  ●                         add notes                                                                        Maker   9m
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -27,7 +27,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT 181a2a8 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents 7… · whitespace ignored
+COMMIT 73bfbde · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents e… · whitespace ignored
 reflow notes
 M notes.txt             +2 −2 ▎
                                 1   1   alpha   beta

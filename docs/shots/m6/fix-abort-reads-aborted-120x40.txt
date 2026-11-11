@@ -1,9 +1,9 @@
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
-  ●      main                 Change every file on main  not pushed yet                                     Fixtu…   2h
-▸ ║ ◆    feature (you)        Change every file on feature  not pushed yet  not merged                      Fixtu…   2h
-  ║ ┃                         Fixture · 2 hours ago · made on feature · db30899
-  ◇━╯    main                 Add the files both sides will change                                          Fixtu…   1y
+▸   ◆    feature (you)        Change every file on feature  not pushed yet  not merged                       Maker   2h
+    ┃                         Maker · 2 hours ago · made on feature · 0109d2c
+  ● ┃    main                 Change every file on main  not pushed yet                                      Maker   2h
+  ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
 
@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ aborted: rebase feature onto main
-COMMIT db30899 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents d129ff3 · diff vs firs…
+COMMIT 0109d2c · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 5d287d3 · diff vs firs…
 Change every file on feature
 R added-by-them.txt     +0 −0
 A both-added.txt        +1 −0

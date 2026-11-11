@@ -3,11 +3,11 @@ What right looks like: the PR's merge reads its whole subject, then `▸ 4 commi
 
  ◆ api  ~/code/api · wallet-release                            4 commits  2 merged branches folded
 
-▸   ◆    walle… (you) Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit      Fixtu…  28h
-    ┃                 Fixture · 28 hours ago · made on wallet-release · merged 1 from fix-toc · 3…
-    ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits              Fixtu…  28h
-    ●                 Start the wallet release                                         Fixtu…  28h
-  ◇━╯    main         Add the readme  not pushed yet                                   Fixtu…  28h
+▸   ◆    walle… (you) Merge branch 'sara/fix-toc' into wallet-release  ▸ 1 commit       Maker  28h
+    ┃                 Maker · 28 hours ago · made on wallet-release · merged 1 from fix-toc · 745…
+    ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits               Maker  28h
+    ●                 Start the wallet release                                          Maker  28h
+  ◇━╯    main         Add the readme  not pushed yet                                    Maker  28h
 
 
 

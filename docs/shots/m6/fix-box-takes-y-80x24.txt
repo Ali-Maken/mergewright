@@ -18,12 +18,12 @@
 #
 === frame 1: `P`, the plain push box ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ main (you)   ours  ↑1 to push                                Fixtu…   6y
-  ┃                 Fixture · 6 years ago · made on main · 9a387ed
-  ●                 Commit 200  origin/main is here                 Fixtu…   7y
-  ●                 Commit 199                                      Fixtu…   7y
-  ●                 Commit 198                                      Fixtu…   7y
-  ●                 Commit 197                                      Fixtu…   7y
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Maker   6y
+  ┃                 Maker · 6 years ago · made on main · c3569cb
+  ●                 Commit 200  origin/main is here                  Maker   7y
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
   ●    ╭ Push main → origin/main ────────────────────────────────────────╮   7y
   ●    │ 1 commit · can't be undone from here — origin keeps what you    │   7y
   ●    │ send                                                            │   7y
@@ -32,38 +32,38 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Push ]                                          │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 188                                      Fixtu…   7y
-  ●                 Commit 187                                      Fixtu…   7y
-  ●                 Commit 186                                      Fixtu…   7y
-  ●                 Commit 185                                      Fixtu…   7y
-  ●                 Commit 184                                      Fixtu…   7y
-  ●                 Commit 183                                      Fixtu…   7y
-  ●                 Commit 182                                      Fixtu…   7y
-  ●                 Commit 181                                      Fixtu…   7y
+  ●                 Commit 188                                       Maker   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ main (you)   ours  ↑1 to push                                Fixtu…   6y
-  ┃                 Fixture · 6 years ago · made on main · 9a387ed
-  ●                 Commit 200  origin/main is here                 Fixtu…   7y
-  ●                 Commit 199                                      Fixtu…   7y
-  ●                 Commit 198                                      Fixtu…   7y
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Maker   6y
+  ┃                 Maker · 6 years ago · made on main · c3569cb
+  ●                 Commit 200  origin/main is here                  Maker   7y
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
   ●    ╭ Force-push main → origin/main? ─────────────────────────────────╮   7y
-  ●    │ origin/main a3eba73 → 9a387ed · refused if origin moved since   │   7y
+  ●    │ origin/main 38e090d → c3569cb · refused if origin moved since   │   7y
   ●    │ your fetch (lease)                                              │   7y
-  ●    │ rewrites history for everyone who has a3eba73                   │   7y
+  ●    │ rewrites history for everyone who has 38e090d                   │   7y
   ●    │ nothing on origin/main is lost                                  │   7y
   ●    │                                                                 │   7y
-  ●    │ git push --progress --force-with-lease=refs/heads/main:a3eba73… │   7y
+  ●    │ git push --progress --force-with-lease=refs/heads/main:38e090d… │   7y
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Force push ]                                    │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 187                                      Fixtu…   7y
-  ●                 Commit 186                                      Fixtu…   7y
-  ●                 Commit 185                                      Fixtu…   7y
-  ●                 Commit 184                                      Fixtu…   7y
-  ●                 Commit 183                                      Fixtu…   7y
-  ●                 Commit 182                                      Fixtu…   7y
-  ●                 Commit 181                                      Fixtu…   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
  ←/→ move  ⏎ choose  esc cancel

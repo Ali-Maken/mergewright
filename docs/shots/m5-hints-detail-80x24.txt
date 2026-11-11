@@ -50,8 +50,8 @@
 # them.
 
 Graph  [Detail]
-COMMIT 52900f9
-Fixture Maker <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents…
+COMMIT 66e26de
+Maker Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents…
 add second
 reading…
 

@@ -5,13 +5,13 @@ expression: text
 shape: criss-cross-merge (widest), 16, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                                             7 commits
-    ●                       beta: carry on                          Fixtu…   4y
-▸ ◆─╎─╮                     Merge branch 'alpha'                    Fixtu…   4y
-  │ ◉╌│╌╮                   beta: merge alpha                       Fixtu…   4y
-  │ ╎ ◉─╎─╮                 alpha: merge beta                       Fixtu…   4y
-  │ ●─│─╎─╯                 beta: work                              Fixtu…   4y
-  │ ╎ ●╌╯                   alpha: work                             Fixtu…   4y
-  ◇╌┴─╯                     Add the base                            Fixtu…   4y
+    ●                       beta: carry on                           Maker   4y
+▸ ◆─╎─╮                     Merge branch 'alpha'                     Maker   4y
+  │ ◉╌│╌╮                   beta: merge alpha                        Maker   4y
+  │ ╎ ◉─╎─╮                 alpha: merge beta                        Maker   4y
+  │ ●─│─╎─╯                 beta: work                               Maker   4y
+  │ ╎ ●╌╯                   alpha: work                              Maker   4y
+  ◇╌┴─╯                     Add the base                             Maker   4y
 
 
 
@@ -32,8 +32,8 @@ shape: criss-cross-merge (widest), 16, 80x24, cursor on row 2
 graph colour per cell:
 ..6.......
 57677.....
-5.67777...
-5.6.76766.
-5.6676766.
-5.6.777...
+5.66766...
+5.6.79699.
+5.6979699.
+5.6.766...
 56677.....

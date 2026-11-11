@@ -1,22 +1,22 @@
 # m8-polish-and-ship/57, `mwr` over a pty (Unicode tier): what right looks like —
-# `▸` on the `●` rebase row (newest: Mergewright worked since the shell's loss, so no preselect) with `└ ⇢ replaced 38a4f7c "work on feature" · was feature's tip · undo brings it back` under it;
+# `▸` on the `●` rebase row (newest: Mergewright worked since the shell's loss, so no preselect) with `└ ⇢ replaced 7c432a4 "work on feature" · was feature's tip · undo brings it back` under it;
 # the `$` reset row with `└ ✗ lost` under it; the legend ends with the `⇢` clause.
 # Colour unverified (rule 5).
 
 JOURNAL · what happened in this repo, newest first
 ▸ ●  Mergewright    future    rebase feature onto main                     1 ref · the index · the working tree · backup saved                                                         ← u
-     └ ⇢ replaced   38a4f7c "work on feature" · was feature's tip · undo brings it back
+     └ ⇢ replaced   7c432a4 "work on feature" · was feature's tip · undo brings it back
   $  outside        2d ago    switch from main to feature                        git: "checkout: moving from main to feature"
   $  outside        2d ago    committed "M" on main                              git: "commit: M"
   $  outside        2d ago    switch from spare to main                          git: "checkout: moving from spare to main"
   $  outside        2d ago    reset spare 1 commit back                          git: "reset: moving to HEAD~1"
-     └ ✗ lost       d79d5ab "spare work" · was spare's tip · no branch holds it
+     └ ✗ lost       363bb56 "spare work" · was spare's tip · no branch holds it
   $  outside        2d ago    committed "spare work" on spare                    git: "commit: spare work"
   $  outside        2d ago    switch from feature to spare                       git: "checkout: moving from feature to spare"
-  $  outside        2d ago    made spare at 263ce2b                              git: "branch: Created from main"
+  $  outside        2d ago    made spare at adeeccd                              git: "branch: Created from main"
   $  outside        2d ago    committed "work on feature" on feature             git: "commit: work on feature"
   $  outside        2d ago    switch from main to feature                        git: "checkout: moving from main to feature"
-  $  outside        2d ago    made feature at 263ce2b                            git: "branch: Created from HEAD"
+  $  outside        2d ago    made feature at adeeccd                            git: "branch: Created from HEAD"
   $  outside        2d ago    committed "A" on main                              git: "commit (initial): A"
   a branch deleted outside Mergewright and never checked out leaves no trace
 

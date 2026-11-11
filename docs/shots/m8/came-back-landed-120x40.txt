@@ -11,13 +11,13 @@
  ◆ api  ~/code/api · feature-b                                                                                6 commits
 
     ◌                         Uncommitted changes (2 staged, 1 unstag…            │ feature-b  (you're here)
-▸   ◆    feature-b (you)      fix the bug  not pushed yet  not merged  Fixtu…   3m│ ! not pushed yet
-    ┃                         Fixture · 3 minutes ago · made on feature-b · 3ec56…│ · not merged
-  ● ┃    main                 main moves on  not pushed yet            Fixtu…   4m│ ! main has 1 new commit since it
-  ●━╯                         add the base                             Fixtu…   5m│   left
-  ●                           Correct the note                         Fixtu…   1y│ · Fixture, last commit 3m ago
-  ●                           Add the first note                       Fixtu…   1y│
-  ◇                           Add a readme                             Fixtu…   1y│ built on
+▸   ◆    feature-b (you)      fix the bug  not pushed yet  not merged   Maker   3m│ ! not pushed yet
+    ┃                         Maker · 3 minutes ago · made on feature-b · 75ce583 │ · not merged
+  ● ┃    main                 main moves on  not pushed yet             Maker   4m│ ! main has 1 new commit since it
+  ●━╯                         add the base                              Maker   5m│   left
+  ●                           Correct the note                          Maker   1y│ · Maker, last commit 3m ago
+  ●                           Add the first note                        Maker   1y│
+  ◇                           Add a readme                              Maker   1y│ built on
                                                                                   │   main
                                                                                   │    ─◆ feature-b
                                                                                   │

@@ -241,7 +241,7 @@ fn a_commit_made_with_sign_off_on_carries_the_trailer() {
     let _landed: AppState = app.settle_write(state, "the commit");
     let message = git(repo, &["log", "-1", "--format=%B"]);
     assert!(
-        message.contains("Signed-off-by: Test Maker <test@example.invalid>"),
+        message.contains("Signed-off-by: Maker Test <test@example.invalid>"),
         "{message}"
     );
     app.close();

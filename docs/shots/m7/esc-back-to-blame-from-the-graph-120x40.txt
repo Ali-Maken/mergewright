@@ -2,7 +2,7 @@ Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on Lina's com
  ◆ api  ~/code/api · main                                                                                     6 commits
 
   ◌                         Uncommitted changes (1 untracked)
-  ◆    main (you)           Handle expired tokens  not pushed yet                                           Fixtu…  60m
+  ◆    main (you)           Handle expired tokens  not pushed yet                                            Maker  60m
   ●                         Move session TTL to config                                                       Priya  4mo
   ●                         rustfmt                                                                         Rustf…  5mo
 ▸ ●                         Retry refresh once on 401                                                         Lina  7mo
@@ -41,11 +41,11 @@ Retry refresh once on 401
                                23  24               }
 
 Right: (b) one `Esc` — blame again, `▸` on line 22 `if resp.status() == 401 && attempt == 0 {`.
- BLAME · src/auth/session.rs · as of 0ca70ea
+ BLAME · src/auth/session.rs · as of 41db24c
  skipping 1 commit listed in .git-blame-ignore-revs · i shows them
  ─ 3f6c311 Ana     1y │  1  use std::time::{Duration, Instant};
  ─ 0a27627 Priya  4mo │  2  use crate::config::Config;
- ─ 0ca70ea Fixt…  60m │  3  use crate::error::Expired;
+ ─ 41db24c Make…  60m │  3  use crate::error::Expired;
  ┌ 3f6c311 Ana     1y │  4  use crate::http::{Client, Result};
  │                    │  5
  │                    │  6  pub struct Session {
@@ -68,7 +68,7 @@ Right: (b) one `Esc` — blame again, `▸` on line 22 `if resp.status() == 401 
  └                    │ 23                  attempt += 1;
  ┌ 47593a5 Tom   10mo │ 24                  continue;
  └                    │ 25              }
- ─ 0ca70ea Fixt…  60m │ 26              self.token = resp.token().map_err(Expired::from)?;
+ ─ 41db24c Make…  60m │ 26              self.token = resp.token().map_err(Expired::from)?;
  ┌ 47593a5 Tom   10mo │ 27              return self.record_refresh(&resp, "refreshed after the server answered 401 on th
  │                    │ 28          }
  └                    │ 29      }

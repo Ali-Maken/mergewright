@@ -366,7 +366,7 @@ fn typing_then_enter_moves_to_the_first_row_that_holds_it() {
     let frame = drawn(&state, 187, 50);
     let body = text(&frame);
     assert!(
-        selected_row(&frame).contains("2284a8b \"Try redis cache\""),
+        selected_row(&frame).contains("196109a \"Try redis cache\""),
         "▸ on the first row below that holds `redis`:\n{body}"
     );
     assert!(
@@ -747,7 +747,7 @@ fn a_find_survives_rows_arriving() {
     assert_eq!(selected_row(&frame), on, "the cursor kept its row:\n{body}");
     let after = spike_rows(&frame);
     assert!(
-        body.contains("95330be") && after == before + 1,
+        body.contains("63da907") && after == before + 1,
         "the ✗ row spike held is a new hit ({before} → {after}):\n{body}"
     );
     assert!(
