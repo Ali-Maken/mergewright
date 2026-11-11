@@ -1,0 +1,53 @@
+SUMMARY ease-16 heavy tier: exit 101, 2075 s, --test-threads=2
+test result: ok. 2735 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 82.89s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1118 filtered out; finished in 1.63s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1118 filtered out; finished in 1.95s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1118 filtered out; finished in 1.39s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1118 filtered out; finished in 4.88s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1118 filtered out; finished in 6.97s
+test result: FAILED. 1109 passed; 4 failed; 6 ignored; 0 measured; 0 filtered out; finished in 983.63s
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.37s
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.77s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.57s
+test result: ok. 393 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.73s
+test result: ok. 200 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 28.57s
+test result: ok. 170 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.92s
+test result: ok. 58 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 25.43s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 469 filtered out; finished in 0.02s
+test result: ok. 469 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 40.38s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 854 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 664.29s
+test result: ok. 193 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 943 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 88.75s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.04s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+failed tests:
+    ease_walk::shots::the_contact_sheet_names_every_capture
+    held_key::held_j_stops_on_release_pixel_free
+    many_refs::first_paint_with_50k_real_refs_is_within_budget
+    piece_gate::no_frame_rasterises_more
+SUMMARY lines from tests:
+SUMMARY held_key tier=Pixel scenario=A size=187x50 cell=17x37 drain=18446744073709551615B/s pipe=16384 keys=188 frames_while_held=28 frames_after_release=1 tail_ms=12 bytes_per_frame_held=1044503 strip_transmits_held=22 emphasis_transmits_held=38 rows_scrolled=188 rest_frames=1 rest_ms=72 fold_changes_held=unread bytes_per_key=182469 emphasis_area_per_key=0.2 emphasis_cells_p99=21 deflated_transmits=0 peak_rss_mb=510 premise_wide=188/188 premise_lit_changed=161/188
+SUMMARY piece_gate_frames size=222x70 frames=51 over=1 first_today_px=120768 first_pieces_px=67932 most_pieces_px=145299
