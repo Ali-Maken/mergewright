@@ -145,7 +145,7 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`, and 
 ~60k tokens: the key fix, one identity source and URL, literal swaps, the oid sites found by failure, one script and one probe. Regeneration is machine time.
 
 ## Fast and walk tiers (conductor ticks the final box)
-- [ ] (conductor) Fast and walk tiers green; no `over_400.txt` row raised. Builder: `cargo nextest run --no-fail-fast` 6792/6792; `scripts/walks.sh` 459/459; fmt, clippy, heavy clippy, `cargo test --doc` pass; `file_size` passes.
+- [x] (conductor) Fast and walk tiers green ← main: fast 6792/6792 (676 s, over budget, see gap), walks 459/0, fmt, clippy, heavy clippy, doc clean
 
 ## NOTES (builder, after D1 amendment to Maker Fixture / Maker Test / Maker Perf)
 - No scout used (scout file existed). Not compacted.
