@@ -16,7 +16,7 @@ use mergewright_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::facts::FactsError;
 
-use super::todo::FORK_LABEL;
+use super::todo::is_fork_label;
 use super::{EditStop, Follower, ForkStop, RewriteProgress, TodoAction, TodoLine, saved};
 
 /// One line of a todo file git is running.
@@ -30,11 +30,6 @@ enum Row {
     Label(String),
     /// `reset <name>`: a fork's section ends when the name is Mergewright's.
     Reset(String),
-}
-
-/// The label of a fork's section, `graft-fork-<n>`.
-fn fork_label(name: &str) -> bool {
-    name.starts_with(FORK_LABEL)
 }
 
 /// Where the rebase in progress is. `None` when no `rebase -i` is running
@@ -117,7 +112,7 @@ fn open_section(done: &[Row]) -> Option<&str> {
     let mut open = None;
     for row in done {
         match row {
-            Row::Label(name) if fork_label(name) => open = Some(name.as_str()),
+            Row::Label(name) if is_fork_label(name) => open = Some(name.as_str()),
             Row::Reset(name) if open == Some(name.as_str()) => open = None,
             _ => {}
         }
@@ -175,8 +170,8 @@ fn pending(to_do: &[Row], in_section: bool) -> Vec<TodoLine> {
     let mut out = Vec::new();
     for row in to_do {
         match row {
-            Row::Label(name) if fork_label(name) => inside = true,
-            Row::Reset(name) if fork_label(name) => {
+            Row::Label(name) if is_fork_label(name) => inside = true,
+            Row::Reset(name) if is_fork_label(name) => {
                 inside = false;
                 first = false;
             }
@@ -214,8 +209,8 @@ fn followers(
     let mut in_section = in_section;
     for row in to_do {
         match row {
-            Row::Label(name) if fork_label(name) => in_section = true,
-            Row::Reset(name) if fork_label(name) => in_section = false,
+            Row::Label(name) if is_fork_label(name) => in_section = true,
+            Row::Reset(name) if is_fork_label(name) => in_section = false,
             Row::Commit(_) if !in_section => current += 1,
             Row::UpdateRef(name) if in_line(plan, name) => {
                 segments.push(current);

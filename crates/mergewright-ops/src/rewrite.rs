@@ -185,8 +185,8 @@ pub struct RewriteParams {
 }
 
 /// A fork that follows, as the todo runs it (ADR-0059 §3): right after the
-/// row that makes its new base, `label graft-fork-<n>`, its picks, an
-/// `update-ref` for each branch on it, `reset graft-fork-<n>`, and the line
+/// row that makes its new base, `label mwr-fork-<n>`, its picks, an
+/// `update-ref` for each branch on it, `reset mwr-fork-<n>`, and the line
 /// goes on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ForkSection {

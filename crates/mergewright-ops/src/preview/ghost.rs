@@ -6,7 +6,11 @@
 )]
 use super::*;
 
-/// A ghost's synthetic id: SHA-1 over `"graft-ghost\0"`, the **subject** git
+/// The domain-separating prefix of every ghost id. It names no product, so
+/// a rename never moves ghost ids.
+const GHOST_SEED: &[u8] = b"preview-ghost\0";
+
+/// A ghost's synthetic id: SHA-1 over [`GHOST_SEED`], the **subject** git
 /// would give the commit, a NUL and `n`.
 ///
 /// The subject, not the operation's description: a rebase draws one ghost per
@@ -17,10 +21,10 @@ use super::*;
 /// the same rows, or the graph's row caches would churn and the eye would
 /// see the picture flicker. The domain-separating prefix is why this will
 /// not collide with a real commit: git hashes `commit <len>\0…`, never
-/// `graft-ghost\0…`.
+/// `preview-ghost\0…`.
 #[must_use]
 pub fn ghost_oid(subject: &str, n: usize) -> Oid {
-    let mut message = b"graft-ghost\0".to_vec();
+    let mut message = GHOST_SEED.to_vec();
     message.extend_from_slice(subject.as_bytes());
     message.push(0);
     message.extend_from_slice(n.to_string().as_bytes());

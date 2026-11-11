@@ -143,7 +143,7 @@ status: works
   and the finish — is one entry that `u` takes back as a unit once resume exists. This rule
   also protects an operation started outside Mergewright (in a shell): such a step runs but is
   never adopted into a Mergewright entry, because Mergewright has no entry to fold it onto.
-- **Proven by:** `mergewright_ops::tests::it::history_ops::conflict_span_is_one_entry_and_undoes_to_before_the_merge`, `mergewright_ops::tests::it::history_ops::resolving_each_file_in_turn_still_leaves_the_span_one_entry`, `mergewright_ops::tests::it::history_ops::a_resolve_step_joins_the_live_entrys_commands`, `mergewright_ops::tests::it::history_ops::a_shell_merge_is_not_adopted_as_grafts_own_entry`, `mergewright_ops::tests::it::history_ops::rebase_conflicts_twice_same_entry`
+- **Proven by:** `mergewright_ops::tests::it::history_ops::conflict_span_is_one_entry_and_undoes_to_before_the_merge`, `mergewright_ops::tests::it::history_ops::resolving_each_file_in_turn_still_leaves_the_span_one_entry`, `mergewright_ops::tests::it::history_ops::a_resolve_step_joins_the_live_entrys_commands`, `mergewright_ops::tests::it::history_ops::a_shell_merge_is_not_adopted_as_an_own_entry`, `mergewright_ops::tests::it::history_ops::rebase_conflicts_twice_same_entry`
 - **Decided in:** `.scratch/m5-history-and-ghost-preview/as-built.md` §1; DESIGN §6.4, hard choice 2
 - **Status:** works (ops layer; fixed at the cause in the final review round after an earlier build made the merge unreachable by `u` — see `docs/reviews/m5-07-ops-history-operations.md` C1). Not yet exercised by a live user session: no key opens or resolves a conflict yet (group 09, unbuilt).
 
@@ -197,7 +197,7 @@ unverified_aspect: the capture — the user has not judged it
 - **How:** internal — `preview::plan`'s `GhostCommit`/`RefMove` shapes, consumed by the graph
   widget's `RowPaint::Ghost`.
 - **Behaviour:** every ghost row is drawn dashed (`┊`/`┈`/`○`, or `:`/`.`/`o` at the ASCII
-  tier), muted, with a synthetic but deterministic id (`sha1("graft-ghost\0<subject>\0<n>")`,
+  tier), muted, with a synthetic but deterministic id (`sha1("preview-ghost\0<subject>\0<n>")`,
   never written to the object database). Its parents, subjects and (for a replay) authors
   match what the real git command would actually write, verified by running the plan through
   `apply` and reading the result back from git. A real lane passing *through* a ghost row

@@ -259,9 +259,9 @@ unverified_aspect: whether stash-internals-in-graph was the original M2/M3 desig
 ```
 
 - **How:** Automatic.
-- **Behaviour:** Any ref under `refs/mergewright/**` (the journal's backup refs) is excluded before it ever reaches the graph, the ref badges, or the "contained in" computation — filtered once, at the read seam (`RefName::is_graft_internal`), not re-implemented at each call site. `refs/stash` is different: it's git's own namespace, the user already knows about it, and Mergewright draws stash entries on the graph on purpose.
+- **Behaviour:** Any ref under `refs/mergewright/**` (the journal's backup refs) is excluded before it ever reaches the graph, the ref badges, or the "contained in" computation — filtered once, at the read seam (`RefName::is_mergewright_internal`), not re-implemented at each call site. `refs/stash` is different: it's git's own namespace, the user already knows about it, and Mergewright draws stash entries on the graph on purpose.
 - **Proven by:**
-  `mergewright-git::repo::tests::grafts_own_refs_are_not_drawn_but_are_still_readable`
+  `mergewright-git::repo::tests::own_refs_are_not_drawn_but_are_still_readable`
   `no_bookkeeping_in_the_graph` (run after every scenario in the M3 acceptance walk)
 - **Decided in:** `docs/reviews/m3-07-acceptance.md` (review finding C1), fixed in ticket 08
 - **Status:** works. Known gap one level down: git's *own* stash internals (`index on main: …`, `untracked files on main: …` synthetic commits reachable one hop below `refs/stash`) still draw in the graph — unverified whether that was the original M2/M3 design intent.

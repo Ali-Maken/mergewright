@@ -568,8 +568,8 @@ fn a_fork_follows_in_the_same_rebase() {
 
     mergewright(&repo, params, &nothing);
     let todo = format!(
-        "reword {}\npick {}\nlabel graft-fork-1\npick {}\nupdate-ref refs/heads/feature-x-wip\n\
-         pick {}\nupdate-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\npick {}\n",
+        "reword {}\npick {}\nlabel mwr-fork-1\npick {}\nupdate-ref refs/heads/feature-x-wip\n\
+         pick {}\nupdate-ref refs/heads/feature-x\nreset mwr-fork-1\npick {}\npick {}\n",
         full(&hand, "feature~3"),
         full(&hand, "feature~2"),
         full(&hand, "feature-x~1"),

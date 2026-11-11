@@ -1,6 +1,6 @@
 # pre-publish: the last codename spellings 11c left on purpose (ghost seed, fork label, internal-ref fn, scratch prefix, cited test names), and the guard's `11c` exceptions removed
 
-Status: ready
+Status: done (fast/walk box for conductor)
 Blocked by: 11a, 11b4, 11c (merged)
 Runs: alone, before 12 (it changes ghost ids and one capture's paths; 12 then regenerates on top)
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: each rename is decided below, and each has a test written first that pins what must not change.
@@ -77,13 +77,13 @@ impl RefName { pub fn is_mergewright_internal(&self) -> bool; } // was is_graft_
 ```
 
 ## Acceptance (tick each with its test, inline)
-- [ ] No persisted ghost id ← grep quoted in NOTES
-- [ ] Ghost seed pinned ← `ghost_id_seed_is_neutral`
-- [ ] A stopped rewrite round-trips under the new label ← `rewrite_fork_label_round_trips` (green before and after; file diff since its first commit empty)
-- [ ] Ghost captures differ only in hex; scratch capture only in the word ← check output in NOTES, files listed; colour marked unverified
-- [ ] Capability citations resolve ← capabilities test by name
-- [ ] Allow-list: zero `11c` rows; every row `guard` or `git-word` ← `codename_absent::every_allowed_codename_occurrence_still_exists`, `no_shipped_file_names_the_codename`; `cut -f3 codename_allowed.txt | sort | uniq -c` in NOTES
-- [ ] Remaining codename lines in crates are identity only, plus `guard` rows ← `git grep -n -I -i -E 'graft|tributary|trib_' -- crates` tagged in NOTES
+- [x] No persisted ghost id ← grep quoted in NOTES
+- [x] Ghost seed pinned ← `ghost_id_seed_is_neutral`
+- [x] A stopped rewrite round-trips under the new label ← `rewrite_fork_label_round_trips` (green before and after; file diff since its first commit empty)
+- [x] Ghost captures differ only in hex; scratch capture only in the word ← check output in NOTES, files listed; colour marked unverified
+- [x] Capability citations resolve ← `mergewright-capabilities::checker::every_capability_citation_checks_out`
+- [x] Allow-list: zero `11c` rows; every row `guard` or `git-word` ← `codename_absent::every_allowed_codename_occurrence_still_exists`, `no_shipped_file_names_the_codename`; `cut -f3 codename_allowed.txt | sort | uniq -c` in NOTES
+- [x] Remaining codename lines in crates are identity only, plus `guard` rows ← `git grep -n -I -i -E 'graft|tributary|trib_' -- crates` tagged in NOTES
 - [ ] Fast and walk tiers green; no `over_400.txt` row raised ← counts, `file_size`
 
 ## Touches (check each, say how)
@@ -101,3 +101,17 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`.
 
 ## Size
 ~50k tokens.
+
+## NOTES (11d build)
+- D1 grep: `git grep -l -E 'ghost_oid|\.ghosts|Target::Ghost' -- crates | grep -v test` → only ops `preview*` and app `update/preview*`, `jobs/preview.rs`, `view/rewrite_editor/right.rs` (all in-memory drawing). `git grep -n -i ghost -- rewrite/saved.rs apply/record.rs apply/ core/src/journal* ops/src/journal*` → nothing; no serde in `preview*`. No persisted ghost id.
+- Seed: `GHOST_SEED = b"preview-ghost\0"`, `ghost_id_seed_is_neutral` (ops `preview::tests`) pins `printf 'preview-ghost\0add login\0003' | shasum` = 01768cfc…; red before, green after.
+- Fork label: `todo::fork_label(n)` / `todo::is_fork_label` from `on_disk::COMMAND` (`mwr-fork-<n>`); progress.rs reads via the writer's fn. `rewrite_fork_label_round_trips` (ops `tests/it/fork_label.rs`) committed green before the rename (0a03eb34e); `git diff 0a03eb34e -- crates/mergewright-ops/tests/it/fork_label.rs` empty. Cost: a rebase an older build stopped mid-way isn't recognised (finish/abort before upgrade).
+- Captures: none changed. Every asserted capture in fast+walk tiers passed unchanged (fast 6791 incl. 21c TestBackend; walks 459/0). Ghost rows draw `—` for sha in m5 captures, so no hex shows. Colour of unnamed ghost lanes may shift (oid-derived): **colour unverified** (rule 5).
+- Not regenerated, flagged: 53 pty captures under docs/shots still show `/tmp/graft-capture/.../graft-<x>-<n>` — already stale since 11c's root rename; after D5 they will read `mwr-capture/.../mwrfx-<x>-<n>` on regeneration (word only, same length). Left for 12.
+- D3: code already `is_mergewright_internal`; doc citation fixed. D4 renamed both test fns + citations.
+- D6: core on_disk/ref_name tests, conflict_set, words.rs → `other`/`stray` spellings (same property). source_column: now asserts each row's source column ∈ {Mergewright, outside}; narrow negative dropped (narrow has no column; legend positive kept). m5 golden: `refs/graft/` incidental → `refs/mergewright/`; byte round-trip tests unchanged and green. rename_names ALLOWED: removed graft-input, graft-, graft-askpass, graft-marker-, .graft-tmp, graft-ghost, graft-fork- (each `grep -c` = 0 in its file) and their 7 guard rows.
+- Stale, left (out of listed scope): rename_names ALLOWED row `mergewright-ops/examples/snapshot_cost.rs` "graft" — file has 0 hits.
+- `cut -f3 codename_allowed.txt | sort | uniq -c` → `59 guard` (no 11c, no git-word rows). PENDING relabelled `12`.
+- Remaining crates hits (`git grep -n -I -i -E 'graft|tributary|trib_' -- crates`): identity (`Graft Fixture/Test/Perf`, `graft.invalid`, `graft.git`, .snap bodies) + guard files (codename_absent, old_names, rename_names, names_tests, codename_allowed).
+- over_400: progress.rs lowered 477→472 (none raised).
+- Full fast run after last edit: 6791/6791 passed. Gates: fmt, clippy -D warnings, heavy clippy, doc tests green; walks.sh SUMMARY tests=459 failed=0.

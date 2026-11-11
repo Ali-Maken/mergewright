@@ -25,7 +25,7 @@ pub enum Target {
 /// A commit the operation would create, drawn but never written.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GhostCommit {
-    /// A synthetic id: SHA-1 over `"graft-ghost\0" + subject + "\0" + n`
+    /// A synthetic id: SHA-1 over `"preview-ghost\0" + subject + "\0" + n`
     /// (see [`ghost_oid`](crate::preview::ghost_oid)). Deterministic, so two previews of the same
     /// operation draw the same rows and the graph's caches agree; never
     /// written to the object database, and never equal to a real commit's

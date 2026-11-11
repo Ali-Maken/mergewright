@@ -367,7 +367,7 @@ fn an_abort_at_a_stop_after_a_section_leaves_the_fork() {
     let done = std::fs::read_to_string(repo.path().join(".git/rebase-merge/done"))
         .expect("git's done file reads");
     assert!(
-        done.contains("reset graft-fork-1"),
+        done.contains("reset mwr-fork-1"),
         "the stop is past the section: {done}"
     );
     assert_eq!(
@@ -395,7 +395,7 @@ fn break_in_the_section(repo: &TempRepo) {
     for line in todo.lines() {
         out.push_str(line);
         out.push('\n');
-        if line.starts_with("label graft-fork-") {
+        if line.starts_with("label mwr-fork-") {
             in_section = true;
         } else if in_section && !broke && line.starts_with("pick ") {
             out.push_str("break\n");
@@ -1111,8 +1111,8 @@ fn amend_the_fork_point_by_hand(hand: &TempRepo) {
     let staged = hand.git(&["rev-parse", "HEAD"]);
     hand.git(&["reset", "-q", "--hard", "HEAD~1"]);
     let todo = format!(
-        "pick {}\npick {}\nfixup {staged}\nlabel graft-fork-1\npick {}\n\
-         update-ref refs/heads/feature-x\nreset graft-fork-1\npick {}\n",
+        "pick {}\npick {}\nfixup {staged}\nlabel mwr-fork-1\npick {}\n\
+         update-ref refs/heads/feature-x\nreset mwr-fork-1\npick {}\n",
         hand.git(&["rev-parse", "feature-a~2"]),
         hand.git(&["rev-parse", "feature-a~1"]),
         hand.git(&["rev-parse", "feature-x"]),
