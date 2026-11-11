@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
-▸   ●                           Handle expired tokens                   Graft   2d│ feature-a  (you're here)
-    ●                           Add OAuth callback                      Graft   2d│ ! not pushed yet
+▸   ●                           Handle expired tokens                  Fixtu…   2d│ feature-a  (you're here)
+    ●                           Add OAuth callback                     Fixtu…   2d│ ! not pushed yet
     │                           the result                                        │ · not merged
-    │ ○                         Handle expired tokens                   Graft    —│ ✓ up to date with main
-    │ ○                         Add OAuth callback                      Graft    —│ · Graft, last commit 2d ago
-  ◇─┴─╯                         m1  main is here  not pushed yet        Graft   2d│
+    │ ○                         Handle expired tokens                  Fixtu…    —│ ✓ up to date with main
+    │ ○                         Add OAuth callback                     Fixtu…    —│ · Fixture, last commit 2d ago
+  ◇─┴─╯                         m1  main is here  not pushed yet       Fixtu…   2d│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ feature-a
@@ -24,16 +24,16 @@
                                                                                   │
                                                                                   │
 ╭ Preview: put staged changes into the commits they belong to ─────────────────────────────────────────────────────────╮
-│ src/auth.rs    line 5  → 67fda4a  Add OAuth callback                                                                 │
-│ src/tokens.rs  line 5  → 29033ed  Handle expired tokens                                                              │
+│ src/auth.rs    line 5  → be59290  Add OAuth callback                                                                 │
+│ src/tokens.rs  line 5  → 6628e69  Handle expired tokens                                                              │
 │ README         line 2  stays staged · no commit on your branch changed these lines                                   │
 │ 2 commits replayed                                                                                                   │
-│ feature-a 29033ed → 2 new commits                                                                                    │
+│ feature-a 6628e69 → 2 new commits                                                                                    │
 │ HEAD → feature-a                                                                                                     │
 │ working tree: 2 files updated                                                                                        │
 │ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │
-│ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop 17a06c251c3c562be010ee908c38870f1e141a66                  │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y put them in  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

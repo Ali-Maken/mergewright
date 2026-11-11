@@ -40,21 +40,21 @@
 #
 
  ◆ api  ~/code/api · topic                                           70 commits
-    │ ●                 finish the topic                             Graft  63m
-    │ ●                 start the topic                              Graft  64m
-  ●─┴─╯                 main moves on (2)                            Graft  65m
-  ●                     main moves on (1)                            Graft  66m
-  ●                     main moves on (0)                            Graft  67m
+    │ ●                 finish the topic                            Fixtu…  63m
+    │ ●                 start the topic                             Fixtu…  64m
+  ●─┴─╯                 main moves on (2)                           Fixtu…  65m
+  ●                     main moves on (1)                           Fixtu…  66m
+  ●                     main moves on (0)                           Fixtu…  67m
   │                     after rebase
-  │ ○                   finish the topic                             Graft    —
-  │ ○                   start the topic                              Graft    —
-  │ ○                   main moves on (2)                            Graft    —
-  │ ○                   main moves on (1)                            Graft    —
-  │ ○                   main moves on (0)                            Graft    —
-▸ │ ●                   cut release 1.0                              Graft  68m
+  │ ○                   finish the topic                            Fixtu…    —
+  │ ○                   start the topic                             Fixtu…    —
+  │ ○                   main moves on (2)                           Fixtu…    —
+  │ ○                   main moves on (1)                           Fixtu…    —
+  │ ○                   main moves on (0)                           Fixtu…    —
+▸ │ ●                   cut release 1.0                             Fixtu…  68m
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
-│ topic e7e39a7 → 5 new commits                                                │
+│ topic 4a20b64 → 5 new commits                                                │
 │ left behind: main, redesign stay on old commits                              │
 │ working tree: 1 file updated                                                 │
 │ no conflicts expected                                                        │

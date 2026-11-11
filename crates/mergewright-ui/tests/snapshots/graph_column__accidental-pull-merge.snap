@@ -4,7 +4,7 @@ expression: text
 ---
 shape: accidental-pull-merge (dark = light, asserted), truecolor
 
-◆─╮   ccc.  3222407  Merge branch 'main' of https://example.invalid/graft.git into main
-● │   c.c.  abd2097  My commit
-│ ●   c.c.  781b8cc  Their commit
-◇─╯   ccc.  68d5d19  Add the base
+◆─╮   ccc.  4907da4  Merge branch 'main' of https://example.invalid/maker.git into main
+● │   c.c.  e9c069c  My commit
+│ ●   c.c.  66df357  Their commit
+◇─╯   ccc.  6fbb9d9  Add the base

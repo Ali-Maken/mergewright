@@ -2,13 +2,13 @@ m8-polish-and-ship/28, 187x50, `?` on the graph: what right looks like — the k
 
  ◆ api  ~/code/api · main                                                                                                                              6 commits  2 merged branches folded
                                              ╭─ keys here ─────────────────────────────────────────────────────────────────────── esc close ╮
-▸   ●    feature/three        three: in progr│ ›                                                                                            │aft   7y│ feature/three
-    ┃                         Graft · 7 years│ HERE                                                                                         │        │ ! not pushed yet
-  ◆ ┃    main (you)           Merge branch 'f│▸c     Commit                                                                   graph.commit  │aft   7y│ · not merged
-  ◉ ┃                         Merge branch 'f│ a     Amend                                                                     graph.amend  │aft   7y│ ! main has 6 new commits since it
-  ●━╯                         Add b.txt      │ R     Open the rewrite editor                                                 graph.rewrite  │aft   7y│   left
-  ●                           Add a.txt      │ C     Switch branch (branch picker)                                            graph.switch  │aft   7y│ · Graft, last commit 7y ago
-  ◇                           Add a readme   │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │aft   7y│
+▸   ●    feature/three        three: in progr│ ›                                                                                            │tu…   7y│ feature/three
+    ┃                         Fixture · 7 yea│ HERE                                                                                         │        │ ! not pushed yet
+  ◆ ┃    main (you)           Merge branch 'f│▸c     Commit                                                                   graph.commit  │tu…   7y│ · not merged
+  ◉ ┃                         Merge branch 'f│ a     Amend                                                                     graph.amend  │tu…   7y│ ! main has 6 new commits since it
+  ●━╯                         Add b.txt      │ R     Open the rewrite editor                                                 graph.rewrite  │tu…   7y│   left
+  ●                           Add a.txt      │ C     Switch branch (branch picker)                                            graph.switch  │tu…   7y│ · Fixture, last commit 7y ago
+  ◇                           Add a readme   │ o     Take this commit onto your branch (cherry-pick)                            graph.take  │tu…   7y│
                                              │ m     Merge selected branch into current                                        graph.merge  │        │ built on
                                              │ r     Rebase current onto selection                                            graph.rebase  │        │   main
                                              │ b     New branch from selected commit                                          graph.branch  │        │    ─◆ feature/three

@@ -3,37 +3,37 @@ What right looks like: both lane phrases still fit; the path gives way first (cu
 
  ◆ api  …api · wallet-release  47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
-  ●    walle… (you) release: note 29                                           Graft  27h
-  ●                 release: note 28                                           Graft  27h
-  ●                 release: note 27                                           Graft  27h
-  ●                 release: note 26                                           Graft  27h
-  ●                 release: note 25                                           Graft  27h
-  ●                 release: note 24                                           Graft  27h
-  ●                 release: note 23                                           Graft  27h
-  ●                 release: note 22                                           Graft  27h
-  ●                 release: note 21                                           Graft  27h
-  ●                 release: note 20                                           Graft  27h
-  ●                 release: note 19                                           Graft  27h
-  ●                 release: note 18                                           Graft  27h
-  ●                 release: note 17                                           Graft  27h
-  ●                 release: note 16                                           Graft  27h
-  ●                 release: note 15                                           Graft  27h
-  ●                 release: note 14                                           Graft  27h
-  ●                 release: note 13                                           Graft  27h
-  ●                 release: note 12                                           Graft  27h
-  ●                 release: note 11                                           Graft  27h
-  ●                 release: note 10                                           Graft  27h
-  ●                 release: note 09                                           Graft  27h
-  ●                 release: note 08                                           Graft  27h
-  ●                 release: note 07                                           Graft  27h
-  ●                 release: note 06                                           Graft  27h
-  ●                 release: note 05                                           Graft  27h
-  ●                 release: note 04                                           Graft  27h
-  ●                 release: note 03                                           Graft  27h
-  ●                 release: note 02                                           Graft  27h
-  ●                 release: note 01                                           Graft  27h
-  ◉                 Merge branch 'sara/fix-toc' into wallet-release  ▸         Graft  28h
-▸ ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits        Graft  28h
-  ┃                 Graft · 28 hours ago · made on wallet-release · merged 4 from PR 160…
+  ●    walle… (you) release: note 29                                          Fixtu…  27h
+  ●                 release: note 28                                          Fixtu…  27h
+  ●                 release: note 27                                          Fixtu…  27h
+  ●                 release: note 26                                          Fixtu…  27h
+  ●                 release: note 25                                          Fixtu…  27h
+  ●                 release: note 24                                          Fixtu…  27h
+  ●                 release: note 23                                          Fixtu…  27h
+  ●                 release: note 22                                          Fixtu…  27h
+  ●                 release: note 21                                          Fixtu…  27h
+  ●                 release: note 20                                          Fixtu…  27h
+  ●                 release: note 19                                          Fixtu…  27h
+  ●                 release: note 18                                          Fixtu…  27h
+  ●                 release: note 17                                          Fixtu…  27h
+  ●                 release: note 16                                          Fixtu…  27h
+  ●                 release: note 15                                          Fixtu…  27h
+  ●                 release: note 14                                          Fixtu…  27h
+  ●                 release: note 13                                          Fixtu…  27h
+  ●                 release: note 12                                          Fixtu…  27h
+  ●                 release: note 11                                          Fixtu…  27h
+  ●                 release: note 10                                          Fixtu…  27h
+  ●                 release: note 09                                          Fixtu…  27h
+  ●                 release: note 08                                          Fixtu…  27h
+  ●                 release: note 07                                          Fixtu…  27h
+  ●                 release: note 06                                          Fixtu…  27h
+  ●                 release: note 05                                          Fixtu…  27h
+  ●                 release: note 04                                          Fixtu…  27h
+  ●                 release: note 03                                          Fixtu…  27h
+  ●                 release: note 02                                          Fixtu…  27h
+  ●                 release: note 01                                          Fixtu…  27h
+  ◉                 Merge branch 'sara/fix-toc' into wallet-release  ▸        Fixtu…  28h
+▸ ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits       Fixtu…  28h
+  ┃                 Fixture · 28 hours ago · made on wallet-release · merged 4 from PR 1…
 ──────────────────────────────────────────────────────────────────────────────────────────
  space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

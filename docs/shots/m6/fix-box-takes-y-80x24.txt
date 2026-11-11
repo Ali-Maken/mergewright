@@ -18,12 +18,12 @@
 #
 === frame 1: `P`, the plain push box ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
-  ┃                 Graft · 6 years ago · made on main · 739071c
-  ●                 Commit 200  origin/main is here                  Graft   7y
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                Fixtu…   6y
+  ┃                 Fixture · 6 years ago · made on main · 9a387ed
+  ●                 Commit 200  origin/main is here                 Fixtu…   7y
+  ●                 Commit 199                                      Fixtu…   7y
+  ●                 Commit 198                                      Fixtu…   7y
+  ●                 Commit 197                                      Fixtu…   7y
   ●    ╭ Push main → origin/main ────────────────────────────────────────╮   7y
   ●    │ 1 commit · can't be undone from here — origin keeps what you    │   7y
   ●    │ send                                                            │   7y
@@ -32,38 +32,38 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Push ]                                          │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 188                                       Graft   7y
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 188                                      Fixtu…   7y
+  ●                 Commit 187                                      Fixtu…   7y
+  ●                 Commit 186                                      Fixtu…   7y
+  ●                 Commit 185                                      Fixtu…   7y
+  ●                 Commit 184                                      Fixtu…   7y
+  ●                 Commit 183                                      Fixtu…   7y
+  ●                 Commit 182                                      Fixtu…   7y
+  ●                 Commit 181                                      Fixtu…   7y
  y push  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===
  ◆ api  ~/code/api · main                         201 commits  1 commit to push
-▸ ◆  ⓘ main (you)   ours  ↑1 to push                                 Graft   6y
-  ┃                 Graft · 6 years ago · made on main · 739071c
-  ●                 Commit 200  origin/main is here                  Graft   7y
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
+▸ ◆  ⓘ main (you)   ours  ↑1 to push                                Fixtu…   6y
+  ┃                 Fixture · 6 years ago · made on main · 9a387ed
+  ●                 Commit 200  origin/main is here                 Fixtu…   7y
+  ●                 Commit 199                                      Fixtu…   7y
+  ●                 Commit 198                                      Fixtu…   7y
   ●    ╭ Force-push main → origin/main? ─────────────────────────────────╮   7y
-  ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │   7y
+  ●    │ origin/main a3eba73 → 9a387ed · refused if origin moved since   │   7y
   ●    │ your fetch (lease)                                              │   7y
-  ●    │ rewrites history for everyone who has d5ae5fd                   │   7y
+  ●    │ rewrites history for everyone who has a3eba73                   │   7y
   ●    │ nothing on origin/main is lost                                  │   7y
   ●    │                                                                 │   7y
-  ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │   7y
+  ●    │ git push --progress --force-with-lease=refs/heads/main:a3eba73… │   7y
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Force push ]                                    │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
+  ●                 Commit 187                                      Fixtu…   7y
+  ●                 Commit 186                                      Fixtu…   7y
+  ●                 Commit 185                                      Fixtu…   7y
+  ●                 Commit 184                                      Fixtu…   7y
+  ●                 Commit 183                                      Fixtu…   7y
+  ●                 Commit 182                                      Fixtu…   7y
+  ●                 Commit 181                                      Fixtu…   7y
  ←/→ move  ⏎ choose  esc cancel

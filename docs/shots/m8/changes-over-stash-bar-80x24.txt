@@ -6,7 +6,7 @@
 
 Stash  [Detail]
 UNCOMMITTED · 1 unstaged
-diff vs HEAD 29a1432
+diff vs HEAD 52900f9
 
 UNSTAGED (1)
   M first.txt                                                              +1 −0

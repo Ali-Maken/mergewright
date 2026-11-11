@@ -32,7 +32,7 @@ fn gone_and_notes_merge_with(readme: bool) -> Scratch {
         // The merge commit is the app's `git merge --continue`: the
         // fixture's own name, so no machine's identity decides whether it
         // can commit.
-        git(repo, &["config", "user.name", "Graft Fixture"]);
+        git(repo, &["config", "user.name", "Fixture Maker"]);
         git(repo, &["config", "user.email", "fixture@example.invalid"]);
         write("README.md", "# Project\n\nline one\nline two\nline three\n");
     }

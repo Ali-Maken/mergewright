@@ -8,11 +8,11 @@ default: main
 integration: []
 commits: 8, columns: 4
 
-| *      51ea533  51ea533            Archived work
-| | *    b9b94c1  origin/behind      behind: theirs
-| | *    379c02d  origin/behind      behind: shared
-| | | *  0994ff4  ahead              ahead: not pushed yet
-| | | *  7be40e6  ahead              ahead: pushed
-* | | |  a676d37  main               Advance main again
-* | / /  31948ff  main               Advance main
-* /      68d5d19  main               Add the base
+| *      f94c7e9  f94c7e9            Archived work
+| | *    6b07bc5  origin/behind      behind: theirs
+| | *    bf71e91  origin/behind      behind: shared
+| | | *  c08fbbe  ahead              ahead: not pushed yet
+| | | *  728c004  ahead              ahead: pushed
+* | | |  7f334a5  main               Advance main again
+* | / /  0a1a0db  main               Advance main
+* /      6fbb9d9  main               Add the base

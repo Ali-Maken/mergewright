@@ -54,6 +54,9 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `found` (fn) — `found(&[u8]) -> Vec<Found>`; every machine-specific span in the bytes.
 - `redacted` / `redacted_bytes` (fn) — the text with each such span replaced by its placeholder.
 
+## digest (private)
+- cache keys (`corpus_key`, `team_key`, `synthetic_key`) hash generator sources; the synthetic key covers every file under `src/synthetic/`. `lost_work` is built fresh, never cached.
+
 ## fifo
 - `Fifo` (struct) — a named pipe with a thread already blocked reading it, for a hook announcing it runs; `create`, `path`, `wait`.
 
@@ -62,7 +65,7 @@ One line per public item. History lives in `docs/log/` and the ADRs.
 - `run` / `run_with_stdin_file` / `run_at` (fn) — run git with fixed identity and clock, machine config off; `run_at` sets the date.
 - `run_isolated` (fn) — `run_isolated(cwd, args, stdin) -> Result<Vec<u8>, GitError>`; git with no system or global config.
 - `isolated` (fn) — `isolated(cwd, args) -> Command`; the isolated command, unrun.
-- `IDENTITY_NAME` / `IDENTITY_EMAIL` / `FIXED_DATE` (const) — the fixture identity and clock.
+- `IDENTITY_NAME` / `IDENTITY_EMAIL` / `IDENTITY` / `FIXED_DATE` (const) — fixture identity (`IDENTITY` = `name <email>`, the one source for stream and reflog) and clock.
 - `init_repo` (fn) — `init_repo(&Path) -> Result<(), GitError>`; an empty repository with fixture config.
 - `version` (fn) — `version() -> Result<String, GitError>`; the system git's version.
 

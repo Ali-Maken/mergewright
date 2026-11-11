@@ -3,16 +3,16 @@ What right looks like: every commit of PR 16021 and `sara/fix-toc` drawn on its 
 
  ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
 
-▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Graft  28h│ wallet-release  (you're here)
-    ┃ ┊                           Graft · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
-    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Graft  28h│ · not merged
-    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Graft  28h│ ✓ up to date with main
-    ┃   ●    PR 16021             totals: test the sum                  Graft  28h│ · Graft, last commit 28h ago
-    ┃   ●                         totals: drop the cache                Graft  28h│
-    ┃   ●                         totals: round once                    Graft  28h│ built on
-    ┃   ●                         totals: read the ledger               Graft  28h│   main
-    ●┄┄┄╯    wallet-release (you) Start the wallet release              Graft  28h│    ─◆ wallet-release
-  ◇━╯        main                 Add the readme  not pushed yet        Graft  28h│
+▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa… Fixtu…  28h│ wallet-release  (you're here)
+    ┃ ┊                           Fixture · 28 hours ago · made on wallet-release…│ ! not pushed yet
+    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet Fixtu…  28h│ · not merged
+    ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot… Fixtu…  28h│ ✓ up to date with main
+    ┃   ●    PR 16021             totals: test the sum                 Fixtu…  28h│ · Fixture, last commit 28h ago
+    ┃   ●                         totals: drop the cache               Fixtu…  28h│
+    ┃   ●                         totals: round once                   Fixtu…  28h│ built on
+    ┃   ●                         totals: read the ledger              Fixtu…  28h│   main
+    ●┄┄┄╯    wallet-release (you) Start the wallet release             Fixtu…  28h│    ─◆ wallet-release
+  ◇━╯        main                 Add the readme  not pushed yet       Fixtu…  28h│
                                                                                   │
                                                                                   │
                                                                                   │

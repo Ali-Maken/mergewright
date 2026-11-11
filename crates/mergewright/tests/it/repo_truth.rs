@@ -50,7 +50,7 @@ pub fn run_git_with(repo: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<
     // a second helper to forget.
     let mut full = vec![
         "-c",
-        "user.name=Graft Test",
+        "user.name=Test Maker",
         "-c",
         "user.email=test@example.invalid",
     ];
@@ -90,7 +90,7 @@ pub fn neutralise_global_config(repo: &Path) -> Result<(), String> {
         ("commit.gpgsign", "false"),
         ("tag.gpgsign", "false"),
         // An identity the machine neither supplies nor overrides.
-        ("user.name", "Graft Test"),
+        ("user.name", "Test Maker"),
         ("user.email", "test@example.invalid"),
         // A global hook would run on every commit here.
         ("core.hooksPath", empty),

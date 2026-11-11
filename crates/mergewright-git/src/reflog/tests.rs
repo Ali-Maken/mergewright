@@ -13,7 +13,7 @@ fn oid(hex: &str) -> Oid {
 
 /// One reflog line as git writes it: `<old> <new> <who> <when> <tz>\t<msg>`.
 fn line(old: &str, new: &str, at: i64, message: &str) -> String {
-    format!("{old} {new} Graft Fixture <fixture@example.invalid> {at} +0000\t{message}\n")
+    format!("{old} {new} Fixture Maker <fixture@example.invalid> {at} +0000\t{message}\n")
 }
 
 /// A repository whose `HEAD`, `main` and `feature` logs are written by hand

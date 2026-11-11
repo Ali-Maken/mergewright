@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · feature-a                                                                                5 commits
 
-    ●      feature-c            c1  not pushed yet  not merged          Graft   2d│ feature-a  (you're here)
-  ● ┊      main                 m2  not pushed yet                      Graft   2d│ ! not pushed yet
-  ║ ┊ ●    feature-b            b1  not pushed yet  not merged          Graft   2d│ · not merged
-▸ ║ ◆┄╯    feature-a (you)      a1  not pushed yet  not merged          Graft   2d│ ! main has 1 new commit since it
-  ║ ┃                           Graft · 2 days ago · made on feature-a · 0395451  │   left
-  ◇━╯      main                 m1                                      Graft   2d│ · Graft, last commit 2d ago
+    ●      feature-c            c1  not pushed yet  not merged         Fixtu…   2d│ feature-a  (you're here)
+  ● ┊      main                 m2  not pushed yet                     Fixtu…   2d│ ! not pushed yet
+  ║ ┊ ●    feature-b            b1  not pushed yet  not merged         Fixtu…   2d│ · not merged
+▸ ║ ◆┄╯    feature-a (you)      a1  not pushed yet  not merged         Fixtu…   2d│ ! main has 1 new commit since it
+  ║ ┃                           Fixture · 2 days ago · made on feature-a · ad69d7d│   left
+  ◇━╯      main                 m1                                     Fixtu…   2d│ · Fixture, last commit 2d ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main

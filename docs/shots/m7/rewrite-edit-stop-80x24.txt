@@ -1,24 +1,24 @@
- ◆ api      REBASING  step 3 of 12 · edit 7326de5 a3 · feature-a, branch 1 of 2
+ ◆ api      REBASING  step 3 of 12 · edit 016a15e a3 · feature-a, branch 1 of 2
 ╭ still to apply · not commits yet ────────────────────────────────────────────╮
-│ pick edb2b45 a10                                                             │
-│ pick 426bb5b a9                                                              │
-│ pick a85e882 a8                                                              │
-│ pick fe09125 a7                                                              │
-│ pick 03794c8 a6                                                              │
-│ pick 90e1a32 a5                                                              │
+│ pick a424cd4 a10                                                             │
+│ pick 4a47ee1 a9                                                              │
+│ pick e96a3c4 a8                                                              │
+│ pick a8f7938 a7                                                              │
+│ pick dd34920 a6                                                              │
+│ pick 9038000 a5                                                              │
 │ +1 more                                                                      │
 │ feature-b (Sara): 2 commits follow, on top                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
   ●    feature-b    b2  not pushed yet                                Sara   2d
   ●                 b1                                                Sara   2d
-  ●    feature-a    a10  not pushed yet                              Graft   2d
-  ●                 a9                                               Graft   2d
-  ●                 a8                                               Graft   2d
-  ●                 a7                                               Graft   2d
-  ●                 a6                                               Graft   2d
-  ●                 a5                                               Graft   2d
-  ●                 a4                                               Graft   2d
-▸ ◆                 a3  HEAD · stopped here  HEAD is here            Graft   2d
-  ┃                 Graft · 2 days ago · made on feature-a · 7326de5
-  ●                 a2                                               Graft   2d
+  ●    feature-a    a10  not pushed yet                             Fixtu…   2d
+  ●                 a9                                              Fixtu…   2d
+  ●                 a8                                              Fixtu…   2d
+  ●                 a7                                              Fixtu…   2d
+  ●                 a6                                              Fixtu…   2d
+  ●                 a5                                              Fixtu…   2d
+  ●                 a4                                              Fixtu…   2d
+▸ ◆                 a3  HEAD · stopped here  HEAD is here           Fixtu…   2d
+  ┃                 Fixture · 2 days ago · made on feature-a · 016a15e
+  ●                 a2                                              Fixtu…   2d
  ⇥ banner · a amend it · c continue · space stage · ⏎ open · b branch · ? keys

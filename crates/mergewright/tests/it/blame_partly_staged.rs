@@ -50,7 +50,7 @@ fn partly_staged() -> mergewright_fixtures::Scratch {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Graft Test",
+            "user.name=Test Maker",
             "-c",
             "user.email=test@example.invalid",
             "commit",

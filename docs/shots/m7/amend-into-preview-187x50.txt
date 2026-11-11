@@ -1,13 +1,13 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   4 commits
 
-    ●                           Show the login page                                                                                        Graft   2d│ feature-a  (you're here)
-    ●                           Handle expired tokens                                                                                      Graft   2d│ ! not pushed yet
-▸   ●                           Add OAuth callback                                                                                         Graft   2d│ · not merged
+    ●                           Show the login page                                                                                       Fixtu…   2d│ feature-a  (you're here)
+    ●                           Handle expired tokens                                                                                     Fixtu…   2d│ ! not pushed yet
+▸   ●                           Add OAuth callback                                                                                        Fixtu…   2d│ · not merged
     │                           the result                                                                                                           │ ✓ up to date with main
-    │ ○                         Show the login page  feature-b is here  not pushed yet                                                     Graft    —│ · Graft, last commit 2d ago
-    │ ○                         Handle expired tokens  feature-a is here  not pushed yet                                                   Graft    —│
-    │ ○                         Add OAuth callback                                                                                         Graft    —│ built on
-  ◇─┴─╯                         m1  main is here  not pushed yet                                                                           Graft   2d│   main
+    │ ○                         Show the login page  feature-b is here  not pushed yet                                                    Fixtu…    —│ · Fixture, last commit 2d ago
+    │ ○                         Handle expired tokens  feature-a is here  not pushed yet                                                  Fixtu…    —│
+    │ ○                         Add OAuth callback                                                                                        Fixtu…    —│ built on
+  ◇─┴─╯                         m1  main is here  not pushed yet                                                                          Fixtu…   2d│   main
                                                                                                                                                      │    ─◆ feature-a
                                                                                                                                                      │
                                                                                                                                                      │
@@ -33,17 +33,17 @@
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │
-╭ Preview: put your staged changes into 67fda4a "Add OAuth callback" ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ 67fda4a  Add OAuth callback  gains  src/auth.rs +1 −1                                                                                                                                   │
+╭ Preview: put your staged changes into be59290 "Add OAuth callback" ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ be59290  Add OAuth callback  gains  src/auth.rs +1 −1                                                                                                                                   │
 │ 3 commits replayed                                                                                                                                                                      │
-│ branches: feature-a 29033ed → 2 new commits                                                                                                                                             │
-│           feature-b 04fbed6 → 1 new commit · built on yours · follows                                                                                                                   │
+│ branches: feature-a 6628e69 → 2 new commits                                                                                                                                             │
+│           feature-b adb8a76 → 1 new commit · built on yours · follows                                                                                                                   │
 │ HEAD → feature-a                                                                                                                                                                        │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ your edits: 1 file set aside, put back after                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │
-│ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15 feature-b                                                                           │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop 17a06c251c3c562be010ee908c38870f1e141a66 feature-b                                                                           │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
 ╰ y put it in  ←/→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

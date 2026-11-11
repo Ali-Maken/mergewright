@@ -8,8 +8,8 @@ default: main
 integration: []
 commits: 5, columns: 4
 
-* \ \ \  e385b54  main               Merge branches 'topic-1', 'topic-2' and 'topic-3'
-| | | *  c95dba0  topic-3            topic 3
-| | * |  3d625a5  topic-2            topic 2
-| * | |  04bb363  topic-1            topic 1
-* / / /  68d5d19  main               Add the base
+* \ \ \  d223b6f  main               Merge branches 'topic-1', 'topic-2' and 'topic-3'
+| | | *  042e31f  topic-3            topic 3
+| | * |  2beb760  topic-2            topic 2
+| * | |  06c1c16  topic-1            topic 1
+* / / /  6fbb9d9  main               Add the base

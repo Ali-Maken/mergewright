@@ -18,14 +18,14 @@
 
  ◆ api  ~/code/api · fix                                                                                      6 commits
 
-  ◌                             Uncommitted changes (1 unstaged)                  │ 1f9ea99 · not on a branch
+  ◌                             Uncommitted changes (1 unstaged)                  │ 0dda5ce · not on a branch
 ▸   ■                           On main: mergewright: your edits, set…    you   3m│
-    ┃                           you · 3 minutes ago · 1f9ea99                     │
-    ┃ ◆    fix (you)            fix changes line 7  not pushed yet      Graft   4m│
-  ●━┴┄╯    main                 add f  not pushed yet                   Graft   5m│
-  ●                             Correct the note                        Graft   1y│
-  ●                             Add the first note                      Graft   1y│
-  ◇                             Add a readme                            Graft   1y│
+    ┃                           you · 3 minutes ago · 0dda5ce                     │
+    ┃ ◆    fix (you)            fix changes line 7  not pushed yet     Fixtu…   4m│
+  ●━┴┄╯    main                 add f  not pushed yet                  Fixtu…   5m│
+  ●                             Correct the note                       Fixtu…   1y│
+  ●                             Add the first note                     Fixtu…   1y│
+  ◇                             Add a readme                           Fixtu…   1y│
                                                                                   │
                                                                                   │
                                                                                   │

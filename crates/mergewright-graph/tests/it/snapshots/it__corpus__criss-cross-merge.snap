@@ -8,10 +8,10 @@ default: main
 integration: []
 commits: 7, columns: 5
 
-| *        be27a12  beta               beta: carry on
-* | \      e44c042  main               Merge branch 'alpha'
-| * | \    f77039c  beta               beta: merge alpha
-| | * | \  89c164d  alpha              alpha: merge beta
-| * | | /  4cfd7d9  beta               beta: work
-| | * /    bd20b78  alpha              alpha: work
-* / /      68d5d19  main               Add the base
+| *        bbb150c  beta               beta: carry on
+* | \      cdd13be  main               Merge branch 'alpha'
+| * | \    4c94b98  beta               beta: merge alpha
+| | * | \  2ba10a1  alpha              alpha: merge beta
+| * | | /  fc85d1e  beta               beta: work
+| | * /    94f182b  alpha              alpha: work
+* / /      6fbb9d9  main               Add the base

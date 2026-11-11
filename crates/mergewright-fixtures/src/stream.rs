@@ -19,6 +19,8 @@
 #[cfg(feature = "heavy-tests")]
 use std::io::{self, Write};
 
+use crate::git;
+
 /// A reference to an object earlier in the same stream.
 ///
 /// `fast-import` has no way to name an object it has not written yet, so the
@@ -28,7 +30,7 @@ pub struct Mark(u32);
 
 /// The identity on every commit and tag in the corpus, unless a shape
 /// deliberately overrides it.
-pub const IDENTITY: &str = "Graft Fixture <fixture@example.invalid>";
+pub const IDENTITY: &str = git::IDENTITY;
 
 /// The first commit's timestamp: 2020-01-01T00:00:00Z, in git's raw format.
 const EPOCH: u64 = 1_577_836_800;

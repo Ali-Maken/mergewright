@@ -1,22 +1,22 @@
  ◆ api  ~/code/api · feature                                         10 commits
-    ●                   finish the feature                           Graft  now
-    ●                   grow the feature                             Graft   2m
-    ●                   feature edits shared                         Graft   3m
-    ●                   more of the feature                          Graft   4m
-    ●                   start the feature                            Graft   5m
+    ●                   finish the feature                          Fixtu…  now
+    ●                   grow the feature                            Fixtu…   2m
+    ●                   feature edits shared                        Fixtu…   3m
+    ●                   more of the feature                         Fixtu…   4m
+    ●                   start the feature                           Fixtu…   5m
     │                   after rebase
-    │ ○                 finish the feature                           Graft    —
-    │ ○                 grow the feature                             Graft    —
-    │ ○                 feature edits shared                         Graft    —
-    │ ○                 more of the feature                          Graft    —
-    │ ○                 start the feature                            Graft    —
-▸ ●─│─╯                 main edits shared                            Graft   6m
-  ●─╯                   add shared                                   Graft   7m
+    │ ○                 finish the feature                          Fixtu…    —
+    │ ○                 grow the feature                            Fixtu…    —
+    │ ○                 feature edits shared                        Fixtu…    —
+    │ ○                 more of the feature                         Fixtu…    —
+    │ ○                 start the feature                           Fixtu…    —
+▸ ●─│─╯                 main edits shared                           Fixtu…   6m
+  ●─╯                   add shared                                  Fixtu…   7m
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 5 commits replayed                                                           │
-│ feature 880147c → 5 new commits                                              │
+│ feature f21d9fc → 5 new commits                                              │
 │ working tree: 1 file updated                                                 │
-│ may stop at step 3 of 5 (pick 198f490) · not checked past it                 │
+│ may stop at step 3 of 5 (pick 8aef2a4) · not checked past it                 │
 │ undo: u takes this back                                                      │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop main              │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │

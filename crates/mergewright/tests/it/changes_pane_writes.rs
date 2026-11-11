@@ -61,7 +61,7 @@ fn dirty_repo() -> mergewright_fixtures::Scratch {
         repo,
         &[
             "-c",
-            "user.name=Graft Test",
+            "user.name=Test Maker",
             "-c",
             "user.email=test@example.invalid",
             "commit",

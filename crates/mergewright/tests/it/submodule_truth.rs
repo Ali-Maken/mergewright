@@ -55,7 +55,7 @@ fn dated(repo: &Path, args: &[&str]) {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Graft Test",
+            "user.name=Test Maker",
             "-c",
             "user.email=test@example.invalid",
         ])

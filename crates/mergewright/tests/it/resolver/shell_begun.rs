@@ -523,7 +523,7 @@ pub(super) fn resolved_shell_merge() -> mergewright_fixtures::Scratch {
     use crate::app_harness::git;
     let scratch = crate::conflict_interim::about_to_conflict();
     let repo = scratch.path();
-    git(repo, &["config", "user.name", "Graft Fixture"]);
+    git(repo, &["config", "user.name", "Fixture Maker"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     git_stops(repo, &["merge", "feature"]);
     std::fs::write(repo.join("shared.rs"), "fn main() { both() }\n").expect("writable");

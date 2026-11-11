@@ -12,19 +12,19 @@
 
  ◆ api  ~/code/api · main                         202 commits  1 commit to push
                       after rebase
-    ○                 ours  main is here  ↑1 to push                 Graft    —
-    ●                 theirs  origin/main is here                    Graft   6m
-▸ ● │                 ours                                           Graft   6m
-  ●─╯                 Commit 200                                     Graft   1y
-  ●                   Commit 199                                     Graft   1y
-  ●                   Commit 198                                     Graft   1y
-  ●                   Commit 197                                     Graft   1y
-  ●                   Commit 196                                     Graft   1y
-  ●                   Commit 195                                     Graft   1y
-  ●                   Commit 194                                     Graft   1y
+    ○                 ours  main is here  ↑1 to push                Fixtu…    —
+    ●                 theirs  origin/main is here                   Fixtu…   6m
+▸ ● │                 ours                                          Fixtu…   6m
+  ●─╯                 Commit 200                                    Fixtu…   1y
+  ●                   Commit 199                                    Fixtu…   1y
+  ●                   Commit 198                                    Fixtu…   1y
+  ●                   Commit 197                                    Fixtu…   1y
+  ●                   Commit 196                                    Fixtu…   1y
+  ●                   Commit 195                                    Fixtu…   1y
+  ●                   Commit 194                                    Fixtu…   1y
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────╮
 │ 1 commit replayed                                                            │
-│ main 9d3d925 → 1 new commit                                                  │
+│ main de678dd → 1 new commit                                                  │
 │ working tree: 1 file updated                                                 │
 │ your edits: 3 files set aside, put back after                                │
 │ no conflicts expected                                                        │

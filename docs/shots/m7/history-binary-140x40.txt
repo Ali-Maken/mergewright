@@ -1,7 +1,7 @@
  HISTORY · logo.bin · 2 changes
- ▸ 5b58e92 Grow logo      GT   3h       │ 5b58e92 · Graft Test · 3 hours ago · Grow logo
-   55d55bc Add logo       GT   3h       │ binary · 600 B → 2 KB
-   the file starts here (55d55bc added  │
+ ▸ 5384058 Grow logo      TM   3h       │ 5384058 · Test Maker · 3 hours ago · Grow logo
+   a6247dc Add logo       TM   3h       │ binary · 600 B → 2 KB
+   the file starts here (a6247dc added  │
    it)                                  │
                                         │
                                         │

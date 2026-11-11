@@ -1,0 +1,73 @@
+base 183460a11
+other crates/mergewright-graph/tests/it/snapshots/it__raster__raster-criss-cross-merge.snap:45
+    old:            cc          f. ffff .f.jjjjjjjjjjj...                                        |
+    new:            cc          f. ffff .f.#...                                        |
+other crates/mergewright-ui/tests/snapshots/graph_column__criss-cross-merge.snap:9
+    old: │ ◉─│─╮     c.fjdjj...  #  beta: merge alpha
+    new: │ ◉─│─╮     c.fedee...  #  beta: merge alpha
+lane-slot crates/mergewright-ui/tests/snapshots/graph_column__ref-states.snap:7
+    old:   ●       ..l.....  #  Archived work
+    new:   ●       ..e.....  #  Archived work
+lane-slot crates/mergewright-ui/tests/snapshots/graph_column__stash.snap:7
+    old:   ■─┬─╮   ..ehhcc.  #  On main: wip: with an untracked file
+    new:   ■─┬─╮   ..iddhh.  #  On main: wip: with an untracked file
+lane-slot crates/mergewright-ui/tests/snapshots/lanes_without_hue__criss-cross-merge-16.snap:35
+    old: 5.68788...
+    new: 5.67777...
+other crates/mergewright-ui/tests/snapshots/lanes_without_hue__criss-cross-merge-256.snap:35
+    old: c.fjdjj...
+    new: c.fedee...
+other docs/shots/ease-pass/help-graph-mode-120.txt:9
+    old:   ◇━╯    mai│ HERE                                                                                         │ago
+    new:   ◇━╯    mai│ HERE                                                                                         │y ago
+other docs/shots/ease-pass/main-cursor-teammate-120.txt:9
+    old:     ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · b8…│ ✓ up to date with main
+    new:     ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · 48…│ ✓ up to date with main
+other docs/shots/m7/history-100x30.txt:2
+    old:  # Handle expired tokens <A>… 60m +1 −1
+    new:  # Handle expired tokens <A> 60m +1 −1
+other docs/shots/m7/history-lines-187x50.txt:2
+    old:  # Handle expired tokens <A>… 60m +1 −1 │ # · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 · these lines +3 −2
+    new:  # Handle expired tokens <A> 60m +1 −1 │ # · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 · these lines +3 −2
+other docs/shots/m7/rewrite-refused-fork-120x40.txt:7
+    old:  ║ ┃ <A> · 2 days ago · made on feature-a · # │ left
+    new:  ║ ┃ <A> · 2 days ago · made on feature-a · #│ left
+other docs/shots/m7/switch-landed-120x40.txt:12
+    old:  ┃ <A> · 3 minutes ago · made on login-page · #│ ! not pushed yet
+    new:  ┃ <A> · 3 minutes…│ ! not pushed yet
+other docs/shots/m7/switch-menu-clean-landed-120x40.txt:12
+    old:  ┃ <A> · 3 minutes ago · made on feature-b · # │ ! not pushed yet
+    new:  ┃ <A> · 3 minutes…│ ! not pushed yet
+other docs/shots/m8-bar-head-row-100x30.txt:5
+    old:  ┃ <A> · 8 minutes ago · made on main · #│ reading…
+    new:  ┃ <A> · 8 minutes…│ reading…
+other docs/shots/m8-help-rebase-stop-120x36.txt:5
+    old:  ● fea│▸c Continue operation.continue │ <A> 6y
+    new:  ● fea│▸c Continue operation.continue │<A> 6y
+other docs/shots/m8-look-help-graph-187x50.txt:5
+    old: ▸   ●    feature/three        three: in progr│ ›                                                                                            
+    new: ▸   ●    feature/three        three: in progr│ ›                                                                                            
+other docs/shots/m8/came-back-landed-120x40.txt:15
+    old:  ┃ <A> · 3 minutes ago · made on feature-b · # │ · not merged
+    new:  ┃ <A> · 3 minutes…│ · not merged
+png docs/shots/22-raster-criss-cross-merge-on-dark.png (187, 259) -> (187, 259)
+png docs/shots/22-raster-criss-cross-merge.png (187, 259) -> (187, 259)
+lane-slot criss-cross-merge alpha: merge beta#1: 0:2,1:5,2:3,3:9,4:0 -> 0:2,1:5,2:3,3:4,4:5
+lane-slot criss-cross-merge alpha: work#1: 0:2,1:5,2:3,3:9 -> 0:2,1:5,2:3,3:4
+lane-slot criss-cross-merge beta: merge alpha#1: 0:2,1:5,2:3,3:9 -> 0:2,1:5,2:3,3:4
+lane-slot criss-cross-merge beta: work#1: 0:2,1:5,2:3,3:9,4:0 -> 0:2,1:5,2:3,3:4,4:5
+lane-slot ref-states Add the base#1: 0:2,1:11 -> 0:2,1:4
+lane-slot ref-states Advance main again#1: 0:2,1:11,2:0,3:7 -> 0:2,1:4,2:0,3:7
+lane-slot ref-states Advance main#1: 0:2,1:11,2:0,3:7 -> 0:2,1:4,2:0,3:7
+lane-slot ref-states Archived work#1: 1:11 -> 1:4
+lane-slot ref-states ahead: not pushed yet#1: 1:11,2:0,3:7 -> 1:4,2:0,3:7
+lane-slot ref-states ahead: pushed#1: 1:11,2:0,3:7 -> 1:4,2:0,3:7
+lane-slot ref-states behind: shared#1: 1:11,2:0 -> 1:4,2:0
+lane-slot ref-states behind: theirs#1: 1:11,2:5 -> 1:4,2:5
+lane-slot stash Add a.txt#1: 0:2,1:4,2:7 -> 0:2,1:8,2:3
+lane-slot stash On main: wip: with an untracked file#1: 1:4,2:7,3:2 -> 1:8,2:3,3:7
+lane-slot stash index on main: d96881b Add a.txt#1: 1:4,2:7,3:2 -> None
+lane-slot stash index on main: de6923a Add a.txt#1: None -> 1:8,2:3,3:7
+lane-slot stash untracked files on main: d96881b Add a.txt#1: 1:4,2:7,3:2 -> None
+lane-slot stash untracked files on main: de6923a Add a.txt#1: None -> 1:8,2:3,3:7
+SUMMARY compared=289 equal=272 reordered=0 lane-slot-files=3 other=14 png_changed=2 png_size_changed=0 added=0 removed=0 lane-slot changes=18

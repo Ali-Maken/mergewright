@@ -66,23 +66,10 @@ const WORDS: &[&str] = &["graft", "tributary", "trib_"];
 
 /// Shipped paths another ticket clears, with that ticket.
 const PENDING: &[(&str, &str)] = &[
-    // Fixture identities and the old fixture remote URL only, cleared by 12.
-    ("crates/mergewright-core/", "12"),
-    ("crates/mergewright-fixtures/", "12"),
-    ("crates/mergewright-git/", "12"),
-    ("crates/mergewright-graph/", "12"),
-    ("crates/mergewright-ops/", "12"),
-    ("crates/mergewright-term/", "12"),
-    ("crates/mergewright-ui/", "12"),
-    ("docs/shots/", "12"),
-];
-
-/// Fixture identities ticket 12 renames everywhere at once.
-const PENDING_IDENTITY: &[&str] = &[
-    "Graft Fixture",
-    "Graft Test",
-    "Graft Perf",
-    "@graft.invalid",
+    // Old captures with no live writer, and contact sheets that embed them:
+    // they hold fixture identities and the earlier product name. Listed in
+    // docs/perf/pp-12-no-writer.txt; ticket 12 stopped here (see its NOTES).
+    ("docs/shots/", "12-stop"),
 ];
 
 /// Rows of `<path>\t<exact substring>\t<reason>`.
@@ -147,7 +134,7 @@ fn allowed_rows() -> Vec<(&'static str, &'static str, &'static str)> {
 /// holds a word.
 fn says_word(text: &str, allowed: &[&str]) -> bool {
     let mut text = text.to_owned();
-    for found in allowed.iter().chain(PENDING_IDENTITY) {
+    for found in allowed {
         text = text.replace(found, " ");
     }
     let lower = text.to_lowercase();
@@ -210,7 +197,6 @@ fn the_word_test_blanks_allowed_text() {
     assert!(says_word("Graft opens", &[]));
     assert!(!says_word("a grafted commit", &["grafted"]));
     assert!(says_word("a grafted graft", &["grafted"]));
-    assert!(!says_word("Graft Fixture <x@graft.invalid>", &[]));
     assert!(says_word("Trib_x", &[]));
     assert!(matches("crates/", "crates/a.rs"));
     assert!(matches("LICENSE*", "LICENSE-MIT"));

@@ -5,10 +5,10 @@ expression: text
 shape: foxtrot-merge, truecolor, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                                             4 commits
-  *-\                 Merge branch 'main' into feature               Graft   4y
-> * |                 feature: work                                  Graft   4y
-  | *                 Advance main                                   Graft   4y
-  *-/                 Add the base                                   Graft   4y
+  *-\                 Merge branch 'main' into feature              Fixtu…   4y
+> * |                 feature: work                                 Fixtu…   4y
+  | *                 Advance main                                  Fixtu…   4y
+  *-/                 Add the base                                  Fixtu…   4y
 
 
 

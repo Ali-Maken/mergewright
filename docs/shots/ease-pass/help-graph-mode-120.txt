@@ -6,7 +6,7 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
     ┃       │ GRAPH MODE                                                                                   │
     ◉       │ ●     Folded merges   merged branches fold into their merge …   (on)  graph.merged_branches  │
     ●       │▸○     Every branch    every branch on its own lane, as before         graph.merged_branches  │
-  ◇━╯    mai│ HERE                                                                                         │ago
+  ◇━╯    mai│ HERE                                                                                         │y ago
             │ F3    Cycle the graph renderer                                               graph.renderer  │
             │ B     Write the commit-graph file (when offered)                   graph.write_commit_graph  │
             │ X     Decline the commit-graph offer                             graph.decline_commit_graph  │

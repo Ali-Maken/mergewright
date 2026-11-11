@@ -1,12 +1,12 @@
 === `f` then `q` while the fetch runs ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200                                       Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
+▸ ◆    main (you)   Commit 200                                      Fixtu…   7y
+  ┃                 Fixture · 7 years ago · made on main · a3eba73
+  ●                 Commit 199                                      Fixtu…   7y
+  ●                 Commit 198                                      Fixtu…   7y
+  ●                 Commit 197                                      Fixtu…   7y
+  ●                 Commit 196                                      Fixtu…   7y
+  ●                 Commit 195                                      Fixtu…   7y
   ●    ╭ Quit? ──────────────────────────────────────────────────────────╮   7y
   ●    │ fetch all remotes is still running · quit stops it              │   7y
   ●    │                                                                 │   7y
@@ -14,12 +14,12 @@
   ●    │                                                                 │   7y
   ●    │ ▸[ Cancel ]   [ Quit ]                                          │   7y
   ●    ╰─────────────────────────────────────────────────────────────────╯   7y
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
+  ●                 Commit 187                                      Fixtu…   7y
+  ●                 Commit 186                                      Fixtu…   7y
+  ●                 Commit 185                                      Fixtu…   7y
+  ●                 Commit 184                                      Fixtu…   7y
+  ●                 Commit 183                                      Fixtu…   7y
+  ●                 Commit 182                                      Fixtu…   7y
+  ●                 Commit 181                                      Fixtu…   7y
+  ●                 Commit 180                                      Fixtu…   7y
  y quit  ←/→ move  ⏎ choose  esc cancel

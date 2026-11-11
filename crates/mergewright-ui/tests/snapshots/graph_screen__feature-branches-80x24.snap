@@ -3,16 +3,16 @@ source: crates/mergewright-ui/tests/graph_screen.rs
 expression: text
 ---
  ◆ api  ~/code/api · main                                            10 commits
-    ●                     three: in progress                         Graft   4y
-▸ ◆─│─╮                   Merge branch 'feature/two'                 Graft   4y
-  │ │ ●                   two: finish                                Graft   4y
-  │ │ ●                   two: start                                 Graft   4y
-  ◉─│─│─╮                 Merge branch 'feature/one'                 Graft   4y
-  │ │ │ ●                 one: finish                                Graft   4y
-  │ │ │ ●                 one: start                                 Graft   4y
-  ●─┴─╯ │                 Add b.txt                                  Graft   4y
-  ●─────╯                 Add a.txt                                  Graft   4y
-  ◇                       Add a readme                               Graft   4y
+    ●                     three: in progress                        Fixtu…   4y
+▸ ◆─│─╮                   Merge branch 'feature/two'                Fixtu…   4y
+  │ │ ●                   two: finish                               Fixtu…   4y
+  │ │ ●                   two: start                                Fixtu…   4y
+  ◉─│─│─╮                 Merge branch 'feature/one'                Fixtu…   4y
+  │ │ │ ●                 one: finish                               Fixtu…   4y
+  │ │ │ ●                 one: start                                Fixtu…   4y
+  ●─┴─╯ │                 Add b.txt                                 Fixtu…   4y
+  ●─────╯                 Add a.txt                                 Fixtu…   4y
+  ◇                       Add a readme                              Fixtu…   4y
 
 
 

@@ -95,7 +95,7 @@ pub fn git(repo: &Path, args: &[&str]) -> String {
 pub fn git_as_mergewright(repo: &Path, args: &[&str]) -> String {
     let mut full = vec![
         "-c",
-        "user.name=Graft Test",
+        "user.name=Test Maker",
         "-c",
         "user.email=test@example.invalid",
     ];
@@ -112,7 +112,7 @@ pub fn git_as_mergewright(repo: &Path, args: &[&str]) -> String {
 /// `MA` on the Mac and `TE` in the Linux container, and the ids changed
 /// with them (m8-polish-and-ship/30).
 pub fn pin_identity(repo: &Path) {
-    git(repo, &["config", "user.name", "Graft Test"]);
+    git(repo, &["config", "user.name", "Test Maker"]);
     git(repo, &["config", "user.email", "test@example.invalid"]);
 }
 

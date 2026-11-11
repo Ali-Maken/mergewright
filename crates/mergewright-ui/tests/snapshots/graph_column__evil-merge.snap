@@ -4,7 +4,7 @@ expression: text
 ---
 shape: evil-merge (dark = light, asserted), truecolor
 
-◆─╮   cdd.  cc1103b  Merge branch 'alpha'
-● │   c.d.  0631550  Advance main
-│ ●   c.d.  bd20b78  alpha: work
-◇─╯   cdd.  68d5d19  Add the base
+◆─╮   cdd.  7eb7a61  Merge branch 'alpha'
+● │   c.d.  bcea953  Advance main
+│ ●   c.d.  94f182b  alpha: work
+◇─╯   cdd.  6fbb9d9  Add the base

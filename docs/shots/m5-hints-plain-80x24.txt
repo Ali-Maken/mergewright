@@ -51,12 +51,12 @@
 
  ◆ api  ~/code/api · main                       5 commits  date order, sorting…
   ◌                 Uncommitted changes (1 unstaged)
-  ◆    main (you)   add second  not pushed yet                       Graft   8m
-▸ ●                 add first                                        Graft   9m
-  ┃                 Graft · 9 minutes ago · made on main · 3d9496e
-  ●                 Correct the note                                 Graft   1y
-  ●                 Add the first note                               Graft   1y
-  ◇                 Add a readme                                     Graft   1y
+  ◆    main (you)   add second  not pushed yet                      Fixtu…   8m
+▸ ●                 add first                                       Fixtu…   9m
+  ┃                 Fixture · 9 minutes ago · made on main · 62d42d6
+  ●                 Correct the note                                Fixtu…   1y
+  ●                 Add the first note                              Fixtu…   1y
+  ◇                 Add a readme                                    Fixtu…   1y
 
 
 

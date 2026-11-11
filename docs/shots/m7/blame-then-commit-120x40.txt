@@ -1,7 +1,7 @@
  ◆ api  ~/code/api · main                                                                                     6 commits
 
   ◌                         Uncommitted changes (1 untracked)
-  ◆    main (you)           Handle expired tokens  not pushed yet                                            Graft  60m
+  ◆    main (you)           Handle expired tokens  not pushed yet                                           Fixtu…  60m
   ●                         Move session TTL to config                                                       Priya  4mo
   ●                         rustfmt                                                                         Rustf…  5mo
 ▸ ●                         Retry refresh once on 401                                                         Lina  7mo

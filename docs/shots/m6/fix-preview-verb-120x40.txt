@@ -18,14 +18,14 @@
 
       │                         after merge                                       │ main
     ◎┈╮                         Merge branch 'main' into feature          you    —│ ! not pushed yet
-    ● │                         finish the feature                      Graft  now│ · the main line: branches merge into
-    ● │                         start the feature                       Graft   2m│   it
-▸ ●─│─╯                         main moves again                        Graft   3m│ · no upstream to compare with
-  ● │                           main moves on                           Graft   4m│ · everyone, last commit 3m ago
-  ●─╯                           add the base                            Graft   5m│
-  ●                             Correct the note                        Graft   1y│ built on
-  ●                             Add the first note                      Graft   1y│   main
-  ◇                             Add a readme                            Graft   1y│
+    ● │                         finish the feature                     Fixtu…  now│ · the main line: branches merge into
+    ● │                         start the feature                      Fixtu…   2m│   it
+▸ ●─│─╯                         main moves again                       Fixtu…   3m│ · no upstream to compare with
+  ● │                           main moves on                          Fixtu…   4m│ · everyone, last commit 3m ago
+  ●─╯                           add the base                           Fixtu…   5m│
+  ●                             Correct the note                       Fixtu…   1y│ built on
+  ●                             Add the first note                     Fixtu…   1y│   main
+  ◇                             Add a readme                           Fixtu…   1y│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -45,7 +45,7 @@
 ╭ Merge main into feature ─────────────────────────────────────────────────────────────────────────────────────────────╮
 │ Nothing has changed yet.                                                                                             │
 │                                                                                                                      │
-│ Comes in      2 commits from main (Graft)                                                                            │
+│ Comes in      2 commits from main (Fixture)                                                                          │
 │ Changes       2 files                                                                                                │
 │ Git combines  2 files on its own                                                                                     │
 │ You decide    nothing: no file clashes                                                                               │

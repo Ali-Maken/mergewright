@@ -62,7 +62,7 @@ JOURNAL · what happened in this repo, newest first
 ▸ ●  Mergewright    now       fetch all…   failed: no repository at '/nonexistent/mwr-21c.git', or no…
                               ⊗ failed: no repository at '/nonexistent/mwr-21c.git', or no access to it
                               refs the fetch moved · u does not move them back
-                              ┆ origin/main  d5ae5fd → 7be74b5
+                              ┆ origin/main  a3eba73 → 16702b4
                               commands Mergewright ran
                               ┆ git fetch --progress --prune --all
   $  outside        6y ago    clone: from…

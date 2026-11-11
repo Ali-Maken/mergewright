@@ -20,12 +20,12 @@
 
 ▸ ◌                           Uncommitted changes (2 unmerged)
   ┃                           not committed yet · 2 files · on main
-  ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
-  ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
-  ●┄╯    main (you)           the shared files                                                               Graft   2h
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
+  ◆      main (you)           main's take  not pushed yet                                                   Fixtu…   2h
+  ┃ ●    feature              the feature's take  not pushed yet                                            Fixtu…   2h
+  ●┄╯    main (you)           the shared files                                                              Fixtu…   2h
+  ●                           Correct the note                                                              Fixtu…   1y
+  ●                           Add the first note                                                            Fixtu…   1y
+  ◇                           Add a readme                                                                  Fixtu…   1y
 
 
 
@@ -41,7 +41,7 @@
 ─────────╰────────────────────────────────────────────────────────────────────────────────────────────────╯─────────────
  y abort  ←/→ move  ⏎ choose  esc cancel
 UNCOMMITTED
-diff vs HEAD ddeed32
+diff vs HEAD a7e48d4
 CONFLICTS (2)                 ▎
   notes.md      both modified       1 + <<<<<<< HEAD
   shared.rs     both modified   1   2   our plan
@@ -59,13 +59,13 @@ CONFLICTS (2)                 ▎
 === 2. → ⏎: aborted ===
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸ ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
-  ┃                           Graft · 2 hours ago · made on main · ddeed32
-  ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
-  ●┄╯    main (you)           the shared files                                                               Graft   2h
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
+▸ ◆      main (you)           main's take  not pushed yet                                                   Fixtu…   2h
+  ┃                           Fixture · 2 hours ago · made on main · a7e48d4
+  ┃ ●    feature              the feature's take  not pushed yet                                            Fixtu…   2h
+  ●┄╯    main (you)           the shared files                                                              Fixtu…   2h
+  ●                           Correct the note                                                              Fixtu…   1y
+  ●                           Add the first note                                                            Fixtu…   1y
+  ◇                           Add a readme                                                                  Fixtu…   1y
 
 
 
@@ -81,7 +81,7 @@ CONFLICTS (2)                 ▎
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ abort merge of feature
-COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+COMMIT a7e48d4 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents 178ef3c · diff vs firs…
 main's take
 M notes.md              +1 −1 ▎
 M shared.rs             +1 −1   1     - the plan
@@ -101,13 +101,13 @@ M shared.rs             +1 −1   1     - the plan
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
   ◌                           Uncommitted changes (2 unmerged)
-▸ ◆      main (you)           main's take  not pushed yet                                                    Graft   2h
-  ┃                           Graft · 2 hours ago · made on main · ddeed32
-  ┃ ●    feature              the feature's take  not pushed yet                                             Graft   2h
-  ●┄╯    main (you)           the shared files                                                               Graft   2h
-  ●                           Correct the note                                                               Graft   1y
-  ●                           Add the first note                                                             Graft   1y
-  ◇                           Add a readme                                                                   Graft   1y
+▸ ◆      main (you)           main's take  not pushed yet                                                   Fixtu…   2h
+  ┃                           Fixture · 2 hours ago · made on main · a7e48d4
+  ┃ ●    feature              the feature's take  not pushed yet                                            Fixtu…   2h
+  ●┄╯    main (you)           the shared files                                                              Fixtu…   2h
+  ●                           Correct the note                                                              Fixtu…   1y
+  ●                           Add the first note                                                            Fixtu…   1y
+  ◇                           Add a readme                                                                  Fixtu…   1y
 
 
 
@@ -122,7 +122,7 @@ M shared.rs             +1 −1   1     - the plan
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ undo: abort merge of feature  c finishes the merge
-COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+COMMIT a7e48d4 · Fixture Maker <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents 178ef3c · diff vs firs…
 main's take
 M notes.md              +1 −1 ▎
 M shared.rs             +1 −1   1     - the plan

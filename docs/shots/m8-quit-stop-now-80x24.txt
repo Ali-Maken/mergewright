@@ -1,14 +1,14 @@
 === `q y` while the merge runs, then the offer (injected: no 10 s wait) ===
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆    featu… (you) finish the feature  not pushed yet             Graft  now
-    ●                 start the feature                              Graft   2m
-▸ ● ┊    main         main moves again  not pushed yet               Graft   3m
-  ┃ ┊                 Graft · 3 minutes ago · made on main · 45fa51d
-  ● ┊                 main moves on                                  Graft   4m
-  ●┄╯                 add the base                                   Graft   5m
-  ●                   Correct the note                               Graft   1y
-  ●                   Add the first note                             Graft   1y
-  ◇                   Add a readme                                   Graft   1y
+    ◆    featu… (you) finish the feature  not pushed yet            Fixtu…  now
+    ●                 start the feature                             Fixtu…   2m
+▸ ● ┊    main         main moves again  not pushed yet              Fixtu…   3m
+  ┃ ┊                 Fixture · 3 minutes ago · made on main · 2f30cf4
+  ● ┊                 main moves on                                 Fixtu…   4m
+  ●┄╯                 add the base                                  Fixtu…   5m
+  ●                   Correct the note                              Fixtu…   1y
+  ●                   Add the first note                            Fixtu…   1y
+  ◇                   Add a readme                                  Fixtu…   1y
 
 
 
@@ -25,11 +25,11 @@
  merge main into feature · still running after 10 s · q stop it now · esc stays
 === then `q`: the stop box ===
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆    featu… (you) finish the feature  not pushed yet             Graft  now
-    ●                 start the feature                              Graft   2m
-▸ ● ┊    main         main moves again  not pushed yet               Graft   3m
-  ┃ ┊                 Graft · 3 minutes ago · made on main · 45fa51d
-  ● ┊                 main moves on                                  Graft   4m
+    ◆    featu… (you) finish the feature  not pushed yet            Fixtu…  now
+    ●                 start the feature                             Fixtu…   2m
+▸ ● ┊    main         main moves again  not pushed yet              Fixtu…   3m
+  ┃ ┊                 Fixture · 3 minutes ago · made on main · 2f30cf4
+  ● ┊                 main moves on                                 Fixtu…   4m
   ●┄╯ ╭ Quit now? ───────────────────────────────────────────────────────╮   5m
   ●   │ merge main into feature is still running · a git hook may be     │   1y
   ●   │ stuck                                                            │   1y

@@ -10,11 +10,11 @@
 ▸   │ ●                 Check every link                                        Sara  55m
     │ ●                 Link the contents                                       Omar  56m
     │ ●                 Add a table of contents                                 Sara  57m
-    ● │                 Number the report                                      Graft  58m
-    ●─╯                 Add the report                                         Graft  59m
-  ●─╯                   Correct the note  main is here  not pushed yet         Graft   1y
-  ●                     Add the first note                                     Graft   1y
-  ◇                     Add a readme                                           Graft   1y
+    ● │                 Number the report                                     Fixtu…  58m
+    ●─╯                 Add the report                                        Fixtu…  59m
+  ●─╯                   Correct the note  main is here  not pushed yet        Fixtu…   1y
+  ●                     Add the first note                                    Fixtu…   1y
+  ◇                     Add a readme                                          Fixtu…   1y
 
 
 

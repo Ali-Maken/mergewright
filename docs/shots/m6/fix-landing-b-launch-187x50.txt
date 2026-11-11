@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · main                                                         merging feature into main  UNCOMMITTED
-                                                                                                             diff vs HEAD 274c7d4
+                                                                                                             diff vs HEAD 4dfca1e
 ▸ ◌                     Uncommitted changes (13 unmerged)
   ┃                     not committed yet · 13 files · on main
-  ◆      main (you)     Change every file on main  not pushed yet                                Graft   2h
-  ┃ ●    feature        Change every file on feature  not pushed yet                             Graft   2h  CONFLICTS (13)
-  ◇┄╯    main (you)     Add the files both sides will change                                     Graft   1y    added-by-them.txt                                              added by them
+  ◆      main (you)     Change every file on main  not pushed yet                               Fixtu…   2h
+  ┃ ●    feature        Change every file on feature  not pushed yet                            Fixtu…   2h  CONFLICTS (13)
+  ◇┄╯    main (you)     Add the files both sides will change                                    Fixtu…   1y    added-by-them.txt                                              added by them
                                                                                                                added-by-us.txt                                                  added by us
                                                                                                                both-added.txt                                                    both added
                                                                                                                both-deleted.txt                                                both deleted

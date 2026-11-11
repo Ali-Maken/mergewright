@@ -13,7 +13,7 @@
 #    last row is blank (review 86, M2).
 
 STASHES (1)
-▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
+▸ stash@{0}   "WIP on main: da1a1ab add the notes"             4m ago   1 file
 
 
 

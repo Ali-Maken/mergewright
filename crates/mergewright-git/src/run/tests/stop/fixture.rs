@@ -71,9 +71,9 @@ pub(super) fn merge(m: &Merging) -> GitInvocation {
         ])
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_AUTHOR_NAME", "Graft Fixture")
+        .env("GIT_AUTHOR_NAME", "Fixture Maker")
         .env("GIT_AUTHOR_EMAIL", "fixture@example.invalid")
-        .env("GIT_COMMITTER_NAME", "Graft Fixture")
+        .env("GIT_COMMITTER_NAME", "Fixture Maker")
         .env("GIT_COMMITTER_EMAIL", "fixture@example.invalid")
         .env("PIDFILE", &m.pidfile)
 }

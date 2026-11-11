@@ -1,8 +1,8 @@
- BLAME · src/auth/session.rs · as of 74f9a9e · find "refresh" 8 of 8
+ BLAME · src/auth/session.rs · as of 0ca70ea · find "refresh" 8 of 8
  skipping 1 commit listed in .git-blame-ignore-revs · i shows them
  ─ 3f6c311 Ana     1y  Add session            │  1  use std::time::{Duration, Instant};
  ─ 0a27627 Priya  4mo  Move session TTL to c… │  2  use crate::config::Config;
- ─ 74f9a9e Graf…  60m  Handle expired tokens  │  3  use crate::error::Expired;
+ ─ 0ca70ea Fixt…  60m  Handle expired tokens  │  3  use crate::error::Expired;
  ┌ 3f6c311 Ana     1y  Add session            │  4  use crate::http::{Client, Result};
  │                                            │  5
  │                                            │  6  pub struct Session {
@@ -25,7 +25,7 @@
  └                                            │ 23                  attempt += 1;
  ┌ 47593a5 Tom   10mo  Add token refresh      │ 24                  continue;
  └                                            │ 25              }
- ─ 74f9a9e Graf…  60m  Handle expired tokens  │ 26              self.token = resp.token().map_err(Expired::from)?;
+ ─ 0ca70ea Fixt…  60m  Handle expired tokens  │ 26              self.token = resp.token().map_err(Expired::from)?;
  ┌ 47593a5 Tom   10mo  Add token refresh      │ 27              return self.record_refresh(&resp, "refreshed after the server answered 401 on the first request; the retry budget is spent"
  │                                            │ 28          }
  └                                            │ 29      }

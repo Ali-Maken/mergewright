@@ -8,7 +8,7 @@ default: main
 integration: []
 commits: 4, columns: 2
 
-| *  3fb661a  topic              topic: unrelated work
-| *  c0f7180  topic              Fix the greeting (cherry picked)
-* |  9a9350a  main               Fix the greeting
-* /  fc8069b  main               Add the greeting
+| *  878454b  topic              topic: unrelated work
+| *  c93084d  topic              Fix the greeting (cherry picked)
+* |  6e0c248  main               Fix the greeting
+* /  346ab6b  main               Add the greeting

@@ -50,14 +50,14 @@
 # them.
 
  ◆ api  ~/code/api · main                                                         5 commits  UNCOMMITTED · 1 unstaged
-                                                                                             diff vs HEAD 29a1432
+                                                                                             diff vs HEAD 52900f9
 ▸ ◌                 Uncommitted changes (1 unstaged)
   ┃                 not committed yet · 1 file · on main
-  ◆    main (you)   add second  not pushed yet                                   Graft   8m
-  ●                 add first                                                    Graft   9m  UNSTAGED (1)
-  ●                 Correct the note                                             Graft   1y    M first.txt                                                 +1 −0
-  ●                 Add the first note                                           Graft   1y  reading…
-  ◇                 Add a readme                                                 Graft   1y
+  ◆    main (you)   add second  not pushed yet                                  Fixtu…   8m
+  ●                 add first                                                   Fixtu…   9m  UNSTAGED (1)
+  ●                 Correct the note                                            Fixtu…   1y    M first.txt                                                 +1 −0
+  ●                 Add the first note                                          Fixtu…   1y  reading…
+  ◇                 Add a readme                                                Fixtu…   1y
 
 
 

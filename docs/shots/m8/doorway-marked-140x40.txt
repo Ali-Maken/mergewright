@@ -7,10 +7,10 @@
 
  ◆ api  ~/code/api · main                                                                                 3 commits  1 merged branch folded
 
-▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  not pushed yet     Graft   1y│ main  (you're here)
-  ┃                         Graft · 1 year ago · made on main · merged 1 from alpha · cc1103b         │ ! not pushed yet
-  ●                         Advance main                                                    Graft   1y│ · the main line: branches merge into
-  ◇                         Add the base                                                    Graft   1y│   it
+▸ ◆  ⚠ main (you)           Merge branch 'alpha'  ▸ 1 commit from alpha  not pushed yet    Fixtu…   1y│ main  (you're here)
+  ┃                         Fixture · 1 year ago · made on main · merged 1 from alpha · 7eb7a61       │ ! not pushed yet
+  ●                         Advance main                                                   Fixtu…   1y│ · the main line: branches merge into
+  ◇                         Add the base                                                   Fixtu…   1y│   it
                                                                                                       │ · no upstream to compare with
                                                                                                       │ · everyone, last commit 1y ago
                                                                                                       │

@@ -30,7 +30,7 @@ fn about_to_merge() -> mergewright_fixtures::Scratch {
     let repo = scratch.path();
     // The merge commit is the app's `git merge --continue`: the fixture's
     // own name, so no machine's identity decides whether it can commit.
-    git(repo, &["config", "user.name", "Graft Fixture"]);
+    git(repo, &["config", "user.name", "Fixture Maker"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     write(repo, "shared.rs", "fn main() {}\n");
     write(repo, "notes.md", "the plan\n");

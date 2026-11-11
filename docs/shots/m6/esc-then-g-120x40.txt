@@ -2,41 +2,41 @@
 # What right looks like: the header reads `200 commits`, not `stopped`; the graph pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-  ●    main (you)           Commit 035                                  Graft   2d│ main  (you're here)
-  ●                         Commit 034                                  Graft   2d│ ! not pushed yet
-  ●                         Commit 033                                  Graft   2d│ · the main line: branches merge into
-  ●                         Commit 032                                  Graft   2d│   it
-  ●                         Commit 031                                  Graft   2d│ · no upstream to compare with
-  ●                         Commit 030                                  Graft   2d│ · everyone, last commit 2d ago
-  ●                         Commit 029                                  Graft   2d│
-  ●                         Commit 028                                  Graft   2d│ built on
-  ●                         Commit 027                                  Graft   2d│   main
-  ●                         Commit 026                                  Graft   2d│
-  ●                         Commit 025                                  Graft   2d│
-  ●                         Commit 024                                  Graft   2d│
-  ●                         Commit 023                                  Graft   2d│
-  ●                         Commit 022                                  Graft   2d│
-  ●                         Commit 021                                  Graft   2d│
-  ●                         Commit 020                                  Graft   2d│
-  ●                         Commit 019                                  Graft   2d│
-  ●                         Commit 018                                  Graft   2d│
-  ●                         Commit 017                                  Graft   2d│
-  ●                         Commit 016                                  Graft   2d│
-  ●                         Commit 015                                  Graft   2d│
-  ●                         Commit 014                                  Graft   2d│
-  ●                         Commit 013                                  Graft   2d│
-  ●                         Commit 012                                  Graft   2d│
-  ●                         Commit 011                                  Graft   2d│
-  ●                         Commit 010                                  Graft   2d│
-  ●                         Commit 009                                  Graft   2d│
-  ●                         Commit 008                                  Graft   2d│
-  ●                         Commit 007                                  Graft   2d│
-  ●                         Commit 006                                  Graft   2d│
-  ●                         Commit 005                                  Graft   2d│
-  ●                         Commit 004                                  Graft   2d│
-  ●                         Commit 003                                  Graft   2d│
-  ●                         Commit 002                                  Graft   2d│
-▸ ◇                         Commit 001                                  Graft   2d│
-                            Graft · 2 days ago · made on main · a9a0c8e           │
+  ●    main (you)           Commit 035                                 Fixtu…   2d│ main  (you're here)
+  ●                         Commit 034                                 Fixtu…   2d│ ! not pushed yet
+  ●                         Commit 033                                 Fixtu…   2d│ · the main line: branches merge into
+  ●                         Commit 032                                 Fixtu…   2d│   it
+  ●                         Commit 031                                 Fixtu…   2d│ · no upstream to compare with
+  ●                         Commit 030                                 Fixtu…   2d│ · everyone, last commit 2d ago
+  ●                         Commit 029                                 Fixtu…   2d│
+  ●                         Commit 028                                 Fixtu…   2d│ built on
+  ●                         Commit 027                                 Fixtu…   2d│   main
+  ●                         Commit 026                                 Fixtu…   2d│
+  ●                         Commit 025                                 Fixtu…   2d│
+  ●                         Commit 024                                 Fixtu…   2d│
+  ●                         Commit 023                                 Fixtu…   2d│
+  ●                         Commit 022                                 Fixtu…   2d│
+  ●                         Commit 021                                 Fixtu…   2d│
+  ●                         Commit 020                                 Fixtu…   2d│
+  ●                         Commit 019                                 Fixtu…   2d│
+  ●                         Commit 018                                 Fixtu…   2d│
+  ●                         Commit 017                                 Fixtu…   2d│
+  ●                         Commit 016                                 Fixtu…   2d│
+  ●                         Commit 015                                 Fixtu…   2d│
+  ●                         Commit 014                                 Fixtu…   2d│
+  ●                         Commit 013                                 Fixtu…   2d│
+  ●                         Commit 012                                 Fixtu…   2d│
+  ●                         Commit 011                                 Fixtu…   2d│
+  ●                         Commit 010                                 Fixtu…   2d│
+  ●                         Commit 009                                 Fixtu…   2d│
+  ●                         Commit 008                                 Fixtu…   2d│
+  ●                         Commit 007                                 Fixtu…   2d│
+  ●                         Commit 006                                 Fixtu…   2d│
+  ●                         Commit 005                                 Fixtu…   2d│
+  ●                         Commit 004                                 Fixtu…   2d│
+  ●                         Commit 003                                 Fixtu…   2d│
+  ●                         Commit 002                                 Fixtu…   2d│
+▸ ◇                         Commit 001                                 Fixtu…   2d│
+                            Fixture · 2 days ago · made on main · 78b569c         │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · o take · P push · c commit · u undo · . actions · ? keys

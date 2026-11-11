@@ -26,22 +26,22 @@
 #
 
  ◆ api  ~/code/api · feature                                          8 commits
-    ●                   finish the feature                           Graft  now
-    ●                   start the feature                            Graft   2m
+    ●                   finish the feature                          Fixtu…  now
+    ●                   start the feature                           Fixtu…   2m
     │                   after rebase
-    │ ○                 finish the feature                           Graft    —
-    │ ○                 start the feature                            Graft    —
-▸ ●─│─╯                 main moves again                             Graft   3m
-  ● │                   main moves on                                Graft   4m
-  ●─╯                   add the base                                 Graft   5m
-  ●                     Correct the note                             Graft   1y
-  ●                     Add the first note                           Graft   1y
-  ◇                     Add a readme                                 Graft   1y
+    │ ○                 finish the feature                          Fixtu…    —
+    │ ○                 start the feature                           Fixtu…    —
+▸ ●─│─╯                 main moves again                            Fixtu…   3m
+  ● │                   main moves on                               Fixtu…   4m
+  ●─╯                   add the base                                Fixtu…   5m
+  ●                     Correct the note                            Fixtu…   1y
+  ●                     Add the first note                          Fixtu…   1y
+  ◇                     Add a readme                                Fixtu…   1y
 
 
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 2 commits replayed                                                           │
-│ feature 8d6cd28 → 2 new commits                                              │
+│ feature df9a198 → 2 new commits                                              │
 │ working tree: 2 files updated                                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │

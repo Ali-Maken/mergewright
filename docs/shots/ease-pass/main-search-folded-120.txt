@@ -3,11 +3,11 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
 
  ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
 
-    ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Graft  28h│ wallet-release  (you're here)
-▸   ◉                         Merged PR 16021: Fix the wallet totals    Graft  28h│ ! not pushed yet
-    ┃                         Graft · 28 hours ago · made on wallet-release · mer…│ · not merged
-    ●                         Start the wallet release                  Graft  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet            Graft  28h│ · Graft, last commit 28h ago
+    ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet… Fixtu…  28h│ wallet-release  (you're here)
+▸   ◉                         Merged PR 16021: Fix the wallet totals   Fixtu…  28h│ ! not pushed yet
+    ┃                         Fixture · 28 hours ago · made on wallet-release · m…│ · not merged
+    ●                         Start the wallet release                 Fixtu…  28h│ ✓ up to date with main
+  ◇━╯    main                 Add the readme  not pushed yet           Fixtu…  28h│ · Fixture, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main

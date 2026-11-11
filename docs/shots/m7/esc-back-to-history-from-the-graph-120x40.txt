@@ -2,7 +2,7 @@ Right: (a) `B L ⏎` then `Tab` to the graph — the bar leads `esc back to hist
  ◆ api  ~/code/api · main                                                                                     6 commits
 
   ◌                         Uncommitted changes (1 untracked)
-  ◆    main (you)           Handle expired tokens  not pushed yet                                            Graft  60m
+  ◆    main (you)           Handle expired tokens  not pushed yet                                           Fixtu…  60m
   ●                         Move session TTL to config                                                       Priya  4mo
   ●                         rustfmt                                                                         Rustf…  5mo
 ▸ ●                         Retry refresh once on 401                                                         Lina  7mo
@@ -42,7 +42,7 @@ Retry refresh once on 401
 
 Right: (b) one `Esc` — the history place again, the same commit selected.
  HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
-   74f9a9e Handle expire… GF  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 ·
+   0ca70ea Handle expire… FM  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2 ·
  ▸ 2f48ca3 Retry refresh… LI  7mo +3 −2 │    16       /// Refresh the token when the server says it expired.
    47593a5 Add token ref… TO 10mo +11   │ ┃  17       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
    the file starts here (47593a5 added  │ ┃  18 +         let mut attempt = 0;

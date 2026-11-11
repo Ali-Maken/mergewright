@@ -1,11 +1,11 @@
 JOURNAL · what happened in this repo, newest first
 ▸ ●  Mergewright    now       rewrite feature-b                            1 ref · the index · the working tree · backup saved                                                         ← u
-     └ ⇢ replaced   90ebf9e "b3" · was feature-b's tip · undo brings it back · +2 under it
+     └ ⇢ replaced   aa27299 "b3" · was feature-b's tip · undo brings it back · +2 under it
   $  outside        5m ago    committed "b3" on feature-b                        git: "commit: b3"
   $  outside        7m ago    committed "b2" on feature-b                        git: "commit: b2"
   $  outside        8m ago    switch from main to feature-b                      git: "checkout: moving from main to feature-b"
   $  outside        8m ago    committed "b1" on feature-b                        git: "commit: b1"
-  $  outside        8m ago    made feature-b at ea820be                          git: "branch: Created from HEAD"
+  $  outside        8m ago    made feature-b at dd51d2e                          git: "branch: Created from HEAD"
   $  outside        10m ago   committed "m1" on main                             git: "commit (initial): m1"
   a branch deleted outside Mergewright and never checked out leaves no trace
 

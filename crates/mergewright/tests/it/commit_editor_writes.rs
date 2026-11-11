@@ -50,7 +50,7 @@ fn commit(repo: &Path, message: &str) {
         repo,
         &[
             "-c",
-            "user.name=Graft Test",
+            "user.name=Test Maker",
             "-c",
             "user.email=test@example.invalid",
             "commit",
@@ -69,7 +69,7 @@ fn staged_repo() -> mergewright_fixtures::Scratch {
     commit(repo, "add sample");
     // Mergewright's own commit needs an identity too, and the write does not go
     // through a shell where `-c` could be passed.
-    git(repo, &["config", "user.name", "Graft Test"]);
+    git(repo, &["config", "user.name", "Test Maker"]);
     git(repo, &["config", "user.email", "test@example.invalid"]);
 
     std::fs::write(repo.join("sample.txt"), "one\ntwo\n").expect("the scratch repo is writable");
@@ -336,7 +336,7 @@ fn fresh_staged_repo() -> tempfile::TempDir {
         repo,
         &["init", "-q", "-b", "main", "--object-format=sha1", "."],
     );
-    git(repo, &["config", "user.name", "Graft Test"]);
+    git(repo, &["config", "user.name", "Test Maker"]);
     git(repo, &["config", "user.email", "test@example.invalid"]);
     std::fs::write(repo.join("sample.txt"), "one\n").expect("the scratch repo is writable");
     git(repo, &["add", "sample.txt"]);

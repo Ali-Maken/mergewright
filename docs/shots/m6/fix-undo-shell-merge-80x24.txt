@@ -2,7 +2,7 @@
  ◆ api  ~/code/api · main                             merging feature into main
   ◌                   Uncommitted changes (2 staged)
 ▸ ◆      main (you)   main's take  not pushed yet                      you   2h
-  ┃                   you · 2 hours ago · made on main · ddeed32
+  ┃                   you · 2 hours ago · made on main · a7e48d4
   ┃ ●    feature      the feature's take  not pushed yet               you   2h
   ●┄╯    main (you)   the shared files                                 you   2h
   ●                   Correct the note                                 you   1y

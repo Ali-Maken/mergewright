@@ -1,6 +1,6 @@
 JOURNAL · what happened in this repo, newest first
-  $  outside        now       fast-forwarded main 1 commit                       git: "merge a65d7e4c502f351238cd52040d89363fa81d47f1: Fast-forward"
-  $  outside        now       made spike at 419e109                              git: "branch: Created from 419e10956a4446d8b5d1e8bee7d0663c004d3457"
+  $  outside        now       fast-forwarded main 1 commit                       git: "merge 95330be0bc021bf90fc289648728839f0354979b: Fast-forward"
+  $  outside        now       made spike at 2284a8b                              git: "branch: Created from 2284a8b8afb78e19808382481cf3c2c879869145"
   ●  Mergewright    now       fetch origin                                 origin/main moved · not undoable
   $  outside        4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
   $  outside        8m ago    switch from spike to main                          git: "checkout: moving from spike to main"

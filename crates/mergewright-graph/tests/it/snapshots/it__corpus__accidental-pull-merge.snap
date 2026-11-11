@@ -8,7 +8,7 @@ default: main
 integration: []
 commits: 4, columns: 2
 
-* \  3222407  main               Merge branch 'main' of https://example.invalid/graft.git into main
-* |  abd2097  main               My commit
-| *  781b8cc  main               Their commit
-* /  68d5d19  main               Add the base
+* \  4907da4  main               Merge branch 'main' of https://example.invalid/maker.git into main
+* |  e9c069c  main               My commit
+| *  66df357  main               Their commit
+* /  6fbb9d9  main               Add the base

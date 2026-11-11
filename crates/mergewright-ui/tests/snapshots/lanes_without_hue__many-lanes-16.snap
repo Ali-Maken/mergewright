@@ -5,28 +5,28 @@ expression: text
 shape: many-lanes, 16, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                      44 commits  lanes drawn: 7 of 11
-  ◆▾            ⋮                 Merge branch 'lane-13'             Graft   4y
-▸ ◉▾            ⋮                 Merge branch 'lane-12'             Graft   4y
-  │             ●▾                lane 13: finish                    Graft   4y
-  │             ●▾                lane 13: start                     Graft   4y
-  │             ●▾                lane 12: finish                    Graft   4y
-  │             ●▾                lane 12: start                     Graft   4y
-  │             ●▾                lane 11: finish                    Graft   4y
-  │             ●▾                lane 11: start                     Graft   4y
-  │             ●▾                lane 10: finish                    Graft   4y
-  │             ●▾                lane 10: start                     Graft   4y
-  │ ●           ⋮                 lane 9: finish                     Graft   4y
-  │ ●           ⋮                 lane 9: start                      Graft   4y
-  │ ╎ ●         ⋮                 lane 8: finish                     Graft   4y
-  │ ╎ ●         ⋮                 lane 8: start                      Graft   4y
-  │ ╎ │ ●       ⋮                 lane 7: finish                     Graft   4y
-  │ ╎ │ ●       ⋮                 lane 7: start                      Graft   4y
-  │ ╎ │ ╎ ●     ⋮                 lane 6: finish                     Graft   4y
-  │ ╎ │ ╎ ●     ⋮                 lane 6: start                      Graft   4y
-  │ ╎ │ ╎ │ ●   ⋮                 lane 5: finish                     Graft   4y
-  │ ╎ │ ╎ │ ●   ⋮                 lane 5: start                      Graft   4y
-  │ ╎ │ ╎ │ ╎ ● ⋮                 lane 4: finish                     Graft   4y
-  │ ╎ │ ╎ │ ╎ ● ⋮                 lane 4: start                      Graft   4y
+  ◆▾            ⋮                 Merge branch 'lane-13'            Fixtu…   4y
+▸ ◉▾            ⋮                 Merge branch 'lane-12'            Fixtu…   4y
+  │             ●▾                lane 13: finish                   Fixtu…   4y
+  │             ●▾                lane 13: start                    Fixtu…   4y
+  │             ●▾                lane 12: finish                   Fixtu…   4y
+  │             ●▾                lane 12: start                    Fixtu…   4y
+  │             ●▾                lane 11: finish                   Fixtu…   4y
+  │             ●▾                lane 11: start                    Fixtu…   4y
+  │             ●▾                lane 10: finish                   Fixtu…   4y
+  │             ●▾                lane 10: start                    Fixtu…   4y
+  │ ●           ⋮                 lane 9: finish                    Fixtu…   4y
+  │ ●           ⋮                 lane 9: start                     Fixtu…   4y
+  │ ╎ ●         ⋮                 lane 8: finish                    Fixtu…   4y
+  │ ╎ ●         ⋮                 lane 8: start                     Fixtu…   4y
+  │ ╎ │ ●       ⋮                 lane 7: finish                    Fixtu…   4y
+  │ ╎ │ ●       ⋮                 lane 7: start                     Fixtu…   4y
+  │ ╎ │ ╎ ●     ⋮                 lane 6: finish                    Fixtu…   4y
+  │ ╎ │ ╎ ●     ⋮                 lane 6: start                     Fixtu…   4y
+  │ ╎ │ ╎ │ ●   ⋮                 lane 5: finish                    Fixtu…   4y
+  │ ╎ │ ╎ │ ●   ⋮                 lane 5: start                     Fixtu…   4y
+  │ ╎ │ ╎ │ ╎ ● ⋮                 lane 4: finish                    Fixtu…   4y
+  │ ╎ │ ╎ │ ╎ ● ⋮                 lane 4: start                     Fixtu…   4y
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 graph colour per cell:

@@ -5,7 +5,7 @@
     ┊ ●    origin/main          Add an ops runbook  origin/main is here                                                                      you  14m│ · the main line: branches merge into
     ┊ ●                         Document the api                                                                                             you  15m│   it
 ▸ ◆ ┊ ┊  ⓘ main (you)           Add rate limiter  ↺ put back  ↑1 to push                                                                     you  30m│ ! origin/main has 2 new commits
-  ┃ ┊ ┊                         you · 30 minutes ago · made on main · a65d7e4                                                                        │   since it left
+  ┃ ┊ ┊                         you · 30 minutes ago · made on main · 95330be                                                                        │   since it left
   ●┄┴┄╯                         Add metrics endpoint  ○ main was here                                                                        you  31m│ · everyone, last commit 30m ago
   ●                             Add request logging                                                                                          you  32m│
   ◇                             Start the api                                                                                                you  33m│ built on
