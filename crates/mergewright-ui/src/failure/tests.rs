@@ -35,6 +35,7 @@ fn the_mark_is_one_cell_and_no_other_marks_glyph() {
 }
 
 #[test]
+#[cfg(debug_assertions)]
 #[should_panic(expected = "must be unmarked")]
 fn premarked_words_are_refused_in_debug() {
     let _ = marked("✗ push refused", false);
