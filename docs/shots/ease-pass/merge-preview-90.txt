@@ -12,7 +12,7 @@
     │ ●                 Add a table of contents                                 Sara  57m
     ● │                 Number the report                                      Maker  58m
     ●─╯                 Add the report                                         Maker  59m
-  ●─╯                   Correct the note  main is here  not pushed yet         Maker   1y
+  ●─╯                   Correct the note  main is here  no upstream set        Maker   1y
   ●                     Add the first note                                     Maker   1y
   ◇                     Add a readme                                           Maker   1y
 

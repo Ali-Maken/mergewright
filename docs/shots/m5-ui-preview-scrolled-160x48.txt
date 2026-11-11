@@ -42,7 +42,7 @@
  ◆ api  ~/code/api · topic                                                                                                                           70 commits
 
     ●                           redesign step 21                                                                Maker  41m│ old-release
-    ●                           redesign step 20                                                                Maker  42m│ ! not pushed yet
+    ●                           redesign step 20                                                                Maker  42m│ ! no upstream set
     ●                           redesign step 19                                                                Maker  43m│ · not merged
     ●                           redesign step 18                                                                Maker  44m│ ! main has 3 new commits since it
     ●                           redesign step 17                                                                Maker  45m│   left
@@ -65,16 +65,16 @@
     ●                           redesign step 00                                                                Maker  62m│
     │ ●                         finish the topic                                                                Maker  63m│
     │ ●                         start the topic                                                                 Maker  64m│
-  ●─┴─╯                         main moves on (2)  main is here  not pushed yet                                 Maker  65m│
+  ●─┴─╯                         main moves on (2)  main is here  no upstream set                                Maker  65m│
   ●                             main moves on (1)                                                               Maker  66m│
   ●                             main moves on (0)                                                               Maker  67m│
   │                             after rebase                                                                              │
-  │ ○                           finish the topic  topic is here  not pushed yet                                 Maker    —│
+  │ ○                           finish the topic  topic is here  no upstream set                                Maker    —│
   │ ○                           start the topic                                                                 Maker    —│
   │ ○                           main moves on (2)                                                               Maker    —│
   │ ○                           main moves on (1)                                                               Maker    —│
   │ ○                           main moves on (0)                                                               Maker    —│
-▸ │ ●                           cut release 1.0  old-release is here  not pushed yet                            Maker  68m│
+▸ │ ●                           cut release 1.0  old-release is here  no upstream set                           Maker  68m│
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic 8644a69 → 5 new commits                                                                                                                                │

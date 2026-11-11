@@ -48,7 +48,7 @@ fn ref_badges(
 
 /// Wide enough that `feature`'s label is drawn: labels give way before
 /// the subject (ease-pass 09 ruling W), and `Commit 3` with `feature is
-/// here  not pushed yet` needs 44 cells — at 100 the branch pane leaves
+/// here  no upstream set` needs 44 cells — at 100 the branch pane leaves
 /// the message column 36.
 const COLUMNS: u16 = 140;
 

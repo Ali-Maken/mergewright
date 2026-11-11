@@ -16,7 +16,7 @@
 #
 === 80x24 ===
 == frame 1: `fix: x` typed, subject focused ==
- ◆ api  ~/code/api  committing to main · not pushed yet
+ ◆ api  ~/code/api  committing to main · no upstream set
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ ▸fix: x                                                                 6/72 │
 │  More detail, if it needs it (optional)                                      │
@@ -43,7 +43,7 @@
 
 == frame 2: after `⏎` ==
  ◆ api  ~/code/api · main                                             2 commits
-▸ ◆    main (you)   fix: x  not pushed yet                             you  now
+▸ ◆    main (you)   fix: x  no upstream set                            you  now
   ┃                 you · just now · made on main · 0000000
   ◇                 add sample                                         you  now
 

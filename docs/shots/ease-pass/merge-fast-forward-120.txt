@@ -6,7 +6,7 @@
  ◆ api  ~/code/api · wallet-release                                                                           7 commits
 
 ▸   ◆                         Check every link                           Sara  55m│ sara/fix-toc
-    ●                         Add notes                                  Omar  56m│ ! not pushed yet
+    ●                         Add notes                                  Omar  56m│ ! no upstream set
     ●                         Add a table of contents                    Sara  57m│ · not merged
     ●                         Add the report                            Maker  59m│ ✓ up to date with wallet-release
   ●─╯                         Correct the note                          Maker   1y│ · Sara and Omar, last commit 55m ago

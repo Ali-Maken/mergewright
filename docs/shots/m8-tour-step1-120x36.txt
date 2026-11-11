@@ -10,8 +10,8 @@ m8-polish-and-ship/19c-c: what right looks like — `⌃P tour ⏎` from his rep
   ┃                             you · 6 years ago · made on main · ecad443        │ · the main line: branches merge into
   ●                             Name the chef  origin/main is here        you   6y│   it
   ●                             Pie for dessert                           you   6y│ ✓ up to date with origin/main
-  ┃ ●      clash                Ice cream for dessert  not pushed yet     you   6y│ · everyone, last commit 6y ago
-  ┃ ┊ ●    feature              Add opening hours  not pushed yet         you   6y│
+  ┃ ●      clash                Ice cream for dessert  no upstream set    you   6y│ · everyone, last commit 6y ago
+  ┃ ┊ ●    feature              Add opening hours  no upstream set        you   6y│
   ●┄┴┄╯    main (you)           Add a side dish                           you   6y│ built on
   ◇                             Start the menu                            you   6y│   main
                                                                                   │

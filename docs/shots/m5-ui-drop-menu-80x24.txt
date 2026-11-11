@@ -23,10 +23,10 @@
 #    on, which is still readable above it.
 #
  ◆ api  ~/code/api · feature                                          8 commits
-▸   ◆    featu… (you) finish the feature  not pushed yet             Maker  now
+▸   ◆    featu… (you) finish the feature  no upstream set            Maker  now
     ┃                 Maker · just now · made on feature · 300a4d7
     ●                 start the feature                              Maker   2m
-  ● ┃    main         main moves again  not pushed yet               Maker   3m
+  ● ┃    main         main moves again  no upstream set              Maker   3m
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main

@@ -4,14 +4,14 @@ What right looks like: taken before wallet-release's extra commit: the pane's `b
  ◆ api  ~/code/api · wallet-release                                                       8 commits  every branch shown
 
       ◉━╮      bob/x                Merge branch 'sara/fix-toc' into …    Bob  27h│ sara/fix-toc
-      ● ┃                           x1: Bob's first try                   Bob  27h│ ! not pushed yet
+      ● ┃                           x1: Bob's first try                   Bob  27h│ ! no upstream set
       ┊ ┃ ●    ali/x                x: try the other layout               you  27h│ · not merged
 ▸     ┊ ● ┊    sara/fix-toc         toc: number the headings             Sara  28h│ ✓ up to date with wallet-release
       ┊ ┃ ┊                         Sara · 28 hours ago · made on sara/fix-toc · …│ · Sara, last commit 28h ago
       ●━╯ ┊    bob/x                toc: fix the anchors                 Sara  28h│
       ◆┄┄┄╯    wallet-release (you) Start the wallet release              you  28h│ built on
-    ●─╯        develop              Start develop  not pushed yet         you  28h│   main
-  ◇─╯          main                 Add the readme  not pushed yet        you  28h│    ─◆ develop
+    ●─╯        develop              Start develop  no upstream set        you  28h│   main
+  ◇─╯          main                 Add the readme  no upstream set       you  28h│    ─◆ develop
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ sara/fix-toc
                                                                                   │

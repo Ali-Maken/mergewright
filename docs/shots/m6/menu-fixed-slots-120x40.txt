@@ -15,7 +15,7 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●    fix                  fix the bug  not pushed yet  not merged   Maker   3m│ fix
+▸   ●    fix                  fix the bug  no upstream set  not merged  Maker   3m│ fix
  Checkout fix
  Cherry-pick 75ce583 (o)
  Copy SHA (y)
@@ -58,8 +58,8 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    fix                  fix the bug  not pushed yet  not merged   Maker   3m│ main  (you're here)
-▸ ◆ ┊    main (you)           main moves on  not pushed yet             Maker   4m│ reading…
+    ●    fix                  fix the bug  no upstream set  not merged  Maker   3m│ main  (you're here)
+▸ ◆ ┊    main (you)           main moves on  no upstream set            Maker   4m│ reading…
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)

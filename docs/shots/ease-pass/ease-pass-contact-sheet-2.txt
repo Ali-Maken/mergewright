@@ -34,7 +34,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
     │ ●                 Add a table of contents                                 Sara  57m
     ● │                 Number the report                                      Maker  58m
     ●─╯                 Add the report                                         Maker  59m
-  ●─╯                   Correct the note  main is here  not pushed yet         Maker   1y
+  ●─╯                   Correct the note  main is here  no upstream set        Maker   1y
   ●                     Add the first note                                     Maker   1y
   ◇                     Add a readme                                           Maker   1y
 
@@ -69,7 +69,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
  ◆ api  ~/code/api · wallet-release                                                                           8 commits
 
       │                         after merge                                       │ sara/fix-toc
-    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! no upstream set
 ▸   │ ●                         Check every link                         Sara  55m│ · not merged
     │ ●                         Link the contents                        Omar  56m│ ✓ up to date with main
     │ ●                         Add a table of contents                  Sara  57m│ · Sara, Omar and 1 other, last
@@ -120,7 +120,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
  ◆ api  ~/code/api · wallet-release                                                                           8 commits
 
       │                         after merge                                       │ sara/fix-toc
-    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! no upstream set
 ▸   │ ●                         Check every link                         Sara  55m│ · not merged
     │ ●                         Add notes                                Omar  56m│ ✓ up to date with main
     │ ●                         Add a table of contents                  Sara  57m│ · Sara, Omar and 1 other, last
@@ -171,7 +171,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
  ◆ api  ~/code/api · wallet-release                                                                           7 commits
 
 ▸   ◆                         Check every link                           Sara  55m│ sara/fix-toc
-    ●                         Add notes                                  Omar  56m│ ! not pushed yet
+    ●                         Add notes                                  Omar  56m│ ! no upstream set
     ●                         Add a table of contents                    Sara  57m│ · not merged
     ●                         Add the report                            Maker  59m│ ✓ up to date with wallet-release
   ●─╯                         Correct the note                          Maker   1y│ · Sara and Omar, last commit 55m ago
@@ -222,7 +222,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
  ◆ api  ~/code/api · wallet-release                                                                           9 commits
 
       │                         after merge                                       │ stray
-    ◎┈╮                         Merge branch 'stray' into wallet-rele…    you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'stray' into wallet-rele…    you    —│ ! no upstream set
 ▸   │ ◇                         Start over                              Maker  54m│ · not merged
     │ ●                         Check every link                         Sara  55m│ · shares no history with main
     │ ●                         Link the contents                        Omar  56m│ · Maker, last commit 54m ago
@@ -860,10 +860,10 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
  ◆ api  ~/code/api · wallet-release                                                   6 commits  1 merged branch folded
 
 ▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…    you  now│ wallet-release  (you're here)
-    ┃                         you · just now · made on wallet-release · merged 2 …│ ! not pushed yet
+    ┃                         you · just now · made on wallet-release · merged 2 …│ ! no upstream set
     ●                         release notes                               you   1y│ · not merged
     ●                         the report                                  you   1y│ ✓ up to date with main
-  ●━╯    main                 Correct the note  not pushed yet            you   7y│ · you, last commit just now
+  ●━╯    main                 Correct the note  no upstream set           you   7y│ · you, last commit just now
   ●                           Add the first note                          you   7y│
   ◇                           Add a readme                                you   7y│ built on
                                                                                   │   main

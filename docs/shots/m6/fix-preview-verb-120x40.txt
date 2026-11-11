@@ -17,7 +17,7 @@
  ◆ api  ~/code/api · feature                                                                                  8 commits
 
       │                         after merge                                       │ main
-    ◎┈╮                         Merge branch 'main' into feature          you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'main' into feature          you    —│ ! no upstream set
     ● │                         finish the feature                      Maker  now│ · the main line: branches merge into
     ● │                         start the feature                       Maker   2m│   it
 ▸ ●─│─╯                         main moves again                        Maker   3m│ · no upstream to compare with

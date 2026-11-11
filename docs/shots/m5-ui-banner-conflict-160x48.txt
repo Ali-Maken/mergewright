@@ -72,8 +72,8 @@
                                                                                              diff vs HEAD c8b2245
 ▸ ◌                   Uncommitted changes (16 unmerged)
   ┃                   not committed yet · 16 files · on main
-  ◆      main (you)   main's take  not pushed yet                                Maker  87m
-  ┃ ●    feature      the feature's take  not pushed yet  not merged             Maker  88m  CONFLICTS (16)
+  ◆      main (you)   main's take  no upstream set                               Maker  87m
+  ┃ ●    feature      the feature's take  no upstream set  not merged            Maker  88m  CONFLICTS (16)
   ●┄╯    main (you)   the shared files                                           Maker  89m    notes.md                                            both modified
   ●                   Ship release 29                                            Maker   2h    shared.rs                                           both modified
   ●                   Ship release 28                                            Maker   2h    ▾ src/

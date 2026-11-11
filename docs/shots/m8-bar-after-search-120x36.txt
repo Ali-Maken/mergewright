@@ -13,7 +13,7 @@
  ◆ api  ~/code/api · main          /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits  1 merged branch folded
 
 ▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Maker   2d│ main  (you're here)
-  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! not pushed yet
+  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! no upstream set
   ◇                         Add the base                                Maker   2d│ · the main line: branches merge into
                                                                                   │   it
                                                                                   │ · no upstream to compare with
@@ -52,7 +52,7 @@
  ◆ api  ~/code/api · main                                                             2 commits  1 merged branch folded
 
 ▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Maker   2d│ main  (you're here)
-  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! not pushed yet
+  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! no upstream set
   ◇                         Add the base                                Maker   2d│ · the main line: branches merge into
                                                                                   │   it
                                                                                   │ · no upstream to compare with

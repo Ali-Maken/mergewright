@@ -24,10 +24,10 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ◆    feature (you)        finish the feature  not pushed yet  not merged                                    Maker  now│ feature  (you're here)
-    ┃                         Maker · just now · made on feature · 300a4d7                                                │ ! not pushed yet
+    ◆    feature (you)        finish the feature  no upstream set  not merged                                   Maker  now│ feature  (you're here)
+    ┃                         Maker · just now · made on feature · 300a4d7                                                │ ! no upstream set
     ●                         start the feature                                                                 Maker   2m│ · not merged
-  ● ┃ →  main                 main moves again  not pushed yet                                                  Maker   3m│ ! main has 2 new commits since it
+  ● ┃ →  main                 main moves again  no upstream set                                                 Maker   3m│ ! main has 2 new commits since it
   ● ┃                         main moves on                                                                     Maker   4m│   left
   ●━╯                         add the base                                                                      Maker   5m│ · Maker, last commit just now
   ●                           Correct the note                                                                  Maker   1y│

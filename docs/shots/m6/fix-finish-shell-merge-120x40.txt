@@ -1,6 +1,6 @@
  ◆ api  ~/code/api · main                                                             6 commits  1 merged branch folded
 
-▸ ◆    main (you)           Merge branch 'feature'  ▸ 1 commit from feature  not pushed yet                    you fut…
+▸ ◆    main (you)           Merge branch 'feature'  ▸ 1 commit from feature  no upstream set                   you fut…
   ┃                         you · in the future · made on main · merged 1 from feature · 0000000
   ●                         main's take                                                                        you   2h
   ●                         the shared files                                                                   you   2h

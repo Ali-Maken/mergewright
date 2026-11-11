@@ -4,7 +4,7 @@ What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branch
  ◆ api  ~/code/api · wallet-release                          47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
   ●    wallet-release (you) release: note 29                            Maker  27h│ wallet-release  (you're here)
-  ●                         release: note 28                            Maker  27h│ ! not pushed yet
+  ●                         release: note 28                            Maker  27h│ ! no upstream set
   ●                         release: note 27                            Maker  27h│ · not merged
   ●                         release: note 26                            Maker  27h│ ✓ up to date with main
   ●                         release: note 25                            Maker  27h│ · Maker, last commit 27h ago

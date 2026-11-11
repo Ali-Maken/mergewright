@@ -11,7 +11,7 @@
  ◆ api  ~/code/api · main                                                                                     6 commits
 
     ●                         fix the bug                               Maker   3m│ main  (you're here)
-▸ ◆ │                         main moves on                             Maker   4m│ ! not pushed yet
+▸ ◆ │                         main moves on                             Maker   4m│ ! no upstream set
   ●─╯                         add the base                              Maker   5m│ · the main line: branches merge into
   ●                           Correct the note                          Maker   1y│   it
   ●                           Add the first note                        Maker   1y│ · no upstream to compare with

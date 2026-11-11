@@ -15,9 +15,9 @@
 
  ◆ api  ~/code/api · fix                        5 commits  date order, sorting…
     ◌                 Uncommitted changes (1 unstaged)
-▸   ◆    fix (you)    fix changes line 7  not pushed yet             Maker   4m
+▸   ◆    fix (you)    fix changes line 7  no upstream set            Maker   4m
     ┃                 Maker · 4 minutes ago · made on fix · bc7fa64
-  ●━╯    main         add f  not pushed yet                          Maker   5m
+  ●━╯    main         add f  no upstream set                         Maker   5m
   ●                   Correct the note                               Maker   1y
   ●                   Add the first note                             Maker   1y
   ◇                   Add a readme                                   Maker   1y

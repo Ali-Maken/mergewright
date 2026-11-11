@@ -11,12 +11,12 @@
  ◆ api  ~/code/api · feature-a                                                                                4 commits
 
     ●                           Show the login page                     Maker   2d│ feature-a  (you're here)
-▸   ●                           Handle expired tokens                   Maker   2d│ ! not pushed yet
+▸   ●                           Handle expired tokens                   Maker   2d│ ! no upstream set
     │                           the result                                        │ · not merged
     │ ○                         Show the login page                     Maker    —│ ✓ up to date with main
     │ ○                         Handle expired tokens on refresh        Maker    —│ · Maker, last commit 2d ago
     ●─╯                         Add OAuth callback                      Maker   2d│
-  ◇─╯                           m1  main is here  not pushed yet        Maker   2d│ built on
+  ◇─╯                           m1  main is here  no upstream set       Maker   2d│ built on
                                                                                   │   main
                                                                                   │    ─◆ feature-a
                                                                                   │

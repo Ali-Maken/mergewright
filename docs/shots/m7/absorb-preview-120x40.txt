@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · feature-a                                                                                3 commits
 
 ▸   ●                           Handle expired tokens                   Maker   2d│ feature-a  (you're here)
-    ●                           Add OAuth callback                      Maker   2d│ ! not pushed yet
+    ●                           Add OAuth callback                      Maker   2d│ ! no upstream set
     │                           the result                                        │ · not merged
     │ ○                         Handle expired tokens                   Maker    —│ ✓ up to date with main
     │ ○                         Add OAuth callback                      Maker    —│ · Maker, last commit 2d ago
-  ◇─┴─╯                         m1  main is here  not pushed yet        Maker   2d│
+  ◇─┴─╯                         m1  main is here  no upstream set       Maker   2d│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ feature-a

@@ -1,8 +1,8 @@
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
-▸   ◆    feature (you)        Change every file on feature  not pushed yet  not merged                         you fut…
+▸   ◆    feature (you)        Change every file on feature  no upstream set  not merged                        you fut…
     ┃                         you · 2 hours ago · made on feature · 0000000
-  ●━╯    main                 Change every file on main  not pushed yet                                        you   2h
+  ●━╯    main                 Change every file on main  no upstream set                                       you   2h
   ◇                           Add the files both sides will change                                             you   1y
 
 

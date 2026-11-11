@@ -57,7 +57,7 @@ fn heads(name: &str) -> String {
 #[test]
 fn pushed_words() {
     let table = [
-        (Pushed::NoUpstream, Mark::Attention, "not pushed yet"),
+        (Pushed::NoUpstream, Mark::Attention, "no upstream set"),
         (Pushed::InSync, Mark::Fine, "pushed"),
         (Pushed::ToPush(1), Mark::Attention, "1 commit to push"),
         (Pushed::ToPull(3), Mark::Attention, "3 new commits to pull"),

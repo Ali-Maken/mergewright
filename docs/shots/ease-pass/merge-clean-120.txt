@@ -6,7 +6,7 @@
  ◆ api  ~/code/api · wallet-release                                                                           8 commits
 
       │                         after merge                                       │ sara/fix-toc
-    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! no upstream set
 ▸   │ ●                         Check every link                         Sara  55m│ · not merged
     │ ●                         Add notes                                Omar  56m│ ✓ up to date with main
     │ ●                         Add a table of contents                  Sara  57m│ · Sara, Omar and 1 other, last

@@ -102,7 +102,7 @@
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Maker   7y
+▸ ◆    main (you)   Commit 200  topic is here  no upstream set       Maker   7y
   ┃                 Maker · 7 years ago · made on main · 38e090d
   ●                 Commit 199                                       Maker   7y
   ●                 Commit 198                                       Maker   7y
@@ -128,7 +128,7 @@
 
 === frame 5: the fetch answers under the prompt ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Maker   7y
+▸ ◆    main (you)   Commit 200  topic is here  no upstream set       Maker   7y
   ┃                 Maker · 7 years ago · made on main · 38e090d
   ●                 Commit 199                                       Maker   7y
   ●                 Commit 198                                       Maker   7y
@@ -154,7 +154,7 @@
 
 === frame 6: `esc`, the fetch's line ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Maker   7y
+▸ ◆    main (you)   Commit 200  topic is here  no upstream set       Maker   7y
   ┃                 Maker · 7 years ago · made on main · 38e090d
   ●                 Commit 199                                       Maker   7y
   ●                 Commit 198                                       Maker   7y

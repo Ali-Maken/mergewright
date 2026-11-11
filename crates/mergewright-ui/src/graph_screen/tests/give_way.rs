@@ -131,7 +131,7 @@ fn badges_drop_whole_before_the_subject_gives_way_at_80_columns() {
     assert!(screen[1].contains("Commit 2  main is here"), "{screen:#?}");
     assert!(!screen[1].contains('…'), "no label is cut: {screen:#?}");
     assert!(
-        screen[2].contains("Commit 1  topic is here  not pushed yet"),
+        screen[2].contains("Commit 1  topic is here  no upstream set"),
         "{screen:#?}"
     );
 }

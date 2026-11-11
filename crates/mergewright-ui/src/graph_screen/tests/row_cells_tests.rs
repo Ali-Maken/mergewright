@@ -175,7 +175,7 @@ fn labels_follow_the_message_muted_and_say_where_each_branch_is() {
     );
     assert!(
         drawn[2].contains(
-            "Commit 2  in-sync is here  origin/x is here  local-only is here  not pushed yet"
+            "Commit 2  in-sync is here  origin/x is here  local-only is here  no upstream set"
         ),
         "{:?}",
         drawn[2]

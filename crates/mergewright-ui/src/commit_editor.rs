@@ -171,7 +171,7 @@ pub struct CommitHeader {
     /// `<sha7> <subject>` of the commit an amend rewrites; `None` for a
     /// new commit.
     pub amending: Option<SanitizedText>,
-    /// `not pushed yet` / `N commits to push`; `None` when there is nothing
+    /// `no upstream set` / `N commits to push`; `None` when there is nothing
     /// to say (in sync, detached, not read yet) — never a word that reads
     /// as a problem when nothing is wrong (CLAUDE.md status rule).
     pub push: Option<SanitizedText>,

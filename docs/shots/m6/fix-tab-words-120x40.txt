@@ -3,8 +3,8 @@
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
                               not committed yet · 13 files
-    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
-  ◆ ┃  ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Maker   2h
+    ●    feature              Change every file on feature  no upstream set  not merged                      Maker   2h
+  ◆ ┃  ⓘ main                 Change every file on main  no upstream set  HEAD is here                       Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
@@ -44,8 +44,8 @@ CONFLICTS (13)                ▎
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
                               not committed yet · 13 files
-    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
-  ◆ ┃  ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Maker   2h
+    ●    feature              Change every file on feature  no upstream set  not merged                      Maker   2h
+  ◆ ┃  ⓘ main                 Change every file on main  no upstream set  HEAD is here                       Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
@@ -85,8 +85,8 @@ CONFLICTS (13)                ▎
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
                               not committed yet · 13 files
-    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
-  ◆ ┃  ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Maker   2h
+    ●    feature              Change every file on feature  no upstream set  not merged                      Maker   2h
+  ◆ ┃  ⓘ main                 Change every file on main  no upstream set  HEAD is here                       Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
@@ -126,8 +126,8 @@ CONFLICTS (13)                ▎
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
                               not committed yet · 13 files
-    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
-  ◆ ┃  ⓘ main                 Change every file on main  not pushed yet  HEAD is here                        Maker   2h
+    ●    feature              Change every file on feature  no upstream set  not merged                      Maker   2h
+  ◆ ┃  ⓘ main                 Change every file on main  no upstream set  HEAD is here                       Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
@@ -167,8 +167,8 @@ CONFLICTS (13)                ▎
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
                               not committed yet · 13 files · on main
-    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
-  ◆ ┃    main (you)           Change every file on main  not pushed yet                                      Maker   2h
+    ●    feature              Change every file on feature  no upstream set  not merged                      Maker   2h
+  ◆ ┃    main (you)           Change every file on main  no upstream set                                     Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
@@ -208,7 +208,7 @@ CONFLICTS (13)                ▎
 
 ▸ ◌                         Uncommitted changes (1 untracked)
   ┃                         not committed yet · 1 file · on main
-  ◆    main (you)           Correct the note  not pushed yet                                                 Maker   1y
+  ◆    main (you)           Correct the note  no upstream set                                                Maker   1y
   ●                         Add the first note                                                               Maker   1y
   ◇                         Add a readme                                                                     Maker   1y
 

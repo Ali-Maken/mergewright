@@ -18,7 +18,7 @@
 
 ▸ ◌                           Uncommitted changes (1 unmerged)
   ┃                           not committed yet · 1 file · on main
-  ◆      main (you)           commit over the notes  not pushed yet                                          Maker   3m
+  ◆      main (you)           commit over the notes  no upstream set                                         Maker   3m
   ┃ ■                         WIP on main: 2b03193 add the notes  stash@{0}                                  Maker   4m
   ●┄╯    main (you)           add the notes                                                                  Maker   5m
   ●                           Correct the note                                                               Maker   1y

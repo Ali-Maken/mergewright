@@ -96,7 +96,7 @@ fn row_badge_work_is_bounded_by_width() {
 /// one at the same place in `RefBadges::on` — and a click just past it
 /// picks none. At 200 columns: labels give way before the subject
 /// (ease-pass 09 ruling W), and at 120 beside the branch pane not even
-/// `team/0 is here  not pushed yet` fits after `Commit 5`.
+/// `team/0 is here  no upstream set` fits after `Commit 5`.
 #[test]
 fn many_refs_row_hit_test_matches_draw() {
     let state = state_with(pile(16_000), WIDE);
@@ -132,7 +132,7 @@ fn many_refs_row_hit_test_matches_draw() {
         panic!("every ref in the pile is a branch");
     };
     let on = String::from_utf8_lossy(on);
-    // `team/12 is here  not pushed yet` (ease-pass G7), or `team/1…` where
+    // `team/12 is here  no upstream set` (ease-pass G7), or `team/1…` where
     // the edge cut it.
     let shown = drawn.split(" is here").next().unwrap_or_default();
     let shown = shown.trim_end_matches(['…', ' ']);

@@ -17,7 +17,7 @@ fn an_empty_screen_shows_both_placeholders_and_the_header() {
         "{drawn}"
     );
     let first = drawn.lines().next().unwrap_or_default();
-    assert_eq!(first, " committing to wallet-release · not pushed yet");
+    assert_eq!(first, " committing to wallet-release · no upstream set");
     // Nothing typed: no counter yet.
     assert!(!drawn.contains("0/72"), "{drawn}");
 }
@@ -223,12 +223,12 @@ fn the_header_names_the_options_and_the_amend() {
     let drawn = draw(&header, 120, 30);
     assert_eq!(
         drawn.lines().next().unwrap_or_default(),
-        " committing to wallet-release · not pushed yet · signing off · skipping hooks"
+        " committing to wallet-release · no upstream set · signing off · skipping hooks"
     );
     header.header.amending = Some(sanitize_line("a1b2c3d Fix the toc"));
     let drawn = draw(&header, 120, 30);
     assert!(
-        drawn.starts_with(" amending a1b2c3d Fix the toc · not pushed yet"),
+        drawn.starts_with(" amending a1b2c3d Fix the toc · no upstream set"),
         "{drawn}"
     );
 }
@@ -254,11 +254,11 @@ fn the_header_names_the_repository_first() {
     };
     assert_eq!(
         header_at(120),
-        " ◆ wallet  ~/work/clients/acme/wallet  committing to wallet-release · not pushed yet"
+        " ◆ wallet  ~/work/clients/acme/wallet  committing to wallet-release · no upstream set"
     );
     assert_eq!(
         header_at(80),
-        " ◆ wallet  …/clients/acme/wallet  committing to wallet-release · not pushed yet"
+        " ◆ wallet  …clients/acme/wallet  committing to wallet-release · no upstream set"
     );
     // No room for any of the path: the name, then the commit's words.
     let narrow = header_at(50);

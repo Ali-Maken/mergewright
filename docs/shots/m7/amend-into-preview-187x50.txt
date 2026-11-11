@@ -1,13 +1,13 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   4 commits
 
     ●                           Show the login page                                                                                        Maker   2d│ feature-a  (you're here)
-    ●                           Handle expired tokens                                                                                      Maker   2d│ ! not pushed yet
+    ●                           Handle expired tokens                                                                                      Maker   2d│ ! no upstream set
 ▸   ●                           Add OAuth callback                                                                                         Maker   2d│ · not merged
     │                           the result                                                                                                           │ ✓ up to date with main
-    │ ○                         Show the login page  feature-b is here  not pushed yet                                                     Maker    —│ · Maker, last commit 2d ago
-    │ ○                         Handle expired tokens  feature-a is here  not pushed yet                                                   Maker    —│
+    │ ○                         Show the login page  feature-b is here  no upstream set                                                    Maker    —│ · Maker, last commit 2d ago
+    │ ○                         Handle expired tokens  feature-a is here  no upstream set                                                  Maker    —│
     │ ○                         Add OAuth callback                                                                                         Maker    —│ built on
-  ◇─┴─╯                         m1  main is here  not pushed yet                                                                           Maker   2d│   main
+  ◇─┴─╯                         m1  main is here  no upstream set                                                                          Maker   2d│   main
                                                                                                                                                      │    ─◆ feature-a
                                                                                                                                                      │
                                                                                                                                                      │

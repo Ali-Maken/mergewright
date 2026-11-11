@@ -3,7 +3,7 @@
 ▸   ■                         On topic: wip  stash@{0}                  Maker   3m│ 2ebeaa6 · not on a branch
     ┃                         Maker · 3 minutes ago · 2ebeaa6                     │
     □                         topic base  only in stash@{0}             Maker   4m│
-  ◆━╯    main (you)           add notes  not pushed yet                 Maker   5m│
+  ◆━╯    main (you)           add notes  no upstream set                Maker   5m│
   ●                           Correct the note                          Maker   1y│
   ●                           Add the first note                        Maker   1y│
   ◇                           Add a readme                              Maker   1y│

@@ -1,7 +1,7 @@
 m8-polish-and-ship/06 at 80x24: what right looks like — the first row is ` ◆ <repo>  ~/<path> · <branch>` with the walk state right-aligned; list rows start two cells in and stop one short of the edge; the bar joins its hints with ` · ` and ends `? keys`; from 30 rows a blank row sits under the header and a `─` rule over the bar. Colour unverified (rule 5).
 
  ◆ api  ~/code/api · main                   6 commits  2 merged branches folded
-▸   ●    feature/thr… three: in progress  not pushed yet             Maker   7y
+▸   ●    feature/thr… three: in progress  no upstream set            Maker   7y
     ┃                 Maker · 7 years ago · made on feature/three · 4e2f3b3
   ◆ ┃    main (you)   Merge branch 'feature/two'  ▸ 2 commits        Maker   7y
   ◉ ┃                 Merge branch 'feature/one'  ▸ 2 commits        Maker   7y

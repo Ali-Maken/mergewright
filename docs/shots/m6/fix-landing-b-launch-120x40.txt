@@ -2,8 +2,8 @@
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
                               not committed yet · 13 files · on main
-    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
-  ◆ ┃    main (you)           Change every file on main  not pushed yet                                      Maker   2h
+    ●    feature              Change every file on feature  no upstream set  not merged                      Maker   2h
+  ◆ ┃    main (you)           Change every file on main  no upstream set                                     Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 

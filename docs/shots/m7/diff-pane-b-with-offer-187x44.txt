@@ -21,7 +21,7 @@
  ◆ api  ~/code/api · main                                                                         6 commits  COMMIT 41db24c
                                                                                                              Maker Fixture <fixture@example.invalid> · 2020-01-02 23:00 +0000 · 60m
   ◌                   Uncommitted changes (1 untracked)                                                      parents 0a27627 · diff vs first parent
-▸ ◆    main (you)     Handle expired tokens  not pushed yet                                      Maker  60m  Contained in: main
+▸ ◆    main (you)     Handle expired tokens  no upstream set                                     Maker  60m  Contained in: main
   ┃                   Maker · 60 minutes ago · made on main · 41db24c
   ●                   Move session TTL to config                                                 Priya  4mo  A .git-blame-ignore-revs                                                 +2 −0
   ●                   rustfmt                                                                   Rustf…  5mo  ▾ src/

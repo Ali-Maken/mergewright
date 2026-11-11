@@ -7,7 +7,7 @@ What right looks like: the PR's merge reads its whole subject, then `▸ 4 commi
     ┃                 Maker · 28 hours ago · made on wallet-release · merged 1 from fix-toc · 745…
     ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits               Maker  28h
     ●                 Start the wallet release                                          Maker  28h
-  ◇━╯    main         Add the readme  not pushed yet                                    Maker  28h
+  ◇━╯    main         Add the readme  no upstream set                                   Maker  28h
 
 
 

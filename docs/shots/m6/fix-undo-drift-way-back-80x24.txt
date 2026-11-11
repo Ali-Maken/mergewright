@@ -25,9 +25,9 @@
 === frame 1: `u` over the edit, the drift box ===
  ◆ api  ~/code/api · fix                                              6 commits
     ◌                 Uncommitted changes (1 unstaged)
-▸   ◆    fix (you)    fix the bug  not pushed yet  not merged        Maker   3m
+▸   ◆    fix (you)    fix the bug  no upstream set  not merged       Maker   3m
     ┃                 Maker · 3 minutes ago · made on fix · 75ce583
-  ● ┃    main         main moves on  not pushed yet                  Maker   4m
+  ● ┃    main         main moves on  no upstream set                 Maker   4m
   ●━╯                 add the base                                   Maker   5m
   ●                   Correct the note                               Maker   1y
   ●   ╭ Undo “checkout fix”? ────────────────────────────────────────────╮   1y
@@ -50,8 +50,8 @@
 
 === frame 2: `y`, the landing ===
  ◆ api  ~/code/api · main                                             6 commits
-    ●    fix          fix the bug  not pushed yet                    Maker   3m
-▸ ◆ ┊    main (you)   main moves on  not pushed yet                  Maker   4m
+    ●    fix          fix the bug  no upstream set                   Maker   3m
+▸ ◆ ┊    main (you)   main moves on  no upstream set                 Maker   4m
   ┃ ┊                 Maker · 4 minutes ago · made on main · d128e01
   ●┄╯                 add the base                                   Maker   5m
   ●                   Correct the note                               Maker   1y
@@ -77,9 +77,9 @@
 === frame 3: `U`, the edit back ===
  ◆ api  ~/code/api · fix                                              6 commits
     ◌                 Uncommitted changes (1 unstaged)
-▸   ◆    fix (you)    fix the bug  not pushed yet  not merged        Maker   3m
+▸   ◆    fix (you)    fix the bug  no upstream set  not merged       Maker   3m
     ┃                 Maker · 3 minutes ago · made on fix · 75ce583
-  ● ┃    main         main moves on  not pushed yet                  Maker   4m
+  ● ┃    main         main moves on  no upstream set                 Maker   4m
   ●━╯                 add the base                                   Maker   5m
   ●                   Correct the note                               Maker   1y
   ●                   Add the first note                             Maker   1y
@@ -102,10 +102,10 @@
 
 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===
  ◆ api  ~/code/api · main                                             7 commits
-▸   ●    fix2         fix it again  not pushed yet  not merged       Maker   2m
+▸   ●    fix2         fix it again  no upstream set  not merged      Maker   2m
     ┃                 Maker · 2 minutes ago · made on fix2 · 30a87ba
-    ●    fix          fix the bug  not pushed yet                    Maker   3m
-  ◆ │    main (you)   main moves on  not pushed yet                  Maker   4m
+    ●    fix          fix the bug  no upstream set                   Maker   3m
+  ◆ │    main (you)   main moves on  no upstream set                 Maker   4m
   ●─╯                 add the base                                   Maker   5m
   ●                   Correct the note                               Maker   1y
   ●                   Add the first note                             Maker   1y

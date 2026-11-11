@@ -1,8 +1,8 @@
  ◆ api  ~/code/api · feature                                                                                  3 commits
 
-▸   ◆    feature (you)        Change every file on feature  not pushed yet  not merged                       Maker   2h
+▸   ◆    feature (you)        Change every file on feature  no upstream set  not merged                      Maker   2h
     ┃                         Maker · 2 hours ago · made on feature · 0109d2c
-  ● ┃    main                 Change every file on main  not pushed yet                                      Maker   2h
+  ● ┃    main                 Change every file on main  no upstream set                                     Maker   2h
   ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 

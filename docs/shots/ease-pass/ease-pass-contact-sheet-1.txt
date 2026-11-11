@@ -26,10 +26,10 @@ What right looks like: no row of a merged branch; beside the branch pane the mes
  ◆ api  ~/code/api · wallet-release                                                 4 commits  2 merged branches folded
 
 ▸   ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Maker  28h│ wallet-release  (you're here)
-    ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ ! not pushed yet
+    ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ ! no upstream set
     ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ · not merged
     ●                         Start the wallet release                  Maker  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet            Maker  28h│ · Maker, last commit 28h ago
+  ◇━╯    main                 Add the readme  no upstream set           Maker  28h│ · Maker, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
@@ -74,7 +74,7 @@ What right looks like: the PR's merge reads its whole subject, then `▸ 4 commi
     ┃                 Maker · 28 hours ago · made on wallet-release · merged 1 from fix-toc · 745…
     ◉                 Merged PR 16021: Fix the wallet totals  ▸ 4 commits               Maker  28h
     ●                 Start the wallet release                                          Maker  28h
-  ◇━╯    main         Add the readme  not pushed yet                                    Maker  28h
+  ◇━╯    main         Add the readme  no upstream set                                   Maker  28h
 
 
 
@@ -116,14 +116,14 @@ What right looks like: the merge's four commits appear under it on one lane of t
  ◆ api  ~/code/api · wallet-release                                                   8 commits  1 merged branch folded
 
     ◆      wallet-release (you) Merge branch 'sara/fix-toc' into wall…  Maker  28h│ wallet-release  (you're here)
-▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Maker  28h│ ! not pushed yet
+▸   ◉┄╮                         Merged PR 16021: Fix the wallet totals  Maker  28h│ ! no upstream set
     ┃ ┊                         Maker · 28 hours ago · made on wallet-release · m…│ · not merged
     ┃ ●    PR 16021             totals: test the sum                    Maker  28h│ ✓ up to date with main
     ┃ ●    PR 16021             totals: drop the cache                  Maker  28h│ · Maker, last commit 28h ago
     ┃ ●    PR 16021             totals: round once                      Maker  28h│
     ┃ ●    PR 16021             totals: read the ledger                 Maker  28h│ built on
     ●┄╯                         Start the wallet release                Maker  28h│   main
-  ◇━╯      main                 Add the readme  not pushed yet          Maker  28h│    ─◆ wallet-release
+  ◇━╯      main                 Add the readme  no upstream set         Maker  28h│    ─◆ wallet-release
                                                                                   │
                                                                                   │
                                                                                   │
@@ -161,15 +161,15 @@ What right looks like: every commit of PR 16021 and `sara/fix-toc` drawn on its 
  ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
 
 ▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Maker  28h│ wallet-release  (you're here)
-    ┃ ┊                           Maker · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
-    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ┃ ┊                           Maker · 28 hours ago · made on wallet-release ·…│ ! no upstream set
+    ┃ ●      sara/fix-toc         toc: fix the anchors                  Maker  28h│ · not merged
     ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Maker  28h│ ✓ up to date with main
     ┃   ●    PR 16021             totals: test the sum                  Maker  28h│ · Maker, last commit 28h ago
     ┃   ●                         totals: drop the cache                Maker  28h│
     ┃   ●                         totals: round once                    Maker  28h│ built on
     ┃   ●                         totals: read the ledger               Maker  28h│   main
     ●┄┄┄╯    wallet-release (you) Start the wallet release              Maker  28h│    ─◆ wallet-release
-  ◇━╯        main                 Add the readme  not pushed yet        Maker  28h│
+  ◇━╯        main                 Add the readme  no upstream set       Maker  28h│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -206,10 +206,10 @@ What right looks like: the header's search words read `/totals  5 matches · 4 i
  ◆ api  ~/code/api · wallet-release  /totals  5 matches · 4 in folded merges (1/5)  n/N next/prev  esc close  4 commits
 
     ◆    wallet-release (you) Merge branch 'sara/fix-toc' into wallet…  Maker  28h│ wallet-release  (you're here)
-▸   ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ ! not pushed yet
+▸   ◉                         Merged PR 16021: Fix the wallet totals    Maker  28h│ ! no upstream set
     ┃                         Maker · 28 hours ago · made on wallet-release · mer…│ · not merged
     ●                         Start the wallet release                  Maker  28h│ ✓ up to date with main
-  ◇━╯    main                 Add the readme  not pushed yet            Maker  28h│ · Maker, last commit 28h ago
+  ◇━╯    main                 Add the readme  no upstream set           Maker  28h│ · Maker, last commit 28h ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
@@ -251,7 +251,7 @@ What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branch
  ◆ api  ~/code/api · wallet-release                          47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
   ●    wallet-release (you) release: note 29                            Maker  27h│ wallet-release  (you're here)
-  ●                         release: note 28                            Maker  27h│ ! not pushed yet
+  ●                         release: note 28                            Maker  27h│ ! no upstream set
   ●                         release: note 27                            Maker  27h│ · not merged
   ●                         release: note 26                            Maker  27h│ ✓ up to date with main
   ●                         release: note 25                            Maker  27h│ · Maker, last commit 27h ago
@@ -342,7 +342,7 @@ What right looks like: `stash@{0}` (newest, with an untracked file) draws `■`,
 
 ▸   ■                         On main: newest, with an untracked file   Maker  28h│ eb95559 · not on a branch
     ┃                         Maker · 28 hours ago · eb95559                      │
-  ◆━╯    main (you)           Write the second note  not pushed yet     Maker  28h│
+  ◆━╯    main (you)           Write the second note  no upstream set    Maker  28h│
   ◇                           Add the notes                             Maker  28h│
                                                                                   │
                                                                                   │
@@ -390,7 +390,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊                           you · 28 hours ago · made on wallet-release · m…│ · not merged
     ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with main
     ●┄╯                           Start the wallet release                you  28h│ · you and Sara, last commit 28h ago
-    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
+    ┃ ●      spike/cache          Try a read cache  no upstream set       you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
                                                                                   │    ─◆ wallet-release
@@ -468,7 +468,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊                   you · 28 hours ago · made on wallet-release · merged 1 from fi…
     ┃ ●      fix-toc      toc: fix the anchors                                  Sara  28h
     ●┄╯                   Start the wallet release                               you  28h
-    ┃ ●      spike/cache  Try a read cache  not pushed yet                       you  28h
+    ┃ ●      spike/cache  Try a read cache  no upstream set                      you  28h
     ┃ ┊ ●    ops/ci       Pin the CI image                                      Omar  28h
   ◇━┴┄┴┄╯    main         Add the readme  tag v1.2                               you  28h
 
@@ -507,7 +507,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊                           you · 28 hours ago · made on wallet-release · m…│ · not merged
     ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with main
     ●┄╯                           Start the wallet release                you  28h│ · you and Sara, last commit 28h ago
-    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
+    ┃ ●      spike/cache          Try a read cache  no upstream set       you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
                                                                                   │    ─◆ wallet-release
@@ -545,7 +545,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃                             you · 28 hours ago · made on feature/receipts ·…│ ! 1 commit to push
     ◉        wallet-release       Merge branch 'sara/fix-toc' into wa…    you  28h│ · not merged
     ●                             Start the wallet release                you  28h│ ✓ up to date with wallet-release
-    │ ●      spike/cache          Try a read cache  not pushed yet        you  28h│ · you, last commit 28h ago
+    │ ●      spike/cache          Try a read cache  no upstream set       you  28h│ · you, last commit 28h ago
     │ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│
   ◇─┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│ built on
                                                                                   │   main
@@ -585,7 +585,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
 ▸   ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ · not merged
     ┃ ┊                           Sara · 28 hours ago · made on sara/fix-toc · 7c…│ ✓ up to date with main
     ●┄╯                           Start the wallet release                you  28h│ · you and Sara, last commit 28h ago
-    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
+    ┃ ●      spike/cache          Try a read cache  no upstream set       you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
                                                                                   │    ─◆ wallet-release
@@ -624,7 +624,7 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
     ┃ ┊                           you · 28 hours ago · made on wallet-release · m…│ · not merged
     ┃ ●      fix-toc              toc: fix the anchors                   Sara  28h│ ✓ up to date with main
     ●┄╯                           Start the wallet release                you  28h│ · you and Sara, last commit 28h ago
-    ┃ ●      spike/cache          Try a read cache  not pushed yet        you  28h│
+    ┃ ●      spike/cache          Try a read cache  no upstream set       you  28h│
     ┃ ┊ ●    ops/ci               Pin the CI image                       Omar  28h│ built on
   ◇━┴┄┴┄╯    main                 Add the readme  tag v1.2                you  28h│   main
                                                                                   │    ─◆ wallet-release
@@ -659,11 +659,11 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
 ▸   ◆        wallet-release (you) Bump the wallet version               Maker  28h│ wallet-release  (you're here)
-    ┃                             Maker · 28 hours ago · made on wallet-release ·…│ ! not pushed yet
+    ┃                             Maker · 28 hours ago · made on wallet-release ·…│ ! no upstream set
     ┃ ●      ali/x                x: try the other layout               Maker  28h│ · not merged
-    ┃ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ ✓ up to date with main
+    ┃ ┊ ●    sara/fix-toc         toc: fix the anchors                  Maker  28h│ ✓ up to date with main
     ●┄┴┄╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
-  ◇━╯        main                 Add the readme  not pushed yet        Maker  28h│
+  ◇━╯        main                 Add the readme  no upstream set       Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ wallet-release
@@ -698,11 +698,11 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
     ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
-    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! no upstream set
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors                  Maker  28h│ · not merged
     ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ ✓ up to date with main
     ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
-  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
+  ◇┄╯        main                 Add the readme  no upstream set       Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ sara/fix-toc
@@ -737,7 +737,7 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
  ◆ api  ~/code/api · wallet-release                                                       5 commits
 
     ◆        wallet-… (you) Bump the wallet version       Maker  28h│ sara/fix-toc
-    ┊ ●      ali/x          x: try the other layout       Maker  28h│ ! not pushed yet
+    ┊ ●      ali/x          x: try the other layout       Maker  28h│ ! no upstream set
 ▸   ┊ ┊ ●    sara/fix-toc   toc: fix the anchors          Maker  28h│ · not merged
     ┊ ┊ ┃                   Maker · 28 hours ago · made on sara/fix…│ ✓ up to date with main
     ●┄┴━╯    wallet-… (you) Start the wallet release      Maker  28h│ · Maker, last commit 28h ago
@@ -777,10 +777,10 @@ ease-pass 09, drawn by `view::view` from a real AppState over the job pool (crat
 
     ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
     ┊ ●      ali/x                x: try the other layout               Maker  28h│ reading…
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ reading…
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors                  Maker  28h│ reading…
     ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ reading…
     ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ reading…
-  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
+  ◇┄╯        main                 Add the readme  no upstream set       Maker  28h│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -815,15 +815,15 @@ What right looks like: the pane on sara reads `sara/fix-toc`, then four lines ma
  ◆ api  ~/code/api · wallet-release                                                       9 commits  every branch shown
 
       ◆          wallet-release (you) Bump the wallet version             you  27h│ sara/fix-toc
-      ┊ ◉━╮      bob/x                Merge branch 'sara/fix-toc' int…    Bob  27h│ ! not pushed yet
+      ┊ ◉━╮      bob/x                Merge branch 'sara/fix-toc' int…    Bob  27h│ ! no upstream set
       ┊ ● ┃                           x1: Bob's first try                 Bob  27h│ · not merged
       ┊ ┊ ┃ ●    ali/x                x: try the other layout             you  27h│ ✓ up to date with develop
 ▸     ┊ ┊ ● ┊    sara/fix-toc         toc: number the headings           Sara  28h│ · Sara and you, last commit 28h ago
       ┊ ┊ ┃ ┊                         Sara · 28 hours ago · made on sara/fix-toc …│
       ┊ ●━╯ ┊    bob/x                toc: fix the anchors               Sara  28h│ built on
       ●┄┴┄┄┄╯    wallet-release (you) Start the wallet release            you  28h│   main
-    ●┄╯          develop              Start develop  not pushed yet       you  28h│    ─◆ develop
-  ◇─╯            main                 Add the readme  not pushed yet      you  28h│    ─◆ sara/fix-toc
+    ●┄╯          develop              Start develop  no upstream set      you  28h│    ─◆ develop
+  ◇─╯            main                 Add the readme  no upstream set     you  28h│    ─◆ sara/fix-toc
                                                                                   │
                                                                                   │
                                                                                   │
@@ -864,14 +864,14 @@ What right looks like: taken before wallet-release's extra commit: the pane's `b
  ◆ api  ~/code/api · wallet-release                                                       8 commits  every branch shown
 
       ◉━╮      bob/x                Merge branch 'sara/fix-toc' into …    Bob  27h│ sara/fix-toc
-      ● ┃                           x1: Bob's first try                   Bob  27h│ ! not pushed yet
+      ● ┃                           x1: Bob's first try                   Bob  27h│ ! no upstream set
       ┊ ┃ ●    ali/x                x: try the other layout               you  27h│ · not merged
 ▸     ┊ ● ┊    sara/fix-toc         toc: number the headings             Sara  28h│ ✓ up to date with wallet-release
       ┊ ┃ ┊                         Sara · 28 hours ago · made on sara/fix-toc · …│ · Sara, last commit 28h ago
       ●━╯ ┊    bob/x                toc: fix the anchors                 Sara  28h│
       ◆┄┄┄╯    wallet-release (you) Start the wallet release              you  28h│ built on
-    ●─╯        develop              Start develop  not pushed yet         you  28h│   main
-  ◇─╯          main                 Add the readme  not pushed yet        you  28h│    ─◆ develop
+    ●─╯        develop              Start develop  no upstream set        you  28h│   main
+  ◇─╯          main                 Add the readme  no upstream set       you  28h│    ─◆ develop
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ sara/fix-toc
                                                                                   │
@@ -913,11 +913,11 @@ ease-pass 09b, drawn by `view::view` from a real AppState over the job pool (cra
  ◆ api  ~/code/api · wallet-release                                                                           5 commits
 
     ◆        wallet-release (you) Bump the wallet version               Maker  28h│ sara/fix-toc
-    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! not pushed yet
-▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors  not pushed yet  Maker  28h│ · not merged
+    ┊ ●      ali/x                x: try the other layout               Maker  28h│ ! no upstream set
+▸   ┊ ┊ ●    sara/fix-toc         toc: fix the anchors                  Maker  28h│ · not merged
     ┊ ┊ ┃                         Maker · 28 hours ago · made on sara/fix-toc · 9…│ ✓ up to date with main
     ●┄┴━╯    wallet-release (you) Start the wallet release              Maker  28h│ · Maker, last commit 28h ago
-  ◇┄╯        main                 Add the readme  not pushed yet        Maker  28h│
+  ◇┄╯        main                 Add the readme  no upstream set       Maker  28h│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │    ─◆ sara/fix-toc
@@ -1219,15 +1219,15 @@ ease-pass 06i, from the real binary on a pty, `wallet_release`: what right looks
  ◆ wallet  ~/code/wallet · wallet-release                                                 9 commits  every branch shown
 
 ▸   ◆┄╮      wallet-release (you) Merge branch 'sara/fix-toc' into wa…  Maker   3y│ wallet-release  (you're here)
-    ┃ ┊                           Maker · 3 years ago · made on wallet-release · …│ ! not pushed yet
-    ┃ ●      sara/fix-toc         toc: fix the anchors  not pushed yet  Maker   3y│ · not merged
+    ┃ ┊                           Maker · 3 years ago · made on wallet-release · …│ ! no upstream set
+    ┃ ●      sara/fix-toc         toc: fix the anchors                  Maker   3y│ · not merged
     ◉┄┴┄╮    wallet-release (you) Merged PR 16021: Fix the wallet tot…  Maker   3y│ ✓ up to date with main
     ┃   ●    PR 16021             totals: test the sum                  Maker   3y│ · Maker, last commit 3y ago
     ┃   ●                         totals: drop the cache                Maker   3y│
     ┃   ●                         totals: round once                    Maker   3y│ built on
     ┃   ●                         totals: read the ledger               Maker   3y│   main
     ●┄┄┄╯    wallet-release (you) Start the wallet release              Maker   3y│    ─◆ wallet-release
-  ◇━╯        main                 Add the readme  not pushed yet        Maker   3y│
+  ◇━╯        main                 Add the readme  no upstream set       Maker   3y│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -1798,7 +1798,7 @@ what right looks like: mock prototypes/ease-mocks/mergewright-merge-screen.html:
  ◆ api  ~/code/api · wallet-release                                                                           8 commits
 
       │                         after merge                                       │ sara/fix-toc
-    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! not pushed yet
+    ◎┈╮                         Merge branch 'sara/fix-toc' into wall…    you    —│ ! no upstream set
 ▸   │ ●                         Check every link                         Sara  55m│ · not merged
     │ ●                         Link the contents                        Omar  56m│ ✓ up to date with main
     │ ●                         Add a table of contents                  Sara  57m│ · Sara, Omar and 1 other, last

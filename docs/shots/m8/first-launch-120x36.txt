@@ -2,8 +2,8 @@ m8-polish-and-ship/18d, from the real binary on a pty: what right looks like —
 
  ◆ api  ~/code/api · main                                                                                   200 commits
 
-▸ ◆    main (you)           Commit 200  not pushed yet                  Maker   7y│ main  (you're here)
-  ┃                         Maker · 7 years ago · made on main · 38e090d          │ ! not pushed yet
+▸ ◆    main (you)           Commit 200  no upstream set                 Maker   7y│ main  (you're here)
+  ┃                         Maker · 7 years ago · made on main · 38e090d          │ ! no upstream set
   ●                         Commit 199                                  Maker   7y│ · the main line: branches merge into
   ●                         Commit 198                                  Maker   7y│   it
   ●                         Commit 197                                  Maker   7y│ · no upstream to compare with
