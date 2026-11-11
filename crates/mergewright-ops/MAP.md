@@ -306,7 +306,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `AlreadyIn` (struct) — `branch`, `commits`, `matches`, `subject`: a bottom branch already on `onto`.
 - `DROP_CHECK_CAP` (const) — 200 commits.
 - `suggest_drops` (fn) — `(repo, git, &BranchLine, onto, stop)`: patch-id match of the bottom branch against `onto`.
-- `ghost_oid` (fn) — `sha1("graft-ghost\0<subject>\0<n>")`: a ghost row's stable synthetic id, never written to the object database.
+- `ghost_oid` (fn) — `sha1("preview-ghost\0<subject>\0<n>")`: a ghost row's stable synthetic id, never written to the object database.
 - `plan` (fn) — `(repo, git, op, facts, stop)`: the picture for one operation; runs `check` first, so a refused write has no confirm.
 - `plan_as_run` (fn) — `(repo, git, op, facts, stop) -> (Operation, PreviewPlan)`: the op as `y` will run it, and its picture.
 - `plan_revert_to` (fn) — `(entries, target)`: the time machine's picture, from the same `InversePlan`s `revert_to` runs.

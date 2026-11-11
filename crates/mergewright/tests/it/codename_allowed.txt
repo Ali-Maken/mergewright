@@ -1,9 +1,7 @@
 # Shipped text allowed to name an earlier product, one row per occurrence:
 # <path>\t<exact substring>\t<reason>. Reasons: `guard` (the word lists and
 # word-finder tests of the codename guards themselves), `git-word` (Git's own
-# `grafted`, `--graft`, `info/grafts`: none in the repo on 2026-11-10), `11c`
-# (a name another crate owns, cited here; it changes when 11c renames it).
-crates/mergewright/tests/it/m7_walk/fork_rows.rs	graft-fork-1	11c
+# `grafted`, `--graft`, `info/grafts`: none in the repo on 2026-11-10).
 crates/mergewright/tests/it/codename_absent.rs	&["graft",	guard
 crates/mergewright/tests/it/codename_absent.rs	"tributary",	guard
 crates/mergewright/tests/it/codename_absent.rs	"trib_"];	guard
@@ -21,13 +19,6 @@ crates/mergewright/tests/it/old_names.rs	concat!("GRAFT",	guard
 crates/mergewright/tests/it/old_names.rs	"tributary",	guard
 crates/mergewright/tests/it/old_names.rs	"Tributary",	guard
 crates/mergewright/tests/it/rename_names.rs	graft	guard
-crates/mergewright/tests/it/rename_names.rs	"graft-input",	guard
-crates/mergewright/tests/it/rename_names.rs	"graft-",	guard
-crates/mergewright/tests/it/rename_names.rs	"graft-askpass",	guard
-crates/mergewright/tests/it/rename_names.rs	"graft-marker-",	guard
-crates/mergewright/tests/it/rename_names.rs	".graft-tmp",	guard
-crates/mergewright/tests/it/rename_names.rs	"graft-ghost",	guard
-crates/mergewright/tests/it/rename_names.rs	"graft-fork-",	guard
 crates/mergewright/tests/it/rename_names.rs	"graft",	guard
 crates/mergewright/tests/it/rename_names.rs	grafted	guard
 crates/mergewright/tests/it/rename_names.rs	"Graft",	guard
@@ -69,8 +60,4 @@ scripts/shot-drift-test.py	(graft,	guard
 scripts/shot-drift-test.py	Tributary,	guard
 scripts/shot-drift-test.py	graft	guard
 scripts/shot-drift-test.py	"Tributary	guard
-docs/capabilities/m3-working-tree-undo-and-stash.md	RefName::is_graft_internal	11c
-docs/capabilities/m3-working-tree-undo-and-stash.md	mergewright-git::repo::tests::grafts_own_refs_are_not_drawn_but_are_still_readable	11c
-docs/capabilities/m5-history-and-ghost-preview.md	mergewright_ops::tests::it::history_ops::a_shell_merge_is_not_adopted_as_grafts_own_entry	11c
-docs/capabilities/m5-history-and-ghost-preview.md	sha1("graft-ghost\0<subject>\0<n>")	11c
 scripts/shot-drift.py	(?i)graft|	guard

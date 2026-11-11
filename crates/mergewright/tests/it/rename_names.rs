@@ -49,47 +49,11 @@ const ALLOWED: &[(&str, &str, &str)] = &[
         "",
         "the CAPABILITIES generator's prose: docs words, 27c",
     ),
-    // Thread names: in a backtrace, never on screen; code names.
-    (
-        "mergewright-term/src/input/mux.rs",
-        "graft-input",
-        "thread name",
-    ),
-    // Temporary file, socket and marker names: code names, gone after use.
-    (
-        "mergewright-git/src/conflict/disk.rs",
-        "graft-",
-        "temp file prefix",
-    ),
-    (
-        "mergewright-git/src/run/askpass.rs",
-        "graft-askpass",
-        "socket and helper temp names",
-    ),
-    (
-        "mergewright-git/src/trace/function.rs",
-        "graft-marker-",
-        "internal trace marker",
-    ),
+    // A fixture identity and a generated helper's words: never drawn.
     (
         "mergewright-git/src/fixture.rs",
         "Graft Fixture",
         "fixture author identity",
-    ),
-    (
-        "mergewright-ops/src/merge_state.rs",
-        ".graft-tmp",
-        "temp file name",
-    ),
-    (
-        "mergewright-ops/src/preview/ghost.rs",
-        "graft-ghost",
-        "scratch marker",
-    ),
-    (
-        "mergewright-ops/src/rewrite/todo.rs",
-        "graft-fork-",
-        "temp dir prefix",
     ),
     (
         "mergewright-ops/src/rewrite/saved.rs",

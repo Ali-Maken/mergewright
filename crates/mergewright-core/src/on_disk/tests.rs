@@ -11,8 +11,8 @@ fn is_own_ref() {
     for name in [
         &b"refs/heads/mergewright"[..],
         b"refs/mergewrightx/y",
-        b"refs/graft/backup/x",
-        b"refs/tributary/backup/x",
+        b"refs/other/backup/x",
+        b"refs/stray/backup/x",
         b"refs/mergewright\xff",
     ] {
         assert!(!Own::is_ref(name), "{name:?}");
@@ -24,8 +24,8 @@ fn is_own_message() {
     assert!(Own::is_message("mergewright: your edits, set aside for x"));
     assert!(Own::is_message("mergewright 01J0 stage"));
     for message in [
-        "graft: x",
-        "tributary 01J0 stage",
+        "other: x",
+        "stray 01J0 stage",
         "mergewrightx y",
         "Fix mergewright: x",
         "mergewright",
@@ -39,8 +39,8 @@ fn is_own_message() {
 fn is_own_trailer() {
     assert!(Own::is_trailer("Mergewright-Link: step"));
     for line in [
-        "Graft-Link: step",
-        "Tributary-Link: step",
+        "Other-Link: step",
+        "Stray-Link: step",
         "mergewright-link: step",
         "Signed-off-by: a",
     ] {

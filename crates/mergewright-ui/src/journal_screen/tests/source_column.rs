@@ -22,16 +22,28 @@ fn source_column_words() {
     let wide = draw(&view, 187, 14);
     assert!(wide[1].contains("●  Mergewright  "), "{wide:?}");
     assert!(wide[2].contains("$  outside        5m ago"), "{wide:?}");
-    assert!(!wide.iter().any(|line| line.contains("Graft")), "{wide:?}");
+    // Every row's 15-cell source column holds a word of the exact current
+    // set: no other product word can be drawn there.
+    let column: Vec<String> = wide
+        .iter()
+        .filter_map(|line| {
+            let cells: Vec<char> = line.chars().collect();
+            matches!(cells.get(2), Some('●' | '$'))
+                .then(|| cells[5..20].iter().collect::<String>().trim().to_owned())
+        })
+        .collect();
+    assert!(!column.is_empty(), "{wide:?}");
+    assert!(
+        column
+            .iter()
+            .all(|word| word == "Mergewright" || word == "outside"),
+        "{column:?}"
+    );
     let narrow = draw(&view, 80, 24);
     assert!(
         narrow
             .iter()
             .any(|line| line.starts_with("● done in Mergewright: u can undo it")),
-        "{narrow:?}"
-    );
-    assert!(
-        !narrow.iter().any(|line| line.contains("Graft")),
         "{narrow:?}"
     );
     assert!(

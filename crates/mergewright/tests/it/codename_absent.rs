@@ -66,13 +66,14 @@ const WORDS: &[&str] = &["graft", "tributary", "trib_"];
 
 /// Shipped paths another ticket clears, with that ticket.
 const PENDING: &[(&str, &str)] = &[
-    ("crates/mergewright-core/", "11c"),
-    ("crates/mergewright-fixtures/", "11c"),
-    ("crates/mergewright-git/", "11c"),
-    ("crates/mergewright-graph/", "11c"),
-    ("crates/mergewright-ops/", "11c"),
-    ("crates/mergewright-term/", "11c"),
-    ("crates/mergewright-ui/", "11c"),
+    // Fixture identities and the old fixture remote URL only, cleared by 12.
+    ("crates/mergewright-core/", "12"),
+    ("crates/mergewright-fixtures/", "12"),
+    ("crates/mergewright-git/", "12"),
+    ("crates/mergewright-graph/", "12"),
+    ("crates/mergewright-ops/", "12"),
+    ("crates/mergewright-term/", "12"),
+    ("crates/mergewright-ui/", "12"),
     ("docs/shots/", "12"),
 ];
 
@@ -134,7 +135,7 @@ fn allowed_rows() -> Vec<(&'static str, &'static str, &'static str)> {
                 .unwrap_or_else(|| panic!("no substring: {line}"));
             let reason = cells.next().unwrap_or_else(|| panic!("no reason: {line}"));
             assert!(
-                ["git-word", "guard", "11c"].contains(&reason),
+                ["git-word", "guard"].contains(&reason),
                 "unknown reason: {line}"
             );
             (path, found, reason)

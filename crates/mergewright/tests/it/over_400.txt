@@ -51,7 +51,7 @@
 1981 crates/mergewright-ops/src/operation/tests.rs
 407 crates/mergewright-ops/src/restore.rs
 750 crates/mergewright-ops/src/restore/steps.rs
-477 crates/mergewright-ops/src/rewrite/progress.rs
+472 crates/mergewright-ops/src/rewrite/progress.rs
 866 crates/mergewright-ops/src/tour/tests.rs
 833 crates/mergewright-ops/src/undo.rs
 745 crates/mergewright-ops/src/undo/tests.rs

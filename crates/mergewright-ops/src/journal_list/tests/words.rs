@@ -145,7 +145,7 @@ fn an_unknown_subject_is_gits_own() {
         "commit (merge): Merge spike"
     );
     assert_eq!(
-        said("refs/heads/main", 3, 4, "graft undo", None),
-        "graft undo"
+        said("refs/heads/main", 3, 4, "other undo", None),
+        "other undo"
     );
 }

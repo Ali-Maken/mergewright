@@ -600,7 +600,7 @@ fn git_path_resolves_under_the_linked_worktrees_own_directory() {
 /// refs are not in it — while `references` and `reference`, which undo and
 /// the journal use, still answer for them.
 #[test]
-fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
+fn own_refs_are_not_drawn_but_are_still_readable() {
     let fixture = Fixture::with_two_commits();
     let head = fixture.rev_parse("HEAD");
     let parent = fixture.rev_parse("HEAD~1");

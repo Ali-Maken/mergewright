@@ -141,17 +141,17 @@ fn debug_escapes_what_it_prints() {
 
 #[test]
 fn only_current_prefix_internal() {
-    // Only the current namespace is the app's own; earlier names are not
+    // Only the current namespace is the app's own; any other prefix is not
     // read (ADR-0057, Amendment 2026-10-25).
     let name = RefName::new("refs/mergewright/backup/main/01J0").expect("valid");
     assert!(name.is_mergewright_internal(), "{name:?} is the app's own");
     for name in [
-        "refs/graft/backup/main/01J0",
-        "refs/tributary/backup/main/01J0",
-        "refs/heads/graft",
-        "refs/heads/tributary/x",
+        "refs/other/backup/main/01J0",
+        "refs/stray/backup/main/01J0",
+        "refs/heads/other",
+        "refs/heads/stray/x",
         "refs/heads/mergewright",
-        "refs/graftx/y",
+        "refs/otherx/y",
         "refs/mergewrightx/y",
         "refs/stash",
     ] {

@@ -1437,7 +1437,7 @@ fn recovery_leaves_a_live_conflict_alone() {
 /// (m5/07 review, M7). Two legs: `HEAD` on a different branch, and the same
 /// branch moved on since the entry was written.
 #[test]
-fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
+fn a_shell_merge_is_not_adopted_as_an_own_entry() {
     // Leg 1: a different branch.
     let repo = conflicting();
     let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);

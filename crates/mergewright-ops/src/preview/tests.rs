@@ -81,6 +81,15 @@ fn ghost_oids_are_deterministic_and_distinct() {
     assert_eq!(first.as_bytes().len(), 20);
 }
 
+/// The seed names no product, so a rename never moves ghost ids again.
+#[test]
+fn ghost_id_seed_is_neutral() {
+    // `printf 'preview-ghost\0add login\0003' | shasum`
+    let want = mergewright_core::oid::Oid::from_hex("01768cfc71745cf3664e39b56e20ccbf386b384b")
+        .expect("an id");
+    assert_eq!(ghost_oid("add login", 3), want);
+}
+
 #[test]
 fn a_hole_in_the_forecast_beats_both_clean_and_likely() {
     let hole = ConflictForecast::NotChecked("git 2.38+ needed".to_owned());

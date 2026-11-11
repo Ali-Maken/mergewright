@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use mergewright_core::oid::Oid;
+use mergewright_core::on_disk;
 
 use super::{ForkSection, SquashGroup, TodoAction, TodoLine, TodoProblem};
 
@@ -311,10 +312,22 @@ fn todo_text(
     text
 }
 
-/// The label a fork's section marks the line with: `graft-fork-<n>`, `n`
+/// The label a fork's section marks the line with: `mwr-fork-<n>`, `n`
 /// its 1-based place in [`RewriteParams::forks`](super::RewriteParams).
-/// `progress` reads the prefix back.
-pub(super) const FORK_LABEL: &str = "graft-fork-";
+/// The one spelling: the todo writes it and `progress` reads it back with
+/// [`is_fork_label`].
+pub(super) fn fork_label(n: usize) -> String {
+    format!("{}{n}", fork_label_prefix())
+}
+
+/// Whether `name` is a fork section's label, as [`fork_label`] writes it.
+pub(super) fn is_fork_label(name: &str) -> bool {
+    name.starts_with(&fork_label_prefix())
+}
+
+fn fork_label_prefix() -> String {
+    format!("{}-fork-", on_disk::COMMAND)
+}
 
 /// Every fork section that follows `row`, in order. A fork with commits of
 /// its own: `label`, its picks with an `update-ref` after each branch's tip,
@@ -331,7 +344,7 @@ fn push_sections(text: &mut String, forks: &[ForkSection], row: usize) {
             text.push_str(&format!("update-ref {}\n", fork.branch.name));
             continue;
         }
-        let label = format!("{FORK_LABEL}{}", index + 1);
+        let label = fork_label(index + 1);
         text.push_str(&format!("label {label}\n"));
         for pick in &fork.picks {
             push_line(text, TodoAction::Pick, pick);

@@ -161,8 +161,8 @@ fn a_stop_inside_a_fork_names_it_on_the_banner() {
     let repo = dir.path();
     let id = |rev: &str| git(repo, &["rev-parse", rev], 0).trim().to_owned();
     let todo = format!(
-        "pick {} feature a: part 1\nlabel graft-fork-1\nedit {} b1\n\
-         update-ref refs/heads/feature-b\nreset graft-fork-1\n\
+        "pick {} feature a: part 1\nlabel mwr-fork-1\nedit {} b1\n\
+         update-ref refs/heads/feature-b\nreset mwr-fork-1\n\
          pick {} feature a: part 2\npick {} feature a: part 3\n",
         id("feature-a~2"),
         id("feature-b"),

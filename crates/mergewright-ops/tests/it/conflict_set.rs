@@ -350,14 +350,14 @@ fn a_link_without_a_kind_reads_as_step() {
             .collect()
     };
     // The link as m6-conflicts/09 wrote it: no `Mergewright-Link:` line.
-    relabel_newest(&repo, &name, "graft x step within: merge feature");
+    relabel_newest(&repo, &name, "other x step within: merge feature");
     assert_eq!(kinds(&repo), [LinkKind::Step, LinkKind::Step]);
     // ...and so it bounds nothing: the set is 09's.
     std::fs::remove_file(repo.path().join(".git/MERGE_MSG")).expect("MERGE_MSG goes");
     assert_eq!(conflict_set(&repo).paths, paths(&["b.txt", "a.txt"]));
 
     // The same link marked `resume` does bound the walk.
-    relabel_newest(&repo, &name, "graft x\n\nMergewright-Link: resume");
+    relabel_newest(&repo, &name, "other x\n\nMergewright-Link: resume");
     assert_eq!(kinds(&repo), [LinkKind::Resume, LinkKind::Step]);
     let set = conflict_set(&repo);
     assert_eq!(set.paths, paths(&["b.txt"]));

@@ -52,7 +52,7 @@ pub(crate) struct SavedPlan {
     #[serde(default)]
     pub(crate) index_base: Option<Oid>,
     /// The forks that follow (ADR-0059 §3), in the todo's section order
-    /// (`graft-fork-<n>` is the n-th), each with its tip before. Absent in a
+    /// (`mwr-fork-<n>` is the n-th), each with its tip before. Absent in a
     /// plan saved before ADR-0059, which reads as none.
     #[serde(default)]
     pub(crate) forks: Vec<(String, String)>,
