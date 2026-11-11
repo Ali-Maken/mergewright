@@ -1,8 +1,8 @@
- BLAME · src/auth/session.rs · as of 74f9a9e
+ BLAME · src/auth/session.rs · as of 41db24c
  skipping 1 commit listed in .git-blame-ignore-revs · i shows them
  ─ AN   1y│  1  use std::time::{Duration, Instant};
  ─ PR  4mo│  2  use crate::config::Config;
- ─ GF  60m│  3  use crate::error::Expired;
+ ─ MF  60m│  3  use crate::error::Expired;
  ┌ AN   1y│  4  use crate::http::{Client, Result};
  │        │  5
  │        │  6  pub struct Session {
@@ -25,6 +25,6 @@
  └        │ 23                  attempt += 1;
  ┌ TO 10mo│ 24                  continue;
  └        │ 25              }
- ─ GF  60m│ 26              self.token = resp.token().map_err(Expired::from)?;
+ ─ MF  60m│ 26              self.token = resp.token().map_err(Expired::from)?;
  ┌ TO 10mo│ 27              return self.record_refresh(&resp, "refreshed after the server answered 4
  ⏎ that commit  ^ before it  L history of these lines  / find  space ages  ? keys  w  i  esc

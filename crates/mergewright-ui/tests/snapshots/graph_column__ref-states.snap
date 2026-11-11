@@ -4,11 +4,11 @@ expression: text
 ---
 shape: ref-states (dark = light, asserted), truecolor
 
-  ●       ..l.....  51ea533  Archived work
-  │ ●     ..l.f...  b9b94c1  behind: theirs
-  │ ●     ..l.a...  379c02d  behind: shared
-  │ │ ●   ..l.a.h.  0994ff4  ahead: not pushed yet
-  │ │ ●   ..l.a.h.  7be40e6  ahead: pushed
-◆ │ │ │   c.l.a.h.  a676d37  Advance main again
-●─│─┴─╯   calaahh.  31948ff  Advance main
-◇─╯       cll.....  68d5d19  Add the base
+  ●       ..c.....  553f904  Archived work
+  │ ●     ..c.f...  ab6d906  behind: theirs
+  │ ●     ..c.a...  2737d33  behind: shared
+  │ │ ●   ..c.a.h.  a68ed17  ahead: not pushed yet
+  │ │ ●   ..c.a.h.  1b3a91c  ahead: pushed
+◆ │ │ │   c.c.a.h.  06e9b8d  Advance main again
+●─│─┴─╯   cacaahh.  4e3769e  Advance main
+◇─╯       ccc.....  1bbdd6b  Add the base

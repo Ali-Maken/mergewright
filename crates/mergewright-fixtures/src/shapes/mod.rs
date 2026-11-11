@@ -31,7 +31,7 @@ pub(super) const MAIN: &[u8] = b"refs/heads/main";
 /// Unreachable by design: `.invalid` can never resolve (RFC 2606), so a bug
 /// that makes Mergewright touch the network fails loudly instead of quietly
 /// working.
-pub(super) const REMOTE_URL: &str = "https://example.invalid/graft.git";
+pub(super) const REMOTE_URL: &str = "https://example.invalid/maker.git";
 
 /// Why one fixture could not be built.
 #[derive(Debug, thiserror::Error)]

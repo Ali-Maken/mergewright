@@ -15,15 +15,15 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●    fix                  fix the bug  not pushed yet  not merged   Graft   3m│ fix
+▸   ●    fix                  fix the bug  not pushed yet  not merged   Maker   3m│ fix
  Checkout fix
- Cherry-pick fbb2394 (o)
+ Cherry-pick 75ce583 (o)
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
  Merge fix into main (m)
  Rebase main onto fix (r)
- Revert fbb2394
+ Revert 75ce583
  Reset main to here, mixed
  Reset main to here, hard
  Delete branch fix
@@ -58,14 +58,14 @@
 
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●    fix                  fix the bug  not pushed yet  not merged   Graft   3m│ main  (you're here)
-▸ ◆ ┊    main (you)           main moves on  not pushed yet             Graft   4m│ reading…
+    ●    fix                  fix the bug  not pushed yet  not merged   Maker   3m│ main  (you're here)
+▸ ◆ ┊    main (you)           main moves on  not pushed yet             Maker   4m│ reading…
  Checkout — already on main
  Cherry-pick (o) — already on main
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
- Revert 37926a7
+ Revert d128e01
  Reset main to here, mixed
  Reset main to here, hard
  Fetch (f)

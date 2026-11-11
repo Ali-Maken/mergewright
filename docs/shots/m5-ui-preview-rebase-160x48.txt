@@ -27,17 +27,17 @@
 
  ◆ api  ~/code/api · feature                                                                                                                          8 commits
 
-    ●                           finish the feature                                                              Graft  now│ main
-    ●                           start the feature                                                               Graft   2m│ ! not pushed yet
+    ●                           finish the feature                                                              Maker  now│ main
+    ●                           start the feature                                                               Maker   2m│ ! not pushed yet
     │                           after rebase                                                                              │ · the main line: branches merge into
-    │ ○                         finish the feature  feature is here  not pushed yet                             Graft    —│   it
-    │ ○                         start the feature                                                               Graft    —│ · no upstream to compare with
-▸ ●─│─╯                         main moves again  main is here  not pushed yet                                  Graft   3m│ · everyone, last commit 3m ago
-  ● │                           main moves on                                                                   Graft   4m│
-  ●─╯                           add the base                                                                    Graft   5m│ built on
-  ●                             Correct the note                                                                Graft   1y│   main
-  ●                             Add the first note                                                              Graft   1y│
-  ◇                             Add a readme                                                                    Graft   1y│
+    │ ○                         finish the feature  feature is here  not pushed yet                             Maker    —│   it
+    │ ○                         start the feature                                                               Maker    —│ · no upstream to compare with
+▸ ●─│─╯                         main moves again  main is here  not pushed yet                                  Maker   3m│ · everyone, last commit 3m ago
+  ● │                           main moves on                                                                   Maker   4m│
+  ●─╯                           add the base                                                                    Maker   5m│ built on
+  ●                             Correct the note                                                                Maker   1y│   main
+  ●                             Add the first note                                                              Maker   1y│
+  ◇                             Add a readme                                                                    Maker   1y│
                                                                                                                           │
                                                                                                                           │
                                                                                                                           │
@@ -64,7 +64,7 @@
                                                                                                                           │
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 2 commits replayed                                                                                                                                           │
-│ feature 8d6cd28 → 2 new commits                                                                                                                              │
+│ feature 300a4d7 → 2 new commits                                                                                                                              │
 │ working tree: 2 files updated                                                                                                                                │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │

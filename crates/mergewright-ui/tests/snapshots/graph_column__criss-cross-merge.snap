@@ -4,10 +4,10 @@ expression: text
 ---
 shape: criss-cross-merge (dark = light, asserted), truecolor
 
-  ●         ..f.......  be27a12  beta: carry on
-◆─│─╮       cdfdd.....  e44c042  Merge branch 'alpha'
-│ ◉─│─╮     c.fjdjj...  f77039c  beta: merge alpha
-│ │ ◉─│─╮   c.f.dajaa.  89c164d  alpha: merge beta
-│ ●─│─│─╯   c.fadajaa.  4cfd7d9  beta: work
-│ │ ●─╯     c.f.djj...  bd20b78  alpha: work
-◇─┴─╯       cffdd.....  68d5d19  Add the base
+  ●         ..f.......  6959025  beta: carry on
+◆─│─╮       cdfdd.....  f87caea  Merge branch 'alpha'
+│ ◉─│─╮     c.ffdff...  e4bcd89  beta: merge alpha
+│ │ ◉─│─╮   c.f.dhfhh.  8092488  alpha: merge beta
+│ ●─│─│─╯   c.fhdhfhh.  81a4fe6  beta: work
+│ │ ●─╯     c.f.dff...  e0eea22  alpha: work
+◇─┴─╯       cffdd.....  1bbdd6b  Add the base

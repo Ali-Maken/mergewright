@@ -10,12 +10,12 @@
 # box edge.
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-    ●                         fix the bug                               Graft   3m│ main  (you're here)
-▸ ◆ │                         main moves on                             Graft   4m│ ! not pushed yet
-  ●─╯                         add the base                              Graft   5m│ · the main line: branches merge into
-  ●                           Correct the note                          Graft   1y│   it
-  ●                           Add the first note                        Graft   1y│ · no upstream to compare with
-  ◇                           Add a readme                              Graft   1y│ · everyone, last commit 4m ago
+    ●                         fix the bug                               Maker   3m│ main  (you're here)
+▸ ◆ │                         main moves on                             Maker   4m│ ! not pushed yet
+  ●─╯                         add the base                              Maker   5m│ · the main line: branches merge into
+  ●                           Correct the note                          Maker   1y│   it
+  ●                           Add the first note                        Maker   1y│ · no upstream to compare with
+  ◇                           Add a readme                              Maker   1y│ · everyone, last commit 4m ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main
@@ -36,13 +36,13 @@
                                                                                   │
                                                                                   │
                                                                                   │
-╭ Preview: branch feature-c at 37926a7 ────────────────────────────────────────────────────────────────────────────────╮
-│ feature-c (new) → 37926a7                                                                                            │
+╭ Preview: branch feature-c at d128e01 ────────────────────────────────────────────────────────────────────────────────╮
+│ feature-c (new) → d128e01                                                                                            │
 │ HEAD → feature-c                                                                                                     │
 │ your edits stay as they are                                                                                          │
 │ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │
-│ git branch feature-c 37926a7c0b3c7e1cfbcb23494d10a90449c88b64                                                        │
+│ git branch feature-c d128e01a88e3a07331566c9d930dbc06f35b7e94                                                        │
 │ git switch feature-c                                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────╯

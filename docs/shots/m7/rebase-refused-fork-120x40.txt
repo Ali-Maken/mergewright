@@ -1,11 +1,11 @@
  ◆ api  ~/code/api · feature-a                                                                                5 commits
 
-    ●      feature-c            c1  not pushed yet  not merged          Graft   2d│ main
-▸ ● ┊      main                 m2  not pushed yet                      Graft   2d│ ! not pushed yet
-  ┃ ┊                           Graft · 2 days ago · made on main · fa34bcc       │ · the main line: branches merge into
-  ┃ ┊ ●    feature-b            b1  not pushed yet                      Graft   2d│   it
-  ┃ ◆┄╯    feature-a (you)      a1  not pushed yet                      Graft   2d│ · no upstream to compare with
-  ◇┄╯      main                 m1                                      Graft   2d│ · everyone, last commit 2d ago
+    ●      feature-c            c1  not pushed yet  not merged          Maker   2d│ main
+▸ ● ┊      main                 m2  not pushed yet                      Maker   2d│ ! not pushed yet
+  ┃ ┊                           Maker · 2 days ago · made on main · 014e9ff       │ · the main line: branches merge into
+  ┃ ┊ ●    feature-b            b1  not pushed yet                      Maker   2d│   it
+  ┃ ◆┄╯    feature-a (you)      a1  not pushed yet                      Maker   2d│ · no upstream to compare with
+  ◇┄╯      main                 m1                                      Maker   2d│ · everyone, last commit 2d ago
                                                                                   │
                                                                                   │ built on
                                                                                   │   main

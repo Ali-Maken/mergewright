@@ -11,12 +11,12 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸ ◆    main (you)           commit over the notes  not pushed yet                                            Graft   3m
-  ┃                         Graft · 3 minutes ago · made on main · f3742ab
-  ●                         add the notes                                                                    Graft   5m
-  ●                         Correct the note                                                                 Graft   1y
-  ●                         Add the first note                                                               Graft   1y
-  ◇                         Add a readme                                                                     Graft   1y
+▸ ◆    main (you)           commit over the notes  not pushed yet                                            Maker   3m
+  ┃                         Maker · 3 minutes ago · made on main · ac25b75
+  ●                         add the notes                                                                    Maker   5m
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -33,7 +33,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ every file done · stash@{0} dropped  u brings it back
-COMMIT f3742ab · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents cfa370c · diff vs firs…
+COMMIT ac25b75 · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents 2b03193 · diff vs firs…
 commit over the notes
 M notes.md              +1 −1 ▎
                                 1     - base

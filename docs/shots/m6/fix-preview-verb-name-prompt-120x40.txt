@@ -12,11 +12,11 @@
 
  ◆ api  ~/code/api · main                                                                                     5 commits
 
-▸   ●                         On main: wip  stash@{0}                   Graft   2m│ 92f36bb · not on a branch
-  ◆─╯                         add sample  main is here  not pushed yet  Graft   2m│
-  ●                           Correct the note                          Graft   1y│
-  ●                           Add the first note                        Graft   1y│
-  ◇                           Add a readme                              Graft   1y│
+▸   ●                         On main: wip  stash@{0}                   Maker   2m│ dfcb5a2 · not on a branch
+  ◆─╯                         add sample  main is here  not pushed yet  Maker   2m│
+  ●                           Correct the note                          Maker   1y│
+  ●                           Add the first note                        Maker   1y│
+  ◇                           Add a readme                              Maker   1y│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -40,7 +40,7 @@
                                                                                   │
                                                                                   │
 ╭ Preview: branch rescued from stash@{0} ──────────────────────────────────────────────────────────────────────────────╮
-│ rescued (new) → da91a2e                                                                                              │
+│ rescued (new) → cc7d717                                                                                              │
 │ HEAD → rescued                                                                                                       │
 │ working tree: 1 file updated                                                                                         │
 │ no conflicts expected                                                                                                │

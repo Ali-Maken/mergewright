@@ -189,7 +189,7 @@ fn capture_after_continue_on_a_rebase() {
     // The replayed commits are committed by whoever runs the test unless
     // the repository says otherwise: the fixture's own name keeps a real
     // person's out of a capture that may be published.
-    git(repo, &["config", "user.name", "Graft Fixture"]);
+    git(repo, &["config", "user.name", "Maker Fixture"]);
     git(repo, &["config", "user.email", "fixture@example.invalid"]);
     let (app, state) = App::open(repo);
     let state = landed(&app, state);

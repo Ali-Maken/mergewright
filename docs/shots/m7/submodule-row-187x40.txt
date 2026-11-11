@@ -1,14 +1,14 @@
  ◆ api  ~/code/api · main                                                                         4 commits  UNCOMMITTED · 1 unstaged
-                                                                                                             diff vs HEAD f48cdbe
+                                                                                                             diff vs HEAD 9a1235a
 ▸ ◌                   Uncommitted changes (1 unstaged)
   ┃                   not committed yet · 1 file · on main
-  ◆    main (you)     add parser  not pushed yet                                                 Graft  24h
-  ●                   Correct the note                                                           Graft   2d  UNSTAGED (1)
-  ●                   Add the first note                                                         Graft   2d    ▣ libs/parser  submodule · pointer moved ca07ea9 → efdd295 · changed inside
-  ◇                   Add a readme                                                               Graft   2d  libs/parser · submodule · ca07ea9 → efdd295
+  ◆    main (you)     add parser  not pushed yet                                                 Maker  24h
+  ●                   Correct the note                                                           Maker   2d  UNSTAGED (1)
+  ●                   Add the first note                                                         Maker   2d    ▣ libs/parser  submodule · pointer moved d433d5f → 3170e0a · changed inside
+  ◇                   Add a readme                                                               Maker   2d  libs/parser · submodule · d433d5f → 3170e0a
                                                                                                              changed inside
-                                                                                                             + efdd295 parser 3
-                                                                                                             + 8512312 parser 2
+                                                                                                             + 3170e0a parser 3
+                                                                                                             + cffc458 parser 2
 
 
 

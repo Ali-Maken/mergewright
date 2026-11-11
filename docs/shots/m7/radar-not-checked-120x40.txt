@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-▸ ◆    main (you)           add notes  not pushed yet                                                        Graft   5m
-  ┃                         Graft · 5 minutes ago · made on main · 2c59061
-  ●                         Correct the note                                                                 Graft   1y
-  ●                         Add the first note                                                               Graft   1y
-  ◇                         Add a readme                                                                     Graft   1y
+▸ ◆    main (you)           add notes  not pushed yet                                                        Maker   5m
+  ┃                         Maker · 5 minutes ago · made on main · 267b5a7
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT 2c59061 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents a82960b · diff vs firs…
+COMMIT 267b5a7 · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents c28ba91 · diff vs firs…
 add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
 M notes.txt             +1 −1 ▎
                                 1     - one, corrected

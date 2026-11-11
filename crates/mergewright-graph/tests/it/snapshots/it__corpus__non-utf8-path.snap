@@ -8,5 +8,5 @@ default: main
 integration: []
 commits: 2, columns: 2
 
-| *  16151d4  latin1             Add a Latin-1 path
-* /  7e00915  main               Add a readme
+| *  5be1f4d  latin1             Add a Latin-1 path
+* /  dd57952  main               Add a readme

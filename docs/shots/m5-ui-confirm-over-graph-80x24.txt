@@ -48,12 +48,12 @@
 == `P`: the push confirm, on the graph ==
 
  ◆ api  ~/code/api · main                         200 commits  1 commit to push
-▸ ◆  ⓘ main (you)   Commit 200  ↑1 to push                           Graft   2d
-  ┃                 Graft · 2 days ago · made on main · d5ae5fd
-  ●                 Commit 199  origin/main is here                  Graft   2d
-  ●                 Commit 198                                       Graft   2d
-  ●                 Commit 197                                       Graft   2d
-  ●                 Commit 196                                       Graft   2d
+▸ ◆  ⓘ main (you)   Commit 200  ↑1 to push                           Maker   2d
+  ┃                 Maker · 2 days ago · made on main · 38e090d
+  ●                 Commit 199  origin/main is here                  Maker   2d
+  ●                 Commit 198                                       Maker   2d
+  ●                 Commit 197                                       Maker   2d
+  ●                 Commit 196                                       Maker   2d
   ●    ╭ Push main → origin/main ────────────────────────────────────────╮   2d
   ●    │ 1 commit · can't be undone from here — origin keeps what you    │   2d
   ●    │ send                                                            │   2d
@@ -62,13 +62,13 @@
   ●    │                                                                 │   2d
   ●    │ ▸[ Cancel ]   [ Push ]                                          │   2d
   ●    ╰─────────────────────────────────────────────────────────────────╯   2d
-  ●                 Commit 187                                       Graft   2d
-  ●                 Commit 186                                       Graft   2d
-  ●                 Commit 185                                       Graft   2d
-  ●                 Commit 184                                       Graft   2d
-  ●                 Commit 183                                       Graft   2d
-  ●                 Commit 182                                       Graft   2d
-  ●                 Commit 181                                       Graft   2d
-  ●                 Commit 180                                       Graft   2d
+  ●                 Commit 187                                       Maker   2d
+  ●                 Commit 186                                       Maker   2d
+  ●                 Commit 185                                       Maker   2d
+  ●                 Commit 184                                       Maker   2d
+  ●                 Commit 183                                       Maker   2d
+  ●                 Commit 182                                       Maker   2d
+  ●                 Commit 181                                       Maker   2d
+  ●                 Commit 180                                       Maker   2d
  y push  ←/→ move  ⏎ choose  esc cancel
 

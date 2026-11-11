@@ -4,13 +4,13 @@
 
  ◆ api  ~/code/api · main                             merging feature into main
   ◌                   Uncommitted changes (2 unmerged)
-  ◆      main (you)   main's take  not pushed yet                    Graft   2h
-▸ ║ ●    feature      the feature's take  not pushed yet             Graft   2h
-  ║ ┃                 Graft · 2 hours ago · made on feature · f43f326
-  ●━╯    main (you)   the shared files                               Graft   2h
-  ●                   Correct the note                               Graft   1y
-  ●                   Add the first note                             Graft   1y
-  ◇                   Add a readme                                   Graft   1y
+  ◆      main (you)   main's take  not pushed yet                    Maker   2h
+▸ ║ ●    feature      the feature's take  not pushed yet             Maker   2h
+  ║ ┃                 Maker · 2 hours ago · made on feature · 5876436
+  ●━╯    main (you)   the shared files                               Maker   2h
+  ●                   Correct the note                               Maker   1y
+  ●                   Add the first note                             Maker   1y
+  ◇                   Add a readme                                   Maker   1y
 
 
 

@@ -11,20 +11,20 @@
 #    At narrow widths `put back after` may be cut; the file count may not.
 
  ◆ api  ~/code/api · main                         202 commits  1 commit to push
-                      after rebase
-    ○                 ours  main is here  ↑1 to push                 Graft    —
-    ●                 theirs  origin/main is here                    Graft   6m
-▸ ● │                 ours                                           Graft   6m
-  ●─╯                 Commit 200                                     Graft   1y
-  ●                   Commit 199                                     Graft   1y
-  ●                   Commit 198                                     Graft   1y
-  ●                   Commit 197                                     Graft   1y
-  ●                   Commit 196                                     Graft   1y
-  ●                   Commit 195                                     Graft   1y
-  ●                   Commit 194                                     Graft   1y
+▸ ●                   ours                                           Maker   6m
+  │                   after rebase
+  │ ○                 ours  main is here  ↑1 to push                 Maker    —
+  │ ●                 theirs  origin/main is here                    Maker   6m
+  ●─╯                 Commit 200                                     Maker   1y
+  ●                   Commit 199                                     Maker   1y
+  ●                   Commit 198                                     Maker   1y
+  ●                   Commit 197                                     Maker   1y
+  ●                   Commit 196                                     Maker   1y
+  ●                   Commit 195                                     Maker   1y
+  ●                   Commit 194                                     Maker   1y
 ╭ Preview: rebase main onto origin/main ───────────────────────────────────────╮
 │ 1 commit replayed                                                            │
-│ main 9d3d925 → 1 new commit                                                  │
+│ main b9fa9c9 → 1 new commit                                                  │
 │ working tree: 1 file updated                                                 │
 │ your edits: 3 files set aside, put back after                                │
 │ no conflicts expected                                                        │

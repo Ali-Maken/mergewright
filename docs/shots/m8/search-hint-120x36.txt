@@ -13,9 +13,9 @@
 
  ◆ api  ~/code/api · main  /topic  4 matches so far (1/4)  n/N next/prev  esc cancel  2 commits  1 merged branch folded
 
-▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Graft   2d│ main  (you're here)
-  ┃                         Graft · 2 days ago · made on main · e385b54           │ ! not pushed yet
-  ◇                         Add the base                                Graft   2d│ · the main line: branches merge into
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Maker   2d│ main  (you're here)
+  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! not pushed yet
+  ◇                         Add the base                                Maker   2d│ · the main line: branches merge into
                                                                                   │   it
                                                                                   │ · no upstream to compare with
                                                                                   │ · everyone, last commit 2d ago
@@ -52,9 +52,9 @@
 
  ◆ api  ~/code/api · main          /topic  4 matches (1/4)  n/N next/prev  esc close  2 commits  1 merged branch folded
 
-▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Graft   2d│ main  (you're here)
-  ┃                         Graft · 2 days ago · made on main · e385b54           │ ! not pushed yet
-  ◇                         Add the base                                Graft   2d│ · the main line: branches merge into
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Maker   2d│ main  (you're here)
+  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! not pushed yet
+  ◇                         Add the base                                Maker   2d│ · the main line: branches merge into
                                                                                   │   it
                                                                                   │ · no upstream to compare with
                                                                                   │ · everyone, last commit 2d ago
@@ -91,9 +91,9 @@
 
  ◆ api  ~/code/api · main                               /zzqx  no matches  esc close  2 commits  1 merged branch folded
 
-▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Graft   2d│ main  (you're here)
-  ┃                         Graft · 2 days ago · made on main · e385b54           │ ! not pushed yet
-  ◇                         Add the base                                Graft   2d│ · the main line: branches merge into
+▸ ◆    main (you)           Merge branches 'topic-1', 'topic-2' and '…  Maker   2d│ main  (you're here)
+  ┃                         Maker · 2 days ago · made on main · cdfc44a           │ ! not pushed yet
+  ◇                         Add the base                                Maker   2d│ · the main line: branches merge into
                                                                                   │   it
                                                                                   │ · no upstream to compare with
                                                                                   │ · everyone, last commit 2d ago

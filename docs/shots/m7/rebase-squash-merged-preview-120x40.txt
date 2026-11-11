@@ -1,14 +1,14 @@
  ◆ api  ~/code/api · feature-a                                                                                7 commits
 
-    ●                           b1                                      Graft   2d│ main
+    ●                           b1                                      Maker   2d│ main
     │                           after rebase                                      │ ! not pushed yet
-    │ ○                         b1  feature-b is here  not pushed yet   Graft    —│ · the main line: branches merge into
-▸ ◆─│─╯                         Add OAuth (#42)                         Graft   2d│   it
-  │ ●                           a3                                      Graft   2d│ · no upstream to compare with
-  │ ●                           a2                                      Graft   2d│ · everyone, last commit 2d ago
-  │ ●                           a1                                      Graft   2d│
-  ● │                           m2                                      Graft   2d│ built on
-  ◇─╯                           m1                                      Graft   2d│   main
+    │ ○                         b1  feature-b is here  not pushed yet   Maker    —│ · the main line: branches merge into
+▸ ◆─│─╯                         Add OAuth (#42)                         Maker   2d│   it
+  │ ●                           a3                                      Maker   2d│ · no upstream to compare with
+  │ ●                           a2                                      Maker   2d│ · everyone, last commit 2d ago
+  │ ●                           a1                                      Maker   2d│
+  ● │                           m2                                      Maker   2d│ built on
+  ◇─╯                           m1                                      Maker   2d│   main
                                                                                   │
                                                                                   │
                                                                                   │
@@ -27,9 +27,9 @@
                                                                                   │
 ╭ Preview: rebase feature-a onto main ─────────────────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
-│ branches: feature-a 1dc69fb → 51f3dc8                                                                                │
-│           feature-b f41bc43 → 1 new commit · built on yours · follows                                                │
-│ already in main: feature-a's 3 commits match 51f3dc8 "Add OAuth (#42)" · dropped · R to keep them                    │
+│ branches: feature-a 1679c4c → 4ef778d                                                                                │
+│           feature-b 350d03a → 1 new commit · built on yours · follows                                                │
+│ already in main: feature-a's 3 commits match 4ef778d "Add OAuth (#42)" · dropped · R to keep them                    │
 │ working tree: 4 files updated                                                                                        │
 │ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │

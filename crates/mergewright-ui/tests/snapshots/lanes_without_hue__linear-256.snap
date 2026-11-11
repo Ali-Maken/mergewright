@@ -5,28 +5,28 @@ expression: text
 shape: linear, 256, 80x24, cursor on row 2
 
  ◆ api  ~/code/api · main                                           200 commits
-  ◆                 Commit 200                                       Graft   4y
-▸ ●                 Commit 199                                       Graft   4y
-  ●                 Commit 198                                       Graft   4y
-  ●                 Commit 197                                       Graft   4y
-  ●                 Commit 196                                       Graft   4y
-  ●                 Commit 195                                       Graft   4y
-  ●                 Commit 194                                       Graft   4y
-  ●                 Commit 193                                       Graft   4y
-  ●                 Commit 192                                       Graft   4y
-  ●                 Commit 191                                       Graft   4y
-  ●                 Commit 190                                       Graft   4y
-  ●                 Commit 189                                       Graft   4y
-  ●                 Commit 188                                       Graft   4y
-  ●                 Commit 187                                       Graft   4y
-  ●                 Commit 186                                       Graft   4y
-  ●                 Commit 185                                       Graft   4y
-  ●                 Commit 184                                       Graft   4y
-  ●                 Commit 183                                       Graft   4y
-  ●                 Commit 182                                       Graft   4y
-  ●                 Commit 181                                       Graft   4y
-  ●                 Commit 180                                       Graft   4y
-  ●                 Commit 179                                       Graft   4y
+  ◆                 Commit 200                                       Maker   4y
+▸ ●                 Commit 199                                       Maker   4y
+  ●                 Commit 198                                       Maker   4y
+  ●                 Commit 197                                       Maker   4y
+  ●                 Commit 196                                       Maker   4y
+  ●                 Commit 195                                       Maker   4y
+  ●                 Commit 194                                       Maker   4y
+  ●                 Commit 193                                       Maker   4y
+  ●                 Commit 192                                       Maker   4y
+  ●                 Commit 191                                       Maker   4y
+  ●                 Commit 190                                       Maker   4y
+  ●                 Commit 189                                       Maker   4y
+  ●                 Commit 188                                       Maker   4y
+  ●                 Commit 187                                       Maker   4y
+  ●                 Commit 186                                       Maker   4y
+  ●                 Commit 185                                       Maker   4y
+  ●                 Commit 184                                       Maker   4y
+  ●                 Commit 183                                       Maker   4y
+  ●                 Commit 182                                       Maker   4y
+  ●                 Commit 181                                       Maker   4y
+  ●                 Commit 180                                       Maker   4y
+  ●                 Commit 179                                       Maker   4y
  ⏎ open · b branch · r rebase · t tag · c commit · y sha · u undo · ? keys
 
 graph colour per cell:

@@ -52,7 +52,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     // A fixture identity and a generated helper's words: never drawn.
     (
         "mergewright-git/src/fixture.rs",
-        "Graft Fixture",
+        "Maker Fixture",
         "fixture author identity",
     ),
     (
@@ -63,7 +63,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     // Perf examples (50): run by hand to measure, never drawn to the user.
     (
         "mergewright-git/examples/stash_only_cost.rs",
-        "Graft Perf",
+        "Maker Perf",
         "perf fixture's author identity",
     ),
     (

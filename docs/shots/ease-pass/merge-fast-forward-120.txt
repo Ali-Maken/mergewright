@@ -8,10 +8,10 @@
 ▸   ◆                         Check every link                           Sara  55m│ sara/fix-toc
     ●                         Add notes                                  Omar  56m│ ! not pushed yet
     ●                         Add a table of contents                    Sara  57m│ · not merged
-    ●                         Add the report                            Graft  59m│ ✓ up to date with wallet-release
-  ●─╯                         Correct the note                          Graft   1y│ · Sara and Omar, last commit 55m ago
-  ●                           Add the first note                        Graft   1y│
-  ◇                           Add a readme                              Graft   1y│ built on
+    ●                         Add the report                            Maker  59m│ ✓ up to date with wallet-release
+  ●─╯                         Correct the note                          Maker   1y│ · Sara and Omar, last commit 55m ago
+  ●                           Add the first note                        Maker   1y│
+  ◇                           Add a readme                              Maker   1y│ built on
                                                                                   │   main
                                                                                   │    ─◆ wallet-release
                                                                                   │    ─◆ sara/fix-toc

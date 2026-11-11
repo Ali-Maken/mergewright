@@ -9,14 +9,14 @@
 # put aside and back).
  ◆ api  ~/code/api · main                                                                                     6 commits
 
-▸   ●                           fix the bug                             Graft   3m│ login-page
+▸   ●                           fix the bug                             Maker   3m│ login-page
     │                           after cherry-pick                                 │ ! not pushed yet
-    │ ○                         fix the bug  main is here               Graft    —│ · not merged
-  ●─│─╯                         main moves on                           Graft   4m│ ! main has 1 new commit since it
-  ●─╯                           add the base                            Graft   5m│   left
-  ●                             Correct the note                        Graft   1y│ · Graft, last commit 3m ago
-  ●                             Add the first note                      Graft   1y│
-  ◇                             Add a readme                            Graft   1y│ built on
+    │ ○                         fix the bug  main is here               Maker    —│ · not merged
+  ●─│─╯                         main moves on                           Maker   4m│ ! main has 1 new commit since it
+  ●─╯                           add the base                            Maker   5m│   left
+  ●                             Correct the note                        Maker   1y│ · Maker, last commit 3m ago
+  ●                             Add the first note                      Maker   1y│
+  ◇                             Add a readme                            Maker   1y│ built on
                                                                                   │   main
                                                                                   │    ─◆ login-page
                                                                                   │
@@ -35,14 +35,14 @@
                                                                                   │
                                                                                   │
                                                                                   │
-╭ Preview: take fbb2394 "fix the bug" onto main ───────────────────────────────────────────────────────────────────────╮
+╭ Preview: take 75ce583 "fix the bug" onto main ───────────────────────────────────────────────────────────────────────╮
 │ 1 commit replayed                                                                                                    │
-│ main 37926a7 → 1 new commit                                                                                          │
+│ main d128e01 → 1 new commit                                                                                          │
 │ working tree: 1 file updated                                                                                         │
 │ your edits: 1 file set aside, put back after                                                                         │
 │ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │
-│ git cherry-pick --no-edit fbb239485a44296a8bcf422dc2957c94be4a7d6c                                                   │
+│ git cherry-pick --no-edit 75ce583ee51757962694ff81bb28748abfb75b2c                                                   │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │
 ╰ y confirm  ←/→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

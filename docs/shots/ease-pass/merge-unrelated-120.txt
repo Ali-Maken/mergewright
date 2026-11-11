@@ -7,15 +7,15 @@
 
       │                         after merge                                       │ stray
     ◎┈╮                         Merge branch 'stray' into wallet-rele…    you    —│ ! not pushed yet
-▸   │ ◇                         Start over                              Graft  54m│ · not merged
+▸   │ ◇                         Start over                              Maker  54m│ · not merged
     │ ●                         Check every link                         Sara  55m│ · shares no history with main
-    │ ●                         Link the contents                        Omar  56m│ · Graft, last commit 54m ago
+    │ ●                         Link the contents                        Omar  56m│ · Maker, last commit 54m ago
     │ ●                         Add a table of contents                  Sara  57m│
-    ● │                         Number the report                       Graft  58m│ built on
-    ●─╯                         Add the report                          Graft  59m│   stray
-  ●─╯                           Correct the note                        Graft   1y│
-  ●                             Add the first note                      Graft   1y│
-  ◇                             Add a readme                            Graft   1y│
+    ● │                         Number the report                       Maker  58m│ built on
+    ●─╯                         Add the report                          Maker  59m│   stray
+  ●─╯                           Correct the note                        Maker   1y│
+  ●                             Add the first note                      Maker   1y│
+  ◇                             Add a readme                            Maker   1y│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -38,7 +38,7 @@
 ╭ Merge stray into wallet-release ─────────────────────────────────────────────────────────────────────────────────────╮
 │ Nothing has changed yet.                                                                                             │
 │                                                                                                                      │
-│ Comes in      1 commit from stray (Graft)                                                                            │
+│ Comes in      1 commit from stray (Maker)                                                                            │
 │ Can't merge: stray and wallet-release share no history.                                                              │
 ╰ esc cancel  ⏎ see the 1 commit ──────────────────────────────────────────────────────────────────────────────────────╯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

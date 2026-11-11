@@ -1,5 +1,5 @@
  HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
-   74f9a9e Handle expired tokens                                                  Graft…  60m +1 −1
+   41db24c Handle expired tokens                                                  Maker…  60m +1 −1
  ▸ 2f48ca3 Retry refresh once on 401                                              Lina    7mo +3 −2
    47593a5 Add token refresh                                                      Tom    10mo +11
    the file starts here (47593a5 added it)

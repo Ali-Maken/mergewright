@@ -1,8 +1,8 @@
 --- frame 1: files focused: the bar ends `⇥ diff`
-REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
+REBASING  step 1 of 1 · pick 0109d2c Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 274c7d4
+diff vs HEAD 55e59f0
 
 CONFLICTS (13)
   added-by-them.txt                                                added by them
@@ -24,10 +24,10 @@ CONFLICTS (13)
 
  ⏎ resolve · M mergetool · e edit · space mark · c cont · ⇥ diff · ? keys
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
-REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
+REBASING  step 1 of 1 · pick 0109d2c Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 274c7d4
+diff vs HEAD 55e59f0
 
 CONFLICTS (13)
   added-by-them.txt                                                added by them
@@ -49,10 +49,10 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
-REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
+REBASING  step 1 of 1 · pick 0109d2c Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 274c7d4
+diff vs HEAD 55e59f0
 
 CONFLICTS (13)
   added-by-them.txt                                                added by them
@@ -74,10 +74,10 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 4: a second `⇥`: the banner has the keyboard
-REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
+REBASING  step 1 of 1 · pick 0109d2c Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 274c7d4
+diff vs HEAD 55e59f0
 
 CONFLICTS (13)
   added-by-them.txt                                                added by them
@@ -102,7 +102,7 @@ CONFLICTS (13)
 merging feature into main
 Graph  [Detail]
 UNCOMMITTED
-diff vs HEAD 274c7d4
+diff vs HEAD 55e59f0
 
 CONFLICTS (13)
   added-by-them.txt                                                added by them
@@ -126,7 +126,7 @@ CONFLICTS (13)
 --- frame 6: an untracked `new.txt`: the row reads `new`, not `bin` (its body is n1's open half)
 Graph  [Detail]
 UNCOMMITTED · 1 untracked
-diff vs HEAD a82960b
+diff vs HEAD c28ba91
 
 UNTRACKED (1)
   ? new.txt                                                                  new

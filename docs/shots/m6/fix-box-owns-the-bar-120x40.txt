@@ -19,84 +19,84 @@
 === frame 1: the lease box over a rejected push ===
  ◆ api  ~/code/api · main                                                                 201 commits  1 commit to push
 
-▸ ◆  ⓘ main (you)           ours  ↑1 to push                            Graft   6y│ main  (you're here)
-  ┃                         Graft · 6 years ago · made on main · 739071c          │ ! 1 commit to push
-  ●                         Commit 200  origin/main is here             Graft   7y│ · the main line: branches merge into
-  ●                         Commit 199                                  Graft   7y│   it
-  ●                         Commit 198                                  Graft   7y│ ✓ up to date with origin/main
-  ●                         Commit 197                                  Graft   7y│ · everyone, last commit 6y ago
-  ●                         Commit 196                                  Graft   7y│
-  ●                         Commit 195                                  Graft   7y│ built on
-  ●                         Commit 194                                  Graft   7y│   main
-  ●                         Commit 193                                  Graft   7y│
-  ●                         Commit 192                                  Graft   7y│
-  ●                         Commit 191                                  Graft   7y│
-  ●                         Commit 190                                  Graft   7y│
+▸ ◆  ⓘ main (you)           ours  ↑1 to push                            Maker   6y│ main  (you're here)
+  ┃                         Maker · 6 years ago · made on main · c3569cb          │ ! 1 commit to push
+  ●                         Commit 200  origin/main is here             Maker   7y│ · the main line: branches merge into
+  ●                         Commit 199                                  Maker   7y│   it
+  ●                         Commit 198                                  Maker   7y│ ✓ up to date with origin/main
+  ●                         Commit 197                                  Maker   7y│ · everyone, last commit 6y ago
+  ●                         Commit 196                                  Maker   7y│
+  ●                         Commit 195                                  Maker   7y│ built on
+  ●                         Commit 194                                  Maker   7y│   main
+  ●                         Commit 193                                  Maker   7y│
+  ●                         Commit 192                                  Maker   7y│
+  ●                         Commit 191                                  Maker   7y│
+  ●                         Commit 190                                  Maker   7y│
   ●                         ╭ Force-push main → origin/main? ──────────────────────────────────────────────────────────╮
-  ●                         │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)         │
-  ●                         │ rewrites history for everyone who has d5ae5fd                                            │
+  ●                         │ origin/main 38e090d → c3569cb · refused if origin moved since your fetch (lease)         │
+  ●                         │ rewrites history for everyone who has 38e090d                                            │
   ●                         │ nothing on origin/main is lost                                                           │
   ●                         │                                                                                          │
-  ●                         │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0… │
+  ●                         │ git push --progress --force-with-lease=refs/heads/main:38e090d7b069c865ef1ad206c302f24b… │
   ●                         │                                                                                          │
   ●                         │ ▸[ Cancel ]   [ Force push ]                                                             │
   ●                         ╰──────────────────────────────────────────────────────────────────────────────────────────╯
-  ●                         Commit 180                                  Graft   7y│
-  ●                         Commit 179                                  Graft   7y│
-  ●                         Commit 178                                  Graft   7y│
-  ●                         Commit 177                                  Graft   7y│
-  ●                         Commit 176                                  Graft   7y│
-  ●                         Commit 175                                  Graft   7y│
-  ●                         Commit 174                                  Graft   7y│
-  ●                         Commit 173                                  Graft   7y│
-  ●                         Commit 172                                  Graft   7y│
-  ●                         Commit 171                                  Graft   7y│
-  ●                         Commit 170                                  Graft   7y│
-  ●                         Commit 169                                  Graft   7y│
-  ●                         Commit 168                                  Graft   7y│
-  ●                         Commit 167                                  Graft   7y│
+  ●                         Commit 180                                  Maker   7y│
+  ●                         Commit 179                                  Maker   7y│
+  ●                         Commit 178                                  Maker   7y│
+  ●                         Commit 177                                  Maker   7y│
+  ●                         Commit 176                                  Maker   7y│
+  ●                         Commit 175                                  Maker   7y│
+  ●                         Commit 174                                  Maker   7y│
+  ●                         Commit 173                                  Maker   7y│
+  ●                         Commit 172                                  Maker   7y│
+  ●                         Commit 171                                  Maker   7y│
+  ●                         Commit 170                                  Maker   7y│
+  ●                         Commit 169                                  Maker   7y│
+  ●                         Commit 168                                  Maker   7y│
+  ●                         Commit 167                                  Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ←/→ move  ⏎ choose  esc cancel
 
 === frame 2: `esc`, the rejection back ===
  ◆ api  ~/code/api · main                                                                 201 commits  1 commit to push
 
-▸ ◆  ⓘ main (you)           ours  ↑1 to push                            Graft   6y│ main  (you're here)
-  ┃                         Graft · 6 years ago · made on main · 739071c          │ ! 1 commit to push
-  ●                         Commit 200  origin/main is here             Graft   7y│ · the main line: branches merge into
-  ●                         Commit 199                                  Graft   7y│   it
-  ●                         Commit 198                                  Graft   7y│ ✓ up to date with origin/main
-  ●                         Commit 197                                  Graft   7y│ · everyone, last commit 6y ago
-  ●                         Commit 196                                  Graft   7y│
-  ●                         Commit 195                                  Graft   7y│ built on
-  ●                         Commit 194                                  Graft   7y│   main
-  ●                         Commit 193                                  Graft   7y│
-  ●                         Commit 192                                  Graft   7y│
-  ●                         Commit 191                                  Graft   7y│
-  ●                         Commit 190                                  Graft   7y│
-  ●                         Commit 189                                  Graft   7y│
-  ●                         Commit 188                                  Graft   7y│
-  ●                         Commit 187                                  Graft   7y│
-  ●                         Commit 186                                  Graft   7y│
-  ●                         Commit 185                                  Graft   7y│
-  ●                         Commit 184                                  Graft   7y│
-  ●                         Commit 183                                  Graft   7y│
-  ●                         Commit 182                                  Graft   7y│
-  ●                         Commit 181                                  Graft   7y│
-  ●                         Commit 180                                  Graft   7y│
-  ●                         Commit 179                                  Graft   7y│
-  ●                         Commit 178                                  Graft   7y│
-  ●                         Commit 177                                  Graft   7y│
-  ●                         Commit 176                                  Graft   7y│
-  ●                         Commit 175                                  Graft   7y│
-  ●                         Commit 174                                  Graft   7y│
-  ●                         Commit 173                                  Graft   7y│
-  ●                         Commit 172                                  Graft   7y│
-  ●                         Commit 171                                  Graft   7y│
-  ●                         Commit 170                                  Graft   7y│
-  ●                         Commit 169                                  Graft   7y│
-  ●                         Commit 168                                  Graft   7y│
-  ●                         Commit 167                                  Graft   7y│
+▸ ◆  ⓘ main (you)           ours  ↑1 to push                            Maker   6y│ main  (you're here)
+  ┃                         Maker · 6 years ago · made on main · c3569cb          │ ! 1 commit to push
+  ●                         Commit 200  origin/main is here             Maker   7y│ · the main line: branches merge into
+  ●                         Commit 199                                  Maker   7y│   it
+  ●                         Commit 198                                  Maker   7y│ ✓ up to date with origin/main
+  ●                         Commit 197                                  Maker   7y│ · everyone, last commit 6y ago
+  ●                         Commit 196                                  Maker   7y│
+  ●                         Commit 195                                  Maker   7y│ built on
+  ●                         Commit 194                                  Maker   7y│   main
+  ●                         Commit 193                                  Maker   7y│
+  ●                         Commit 192                                  Maker   7y│
+  ●                         Commit 191                                  Maker   7y│
+  ●                         Commit 190                                  Maker   7y│
+  ●                         Commit 189                                  Maker   7y│
+  ●                         Commit 188                                  Maker   7y│
+  ●                         Commit 187                                  Maker   7y│
+  ●                         Commit 186                                  Maker   7y│
+  ●                         Commit 185                                  Maker   7y│
+  ●                         Commit 184                                  Maker   7y│
+  ●                         Commit 183                                  Maker   7y│
+  ●                         Commit 182                                  Maker   7y│
+  ●                         Commit 181                                  Maker   7y│
+  ●                         Commit 180                                  Maker   7y│
+  ●                         Commit 179                                  Maker   7y│
+  ●                         Commit 178                                  Maker   7y│
+  ●                         Commit 177                                  Maker   7y│
+  ●                         Commit 176                                  Maker   7y│
+  ●                         Commit 175                                  Maker   7y│
+  ●                         Commit 174                                  Maker   7y│
+  ●                         Commit 173                                  Maker   7y│
+  ●                         Commit 172                                  Maker   7y│
+  ●                         Commit 171                                  Maker   7y│
+  ●                         Commit 170                                  Maker   7y│
+  ●                         Commit 169                                  Maker   7y│
+  ●                         Commit 168                                  Maker   7y│
+  ●                         Commit 167                                  Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⊗ push rejected: origin/main has commits you don't · p pull, then m or r · P force with lease
 
@@ -104,13 +104,13 @@
  ◆ api  ~/code/api · fix                                                                6 commits  date order, sorting…
 
     ◌                         Uncommitted changes (1 unstaged)                    │ fix  (you're here)
-▸   ◆    fix (you)            fix the bug  not pushed yet               Graft   3m│ reading…
-    ┃                         Graft · 3 minutes ago · made on fix · fbb2394       │ reading…
-  ● ┃    main                 main moves on  not pushed yet             Graft   4m│ reading…
-  ●━╯                         add the base                              Graft   5m│ reading…
-  ●                           Correct the note                          Graft   1y│
-  ●                           Add the first note                        Graft   1y│
-  ◇                           Add a readme                              Graft   1y│
+▸   ◆    fix (you)            fix the bug  not pushed yet               Maker   3m│ reading…
+    ┃                         Maker · 3 minutes ago · made on fix · 75ce583       │ reading…
+  ● ┃    main                 main moves on  not pushed yet             Maker   4m│ reading…
+  ●━╯                         add the base                              Maker   5m│ reading…
+  ●                           Correct the note                          Maker   1y│
+  ●                           Add the first note                        Maker   1y│
+  ◇                           Add a readme                              Maker   1y│
                                                                                   │
                                                                                   │
                                                                                   │
@@ -145,41 +145,41 @@
 === frame 4: `b`, `⏎` on an empty name ===
  ◆ api  ~/code/api · main                                                                 201 commits  1 commit to push
 
-▸ ◆  ⓘ main (you)           ours  ↑1 to push                            Graft   6y│ main  (you're here)
-  ┃                         Graft · 6 years ago · made on main · 739071c          │ ! 1 commit to push
-  ●                         Commit 200  origin/main is here             Graft   7y│ · the main line: branches merge into
-  ●                         Commit 199                                  Graft   7y│   it
-  ●                         Commit 198                                  Graft   7y│ ✓ up to date with origin/main
-  ●                         Commit 197                                  Graft   7y│ · everyone, last commit 6y ago
-  ●                         Commit 196                                  Graft   7y│
-  ●                         Commit 195                                  Graft   7y│ built on
-  ●                         Commit 194                                  Graft   7y│   main
-  ●                         Commit 193                                  Graft   7y│
-  ●                         Commit 192                                  Graft   7y│
-  ●                         Commit 191                                  Graft   7y│
-  ●                         Commit 190                                  Graft   7y│
-  ●                         Commit 189                                  Graft   7y│
-  ●                         Commit 188                                  Graft   7y│
-                              ╭ New branch at 739071c ───────────────────────────────────╮
+▸ ◆  ⓘ main (you)           ours  ↑1 to push                            Maker   6y│ main  (you're here)
+  ┃                         Maker · 6 years ago · made on main · c3569cb          │ ! 1 commit to push
+  ●                         Commit 200  origin/main is here             Maker   7y│ · the main line: branches merge into
+  ●                         Commit 199                                  Maker   7y│   it
+  ●                         Commit 198                                  Maker   7y│ ✓ up to date with origin/main
+  ●                         Commit 197                                  Maker   7y│ · everyone, last commit 6y ago
+  ●                         Commit 196                                  Maker   7y│
+  ●                         Commit 195                                  Maker   7y│ built on
+  ●                         Commit 194                                  Maker   7y│   main
+  ●                         Commit 193                                  Maker   7y│
+  ●                         Commit 192                                  Maker   7y│
+  ●                         Commit 191                                  Maker   7y│
+  ●                         Commit 190                                  Maker   7y│
+  ●                         Commit 189                                  Maker   7y│
+  ●                         Commit 188                                  Maker   7y│
+                              ╭ New branch at c3569cb ───────────────────────────────────╮
                               │ ▏                                                        │
                               │ ( ) check out after creating · ⇥ toggles                 │
                               │                                                          │
                               │                                                          │
                               ╰──────────────────────────────────────────────────────────╯
-  ●                         Commit 181                                  Graft   7y│
-  ●                         Commit 180                                  Graft   7y│
-  ●                         Commit 179                                  Graft   7y│
-  ●                         Commit 178                                  Graft   7y│
-  ●                         Commit 177                                  Graft   7y│
-  ●                         Commit 176                                  Graft   7y│
-  ●                         Commit 175                                  Graft   7y│
-  ●                         Commit 174                                  Graft   7y│
-  ●                         Commit 173                                  Graft   7y│
-  ●                         Commit 172                                  Graft   7y│
-  ●                         Commit 171                                  Graft   7y│
-  ●                         Commit 170                                  Graft   7y│
-  ●                         Commit 169                                  Graft   7y│
-  ●                         Commit 168                                  Graft   7y│
-  ●                         Commit 167                                  Graft   7y│
+  ●                         Commit 181                                  Maker   7y│
+  ●                         Commit 180                                  Maker   7y│
+  ●                         Commit 179                                  Maker   7y│
+  ●                         Commit 178                                  Maker   7y│
+  ●                         Commit 177                                  Maker   7y│
+  ●                         Commit 176                                  Maker   7y│
+  ●                         Commit 175                                  Maker   7y│
+  ●                         Commit 174                                  Maker   7y│
+  ●                         Commit 173                                  Maker   7y│
+  ●                         Commit 172                                  Maker   7y│
+  ●                         Commit 171                                  Maker   7y│
+  ●                         Commit 170                                  Maker   7y│
+  ●                         Commit 169                                  Maker   7y│
+  ●                         Commit 168                                  Maker   7y│
+  ●                         Commit 167                                  Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  a branch needs a name

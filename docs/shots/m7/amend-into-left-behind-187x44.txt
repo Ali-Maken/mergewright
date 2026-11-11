@@ -1,15 +1,15 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   5 commits
 
-    ●                             b1                                                                                                       Graft   2d│ feature-b
-    │ ●                           feature a: part 3                                                                                        Graft   2d│ ! not pushed yet
-    │ ●                           feature a: part 2                                                                                        Graft   2d│ · not merged
-▸   ●─╯                           feature a: part 1                                                                                        Graft   2d│ ✓ up to date with main
-    │                             the result                                                                                                         │ · Graft, last commit 2d ago
-    │ ○                           b1  feature-b is here  not pushed yet                                                                    Graft    —│
-    │ │ ○                         feature a: part 3  feature-a is here  not pushed yet                                                     Graft    —│ built on
-    │ │ ○                         feature a: part 2                                                                                        Graft    —│   main
-    │ ○┈╯                         feature a: part 1                                                                                        Graft    —│    ─◆ feature-b
-  ◇─┴─╯                           m1  main is here  not pushed yet                                                                         Graft   2d│
+    ●                             b1                                                                                                       Maker   2d│ feature-b
+    │ ●                           feature a: part 3                                                                                        Maker   2d│ ! not pushed yet
+    │ ●                           feature a: part 2                                                                                        Maker   2d│ · not merged
+▸   ●─╯                           feature a: part 1                                                                                        Maker   2d│ ✓ up to date with main
+    │                             the result                                                                                                         │ · Maker, last commit 2d ago
+    │ ○                           b1  feature-b is here  not pushed yet                                                                    Maker    —│
+    │ │ ○                         feature a: part 3  feature-a is here  not pushed yet                                                     Maker    —│ built on
+    │ │ ○                         feature a: part 2                                                                                        Maker    —│   main
+    │ ○┈╯                         feature a: part 1                                                                                        Maker    —│    ─◆ feature-b
+  ◇─┴─╯                           m1  main is here  not pushed yet                                                                         Maker   2d│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │
@@ -28,16 +28,16 @@
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │
-╭ Preview: put your staged changes into e662b82 "feature a: part 1" ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ e662b82  feature a: part 1  gains  one.txt +1 −1                                                                                                                                        │
+╭ Preview: put your staged changes into 9249ba2 "feature a: part 1" ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 9249ba2  feature a: part 1  gains  one.txt +1 −1                                                                                                                                        │
 │ 4 commits replayed                                                                                                                                                                      │
-│ branches: feature-a 89f73ff → 3 new commits                                                                                                                                             │
-│           feature-b follows · 1 commit from e662b82                                                                                                                                     │
+│ branches: feature-a 2a71d51 → 3 new commits                                                                                                                                             │
+│           feature-b follows · 1 commit from 9249ba2                                                                                                                                     │
 │ HEAD → feature-a                                                                                                                                                                        │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │
-│ git rebase -i --no-update-refs --no-autostash --empty=drop fb4d6972c6d67d4a304dc423eb2dd472bf384ae8                                                                                     │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop 443c4a9889b0ff45fca15c94d783b65871c1fb1f                                                                                     │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │
 ╰ y put it in  ←/→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

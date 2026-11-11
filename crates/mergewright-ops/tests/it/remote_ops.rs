@@ -392,12 +392,12 @@ fn commit_through_apply(remote: &LocalRemote, name: &str, at: i64) -> JournalEnt
     git(
         remote,
         remote.work(),
-        &["config", "user.name", "Graft Test"],
+        &["config", "user.name", "Maker Test"],
     );
     git(
         remote,
         remote.work(),
-        &["config", "user.email", "test@graft.invalid"],
+        &["config", "user.email", "test@maker.invalid"],
     );
     std::fs::write(remote.work().join(name), format!("{name}\n")).unwrap();
     run_in(
@@ -919,12 +919,12 @@ fn a_local_operation_with_hooks_runs_as_before() {
     git(
         &remote,
         remote.work(),
-        &["config", "user.name", "Graft Test"],
+        &["config", "user.name", "Maker Test"],
     );
     git(
         &remote,
         remote.work(),
-        &["config", "user.email", "test@graft.invalid"],
+        &["config", "user.email", "test@maker.invalid"],
     );
     std::fs::write(remote.work().join("a.txt"), b"a\n").unwrap();
     git(&remote, remote.work(), &["add", "a.txt"]);

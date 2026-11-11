@@ -24,156 +24,156 @@
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200                                       Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
-          ╭ New branch at d5ae5fd ───────────────────────────────────╮
+▸ ◆    main (you)   Commit 200                                       Maker   7y
+  ┃                 Maker · 7 years ago · made on main · 38e090d
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
+  ●                 Commit 196                                       Maker   7y
+  ●                 Commit 195                                       Maker   7y
+  ●                 Commit 194                                       Maker   7y
+          ╭ New branch at 38e090d ───────────────────────────────────╮
           │ ▏                                                        │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
+  ●                 Commit 180                                       Maker   7y
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 2: `topic ⏎`, the held failure ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200                                       Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
-  ●                 Commit 193                                       Graft   7y
-  ●                 Commit 192                                       Graft   7y
-  ●                 Commit 191                                       Graft   7y
-  ●                 Commit 190                                       Graft   7y
-  ●                 Commit 189                                       Graft   7y
-  ●                 Commit 188                                       Graft   7y
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
+▸ ◆    main (you)   Commit 200                                       Maker   7y
+  ┃                 Maker · 7 years ago · made on main · 38e090d
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
+  ●                 Commit 196                                       Maker   7y
+  ●                 Commit 195                                       Maker   7y
+  ●                 Commit 194                                       Maker   7y
+  ●                 Commit 193                                       Maker   7y
+  ●                 Commit 192                                       Maker   7y
+  ●                 Commit 191                                       Maker   7y
+  ●                 Commit 190                                       Maker   7y
+  ●                 Commit 189                                       Maker   7y
+  ●                 Commit 188                                       Maker   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
+  ●                 Commit 180                                       Maker   7y
  ⊗ fetch all remotes failed: no repository at '/mwr-no-such-remo… · esc dismiss
 
 === frame 3: `esc`, the create's line ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200                                       Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
-  ●                 Commit 193                                       Graft   7y
-  ●                 Commit 192                                       Graft   7y
-  ●                 Commit 191                                       Graft   7y
-  ●                 Commit 190                                       Graft   7y
-  ●                 Commit 189                                       Graft   7y
-  ●                 Commit 188                                       Graft   7y
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
- branch topic at d5ae5fd…
+▸ ◆    main (you)   Commit 200                                       Maker   7y
+  ┃                 Maker · 7 years ago · made on main · 38e090d
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
+  ●                 Commit 196                                       Maker   7y
+  ●                 Commit 195                                       Maker   7y
+  ●                 Commit 194                                       Maker   7y
+  ●                 Commit 193                                       Maker   7y
+  ●                 Commit 192                                       Maker   7y
+  ●                 Commit 191                                       Maker   7y
+  ●                 Commit 190                                       Maker   7y
+  ●                 Commit 189                                       Maker   7y
+  ●                 Commit 188                                       Maker   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
+  ●                 Commit 180                                       Maker   7y
+ branch topic at 38e090d…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
-          ╭ New branch at d5ae5fd ───────────────────────────────────╮
+▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Maker   7y
+  ┃                 Maker · 7 years ago · made on main · 38e090d
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
+  ●                 Commit 196                                       Maker   7y
+  ●                 Commit 195                                       Maker   7y
+  ●                 Commit 194                                       Maker   7y
+          ╭ New branch at 38e090d ───────────────────────────────────╮
           │ ▏other                                                   │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
+  ●                 Commit 180                                       Maker   7y
  wait for fetch all remotes to finish
 
 === frame 5: the fetch answers under the prompt ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
-          ╭ New branch at d5ae5fd ───────────────────────────────────╮
+▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Maker   7y
+  ┃                 Maker · 7 years ago · made on main · 38e090d
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
+  ●                 Commit 196                                       Maker   7y
+  ●                 Commit 195                                       Maker   7y
+  ●                 Commit 194                                       Maker   7y
+          ╭ New branch at 38e090d ───────────────────────────────────╮
           │ ▏other                                                   │
           │ ( ) check out after creating · ⇥ toggles                 │
           │                                                          │
           │                                                          │
           ╰──────────────────────────────────────────────────────────╯
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
+  ●                 Commit 180                                       Maker   7y
  ⏎ create  ⇥ toggle  esc cancel
 
 === frame 6: `esc`, the fetch's line ===
  ◆ api  ~/code/api · main                                           200 commits
-▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Graft   7y
-  ┃                 Graft · 7 years ago · made on main · d5ae5fd
-  ●                 Commit 199                                       Graft   7y
-  ●                 Commit 198                                       Graft   7y
-  ●                 Commit 197                                       Graft   7y
-  ●                 Commit 196                                       Graft   7y
-  ●                 Commit 195                                       Graft   7y
-  ●                 Commit 194                                       Graft   7y
-  ●                 Commit 193                                       Graft   7y
-  ●                 Commit 192                                       Graft   7y
-  ●                 Commit 191                                       Graft   7y
-  ●                 Commit 190                                       Graft   7y
-  ●                 Commit 189                                       Graft   7y
-  ●                 Commit 188                                       Graft   7y
-  ●                 Commit 187                                       Graft   7y
-  ●                 Commit 186                                       Graft   7y
-  ●                 Commit 185                                       Graft   7y
-  ●                 Commit 184                                       Graft   7y
-  ●                 Commit 183                                       Graft   7y
-  ●                 Commit 182                                       Graft   7y
-  ●                 Commit 181                                       Graft   7y
-  ●                 Commit 180                                       Graft   7y
+▸ ◆    main (you)   Commit 200  topic is here  not pushed yet        Maker   7y
+  ┃                 Maker · 7 years ago · made on main · 38e090d
+  ●                 Commit 199                                       Maker   7y
+  ●                 Commit 198                                       Maker   7y
+  ●                 Commit 197                                       Maker   7y
+  ●                 Commit 196                                       Maker   7y
+  ●                 Commit 195                                       Maker   7y
+  ●                 Commit 194                                       Maker   7y
+  ●                 Commit 193                                       Maker   7y
+  ●                 Commit 192                                       Maker   7y
+  ●                 Commit 191                                       Maker   7y
+  ●                 Commit 190                                       Maker   7y
+  ●                 Commit 189                                       Maker   7y
+  ●                 Commit 188                                       Maker   7y
+  ●                 Commit 187                                       Maker   7y
+  ●                 Commit 186                                       Maker   7y
+  ●                 Commit 185                                       Maker   7y
+  ●                 Commit 184                                       Maker   7y
+  ●                 Commit 183                                       Maker   7y
+  ●                 Commit 182                                       Maker   7y
+  ●                 Commit 181                                       Maker   7y
+  ●                 Commit 180                                       Maker   7y
  ✓ fetched

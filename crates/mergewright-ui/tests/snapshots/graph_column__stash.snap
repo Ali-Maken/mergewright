@@ -4,8 +4,8 @@ expression: text
 ---
 shape: stash (dark = light, asserted), truecolor
 
-  ■─┬─╮   ..ehhcc.  393688e  On main: wip: with an untracked file
-  │ ● │   ..e.h.c.  b4bed6e  index on main: d96881b Add a.txt
-  │ │ ◇   ..e.h.c.  f11c383  untracked files on main: d96881b Add a.txt
-◆─┴─╯     ceehh...  d96881b  Add a.txt
-◇         c.......  8c1d9f3  Add a readme
+  ■─┬─╮   ..geeee.  17f358b  On main: wip: with an untracked file
+  │ ● │   ..g.e.e.  8db2815  index on main: 923159b Add a.txt
+  │ │ ◇   ..g.e.e.  92d0d87  untracked files on main: 923159b Add a.txt
+◆─┴─╯     cggee...  923159b  Add a.txt
+◇         c.......  bcf8338  Add a readme

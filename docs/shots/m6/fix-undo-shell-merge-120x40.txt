@@ -2,7 +2,7 @@
 
   ◌                           Uncommitted changes (2 staged)
 ▸ ◆      main (you)           main's take  not pushed yet                                                      you   2h
-  ┃                           you · 2 hours ago · made on main · ddeed32
+  ┃                           you · 2 hours ago · made on main · e13eab7
   ┃ ●    feature              the feature's take  not pushed yet                                               you   2h
   ●┄╯    main (you)           the shared files                                                                 you   2h
   ●                           Correct the note                                                                 you   1y
@@ -22,7 +22,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ✓ undo: finish merge of feature  c finishes the merge
-COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+COMMIT e13eab7 · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents 7b85728 · diff vs firs…
 main's take
 M notes.md              +1 −1 ▎
 M shared.rs             +1 −1   1     - the plan

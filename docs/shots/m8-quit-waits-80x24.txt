@@ -1,11 +1,11 @@
 === `m m` then `q` while the merge runs ===
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆    featu… (you) finish the feature  not pushed yet             Graft  now
-    ●                 start the feature                              Graft   2m
-▸ ● ┊    main         main moves again  not pushed yet               Graft   3m
-  ┃ ┊                 Graft · 3 minutes ago · made on main · 45fa51d
-  ● ┊                 main moves on                                  Graft   4m
-  ●┄╯                 add the base                                   Graft   5m
+    ◆    featu… (you) finish the feature  not pushed yet             Maker  now
+    ●                 start the feature                              Maker   2m
+▸ ● ┊    main         main moves again  not pushed yet               Maker   3m
+  ┃ ┊                 Maker · 3 minutes ago · made on main · bb26169
+  ● ┊                 main moves on                                  Maker   4m
+  ●┄╯                 add the base                                   Maker   5m
   ●   ╭ Quit? ───────────────────────────────────────────────────────────╮   1y
   ●   │ merge main into feature is still running · quit waits for it to  │   1y
   ◇   │ finish                                                           │   1y
@@ -25,15 +25,15 @@
  y quit  ←/→ move  ⏎ choose  esc cancel
 === then `y`: Mergewright waits for git ===
  ◆ api  ~/code/api · feature                                          8 commits
-    ◆    featu… (you) finish the feature  not pushed yet             Graft  now
-    ●                 start the feature                              Graft   2m
-▸ ● ┊    main         main moves again  not pushed yet               Graft   3m
-  ┃ ┊                 Graft · 3 minutes ago · made on main · 45fa51d
-  ● ┊                 main moves on                                  Graft   4m
-  ●┄╯                 add the base                                   Graft   5m
-  ●                   Correct the note                               Graft   1y
-  ●                   Add the first note                             Graft   1y
-  ◇                   Add a readme                                   Graft   1y
+    ◆    featu… (you) finish the feature  not pushed yet             Maker  now
+    ●                 start the feature                              Maker   2m
+▸ ● ┊    main         main moves again  not pushed yet               Maker   3m
+  ┃ ┊                 Maker · 3 minutes ago · made on main · bb26169
+  ● ┊                 main moves on                                  Maker   4m
+  ●┄╯                 add the base                                   Maker   5m
+  ●                   Correct the note                               Maker   1y
+  ●                   Add the first note                             Maker   1y
+  ◇                   Add a readme                                   Maker   1y
 
 
 

@@ -320,9 +320,12 @@ pub fn isolated(cwd: &Path, args: &[&str]) -> Command {
 }
 
 /// The name on every object plain `git` writes here.
-pub const IDENTITY_NAME: &str = "Graft Fixture";
+pub const IDENTITY_NAME: &str = "Maker Fixture";
 /// The address on every object plain `git` writes here.
 pub const IDENTITY_EMAIL: &str = "fixture@example.invalid";
+/// `IDENTITY_NAME <IDENTITY_EMAIL>`, as `fast-import` and reflog lines spell
+/// it. Pinned to the two above by `tests::identity_is_name_and_email`.
+pub const IDENTITY: &str = "Maker Fixture <fixture@example.invalid>";
 /// The clock every object plain `git` writes here is stamped with.
 ///
 /// Deliberately later than the newest `fast-import` timestamp, so a stash
@@ -348,4 +351,15 @@ pub fn init_repo(dir: &Path) -> Result<(), GitError> {
 pub fn version() -> Result<String, GitError> {
     let out = run(Path::new("."), &["--version"])?;
     Ok(String::from_utf8_lossy(&out).trim().to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{IDENTITY, IDENTITY_EMAIL, IDENTITY_NAME};
+
+    #[test]
+    fn identity_is_name_and_email() {
+        assert_eq!(IDENTITY, format!("{IDENTITY_NAME} <{IDENTITY_EMAIL}>"));
+        assert_eq!(crate::stream::IDENTITY, IDENTITY);
+    }
 }

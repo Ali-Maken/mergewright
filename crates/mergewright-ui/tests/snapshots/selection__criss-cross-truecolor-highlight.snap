@@ -5,13 +5,13 @@ expression: text
 shape: criss-cross-merge, truecolor, highlight, 80x24, row 4 selected
 
  ◆ api  ~/code/api · main                                             7 commits
-    ●                       beta: carry on                           Graft   4y
-  ◆─│─╮                     Merge branch 'alpha'                     Graft   4y
-  │ ◉─│─╮                   beta: merge alpha                        Graft   4y
-  │ │ ◉─│─╮                 alpha: merge beta                        Graft   4y
-▸ │ ●─│─│─╯                 beta: work                               Graft   4y
-  │ │ ●─╯                   alpha: work                              Graft   4y
-  ◇─┴─╯                     Add the base                             Graft   4y
+    ●                       beta: carry on                           Maker   4y
+  ◆─│─╮                     Merge branch 'alpha'                     Maker   4y
+  │ ◉─│─╮                   beta: merge alpha                        Maker   4y
+  │ │ ◉─│─╮                 alpha: merge beta                        Maker   4y
+▸ │ ●─│─│─╯                 beta: work                               Maker   4y
+  │ │ ●─╯                   alpha: work                              Maker   4y
+  ◇─┴─╯                     Add the base                             Maker   4y
 
 
 

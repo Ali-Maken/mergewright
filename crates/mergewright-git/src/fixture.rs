@@ -123,10 +123,10 @@ fn run_git(cwd: &Path, args: &[&str]) -> String {
         .env_remove("GIT_COMMON_DIR")
         .env_remove("GIT_OBJECT_DIRECTORY")
         // A fixed identity and clock, so two runs produce the same ids.
-        .env("GIT_AUTHOR_NAME", "Graft Fixture")
+        .env("GIT_AUTHOR_NAME", "Maker Fixture")
         .env("GIT_AUTHOR_EMAIL", "fixture@example.invalid")
         .env("GIT_AUTHOR_DATE", "2020-01-01T00:00:00+00:00")
-        .env("GIT_COMMITTER_NAME", "Graft Fixture")
+        .env("GIT_COMMITTER_NAME", "Maker Fixture")
         .env("GIT_COMMITTER_EMAIL", "fixture@example.invalid")
         .env("GIT_COMMITTER_DATE", "2020-01-01T00:00:00+00:00");
 

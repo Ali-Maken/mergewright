@@ -2,16 +2,16 @@ m8-polish-and-ship/28, 187x50, cursor on `feature/two  two: finish`: what right 
 
  ◆ api  ~/code/api · main                                                                                                                                9 commits  1 merged branch folded
 
-    ●        feature/three        three: in progress  not pushed yet  not merged                                                           Graft   7y│ feature/two
-  ◆━┊━╮      main (you)           Merge branch 'feature/two'  not pushed yet                                                               Graft   7y│ reading…
-  ║ ┊ ┃ ●    feature/two-next     two: follow-up  not pushed yet                                                                           Graft   7y│ reading…
-▸ ║ ┊ ●┄╯    feature/two          two: finish  not pushed yet                                                                              Graft   7y│ reading…
-  ║ ┊ ┃                           Graft · 7 years ago · made on feature/two · e30e870                                                                │ reading…
-  ║ ┊ ●                           two: start                                                                                               Graft   7y│
-  ◉ ┊ ┃      main (you)           Merge branch 'feature/one'  ▸ 2 commits from feature/one                                                 Graft   7y│
-  ●┄┴━╯                           Add b.txt                                                                                                Graft   7y│
-  ●                               Add a.txt                                                                                                Graft   7y│
-  ◇                               Add a readme                                                                                             Graft   7y│
+    ●        feature/three        three: in progress  not pushed yet  not merged                                                           Maker   7y│ feature/two
+  ◆━┊━╮      main (you)           Merge branch 'feature/two'  not pushed yet                                                               Maker   7y│ reading…
+  ║ ┊ ┃ ●    feature/two-next     two: follow-up  not pushed yet                                                                           Maker   7y│ reading…
+▸ ║ ┊ ●┄╯    feature/two          two: finish  not pushed yet                                                                              Maker   7y│ reading…
+  ║ ┊ ┃                           Maker · 7 years ago · made on feature/two · 95f854f                                                                │ reading…
+  ║ ┊ ●                           two: start                                                                                               Maker   7y│
+  ◉ ┊ ┃      main (you)           Merge branch 'feature/one'  ▸ 2 commits from feature/one                                                 Maker   7y│
+  ●┄┴━╯                           Add b.txt                                                                                                Maker   7y│
+  ●                               Add a.txt                                                                                                Maker   7y│
+  ◇                               Add a readme                                                                                             Maker   7y│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │

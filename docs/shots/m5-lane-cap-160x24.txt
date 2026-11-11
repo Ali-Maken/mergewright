@@ -40,54 +40,54 @@
 
 == the pane open: the graph has 92 columns ==
 
- ◆ api  ~/code/api · main                                  47 commits  lanes drawn: 7 of 15  COMMIT 576e590
-                ●▾   topic-14     Work on topic-14  not pushed yet  not merged   Graft  16m  Graft Fixture <fixture@example.invalid> · 2021-01-01 00:30 +0000 ·…
-                ●▾   topic-13     Work on topic-13  not pushed yet  not merged   Graft  17m  parents ee20ba5 · diff vs first parent
-                ●▾   topic-12     Work on topic-12  not pushed yet  not merged   Graft  18m  Contained in: main
-                ●▾   topic-11     Work on topic-11  not pushed yet  not merged   Graft  19m
-                ●▾   topic-10     Work on topic-10  not pushed yet  not merged   Graft  20m  M main.rs                                                     +1 −1
-                ●▾   topic-09     Work on topic-09  not pushed yet  not merged   Graft  21m  ▎
-                ●▾   topic-08     Work on topic-08  not pushed yet  not merged   Graft  22m    1     - const STEP: u32 = 29;
-                ●▾   topic-07     Work on topic-07  not pushed yet  not merged   Graft  23m        1 + const STEP: u32 = 30;
-    ●           ⋮    topic-06     Work on topic-06  not pushed yet  not merged   Graft  24m
-    ┊ ●         ⋮    topic-05     Work on topic-05  not pushed yet  not merged   Graft  25m
-    ┊ ┊ ●       ⋮    topic-04     Work on topic-04  not pushed yet  not merged   Graft  26m
-    ┊ ┊ ┊ ●     ⋮    topic-03     Work on topic-03  not pushed yet  not merged   Graft  27m
-    ┊ ┊ ┊ ┊ ●   ⋮    topic-02     Work on topic-02  not pushed yet  not merged   Graft  28m
-    ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01     Work on topic-01  not pushed yet  not merged   Graft  29m
-▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)   main: step 30  not pushed yet                  Graft  30m
-  ┃ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 Graft · 30 minutes ago · made on main · 576e590
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 29                                  Graft  31m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 28                                  Graft  32m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 27                                  Graft  33m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 26                                  Graft  34m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 25                                  Graft  35m
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 24                                  Graft  36m
+ ◆ api  ~/code/api · main                                  47 commits  lanes drawn: 7 of 15  COMMIT 6baff2f
+                ●▾   topic-14     Work on topic-14  not pushed yet  not merged   Maker  16m  Maker Fixture <fixture@example.invalid> · 2021-01-01 00:30 +0000 ·…
+                ●▾   topic-13     Work on topic-13  not pushed yet  not merged   Maker  17m  parents 7734078 · diff vs first parent
+                ●▾   topic-12     Work on topic-12  not pushed yet  not merged   Maker  18m  Contained in: main
+                ●▾   topic-11     Work on topic-11  not pushed yet  not merged   Maker  19m
+                ●▾   topic-10     Work on topic-10  not pushed yet  not merged   Maker  20m  M main.rs                                                     +1 −1
+                ●▾   topic-09     Work on topic-09  not pushed yet  not merged   Maker  21m  ▎
+                ●▾   topic-08     Work on topic-08  not pushed yet  not merged   Maker  22m    1     - const STEP: u32 = 29;
+                ●▾   topic-07     Work on topic-07  not pushed yet  not merged   Maker  23m        1 + const STEP: u32 = 30;
+    ●           ⋮    topic-06     Work on topic-06  not pushed yet  not merged   Maker  24m
+    ┊ ●         ⋮    topic-05     Work on topic-05  not pushed yet  not merged   Maker  25m
+    ┊ ┊ ●       ⋮    topic-04     Work on topic-04  not pushed yet  not merged   Maker  26m
+    ┊ ┊ ┊ ●     ⋮    topic-03     Work on topic-03  not pushed yet  not merged   Maker  27m
+    ┊ ┊ ┊ ┊ ●   ⋮    topic-02     Work on topic-02  not pushed yet  not merged   Maker  28m
+    ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01     Work on topic-01  not pushed yet  not merged   Maker  29m
+▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)   main: step 30  not pushed yet                  Maker  30m
+  ┃ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 Maker · 30 minutes ago · made on main · 6baff2f
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 29                                  Maker  31m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 28                                  Maker  32m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 27                                  Maker  33m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 26                                  Maker  34m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 25                                  Maker  35m
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ⋮                 main: step 24                                  Maker  36m
  ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · ? keys
 
 == the same terminal, pane closed: the graph has all 160 ==
 
  ◆ api  ~/code/api · main                                                                                                      47 commits  lanes drawn: 9 of 15
-                    ●▾   topic-14             Work on topic-14  not pushed yet  not merged                      Graft  16m│ main  (you're here)
-                    ●▾   topic-13             Work on topic-13  not pushed yet  not merged                      Graft  17m│ ! not pushed yet
-                    ●▾   topic-12             Work on topic-12  not pushed yet  not merged                      Graft  18m│ · the main line: branches merge into
-                    ●▾   topic-11             Work on topic-11  not pushed yet  not merged                      Graft  19m│   it
-                    ●▾   topic-10             Work on topic-10  not pushed yet  not merged                      Graft  20m│ · no upstream to compare with
-                    ●▾   topic-09             Work on topic-09  not pushed yet  not merged                      Graft  21m│ · everyone, last commit 30m ago
-    ●               ⋮    topic-08             Work on topic-08  not pushed yet  not merged                      Graft  22m│
-    ┊ ●             ⋮    topic-07             Work on topic-07  not pushed yet  not merged                      Graft  23m│ built on
-    ┊ ┊ ●           ⋮    topic-06             Work on topic-06  not pushed yet  not merged                      Graft  24m│   main
-    ┊ ┊ ┊ ●         ⋮    topic-05             Work on topic-05  not pushed yet  not merged                      Graft  25m│
-    ┊ ┊ ┊ ┊ ●       ⋮    topic-04             Work on topic-04  not pushed yet  not merged                      Graft  26m│
-    ┊ ┊ ┊ ┊ ┊ ●     ⋮    topic-03             Work on topic-03  not pushed yet  not merged                      Graft  27m│
-    ┊ ┊ ┊ ┊ ┊ ┊ ●   ⋮    topic-02             Work on topic-02  not pushed yet  not merged                      Graft  28m│
-    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01             Work on topic-01  not pushed yet  not merged                      Graft  29m│
-▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)           main: step 30  not pushed yet                                     Graft  30m│
-  ┃ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         Graft · 30 minutes ago · made on main · 576e590                             │
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 29                                                     Graft  31m│
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 28                                                     Graft  32m│
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 27                                                     Graft  33m│
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 26                                                     Graft  34m│
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 25                                                     Graft  35m│
-  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 24                                                     Graft  36m│
+                    ●▾   topic-14             Work on topic-14  not pushed yet  not merged                      Maker  16m│ main  (you're here)
+                    ●▾   topic-13             Work on topic-13  not pushed yet  not merged                      Maker  17m│ ! not pushed yet
+                    ●▾   topic-12             Work on topic-12  not pushed yet  not merged                      Maker  18m│ · the main line: branches merge into
+                    ●▾   topic-11             Work on topic-11  not pushed yet  not merged                      Maker  19m│   it
+                    ●▾   topic-10             Work on topic-10  not pushed yet  not merged                      Maker  20m│ · no upstream to compare with
+                    ●▾   topic-09             Work on topic-09  not pushed yet  not merged                      Maker  21m│ · everyone, last commit 30m ago
+    ●               ⋮    topic-08             Work on topic-08  not pushed yet  not merged                      Maker  22m│
+    ┊ ●             ⋮    topic-07             Work on topic-07  not pushed yet  not merged                      Maker  23m│ built on
+    ┊ ┊ ●           ⋮    topic-06             Work on topic-06  not pushed yet  not merged                      Maker  24m│   main
+    ┊ ┊ ┊ ●         ⋮    topic-05             Work on topic-05  not pushed yet  not merged                      Maker  25m│
+    ┊ ┊ ┊ ┊ ●       ⋮    topic-04             Work on topic-04  not pushed yet  not merged                      Maker  26m│
+    ┊ ┊ ┊ ┊ ┊ ●     ⋮    topic-03             Work on topic-03  not pushed yet  not merged                      Maker  27m│
+    ┊ ┊ ┊ ┊ ┊ ┊ ●   ⋮    topic-02             Work on topic-02  not pushed yet  not merged                      Maker  28m│
+    ┊ ┊ ┊ ┊ ┊ ┊ ┊ ● ⋮    topic-01             Work on topic-01  not pushed yet  not merged                      Maker  29m│
+▸ ◆ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮    main (you)           main: step 30  not pushed yet                                     Maker  30m│
+  ┃ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         Maker · 30 minutes ago · made on main · 6baff2f                             │
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 29                                                     Maker  31m│
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 28                                                     Maker  32m│
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 27                                                     Maker  33m│
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 26                                                     Maker  34m│
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 25                                                     Maker  35m│
+  ● ┊ ┊ ┊ ┊ ┊ ┊ ┊ ┊ ⋮                         main: step 24                                                     Maker  36m│
  ⏎ open · P push · c commit · u undo · . actions · ? keys

@@ -2,5 +2,5 @@
 source: crates/mergewright-graph/tests/it/corpus.rs
 expression: text
 ---
-● e44c042 Merge branch 'alpha'
-● 68d5d19 Add the base
+● f87caea Merge branch 'alpha'
+● 1bbdd6b Add the base

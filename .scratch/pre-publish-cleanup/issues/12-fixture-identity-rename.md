@@ -1,6 +1,6 @@
 # pre-publish: neutral fixture authors and remote URL, the synthetic cache key made whole, and the guard closed over the full shipped set
 
-Status: draft (rewritten 2026-11-10 to `scouts/12-fixture-identity.md`; amended in pass 4: `graft.git` URL added, 11d a blocker, pending glob relabelled)
+Status: built, partial (stops below; final tier-green box left to the conductor) (was draft: rewritten 2026-11-10 to `scouts/12-fixture-identity.md`; amended in pass 4: `graft.git` URL added, 11d a blocker, pending glob relabelled)
 Blocked by: 11d (and through it 11a, 11b, 11c, 06). 07–10 are no longer blockers (cut, pending the user).
 Build with: Sonnet (`builder-sonnet`, model sonnet); fails twice → `builder-opus`. Why: one identity source changes, then everything regenerates. A normalisation script and a lane-slot probe judge the changed bytes; the user judges what they flag. **Runs alone, last**: it rewrites nearly every capture and snapshot.
 Needs: 11a's guard (`codename_absent.rs`: `PENDING`, `PENDING_IDENTITY`, allow-list), as 11d left it.
@@ -14,9 +14,9 @@ Scout: done: `scouts/12-fixture-identity.md`. Its file:line refs are at main @ 1
 
 | Was | Becomes | Initials |
 |---|---|---|
-| `Graft Fixture` | `Fixture Maker` | `GF` → `FM` |
-| `Graft Test` | `Test Maker` | `GT` → `TM` |
-| `Graft Perf` | `Perf Maker` | `GP` → `PM` |
+| `Graft Fixture` | `Maker Fixture` | `GF` → `FM` |
+| `Graft Test` | `Maker Test` | `GT` → `TM` |
+| `Graft Perf` | `Maker Perf` | `GP` → `PM` |
 | `test@graft.invalid` | `test@maker.invalid` | — |
 | `graft.git` (fixtures `shapes/mod.rs` `REMOTE_URL`, part of a fixture commit message) | `maker.git` | — |
 
@@ -101,9 +101,9 @@ Out: product code; capture layout; any other string.
 ## Signatures
 ```rust
 // crates/mergewright-fixtures/src/git.rs (today's visibility kept)
-const IDENTITY_NAME: &str = "Fixture Maker";                            // was "Graft Fixture"
+const IDENTITY_NAME: &str = "Maker Fixture";                            // was "Graft Fixture"
 const IDENTITY_EMAIL: &str = "fixture@example.invalid";                 // unchanged
-const IDENTITY: &str = "Fixture Maker <fixture@example.invalid>";       // new; stream.rs and synthetic/reflog.rs use it
+const IDENTITY: &str = "Maker Fixture <fixture@example.invalid>";       // new; stream.rs and synthetic/reflog.rs use it
 // crates/mergewright-fixtures/src/shapes/mod.rs
 const REMOTE_URL: &str = /* today's value with `graft.git` → `maker.git` */;
 // crates/mergewright-fixtures/src/digest.rs
@@ -112,15 +112,15 @@ const REMOTE_URL: &str = /* today's value with `graft.git` → `maker.git` */;
 Add one MAP line in `crates/mergewright-fixtures/MAP.md` for `IDENTITY` and the key's coverage.
 
 ## Acceptance (tick each with its test or script, inline)
-- [ ] The synthetic key covers every synthetic source ← `digest::tests::every_synthetic_source_is_keyed`; `lost_work` / `shapes` answers in NOTES with their greps
-- [ ] One identity source ← `git::tests::identity_is_name_and_email`; `git grep -n 'Graft Fixture'` empty
-- [ ] Guard green over the full shipped set, no `PENDING`, only `guard`/`git-word` rows ← `codename_absent::no_shipped_file_names_the_codename`, `every_allowed_codename_occurrence_still_exists`; `cut -f3 codename_allowed.txt | sort | uniq -c`
-- [ ] No `GRAFT_` anywhere shipped ← `git grep -n GRAFT_` over the shipped set, empty
-- [ ] `other=0`; `reordered` and lane-slot changes listed and attributed ← `scripts/pp-12-identity-diff.py` SUMMARY quoted; `docs/shots/pp-12-identity-review.md`
-- [ ] PNGs: none changed, or each listed for his eye ← same script's PNG section
-- [ ] Cache can't go stale: delete the fixture cache dir, then a full fast run is green ← `cargo nextest run` count
-- [ ] Fixtures deterministic (built twice, same oids) ← the corpus determinism test by name
-- [ ] Heavy red set unchanged ← `docs/perf/pp-12-heavy.txt` vs `docs/perf/16-heavy.txt`
+- [x] The synthetic key covers every synthetic source ← `digest::tests::every_synthetic_source_is_keyed` (red with reflog.rs removed from the list, green with it; runs under `--features heavy-tests`, as `SYNTHETIC` is); answers in NOTES
+- [x] One identity source ← `git::tests::identity_is_name_and_email` (passes); `git grep -n 'Graft Fixture' -- crates scripts` leaves only the diff script's own swap table
+- [ ] **NOT MET (stop)**: guard green over the full shipped set, no `PENDING`. `PENDING_IDENTITY` and the crates globs are gone and `codename_absent::no_shipped_file_names_the_codename` is green, but a narrow `PENDING docs/shots/` (`12-stop`) remains: 266 files, 1362 lines, see NOTES. Allow-list: 59 `guard` rows, 0 other ← `cut -f3 codename_allowed.txt | sort | uniq -c` ← `codename_absent::no_shipped_file_names_the_codename`, `every_allowed_codename_occurrence_still_exists`; `cut -f3 codename_allowed.txt | sort | uniq -c`
+- [x] No `GRAFT_` anywhere shipped ← `git grep -n GRAFT_ -- crates scripts DESIGN.md docs/design .github Cargo.toml README.md ARCHITECTURE.md CONTEXT.md` empty (hits remain only in design-notes, closed gaps, AUTHORSHIP: not in the shipped set) ← `git grep -n GRAFT_` over the shipped set, empty
+- [ ] **NOT MET (8 files left, attributed)**: `scripts/pp-12-identity-diff.py` `SUMMARY compared=288 equal=274 reordered=1 lane-slot-files=5 other=8 png_changed=2 png_size_changed=0 added=0 removed=0 lane-slot changes=18`; list and causes in `docs/shots/pp-12-identity-review.md` (6 m6 captures where equal-time rows swapped, 1 raster snapshot of lane letters, 1 overlay-edge tail). Lane-slot changes are inherent: unnamed lanes hash the oid
+- [x] PNGs: 2 changed (`22-raster-criss-cross-merge{,-on-dark}.png`, 187x259 both, same size), listed in the script's PNG section and the review file ← same script's PNG section
+- [x] Cache can't go stale ← new key (the generator sources changed) names a fresh cache dir; `cargo nextest run --no-fail-fast`: 6792 run, 6792 passed (after regeneration) ← `cargo nextest run` count
+- [x] Fixtures deterministic ← the corpus determinism tests are in the 6792 passed; the lane-slot probe ran twice (before/after) on the same code per phase with identical per-phase output ← the corpus determinism test by name
+- [ ] **NOT MET by name, no new cause found**: `docs/perf/pp-12-heavy.txt` reds: `the_contact_sheet_names_every_capture` (ours, see NOTES), `held_key::held_j_stops_on_release_pixel_free`, `many_refs::first_paint_with_50k_real_refs_is_within_budget`, `piece_gate::no_frame_rasterises_more`. The last three also fail on main @ 183460a11 (rerun in a clean worktree, same numbers: piece 145299 px, many_refs 1.78 s). `16-heavy.txt` is stale ← `docs/perf/pp-12-heavy.txt` vs `docs/perf/16-heavy.txt`
 - [ ] Fast and walk tiers green; no `over_400.txt` row raised ← counts, `file_size`
 
 ## Touches (check each, say how)
@@ -143,3 +143,15 @@ Workspace-wide: the four CLAUDE.md gates, heavy clippy, `scripts/walks.sh`, and 
 
 ## Size
 ~60k tokens: the key fix, one identity source and URL, literal swaps, the oid sites found by failure, one script and one probe. Regeneration is machine time.
+
+## Fast and walk tiers (conductor ticks the final box)
+- [ ] (conductor) Fast and walk tiers green; no `over_400.txt` row raised. Builder: `cargo nextest run --no-fail-fast` 6792/6792; `scripts/walks.sh` 459/459; fmt, clippy, heavy clippy, `cargo test --doc` pass; `file_size` passes.
+
+## NOTES (builder, after D1 amendment to Maker Fixture / Maker Test / Maker Perf)
+- No scout used (scout file existed). Not compacted.
+- Cache answers: `lost_work` is built fresh per test, never cached (`git grep -n lost_work crates/mergewright-fixtures/src/digest.rs` empty). `shapes/mod.rs` (`REMOTE_URL`) is in `GENERATOR`. reflog/history/scale were missing from `SYNTHETIC`; added in 6efd8e3c4.
+- D4: 2 oid literal lines in `journal_screen.rs` (369: `196109a`, 750: `63da907`); the rest were captures. The first-word `Maker` keeps every author cell at 5 chars: no ellipsis moved (the earlier `Fixtu…` problem is gone, `first_launch.rs` reverted to main's).
+- Contact sheet: rebuilt only `ease-pass` (the live test); stale, not rebuilt: `m4-contact-sheet.txt`, `m5-contact-sheet-{1,2}.txt`, `m7/m7-contact-sheet-{1,2}.txt`.
+- D7: narrow `PENDING docs/shots/` (`12-stop`) kept per the conductor: 266 files with no writer, list in `docs/perf/pp-12-no-writer.txt` (not touched).
+- Heavy (not rerun after the amendment; run before it): reds `held_key::held_j_stops_on_release_pixel_free`, `many_refs::first_paint_with_50k_real_refs_is_within_budget`, `piece_gate::no_frame_rasterises_more`, all also red on main @ 183460a11; `16-heavy.txt` is stale. Contact-sheet red is now fixed.
+- Colour unverified (rule 5). Eye list: `docs/shots/pp-12-identity-review.md`, probe `docs/perf/pp-12-lane-slots-{before,after}.txt`.

@@ -1,16 +1,16 @@
  ◆ api  ~/code/api · feature-a                                                                                                                                                   6 commits
 
                               after rebase                                                                                                           │ main
-    ○                         b1  feature-b is here  not pushed yet                                                                        Graft    —│ ! not pushed yet
-    ○                         a3  feature-a is here  not pushed yet                                                                        Graft    —│ · the main line: branches merge into
-    ○                         a2                                                                                                           Graft    —│   it
-    ○                         a1                                                                                                           Graft    —│ · no upstream to compare with
-▸ ●─╯                         m2  main is here  not pushed yet                                                                             Graft   2d│ · everyone, last commit 2d ago
-  │ ●                         b1                                                                                                           Graft   2d│
-  │ ●                         a3                                                                                                           Graft   2d│ built on
-  │ ●                         a2                                                                                                           Graft   2d│   main
-  │ ●                         a1                                                                                                           Graft   2d│
-  ◇─╯                         m1                                                                                                           Graft   2d│
+    ○                         b1  feature-b is here  not pushed yet                                                                        Maker    —│ ! not pushed yet
+    ○                         a3  feature-a is here  not pushed yet                                                                        Maker    —│ · the main line: branches merge into
+    ○                         a2                                                                                                           Maker    —│   it
+    ○                         a1                                                                                                           Maker    —│ · no upstream to compare with
+▸ ●─╯                         m2  main is here  not pushed yet                                                                             Maker   2d│ · everyone, last commit 2d ago
+  │ ●                         b1                                                                                                           Maker   2d│
+  │ ●                         a3                                                                                                           Maker   2d│ built on
+  │ ●                         a2                                                                                                           Maker   2d│   main
+  │ ●                         a1                                                                                                           Maker   2d│
+  ◇─╯                         m1                                                                                                           Maker   2d│
                                                                                                                                                      │
                                                                                                                                                      │
                                                                                                                                                      │
@@ -32,8 +32,8 @@
                                                                                                                                                      │
 ╭ Preview: rebase feature-a onto main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 4 commits replayed                                                                                                                                                                      │
-│ branches: feature-a cb31bb2 → 3 new commits                                                                                                                                             │
-│           feature-b 884b0c4 → 1 new commit · built on yours · follows                                                                                                                   │
+│ branches: feature-a cca4b97 → 3 new commits                                                                                                                                             │
+│           feature-b e44c465 → 1 new commit · built on yours · follows                                                                                                                   │
 │ working tree: 1 file updated                                                                                                                                                            │
 │ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │

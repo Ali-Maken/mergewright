@@ -1,6 +1,6 @@
 JOURNAL · what happened in this repo, newest first
-  ●  Mergewright    now       made spike again at 419e109 (the shell's…    1 ref                                                                                                       ← u
-  ●  Mergewright    now       put main back to a65d7e4 (the shell's reset) 2 refs · the index · the working tree · backup saved
+  ●  Mergewright    now       made spike again at 196109a (the shell's…    1 ref                                                                                                       ← u
+  ●  Mergewright    now       put main back to 63da907 (the shell's reset) 2 refs · the index · the working tree · backup saved
   ●  Mergewright    now       fetch origin                                 origin/main moved · not undoable
   $  outside        4m ago    reset main 1 commit back                           git: "reset: moving to HEAD~1"
   $  outside        8m ago    switch from spike to main                          git: "checkout: moving from spike to main"

@@ -42,54 +42,54 @@ expression: art(&frame)
            cc          .f.    .f.          dd                                           |
            cc          ff .ff. ff          dd                                           |
            cc          f. ffff .f........  dd                                           |
-           cc          f. ffff .f.jjjjjjjjjjj...                                        |
-           cc          ff .ff. ff    ....jjjjjjjjj..                                    |
-           cc          .f.    .f.          dd .jjjjjjj.                                 |
-           cc           fff..fff           dd     ..jjjj.                               |
-           cc            .ffff.            dd         .jjj.                             |
-           cc              ..              dd           .jj.                            |
-           cc              ff              dd             jj.                           |
-           cc              ff              dd              jj                           |
-           cc              ff              dd              jj                           |
-           cc              ff              dd              jj                           |
-           cc              ff              ..              jj                           |
-           cc              ff            .dddd.            jj                           |
-           cc              ff           ddd..ddd           jj                           |
-           cc              ff          .d.    .d.          jj                           |
-           cc              ff          dd .dd. dd          jj                           |
-           cc              ff          d. dddd .d........  jj                           |
-           cc              ff          d. dddd .d.aaaaaaaaaaa...                        |
-           cc              ff          dd .dd. dd    ....aaaaaaaaa..                    |
-           cc              ff          .d.    .d.          jj .aaaaaaa.                 |
-           cc              ff           ddd..ddd           jj     ..aaaa.               |
-           cc              ff            .dddd.            jj         .aaa.             |
-           cc              ff              ..              jj           .aa.            |
-           cc              ff              dd              jj             aa.           |
-           cc              ff              dd              jj              aa           |
-           cc              ff              dd              jj             .aa           |
-           cc              ff              dd              jj            .aa.           |
-           cc              ..              dd              jj         ..aaa.            |
-           cc            .ffff.            dd              jj      ..aaaa.              |
-           cc           ffffffff           dd              jj ..aaaaaa..                |
-           cc          .ffffffff.          dd          ...aaaaaaaaa..                   |
-           cc          ffffffffff         .dd....aaaaaaaaaaaaa..                        |
-           cc          ffffffffff.aaaaaaaaaaaaaaaaaaaaa..  jj                           |
-           cc          ffffffffff.aaaaaaaa.dd..            jj                           |
-           cc          ffffffffff          dd              jj                           |
-           cc          .ffffffff.          dd              jj                           |
-           cc           ffffffff           dd              jj                           |
-           cc            .ffff.            dd              jj                           |
-           cc              ..              dd              jj                           |
-           cc              ff              dd              jj                           |
-           cc              ff              dd              jj                           |
-           cc              ff              dd              jj                           |
-           cc              ff              dd             .jj                           |
-           cc              ff              ..             jj.                           |
-           cc              ff            .dddd.         .jj.                            |
-           cc              ff           dddddddd       .jj.                             |
-           cc              ff          .dddddddd.   .jjjj.                              |
-           cc              ff          dddddddddd..jjjj.                                |
-           cc              ff          dddddddddd.jj..                                  |
+           cc          f. ffff .f.fffffffffff...                                        |
+           cc          ff .ff. ff    ....fffffffff..                                    |
+           cc          .f.    .f.          dd .fffffff.                                 |
+           cc           fff..fff           dd     ..ffff.                               |
+           cc            .ffff.            dd         .fff.                             |
+           cc              ..              dd           .ff.                            |
+           cc              ff              dd             ff.                           |
+           cc              ff              dd              ff                           |
+           cc              ff              dd              ff                           |
+           cc              ff              dd              ff                           |
+           cc              ff              ..              ff                           |
+           cc              ff            .dddd.            ff                           |
+           cc              ff           ddd..ddd           ff                           |
+           cc              ff          .d.    .d.          ff                           |
+           cc              ff          dd .dd. dd          ff                           |
+           cc              ff          d. dddd .d........  ff                           |
+           cc              ff          d. dddd .d.hhhhhhhhhhl...                        |
+           cc              ff          dd .dd. dd    ....hhhhhhhhh..                    |
+           cc              ff          .d.    .d.          ff .hhhhhhh.                 |
+           cc              ff           ddd..ddd           ff     ..hhhh.               |
+           cc              ff            .dddd.            ff         .hhh.             |
+           cc              ff              ..              ff           .hh.            |
+           cc              ff              dd              ff             hh.           |
+           cc              ff              dd              ff              hh           |
+           cc              ff              dd              ff             .hh           |
+           cc              ff              dd              ff            .hh.           |
+           cc              ..              dd              ff         ..hhh.            |
+           cc            .ffff.            dd              ff      ..hhhh.              |
+           cc           ffffffff           dd              ff ..hhhhhh..                |
+           cc          .ffffffff.          dd          ...hhhhhhhhh..                   |
+           cc          ffffffffff         .dd....hhhhhhhhhhhlh..                        |
+           cc          ffffffffff.hhhhhhhhhhhhhhhhhhhhh..  ff                           |
+           cc          ffffffffff.hhhhhhhh.jj..            ff                           |
+           cc          ffffffffff          dd              ff                           |
+           cc          .ffffffff.          dd              ff                           |
+           cc           ffffffff           dd              ff                           |
+           cc            .ffff.            dd              ff                           |
+           cc              ..              dd              ff                           |
+           cc              ff              dd              ff                           |
+           cc              ff              dd              ff                           |
+           cc              ff              dd              ff                           |
+           cc              ff              dd             .ff                           |
+           cc              ff              ..             ff.                           |
+           cc              ff            .dddd.         .ff.                            |
+           cc              ff           dddddddd       .ff.                             |
+           cc              ff          .dddddddd.   .ffff.                              |
+           cc              ff          dddddddddd..ffff.                                |
+           cc              ff          dddddddddd.ff..                                  |
            cc              ff          dddddddddd..                                     |
            cc              ff          dddddddddd                                       |
            cc              ff          .dddddddd.                                       |

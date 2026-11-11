@@ -2,10 +2,10 @@
 
 ▸ ◌                         Uncommitted changes (1 staged, 1 unstaged)
   ┃                         not committed yet · 1 file · on main
-  ◆    main (you)           add f  not pushed yet                                                            Graft  24h
-  ●                         Correct the note                                                                 Graft   2d
-  ●                         Add the first note                                                               Graft   2d
-  ◇                         Add a readme                                                                     Graft   2d
+  ◆    main (you)           add f  not pushed yet                                                            Maker  24h
+  ●                         Correct the note                                                                 Maker   2d
+  ●                         Add the first note                                                               Maker   2d
+  ◇                         Add a readme                                                                     Maker   2d
 
 
 
@@ -23,7 +23,7 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  esc back to blame · space stage · d discard · c commit · ⌃A all · e edit · ⇥ graph · </> resize · . actions · ? keys
 UNCOMMITTED · 1 staged 1 unstaged
-diff vs HEAD d45d045
+diff vs HEAD ce66d3a
 STAGED (1)                    l4
   M f.txt               +1 −1   5   5   l5
 UNSTAGED (1)                    6   6   l6

@@ -1,12 +1,12 @@
  ◆ api  ~/code/api · main                                                                                     5 commits
 
   ◌                         Uncommitted changes (1 unstaged)                      │ main  (you're here)
-▸ ◆    main (you)           their change                                Graft  60m│ ✓ pushed
-  ┃                         Graft · 60 minutes ago · made on main · 5a2be2d       │ · the main line: branches merge into
-  ●                         add shared                                  Graft  60m│   it
-  ●                         Correct the note                            Graft   1y│ ✓ up to date with origin/main
-  ●                         Add the first note                          Graft   1y│ · everyone, last commit 60m ago
-  ◇                         Add a readme                                Graft   1y│
+▸ ◆    main (you)           their change                                Maker  60m│ ✓ pushed
+  ┃                         Maker · 60 minutes ago · made on main · b5a392d       │ · the main line: branches merge into
+  ●                         add shared                                  Maker  60m│   it
+  ●                         Correct the note                            Maker   1y│ ✓ up to date with origin/main
+  ●                         Add the first note                          Maker   1y│ · everyone, last commit 60m ago
+  ◇                         Add a readme                                Maker   1y│
                                                                                   │ built on
                                                                                   │   main
                                                                                   │

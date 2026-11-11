@@ -4,18 +4,18 @@
 
 JOURNAL · what happened in this repo, newest first
 ▸ ●  future    rebase feature onto…   1 ref · the index · the…              ← u
-     └ ⇢ replaced 4c5e744 "work on feature" · was feature's tip · undo brings…
+     └ ⇢ replaced 7c432a4 "work on feature" · was feature's tip · undo brings…
   $  2d ago    switch from main to feature
   $  2d ago    committed "M" on main
   $  2d ago    switch from spare to main
   $  2d ago    reset spare 1 commit back
-     └ ✗ lost     72f8cc0 "spare work" · was spare's tip · no branch holds it
+     └ ✗ lost     363bb56 "spare work" · was spare's tip · no branch holds it
   $  2d ago    committed "spare work" on spare
   $  2d ago    switch from feature to spare
-  $  2d ago    made spare at 5a9f137
+  $  2d ago    made spare at adeeccd
   $  2d ago    committed "work on feature" on feature
   $  2d ago    switch from main to feature
-  $  2d ago    made feature at 5a9f137
+  $  2d ago    made feature at adeeccd
   $  2d ago    committed "A" on main
   a branch deleted outside Mergewright and never checked out leaves no trace
 

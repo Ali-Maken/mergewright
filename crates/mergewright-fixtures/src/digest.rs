@@ -54,6 +54,9 @@ pub fn corpus_key() -> Result<String, GitError> {
 #[cfg(feature = "heavy-tests")]
 const SYNTHETIC: &[&str] = &[
     include_str!("synthetic.rs"),
+    include_str!("synthetic/history.rs"),
+    include_str!("synthetic/reflog.rs"),
+    include_str!("synthetic/scale.rs"),
     include_str!("stream.rs"),
     include_str!("git.rs"),
     include_str!("cache.rs"),
@@ -114,3 +117,27 @@ fn fold(mut hash: u64, bytes: &[u8]) -> u64 {
 
 /// A byte no Rust source file contains, so it cannot occur inside an input.
 const SEPARATOR: u8 = 0;
+
+#[cfg(all(test, feature = "heavy-tests"))]
+mod tests {
+    use super::SYNTHETIC;
+
+    /// Every file under `src/synthetic/` (and `synthetic.rs`) decides what
+    /// the synthetic repository holds, so each must be in its cache key.
+    #[test]
+    fn every_synthetic_source_is_keyed() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/synthetic");
+        let mut checked = 0;
+        for entry in std::fs::read_dir(&dir).expect("list src/synthetic") {
+            let path = entry.expect("dir entry").path();
+            let text = std::fs::read_to_string(&path).expect("read source");
+            assert!(
+                SYNTHETIC.contains(&text.as_str()),
+                "{} is not in digest::SYNTHETIC",
+                path.display()
+            );
+            checked += 1;
+        }
+        assert!(checked >= 3, "listed only {checked} files");
+    }
+}

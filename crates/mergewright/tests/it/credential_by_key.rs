@@ -55,7 +55,7 @@ impl Served {
             &["remote", "set-url", "origin", &url],
             // Only the test's own answers count.
             &["config", "credential.helper", ""],
-            &["config", "user.name", "Graft Test"],
+            &["config", "user.name", "Maker Test"],
             &["config", "user.email", "test@example.invalid"],
             // A global `core.hooksPath` must not reach this clone.
             &["config", "core.hooksPath", ".git/hooks"],

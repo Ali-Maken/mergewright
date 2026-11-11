@@ -1034,7 +1034,7 @@ Press `F3` at any stop: the text right of the graph must not move.
    true only before the probe followed the selection (M2 review round 1a).*
 9. **accidental-pull-merge** — 4 commits. The top row is a merge (`◆`,
    `[◆ main]`) whose subject starts `Merge branch 'main' of
-   https://example.invalid/graft.git into main`; its curve comes from `Their
+   https://example.invalid/maker.git into main`; its curve comes from `Their
    commit`, which carries `[origin/main]` and no local branch. `My commit`
    sits below in lane 0.
 10. **orphan-branch** — 4 commits, two roots. `main`'s two rows (`◆ Add the
@@ -1298,7 +1298,7 @@ ASCII: `! i + * o # :`.
    `[feature]`); `Advance main` (`[◆ main]`) and `Add the base` unmarked.
    The severity is info, not warning: the marker is `ⓘ`, not `⚠`.
 9. **accidental-pull-merge** — `ⓘ` on `Merge branch 'main' of
-   https://example.invalid/graft.git into main` (row 0, `[◆ main]`); `Their
+   https://example.invalid/maker.git into main` (row 0, `[◆ main]`); `Their
    commit` and `My commit` unmarked.
 10. **evil-merge · Enter** — `⚠` on `Merge branch 'alpha'` (row 0); the pane's
     subject row reads `Merge branch 'alpha' · evil merge`, `parents 0631550,

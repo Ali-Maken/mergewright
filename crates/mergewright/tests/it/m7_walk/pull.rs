@@ -54,7 +54,7 @@ fn whole_in_one_answer() -> LocalRemote {
         LocalRemote::new(Shape::Trivial).expect("the Trivial shape clones into a local remote");
     for args in [
         ["config", "core.hooksPath", ".git/hooks"],
-        ["config", "user.name", "Graft Test"],
+        ["config", "user.name", "Maker Test"],
         ["config", "user.email", "test@example.invalid"],
     ] {
         run(&remote, remote.work(), &args);

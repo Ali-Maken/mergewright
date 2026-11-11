@@ -1,9 +1,9 @@
 REWRITE feature-a · 3 commits since it left main · newest first · nothing written until y
 
- ▸ drop ✗    1dc69fb  a3               left out · already in main · p keeps it
-   drop ✗    5c80d6b  a2               left out · already in main · p keeps it
-   drop ✗    53e9958  a1               left out · already in main · p keeps it
- ─ main      51f3dc8  Add OAuth (#42)  stays
+ ▸ drop ✗    1679c4c  a3               left out · already in main · p keeps it
+   drop ✗    920b4c3  a2               left out · already in main · p keeps it
+   drop ✗    8217739  a1               left out · already in main · p keeps it
+ ─ main      4ef778d  Add OAuth (#42)  stays
 
  AFTER y · not written yet
 

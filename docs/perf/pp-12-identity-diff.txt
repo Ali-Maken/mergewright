@@ -1,0 +1,64 @@
+base 183460a11
+other crates/mergewright-graph/tests/it/snapshots/it__raster__raster-criss-cross-merge.snap:45
+    old:            cc          f. ffff .f.jjjjjjjjjjj...                                        |
+    new:            cc          f. ffff .f.#...                                        |
+lane-slot crates/mergewright-ui/tests/snapshots/graph_column__criss-cross-merge.snap:9
+    old: │ ◉─│─╮     c.fjdjj...  #  beta: merge alpha
+    new: │ ◉─│─╮     c.ffdff...  #  beta: merge alpha
+lane-slot crates/mergewright-ui/tests/snapshots/graph_column__ref-states.snap:7
+    old:   ●       ..l.....  #  Archived work
+    new:   ●       ..c.....  #  Archived work
+lane-slot crates/mergewright-ui/tests/snapshots/graph_column__stash.snap:7
+    old:   ■─┬─╮   ..ehhcc.  #  On main: wip: with an untracked file
+    new:   ■─┬─╮   ..geeee.  #  On main: wip: with an untracked file
+lane-slot crates/mergewright-ui/tests/snapshots/lanes_without_hue__criss-cross-merge-16.snap:35
+    old: 5.68788...
+    new: 5.66766...
+lane-slot crates/mergewright-ui/tests/snapshots/lanes_without_hue__criss-cross-merge-256.snap:35
+    old: c.fjdjj...
+    new: c.ffdff...
+other docs/shots/m6/fix-abort-reads-aborted-120x40.txt:3
+    old:   ●      main                 Change every file on main  not pushed yet                                      Maker   2h
+    new: ▸   ◆    feature (you)        Change every file on feature  not pushed yet  not merged                       Maker   2h
+other docs/shots/m6/fix-landing-b-launch-120x40.txt:4
+    old:   ┃                           not committed yet · 13 files · on main
+    new:                               not committed yet · 13 files · on main
+other docs/shots/m6/fix-landing-b-launch-187x50.txt:4
+    old:   ┃                     not committed yet · 13 files · on main
+    new:                         not committed yet · 13 files · on main
+other docs/shots/m6/fix-radar-bookkeeping-120x40.txt:25
+    old:   ●                           theirs                                    Maker   6y│ · the main line: branches merge into
+    new:   ┃ ■                         On main: wip  stash@{0}                   Maker   6y│ · the main line: branches merge into
+other docs/shots/m6/fix-tab-words-120x40.txt:5
+    old:   ┃                           not committed yet · 13 files
+    new:                               not committed yet · 13 files
+other docs/shots/m6/set-aside-preview-120x40.txt:15
+    old:                               after rebase                                        │ main  (you're here)
+    new: ▸ ●                           ours                                      Maker   6m│ main  (you're here)
+reordered docs/shots/m6/set-aside-preview-80x24.txt:14
+    old:                       after rebase
+    new: ▸ ●                   ours                                           Maker   6m
+other docs/shots/m8-look-help-graph-187x50.txt:5
+    old: ▸   ●    feature/three        three: in progr│ ›                                                                                            
+    new: ▸   ●    feature/three        three: in progr│ ›                                                                                            
+png docs/shots/22-raster-criss-cross-merge-on-dark.png (187, 259) -> (187, 259)
+png docs/shots/22-raster-criss-cross-merge.png (187, 259) -> (187, 259)
+lane-slot criss-cross-merge alpha: merge beta#1: 0:2,1:5,2:3,3:9,4:0 -> 0:2,1:5,2:3,3:5,4:7
+lane-slot criss-cross-merge alpha: work#1: 0:2,1:5,2:3,3:9 -> 0:2,1:5,2:3,3:5
+lane-slot criss-cross-merge beta: merge alpha#1: 0:2,1:5,2:3,3:9 -> 0:2,1:5,2:3,3:5
+lane-slot criss-cross-merge beta: work#1: 0:2,1:5,2:3,3:9,4:0 -> 0:2,1:5,2:3,3:5,4:7
+lane-slot ref-states Add the base#1: 0:2,1:11 -> 0:2,1:2
+lane-slot ref-states Advance main again#1: 0:2,1:11,2:0,3:7 -> 0:2,1:2,2:0,3:7
+lane-slot ref-states Advance main#1: 0:2,1:11,2:0,3:7 -> 0:2,1:2,2:0,3:7
+lane-slot ref-states Archived work#1: 1:11 -> 1:2
+lane-slot ref-states ahead: not pushed yet#1: 1:11,2:0,3:7 -> 1:2,2:0,3:7
+lane-slot ref-states ahead: pushed#1: 1:11,2:0,3:7 -> 1:2,2:0,3:7
+lane-slot ref-states behind: shared#1: 1:11,2:0 -> 1:2,2:0
+lane-slot ref-states behind: theirs#1: 1:11,2:5 -> 1:2,2:5
+lane-slot stash Add a.txt#1: 0:2,1:4,2:7 -> 0:2,1:6,2:4
+lane-slot stash On main: wip: with an untracked file#1: 1:4,2:7,3:2 -> 1:6,2:4,3:4
+lane-slot stash index on main: 923159b Add a.txt#1: None -> 1:6,2:4,3:4
+lane-slot stash index on main: d96881b Add a.txt#1: 1:4,2:7,3:2 -> None
+lane-slot stash untracked files on main: 923159b Add a.txt#1: None -> 1:6,2:4,3:4
+lane-slot stash untracked files on main: d96881b Add a.txt#1: 1:4,2:7,3:2 -> None
+SUMMARY compared=288 equal=274 reordered=1 lane-slot-files=5 other=8 png_changed=2 png_size_changed=0 added=0 removed=0 lane-slot changes=18

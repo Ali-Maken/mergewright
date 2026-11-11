@@ -1,11 +1,11 @@
 REWRITE feature-a · 5 commits since it left main · newest first · nothing written until y
 
-   squash ↓  0120eb5  wip                        melds into the row below
-   squash ↓  0206c66  wip: tests                 melds into the row below
- ▸ pick      2540198  Handle expired tokens
-   fixup ↓   730928e  fixup! Add OAuth callback  melds into the row below · marked by its name
-   pick      c6d9ef8  Add OAuth callback
- ─ main      fb4d697  m1                         stays
+   squash ↓  02ed774  wip                        melds into the row below
+   squash ↓  b18c343  wip: tests                 melds into the row below
+ ▸ pick      62a3638  Handle expired tokens
+   fixup ↓   0b815e6  fixup! Add OAuth callback  melds into the row below · marked by its name
+   pick      c4b4fe3  Add OAuth callback
+ ─ main      443c4a9  m1                         stays
 
  MESSAGE of the squashed commit · r on "Handle expired tokens" changes it
  ┊ Handle expired tokens

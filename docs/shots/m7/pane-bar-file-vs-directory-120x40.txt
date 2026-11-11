@@ -1,11 +1,11 @@
 == the files cursor on a file row: no `space` ==
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-▸ ◆    main (you)           add src  not pushed yet                                                          Graft  4mo
-  ┃                         Graft · 4 months ago · made on main · 9d4f6c9
-  ●                         Correct the note                                                                 Graft   1y
-  ●                         Add the first note                                                               Graft   1y
-  ◇                         Add a readme                                                                     Graft   1y
+▸ ◆    main (you)           add src  not pushed yet                                                          Maker  4mo
+  ┃                         Maker · 4 months ago · made on main · 070649f
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -23,7 +23,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · B blame · F history · P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
+COMMIT 070649f · Maker Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents c28ba91 · diff vs fir…
 add src
 M notes.txt             +1 −1 ▎
 ▾ src/                          1     - one, corrected
@@ -43,11 +43,11 @@ M notes.txt             +1 −1 ▎
 == the files cursor on the `src/` directory row: `space fold` ==
  ◆ api  ~/code/api · main                                                                                     4 commits
 
-▸ ◆    main (you)           add src  not pushed yet                                                          Graft  4mo
-  ┃                         Graft · 4 months ago · made on main · 9d4f6c9
-  ●                         Correct the note                                                                 Graft   1y
-  ●                         Add the first note                                                               Graft   1y
-  ◇                         Add a readme                                                                     Graft   1y
+▸ ◆    main (you)           add src  not pushed yet                                                          Maker  4mo
+  ┃                         Maker · 4 months ago · made on main · 070649f
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -65,7 +65,7 @@ M notes.txt             +1 −1 ▎
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  ⏎ open · space fold · P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT 9d4f6c9 · Graft Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents a82960b · diff vs fir…
+COMMIT 070649f · Maker Fixture <fixture@example.invalid> · 2020-09-13 12:27 +0000 · 4mo · parents c28ba91 · diff vs fir…
 add src
 M notes.txt             +1 −1 select a file
 ▾ src/

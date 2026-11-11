@@ -52,12 +52,12 @@
  ◆ api  ~/code/api · main                                                               5 commits  date order, sorting…
 
   ◌                         Uncommitted changes (1 unstaged)
-▸ ◆    main (you)           add second  not pushed yet                                                       Graft   8m
-  ┃                         Graft · 8 minutes ago · made on main · 29a1432
-  ●                         add first                                                                        Graft   9m
-  ●                         Correct the note                                                                 Graft   1y
-  ●                         Add the first note                                                               Graft   1y
-  ◇                         Add a readme                                                                     Graft   1y
+▸ ◆    main (you)           add second  not pushed yet                                                       Maker   8m
+  ┃                         Maker · 8 minutes ago · made on main · 66e26de
+  ●                         add first                                                                        Maker   9m
+  ●                         Correct the note                                                                 Maker   1y
+  ●                         Add the first note                                                               Maker   1y
+  ◇                         Add a readme                                                                     Maker   1y
 
 
 
@@ -73,7 +73,7 @@
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  P push · c commit · u undo · </> resize · . actions · ? keys
-COMMIT 29a1432 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents 3d9496e · diff vs firs…
+COMMIT 66e26de · Maker Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents fe84819 · diff vs firs…
 add second
                               reading…
 

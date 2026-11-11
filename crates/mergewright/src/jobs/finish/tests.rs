@@ -9,7 +9,7 @@ pub(super) fn git(repo: &Path, args: &[&str]) -> String {
         .arg(repo)
         .args([
             "-c",
-            "user.name=Graft Test",
+            "user.name=Maker Test",
             "-c",
             "user.email=test@example.invalid",
         ])

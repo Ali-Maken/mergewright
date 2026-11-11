@@ -1,10 +1,10 @@
  ◆ api  ~/code/api · main                                                                     merging feature into main
 
 ▸ ◌                           Uncommitted changes (13 unmerged)
-  ┃                           not committed yet · 13 files · on main
-  ◆      main (you)           Change every file on main  not pushed yet                                      Graft   2h
-  ┃ ●    feature              Change every file on feature  not pushed yet                                   Graft   2h
-  ◇┄╯    main (you)           Add the files both sides will change                                           Graft   1y
+                              not committed yet · 13 files · on main
+    ●    feature              Change every file on feature  not pushed yet  not merged                       Maker   2h
+  ◆ ┃    main (you)           Change every file on main  not pushed yet                                      Maker   2h
+  ◇━╯                         Add the files both sides will change                                           Maker   1y
 
 
 
@@ -23,7 +23,7 @@
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
-diff vs HEAD 274c7d4
+diff vs HEAD 55e59f0
 CONFLICTS (13)                ▎
   added-by-them.txt added by…       1 + renamed to a different name by each side
   added-by-us.txt added by us

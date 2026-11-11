@@ -3,37 +3,37 @@ What right looks like: the top line ends `lanes drawn: 1 of 2 · 2 merged branch
 
  ◆ api  ~/code/api · wallet-release                          47 commits  lanes drawn: 1 of 2 · 2 merged branches folded
 
-  ●    wallet-release (you) release: note 29                            Graft  27h│ wallet-release  (you're here)
-  ●                         release: note 28                            Graft  27h│ ! not pushed yet
-  ●                         release: note 27                            Graft  27h│ · not merged
-  ●                         release: note 26                            Graft  27h│ ✓ up to date with main
-  ●                         release: note 25                            Graft  27h│ · Graft, last commit 27h ago
-  ●                         release: note 24                            Graft  27h│
-  ●                         release: note 23                            Graft  27h│ built on
-  ●                         release: note 22                            Graft  27h│   main
-  ●                         release: note 21                            Graft  27h│    ─◆ wallet-release
-  ●                         release: note 20                            Graft  27h│
-  ●                         release: note 19                            Graft  27h│
-  ●                         release: note 18                            Graft  27h│
-  ●                         release: note 17                            Graft  27h│
-  ●                         release: note 16                            Graft  27h│
-  ●                         release: note 15                            Graft  27h│
-  ●                         release: note 14                            Graft  27h│
-  ●                         release: note 13                            Graft  27h│
-  ●                         release: note 12                            Graft  27h│
-  ●                         release: note 11                            Graft  27h│
-  ●                         release: note 10                            Graft  27h│
-  ●                         release: note 09                            Graft  27h│
-  ●                         release: note 08                            Graft  27h│
-  ●                         release: note 07                            Graft  27h│
-  ●                         release: note 06                            Graft  27h│
-  ●                         release: note 05                            Graft  27h│
-  ●                         release: note 04                            Graft  27h│
-  ●                         release: note 03                            Graft  27h│
-  ●                         release: note 02                            Graft  27h│
-  ●                         release: note 01                            Graft  27h│
-  ◉                         Merge branch 'sara/fix-toc' into wallet-r…  Graft  28h│
-▸ ◉                         Merged PR 16021: Fix the wallet totals  ▸   Graft  28h│
-  ┃                         Graft · 28 hours ago · made on wallet-release · merge…│
+  ●    wallet-release (you) release: note 29                            Maker  27h│ wallet-release  (you're here)
+  ●                         release: note 28                            Maker  27h│ ! not pushed yet
+  ●                         release: note 27                            Maker  27h│ · not merged
+  ●                         release: note 26                            Maker  27h│ ✓ up to date with main
+  ●                         release: note 25                            Maker  27h│ · Maker, last commit 27h ago
+  ●                         release: note 24                            Maker  27h│
+  ●                         release: note 23                            Maker  27h│ built on
+  ●                         release: note 22                            Maker  27h│   main
+  ●                         release: note 21                            Maker  27h│    ─◆ wallet-release
+  ●                         release: note 20                            Maker  27h│
+  ●                         release: note 19                            Maker  27h│
+  ●                         release: note 18                            Maker  27h│
+  ●                         release: note 17                            Maker  27h│
+  ●                         release: note 16                            Maker  27h│
+  ●                         release: note 15                            Maker  27h│
+  ●                         release: note 14                            Maker  27h│
+  ●                         release: note 13                            Maker  27h│
+  ●                         release: note 12                            Maker  27h│
+  ●                         release: note 11                            Maker  27h│
+  ●                         release: note 10                            Maker  27h│
+  ●                         release: note 09                            Maker  27h│
+  ●                         release: note 08                            Maker  27h│
+  ●                         release: note 07                            Maker  27h│
+  ●                         release: note 06                            Maker  27h│
+  ●                         release: note 05                            Maker  27h│
+  ●                         release: note 04                            Maker  27h│
+  ●                         release: note 03                            Maker  27h│
+  ●                         release: note 02                            Maker  27h│
+  ●                         release: note 01                            Maker  27h│
+  ◉                         Merge branch 'sara/fix-toc' into wallet-r…  Maker  28h│
+▸ ◉                         Merged PR 16021: Fix the wallet totals  ▸   Maker  28h│
+  ┃                         Maker · 28 hours ago · made on wallet-release · merge…│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  space show the 4 commits inside · ⏎ open · x compare · u undo · . actions · ? keys

@@ -72,28 +72,28 @@
 
 ▸ ◌                           Uncommitted changes (16 unmerged)
   ┃                           not committed yet · 16 files · on main
-  ◆      main (you)           main's take  not pushed yet                                                    Graft  87m
-  ┃ ●    feature              the feature's take  not pushed yet  not merged                                 Graft  88m
-  ●┄╯    main (you)           the shared files                                                               Graft  89m
-  ●                           Ship release 29                                                                Graft   2h
-  ●                           Ship release 28                                                                Graft   2h
-  ●                           Ship release 27                                                                Graft   2h
-  ●                           Ship release 26                                                                Graft   2h
-  ●                           Ship release 25                                                                Graft   2h
-  ●                           Ship release 24                                                                Graft   2h
-  ●                           Ship release 23                                                                Graft   2h
-  ●                           Ship release 22                                                                Graft   2h
-  ●                           Ship release 21                                                                Graft   2h
-  ●                           Ship release 20                                                                Graft   2h
-  ●                           Ship release 19                                                                Graft   2h
-  ●                           Ship release 18                                                                Graft   2h
-  ●                           Ship release 17                                                                Graft   2h
-  ●                           Ship release 16                                                                Graft   2h
-  ●                           Ship release 15                                                                Graft   2h
+  ◆      main (you)           main's take  not pushed yet                                                    Maker  87m
+  ┃ ●    feature              the feature's take  not pushed yet  not merged                                 Maker  88m
+  ●┄╯    main (you)           the shared files                                                               Maker  89m
+  ●                           Ship release 29                                                                Maker   2h
+  ●                           Ship release 28                                                                Maker   2h
+  ●                           Ship release 27                                                                Maker   2h
+  ●                           Ship release 26                                                                Maker   2h
+  ●                           Ship release 25                                                                Maker   2h
+  ●                           Ship release 24                                                                Maker   2h
+  ●                           Ship release 23                                                                Maker   2h
+  ●                           Ship release 22                                                                Maker   2h
+  ●                           Ship release 21                                                                Maker   2h
+  ●                           Ship release 20                                                                Maker   2h
+  ●                           Ship release 19                                                                Maker   2h
+  ●                           Ship release 18                                                                Maker   2h
+  ●                           Ship release 17                                                                Maker   2h
+  ●                           Ship release 16                                                                Maker   2h
+  ●                           Ship release 15                                                                Maker   2h
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  merge stopped · 16 files conflicted · ⏎ back to the clashes  c finish  a abort  M mergetool  e edit  ⇥ graph  q quit
 UNCOMMITTED
-diff vs HEAD 80393eb
+diff vs HEAD c8b2245
 CONFLICTS (16)                ▎
   notes.md      both modified       1 + <<<<<<< HEAD
   shared.rs     both modified   1   2   our plan
