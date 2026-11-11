@@ -23,9 +23,6 @@ const R_OVERLAY: &str = "pane focused over an overlay: the overlay swallows it";
 /// 2026-10-07 (m8/09g); its `Home` was a one-chord idle until 09g, which
 /// is not the press `?` lists.
 const R_FIRST_FILE: &str = "files cursor already on the first file";
-/// `IN PROGRESS` spells the banner's keys while an operation is live; the
-/// finish summary swallows them (`finish/keys.rs:31,58`).
-const R_IN_PROGRESS: &str = "IN PROGRESS lists the banner's keys over the finish summary";
 
 /// The merge's review (ease-pass/12) dropped the m6 summary's message
 /// fields: its message is git's, read-only, so `⌃E` and `Tab` have nothing
@@ -147,10 +144,6 @@ pub(super) const DEAD_ELSEWHERE: &[(ContextId, ActionId, &str)] = &[
     (ContextId::Finish, ActionId("app.redo"), R_SWALLOWED),
     (ContextId::Finish, ActionId("app.refresh"), R_SWALLOWED),
     (ContextId::Finish, ActionId("app.top"), R_SWALLOWED),
-    (ContextId::Finish, ActionId("operation.abort"), R_IN_PROGRESS),
-    (ContextId::Finish, ActionId("operation.continue"), R_IN_PROGRESS),
-    (ContextId::Finish, ActionId("operation.edit"), R_IN_PROGRESS),
-    (ContextId::Finish, ActionId("operation.mergetool"), R_IN_PROGRESS),
     (ContextId::Graph, ActionId("app.back"), R_NO_EFFECT),
     (ContextId::Graph, ActionId("app.next_match"), R_NO_EFFECT),
     (ContextId::Graph, ActionId("app.next_pane"), R_NO_EFFECT),

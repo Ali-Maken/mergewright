@@ -201,7 +201,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `ForcePushVerdict` (enum) — `NotCheckable(String)`, `Clean`, `Rewritten { remote_ref, previous, current }`.
 - `Duplicates` (struct) — patch-id `groups`, the `window` looked at, `complete`.
 - `probe_evil_merge` (fn) — `git show --remerge-diff` then the sides: `Clean`, `Resolved`, `Evil` or `NotCheckable`.
-- `probe_force_push` (fn) — `(repo, branch, remote_ref, current, stop)`: the tracking ref's last reflog value against `current`.
+- `probe_force_push` (fn) — `(repo, branch, remote_ref, current, stop)`: the tracking ref's last reflog value against `current`; a creation-only reflog is `Clean`, no reflog `NotCheckable`.
 - `probe_duplicates` (fn) — `(repo, window, stop)`: three spawns, commits grouped by patch-id, singletons dropped.
 - `finding_from_evil` (fn) — `Evil` → an `EvilMerge` finding; else `None`.
 - `findings_from_force_push` (fn) — `Rewritten` → a `ForcePushedRemote` finding; else `None`.

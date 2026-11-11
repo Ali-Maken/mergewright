@@ -72,4 +72,4 @@
 
 
 
- ⏎ open · o take · P push · c commit · u undo · . actions · ? keys
+ ⏎ open · P push · c commit · u undo · . actions · ? keys

@@ -40,7 +40,7 @@
 "  ◆                         a commit  main is here  not pushed yet       Test  57y│                                     "
 "▸ ◉                         a commit  ▸ 1 commit                         Test  57y│ reading…                            "
 " Checkout feature                                                                                                       "
-" Cherry-pick (o) — a merge · taking a merge isn't in Mergewright yet                                                    "
+" Cherry-pick (o) — already on main                                                                                      "
 " Copy SHA (y)                                                                                                           "
 " Compare with this (x)                                                                                                  "
 " Open details (⏎)                                                                                                       "

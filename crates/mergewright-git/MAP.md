@@ -159,6 +159,7 @@ One line per public item; history lives in `docs/log/` and the ADRs.
 - `read_commit` (fn) — `(handle, id) -> Result<Commit, WalkError>`; one commit whole.
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
 - `first_parent_chain` (fn) — a tip's first-parent commits, root last, honouring `Stop`.
+- `has_reflog` (fn) — whether a ref has a reflog with at least one entry (a creation-only reflog counts; `previous_tips` cannot tell it from none).
 - `previous_tips` (fn) — a ref's reflog old values, newest first, deduped and capped.
 - `ReflogError` (enum) — `Unreadable`, `Shallow`; why a reflog read failed.
 - `WalkError` (enum) — `Tips`, `Commit`, `CommitGraph`, `Shallow`; why a rev-walk failed.

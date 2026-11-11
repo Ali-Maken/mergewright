@@ -119,7 +119,7 @@ fn the_tip_row_hints_the_current_branch_context() {
 }
 
 /// One row down is a commit made on the same branch: his own branch's bar
-/// again (ease-pass/07b), with the row's own `o take`.
+/// again (ease-pass/07b), without `o take`: `o` would refuse it (ppc/13 M1).
 #[test]
 fn the_parent_row_hints_its_own_branch_bar() {
     let scratch = repo();
@@ -128,14 +128,14 @@ fn the_parent_row_hints_its_own_branch_bar() {
     let state = app.key(&state, KeyCode::Char('j'));
 
     let bar = footer(&state, 80, 24);
-    // HEAD's parent: an ancestor, take-live like the `.` menu, so `o take`
-    // follows `⏎ open` (m7-power-tools/40).
+    // HEAD's parent: an ancestor of HEAD, so `o` refuses it and the bar
+    // does not hint it.
     assert!(
-        mergewright::update::can_take(&state),
-        "the parent row is not take-live"
+        !mergewright::update::can_take(&state),
+        "an ancestor of HEAD is not take-live"
     );
     assert!(
-        bar.starts_with(" ⏎ open · o take · P push · c commit · ") && bar.ends_with("? keys"),
+        bar.starts_with(" ⏎ open · P push · c commit · ") && bar.ends_with("? keys"),
         "{bar:?}"
     );
     app.close();

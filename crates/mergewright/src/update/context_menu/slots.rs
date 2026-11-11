@@ -80,6 +80,7 @@ pub(crate) fn history_slots(
     refs: &RefBadges,
     findings: &[Finding],
     keys: &Keymap,
+    on_branch: bool,
 ) -> Slots {
     // `HEAD` as a `Tip`: `None` only while the branch is unborn, where there
     // is no commit to operate from.
@@ -119,7 +120,7 @@ pub(crate) fn history_slots(
                 }),
             ),
         };
-        let (pick, dim) = pick_slot(id, parents, subject, &head, &here, keys);
+        let (pick, dim) = pick_slot(id, parents, subject, &head, &here, keys, on_branch);
         dimmed = dim.map(|reason| (verbs.len(), reason));
         verbs.push(pick);
         // Any further Checkout items lead the rest.

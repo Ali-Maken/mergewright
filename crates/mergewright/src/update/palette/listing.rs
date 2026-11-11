@@ -11,7 +11,13 @@ pub(super) fn source_of(state: &AppState) -> Source<'_> {
     Source {
         keymap: &state.keymap,
         problems: &state.config_problems,
-        operation_live: crate::update::banner::live(state).is_some(),
+        // The banner's keys are not live under the clash screen or the
+        // review, which answer every key themselves (keymap §2.1, §2.6): no
+        // `IN PROGRESS` there, so `c`, `e` and `M` are listed once, as the
+        // place means them (pre-publish-cleanup/13, review M4).
+        operation_live: crate::update::banner::live(state).is_some()
+            && state.resolver.is_none()
+            && state.finish.is_none(),
         skippable: crate::update::banner::live(state)
             .is_some_and(|live| live.kind != mergewright_git::state::InProgress::Merge),
         recent: &state.palette_recent,

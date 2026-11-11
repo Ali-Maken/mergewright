@@ -130,7 +130,11 @@ pub(super) fn take_operation(state: &AppState) -> Result<Operation, Status> {
     })?;
     let subject = String::from_utf8_lossy(row.commit.subject()).into_owned();
     let params = crate::update::context_menu::verbs::pick_params(id, &subject, &head);
-    let refused = params.check_commit(id, id == head.oid, row.commit.parents.len());
+    let on_branch = state
+        .history
+        .as_ref()
+        .is_some_and(|history| history.reaches(head.oid, id));
+    let refused = params.check_commit(id, on_branch, row.commit.parents.len());
     let op = Operation::CherryPick(params);
     match refused {
         Ok(()) => Ok(op),

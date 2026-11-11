@@ -42,7 +42,7 @@
 432 crates/mergewright-ops/src/apply/remote/tests.rs
 410 crates/mergewright-ops/src/journal.rs
 807 crates/mergewright-ops/src/journal/tests.rs
-1084 crates/mergewright-ops/src/mistake_radar/probes.rs
+1094 crates/mergewright-ops/src/mistake_radar/probes.rs
 709 crates/mergewright-ops/src/mistake_radar/rules.rs
 1018 crates/mergewright-ops/src/operation/history.rs
 1281 crates/mergewright-ops/src/operation/history/tests.rs
@@ -142,9 +142,9 @@
 898 crates/mergewright/src/update/clash/tests.rs
 1187 crates/mergewright/src/update/commit_editor/tests.rs
 881 crates/mergewright/src/update/confirm.rs
-1541 crates/mergewright/src/update/context_menu/tests.rs
-481 crates/mergewright/src/update/context_menu/verbs.rs
-900 crates/mergewright/src/update/context_menu/verbs/tests.rs
+1532 crates/mergewright/src/update/context_menu/tests.rs
+492 crates/mergewright/src/update/context_menu/verbs.rs
+905 crates/mergewright/src/update/context_menu/verbs/tests.rs
 515 crates/mergewright/src/update/credential/tests.rs
 473 crates/mergewright/src/update/detail/cursor/tests.rs
 429 crates/mergewright/src/update/detail/keys.rs

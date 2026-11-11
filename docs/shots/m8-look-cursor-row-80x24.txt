@@ -23,4 +23,4 @@ m8-polish-and-ship/28, 80x24, cursor on `feature/two  two: finish`: what right l
 
 
 
- m merge two into yours · ⏎ open · o take · C switch · u undo · ? keys
+ m merge two into yours · ⏎ open · C switch · x compare · u undo · ? keys

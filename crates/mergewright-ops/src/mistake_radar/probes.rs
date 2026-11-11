@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use mergewright_core::mistake_radar::MistakeRadarKind;
 use mergewright_core::oid::Oid;
 use mergewright_core::ref_name::RefName;
-use mergewright_git::history::{previous_tips, read_commit};
+use mergewright_git::history::{has_reflog, previous_tips, read_commit};
 use mergewright_git::repo::RepoHandle;
 use mergewright_git::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -324,7 +324,9 @@ fn changed_paths(
 /// then one `git merge-base --is-ancestor <previous> <current>` spawn whose
 /// exit code is the whole answer — 0 means the new tip descends from the old
 /// one (an ordinary fetch), 1 means it does not (the remote was rewritten).
-/// Any other exit, or no reflog at all, is `NotCheckable`: a fresh clone has
+/// A reflog with only its creation entry (the remote has not moved since it
+/// was first seen) is `Clean`. Any other exit, or no reflog at all, is
+/// `NotCheckable`: a fresh clone has
 /// nothing to compare against, and absence of evidence is not a clean bill
 /// (PROMPT.md §1.4).
 ///
@@ -343,7 +345,15 @@ pub fn probe_force_push(
         Err(error) => return ForcePushVerdict::NotCheckable(error.to_string()),
     };
     let Some(previous) = tips.first().copied() else {
-        return ForcePushVerdict::NotCheckable("no remote-tracking reflog".into());
+        // No previous tip is two different facts. A reflog holding only the
+        // ref's creation entry means the remote has not moved since it was
+        // first seen: nothing to warn about. No reflog at all is the only
+        // case with nothing to compare against.
+        return match has_reflog(repo, remote_ref) {
+            Ok(true) => ForcePushVerdict::Clean,
+            Ok(false) => ForcePushVerdict::NotCheckable("no remote-tracking reflog".into()),
+            Err(error) => ForcePushVerdict::NotCheckable(error.to_string()),
+        };
     };
     let output = GitInvocation::new(repo)
         .arg(GitArg::Word("merge-base".into()))
@@ -888,14 +898,14 @@ mod tests {
     }
 
     #[test]
-    fn a_remote_ref_with_only_its_creation_entry_is_not_checkable() {
+    fn a_remote_ref_with_only_its_creation_entry_is_clean() {
         let (scratch, repo, _older, tip) = tracked();
         move_ref(&scratch, "refs/remotes/origin/fresh", tip);
         let fresh = RefName::new("refs/remotes/origin/fresh").expect("a valid ref name");
 
         assert_eq!(
             probe_force_push(&repo, "fresh", &fresh, tip, &()),
-            ForcePushVerdict::NotCheckable("no remote-tracking reflog".into())
+            ForcePushVerdict::Clean
         );
     }
 

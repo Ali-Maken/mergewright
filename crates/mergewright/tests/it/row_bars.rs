@@ -73,17 +73,17 @@ fn his_own_row_and_the_trunks_row_take_their_branchs_bar() {
     let (app, state) = opened(scratch.path());
     let own = click(&app, &state, "Start the wallet release");
     assert!(
-        // An ancestor of `HEAD`: the row verb `o take` follows `⏎ open`.
-        bar(&own).starts_with(" ⏎ open · o take · P push · c commit · "),
+        // An ancestor of `HEAD`: `o` would refuse it, so no `o take`
+        // (pre-publish-cleanup/13, review M1).
+        bar(&own).starts_with(" ⏎ open · P push · c commit · "),
         "{:?}",
         bar(&own)
     );
     // `main`'s row, made on `main`: the trunk's bar.
     let trunk = click(&app, &own, "Add the readme");
     assert!(
-        bar(&trunk).starts_with(
-            " m merge main into yours · ⏎ open · o take · C switch to main · x compare · "
-        ),
+        bar(&trunk)
+            .starts_with(" m merge main into yours · ⏎ open · C switch to main · x compare · "),
         "{:?}",
         bar(&trunk)
     );
@@ -148,7 +148,7 @@ fn an_inner_row_of_a_live_branchs_merge_offers_its_switch() {
     let words = bar(&inner);
     assert!(
         words.starts_with(
-            " m merge fix-toc into yours · ⏎ open · o take · C switch to fix-toc · x compare · "
+            " m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · "
         ),
         "{words:?}"
     );

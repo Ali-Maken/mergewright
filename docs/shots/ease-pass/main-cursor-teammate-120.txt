@@ -30,4 +30,4 @@ ease-pass 07 (G5-G8), drawn by `view::view` from a real AppState over the job po
                                                                                   │
                                                                                   │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge fix-toc into yours · ⏎ open · o take · C switch to fix-toc · x compare · u undo · . actions · ? keys
+ m merge fix-toc into yours · ⏎ open · C switch to fix-toc · x compare · u undo · . actions · ? keys

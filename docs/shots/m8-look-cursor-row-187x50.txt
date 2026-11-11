@@ -49,4 +49,4 @@ m8-polish-and-ship/28, 187x50, cursor on `feature/two  two: finish`: what right 
                                                                                                                                                      │
                                                                                                                                                      │
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge two into yours · ⏎ open · o take · C switch to two · x compare · u undo · . actions · ? keys
+ m merge two into yours · ⏎ open · C switch to two · x compare · u undo · . actions · ? keys

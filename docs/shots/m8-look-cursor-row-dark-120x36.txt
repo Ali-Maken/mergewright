@@ -35,4 +35,4 @@ m8-polish-and-ship/07, dark theme, 120x36, cursor on `feature/two  two: finish`:
                                                                                   │
                                                                                   │
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- m merge two into yours · ⏎ open · o take · C switch to two · x compare · u undo · . actions · ? keys
+ m merge two into yours · ⏎ open · C switch to two · x compare · u undo · . actions · ? keys

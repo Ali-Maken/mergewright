@@ -798,6 +798,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             c.refs,
             c.findings,
             mergewright_ui::keymap::Keymap::shipped(),
+            false,
         );
         let got = labels(&slots.verbs);
         assert_eq!(
@@ -825,6 +826,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
         &two_on_three,
         &[],
         mergewright_ui::keymap::Keymap::shipped(),
+        false,
     );
     assert_eq!(labels(&slots.verbs)[2], "Checkout topic");
 }
@@ -844,6 +846,7 @@ fn slot_two_dims_on_head_and_on_a_merge() {
             &refs,
             &[],
             mergewright_ui::keymap::Keymap::shipped(),
+            false,
         );
         let (at, reason) = slots.dimmed.clone().expect("slot 2 is dim");
         (
@@ -874,6 +877,7 @@ fn slot_two_dims_on_head_and_on_a_merge() {
         &refs,
         &[],
         mergewright_ui::keymap::Keymap::shipped(),
+        false,
     );
     assert_eq!(live.dimmed, None);
     assert_eq!(labels(&live.verbs)[1], "Cherry-pick 0300000 (o)");
@@ -892,6 +896,7 @@ fn slot_two_dims_on_head_and_on_a_merge() {
         &detached,
         &[],
         mergewright_ui::keymap::Keymap::shipped(),
+        false,
     );
     assert_eq!(
         slots.dimmed.map(|(_, reason)| reason.as_str().to_owned()),
