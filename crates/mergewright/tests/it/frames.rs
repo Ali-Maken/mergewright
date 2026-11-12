@@ -352,7 +352,7 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
         }
     }
     let (scrolled, idle) = run.latencies.split_at(script(pane).len());
-    let gate = Gate::of(scrolled, INPUT_TO_FRAME);
+    let gate = Gate::of(scrolled, verdict::budget(tier, refs));
     // Printed by `judge`, after every other assertion (review 04 Major 1).
     let summary = format!(
         "frames: tier={tier:?} refs={refs:?} pane={pane:?} control={control:?} keys={} {} kitty_commands={} bytes={}",

@@ -326,9 +326,13 @@ fn verdict(tier: RenderingTier, scenario: &str, rate: u64, reading: &Reading) ->
         check("frames_before_J<=1", before <= 1);
     }
     if tier == RenderingTier::Pixel {
+        // 2 MiB (was 512 KiB). pp-final, release, 2026-11-12: 1.15-1.55 MB per
+        // held frame at the free drain, deterministic in kind: the cursor row
+        // grew a second line in ease-pass, so each frame's strips carry more.
+        // Ruled (user): raise the bound; 2 MiB is the worst measured plus ~35 %.
         check(
-            "bytes_per_frame_held<=512KiB",
-            reading.bytes_per_frame_held <= 512 * 1024,
+            "bytes_per_frame_held<=2MiB",
+            reading.bytes_per_frame_held <= 2 * 1024 * 1024,
         );
         // The strip bound is `ceil(rows_scrolled/32) + 2 + fold_changes_held
         // × strips_per_frame` (46c Decided 4): on a graph wider than the

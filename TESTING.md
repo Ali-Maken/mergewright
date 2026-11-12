@@ -480,7 +480,7 @@ Pack on disk: 10k 2–3 MiB, 100k 29–35 MiB, 1M 297–358 MiB. Checkpoint stri
 
 **Without a commit-graph the 1M cell asserts two bars, not one** (m1-the-graph/59/59b/63, user decision 2026-09-14, ADR-0026 amended): **live heap slope ≤ 100 B/commit, gated at reviews** — read from `prototypes/heap-profile-59` at 100k and 1M (manual, not part of the curve script; raw `target/59b/prof-{100k,1M}.txt`); measured **76 B/commit** (100k 27.0 MiB → 1M 92.5 MiB live after `g`; interner 58 + one order 8 + promoted 4 + rest) — and **footprint at 1M: reported, floor named** — read from this table's `no cg` footprint column; measured **~138–140 B/commit** (76 live + ~62 allocator-retained memory, freed but kept in the process's footprint), against the existing "footprint under 300 MB at 1M" (154.8–157.9 MiB, well under). The floor is not gated further: see KNOWN_GAPS.
 
-The commit-graph offer, end to end, on a copy of the 1M small no-cg fixture (`docs/shots/m1-memory-curve-offer.txt`): before `B`, reported cell as above; `B` writes the graph in 5.3 s wall; after `B`, the same repository re-measured as a cg cell — peak RSS 173.4/172.8/173.9 MiB, footprint 36.3–37.5 MiB, far jump to row 500,000 14.9 ms (4,500 rows, stride 16,000) — gate pass.
+The commit-graph offer, end to end, on a copy of the 1M small no-cg fixture (`m1-memory-curve-offer.txt` (capture removed 2026-11-12, pre-publish-cleanup/14)): before `B`, reported cell as above; `B` writes the graph in 5.3 s wall; after `B`, the same repository re-measured as a cg cell — peak RSS 173.4/172.8/173.9 MiB, footprint 36.3–37.5 MiB, far jump to row 500,000 14.9 ms (4,500 rows, stride 16,000) — gate pass.
 
 **Far jumps after a cold `G`, both 1M fixtures** (m1-the-graph/56, 60 — checkpoints thin to an even grid, never LRU): row 500,000 and row 900,000 both replay 4,500 rows in 13–16 ms at stride 16,000, every 1M variant (small/realistic × cg/no-cg). Before m1-the-graph/60's grid-thinning: row 500,000 replayed 500,500 rows in 1.39–1.46 s (LRU held only the last 128k rows' checkpoints).
 
@@ -871,9 +871,9 @@ with `…`) is read from the footer instead, never a box over the graph.
 | Revealed subject contains raw escape bytes (sanitized upstream) | Renders inert — no cursor jump, no color leak, same as everywhere else text reaches the screen |
 
 Captures (80x24, release binary), written straight to files:
-`docs/shots/41-hover-reveal.txt` (hovering a truncated row),
-`docs/shots/41-peek.txt` (`Enter` peek on the cursor row),
-`docs/shots/41-no-reveal.txt` (a short subject: hints stay put). Judged by
+`41-hover-reveal.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) (hovering a truncated row),
+`41-peek.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) (`Enter` peek on the cursor row),
+`41-no-reveal.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) (a short subject: hints stay put). Judged by
 eye, per the project rule — green tests only prove the reveal logic
 agrees with itself.
 
@@ -888,7 +888,7 @@ agrees with itself.
 
 Automated: `python3 .scratch/m1-the-graph/pty-copy-check.py <release mwr> <repo>`
 asserts the byte stream holds `ESC ] 52 ; c ;` + base64 of HEAD's SHA and
-writes `docs/shots/45-y-copies-sha.txt`. The paste itself is judged by hand
+writes `45-y-copies-sha.txt` (capture removed 2026-11-12, pre-publish-cleanup/14). The paste itself is judged by hand
 per terminal (Ghostty, Zed, VS Code, tmux) — unticked until tried.
 
 ## Graph gallery
@@ -932,9 +932,9 @@ repository, and the banner says so.
 Captures of every stop, Unicode and ASCII at 80x24, are under
 `docs/shots/35-<stop>-{unicode,ascii}.txt` (from before the banner: the
 graph is the same, the footer line is the old orientation);
-`docs/shots/38-gallery-first-frame-and-two-steps.txt` shows the first
-frame and two `]` presses with the banner, `docs/shots/38-trivial-ascii.txt`
-the first frame at the ASCII tier, `docs/shots/38-list.txt` what `--list`
+`38-gallery-first-frame-and-two-steps.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) shows the first
+frame and two `]` presses with the banner, `38-trivial-ascii.txt` (capture removed 2026-11-12, pre-publish-cleanup/14)
+the first frame at the ASCII tier, `38-list.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) what `--list`
 prints. They are what `.scratch/m1-the-graph/pty-gallery.py` and
 `pty-gallery-38.py` saw, not what a person saw: the user judges by eye
 (ticket 35's last box).
@@ -1133,7 +1133,7 @@ Press `F3` at any stop: the text right of the graph must not move.
     **Pins are priorities, not vetoes (ticket 47, ADR-0025):** the merge
     train's own thread column, the reserved integration lanes and the
     cursor's own column are budget priorities — they fold too once the
-    budget can't hold them. `docs/shots/47-git-git-80x24-after-jj.txt`: the
+    budget can't hold them. `47-git-git-80x24-after-jj.txt` (capture removed 2026-11-12, pre-publish-cleanup/14): the
     header still ends `+N lanes` (N ≥ 10) after `j j` lands on a merge, and
     the rail sits well inside the terminal's width, not cut at half of it.
 
@@ -1357,7 +1357,7 @@ its highlight moves and HEAD's row un-highlights; `Enter` opens
 `UNCOMMITTED · N staged N unstaged N untracked` / `diff vs HEAD <sha>`, staged
 and unstaged files listed, an untracked file's body shows its content as
 added lines (`empty file` when it has none; binary/capped as any diff); `j` returns to HEAD's commit and the pane follows. Captures:
-`docs/shots/m2-working-tree-row.txt` (graph),
+`m2-working-tree-row.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) (graph),
 `docs/shots/m2-detail-pane-breakpoints.txt` (the `UNCOMMITTED` pane) (historical record, drawn at M2; today's drawing: `docs/shots/m7/diff-cursor-commit-120x40.txt`).
 
 ### Per breakpoint
@@ -1947,7 +1947,7 @@ prelude — fed one key per settled state, and since this ticket a pending
 preview plan counts as unsettled, so `→ ⏎` land on a drawn box. A preview
 capture whose box is not on screen is **not written**. **A capture is what
 pyte saw, not what a person saw, and it carries no colour** — the user
-judges by eye. The contact sheet is `docs/shots/m5-contact-sheet-1.txt` and `-2.txt`
+judges by eye. The contact sheet is `m5-contact-sheet-1.txt` (capture removed 2026-11-12, pre-publish-cleanup/14) and `-2.txt`
 (`scripts/contact-sheet.sh m5`; `contact_sheet_captions_cover_every_m5_capture`
 keeps every `m5-*.txt` captioned).
 

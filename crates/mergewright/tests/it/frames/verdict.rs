@@ -9,6 +9,20 @@ use super::run::Run;
 use super::{IDLE, INPUT_TO_FRAME, Pane, Refs, idle_wakes};
 use crate::frame_trace::Gate;
 
+/// The p99 budget a scroll is judged against. 16 ms everywhere except the
+/// pixel tier on the 100k fixture: pp-final (2026-11-12, release, load ~3-5)
+/// measured p99 17.7 ms there (11 of 420 keys over, worst 21 ms, own frame
+/// 16-21 ms with 1.1-2.6 MB of kitty bytes each), because the cursor row grew
+/// a second line in ease-pass and every strip now carries more to send.
+/// Ruled (user, 2026-11-12): raise the bound, keep the check. 24 ms is the
+/// measured worst key (21 ms) plus ~15 %.
+pub(super) fn budget(tier: RenderingTier, refs: Refs) -> Duration {
+    match (tier, refs) {
+        (RenderingTier::Pixel, Refs::Fixture) => Duration::from_millis(24),
+        _ => INPUT_TO_FRAME,
+    }
+}
+
 /// Release enforces the input-to-frame budget on the p99, debug records it
 /// (ADR-0021). Every key over the budget is printed either way, and the
 /// max is on the summary line (m7-power-tools/04: one outlier in 420 keys
@@ -26,6 +40,7 @@ pub(super) fn judge(
     gate: &Gate,
     summary: &str,
 ) {
+    let limit = budget(tier, refs);
     let total = run.latencies.len() - idle_wakes().len();
     let late: Vec<_> = gate
         .over
@@ -44,7 +59,7 @@ pub(super) fn judge(
         // debug code runs it 2-5x slower.
         println!("{summary}");
         println!(
-            "frames: tier={tier:?} refs={refs:?} pane={pane:?} debug build, budget recorded not asserted: {} of {} keys at or over {INPUT_TO_FRAME:?}: {}",
+            "frames: tier={tier:?} refs={refs:?} pane={pane:?} debug build, budget recorded not asserted: {} of {} keys at or over {limit:?}: {}",
             late.len(),
             total,
             late.join(", ")
@@ -67,14 +82,14 @@ pub(super) fn judge(
     );
     println!("{summary}");
     println!(
-        "frames: tier={tier:?} refs={refs:?} pane={pane:?} keys over {INPUT_TO_FRAME:?} (recorded; the gate is the p99): {} of {}: {}",
+        "frames: tier={tier:?} refs={refs:?} pane={pane:?} keys over {limit:?} (recorded; the gate is the p99): {} of {}: {}",
         late.len(),
         total,
         late.join(", ")
     );
     assert!(
-        gate.holds(INPUT_TO_FRAME),
-        "p99 {:?} is over the {INPUT_TO_FRAME:?} input-to-frame budget at {tier:?} with {refs:?} refs ({} of {} keys over): {}",
+        gate.holds(limit),
+        "p99 {:?} is over the {limit:?} input-to-frame budget at {tier:?} with {refs:?} refs ({} of {} keys over): {}",
         gate.p99,
         late.len(),
         total,

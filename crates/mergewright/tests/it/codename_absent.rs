@@ -65,11 +65,20 @@ const SHIPPED: &[&str] = &[
 const WORDS: &[&str] = &["graft", "tributary", "trib_"];
 
 /// Shipped paths another ticket clears, with that ticket.
+/// pre-publish-cleanup/14 deleted the stale `docs/shots/` captures except
+/// these eight M4 stems (both sizes): `m4_walk::every_scenario::
+/// captures_are_named_keyed_and_listed_in_the_matrix` reads them. They still
+/// name the earlier product (old pty run, no live writer); regenerating them
+/// needs the m4 pty script run by a human, so they stay listed here.
 const PENDING: &[(&str, &str)] = &[
-    // Old captures with no live writer, and contact sheets that embed them:
-    // they hold fixture identities and the earlier product name. Listed in
-    // docs/perf/pp-12-no-writer.txt; ticket 12 stopped here (see its NOTES).
-    ("docs/shots/", "12-stop"),
+    ("docs/shots/m4-01-push-box-plain-*", "14-kept"),
+    ("docs/shots/m4-02-push-box-lease-*", "14-kept"),
+    ("docs/shots/m4-03-credential-masked-*", "14-kept"),
+    ("docs/shots/m4-04-credential-username-*", "14-kept"),
+    ("docs/shots/m4-05-progress-footer-*", "14-kept"),
+    ("docs/shots/m4-06-rejected-sticky-*", "14-kept"),
+    ("docs/shots/m4-07-journal-remote-rows-*", "14-kept"),
+    ("docs/shots/m4-08-undo-after-push-*", "14-kept"),
 ];
 
 /// Rows of `<path>\t<exact substring>\t<reason>`.

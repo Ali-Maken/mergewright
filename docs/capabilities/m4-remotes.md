@@ -37,7 +37,6 @@ status: works
   `mergewright_ops::tests::it::remote_ops::fetch_allowed_in_bare`
   `mergewright::tests::it::remote_by_key::fetch_key_moves_tracking_ref`
   `mergewright::tests::it::m4_walk::hangs_and_undo::u_never_touches_the_remote`
-- **Looks like:** `docs/shots/m4-05-progress-footer-80x24.txt`, `docs/shots/m4-05-progress-footer-160x48.txt`
 - **Decided in:** `docs/design-notes/m4-remotes.md` (Push/fetch semantics); ADR-0037 §3
 - **Status:** works
 
@@ -110,7 +109,6 @@ status: works
 - **Proven by:** `mergewright_ops::tests::it::remote_ops::push_then_undo_touches_only_local`
   `mergewright::tests::it::remote_by_key::push_then_undo_is_local_only`
   `mergewright::update::remote::tests::push_box_text_table`
-- **Looks like:** `docs/shots/m4-01-push-box-plain-80x24.txt`, `docs/shots/m4-01-push-box-plain-160x48.txt` (the box draws no visible frame at either size — see M4-24)
 - **Decided in:** `docs/design-notes/m4-remotes.md` New UI: Push box; ADR-0037 §3
 - **Status:** works
 
@@ -159,7 +157,6 @@ status: works
   `mergewright_ops::tests::it::remote_ops::lease_push_refused_when_stale`
   `mergewright::tests::it::remote_by_key::rejected_then_lease_push`
   `mergewright::tests::it::remote_by_key::stale_lease_refused`
-- **Looks like:** `docs/shots/m4-02-push-box-lease-80x24.txt`, `docs/shots/m4-02-push-box-lease-160x48.txt`, `docs/shots/m4-06-rejected-sticky-80x24.txt`, `docs/shots/m4-06-rejected-sticky-160x48.txt`
 - **Decided in:** `docs/design-notes/m4-remotes.md` Hard choice 4; ADR-0037 §6 (lease-to-any-branch limitation)
 - **Status:** works (lease command is truncated in the box at both widths — cosmetic, see M4-24)
 
@@ -214,7 +211,6 @@ unverified_aspect: colour, and the field's current look (no capture shows it as 
   `mergewright_ui::text_input::tests::every_keystroke_visibly_changes_the_masked_row`
   `mergewright_ui::text_input::tests::the_resting_row_is_decided_by_the_seed_not_the_length`
   `mergewright::update::credential::tests::is_masked_prompt_table`
-- **Looks like:** `docs/shots/m4-03-credential-masked-80x24.txt`, `docs/shots/m4-03-credential-masked-160x48.txt` — **stale**: both predate the M5 fixed-width/pulse redesign and show the old per-character bullet row (KNOWN_GAPS M5/01). Not cited as evidence of current appearance; no current capture of the credential prompt with the redesigned field exists in this repo.
 - **Decided in:** `docs/design-notes/m4-remotes.md` Hard choice 2; ADR-0038 §2
 - **Status:** works — colour unverified (rule 5); no capture shows the field as it looks today (see above)
 
@@ -234,7 +230,6 @@ status: works
   username-then-password exchange masks only the second.
 - **Proven by:** `mergewright::update::credential::tests::is_masked_prompt_table`
   `mergewright::tests::it::credential_by_key::username_then_password`
-- **Looks like:** `docs/shots/m4-04-credential-username-80x24.txt`, `docs/shots/m4-04-credential-username-160x48.txt`
 - **Decided in:** `docs/design-notes/m4-remotes.md` New UI: Credential prompt
 - **Status:** works
 
@@ -374,7 +369,6 @@ status: works
   busy status at least once per operation, throttled to at most one update
   per 100 ms; narrows further under 100 columns.
 - **Proven by:** `mergewright::tests::it::remote_by_key::progress_reaches_the_status_line`
-- **Looks like:** `docs/shots/m4-05-progress-footer-80x24.txt`, `docs/shots/m4-05-progress-footer-160x48.txt`
 - **Decided in:** `docs/design-notes/m4-remotes.md` New UI: Footer while a remote write runs
 - **Status:** works
 
@@ -416,7 +410,6 @@ status: works
   undoable. Neither fetch nor push ever shows the undo marker.
 - **Proven by:** `mergewright::view::journal::tests::remote_rows`
   `mergewright::tests::it::m4_walk::hangs_and_undo::journal_rows`
-- **Looks like:** `docs/shots/m4-07-journal-remote-rows-80x24.txt`, `docs/shots/m4-07-journal-remote-rows-160x48.txt`
 - **Decided in:** `docs/design-notes/m4-remotes.md` "Journal browser rows"
 - **Status:** works — at 80 columns the row text is cut (`"not undoa…"`); the key content still reads, but see M4-24
 
@@ -562,7 +555,6 @@ status: broken
   applied after the M4 acceptance review (commit `acec55f`) moved the key
   the user needs (`P`) earlier so it survives the cut.
 - **Proven by:** — (visual findings from the acceptance walk, not test-proven)
-- **Looks like:** `docs/shots/m4-01-push-box-plain-80x24.txt`, `docs/shots/m4-02-push-box-lease-80x24.txt`, `docs/shots/m4-06-rejected-sticky-80x24.txt`, `docs/shots/m4-07-journal-remote-rows-80x24.txt`
 - **Decided in:** `docs/log/m4.md` (acceptance-remotes NOTES, findings 3–4)
 - **Status:** broken (cosmetic; KNOWN_GAPS, expiry M5)
 
