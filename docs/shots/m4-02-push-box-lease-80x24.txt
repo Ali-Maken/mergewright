@@ -1,26 +1,26 @@
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 80x24
 
- ◆ work  …e/push-rejected-then-lease/graft-remote-0/work · main  88 rows so far
-▸ ◆    ⓘ [◆ main ↑1 ↓1] amended                                    6y   68c13c4
-  │ ●  ⓘ [origin/main] Commit 200                                  7y   d5ae5fd
-  ●─╯    Commit 199                                                7y   13e6ab1
-  ●      Commit 198                                                7y   f5055d9
-  ●      Commit 197                                                7y   2cce853
-  ●   ╭ Force-push main → origin/main? ────────────────────────────────────────╮
-  ●   │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your     │
-  ●   │ fetch (lease)                                                          │
-  ●   │ rewrites history for everyone who has d5ae5fd                          │
-  ●   │ leaves origin/main:                                                    │
-  ●   │ d5ae5fd  Commit 200                            Graft Fixture           │
-  ●   │                                                                        │
-  ●   │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc… │
-  ●   │                                                                        │
-  ●   │ ▸[ Cancel ]   [ Force push ]                                           │
-  ●   ╰────────────────────────────────────────────────────────────────────────╯
-  ●      Commit 185                                                7y   09ae97c
-  ●      Commit 184                                                7y   49d7783
-  ●      Commit 183                                                7y   22d55c9
-  ●      Commit 182                                                7y   d212b3e
-  ●      Commit 181                                                7y   c8254c5
-  ●      Commit 180                                                7y   e95ccd4
+ ◆ work  …-then-lease/mwrfx-remote-0/work · main  201 commits  1 commit to push
+▸ ◆    ⓘ main (you)   amended  ↑1 to push                            Maker   6y
+  ┃                   Maker · 7 years ago · made on main · 1ed7d03
+  ┃ ●  ⓘ origin/main  Commit 200  origin/main is here                Maker   7y
+  ●┄╯    main (you)   Commit 199                                     Maker   7y
+  ●                   Commit 198                                     Maker   7y
+  ●   ╭ Force-push main → origin/main? ──────────────────────────────────╮   7y
+  ●   │ origin/main 38e090d → 1ed7d03 · refused if origin moved since    │   7y
+  ●   │ your fetch (lease)                                               │   7y
+  ●   │ rewrites history for everyone who has 38e090d                    │   7y
+  ●   │ leaves origin/main:                                              │   7y
+  ●   │ 38e090d  Commit 200                            Maker Fixture     │   7y
+  ●   │                                                                  │   7y
+  ●   │ git push --progress --force-with-lease=refs/heads/main:38e090d7… │   7y
+  ●   │                                                                  │   7y
+  ●   │ ▸[ Cancel ]   [ Force push ]                                     │   7y
+  ●   ╰──────────────────────────────────────────────────────────────────╯   7y
+  ●                   Commit 186                                     Maker   7y
+  ●                   Commit 185                                     Maker   7y
+  ●                   Commit 184                                     Maker   7y
+  ●                   Commit 183                                     Maker   7y
+  ●                   Commit 182                                     Maker   7y
+  ●                   Commit 181                                     Maker   7y
  ←/→ move  ⏎ choose  esc cancel

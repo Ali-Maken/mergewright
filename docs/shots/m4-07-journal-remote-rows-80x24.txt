@@ -1,12 +1,12 @@
 m4 walk capture: m4-07-journal-remote-rows — scenario journal-rows, keys J, unicode tier, 80x24
 
 JOURNAL · what happened in this repo, newest first
-▸ ●  now       push main →…           not undoable — origin has it…
-  ●  now       pull origin/main       1 ref · the index · the…              ← u
-  ●  now       fetch all remotes      remote-tracking refs · not…
+▸ ●  future    push main →…           not undoable — origin has it…
+  ●  future    pull origin/main       1 ref · the index · the…              ← u
+  ●  future    fetch all remotes      origin/main moved · not…
   $  6y ago    committed "ours" on main
   $  6y ago    clone: from…
-  a branch deleted outside Graft and never checked out leaves no trace here
+  a branch deleted outside Mergewright and never checked out leaves no trace
 
 
 
@@ -22,5 +22,5 @@ JOURNAL · what happened in this repo, newest first
 
 
 
-● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a…
+● done in Mergewright: u can undo it · $ done outside Mergewright: u never…
 / find  space command log  J/esc close  ? keys

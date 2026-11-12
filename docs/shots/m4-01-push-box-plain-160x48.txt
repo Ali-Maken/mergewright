@@ -1,50 +1,50 @@
 m4 walk capture: m4-01-push-box-plain — scenario push-plain, keys P, unicode tier, 160x48
 
- ◆ work  /tmp/graft-capture/push-plain/graft-remote-0/work · main                                                                               176 rows so far
+ ◆ work  /tmp/mwr-capture/push-plain/mwrfx-remote-0/work · main                                                                   201 commits  1 commit to push
 
-▸ ◆  ⓘ [◆ main ↑1] to push                                                                                                                      GT 6y   9809004
-  ●    [origin/main] Commit 200                                                                                                                 GF 7y   d5ae5fd
-  ●    Commit 199                                                                                                                               GF 7y   13e6ab1
-  ●    Commit 198                                                                                                                               GF 7y   f5055d9
-  ●    Commit 197                                                                                                                               GF 7y   2cce853
-  ●    Commit 196                                                                                                                               GF 7y   325da3f
-  ●    Commit 195                                                                                                                               GF 7y   0722297
-  ●    Commit 194                                                                                                                               GF 7y   b6a4a47
-  ●    Commit 193                                                                                                                               GF 7y   60af0eb
-  ●    Commit 192                                                                                                                               GF 7y   aceb8c5
-  ●    Commit 191                                                                                                                               GF 7y   11d68ff
-  ●    Commit 190                                                                                                                               GF 7y   91900bd
-  ●    Commit 189                                                                                                                               GF 7y   cec3e93
-  ●    Commit 188                                                                                                                               GF 7y   0a91ece
-  ●    Commit 187                                                                                                                               GF 7y   3121935
-  ●    Commit 186                                                                                                                               GF 7y   fab25df
-  ●    Commit 185                                                                                                                               GF 7y   09ae97c
-  ●    Commit 184                                                                                                                               GF 7y   49d7783
-  ●    ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
-  ●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                   │  GF 7y   d212b3e
-  ●    │                                                                                                                                     │  GF 7y   c8254c5
-  ●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                          │  GF 7y   e95ccd4
-  ●    │                                                                                                                                     │  GF 7y   97b58e5
-  ●    │ ▸[ Cancel ]   [ Push ]                                                                                                              │  GF 7y   1c9b7ed
-  ●    ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   f93340a
-  ●    Commit 176                                                                                                                               GF 7y   5aaeeba
-  ●    Commit 175                                                                                                                               GF 7y   6be5928
-  ●    Commit 174                                                                                                                               GF 7y   9b67be4
-  ●    Commit 173                                                                                                                               GF 7y   937d32b
-  ●    Commit 172                                                                                                                               GF 7y   81be718
-  ●    Commit 171                                                                                                                               GF 7y   57b8196
-  ●    Commit 170                                                                                                                               GF 7y   8ea98be
-  ●    Commit 169                                                                                                                               GF 7y   4926766
-  ●    Commit 168                                                                                                                               GF 7y   0d60d60
-  ●    Commit 167                                                                                                                               GF 7y   fa5ef1d
-  ●    Commit 166                                                                                                                               GF 7y   953abf3
-  ●    Commit 165                                                                                                                               GF 7y   49912f3
-  ●    Commit 164                                                                                                                               GF 7y   1143b38
-  ●    Commit 163                                                                                                                               GF 7y   e135216
-  ●    Commit 162                                                                                                                               GF 7y   6ddbc37
-  ●    Commit 161                                                                                                                               GF 7y   4b6f375
-  ●    Commit 160                                                                                                                               GF 7y   545bf13
-  ●    Commit 159                                                                                                                               GF 7y   a1a658c
-  ●    Commit 158                                                                                                                               GF 7y   1e28a71
+▸ ◆  ⓘ main (you)           to push  ↑1 to push                                                                   you   6y│ main  (you're here)
+  ┃                         you · 6 years ago · made on main · b9d5343                                                    │ ! 1 commit to push
+  ●                         Commit 200  origin/main is here                                                     Maker   7y│ · the main line: branches merge into
+  ●                         Commit 199                                                                          Maker   7y│   it
+  ●                         Commit 198                                                                          Maker   7y│ ✓ up to date with origin/main
+  ●                         Commit 197                                                                          Maker   7y│ · everyone, last commit 6y ago
+  ●                         Commit 196                                                                          Maker   7y│
+  ●                         Commit 195                                                                          Maker   7y│ built on
+  ●                         Commit 194                                                                          Maker   7y│   main
+  ●                         Commit 193                                                                          Maker   7y│
+  ●                         Commit 192                                                                          Maker   7y│
+  ●                         Commit 191                                                                          Maker   7y│
+  ●                         Commit 190                                                                          Maker   7y│
+  ●                         Commit 189                                                                          Maker   7y│
+  ●                         Commit 188                                                                          Maker   7y│
+  ●                         Commit 187                                                                          Maker   7y│
+  ●                         Commit 186                                                                          Maker   7y│
+  ●                         Commit 185                                                                          Maker   7y│
+  ●                         ╭ Push main → origin/main ──────────────────────────────────────────────────────────────╮   7y│
+  ●                         │ 1 commit · can't be undone from here — origin keeps what you send                     │   7y│
+  ●                         │                                                                                       │   7y│
+  ●                         │ git push --progress origin refs/heads/main:refs/heads/main                            │   7y│
+  ●                         │                                                                                       │   7y│
+  ●                         │ ▸[ Cancel ]   [ Push ]                                                                │   7y│
+  ●                         ╰───────────────────────────────────────────────────────────────────────────────────────╯   7y│
+  ●                         Commit 177                                                                          Maker   7y│
+  ●                         Commit 176                                                                          Maker   7y│
+  ●                         Commit 175                                                                          Maker   7y│
+  ●                         Commit 174                                                                          Maker   7y│
+  ●                         Commit 173                                                                          Maker   7y│
+  ●                         Commit 172                                                                          Maker   7y│
+  ●                         Commit 171                                                                          Maker   7y│
+  ●                         Commit 170                                                                          Maker   7y│
+  ●                         Commit 169                                                                          Maker   7y│
+  ●                         Commit 168                                                                          Maker   7y│
+  ●                         Commit 167                                                                          Maker   7y│
+  ●                         Commit 166                                                                          Maker   7y│
+  ●                         Commit 165                                                                          Maker   7y│
+  ●                         Commit 164                                                                          Maker   7y│
+  ●                         Commit 163                                                                          Maker   7y│
+  ●                         Commit 162                                                                          Maker   7y│
+  ●                         Commit 161                                                                          Maker   7y│
+  ●                         Commit 160                                                                          Maker   7y│
+  ●                         Commit 159                                                                          Maker   7y│
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  y push  ←/→ move  ⏎ choose  esc cancel

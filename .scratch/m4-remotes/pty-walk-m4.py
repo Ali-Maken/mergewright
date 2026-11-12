@@ -12,7 +12,7 @@ masked field). This script waits for the text the capture says must be on
 screen, then — depending on the capture's `when` — for the screen to stop
 changing (`settled`) or not at all (`appears`, for a progress footer that
 is gone a second later), asserts the frame against docs/shots/<stem>-<WxH>.txt
-through `graft-fixtures capture` (redacted; rewritten only under
+through `mergewright-fixtures capture` (redacted; rewritten only under
 MWR_UPDATE_SHOTS=1, and a run that rewrites one is red anyway), and ends
 the run with SIGTERM.
 
@@ -36,7 +36,7 @@ Usage: python3 pty-walk-m4.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build first, and point BIN at the
 target directory that holds it:
     cargo build -q -p mergewright --example m4_walk
-    cargo build -q -p graft-fixtures --bin graft-fixtures
+    cargo build -q -p mergewright-fixtures --bin mergewright-fixtures
     MWR_TARGET=target python3 .scratch/m4-remotes/pty-walk-m4.py 80x24
 """
 import fcntl, os, pty, re, select, signal, struct, subprocess, sys, tempfile, termios, time
@@ -47,7 +47,7 @@ SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 TARGET = os.environ.get("MWR_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m4_walk"
-FIXTURES = os.environ.get("MWR_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+FIXTURES = os.environ.get("MWR_FIXTURES_BIN", f"{TARGET}/debug/mergewright-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,  # sandbox-ok: --stems prints names, opens no repo
                            check=True).stdout.splitlines()]
@@ -66,9 +66,9 @@ COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 # Every Graft launch goes through sandbox_env (m8/22): temp XDG_CONFIG_HOME, checked.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
 from mwr_sandbox import sandbox_env, scratch_root  # noqa: E402
-config_home = tempfile.mkdtemp(prefix="graft-walk-m4-")
-os.makedirs(os.path.join(config_home, "graft"))
-with open(os.path.join(config_home, "graft", "config.toml"), "w") as f:
+config_home = tempfile.mkdtemp(prefix="mwr-walk-m4-")
+os.makedirs(os.path.join(config_home, "mergewright"))
+with open(os.path.join(config_home, "mergewright", "config.toml"), "w") as f:
     f.write('[graph]\nrenderer = "unicode"\n')
 os.makedirs(f"{TARGET}/pty-walk-m4", exist_ok=True)
 
@@ -176,7 +176,7 @@ class Run:
             pass
         # The pty is read while we wait, as a terminal reads it (m5's fix,
         # m7-power-tools/30v; m8-polish-and-ship/22): an unread master fills,
-        # graft blocks in `write` mid-frame and never takes the SIGTERM wake.
+        # the app blocks in `write` mid-frame and never takes the SIGTERM wake.
         start = time.monotonic()
         while time.monotonic() - start < EXIT_GRACE:
             try:
@@ -212,7 +212,7 @@ def write_capture(stem, scenario, keys, frame, notes):
         notes.append(f"{size} bytes, over the 8 KB the ticket wants")
     # The same writer as pty-walk-m5.py/-m6.py: redacts, compares, and
     # rewrites the file only under MWR_UPDATE_SHOTS=1.
-    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: graft-fixtures, not Graft
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),  # sandbox-ok: mergewright-fixtures, not the app
                              capture_output=True)
     if checked.returncode != 0:
         print(f"{path}: {size} bytes, DRIFTED")
