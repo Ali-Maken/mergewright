@@ -346,3 +346,30 @@ fn u_in_a_review_from_the_banner_opens_the_resolver_on_the_pick() {
 
 mod click;
 mod stages_nothing;
+
+/// Abort from the review (pre-publish-cleanup/15): the review has no `a` of
+/// its own and `?` lists no banner keys, so the visible route is the one the
+/// bars teach: `Esc` back to the clashes, `Esc` to the banner, `a` opens the
+/// abort box.
+#[test]
+fn abort_is_reachable_from_the_review_by_esc_esc_a() {
+    let mut state = review_over_the_resolver();
+    assert!(state.in_progress.is_some(), "the merge is live");
+    let mut presses = 0;
+    while !state.banner_focus {
+        assert!(presses < 4, "no banner after {presses} presses");
+        let code = if presses < 2 {
+            KeyCode::Escape
+        } else {
+            KeyCode::Tab
+        };
+        state = press(&state, code).0;
+        presses += 1;
+    }
+    assert!(state.finish.is_none() && state.resolver.is_none());
+    let (asked, _) = press(&state, KeyCode::Char('a'));
+    assert!(
+        asked.confirm.is_some(),
+        "`a` on the banner opens the abort box"
+    );
+}
