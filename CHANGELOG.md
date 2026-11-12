@@ -114,7 +114,8 @@ publishing), the release scroll run. All **unverified**.
 
 ### M7 — Power tools
 
-You can rewrite, trace and recover history without leaving the app.
+You can rewrite and trace history without leaving the app. Recovering a
+lost edit from the journal is **not** verified (see Known gaps).
 
 #### Added
 
@@ -138,11 +139,14 @@ You can rewrite, trace and recover history without leaving the app.
 - **History** of a file (`F`) or of a function (`B L`), renames followed.
 - **Recover with the journal** (`J`): a commit lost to a shell reset, a
   deleted branch, or an edit held in an undo backup, back in `J ⏎ y` /
-  `J n ⏎ y`.
+  `J n ⏎ y`. **Unverified end to end:** the last step of its acceptance walk
+  was recorded as failing (a restored edit written with CRLF line endings
+  where the file had LF, 2026-10-01); `TESTING.md`'s box is unticked.
 - **A branch switch over an ignored file** that would be overwritten is
   refused, naming the file, even at 80 columns.
 - **The acceptance walk**: `scripts/m7-accept.sh`, 29 journeys
-  (`TESTING.md`, "M7 acceptance").
+  (`TESTING.md`, "M7 acceptance"). Its checklist is not fully ticked, so M7
+  is not claimed as accepted.
 
 #### Known gaps
 
