@@ -1,0 +1,5 @@
+load before:  7:37  up 17 days, 21:36, 2 users, load averages: 5.90 4.83 3.26
+held_key::held_j_stops_on_release_pixel_free: 5/5 passed
+piece_gate::no_frame_rasterises_more: 5/5 passed
+frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier: 5/5 passed
+load after:  7:42  up 17 days, 21:40, 2 users, load averages: 3.02 3.95 3.31

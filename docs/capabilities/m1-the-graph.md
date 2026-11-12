@@ -55,8 +55,6 @@ unverified_aspect: real tmux and real SSH rendering — tmux not installed on th
   `mergewright_term::detect::tests::tmux_too_old_to_pass_anything_through_falls_back_to_unicode`
   `mergewright_term::detect::tests::tmux_with_passthrough_reaches_the_outer_terminal`
   `mergewright_term::detect::tests::ssh_buys_the_terminal_an_extra_round_trip`
-- **Looks like:** `docs/shots/19-ascii-tier-drop-key.txt`,
-  `docs/shots/33-pty-tier-cycle.txt`, `docs/shots/08-unicode-graph-column.txt`
 - **Decided in:** `docs/design/04-terminal-capability-detection.md` §4.2–4.3;
   ADR-0016.
 - **Status:** works for the decision logic and byte streams (heavily
@@ -168,7 +166,6 @@ status: works
   from search, being silently dropped by the promotion swap) was found and
   fixed: both orderings — jump-then-promote and promote-then-jump — now
   re-apply the pending jump correctly.
-- **Looks like:** `docs/shots/18-promotion-skewed-dates.txt`
 - **Decided in:** `docs/design/03-graph-layout-algorithm.md` §3.6.
 - **Status:** works.
 
@@ -201,7 +198,6 @@ status: works
   `mergewright_ui::graph_screen::tests::ui_icons_changes_how_badges_render`
   `mergewright::jobs::tests::ahead_behind_is_counted_on_a_worker_never_the_loops_thread`
   `mergewright_git::repo::tests::ahead_behind_counts_the_ref_states_branches`
-- **Looks like:** `docs/shots/10-row-columns.txt`, `docs/shots/11-ref-badges.txt`
 - **Decided in:** `docs/design/01-view-mockups.md`.
 - **Status:** works.
 
@@ -227,8 +223,6 @@ status: works
   `SystemTime::now()`, on the render path).
 - **Proven by:**
   `mergewright_ui::graph_screen::columns::tests::matches_git_log_date_relative_at_every_boundary`
-- **Looks like:** `docs/shots/48-relative-dates.txt`,
-  `docs/shots/53-relative-dates-fixed-clock.txt`
 - **Decided in:** design finding from a live user bug report, not a
   pre-written spec section.
 - **Status:** works, verified against real git, not just internal
@@ -254,11 +248,6 @@ unverified_aspect: lane-colour distinguishability by eye at truecolor/256, and b
   hue). At 16 colours, the highlighted/current row gets a left-edge accent
   rule (`▏`) instead of a raised background, because a background-shade
   step disappears at that depth.
-- **Looks like:** `docs/shots/13-foxtrot-merge-16.txt`,
-  `docs/shots/13-foxtrot-merge-no-color.txt`,
-  `docs/shots/13-criss-cross-merge-16.txt`,
-  `docs/shots/13-criss-cross-merge-no-color.txt`,
-  `docs/shots/12c-palette16-chrome.txt`
 - **Decided in:** ADR-0019.
 - **Status:** partial. The dashing mechanism is corpus-tested (same-colour
   neighbours never share a glyph) and pty-replayed, but two related
@@ -322,11 +311,7 @@ unverified_aspect: whether the folded rail reads as history or decoration at rea
   `mergewright_graph::fold::tests::in_view::a_connector_past_the_budget_drops_and_never_folds`
   `mergewright_ui::graph_screen::tests::lanes_in_view::a_thread_of_twenty_columns_still_fits_the_configured_cap`
   `mergewright_ui::graph_column::tests::a_node_whose_column_folded_draws_on_the_rail_in_its_place`
-- **Looks like:** `docs/shots/14-many-lanes.txt`,
-  `docs/shots/14-many-lanes-expanded.txt`, `docs/shots/39-git-git-80x24.txt`,
-  `docs/shots/40-raster-folded-on-dark.png`,
-  `docs/shots/47-git-git-80x24-after-jj.txt`,
-  `docs/shots/44-git-git-160x40.txt`
+- **Looks like:** `docs/shots/40-raster-folded-on-dark.png`
 - **Decided in:** `docs/design/03-graph-layout-algorithm.md` §3.5
   (compaction); ADR-0022, ADR-0025.
 - **Status:** works structurally and by test, but the visual judgment is
@@ -362,10 +347,8 @@ status: works
   `mergewright_graph::inclusion::tests::fold_by_default::opening_a_merge_invalidates_only_the_rows_from_the_merge_down`
   `mergewright_graph::inclusion::tests::a_hidden_stash_takes_its_own_commits_with_it_but_not_its_base`
   `mergewright_graph::inclusion::tests::first_parent_view_follows_the_default_branch_only`
-- **Looks like:** `docs/shots/15-first-parent.txt`,
-  `docs/shots/ease-pass/main-folded-120.txt`,
-  `docs/shots/ease-pass/main-opened-120.txt`,
-  `docs/shots/15-stash-hidden.txt`
+- **Looks like:** `docs/shots/ease-pass/main-folded-120.txt`,
+  `docs/shots/ease-pass/main-opened-120.txt`
 - **Decided in:** `docs/design/02-keymap.md` §2.3 (keys added by this
   ticket, not pre-existing in the keymap doc).
 - **Status:** works. A release binary was checked byte-identical between
@@ -390,9 +373,6 @@ status: works
   anything else `Esc` might do. Selection survives a chunk being evicted
   from memory and rebuilt later — it stays on the same commit id, not a row
   number.
-- **Looks like:** `docs/shots/16-criss-cross-focus.txt`,
-  `docs/shots/16-criss-cross-focus-esc.txt`,
-  `docs/shots/16-criss-cross-highlight.txt`
 - **Decided in:** `docs/design/05-visualization.md` §5.2 (Focus mode); the
   pixel-tier rule that dimming is alpha-only, never a heavier stroke,
   traces to ADR-0024.
@@ -426,8 +406,6 @@ status: works
   jump used to strand the "seeking" indicator forever, recoverable only by
   `Esc`; fixed to withdraw the pending jump the same way selecting a row
   does).
-- **Looks like:** `docs/shots/17-mouse-select-and-tooltip.txt`,
-  `docs/shots/32-wheel-before.txt`, `docs/shots/32-wheel-after.txt`
 - **Decided in:** `PROMPT.md` §3 "Mouse".
 - **Status:** works.
 
@@ -463,8 +441,6 @@ status: works
   `mergewright_ui::graph_screen::tests::escape_sequences_render_inert_in_the_reveal`
   `mergewright::view::tests::a_reveal_renders_an_escape_sequence_inert`
   `mergewright::view::tests::hover_names_the_reveal_row`
-- **Looks like:** `docs/shots/41-hover-reveal.txt`, `docs/shots/41-peek.txt`,
-  `docs/shots/41-no-reveal.txt`
 - **Decided in:** ADR-0023 (supersedes ADR-0020, the original tooltip
   design).
 - **Status:** works.
@@ -492,7 +468,6 @@ unverified_aspect: whether the OS clipboard actually received the copied SHA —
   `a_full_sha_encodes_to_fifty_six_characters`,
   `inside_tmux_it_is_wrapped_alone_with_every_escape_doubled`,
   `directly_it_is_written_as_is`).
-- **Looks like:** `docs/shots/45-y-copies-sha.txt`, `docs/shots/45-notice-cleared.txt`
 - **Decided in:** ADR-0023 (added as the replacement for the tooltip's
   full-hash display, M1-12).
 - **Status:** partial. The send side — the exact bytes Mergewright writes — is
@@ -529,7 +504,6 @@ unverified_aspect: the 100k-search responsiveness claim — not independently re
   `mergewright::search::tests::a_scan_finds_a_commit_by_its_body`
   `mergewright::search::tests::a_scan_with_no_hit_finishes_with_nothing`
   `mergewright::search::tests::a_cancelled_scan_stops_after_the_chunk_in_hand`
-- **Looks like:** `docs/shots/26-search-far.txt`, `docs/shots/26-search-typing.txt`
 - **Decided in:** `PROMPT.md` §4 "History" (search by message, author,
   committer, SHA, path, content or date range — M1 covers the row-level
   fields; path/content pickaxe search and date-range filtering aren't part
@@ -651,8 +625,6 @@ status: works
   be the terminal library's own default behaviour, not something Mergewright
   asked for; fixed to a targeted clear, and the fix closed three related
   image-tier gaps at once).
-- **Looks like:** `docs/shots/21-redetect-resize-and-focus.txt`,
-  `docs/shots/21-tiny-sizes-launch-0x0.txt`, `docs/shots/21-tiny-sizes-launch-1x1.txt`
 - **Decided in:** `docs/design/04-terminal-capability-detection.md` §4.5
   (re-detection triggers); ADR-0012 addendum.
 - **Status:** works. One timing edge case remains open, not closed:
@@ -689,7 +661,6 @@ status: works
   inner run loop could be lost entirely if nothing was listening for it
   yet — fixed by holding it, joining the forwarding thread, then handing
   any unhandled input back to the caller.
-- **Looks like:** `docs/shots/20-typeahead-f2-during-probe.txt`
 - **Decided in:** ADR-0013 (own input decoder, not `crossterm::event::read`).
 - **Status:** works. One decoder gap named and accepted, not planned unless
   it's actually seen: `urxvt`'s own `1015` mouse-reporting variant isn't
@@ -802,8 +773,7 @@ status: works
   screen. Fixed so a strip only waits for the cursor's row when the cursor
   is actually visible; a scroll that leaves the cursor off-screen draws
   normally.
-- **Looks like:** `docs/shots/37-wheel-scroll-placements.txt`,
-  `docs/shots/user-37-git-git-pixel-after-scroll.png` (the original bug
+- **Looks like:** `docs/shots/user-37-git-git-pixel-after-scroll.png` (the original bug
   report capture)
 - **Decided in:** bug found during the user's gallery walkthrough, not a
   pre-written ticket.
@@ -836,10 +806,6 @@ unverified_aspect: whether each gallery stop reads correctly by eye — explicit
   step several threads were racing to read the same keystroke and losing
   most of them — fixed by making the stdin reader a true singleton (see
   M1-18).
-- **Looks like:** one `docs/shots/35-<stop>-unicode.txt` and
-  `docs/shots/35-<stop>-ascii.txt` pair per stop (23 stops × 2 tiers, e.g.
-  `docs/shots/35-trivial-unicode.txt`), `docs/shots/35-coverage-matrix.txt`,
-  `docs/shots/38-gallery-first-frame-and-two-steps.txt`, `docs/shots/38-list.txt`
 - **Decided in:** `PROMPT.md`'s M1 promise, "the shape of history is
   obvious at a glance" — this is the mechanism the checklist in
   `TESTING.md` uses to check it, one repository shape at a time.
@@ -874,8 +840,6 @@ status: works
   are covered by the module's own test suite; `mergewright_fixtures::copy_into_temp`
   supports the test scaffolding that exercises the write path on a real
   temp repository.
-- **Looks like:** `docs/shots/54-commit-graph-offer-80.txt`,
-  `docs/shots/54-commit-graph-offer-120.txt`
 - **Decided in:** ADR-0008 (amended to add the offer, replacing an earlier
   version where a missing commit-graph was silently accepted).
 - **Status:** works, verified on real repositories up to 100k commits.
@@ -992,8 +956,7 @@ unverified_aspect: first paint at 1M commits right after clearing the OS page ca
   `mergewright::heavy::tests::child_gated_run` (guards measure inside a real
   child process, not the parent's lifetime-max RSS, so a run's peak can't
   leak forward and falsely pass a later, smaller fixture)
-- **Looks like:** `docs/shots/m1-memory-curve.txt`,
-  `docs/shots/m1-memory-curve-offer.txt`
+- **Looks like:** `docs/shots/m1-memory-curve.txt`
 - **Decided in:** ADR-0026 and its two amendments (the split heap/footprint
   bar; the tag-tip residual below).
 - **Status:** partial by design, and honestly so. Green where gated (peak

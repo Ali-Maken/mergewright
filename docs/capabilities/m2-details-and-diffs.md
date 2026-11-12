@@ -45,7 +45,6 @@ status: works
   `mergewright::update::selection::tests::down_one_from_the_row_selects_heads_row_and_asks_history_for_nothing`
   `mergewright::update::selection::tests::down_three_from_the_row_leaves_down_two_for_history`
   `mergewright::update::selection::tests::reconcile_clears_when_the_tree_goes_clean`
-- **Looks like:** `docs/shots/m2-working-tree-row.txt`
 - **Decided in:** M2 design note §02 (interfaces); handed to M3 for the scroll-reach gap
 - **Status:** works (scroll-reach gap open, see Deliberately not built)
 
@@ -156,7 +155,6 @@ status: works
   `mergewright::update::detail::tests::the_first_x_opens_the_compare_on_the_base`
   `mergewright::update::detail::tests::toggle_compare_on_the_same_oid_clears_it_and_emits_nothing`
   `mergewright::update::detail::tests::toggle_compare_on_a_different_oid_opens_compare_and_keeps_the_base`
-- **Looks like:** `docs/shots/m2-compare.txt`
 - **Decided in:** M2 design note §02
 - **Status:** works. File/line totals shown since m7-14 (`docs/shots/m7/compare-since-split-187x50.txt`); `m2-compare.txt` is the M2 drawing, stale.
 
@@ -176,7 +174,6 @@ status: works
   `mergewright::update::context_menu::every_menu_lists_the_dropped_keys`
   `mergewright::update::context_menu::open_for_history_row_lists_explain_when_the_row_has_a_finding`
   `mergewright::update::context_menu::open_for_history_row_omits_explain_on_an_unflagged_row`
-- **Looks like:** `docs/shots/m2-context-menu.txt`
 - **Decided in:** M2 design note §05
 - **Status:** works
 
@@ -196,7 +193,6 @@ status: works
   `mergewright::view::radar::tests::a_foxtrot_merge_on_the_default_chain_finds_one_warning`
   `mergewright::view::radar::tests::a_non_merge_off_the_chain_finds_nothing`
   `mergewright::view::radar::tests::with_evil_merge_off_no_unchecked_line_is_added` (config-off path)
-- **Looks like:** `docs/shots/m2-marker-column.txt`
 - **Decided in:** PROMPT.md §1.4; DESIGN.md §1.8; M2 design note §02
 - **Status:** works
 
@@ -214,7 +210,6 @@ status: works
 - **Proven by:**
   `mergewright::view::radar` marker/column tests (ticket 13/13b acceptance)
   `mergewright-ui::detail_pane::tests` radar-line wording tests, one per `RadarLine` variant, plus the join case (ticket 13c)
-- **Looks like:** `docs/shots/m2-marker-column.txt`
 - **Decided in:** M2 design note §02
 - **Status:** works
 

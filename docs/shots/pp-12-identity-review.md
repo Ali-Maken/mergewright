@@ -60,7 +60,7 @@ Cause site: `BranchIdentity::of_short_sha` (`mergewright-graph/src/identity.rs`)
 
 ## Other (stop; causes)
 
-Every entry here is a stop. Attributed by reading each pair (2026-11-11 run): the six `docs/shots/m6/*` files are rows that swapped place (two fixture commits with equal times: tie-break on oid, `mergewright-git/src/history/node.rs`), so they also show a moved cursor or lane glyph; `it__raster__raster-criss-cross-merge.snap` is lane-slot letters (unnamed lane, `of_short_sha`) hit by the hex mask; `m8-look-help-graph-187x50.txt` is the tail of the author word (`aft` from Graft, now the tail of Maker) showing past an overlay edge.
+Every entry here is a stop. Attributed by reading each pair (2026-11-11 run): the six `docs/shots/m6/*` files are rows that swapped place (two fixture commits with equal times: tie-break on oid, `mergewright-git/src/history/node.rs`), so they also show a moved cursor or lane glyph; `it__raster__raster-criss-cross-merge.snap` is lane-slot letters (unnamed lane, `of_short_sha`) hit by the hex mask; `m8-look-help-graph-187x50.txt` is the tail of the author word (`aft`, the tail of the old author word, now the tail of Maker) showing past an overlay edge.
 
 - `crates/mergewright-graph/tests/it/snapshots/it__raster__raster-criss-cross-merge.snap` line 45
 - `docs/shots/m6/fix-abort-reads-aborted-120x40.txt` line 3

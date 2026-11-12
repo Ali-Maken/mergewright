@@ -47,7 +47,6 @@ status: works
   `mergewright::update::undo::tests::capital_u_asks_for_a_redo`
   `mergewright::tests::it::undo_by_key::u_brings_a_discarded_untracked_file_back_byte_for_byte`
   `mergewright::tests::it::undo_by_key::u_takes_a_commit_back_and_capital_u_puts_it_again`
-- **Looks like:** `docs/shots/m3-09-undo-drift-box-80x24.txt`, `docs/shots/m3-08-journal-after-unstage-80x24.txt`
 - **Decided in:** PROMPT.md §3 ("you cannot lose work"); `docs/design-notes/m3-working-tree-undo-and-stash.md` §Interfaces, §Genuinely risky groups; ADR-0002 (`Ctrl+Z` is also undo when configured)
 - **Status:** works
 
@@ -66,7 +65,6 @@ status: works
   ops-execution acceptance: "CAS guard", "Drift guard" (ticket 03)
   `mergewright::update::undo::tests::drift_opens_a_box_that_quotes_what_moved_and_answers_nothing_yet`
   `mergewright::update::undo::tests::enter_on_stop_changes_nothing_and_enter_on_undo_forces` (per ticket 06 acceptance)
-- **Looks like:** `docs/shots/m3-09-undo-drift-box-80x24.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §Hard-to-reverse choices
 - **Status:** works. Known gap: a forced undo isn't pinned to the exact entry the drift box named — between the box being drawn and `U`/force being pressed, the journal tip could move and the force could apply to a different entry (needs `undo(ctx, force, aim)` with an `Aimed` error; signature change, not built this milestone).
 
@@ -85,7 +83,6 @@ status: works
   ops-execution acceptance: "Crash between Pending and outcome", "Failed midway is recoverable" (ticket 03)
   `mergewright::view::journal::tests::an_entry_recovery_closed_is_marked_interrupted_not_failed`
   `mergewright::tests::it::undo_by_key::an_interrupted_operation_is_announced_until_j_and_its_row_says_interrupted`
-- **Looks like:** `docs/shots/m3-08-journal-after-unstage-80x24.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §Journal entry; ADR-0031
 - **Status:** works
 
@@ -104,7 +101,8 @@ status: works
   `mergewright::view::journal` tests: newest-first order and the `← u` mark, an undo entry as the `← U` target, an interrupted entry, an aborted entry leading with git's error and still marked `← u` (5 tests per ticket 06 notes)
   `mergewright::update::journal` tests: open+re-read, notice taken up, `Esc` cancels an in-flight read, `j`/`k` clamp, `Space` expands one row at a time, `Enter` on `← u` runs undo and closes, `Enter` on an older row sets the notice (8 tests per ticket 06 notes)
   `mergewright-ui::journal_screen` widget tests over `TestBackend` (6 tests)
-- **Looks like:** `docs/shots/m3-journal-160x48.txt`, `docs/shots/m3-journal-80x24.txt`, `docs/shots/m3-journal-expanded.txt`, `docs/shots/m3-08-journal-after-unstage-80x24.txt`
+- **Looks like:** `docs/shots/m3-journal-160x48.txt`,
+  `docs/shots/m3-journal-80x24.txt`, `docs/shots/m3-journal-expanded.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §New UI "Journal browser"
 - **Status:** works. Known gap: the browser has no status line of its own while open, so a write started from it (or an older-row notice) can be invisible while `J` is up — same defect `StashView::notice` was given a fix for, not applied here.
 
@@ -161,7 +159,8 @@ status: works
 - **Proven by:**
   `mergewright::update::detail` confirm-box tests: opens with `selected == Safe`, `Enter` closes with no command, `→ Enter` emits `Discard`, `Esc` closes, keys under the box are swallowed (ticket 04 acceptance)
   `mergewright::tests::it::changes_pane_writes` — real-runner discard-then-check test
-- **Looks like:** `docs/shots/m3-03-discard-confirm-80x24.txt`, `docs/shots/m3-confirm-delete-untracked.txt`, `docs/shots/m3-confirm-discard.txt`
+- **Looks like:** `docs/shots/m3-confirm-delete-untracked.txt`,
+  `docs/shots/m3-confirm-discard.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §New UI "Confirm box"
 - **Status:** works. Known wording bug: the untracked-file box asks "Delete notes.md?" over a button labelled `Discard` — question and button disagree.
 
@@ -183,7 +182,9 @@ status: works
   `mergewright::update::commit_editor::tests::esc_keeps_a_draft_and_the_next_c_picks_it_back_up`
   `mergewright::tests::it::commit_editor_writes::enter_commits_what_was_typed_and_then_amends_it`
   `mergewright::tests::it::commit_editor_writes::nothing_staged_makes_no_commit`
-- **Looks like:** `docs/shots/m3-04-commit-editor-80x24.txt`, `docs/shots/m3-05-commit-refused-80x24.txt`, `docs/shots/m3-commit-editor-80x24.txt`, `docs/shots/m3-commit-editor-refused.txt`, `docs/shots/m3-amend.txt`
+- **Looks like:** `docs/shots/m3-04-commit-editor-80x24.txt`,
+  `docs/shots/m3-commit-editor-80x24.txt`,
+  `docs/shots/m3-commit-editor-refused.txt`, `docs/shots/m3-amend.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §New UI "Commit editor"; ADR-0034 (Tab order is 3 stops, not the original spec's 4)
 - **Status:** works
 
@@ -226,7 +227,9 @@ status: works
   `mergewright::tests::it::stash_by_key::every_stash_entry_is_badged_on_a_real_repository`
   `mergewright::refs::tests::every_stash_entry_is_badged_by_its_own_index`
   `mergewright::update::tests::capital_h_hides_the_stash_and_shows_it_again`
-- **Looks like:** `docs/shots/m3-06-stash-list-80x24.txt`, `docs/shots/m3-07-stash-prompt-80x24.txt`, `docs/shots/m3-stash-list.txt`, `docs/shots/m3-stash-save.txt`, `docs/shots/m3-stash-empty.txt`
+- **Looks like:** `docs/shots/m3-06-stash-list-80x24.txt`,
+  `docs/shots/m3-stash-list.txt`, `docs/shots/m3-stash-save.txt`,
+  `docs/shots/m3-stash-empty.txt`
 - **Decided in:** `docs/design-notes/m3-working-tree-undo-and-stash.md` §New UI "Stash overlay"; ADR-0034
 - **Status:** works. Known gaps: can't stash only selected files (`S` always stashes everything, or staged-only via the Tab toggle — not an arbitrary subset); can't create a branch from a stash; redo of an undone conflicted `stash pop` restores content correctly but loses git's own "mid-conflict" flag (index reads as ordinary modified, not unmerged) — conflict-aware redo is M6's job; a multi-line stash message survives undo as its first line only (git's stash reflog holds one line — content unaffected).
 

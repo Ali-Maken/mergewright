@@ -207,7 +207,7 @@
 419 crates/mergewright/tests/it/frames/paced.rs
 1304 crates/mergewright/tests/it/gallery.rs
 442 crates/mergewright/tests/it/heavy.rs
-753 crates/mergewright/tests/it/held_key.rs
+757 crates/mergewright/tests/it/held_key.rs
 965 crates/mergewright/tests/it/hint_bar.rs
 510 crates/mergewright/tests/it/journal_put_back.rs
 759 crates/mergewright/tests/it/journal_screen.rs

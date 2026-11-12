@@ -77,6 +77,14 @@ fn pieces_localise_on_his_walk() {
     }
 }
 
+/// A frame's pieces may rasterise up to this percent of today's area (was
+/// 100). pp-final, release, 2026-11-12, deterministic: frame 4 of the
+/// 222x70 walk is 145299 px pieces against 120768 px today (120.3 %): the
+/// cursor row grew a second line in ease-pass, so its pieces cost more than
+/// the whole-strip image they replace on that frame. Ruled (user): raise the
+/// bound to 135 %; the walk-wide 25 % gate (`GATE_PERCENT`) is unchanged.
+const FRAME_PERCENT: u64 = 135;
+
 #[test]
 fn no_frame_rasterises_more() {
     for size in SHAPES {
@@ -84,7 +92,7 @@ fn no_frame_rasterises_more() {
         let over: Vec<_> = frames
             .iter()
             .enumerate()
-            .filter(|(_, frame)| frame.pieces > frame.today)
+            .filter(|(_, frame)| frame.pieces * 100 > frame.today * FRAME_PERCENT)
             .map(|(index, frame)| (index, frame.today, frame.pieces))
             .collect();
         let most = frames.iter().map(|frame| frame.pieces).max().unwrap_or(0);
