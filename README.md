@@ -44,8 +44,10 @@ the top bar says where you are. (A text capture, so it shows no colour.)*
 
 ## Install
 
-You need a Rust toolchain (stable, version 1.88 or newer) and `git` 2.38 or
-newer. macOS and Linux are supported.
+You need `git` 2.38 or newer. macOS and Linux are supported.
+
+**Build it from a checkout (works today).** You also need a stable Rust
+toolchain, version 1.88 or newer. This installs the `mwr` command:
 
 ```sh
 git clone https://github.com/Ali-Maken/mergewright
@@ -53,8 +55,17 @@ cd mergewright
 cargo install --locked --path crates/mergewright
 ```
 
-That installs the `mwr` command. After the first release you will also be able
-to install with Homebrew or a one-line installer; those do not work yet.
+**After the first release** you will also be able to use the lines below.
+**None of them work yet.** `<owner>` is the account the release is published
+from.
+
+```sh
+brew install <owner>/tap/mergewright               # Homebrew tap
+curl -LsSf https://github.com/<owner>/mergewright/releases/latest/download/mergewright-installer.sh | sh
+```
+
+Then `man ./docs/man/mwr.1` reads the manual: every flag, every key in every
+place, every config key, the environment and the files Mergewright writes.
 
 ## Your first five minutes
 
@@ -67,28 +78,9 @@ Not inside a repository? Run `mwr` anyway. It shows recent repositories and lets
 you open, create or clone one. Press **`t`** there for a practice tour in a
 throwaway repository where nothing you do can hurt.
 
-Once a repository is open:
-
-| Key | What it does |
-|---|---|
-| `?` | Help for the screen you are on |
-| `⌃P` | Search every action by name |
-| `j` / `k` | Move down / up |
-| `⏎` | Open the selected thing |
-| `space` | Stage or unstage a change |
-| `c` | Commit |
-| `C` | Switch branch |
-| `b` | New branch from the selected commit |
-| `m` | Merge the selected branch into yours |
-| `r` | Rebase yours onto the selection |
-| `f` / `p` / `P` | Fetch / pull / push |
-| `S` | Stash |
-| `u` | Undo the last change |
-| `.` | More actions for the selected row |
-| `q` | Quit |
-
-Every key can be changed in the config file, and `?` always shows the keys that
-are active.
+Once a repository is open, press `?` for the keys that work where you are,
+or `⌃P` to search every action by name. The most-used keys are listed under
+[Daily keys](#daily-keys) below.
 
 ## Good to know
 
@@ -104,27 +96,88 @@ are active.
   config file it writes one setting, and only if you pick a graph mode from the
   `?` screen.
 
-## Settings
+## Command line
 
-Everything is optional. The file is `~/.config/mergewright/config.toml` (or
-`$XDG_CONFIG_HOME/mergewright/config.toml`). A small example:
+`mwr --help` prints it:
+
+```text
+usage: mwr [<path>]
+
+  <path>    the repository to open (default: the current directory)
+
+  -h, --help       print the usage and exit
+  -V, --version    print the version and exit
+```
+
+## Daily keys
+
+The first key of each; the man page lists them all, and `[keys]` rebinds
+any of them by the name in the last column.
+
+| Key | What it does | Name |
+|---|---|---|
+| `?` | Help for this place | `app.help` |
+| `⌃P` | Command palette | `app.palette` |
+| `j` | Move down (`k` up) | `app.down` |
+| `⏎` | Open / drill in | `app.open` |
+| `space` | Stage / unstage, in the changes | `changes.stage` |
+| `c` | Commit | `graph.commit` |
+| `C` | Switch branch (branch picker) | `graph.switch` |
+| `b` | New branch from the selected commit | `graph.branch` |
+| `m` | Merge the selected branch into yours | `graph.merge` |
+| `r` | Rebase yours onto the selection | `graph.rebase` |
+| `S` | Stash | `graph.stash` |
+| `f` | Fetch | `graph.fetch` |
+| `p` | Pull | `graph.pull` |
+| `P` | Push | `graph.push` |
+| `u` | Undo | `app.undo` |
+| `.` | Context actions for the row | `app.menu` |
+| `q` | Quit | `app.quit` |
+
+## Configuration
+
+`$XDG_CONFIG_HOME/mergewright/config.toml`, or `$HOME/.config/mergewright/config.toml`.
+No file is the normal case, and every key is optional. An unknown key is a
+warning, so a file written for a later version still starts this one; a value
+a key does not take stops Mergewright with the line and column — except
+`graph.merged_branches`, whose bad value is a config problem (`?` lists it)
+and opens folded. That one key is also the only thing Mergewright writes into
+the file: picking a mode under `GRAPH MODE` in `?` on the graph keeps it there
+(every other line and comment left as it was). Every key, its
+values and its default are in the man page's CONFIGURATION section.
+
+In each repository it opens, Mergewright keeps its files in
+`.git/mergewright/` (the undo journal among them) and its own refs under
+`refs/mergewright/`.
 
 ```toml
 [ui]
 theme = "auto"          # auto | dark | light | high-contrast
+icons = "plain"         # plain | nerd (needs a Nerd Font)
+overview = false        # start with the overview strip shown
 
 [graph]
 renderer = "auto"       # auto | pixel | unicode | ascii
 default_branch = "main" # unset: detected
+max_lanes = 10          # unset: 8, 10 or 12 by terminal width
+merged_branches = "folded"  # folded | shown (every branch on its own lane)
 
-[keys.app]
-refresh = ["ctrl+r", "f5"]   # rebind any key by its name
-```
+[diff]
+context = 3
+ignore_whitespace = false
+word_tint = true
 
-Every setting and every key is listed in the manual:
+[radar]                 # Mistake Radar, per kind: default | off | info | warning
+foxtrot = "warning"
 
-```sh
-man ./docs/man/mwr.1
+[keys]
+suspend_on_ctrl_z = false   # true: ⌃Z suspends, and undo keeps u
+
+[keys.app]                  # rebind by name: a key, a list of keys, or "none"
+refresh = ["ctrl+r", "f5"]
+
+[theme.dark]                # one colour over a built-in theme; lanes are fixed
+accent = "#7aa2f7"
 ```
 
 ## Contributing
