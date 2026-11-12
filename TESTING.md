@@ -3145,13 +3145,13 @@ carrier (words, glyphs, cursor row), never colour.
   on her blame, line 22. `L`: Lina's row selected; the file pane's range ruled `┃`, her added lines (18, 21, 22)
   marked `+` — the walk asserts one row `┃  18 +` and line 19 drawn as context. `⏎`: the graph cursor on her commit. `Esc Esc Esc`: the diff pane, line cursor on 22 of
   `src/auth/session.rs`, focus in the diff, graph cursor on `main` as at the start.
-- [ ] **Recover** · `J ⏎ y` (3), `u` (1), `J n ⏎ y` (4), `J n ⏎ y` (4), `J n ⏎ y` (4) = **16** (26's ruling) ·
+- [x] **Recover** · `J ⏎ y` (3), `u` (1), `J n ⏎ y` (4), `J n ⏎ y` (4), `J n ⏎ y` (4) = **16** (26's ruling) ·
   `promise::recover::promise_recover_without_leaving`, with `core.autocrlf=true` and LF working files. **Right:**
   after `J ⏎ y` main on D; after `u` main off D and **every working file byte-equal** to before (`src/a.rs`, LF,
   included); then main on D again, spike on E, and `src/a.rs` holds his lost edit.
-  **Fails today (2026-10-01, 26b):** the `u` step now holds (30s); the last step fails — `J n ⏎ y` writes his lost
-  edit to `src/a.rs` in CRLF, where he had LF (`recover.rs:123`; the write is `git restore --source=… --worktree`,
-  `mergewright-ops/src/operation/recover.rs:239-247`). Gap `M7/30q-putback-fwd`.
+  **Passes (2026-11-12):** `promise::recover::promise_recover_without_leaving` and
+  `recover_bytes::a_lost_edit_put_back_writes_his_lf_bytes_under_autocrlf` both pass. The CRLF put-back failure
+  recorded 2026-10-01 (26b) was fixed by 30w; the gap `M7/30q-putback-fwd` is closed (`docs/gaps/closed.md`).
 - [ ] **Guard at 80 columns** (review 28 Q2) · `C <branch> ⏎` over an ignored
   `src/services/authentication/providers/oauth2/callbacks/session-cache.json`, branch
   `feature/sara-long-running-oauth-token-refresh-rework` ·
