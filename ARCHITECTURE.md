@@ -6,7 +6,7 @@ between crates — and update it in the same ticket if that ticket changes the
 crate map. The full reasoning behind every choice here is
 [`DESIGN.md` §8](DESIGN.md#8-architecture); this file is the short version.
 
-"Mergewright" is a codename (see `CLAUDE.md`). Domain vocabulary — lane, default
+"Mergewright" is the product name (command `mwr`, ADR-0057). Domain vocabulary — lane, default
 branch, rendering tier, Ghost Preview, Mistake Radar, marker, ref badge,
 operation, undo journal, Command Log, job — is fixed in `CONTEXT.md`; this
 file uses those terms rather than redefining them.
