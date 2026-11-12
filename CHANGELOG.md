@@ -8,6 +8,174 @@ newest name the app as it was called then.
 
 ## [Unreleased]
 
+### Pre-publish cleanup
+
+Getting the repository ready to be published. Nothing new to learn in the app.
+
+#### Changed
+
+- **The app holds only today's names**: support for the folders and refs
+  older builds used is gone. A repository last opened by an older build
+  shows its old refs in the graph as ordinary refs.
+- **Blame's `⊗` mark takes its colour from the theme** (colour unverified).
+- **Mistakes in the bottom-row words fixed** from the usability walk
+  (`docs/reviews/pre-publish-usability.md`); for example a branch with no
+  upstream now says `no upstream set`.
+- **Old captures deleted**: 243 stale captures under `docs/shots/`.
+- **Three release performance budgets raised** on the user's ruling:
+  bytes per frame on a held key, per-frame pieces, and p99 at 100k commits
+  at the Pixel tier (`docs/perf/pp-final-budgets.txt`).
+
+#### Known gaps
+
+In [`KNOWN_GAPS.md`](KNOWN_GAPS.md), the `pp/` and `ease/` rows.
+**Broken:** `ease/19-100k-unicode-flake` (blank frames on a 100k-commit repo
+at the Unicode tier, now and then). **Unverified:** `pp/12-heavy-reds` (raised
+budgets pass 5 of 5 release runs, still waiting on a ruling),
+`ease/28-fast-tier-over-budget`, `pp/11a-pty-walk-m3-unrun`. Licence, release
+and the trademark search are still to do.
+
+### Ease pass — graph by role, commit, merge
+
+What the app draws and does now matches the three mock screens: the main
+graph, the commit screen and the merge screen.
+
+#### Added
+
+- **Lanes show their role against the branch you are on**: your own branch
+  `┃`, a branch built on it `│`, trunk `║`, everything else `┊`. Commits `●`,
+  merges `◉`. Branch names appear once per run, `(you)` after yours. Other
+  people's messages are drawn fainter (colour unverified).
+- **Merged branches start folded**: `▸ N commits from PR <n>`; `space` opens
+  and closes them. The header says `lanes drawn: N of M`.
+- **Labels after the message**: `↑1 to push`, `not merged`, `tag <name>`. The
+  cursor row has a second line with the author and a short hash.
+- **`#` turns colour off**, shapes stay the same; `#` again turns it back on.
+- **Commit screen** (`c`): the cursor starts on the subject. It shows
+  `Going in` / `Staying out` and a summary line (`3 files go in … 1 stays
+  out.`). A `.env` stays out and says why. `⏎` commits, and refuses in words
+  until there is a message and a file. Options sit under `⌃P` / `⌃S`. `u`
+  after a commit keeps the message for the next `c`.
+- **Merge screen**: `m` previews the merge (`Comes in N commits`, `You decide
+  N file clashes`); `y` merges. A clash lands on the first clash: `o`/`t`/`b`
+  take yours, theirs or both; `n` goes to the next file; `u` undoes the last
+  pick; `esc` pauses and `⏎` on the banner comes back. You review before `y`
+  commits. A merge with one clash takes 5 keys (`m y o y y`).
+- **A rebase clash lands on the clash screen too**, with no key in between.
+- **The acceptance walk**: `scripts/ease-accept.sh`, 9 journeys, none over
+  its count (`TESTING.md`, "Ease pass acceptance").
+
+#### Known gaps
+
+The `ease/` rows in [`KNOWN_GAPS.md`](KNOWN_GAPS.md). Pixel-tier lag was
+measured in a pty only; not checked in Ghostty itself (**unverified**).
+
+### M8 — Polish, final name, ship
+
+It stays smooth on your biggest repo, looks like the mock-up, and teaches
+itself from inside the app.
+
+#### Added
+
+- **Scrolling stops when you stop**: after a held `j` or a wheel flick, the
+  list stops when your finger or the wheel does. `G` lands at once once the
+  full row count is known.
+- **`?` key help**: find a key by name (`?` `merge`) or by key (`?` `x`).
+  Stopped mid-rebase, `?` puts continue first.
+- **`⌃P` palette**: run any action by name, jump to a branch, tag, SHA,
+  message words or file path, run the last thing again, switch theme
+  (light/dark).
+- **First launch** shows `first time? ? keys here · ⌃P anything` until the
+  first `?`. **The tour** (`⌃P` `tour`, or `t` outside a repo) runs on a
+  practice repo, not yours; `Esc` takes you back where you were.
+- **Outside a repo**: open a recent repo (`⏎`, `j ⏎`), `i y` to init, `c` to
+  clone.
+- **Quitting during a write** (`q y`) waits for it to land. If a hook hangs,
+  `q y` again quits and the merge stays paused.
+- **The landing after a daily operation**: `u`/`U` put the cursor on the
+  result; a pull with nothing new leaves it where it was and says `✓ up to
+  date`.
+- **`w` toggles whitespace** in the detail pane and blame, and the title says
+  so.
+- **Rebinding keys and theme colours** in the config file (`[keys.<place>]`,
+  `[theme.dark]`).
+- **The name Mergewright, command `mwr`**: `mwr --version`, `mwr --help`,
+  `man mwr`. The journal marks commits that undo can bring back
+  (`⇢ replaced …`).
+- **The acceptance walk**: `scripts/m8-accept.sh`, 31 journeys plus the
+  rename scenarios (`TESTING.md`, "M8 acceptance").
+
+#### Not yet checked
+
+By eye or by a person, on your machine (`TESTING.md`, "By eye and person
+steps"): faded lanes off the cursor's ancestry (colour), rebinding a key, one
+theme colour, the Pixel tier in a real Kitty or iTerm2, `brew install` (after
+publishing), the release scroll run. All **unverified**.
+
+### M7 — Power tools
+
+You can rewrite, trace and recover history without leaving the app.
+
+#### Added
+
+- **The rewrite editor** (`R`): squash, reorder (`Alt+↑`), edit; a preview
+  first; `u` puts every branch back.
+- **Fix an older commit**: `a` into an older commit, absorb staged changes
+  into the commits they belong to (`.` menu), amend with branches built on
+  top following along.
+- **Rebasing a line of branches** (`r`) moves the branches built on it. A
+  squash-merged bottom branch is offered as a drop; `p` keeps it.
+- **Stops during a rewrite** say where you are (`step 3 of 5`, `feature-b,
+  branch 2 of 3`) and land on the first conflicted file or on the stopped
+  commit.
+- **Branch picker** (`C`): type to switch; `C ⏎` goes back to the previous
+  branch; with edits you get a preview and your edits come back.
+- **`o` takes a commit** onto your branch (cherry-pick) after a preview.
+- **`x` compares since the split**: `changes on feature-a since it left main
+  · 3 commits`.
+- **Blame** (`B`): the author on the cursor's line; `⏎` opens that commit at
+  that line, `Esc` comes back; `^` shows the line before that change.
+- **History** of a file (`F`) or of a function (`B L`), renames followed.
+- **Recover with the journal** (`J`): a commit lost to a shell reset, a
+  deleted branch, or an edit held in an undo backup, back in `J ⏎ y` /
+  `J n ⏎ y`.
+- **A branch switch over an ignored file** that would be overwritten is
+  refused, naming the file, even at 80 columns.
+- **The acceptance walk**: `scripts/m7-accept.sh`, 29 journeys
+  (`TESTING.md`, "M7 acceptance").
+
+#### Known gaps
+
+The `M7/` rows in [`KNOWN_GAPS.md`](KNOWN_GAPS.md).
+
+### M6 — Conflicts
+
+A real conflict can be resolved without leaving the app.
+
+#### Added
+
+- **The conflict resolver**: a stopped merge lands on the first conflicted
+  file with the cursor on its first block. `o`/`t` take yours or theirs;
+  `O`/`T` settle a whole file; `Ctrl+T` takes theirs in every open block;
+  `n` goes to the next block, `k`/`j` to other files. Modify/delete conflicts
+  get their own card (`o` keeps the file, `t` deletes it).
+- **The finish summary** opens once the last file is done: `RESOLVED BY YOU`,
+  `COMBINED BY GIT ON ITS OWN`, the message; `y` commits the merge.
+- **A merge begun in the shell**: the launch lands on the banner, `⏎`
+  resolves, `c y` finishes, `a y` aborts.
+- **Undoing a resolution**: `u` gives the conflict back, in a merge
+  begun in the shell too. `d y` on a done file starts it over.
+- **Stash preview**: pop and apply show what they do before you confirm.
+- **The acceptance walk**: 23 conflict journeys counted against the design
+  note (`TESTING.md`, "Conflict journeys").
+
+#### Known gaps
+
+The `M6/` rows in [`KNOWN_GAPS.md`](KNOWN_GAPS.md). **Broken:** `M6/01` (a
+conflict with a marker size below 7 is not seen), `M6/04` (a click over the
+Map, Journal or Stash overlay reaches the graph underneath). **Unverified:**
+`Ctrl+T` in Zed's terminal (it may be taken before the app sees it).
+
 ### M5 — History and Ghost Preview
 
 You see the result before you confirm.
